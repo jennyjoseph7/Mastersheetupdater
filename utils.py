@@ -6,8 +6,9 @@ import time
 GRYD_SERVICE = "autobot-agents"
 GRYD_CONFIG = {
     "broker_type" : "sqs", 
-    "timeout" : 10
-    }
+    "timeout" : 10,
+    "wait_time_to_shutdown" : 43200
+}
 
 def get_logger(name, log_level = "info"):
     log_level = log_level.upper()
