@@ -8,6 +8,7 @@ import requests
 import os
 import io
 import re
+from typing import Union, Dict, Any
 
 # print(ai_service_app.list_models(cloud="azure"))
 # assert False
@@ -26,7 +27,7 @@ class PropensityAgent:
         self.data = self._load_json(source=source)
         self.scores = None
 
-    def _load_json(self, source):
+    def _load_json(self, source : Union[Dict[str, Any], str]) -> Dict[str, Any]:
         """Load JSON from a dict, local path, or URL."""
         if isinstance(source, dict):
             return source 
@@ -110,11 +111,11 @@ class PropensityAgent:
     
     def run(self):
         scores = self.get_propensity_scores()
-        fig, buf = self.plot_spider_chart()
-        return scores, fig, buf
+        fig, img_bytes = self.plot_spider_chart()
+        return scores, fig, img_bytes
     
 if __name__ == "__main__":
     fp = "/home/shreyasvaishnav/autobot_agents/propensity_test_file.json"
     propensity_agent = PropensityAgent(fp, model_identifier='azure-gpt-4o')
-    scores, fig, buf = propensity_agent.run()
+    scores, fig, img_bytes = propensity_agent.run()
     print(scores)
