@@ -17,10 +17,11 @@ run_agent = st.sidebar.button("Run Agents 🚀")
 if not uploaded_file:
     st.warning("⚠️ Please upload a valid JSON file.")
 
-tab1, tab2 = st.tabs(["Propensity Agent", "Other Agent"])
+tab1, tab2, tab3 = st.tabs(["Propensity Agent", "Other Agent", "Personalization Agent"])
 
 propensity_result = None
 competitor_result = None
+personalization_result = None
 
 if run_agent:
     try:
@@ -48,6 +49,8 @@ if run_agent:
                         propensity_result = agent_result
                     elif task == "competitor_analysis_agent":
                         competitor_result = agent_result
+                    elif task == "personalization_agent":
+                        personalization_result = agent_result
     except Exception as e:
         traceback.print_exc()
         st.error(f"❌ Agent failed: {str(e)}")
@@ -56,8 +59,8 @@ if run_agent:
 with tab1:
     st.subheader("🧠 Propensity Agent")
     if propensity_result:
-        scores = propensity_result.get("results").get("scores")
-        propensity_img_url = propensity_result.get("results").get("propensity_chart_url")
+        scores = propensity_result.get("scores")
+        propensity_img_url = propensity_result.get("propensity_chart_url")
         st.success("✅ Propensity Scores Computed Successfully")
         st.markdown("### 📊 Propensity Scores")
         st.json(scores)
@@ -71,7 +74,7 @@ with tab1:
 with tab2:
     st.subheader("📈 Competitor Analysis Agent")
     if competitor_result:
-        st.success("✅ Propensity Scores Computed Successfully")
+        st.success("✅ Competitor Analysis Computed Successfully")
         st.markdown("### 🧾 Competitor Analysis Results")
         if isinstance(competitor_result, dict):
             st.json(competitor_result)
@@ -79,3 +82,16 @@ with tab2:
             st.write(competitor_result)
     else:
         st.info("ℹ️ No competitor data yet.")
+
+with tab3:
+    st.subheader("🧠 Personalization Agent")
+    if personalization_result:
+        st.success("✅ Personalization Computed Successfully")
+        st.markdown("### 🧾 Personalization Results")
+        if isinstance(personalization_result, dict):
+            st.json(personalization_result)
+        else:
+            st.write(personalization_result)
+    else:
+        st.info("ℹ️ No personalization data yet.")
+

@@ -18,12 +18,15 @@ def autobot_agents_trigger(*args, **kwargs):
     execution_mode = kwargs.get("execution_mode", "sync").lower()
     if execution_mode == "sync":
         propensity_agent_results = propensity_agent.execute(*args, **kwargs)
+        kwargs.update({"propensity_agent_results" : propensity_agent_results})
+        personalization_agent_results = personalization_agent.execute(*args, **kwargs)
         competitor_analysis_agent_results = competitor_analysis_agent.execute(*args, **kwargs)
         prioritization_agent_results = prioritization_agent.execute(*args, **kwargs)
         logger.info(propensity_agent_results)
+        logger.info(personalization_agent_results)
         logger.info(competitor_analysis_agent_results)
         logger.info(prioritization_agent_results)
-        return propensity_agent_results, competitor_analysis_agent_results, prioritization_agent_results
+        return propensity_agent_results, personalization_agent_results, competitor_analysis_agent_results, prioritization_agent_results
     
     tasks_details = []
     propensity_agent_task_details = gryd.create_async_task(function_name="propensity_agent", service=GRYD_SERVICE, args=(None), kwargs=kwargs)
@@ -46,7 +49,12 @@ def propensity_agent(*args, **kwargs):
     response = upload_file(img_bytes, {"autobot-agent": True})
     logger.info(f"Propensity Agent Image Response: {response}")
     propensity_chart_url = response["cdn_url"] if isinstance(response, dict) else response
-    return {"task" : "propensity_agent", "results" : {"scores" : scores, "propensity_chart_url" : propensity_chart_url}}
+    return {"task" : "propensity_agent", "scores" : scores, "propensity_chart_url" : propensity_chart_url}
+
+@gryd.is_a_task()
+def personalization_agent(*args, **kwargs):
+    # Your implementation goes here
+    return {"task" : "personalization_agent", "results" : "personalization_agent_results", **kwargs}
 
 @gryd.is_a_task()
 def competitor_analysis_agent(*args, **kwargs):
