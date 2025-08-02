@@ -44,9 +44,9 @@ class PropensityAgent:
 
         raise ValueError(f"Invalid JSON source: {source}")
 
-    def extract_json_from_text(self, text):
+    def _extract_json_from_text(self, raw_llm_response:str):
         json_pattern = r"\{.*?\}"
-        matches = re.findall(json_pattern, text, re.DOTALL)
+        matches = re.findall(json_pattern, raw_llm_response, re.DOTALL)
 
         for match in matches:
             try:
@@ -79,15 +79,18 @@ class PropensityAgent:
     def get_propensity_scores(self):
         messages = self._build_messages()
         response = ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
-        self.scores = self.extract_json_from_text(response)
+        self.scores = self._extract_json_from_text(raw_llm_response=response)
         return self.scores
 
     def plot_spider_chart(self, format="png", scale=2):
         if self.scores is None:
             raise ValueError("Propensity scores not found. Run get_propensity_scores() first.")
-        values = [self.scores.get(k, 0) for k in FEATURES]
-        values += values[:1]  # Close the loop
-        labels = FEATURES + [FEATURES[0]]
+        values = []
+        for k in FEATURES:
+            values.append(self.scores.get(k, 0))
+        values.append(values[0]) # Close the spider loop
+        labels = FEATURES.copy()
+        labels.append(FEATURES[0]) # Close the spider loop
         fig = go.Figure()
         fig.add_trace(go.Scatterpolar(
             r=values,
