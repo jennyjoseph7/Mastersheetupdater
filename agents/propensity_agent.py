@@ -9,6 +9,7 @@ import os
 import io
 import re
 from typing import Union, Dict, Any
+from base_agent import BaseAgent
 
 # print(ai_service_app.list_models(cloud="azure"))
 # assert False
@@ -21,28 +22,11 @@ FEATURES = [
     'infotainment_and_connectivity'
 ]
 
-class PropensityAgent:
+class PropensityAgent(BaseAgent):
     def __init__(self, source, model_identifier='azure-gpt-4o'):
         self.model_identifier = model_identifier
         self.data = self._load_json(source=source)
         self.scores = None
-
-    def _load_json(self, source : Union[Dict[str, Any], str]) -> Dict[str, Any]:
-        """Load JSON from a dict, local path, or URL."""
-        if isinstance(source, dict):
-            return source 
-
-        if isinstance(source, str):
-            parsed = urlparse(source)
-            if parsed.scheme in ("http", "https"):
-                response = requests.get(source)
-                response.raise_for_status()
-                return response.json()
-            elif os.path.isfile(source):
-                with open(source, 'r') as f:
-                    return json.load(f)
-
-        raise ValueError(f"Invalid JSON source: {source}")
 
     def _extract_json_from_text(self, raw_llm_response:str):
         json_pattern = r"\{.*?\}"
