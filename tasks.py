@@ -112,10 +112,12 @@ def competitor_analysis_agent(*args, **kwargs):
     from agents.competitor_analysis_agent.main import CompetitorAnalysis
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-    competitor_agent = CompetitorAnalysis(source = source, model_identifier=model_identifier)
+    top_n = kwargs.get("top_n", 5)
+    competitor_agent = CompetitorAnalysis(source = source, model_identifier=model_identifier,top_n=top_n)
     analysis = competitor_agent.get_analysis()
     filtered_results = {
         "task": "competitor_analysis_agent",
+        "top_models":kwargs.get("top_models",""),
         "compared_cars_data": analysis.get("compared_cars_data",""),
         "comparisons": analysis.get("comparisons",""),
         "common_points": analysis.get("common_points",""),
