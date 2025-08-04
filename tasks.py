@@ -17,26 +17,73 @@ def autobot_agents_trigger(*args, **kwargs):
     
     execution_mode = kwargs.get("execution_mode", "sync").lower()
     if execution_mode == "sync":
+        # Step 1: Running Propensity Agent
         propensity_agent_results = propensity_agent.execute(*args, **kwargs)
-        kwargs.update({"propensity_agent_results" : propensity_agent_results})
-        personalization_agent_results = personalization_agent.execute(*args, **kwargs)
-        competitor_analysis_agent_results = competitor_analysis_agent.execute(*args, **kwargs)
-        prioritization_agent_results = prioritization_agent.execute(*args, **kwargs)
-        logger.info(propensity_agent_results)
-        logger.info(personalization_agent_results)
-        logger.info(competitor_analysis_agent_results)
-        logger.info(prioritization_agent_results)
-        return propensity_agent_results, personalization_agent_results, competitor_analysis_agent_results, prioritization_agent_results
-    
-    tasks_details = []
-    propensity_agent_task_details = gryd.create_async_task(function_name="propensity_agent", service=GRYD_SERVICE, args=(None), kwargs=kwargs)
-    competitor_analysis_agent_task_details = gryd.create_async_task(function_name="competitor_analysis_agent", service=GRYD_SERVICE, args=(None), kwargs=kwargs)
-    prioritization_agent_task_details = gryd.create_async_task(function_name="prioritization_agent", service=GRYD_SERVICE, args=(None), kwargs=kwargs)
+        kwargs['propensity_agent_results'] = propensity_agent_results
 
-    tasks_details.append(propensity_agent_task_details)
-    tasks_details.append(competitor_analysis_agent_task_details)
-    tasks_details.append(prioritization_agent_task_details)
-    return tasks_details
+        # Step 2: Running Personalization Agent        
+        competitor_analysis_agent_results = competitor_analysis_agent.execute(*args, **kwargs)
+        kwargs['competitor_analysis_agent_results'] = competitor_analysis_agent_results
+
+        # Step 3: Running Prioritization Agent
+        prioritization_agent_results = prioritization_agent.execute(*args, **kwargs)
+        kwargs['prioritization_agent_results'] = prioritization_agent_results
+
+        # Step 4: Running Personalization Agent
+        personalization_agent_results = personalization_agent.execute(*args, **kwargs)
+        kwargs['personalization_agent_results'] = personalization_agent_results
+
+        # Step 5: Running Communication Agent
+        communication_agent_results = communication_agent.execute(*args, **kwargs)
+        kwargs['communication_agent_results'] = communication_agent_results
+    
+        return propensity_agent_results, personalization_agent_results, competitor_analysis_agent_results, prioritization_agent_results
+
+
+    awaited_tasks = [
+        {
+            "task": "propensity_agent",
+            "service": GRYD_SERVICE,
+            "kwargs": kwargs
+        },
+        {
+            "task": "competitor_analysis_agent",
+            "service": GRYD_SERVICE,
+            "kwargs": kwargs
+        },
+        {
+            "task": "prioritization_agent",
+            "service": GRYD_SERVICE,
+            "kwargs": kwargs
+        }
+    ]
+
+    task_results = []
+    for job in gryd.yield_results(awaited_tasks, timeout=120):
+        task_name, status, result_data = job[1], job[3], job[4]
+        if status == "result":
+            logger.info(f"Task '{task_name}' completed with result: {json.dumps(result_data, indent=4, default=str)}")
+            task_results.append(result_data)
+        else:
+            logger.warning(f"Task '{task_name}' failed or still pending. Status: {status}")
+
+    logger.info(f"Parallel Task results: {json.dumps(task_results, indent=4, default=str)}")
+
+    for task_result in task_results:
+        if task_result.get("task") == "propensity_agent":
+            kwargs["propensity_agent_results"] = task_result
+        elif task_result.get("task") == "competitor_analysis_agent":
+            kwargs["competitor_analysis_agent_results"] = task_result
+        elif task_result.get("task") == "prioritization_agent":
+            kwargs["prioritization_agent_results"] = task_result
+
+    # Use Kwargs for Next agent execution and return final dict.
+    personalization_agent_results = personalization_agent.execute(*args, **kwargs)
+    communication_agent_results = communication_agent.execute(*args, **kwargs)
+    task_results.extend([personalization_agent_results, communication_agent_results])
+
+    logger.info(f"Final Task results: {json.dumps(task_results, indent=4, default=str)}")
+    return task_results
     
 @gryd.is_a_task()    
 def propensity_agent(*args, **kwargs):
@@ -54,7 +101,7 @@ def propensity_agent(*args, **kwargs):
 @gryd.is_a_task()
 def personalization_agent(*args, **kwargs):
     # Your implementation goes here
-    return {"task" : "personalization_agent", "results" : "personalization_agent_results", **kwargs}
+    return {"task" : "personalization_agent", "results" : "personalization_agent_results"}
 
 @gryd.is_a_task()
 def competitor_analysis_agent(*args, **kwargs):
@@ -72,9 +119,11 @@ def prioritization_agent(*args, **kwargs):
     return {"task" : "prioritization_agent", "results" : "prioritization_agent_results"}
 
 @gryd.is_a_task()
+def communication_agent(*args, **kwargs):
+    return {"task" : "communication_agent", "results" : "communication_agent_results"}
+
+@gryd.is_a_task()
 def results(*args, **kwargs):
     task_id = kwargs.get("task_id")
     task = gryd_result(task_id)
     return task
-
-
