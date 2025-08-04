@@ -9,7 +9,10 @@ import os
 import io
 import re
 from typing import Union, Dict, Any
-from base_agent import BaseAgent
+try:
+    from .base_agent import BaseAgent
+except:
+    from base_agent import BaseAgent
 
 # print(ai_service_app.list_models(cloud="azure"))
 # assert False
