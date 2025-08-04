@@ -117,7 +117,7 @@ def competitor_analysis_agent(*args, **kwargs):
     analysis = competitor_agent.get_analysis()
     filtered_results = {
         "task": "competitor_analysis_agent",
-        "top_models":kwargs.get("top_models",""),
+        "top_models":top_n,
         "compared_cars_data": analysis.get("compared_cars_data",""),
         "comparisons": analysis.get("comparisons",""),
         "common_points": analysis.get("common_points",""),

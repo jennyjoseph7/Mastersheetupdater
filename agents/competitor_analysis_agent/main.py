@@ -31,10 +31,10 @@ class CompetitorAnalysis(BaseAgent):
         compared=[]
         if isinstance(self.source_data.get("compared_cars"), list):
             for model in self.source_data.get("compared_cars"):
-                compared.append(self.validate_model(model))
-        else:
-            compared.append(self.validate_model(car_models(model=self.source_data.get("compared_cars"),top_n=self.top_n)))
+                compared.append(car_models(model=self.validate_model(model),top_n=self.top_n))
 
+        else:
+            compared.append(car_models(model=self.validate_model(self.source_data.get("compared_cars")),top_n=self.top_n))
         user_choice = car_models(model=self.validate_model(self.source_data.get("user_choice")),top_n=self.top_n)
         return compared,user_choice
 
