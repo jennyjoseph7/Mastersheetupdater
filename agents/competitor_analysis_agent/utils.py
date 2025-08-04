@@ -65,6 +65,6 @@ if __name__ == "__main__":
             llm_output,
             expected_keys=["comparisons", "common_points", "key_differences", "user_choice_justification"]
         )
-        print("✅ Extracted and validated JSON:\n", json.dumps(json_data, indent=2))
+        print("✅ Extracted and validated JSON:\n", )
     except ValueError as e:
         print(str(e))

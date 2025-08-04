@@ -1,16 +1,16 @@
 
 from ai_service import ai_service_app
-from prompts import *
+from .prompts import *
 import re 
-from utils import extract_valid_json_blocks
+from .utils import extract_valid_json_blocks
 import json 
-from get_models import car_models
-from autobot_agents.agents.base_agent import BaseAgent
+from .get_models import car_models
+from agents.base_agent import BaseAgent
 class CompetitorAnalysis(BaseAgent):
 
     def __init__(self, source, model_identifier='azure-gpt-4o'):
         self.model_identifier = model_identifier
-        source_data = _load_json(source)
+        source_data =self._load_json(source)
         self.source_data ={
             "compared_cars" : source_data.get("compared_cars","None"),
             "user_choice" : source_data.get("model")
