@@ -58,7 +58,14 @@ def personalization_agent(*args, **kwargs):
 
 @gryd.is_a_task()
 def competitor_analysis_agent(*args, **kwargs):
-    return {"task" : "competitor_analysis_agent", "results" : "competitor_analysis_agent_results"}
+
+    from autobot_agents.competitor_analysis_agent.main import CompetitorAnalysis
+    source = kwargs["source"]
+    model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+    propensity_agent = CompetitorAnalysis(source = source, model_identifier=model_identifier)
+    analysis = propensity_agent.get_analysis()
+
+    return {"task" : "competitor_analysis_agent", "results" : analysis, **kwargs}
 
 @gryd.is_a_task()
 def prioritization_agent(*args, **kwargs):
