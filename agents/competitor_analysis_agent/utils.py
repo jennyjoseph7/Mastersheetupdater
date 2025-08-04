@@ -1,5 +1,7 @@
 import re
 import json
+with open("./agents/competitor_analysis_agent/list_of_models.json", "r") as f:
+    model_list = json.load(f)
 
 def extract_valid_json_blocks(text, expected_keys=None):
     """

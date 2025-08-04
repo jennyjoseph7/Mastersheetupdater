@@ -17,7 +17,7 @@ def get_logger(name, log_level = "info"):
 
 logger = get_logger(__name__)
 
-GRYD_SERVICE = "autobot_agents_trigger"
+GRYD_SERVICE = "autobot-agents"
 GRYD_CONFIG = {
     "broker_type" : "sqs", 
     "timeout" : 10,

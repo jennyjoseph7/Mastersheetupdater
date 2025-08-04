@@ -1,6 +1,6 @@
 import requests
 import json
-def car_models(model=None):
+def car_models(top_n,model=None):
     """
     Get a list of car models
     Parameters
@@ -29,7 +29,7 @@ def car_models(model=None):
 
     response = requests.request("GET", url, headers=headers, data=payload)
 
-    return json.loads(response.text)['data']
+    return json.loads(response.text)['data'][:top_n]
 
 if __name__ == "__main__":
     print(car_models("DB11"))

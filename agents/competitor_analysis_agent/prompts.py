@@ -19,6 +19,7 @@ def comparison_prompt(user_choice, compared_car_list):
         "3. `key_differences`: Clear and detailed explanation of how the cars differ across relevant parameters. Organize it pairwise or feature-wise, focusing strongly on factors such as pricing, performance, maintenance, features, and user needs.\n"
         "4. `user_choice_justification`: Provide strong, formal, and user-centered reasoning explaining why a buyer might choose the USER CHOICE over others. Justify based on likely user preferences like affordability, performance, family suitability, city use, etc.\n\n"
         "Do not include any introduction, conclusion, marketing phrases, or personal opinions. Only return a valid JSON object with properly structured and labeled content under each required key."
+        "I will give you bonus If you return a json object correctly, Do not add false information."
     )
 
     user_prompt = f"""
@@ -37,3 +38,32 @@ This is a formal task; return **only the JSON**.
 """.strip()
 
     return system_prompt, user_prompt
+
+
+
+def create_model_match_prompt(user_prompt: str, model_list: list) -> list:
+    """
+    Create a message prompt for an LLM to find a matching car model from the given list.
+    Args:
+        user_prompt (str): The user's input text.
+        model_list (list): List of available car models (e.g., ['bmw', 'kwid', 'audi'])
+    Returns:
+        list: A list of messages in OpenAI-compatible format.
+    """
+    system_prompt = f"""
+You are an intelligent car model matching assistant.
+
+Your task is to find the best-matching car model from the given list based on the user prompt.
+You must return **only** the exact name of the matching car model from the list, or "None" if no relevant model is found.
+
+Here are the models you can consider: {model_list}
+
+Return format: A single string. Example outputs: "bmw", "audi", "kwid", or "None"
+"""
+
+    messages = [
+        {"role": "system", "content": system_prompt.strip()},
+        {"role": "user", "content": user_prompt.strip()}
+    ]
+    
+    return messages
