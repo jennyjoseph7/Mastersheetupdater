@@ -31,7 +31,5 @@ def car_models(model=None):
 
     return json.loads(response.text)['data']
 
-
-
 if __name__ == "__main__":
     print(car_models("DB11"))
