@@ -109,10 +109,22 @@ def competitor_analysis_agent(*args, **kwargs):
     from agents.competitor_analysis_agent.main import CompetitorAnalysis
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-    propensity_agent = CompetitorAnalysis(source = source, model_identifier=model_identifier)
-    analysis = propensity_agent.get_analysis()
+    _agent = CompetitorAnalysis(source = source, model_identifier=model_identifier)
+    analysis = _agent.get_analysis()
 
-    return {"task" : "competitor_analysis_agent", "results" : analysis, **kwargs}
+    yield {
+
+        "_job": {
+
+        "task": "communication_agent",
+
+        "service": GRYD_SERVICE,
+
+        "kwargs": {'compared_cars_data': analysis.get("compared_cars_data",""), 'comparisons': analysis.get("comparisons",""),'common_points':analysis.get("common_points"),'key_differences':analysis.get("key_differences"),'user_choice_justification':analysis.get("key_differences"), **kwargs}
+
+        }
+
+        }
 
 @gryd.is_a_task()
 def prioritization_agent(*args, **kwargs):
