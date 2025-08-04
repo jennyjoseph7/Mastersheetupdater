@@ -113,17 +113,11 @@ def competitor_analysis_agent(*args, **kwargs):
     analysis = _agent.get_analysis()
 
     yield {
-
         "_job": {
-
         "task": "communication_agent",
-
         "service": GRYD_SERVICE,
-
         "kwargs": {'compared_cars_data': analysis.get("compared_cars_data",""), 'comparisons': analysis.get("comparisons",""),'common_points':analysis.get("common_points"),'key_differences':analysis.get("key_differences"),'user_choice_justification':analysis.get("key_differences"), **kwargs}
-
         }
-
         }
 
 @gryd.is_a_task()
