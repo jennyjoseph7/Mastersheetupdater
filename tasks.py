@@ -92,11 +92,15 @@ def propensity_agent(*args, **kwargs):
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
     propensity_agent = PropensityAgent(source = source, model_identifier=model_identifier)
     scores, fig, img_bytes = propensity_agent.run()
-    logger.info(f"Propensity Agent Results: {json.dumps(scores, indent = 4, default = str)}")
     response = upload_file(img_bytes, {"autobot-agent": True})
-    logger.info(f"Propensity Agent Image Response: {response}")
     propensity_chart_url = response["cdn_url"] if isinstance(response, dict) else response
-    return {"task" : "propensity_agent", "scores" : scores, "propensity_chart_url" : propensity_chart_url}
+    filtered_results = {
+        "task": "propensity_agent",
+        "scores": scores,
+        "propensity_chart_url": propensity_chart_url
+    }
+    logger.info(f"Propensity Agent Results: {json.dumps(filtered_results, indent = 4, default = str)}")
+    return filtered_results
 
 @gryd.is_a_task()
 def personalization_agent(*args, **kwargs):
@@ -118,7 +122,7 @@ def competitor_analysis_agent(*args, **kwargs):
         "key_differences": analysis.get("key_differences",""),
         "user_choice_justification": analysis.get("key_differences","")
     }
-
+    logger.info(f"Competitor Analysis Agent Results: {json.dumps(filtered_results, indent = 4, default = str)}")
     return filtered_results
 
 @gryd.is_a_task()
