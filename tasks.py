@@ -156,7 +156,7 @@ def competitor_analysis_agent(*args, **kwargs):
         "comparisons": analysis.get("comparisons",""),
         "common_points": analysis.get("common_points",""),
         "key_differences": analysis.get("key_differences",""),
-        "user_choice_justification": analysis.get("key_differences","")
+        "user_choice_justification": analysis.get("user_choice_justification","")
     }
     logger.info(f"Competitor Analysis Agent Results: {json.dumps(filtered_results, indent = 4, default = str)}")
     return filtered_results
