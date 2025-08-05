@@ -37,7 +37,7 @@ def autobot_agents_trigger(*args, **kwargs):
         communication_agent_results = communication_agent.execute(*args, **kwargs)
         kwargs['communication_agent_results'] = communication_agent_results
     
-        return propensity_agent_results, personalization_agent_results, competitor_analysis_agent_results, prioritization_agent_results
+        return propensity_agent_results, personalization_agent_results, competitor_analysis_agent_results, prioritization_agent_results, communication_agent_results
 
 
     awaited_tasks = [
@@ -78,18 +78,9 @@ def autobot_agents_trigger(*args, **kwargs):
             for job in jobs:
                 task_results.append(job)
         return task_results
-    # for job in gryd.yield_results(awaited_tasks, timeout=120):
-    #     task_name, status, result_data = job[1], job[3], job[4]
-    #     if status == "result":
-    #         logger.info(f"Task '{task_name}' completed with result: {json.dumps(result_data, indent=4, default=str)}")
-    #         task_results.append(result_data)
-    #     else:
-    #         logger.warning(f"Task '{task_name}' failed or still pending. Status: {status}")
-    
-    # for job in gryd.await_results(awaited_tasks, timeout=120):
-    #     task_results.append(job)
 
-    task_results = result_handler(awaited_tasks, execution_mode="async")
+    task_results : list = result_handler(awaited_tasks, execution_mode="async")
+
     for task_result in task_results:
         if task_result.get("task") == "propensity_agent":
             kwargs["propensity_agent_results"] = task_result
@@ -127,23 +118,20 @@ def propensity_agent(*args, **kwargs):
 @gryd.is_a_task()
 def personalization_agent(*args, **kwargs):
     from agents.personalization_agent import PersonalizationAgent
-    source = kwargs.get("source")   
-    propensity_agent_results = kwargs.get("propensity_agent_results", None) 
-    # if propensity_agent_results is None:
-    #     raise ValueError("'propensity_agent_results' is required for personalization_agent")  
-    
+    source = kwargs['source']
+    model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+
+    # Propensity Agent Results
+    propensity_agent_results = kwargs.get("propensity_agent_results", None)  
     propensity_score = propensity_agent_results.get("scores")  
 
-    competitor_analysis_agent_results = kwargs.get("competitor_analysis_agent_results", None) 
-    # if competitor_analysis_agent_results is None:
-    #     raise ValueError("'competitor_analysis_agent_results' is required for personalization_agent")   
+    # Competitor Analysis Agent Results
+    competitor_analysis_agent_results = kwargs.get("competitor_analysis_agent_results", None)     
     comparison_cars_json = competitor_analysis_agent_results.get("compared_cars_data")
     comparison_json = competitor_analysis_agent_results.get("comparisons")
     common_points_json = competitor_analysis_agent_results.get("common_points")
     key_differences_json =competitor_analysis_agent_results.get("key_differences")
     user_choice_justification_json = competitor_analysis_agent_results.get("user_choice_justification")
-
-    model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")   
 
     combined_input = {
         "source": source,
