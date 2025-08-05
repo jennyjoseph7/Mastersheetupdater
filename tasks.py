@@ -16,29 +16,10 @@ def autobot_agents_trigger(*args, **kwargs):
         raise ValueError("'source' is required. Either pass a valid dict or a valid URL or filepath for JSON.")
     
     execution_mode = kwargs.get("execution_mode", "async").lower()
-    if execution_mode == "sync":
-        # Step 1: Running Propensity Agent
-        propensity_agent_results = propensity_agent.execute(*args, **kwargs)
-        kwargs['propensity_agent_results'] = propensity_agent_results
 
-        # Step 2: Running Personalization Agent        
-        competitor_analysis_agent_results = competitor_analysis_agent.execute(*args, **kwargs)
-        kwargs['competitor_analysis_agent_results'] = competitor_analysis_agent_results
-
-        # Step 3: Running Prioritization Agent
-        prioritization_agent_results = prioritization_agent.execute(*args, **kwargs)
-        kwargs['prioritization_agent_results'] = prioritization_agent_results
-
-        # Step 4: Running Personalization Agent
-        personalization_agent_results = personalization_agent.execute(*args, **kwargs)
-        kwargs['personalization_agent_results'] = personalization_agent_results
-
-        # Step 5: Running Communication Agent
-        communication_agent_results = communication_agent.execute(*args, **kwargs)
-        kwargs['communication_agent_results'] = communication_agent_results
-    
-        return propensity_agent_results, personalization_agent_results, competitor_analysis_agent_results, prioritization_agent_results, communication_agent_results
-
+    aem_integration_agent_results = aem_integration_agent.execute(*args, **kwargs)
+    kwargs['aem_integration_agent_results'] = aem_integration_agent_results
+    kwargs['source'] = aem_integration_agent_results.get("updated_source")
 
     awaited_tasks = [
         {
@@ -57,8 +38,6 @@ def autobot_agents_trigger(*args, **kwargs):
             "kwargs": kwargs
         }
     ]
-
-    task_results = []
 
     def result_handler(awaited_tasks : list[dict], execution_mode : str):
         task_results = []
@@ -79,7 +58,7 @@ def autobot_agents_trigger(*args, **kwargs):
                 task_results.append(job)
         return task_results
 
-    task_results : list = result_handler(awaited_tasks, execution_mode="async")
+    task_results : list = result_handler(awaited_tasks, execution_mode=execution_mode)
 
     for task_result in task_results:
         if task_result.get("task") == "propensity_agent":
@@ -92,10 +71,20 @@ def autobot_agents_trigger(*args, **kwargs):
     # Use Kwargs for Next agent execution and return final dict.
     personalization_agent_results = personalization_agent.execute(*args, **kwargs)
     communication_agent_results = communication_agent.execute(*args, **kwargs)
-    task_results.extend([personalization_agent_results, communication_agent_results])
+    task_results.extend([personalization_agent_results, communication_agent_results, aem_integration_agent_results])
 
     logger.info(f"Final Task results: {json.dumps(task_results, indent=4, default=str)}")
     return task_results
+
+@gryd.is_a_task()
+def aem_integration_agent(*args, **kwargs):
+    from agents.aem_integration_agent import AEMIntegrationAgent
+    source = kwargs['source']
+    model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+    aem_agent = AEMIntegrationAgent(source = source, model_identifier=model_identifier)
+    updated_source = aem_agent.run()
+    return {"task": "aem_integration_agent", "updated_source": updated_source}
+
     
 @gryd.is_a_task()    
 def propensity_agent(*args, **kwargs):
