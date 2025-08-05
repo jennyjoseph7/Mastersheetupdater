@@ -101,7 +101,7 @@ def propensity_agent(*args, **kwargs):
         "task": "propensity_agent",
         "scores": scores,
         "propensity_chart_url": propensity_chart_url,
-        "propensity_chart_json": fig_json
+        # "propensity_chart_json": fig_json
     }
     logger.info(f"Propensity Agent Results: {json.dumps(filtered_results, indent = 4, default = str)}")
     return filtered_results
@@ -111,14 +111,14 @@ def personalization_agent(*args, **kwargs):
     from agents.personalization_agent import PersonalizationAgent
     source = kwargs.get("source")   
     propensity_agent_results = kwargs.get("propensity_agent_results", None) 
-    if propensity_agent_results is None:
-        raise ValueError("'propensity_agent_results' is required for personalization_agent")  
+    # if propensity_agent_results is None:
+    #     raise ValueError("'propensity_agent_results' is required for personalization_agent")  
     
     propensity_score = propensity_agent_results.get("scores")  
 
     competitor_analysis_agent_results = kwargs.get("competitor_analysis_agent_results", None) 
-    if competitor_analysis_agent_results is None:
-        raise ValueError("'competitor_analysis_agent_results' is required for personalization_agent")   
+    # if competitor_analysis_agent_results is None:
+    #     raise ValueError("'competitor_analysis_agent_results' is required for personalization_agent")   
     comparison_cars_json = competitor_analysis_agent_results.get("compared_cars_data")
     comparison_json = competitor_analysis_agent_results.get("comparisons")
     common_points_json = competitor_analysis_agent_results.get("common_points")
@@ -150,7 +150,7 @@ def competitor_analysis_agent(*args, **kwargs):
     from agents.competitor_analysis_agent.main import CompetitorAnalysis
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-    top_n = kwargs.get("top_n", 2)
+    top_n = kwargs.get("top_n", 3)
     competitor_agent = CompetitorAnalysis(source = source, model_identifier=model_identifier,top_n=top_n)
     analysis = competitor_agent.get_analysis()
     filtered_results = {
