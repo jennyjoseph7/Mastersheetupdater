@@ -15,7 +15,7 @@ def autobot_agents_trigger(*args, **kwargs):
     if source is None:
         raise ValueError("'source' is required. Either pass a valid dict or a valid URL or filepath for JSON.")
     
-    execution_mode = kwargs.get("execution_mode", "sync").lower()
+    execution_mode = kwargs.get("execution_mode", "async").lower()
     if execution_mode == "sync":
         # Step 1: Running Propensity Agent
         propensity_agent_results = propensity_agent.execute(*args, **kwargs)
@@ -59,6 +59,25 @@ def autobot_agents_trigger(*args, **kwargs):
     ]
 
     task_results = []
+
+    def result_handler(awaited_tasks : list[dict], execution_mode : str):
+        task_results = []
+        if execution_mode == "async":
+            logger.info("🚀🚀 Running tasks asynchronously...")
+            jobs = gryd.yield_results(awaited_tasks, timeout=120)
+            for job in jobs:
+                task_name, status, result_data = job[1], job[3], job[4]
+                if status == "result":
+                    logger.info(f"Task '{task_name}' completed with result: {json.dumps(result_data, indent=4, default=str)}")
+                    task_results.append(result_data)
+                else:
+                    logger.warning(f"Task '{task_name}' failed or still pending. Status: {status}")
+        else:
+            logger.info("Running tasks synchronously...")
+            jobs = gryd.await_results(awaited_tasks, timeout=120)
+            for job in jobs:
+                task_results.append(job)
+        return task_results
     # for job in gryd.yield_results(awaited_tasks, timeout=120):
     #     task_name, status, result_data = job[1], job[3], job[4]
     #     if status == "result":
@@ -67,11 +86,10 @@ def autobot_agents_trigger(*args, **kwargs):
     #     else:
     #         logger.warning(f"Task '{task_name}' failed or still pending. Status: {status}")
     
-    for job in gryd.await_results(awaited_tasks, timeout=120):
-        task_results.append(job)
+    # for job in gryd.await_results(awaited_tasks, timeout=120):
+    #     task_results.append(job)
 
-    logger.info(f"Parallel Task results: {json.dumps(task_results, indent=4, default=str)}")
-
+    task_results = result_handler(awaited_tasks, execution_mode="async")
     for task_result in task_results:
         if task_result.get("task") == "propensity_agent":
             kwargs["propensity_agent_results"] = task_result
