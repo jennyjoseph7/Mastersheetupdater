@@ -31,6 +31,12 @@ class PropensityAgent(BaseAgent):
         self.data = self._load_json(source=source)
         self.scores = None
 
+    
+    def fig_to_json_bytes(self, fig):
+        from plotly.utils import PlotlyJSONEncoder
+        json_str = json.dumps(fig, cls=PlotlyJSONEncoder)
+        return json_str.encode("utf-8")
+
     def _extract_json_from_text(self, raw_llm_response:str):
         json_pattern = r"\{.*?\}"
         matches = re.findall(json_pattern, raw_llm_response, re.DOTALL)
@@ -102,7 +108,10 @@ class PropensityAgent(BaseAgent):
     def run(self):
         scores = self.get_propensity_scores()
         fig, img_bytes = self.plot_spider_chart()
-        return scores, fig, img_bytes
+        fig_json = fig.to_json()
+        # fig_json_bytes = self.fig_to_json_bytes(fig)
+        # print(f"fig_json_bytes: {json.dumps(fig_json_bytes, indent = 4, default = str)}")
+        return scores, fig, img_bytes, fig_json
     
 if __name__ == "__main__":
     fp = "/home/shreyasvaishnav/autobot_agents/propensity_test_file.json"

@@ -1,8 +1,8 @@
 import streamlit as st
 import json
-# from agents.propensity_agent import PropensityAgent
 from gryd_worker import gryd
 from utils import *
+import plotly.io as pio
 
 logger = get_logger(__name__)
 gryd.SERVICE = GRYD_SERVICE
@@ -17,7 +17,7 @@ run_agent = st.sidebar.button("Run Agents 🚀")
 if not uploaded_file:
     st.warning("⚠️ Please upload a valid JSON file.")
 
-tab1, tab2, tab3 = st.tabs(["Propensity Agent", "Other Agent", "Personalization Agent"])
+tab1, tab2, tab3 = st.tabs(["Propensity Agent", "Comparison Analysis Agent", "Personalization Agent"])
 
 propensity_result = None
 competitor_result = None
@@ -31,26 +31,40 @@ if run_agent:
             "service": GRYD_SERVICE,
             "kwargs": {
                 "source": input_data,
-                "execution_mode": "sync"
+                "execution_mode": "async"
             },
             "args": (None)
         }]
 
-        sync_result = gryd.yield_results(autobot_agents_trigger)
+        sync_result = gryd.await_results(autobot_agents_trigger)
+        sync_result = list(sync_result[0])
+        logger.info(json.dumps(sync_result, indent=4, default=str))
+        # assert False
+        for job in sync_result:
+            
+            task_name = job.get("task")
 
-        for idx, i in enumerate(sync_result):
-            if "result" in i:
-                logger.info(f"Result found at Index: {idx}")
-                agent_results_list = list(i[4])
+            if task_name == "propensity_agent":
+                propensity_result = job
+            elif task_name == "competitor_analysis_agent":
+                competitor_result = job
+            elif task_name == "personalization_agent":
+                personalization_result = job
 
-                for agent_result in agent_results_list:
-                    task = agent_result.get("task")
-                    if task == "propensity_agent":
-                        propensity_result = agent_result
-                    elif task == "competitor_analysis_agent":
-                        competitor_result = agent_result
-                    elif task == "personalization_agent":
-                        personalization_result = agent_result
+            # task_name, status, result_data = job[1], job[3], job[4]
+
+            # if status == "result":
+            #     logger.info(f"Result found at Index: {idx}")
+            #     agent_results_list = result_data
+
+            #     for agent_result in agent_results_list:
+            #         task = agent_result.get("task")
+            #         if task == "propensity_agent":
+            #             propensity_result = agent_result
+            #         elif task == "competitor_analysis_agent":
+            #             competitor_result = agent_result
+            #         elif task == "personalization_agent":
+            #             personalization_result = agent_result
     except Exception as e:
         traceback.print_exc()
         st.error(f"❌ Agent failed: {str(e)}")
@@ -61,12 +75,15 @@ with tab1:
     if propensity_result:
         scores = propensity_result.get("scores")
         propensity_img_url = propensity_result.get("propensity_chart_url")
+        propensity_chart_json = propensity_result.get("propensity_chart_json")
+        fig = pio.from_json(propensity_chart_json)
         st.success("✅ Propensity Scores Computed Successfully")
         st.markdown("### 📊 Propensity Scores")
         st.json(scores)
-        if propensity_img_url:
+        if fig:
             st.markdown("### 📷 Propensity Chart")
-            st.image(propensity_img_url, width=1000,) # caption=" ### 📷 Propensity Score Radar Plot"
+            st.plotly_chart(fig, use_container_width=True)
+            # st.image(propensity_img_url, width=1000,) # caption=" ### 📷 Propensity Score Radar Plot"
     else:
         st.info("ℹ️ Run the agent to see results.")
 

@@ -59,13 +59,16 @@ def autobot_agents_trigger(*args, **kwargs):
     ]
 
     task_results = []
-    for job in gryd.yield_results(awaited_tasks, timeout=120):
-        task_name, status, result_data = job[1], job[3], job[4]
-        if status == "result":
-            logger.info(f"Task '{task_name}' completed with result: {json.dumps(result_data, indent=4, default=str)}")
-            task_results.append(result_data)
-        else:
-            logger.warning(f"Task '{task_name}' failed or still pending. Status: {status}")
+    # for job in gryd.yield_results(awaited_tasks, timeout=120):
+    #     task_name, status, result_data = job[1], job[3], job[4]
+    #     if status == "result":
+    #         logger.info(f"Task '{task_name}' completed with result: {json.dumps(result_data, indent=4, default=str)}")
+    #         task_results.append(result_data)
+    #     else:
+    #         logger.warning(f"Task '{task_name}' failed or still pending. Status: {status}")
+    
+    for job in gryd.await_results(awaited_tasks, timeout=120):
+        task_results.append(job)
 
     logger.info(f"Parallel Task results: {json.dumps(task_results, indent=4, default=str)}")
 
@@ -91,13 +94,14 @@ def propensity_agent(*args, **kwargs):
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
     propensity_agent = PropensityAgent(source = source, model_identifier=model_identifier)
-    scores, fig, img_bytes = propensity_agent.run()
+    scores, fig, img_bytes, fig_json = propensity_agent.run()
     response = upload_file(img_bytes, {"autobot-agent": True})
     propensity_chart_url = response["cdn_url"] if isinstance(response, dict) else response
     filtered_results = {
         "task": "propensity_agent",
         "scores": scores,
-        "propensity_chart_url": propensity_chart_url
+        "propensity_chart_url": propensity_chart_url,
+        "propensity_chart_json": fig_json
     }
     logger.info(f"Propensity Agent Results: {json.dumps(filtered_results, indent = 4, default = str)}")
     return filtered_results
@@ -146,12 +150,12 @@ def competitor_analysis_agent(*args, **kwargs):
     from agents.competitor_analysis_agent.main import CompetitorAnalysis
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-    top_n = kwargs.get("top_n", 5)
+    top_n = kwargs.get("top_n", 2)
     competitor_agent = CompetitorAnalysis(source = source, model_identifier=model_identifier,top_n=top_n)
     analysis = competitor_agent.get_analysis()
     filtered_results = {
         "task": "competitor_analysis_agent",
-        "top_models":top_n,
+        "top_models": top_n,
         "compared_cars_data": analysis.get("compared_cars_data",""),
         "comparisons": analysis.get("comparisons",""),
         "common_points": analysis.get("common_points",""),
