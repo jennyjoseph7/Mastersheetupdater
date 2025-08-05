@@ -104,8 +104,42 @@ def propensity_agent(*args, **kwargs):
 
 @gryd.is_a_task()
 def personalization_agent(*args, **kwargs):
-    # Your implementation goes here
-    return {"task" : "personalization_agent", "results" : "personalization_agent_results"}
+    from agents.personalization_agent import PersonalizationAgent
+    source = kwargs.get("source")   
+    propensity_agent_results = kwargs.get("propensity_agent_results", None) 
+    if propensity_agent_results is None:
+        raise ValueError("'propensity_agent_results' is required for personalization_agent")  
+    
+    propensity_score = propensity_agent_results.get("scores")  
+
+    competitor_analysis_agent_results = kwargs.get("competitor_analysis_agent_results", None) 
+    if competitor_analysis_agent_results is None:
+        raise ValueError("'competitor_analysis_agent_results' is required for personalization_agent")   
+    comparison_cars_json = competitor_analysis_agent_results.get("compared_cars_data")
+    comparison_json = competitor_analysis_agent_results.get("comparisons")
+    common_points_json = competitor_analysis_agent_results.get("common_points")
+    key_differences_json =competitor_analysis_agent_results.get("key_differences")
+    user_choice_justification_json = competitor_analysis_agent_results.get("user_choice_justification")
+
+    model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")   
+
+    combined_input = {
+        "source": source,
+        "propensity_score": propensity_score,
+        "comparison": comparison_json,
+        "comparison_cars": comparison_cars_json,
+        "common_points":common_points_json,
+        "key_differences":key_differences_json,
+        "user_choice_justification":user_choice_justification_json   
+        
+    }
+    agent = PersonalizationAgent(source=combined_input, model_identifier=model_identifier)
+    personalization_agent_results = agent.run()
+    filtered_results = {
+        "task": "personalization_agent",
+        "personalization_agent_response": personalization_agent_results
+    }
+    return filtered_results
 
 @gryd.is_a_task()
 def competitor_analysis_agent(*args, **kwargs):
