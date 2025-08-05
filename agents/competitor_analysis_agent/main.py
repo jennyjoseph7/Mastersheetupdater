@@ -3,13 +3,16 @@ from ai_service import ai_service_app
 from .prompts import *
 from .utils import extract_valid_json_blocks, model_list
 from .get_models import car_models
-import json
+from utils import get_logger
 from agents.base_agent import BaseAgent
+
+logger = get_logger(__name__)
 
 class CompetitorAnalysis(BaseAgent):
 
 
     def __init__(self, source, model_identifier='azure-gpt-4o',top_n=5):
+        
         self.top_n = top_n
         self.model_identifier = model_identifier
         source_data =self._load_json(source)
@@ -21,6 +24,7 @@ class CompetitorAnalysis(BaseAgent):
     def validate_model(self,user_prompt):
         messages=create_model_match_prompt(user_prompt,model_list)
         try:
+            
             raw_llm_response = ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
         except Exception as e:
             return user_prompt
@@ -47,8 +51,15 @@ class CompetitorAnalysis(BaseAgent):
             {"role": "system", "content": system_prompt},
               {"role": "user", "content": user_prompt}
               ]
+        logger.info(f"Using model: {self.model_identifier}")
         raw_llm_response = ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
-        formated_json=extract_valid_json_blocks(raw_llm_response)
+        try:
+            formated_json=extract_valid_json_blocks(raw_llm_response)
+            logger.info("Extracted and validated JSON:\n")
+        except ValueError as e:
+            formated_json={}
+            logger.info(e)
+        
         formated_json['compared_cars_data'] = compared_car_data
         return formated_json
 
