@@ -31,6 +31,22 @@ class PropensityAgent(BaseAgent):
         self.data = self._load_json(source=source)
         self.scores = None
 
+    def think(self):
+        messages = []
+        prompt = f"""
+        You are a product analytics assistant helping to analyze user behavior on a car website.
+        Here is the user's interaction data:
+        {json.dumps(self.data, indent=2)}
+        Think step-by-step (as a human would), and express your analysis briefly.
+        - Keep it short (3-5 sentences max)
+        - Sound like you're reasoning through the data
+        - End with: "Now, let's build the propensity scores."
+        Do NOT include any scores or JSON.
+        Respond as if you're thinking out loud.
+        """
+        messages.append({"role": "user", "content": prompt})
+        response = ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
+        return response.strip()
     
     def fig_to_json_bytes(self, fig):
         from plotly.utils import PlotlyJSONEncoder
@@ -106,12 +122,19 @@ class PropensityAgent(BaseAgent):
         return fig, img_bytes
     
     def run(self):
+        reasoning = self.think()
         scores = self.get_propensity_scores()
         fig, img_bytes = self.plot_spider_chart()
         fig_json = fig.to_json()
         # fig_json_bytes = self.fig_to_json_bytes(fig)
         # print(f"fig_json_bytes: {json.dumps(fig_json_bytes, indent = 4, default = str)}")
-        return scores, fig, img_bytes, fig_json
+        return {
+            "reasoning": reasoning,
+            "scores": scores,
+            "fig": fig,
+            "img_bytes": img_bytes,
+            "fig_json": fig_json
+        }
     
 if __name__ == "__main__":
     fp = "/home/shreyasvaishnav/autobot_agents/propensity_test_file.json"

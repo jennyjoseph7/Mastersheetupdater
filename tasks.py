@@ -103,13 +103,17 @@ def propensity_agent(*args, **kwargs):
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
     propensity_agent = PropensityAgent(source = source, model_identifier=model_identifier)
-    scores, fig, img_bytes, fig_json = propensity_agent.run()
+    agent_response : dict = propensity_agent.run()
+    scores = agent_response.get("scores")
+    img_bytes = agent_response.get("img_bytes")
+    reasoning = agent_response.get("reasoning")
     response = upload_file(img_bytes, {"autobot-agent": True})
     propensity_chart_url = response["cdn_url"] if isinstance(response, dict) else response
     filtered_results = {
         "task": "propensity_agent",
         "scores": scores,
         "propensity_chart_url": propensity_chart_url,
+        "reasoning": reasoning
         # "propensity_chart_json": fig_json
     }
     logger.info(f"Propensity Agent Results: {json.dumps(filtered_results, indent = 4, default = str)}")
@@ -134,13 +138,13 @@ def personalization_agent(*args, **kwargs):
     user_choice_justification_json = competitor_analysis_agent_results.get("user_choice_justification")
 
     combined_input = {
-        "source": source,
-        "propensity_score": propensity_score,
-        "comparison": comparison_json,
-        "comparison_cars": comparison_cars_json,
-        "common_points":common_points_json,
-        "key_differences":key_differences_json,
-        "user_choice_justification":user_choice_justification_json   
+        "source" : source,
+        "propensity_score" : propensity_score,
+        "comparison" : comparison_json,
+        "comparison_cars" : comparison_cars_json,
+        "common_points" : common_points_json,
+        "key_differences" : key_differences_json,
+        "user_choice_justification" : user_choice_justification_json   
         
     }
     agent = PersonalizationAgent(source=combined_input, model_identifier=model_identifier)
