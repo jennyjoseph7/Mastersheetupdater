@@ -33,13 +33,13 @@ PRIORITY_LEVELS = {
 
 
 class LeadPrioritizationAgent(BaseAgent):
-    def __init__(self,source,model_indentifier='azure-gpt-4o'):
-        self.model_identifier = model_indentifier
+    def __init__(self,source,model_identifier='azure-gpt-4o'):
+        self.model_identifier = model_identifier
         self.data = self._load_json(source=source)
         self.scores = None
         self.total_score=None
         self.priority_level=None
-        self.recomended_actions = []
+        self.recommended_actions = []
 
     def _calculate_intent_score(self,data):
         """calculate intent score based on the user actions(0-40 points)""" 
@@ -299,7 +299,6 @@ class LeadPrioritizationAgent(BaseAgent):
         """
         user_message = {"role": "user", "content": prompt}
         messages.append(user_message)
-        logger.info("the ai insight = ",messages)
         return messages
 
     def get_ai_insights(self):

@@ -192,7 +192,16 @@ def competitor_analysis_agent(*args, **kwargs):
 
 @gryd.is_a_task()
 def prioritization_agent(*args, **kwargs):
-    return {"task" : "prioritization_agent", "results" : "prioritization_agent_results"}
+    from agents.lead_prioritization_agent import LeadPrioritizationAgent
+    source = kwargs["source"]
+    model_identifier = kwargs.get("model_identifier","azure-gpt-4o")
+    priority_agent = LeadPrioritizationAgent(source = source, model_identifier=model_identifier)
+    lead_analysis = priority_agent.complete_analysis()
+    filtered_results = {
+        "task":"prioritization_agent",
+        **lead_analysis
+    }
+    return filtered_results
 
 @gryd.is_a_task()
 def communication_agent(*args, **kwargs):
