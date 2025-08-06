@@ -27,7 +27,7 @@ class PersonalizationAgent(BaseAgent):
 
             **Input**: Here is the customer interaction data:
             {json.dumps(self.source, indent=2)}
-            - include a line of thinking about the user's sentiments and emotional condition from the user_sentiment json file 
+            - include a line of user_sentiments, sentiment_score,emotions and sentiment_justification from the user_sentiment json file. include a thinking line on it also.
 
             Think step by step like a human analyzing a lead:
             - Write 3–5 short sentences.
@@ -72,7 +72,7 @@ class PersonalizationAgent(BaseAgent):
             Input:
             {json.dumps(self.source, indent=2)}
             
-            This file also contains a user_sentiments json file, It contains user's emotional condition. analyze it and react accordingly. 
+            This file also contains a user_sentiments, sentiment_score,emotions and sentiment_justification json file, It contains user's emotional condition. analyze it and react accordingly. 
             
             Output:
             Return only the personalized message as plain text, with emojis and spaces, Not line breaks.

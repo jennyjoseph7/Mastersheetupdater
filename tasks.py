@@ -132,7 +132,12 @@ def personalization_agent(*args, **kwargs):
     
     #sentiment analysis agent results:
     
-    sentiment_results = kwargs.get("Sentiment Agent Results",None)  
+    sentiment_results = kwargs.get("sentiment_analysis_agent_results",None)
+    sentiment_score = sentiment_results.get("sentiment_score")
+    emotions = sentiment_results.get("emotions")
+    sentiment_justification = sentiment_results.get("justification")
+    
+      
 
     # Competitor Analysis Agent Results
     competitor_analysis_agent_results = kwargs.get("competitor_analysis_agent_results", None)     
@@ -150,7 +155,11 @@ def personalization_agent(*args, **kwargs):
         "common_points" : common_points_json,
         "key_differences" : key_differences_json,
         "user_choice_justification" : user_choice_justification_json,
-        "user_sentiments" : sentiment_results   
+        "user_sentiments" : sentiment_results,
+        "sentiment_score" : sentiment_score,
+        "emotions" : emotions,
+        "sentiment_justification" : sentiment_justification
+           
         
     }
     agent = PersonalizationAgent(source=combined_input, model_identifier=model_identifier)
