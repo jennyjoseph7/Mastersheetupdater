@@ -53,7 +53,7 @@ class PersonalizationAgent(BaseAgent):
             - Personalize the message based on the customer’s specific interaction type — whether they explored a car, checked specific features, booked a test drive, received a service reminder, or were recommended accessories.
 
                 For example:
-                If they explored a car or its features → highlight those features in the message. proper highlight with proper color naming, and other stuffs needed.
+                If they explored a car or its features → highlight those features in the message. proper highlight with proper color naming, and other stuffs needed. must be in bullet points. Also proper comparison to competetor cars, along with a greet message like Best in class or  best in segment features. Proper bullet points why better than competetors
                 If they booked a test drive → remind or excite them about the upcoming experience.
                 If it’s a service reminder → mention past service or due date positively
                 If accessories were recommended → tailor the message like:
@@ -70,14 +70,14 @@ class PersonalizationAgent(BaseAgent):
                 - "Hi <name>!" — if the name is clearly extractable from input JSON. Check before adding it, Names are like Prince, Nikit, Shreyas, Jay, Megha,Richa, Nikita etc, Not like Ggananth, its Ananth, Not ppprince, its Prince. Extract Properly otherwise do not include it. 
                 - "Hi!" or "Hello!" — if name is missing or ambiguous (e.g., messy email prefix).
             
-            This will greet the user initially, then will tell him what he selected along with actual color name , model and variant, the will say what are the greate features available on that car, include everything that could be interesting, then will go to the comparison part, analyze the competetor vehicles and will say why his choice is better and then will end with a personalized message.
-            
+            This will greet the user initially, then will tell him what he selected along with final color name , model and variant, the will say what are the greate features available on that car, include everything that could be interesting, then will go to the comparison part, analyze the competetor vehicles and will say why his choice is better and then will end with a personalized message.
+            Return the car features and car comparison part point wise, proper bullet points. And also , please see if you can say like comparable to other cars in the segment. Or start the comparo part like best in segment features all because...
             
             Input:
             {json.dumps(self.source, indent=2)}
             
-            This file also contains a user_sentiments, sentiment_score,emotions and sentiment_justification json file, It contains user's emotional condition. analyze it and react accordingly. 
-            
+            This file also contains a user_sentiments, sentiment_score,emotions and sentiment_justification json file, It contains user's emotional condition. analyze it and react accordingly. Cars features and comparison to competetors will be in bullet points.
+            Output should be customer engaging, salesman's tone and language type, and impressive to the user.
             Output:
             Return only the personalized message as plain text, with emojis and spaces, Not line breaks. It could be a 8-10 lines long.
             Do not include any extra formatting like markdown, labels, or JSON.
