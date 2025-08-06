@@ -29,7 +29,7 @@ else:
     st.sidebar.warning("⚠️ Please upload a valid JSON file.")
     run_agent = False
 
-tabs = ["AEM Agent", "Propensity Agent", "Comparison Analysis Agent", "Personalization Agent", "Sentiment Analysis Agent", "Prioritization Agent"]
+tabs = ["Adobe Experience Manager", "Propensity Agent", "Comparison Analysis Agent", "Personalization Agent", "Sentiment Analysis Agent", "Prioritization Agent"]
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(tabs)
 
 propensity_result = None
@@ -80,7 +80,7 @@ if run_agent:
             traceback.print_exc()
             st.error(f"❌ Agent failed: {str(e)}")
 with tab1:
-    st.subheader("🧠 AEM Agent")
+    st.subheader("🧠 AEM ")
     if aem_result:
         st.success("✅ Customer Interaction Fetched Successfully from AEM.")
         if isinstance(aem_result, dict):
@@ -97,6 +97,7 @@ with tab2:
         propensity_img_url = propensity_result.get("propensity_chart_url")
         reasoning = propensity_result.get("reasoning")
         if reasoning:
+            st.markdown("#### <Agent Reasoning>")
             response = st.write_stream(response_generator(response = reasoning))
         # propensity_chart_json = propensity_result.get("propensity_chart_json")
         # fig = pio.from_json(propensity_chart_json)
@@ -195,10 +196,31 @@ with tab4:
         st.write("🧾 Personalization Results")
         reasoning = personalization_result.get("reasoning")
         if reasoning:
+            st.markdown("#### <Agent Reasoning>")
             response = st.write_stream(response_generator(response = reasoning))
         if isinstance(personalization_result, dict):
             message = personalization_result.get("personalization_agent_response")
             st.text_area("Personalization Message : ", message, height=200)
     else:
         st.info("ℹ️ No personalization data yet.")
+
+with tab5:
+    st.subheader("🧠 Sentiment Analysis Agent")
+    if sentiment_result:
+        st.success("✅ Sentiment Computed Successfully")
+        st.write("🧾 Sentiment Results")
+        if isinstance(sentiment_result, dict):
+            st.info(f"**User Input:** {sentiment_result.get('user_input')}\n\n**Justification:** {sentiment_result.get('justification')} \n\n**Emotions:** {sentiment_result.get('emotions')}\n\n**Sentiment Score:** {sentiment_result.get('sentiment_score')}")
+    else:
+        st.info("ℹ️ No sentiment data yet.")
+
+with tab6:
+    st.subheader("🧠 Prioritization Agent")
+    if prioritization_result:
+        st.success("✅ Prioritization Computed Successfully")
+        st.write("🧾 Prioritization Results")
+        if isinstance(prioritization_result, dict):
+            st.json(prioritization_result)
+    else:
+        st.info("ℹ️ No prioritization data yet.")
 
