@@ -10,34 +10,27 @@ class PersonalizationAgent(BaseAgent):
         
     def thinking(self):
         think_prompt = f"""
-        You are a Personalization Agent for a car dealership or automotive brand.
-        
-        **Task**: Given a customer's interaction history (from website, walk-in, or WhatsApp), generate a short personalized promotional script. This script will be used for follow-up messages (via SMS, email, WhatsApp, or phone) and should:
-        - Be personalized based on the user's engagement and preferences.
-        - Promote a car, service, or accessory that aligns with what the user has already shown interest in.
-        - Encourage the next step (e.g., visit showroom, schedule test drive, check out an offer, etc.).
-        - NOT include a product or variant recommendation (leave decision-making to other agents).
-        - Be friendly, persuasive, and concise (2-5 sentences max).
-        
-        **Input**: A JSON object containing customer interaction data such as:
-        - Source of interaction: website, walk-in, or WhatsApp
-        - Car models browsed or test driven
-        - Features explored (safety, tech, interior, etc.)
-        - Marketing campaign info (UTM params, keywords)
-        - Location and preferred dealer
-        - Engagement level (e.g., test drive booked, comparisons made, flow abandoned)
-        - Date and time
-        
-        So, Here, You you will act as a thinker, how you will think during analyzing the data, You need to show your thinking steps and process here according to the task and the given data.
-        {json.dumps(self.source, indent=2)}
-        Think step-by-step (as a human would), and express your analysis briefly.
-        - Keep it short (3-5 sentences max)
-        - Sound like you're reasoning through the data
-        - End with: "Now, let's greet the user with a personalized message."
-        Do NOT include any personalized message here.
-        Respond as if you're thinking out loud.
-        
-        """
+            You are a Personalization Agent for a car dealership or automotive brand.
+
+            **Task**: Given a customer's interaction history (from website, walk-in, or WhatsApp), your goal is to think through the data and understand how to generate a short, personalized promotional message. But here, you're not generating the message yet — you're just thinking.
+
+            **Your Thinking Process**:
+            - Analyze the customer interaction data.
+            - Identify what the customer is interested in (car models, features, campaigns).
+            - Consider the engagement level and where the user is in the buying journey.
+            - Think about what would be a suitable next step for the user (e.g., visit showroom, schedule test drive).
+            - Do not recommend a specific product or variant — that’s handled by another agent.
+
+            **Input**: Here is the customer interaction data:
+            {json.dumps(self.source, indent=2)}
+
+            Think step by step like a human analyzing a lead:
+            - Write 3–5 short sentences.
+            - Show your reasoning process: What do you observe? What can you infer?
+            - End with: "Now, let's greet the user with a personalized message."
+            - Do NOT write the actual message here.
+            """
+
         think = [] 
         input =  {"role" : "user", "content" : think_prompt}
         think.append(input)        
@@ -45,30 +38,37 @@ class PersonalizationAgent(BaseAgent):
 
     def messages(self):
         prompt = f"""
-        You are a Personalization Agent for a car dealership or automotive brand.
-        
-        **Task**: Given a customer's interaction history (from website, walk-in, or WhatsApp), generate a short personalized promotional script. This script will be used for follow-up messages (via SMS, email, WhatsApp, or phone) and should:
-        - Be personalized based on the user's engagement and preferences.
-        - Promote a car, service, or accessory that aligns with what the user has already shown interest in.
-        - Encourage the next step (e.g., visit showroom, schedule test drive, check out an offer, etc.).
-        - NOT include a product or variant recommendation (leave decision-making to other agents).
-        - Be friendly, persuasive, and concise (2-5 sentences max).
-        
-        **Input**: A JSON object containing customer interaction data such as:
-        - Source of interaction: website, walk-in, or WhatsApp
-        - Car models browsed or test driven
-        - Features explored (safety, tech, interior, etc.)
-        - Marketing campaign info (UTM params, keywords)
-        - Location and preferred dealer
-        - Engagement level (e.g., test drive booked, comparisons made, flow abandoned)
-        - Date and time
-        
-        **Note**: Do not suggest which model or variant to choose. Just use interaction signals to create a customized message that improves user engagement.
-        
-        Now generate the message for the following input:
-        {json.dumps(self.source, indent=2)}
-        
-        Respond only with a single short message in plain text.
+            You are a Personalization Agent for a car dealership or automotive brand.
+            
+            Task:
+            Based on a customer's interaction history (from website, walk-in, or WhatsApp), generate a short, friendly promotional message that can be used across channels (SMS, WhatsApp, email, phone, website).
+            
+            Your job:
+            - Personalize the message based on the customer’s specific interaction type — whether they explored a car, checked specific features, booked a test drive, received a service reminder, or were recommended accessories.
+
+                For example:
+                If they explored a car or its features → highlight those features in the message
+                If they booked a test drive → remind or excite them about the upcoming experience.
+                If it’s a service reminder → mention past service or due date positively
+                If accessories were recommended → tailor the message like:
+                “Based on your preferences and style, you might love these accessories 🚗✨”
+                Make each message context-aware and emotionally engaging.
+            - Promote the car, service, or accessory the user showed interest in.
+            - Do NOT recommend a variant, car model, or suggest comparisons.
+            - Keep it persuasive, clear, and human-like (2–5 short lines only).
+            - Mention one or two standout features the user explored and say something like “With those, you’ve made a great choice!” (without recommending).
+            - Use emojis (e.g. 🚘, 💡, ⚡️, ✅, 🛞,👀,🛡️ ,✨,🥳,🤝, 😊) to create a positive tone.
+            - Use line breaks for readability.
+            - Start the message with:
+                - "Hi <name>!" — if the name is clearly extractable from input JSON.
+                - "Hi!" or "Hello!" — if name is missing or ambiguous (e.g., messy email prefix).
+            
+            Input:
+            {json.dumps(self.source, indent=2)}
+            
+            Output:
+            Return only the personalized message as plain text, with emojis and line breaks.
+            Do not include any extra formatting like markdown, labels, or JSON.
         """
         message_log = [] 
         input =  {"role" : "user", "content" : prompt}
