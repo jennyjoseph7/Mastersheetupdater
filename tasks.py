@@ -1,7 +1,7 @@
 from gryd_worker import gryd
 from gryd_worker.gryd_routes import gryd_result
 from utils import GRYD_SERVICE, GRYD_CONFIG, get_logger, upload_file
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, Generator
 import json
 import traceback
 
@@ -83,6 +83,66 @@ def autobot_agents_trigger(*args, **kwargs):
 
     logger.info(f"Final Task results: {json.dumps(task_results, indent=4, default=str)}")
     return task_results
+
+@gryd.is_a_task()
+def autobot_agents_trigger_generator(*args, **kwargs) -> Generator:
+    source: Union[Dict, str] = kwargs.get("source", None)
+    if source is None:
+        raise ValueError("'source' is required. Either pass a valid dict or a valid URL or filepath for JSON.")
+    execution_mode = kwargs.get("execution_mode", "async").lower()
+    aem_integration_agent_results = aem_integration_agent.execute(*args, **kwargs)
+    kwargs['aem_integration_agent_results'] = aem_integration_agent_results
+    kwargs['source'] = aem_integration_agent_results.get("updated_source")
+    yield aem_integration_agent_results
+    awaited_tasks = [
+        {
+            "task": "propensity_agent",
+            "service": GRYD_SERVICE,
+            "kwargs": kwargs
+        },
+        {
+            "task": "competitor_analysis_agent",
+            "service": GRYD_SERVICE,
+            "kwargs": kwargs
+        },
+        {
+            "task": "prioritization_agent",
+            "service": GRYD_SERVICE,
+            "kwargs": kwargs
+        }
+    ]
+    if execution_mode == "async":
+        logger.info("🚀 Running tasks asynchronously...")
+        jobs = gryd.yield_results(awaited_tasks, timeout=120)
+        for job in jobs:
+            task_name, status, result_data = job[1], job[3], job[4]
+            if status == "result":
+                task_name = result_data.get("task")
+                logger.info(f"✅ Task '{task_name}' completed.")
+                kwargs_key = f"{task_name}_results"
+                kwargs[kwargs_key] = result_data
+                yield result_data
+            else:
+                logger.warning(f"⚠️ Task '{task_name}' failed or pending.")
+    else:
+        logger.info("Running tasks synchronously...")
+        jobs = gryd.await_results(awaited_tasks, timeout=120)
+        for job in jobs:
+            task_name = job.get("task")
+            kwargs_key = f"{task_name}_results"
+            kwargs[kwargs_key] = job
+            yield job
+    
+    next_agents = {
+        "sentiment_analysis_agent_results": sentiment_agent,
+        "personalization_agent_results": personalization_agent,
+        "communication_agent_results": communication_agent,
+    }
+
+    for key, agent in next_agents.items():
+        result = agent.execute(*args, **kwargs)
+        kwargs[key] = result
+        yield result
 
 @gryd.is_a_task()
 def aem_integration_agent(*args, **kwargs):
