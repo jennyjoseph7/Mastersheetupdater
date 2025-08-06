@@ -1,7 +1,11 @@
 from ai_service import ai_service_app
 import json
 import os
-from agents.base_agent import BaseAgent
+
+try:
+    from .base_agent import BaseAgent
+except:
+    from base_agent import BaseAgent
 
 class PersonalizationAgent(BaseAgent):
     def __init__(self, source: dict, model_identifier='azure-gpt-4o'):

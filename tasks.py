@@ -3,6 +3,7 @@ from gryd_worker.gryd_routes import gryd_result
 from utils import GRYD_SERVICE, GRYD_CONFIG, get_logger, upload_file
 from typing import Union, Dict, Any
 import json
+import traceback
 
 logger = get_logger(__name__)
 
@@ -70,8 +71,14 @@ def autobot_agents_trigger(*args, **kwargs):
 
     # Use Kwargs for Next agent execution and return final dict.
     sentiment_agent_results = sentiment_agent.execute(*args, **kwargs)
+    kwargs['sentiment_analysis_agent_results'] = sentiment_agent_results
+
     personalization_agent_results = personalization_agent.execute(*args, **kwargs)
+    kwargs['personalization_agent_results'] = personalization_agent_results
+
     communication_agent_results = communication_agent.execute(*args, **kwargs)
+    kwargs['communication_agent_results'] = communication_agent_results
+
     task_results.extend([sentiment_agent_results,personalization_agent_results, communication_agent_results, aem_integration_agent_results])
 
     logger.info(f"Final Task results: {json.dumps(task_results, indent=4, default=str)}")
@@ -89,25 +96,29 @@ def aem_integration_agent(*args, **kwargs):
     
 @gryd.is_a_task()    
 def propensity_agent(*args, **kwargs):
-    from agents.propensity_agent import PropensityAgent
-    source = kwargs["source"]
-    model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-    propensity_agent = PropensityAgent(source = source, model_identifier=model_identifier)
-    agent_response : dict = propensity_agent.run()
-    scores = agent_response.get("scores")
-    img_bytes = agent_response.get("img_bytes")
-    reasoning = agent_response.get("reasoning")
-    response = upload_file(img_bytes, {"autobot-agent": True})
-    propensity_chart_url = response["cdn_url"] if isinstance(response, dict) else response
-    filtered_results = {
-        "task": "propensity_agent",
-        "scores": scores,
-        "propensity_chart_url": propensity_chart_url,
-        "reasoning": reasoning
-        # "propensity_chart_json": fig_json
-    }
-    logger.info(f"Propensity Agent Results: {json.dumps(filtered_results, indent = 4, default = str)}")
-    return filtered_results
+    try:
+        from agents.propensity_agent import PropensityAgent
+        source = kwargs["source"]
+        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+        propensity_agent = PropensityAgent(source = source, model_identifier=model_identifier)
+        agent_response : dict = propensity_agent.run()
+        scores = agent_response.get("scores")
+        img_bytes = agent_response.get("img_bytes")
+        reasoning = agent_response.get("reasoning")
+        response = upload_file(img_bytes, {"autobot-agent": True})
+        propensity_chart_url = response["cdn_url"] if isinstance(response, dict) else response
+        filtered_results = {
+            "task": "propensity_agent",
+            "scores": scores,
+            "propensity_chart_url": propensity_chart_url,
+            "reasoning": reasoning
+            # "propensity_chart_json": fig_json
+        }
+        logger.info(f"Propensity Agent Results: {json.dumps(filtered_results, indent = 4, default = str)}")
+        return filtered_results
+    except Exception as e:
+        logger.error(f"Propensity Agent Error: \n\n")
+        traceback.print_exc()
 
 @gryd.is_a_task()
 def personalization_agent(*args, **kwargs):
@@ -141,7 +152,8 @@ def personalization_agent(*args, **kwargs):
     personalization_agent_results = agent.run()
     filtered_results = {
         "task": "personalization_agent",
-        "personalization_agent_response": personalization_agent_results
+        "personalization_agent_response": personalization_agent_results.get("response"),
+        "reasoning": personalization_agent_results.get("ai-thinking")
     }
     return filtered_results
 
@@ -162,7 +174,6 @@ def competitor_analysis_agent(*args, **kwargs):
         "key_differences": analysis.get("key_differences",""),
         "user_choice_justification": analysis.get("user_choice_justification","")
     }
-    logger.info(f"Competitor Analysis Agent Results: {json.dumps(filtered_results, indent = 4, default = str)}")
     return filtered_results
 
 @gryd.is_a_task()
@@ -175,9 +186,7 @@ def communication_agent(*args, **kwargs):
 
 @gryd.is_a_task()
 def sentiment_agent(*args, **kwargs):
-    import json
     from agents.sentiment_agent import SentimentAnalysisAgent
-
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
     sentiment_agent = SentimentAnalysisAgent(source=source, model_identifier=model_identifier)
@@ -190,9 +199,6 @@ def sentiment_agent(*args, **kwargs):
         "emotions": analysis.get("expected_output", {}).get("emotions", []),
         "justification": analysis.get("expected_output", {}).get("justification", "")
     }
-
-    logger.info(f"Sentiment Agent Results: {json.dumps(filtered_results, indent=4, default=str)}")
-
     return filtered_results
 
 @gryd.is_a_task()
