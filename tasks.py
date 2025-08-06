@@ -69,9 +69,10 @@ def autobot_agents_trigger(*args, **kwargs):
             kwargs["prioritization_agent_results"] = task_result
 
     # Use Kwargs for Next agent execution and return final dict.
+    sentiment_agent_results = sentiment_agent.execute(*args, **kwargs)
     personalization_agent_results = personalization_agent.execute(*args, **kwargs)
     communication_agent_results = communication_agent.execute(*args, **kwargs)
-    task_results.extend([personalization_agent_results, communication_agent_results, aem_integration_agent_results])
+    task_results.extend([sentiment_agent_results,personalization_agent_results, communication_agent_results, aem_integration_agent_results])
 
     logger.info(f"Final Task results: {json.dumps(task_results, indent=4, default=str)}")
     return task_results
@@ -171,6 +172,28 @@ def prioritization_agent(*args, **kwargs):
 @gryd.is_a_task()
 def communication_agent(*args, **kwargs):
     return {"task" : "communication_agent", "results" : "communication_agent_results"}
+
+@gryd.is_a_task()
+def sentiment_agent(*args, **kwargs):
+    import json
+    from agents.sentiment_agent import SentimentAnalysisAgent
+
+    source = kwargs["source"]
+    model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+    sentiment_agent = SentimentAnalysisAgent(source=source, model_identifier=model_identifier)
+    analysis = sentiment_agent.run()
+
+    filtered_results = {
+        "task": "sentiment_analysis_agent",
+        "user_input": analysis.get("input", {}).get("user_input", ""),
+        "sentiment_score": analysis.get("expected_output", {}).get("sentiment_score", 0.0),
+        "emotions": analysis.get("expected_output", {}).get("emotions", []),
+        "justification": analysis.get("expected_output", {}).get("justification", "")
+    }
+
+    logger.info(f"Sentiment Agent Results: {json.dumps(filtered_results, indent=4, default=str)}")
+
+    return filtered_results
 
 @gryd.is_a_task()
 def results(*args, **kwargs):
