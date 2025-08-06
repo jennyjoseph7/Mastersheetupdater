@@ -61,7 +61,7 @@ class PersonalizationAgent(BaseAgent):
             - Use line breaks for readability.
             - do not include any '\n' in the message, just proper space.
             - Start the message with:
-                - "Hi <name>!" — if the name is clearly extractable from input JSON.
+                - "Hi <name>!" — if the name is clearly extractable from input JSON. Check before adding it, Names are like Prince, Nikit, Shreyas, Jay, Megha,Richa, Nikita etc, Not like Ggananth, its Ananth, Not ppprince, its Prince. Extract Properly otherwise do not include it. 
                 - "Hi!" or "Hello!" — if name is missing or ambiguous (e.g., messy email prefix).
             
             Input:
