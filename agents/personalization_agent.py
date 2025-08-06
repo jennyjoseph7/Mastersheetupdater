@@ -34,6 +34,7 @@ class PersonalizationAgent(BaseAgent):
             - Show your reasoning process: What do you observe? What can you infer?
             - End with: "Now, let's greet the user with a personalized message."
             - Do NOT write the actual message here.
+            - Proper analyzation of each JSON file is need to add, include all features, why better than competetors, all tyhe features, user sentiment, etc everything.
             """
 
         think = [] 
@@ -52,7 +53,7 @@ class PersonalizationAgent(BaseAgent):
             - Personalize the message based on the customer’s specific interaction type — whether they explored a car, checked specific features, booked a test drive, received a service reminder, or were recommended accessories.
 
                 For example:
-                If they explored a car or its features → highlight those features in the message
+                If they explored a car or its features → highlight those features in the message. proper highlight with proper color naming, and other stuffs needed.
                 If they booked a test drive → remind or excite them about the upcoming experience.
                 If it’s a service reminder → mention past service or due date positively
                 If accessories were recommended → tailor the message like:
@@ -69,13 +70,16 @@ class PersonalizationAgent(BaseAgent):
                 - "Hi <name>!" — if the name is clearly extractable from input JSON. Check before adding it, Names are like Prince, Nikit, Shreyas, Jay, Megha,Richa, Nikita etc, Not like Ggananth, its Ananth, Not ppprince, its Prince. Extract Properly otherwise do not include it. 
                 - "Hi!" or "Hello!" — if name is missing or ambiguous (e.g., messy email prefix).
             
+            This will greet the user initially, then will tell him what he selected along with actual color name , model and variant, the will say what are the greate features available on that car, include everything that could be interesting, then will go to the comparison part, analyze the competetor vehicles and will say why his choice is better and then will end with a personalized message.
+            
+            
             Input:
             {json.dumps(self.source, indent=2)}
             
             This file also contains a user_sentiments, sentiment_score,emotions and sentiment_justification json file, It contains user's emotional condition. analyze it and react accordingly. 
             
             Output:
-            Return only the personalized message as plain text, with emojis and spaces, Not line breaks.
+            Return only the personalized message as plain text, with emojis and spaces, Not line breaks. It could be a 8-10 lines long.
             Do not include any extra formatting like markdown, labels, or JSON.
         """
         message_log = [] 
