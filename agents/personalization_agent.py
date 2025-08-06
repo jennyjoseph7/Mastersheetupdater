@@ -59,6 +59,7 @@ class PersonalizationAgent(BaseAgent):
             - Mention one or two standout features the user explored and say something like “With those, you’ve made a great choice!” (without recommending).
             - Use emojis (e.g. 🚘, 💡, ⚡️, ✅, 🛞,👀,🛡️ ,✨,🥳,🤝, 😊) to create a positive tone.
             - Use line breaks for readability.
+            - do not include any '\n' in the message, just proper space.
             - Start the message with:
                 - "Hi <name>!" — if the name is clearly extractable from input JSON.
                 - "Hi!" or "Hello!" — if name is missing or ambiguous (e.g., messy email prefix).
@@ -67,7 +68,7 @@ class PersonalizationAgent(BaseAgent):
             {json.dumps(self.source, indent=2)}
             
             Output:
-            Return only the personalized message as plain text, with emojis and line breaks.
+            Return only the personalized message as plain text, with emojis and spaces, Not line breaks.
             Do not include any extra formatting like markdown, labels, or JSON.
         """
         message_log = [] 
