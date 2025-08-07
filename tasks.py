@@ -199,7 +199,7 @@ def personalization_agent(*args, **kwargs):
     
     #prioritization agent results:
     prioritization_results = kwargs.get("prioritization_agent_results")
-    prioritization_data = prioritization_results.get("prioritization_agent")
+    prioritization_data = prioritization_results
     
     
       
