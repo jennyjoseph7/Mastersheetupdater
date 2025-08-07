@@ -18,10 +18,8 @@ if uploaded_file:
     try:
         input_data = json.load(uploaded_file)
         st.sidebar.success("✅ Customer data parsed successfully!")
-        st.sidebar.json(input_data)
-
-        # Show Run button only after successful parsing
         run_agent = st.sidebar.button("Run Agents 🚀")
+        st.sidebar.json(input_data)
     except Exception as e:
         st.sidebar.error(f"❌ Failed to parse JSON: {e}")
         run_agent = False
@@ -29,7 +27,7 @@ else:
     st.sidebar.warning("⚠️ Please upload a valid JSON file.")
     run_agent = False
 
-tabs = ["Adobe Experience Manager", "Propensity Agent", "Comparison Analysis Agent", "Personalization Agent", "Sentiment Analysis Agent", "Prioritization Agent"]
+tabs = ["Adobe Experience Manager", "Propensity Agent", "Comparison Analysis Agent", "Prioritization Agent", "Sentiment Analysis Agent", "Personalization Agent"]
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(tabs)
 
 propensity_result = None
@@ -219,7 +217,7 @@ with tab3:
     else:
         st.info("ℹ️ Run the agent to see results.")
 
-with tab4:
+with tab6:
     st.subheader("🧠 Personalization Agent")
     if personalization_result:
         st.success("✅ Personalization Computed Successfully")
@@ -255,7 +253,7 @@ with tab5:
 #         st.info("ℹ️ No prioritization data yet.")
 
 
-with tab6:
+with tab4:
     st.subheader("🧠 Prioritization Agent")
     if prioritization_result:
         st.success("✅ Prioritization Computed Successfully")
