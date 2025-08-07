@@ -8,7 +8,7 @@ gryd.SERVICE = GRYD_SERVICE
 gryd.set_queue_manager(config = GRYD_CONFIG)
 gryd.ENVIRONMENT = "-local"
 
-sync_job = [{
+async_job = [{
     "task": "autobot_agents_trigger_generator",
     "service": GRYD_SERVICE,
     "kwargs": {
@@ -38,7 +38,7 @@ sync_job = [{
     "args": (None)
 }]
 
-for job in gryd.yield_results(sync_job):
+for job in gryd.yield_results(async_job):
     task_name, status, result_data = job[1], job[3], job[4]
     if job[3] == "result":
         logger.info(f"Task '{task_name}' completed with result: \n\n{json.dumps(result_data, indent = 4, default = str)}")
