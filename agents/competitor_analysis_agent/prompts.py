@@ -137,6 +137,7 @@ Available models to consider: {str(model_list)}
 
 Return format: A single list.
 Example: ["BMW X5", "Audi Q7"]
+Dont have empty list in output
 """
 
     messages = [
