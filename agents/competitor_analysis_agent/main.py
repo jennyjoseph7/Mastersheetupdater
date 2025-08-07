@@ -5,6 +5,8 @@ from .utils import extract_valid_json_blocks, model_list
 from .get_models import car_models
 from utils import get_logger
 from agents.base_agent import BaseAgent
+import random
+
 
 logger = get_logger(__name__)
 
@@ -34,7 +36,7 @@ class CompetitorAnalysis(BaseAgent):
         try:
             raw_llm_response = ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
         except Exception as e:
-            return 'None'
+            return models_not_user_brand
         return eval(raw_llm_response)
 
     def get_compared_cars(self):
@@ -48,16 +50,17 @@ class CompetitorAnalysis(BaseAgent):
         else:
             user_brand="None"
         models_not_user_brand = [model for brand, models in model_list.items() if brand != user_brand for model in models]
-
+        # logger.info(f"models_not_user_brand: {models_not_user_brand}")
         compared_cars=self.get_competitor(user_model,models_not_user_brand)
         logger.info(f"compared_cars: {compared_cars}")
         if isinstance(compared_cars, list):
             for model in compared_cars:
                 compared.append(car_models(model=self.validate_model(model),top_n=self.top_n))
-
         else:
             compared.append(car_models(model=self.validate_model(compared_cars),top_n=self.top_n))
 
+        if compared==[]:
+            compared = random.sample(models_not_user_brand,2)
         return compared,user_choice
 
 
