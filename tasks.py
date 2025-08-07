@@ -197,6 +197,11 @@ def personalization_agent(*args, **kwargs):
     emotions = sentiment_results.get("emotions")
     sentiment_justification = sentiment_results.get("justification")
     
+    #prioritization agent results:
+    prioritization_results = kwargs.get("prioritization_agent_results")
+    prioritization_data = prioritization_results.get("prioritization_agent")
+    
+    
       
 
     # Competitor Analysis Agent Results
@@ -218,7 +223,8 @@ def personalization_agent(*args, **kwargs):
         "user_sentiments" : sentiment_results,
         "sentiment_score" : sentiment_score,
         "emotions" : emotions,
-        "sentiment_justification" : sentiment_justification
+        "sentiment_justification" : sentiment_justification,
+        "prioritization_data" : prioritization_data
            
         
     }
