@@ -56,9 +56,39 @@ if run_agent:
                 },
                 "args": (None)
             }]
+            # async_jobs = [{
+            #     "task": "autobot_agents_trigger_generator",
+            #     "service": GRYD_SERVICE,
+            #     "kwargs": {
+            #         "source": input_data,
+            #         "execution_mode": "async"
+            #     },
+            #     "args": (None)
+            # }]
+            # for job in gryd.yield_results(async_jobs):
+            #     task_name, status, result_data = job[1], job[3], job[4]
+            #     if status != "result":
+            #         logger.warning(f"⚠️ Task '{task_name}' failed or is still pending.")
+            #         continue
+            #     logger.info(f"✅ Task '{task_name}' completed with result:\n{json.dumps(result_data, indent=4, default=str)}")
 
-            sync_result = gryd.await_results(autobot_agents_trigger)
-            sync_result = list(sync_result[0])
+            #     if task_name == "propensity_agent":
+            #         propensity_result = result_data
+            #     elif task_name == "competitor_analysis_agent":
+            #         competitor_result = result_data
+            #     elif task_name == "personalization_agent":
+            #         personalization_result = result_data
+            #     elif task_name == "aem_integration_agent":
+            #         aem_result = result_data
+            #     elif task_name == "sentiment_analysis_agent":
+            #         sentiment_result = result_data
+            #     elif task_name == "prioritization_agent":
+            #         prioritization_result = result_data
+
+
+
+            sync_result = gryd.await_results(autobot_agents_trigger)[0]
+            # sync_result = list(sync_result[0])
             logger.info(json.dumps(sync_result, indent=4, default=str))
             for job in sync_result:
                 task_name = job.get("task")
@@ -200,7 +230,7 @@ with tab4:
             response = st.write_stream(response_generator(response = reasoning))
         if isinstance(personalization_result, dict):
             message = personalization_result.get("personalization_agent_response")
-            st.text_area("Personalization Message : ", message, height=200)
+            st.text_area("Personalization Message : ", message, height=400)
     else:
         st.info("ℹ️ No personalization data yet.")
 
@@ -214,13 +244,51 @@ with tab5:
     else:
         st.info("ℹ️ No sentiment data yet.")
 
+# with tab6:
+#     st.subheader("🧠 Prioritization Agent")
+#     if prioritization_result:
+#         st.success("✅ Prioritization Computed Successfully")
+#         st.write("🧾 Prioritization Results")
+#         if isinstance(prioritization_result, dict):
+#             st.json(prioritization_result)
+#     else:
+#         st.info("ℹ️ No prioritization data yet.")
+
+
 with tab6:
     st.subheader("🧠 Prioritization Agent")
     if prioritization_result:
         st.success("✅ Prioritization Computed Successfully")
         st.write("🧾 Prioritization Results")
-        if isinstance(prioritization_result, dict):
+        with st.expander("📦 Raw Data"):
             st.json(prioritization_result)
+        st.markdown("#### 🔍 Prioritization Summary")
+        top_fields = ["priority_level", "prioritization_score", "risk_factors", "talking_points", "recommended_actions"]
+        for field in top_fields:
+            value = prioritization_result.get(field)
+            if value:
+                st.markdown(f"**{field.replace('_', ' ').title()}:**")
+                if isinstance(value, list):
+                    for item in value:
+                        st.markdown(f"- {item}")
+                else:
+                    st.markdown(f"`{value}`")
+        st.markdown("### 👤 Customer Summary")
+
+        customer_summary = prioritization_result.get("customer_summary", {})
+        if customer_summary:
+            for section_title, section_data in customer_summary.items():
+                st.markdown(f"#### 📂 {section_title.replace('_', ' ').title()}")
+                if isinstance(section_data, dict):
+                    summary_df = pd.DataFrame(list(section_data.items()), columns=["Key", "Value"])
+                    st.dataframe(summary_df, use_container_width=True)
+                elif isinstance(section_data, list):
+                    list_df = pd.DataFrame({section_title: section_data})
+                    st.dataframe(list_df, use_container_width=True)
+                else:
+                    st.markdown(f"- `{section_data}`")
+        else:
+            st.warning("No customer summary found.")
     else:
         st.info("ℹ️ No prioritization data yet.")
 
