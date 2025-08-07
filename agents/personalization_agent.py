@@ -37,7 +37,7 @@ class PersonalizationAgent(BaseAgent):
             Input: Here is the customer interaction data:
             {json.dumps(self.source, indent=4)}
             - include a line of user_sentiments, sentiment_score,emotions and sentiment_justification from the user_sentiment json file. include a thinking line on it also.
-
+            - Check for the prioritization_data file also, It contains very important data like Recommended Actions, Talking Points, Risk Factors, Customer Summary and  Task & Priority Info. consider it while thinking. I believe it will help you to think properly.
         """
         messages = [] 
         
@@ -156,7 +156,7 @@ class PersonalizationAgent(BaseAgent):
             3. Highlight a few standout features as "best-in-segment" or "comparable to other cars in the segment".
             4. Include a brief comparison with competitor cars.
             5. End with a warm and personalized message encouraging the user to take the next step (like booking a test drive or reaching out).
-
+            Check for the prioritization_data file also, It contains very important data like Recommended Actions, Talking Points, Risk Factors, Customer Summary and  Task & Priority Info. consider it while drafting message. I believe it will help you to draft a proper personalized message. 
             Here is the input JSON data:
 
             Input:
