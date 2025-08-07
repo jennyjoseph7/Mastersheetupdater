@@ -17,7 +17,7 @@ class CompetitorAnalysis(BaseAgent):
         self.model_identifier = model_identifier
         source_data =self._load_json(source)
         self.source_data ={
-            "user_choice" : source_data.get("model")
+            "user_choice" : source_data.get("model") or source_data.get("interested_models")[0]
         }        
         
     def validate_model(self,user_prompt):
