@@ -1,6 +1,11 @@
 import requests
 import json
-def car_models(top_n,model=None):
+import os
+enp_id=os.environ.get("CARDB_ENTERPRISE_ID")
+user_id=os.environ.get("CARDB_USER_ID")
+api_key=os.environ.get("CARDB_API_KEY")
+
+def car_models(top_n,model=None,exclude=None):
     """
     Get a list of car models
     Parameters
@@ -13,21 +18,21 @@ def car_models(top_n,model=None):
 
         json string containing the list of car models
     """
-    if model:
+    if model and exclude:
+        url = f"https://test.iamdave.ai/objects/model_variant_analysis?model={model}&brand~={exclude}"
+    elif model:
         url = f"https://test.iamdave.ai/objects/model_variant_analysis?model={model}"
     else:
         url = "https://test.iamdave.ai/objects/model_variant_analysis"
 
-    payload = {}
     headers = {
     'Content-Type': 'application/json',
-    'X-I2CE-ENTERPRISE-ID': 'automobile_service',
-    'X-I2CE-USER-ID': 'ananth+automobile_service@i2ce.in',
-    'X-I2CE-API-KEY': 'bcc85ca9-8695-31bd-9b5e-276859efa3ba',
-    'Cookie': 'x-chkp-csrf-token=5819e602-f246-4bf5-92bd-5fef4bc8f517; x-chkp-csrf-token=21d90977-021c-409f-8d87-944647fcc5a4'
+    'X-I2CE-ENTERPRISE-ID': enp_id,
+    'X-I2CE-USER-ID': user_id,
+    'X-I2CE-API-KEY': api_key,
     }
 
-    response = requests.request("GET", url, headers=headers, data=payload)
+    response = requests.request("GET", url, headers=headers)
 
     return json.loads(response.text)['data'][:top_n]
 

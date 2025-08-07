@@ -101,7 +101,7 @@ You must return **only** the exact name of the matching car model from the list,
 
 Here are the models you can consider: {model_list}
 
-Return format: A single string. Example outputs: "bmw", "audi", "kwid", or "None"
+Return format: A single string. Example outputs: "bmw", "audi", "kwid", not "None"
 """
 
     messages = [
@@ -110,3 +110,39 @@ Return format: A single string. Example outputs: "bmw", "audi", "kwid", or "None
     ]
     
     return messages
+
+
+
+
+
+
+
+def get_competitor_model_prompt(user_model, model_list, top_n=2):
+    """
+    Create a message prompt for an LLM to find the top N competitor car models from the given list.
+    Args:
+        user_model (str): The user's input car model.
+        model_list (list): List of available car models (e.g., ['bmw', 'kwid', 'audi'])
+        top_n (int, optional): The number of top competing models to return (default is 2)
+    Returns:
+        list: A list of messages in OpenAI-compatible format.
+    """
+    system_prompt = f"""
+You are an intelligent car model competitor assistant.
+
+Your task is to find the top {top_n} competitor car models from the given list based on the user's input.
+You must return **only** the exact names of the most relevant competing car models from the list.
+
+Available models to consider: {str(model_list)}
+
+Return format: A single list.
+Example: ["BMW X5", "Audi Q7"]
+"""
+
+    messages = [
+        {"role": "system", "content": system_prompt.strip()},
+        {"role": "user", "content": user_model.strip()}
+    ]
+    
+    return messages
+
