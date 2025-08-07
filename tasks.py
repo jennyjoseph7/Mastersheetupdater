@@ -187,30 +187,28 @@ def personalization_agent(*args, **kwargs):
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
 
     # Propensity Agent Results
-    propensity_agent_results = kwargs.get("propensity_agent_results", None)  
-    propensity_score = propensity_agent_results.get("scores")
+    propensity_agent_results = kwargs.get("propensity_agent_results") or {}  
+    propensity_score = propensity_agent_results.get("scores","")
     
     #sentiment analysis agent results:
     
-    sentiment_results = kwargs.get("sentiment_analysis_agent_results",None)
-    sentiment_score = sentiment_results.get("sentiment_score")
-    emotions = sentiment_results.get("emotions")
-    sentiment_justification = sentiment_results.get("justification")
+    sentiment_results = kwargs.get("sentiment_analysis_agent_results") or {} 
+    sentiment_score = sentiment_results.get("sentiment_score","")
+    emotions = sentiment_results.get("emotions","")
+    sentiment_justification = sentiment_results.get("justification","")
     
     #prioritization agent results:
-    prioritization_results = kwargs.get("prioritization_agent_results")
-    prioritization_data = prioritization_results
+    prioritization_results = kwargs.get("prioritization_agent_results") or {} 
     
-    
-      
-
     # Competitor Analysis Agent Results
-    competitor_analysis_agent_results = kwargs.get("competitor_analysis_agent_results", None)     
-    comparison_cars_json = competitor_analysis_agent_results.get("compared_cars_data")
-    comparison_json = competitor_analysis_agent_results.get("comparisons")
-    common_points_json = competitor_analysis_agent_results.get("common_points")
-    key_differences_json =competitor_analysis_agent_results.get("key_differences")
-    user_choice_justification_json = competitor_analysis_agent_results.get("user_choice_justification")
+    competitor_analysis_agent_results = kwargs.get("competitor_analysis_agent_results") or {}
+
+    comparison_cars_json = competitor_analysis_agent_results.get("compared_cars_data", "")
+    comparison_json = competitor_analysis_agent_results.get("comparisons", "")
+    common_points_json = competitor_analysis_agent_results.get("common_points", "")
+    key_differences_json = competitor_analysis_agent_results.get("key_differences", "")
+    user_choice_justification_json = competitor_analysis_agent_results.get("user_choice_justification", "")
+
 
     combined_input = {
         "source" : source,
@@ -224,7 +222,7 @@ def personalization_agent(*args, **kwargs):
         "sentiment_score" : sentiment_score,
         "emotions" : emotions,
         "sentiment_justification" : sentiment_justification,
-        "prioritization_data" : prioritization_data
+        "prioritization_data" : prioritization_results
            
         
     }
