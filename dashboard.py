@@ -89,6 +89,8 @@ if run_agent:
             # sync_result = list(sync_result[0])
             logger.info(json.dumps(sync_result, indent=4, default=str))
             for job in sync_result:
+                if job is None:
+                    continue
                 task_name = job.get("task")
                 if task_name == "propensity_agent":
                     propensity_result = job

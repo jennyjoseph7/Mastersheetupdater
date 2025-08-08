@@ -48,7 +48,7 @@ def autobot_agents_trigger(*args, **kwargs):
             for job in jobs:
                 task_name, status, result_data = job[1], job[3], job[4]
                 if status == "result":
-                    logger.info(f"Task '{task_name}' completed with result: {json.dumps(result_data, indent=4, default=str)}")
+                    logger.info(f"✅✅ Task '{task_name}' completed with result: {json.dumps(result_data, indent=4, default=str)}")
                     task_results.append(result_data)
                 else:
                     logger.warning(f"Task '{task_name}' failed or still pending. Status: {status}")
@@ -81,7 +81,7 @@ def autobot_agents_trigger(*args, **kwargs):
 
     task_results.extend([sentiment_agent_results,personalization_agent_results, communication_agent_results, aem_integration_agent_results])
 
-    logger.info(f"Final Task results: {json.dumps(task_results, indent=4, default=str)}")
+    logger.info(f"✅✅ Final Task results: {json.dumps(task_results, indent=4, default=str)}")
     return task_results
 
 @gryd.is_a_task()
@@ -118,7 +118,7 @@ def autobot_agents_trigger_generator(*args, **kwargs) -> Generator:
             task_name, status, result_data = job[1], job[3], job[4]
             if status == "result":
                 task_name = result_data.get("task")
-                logger.info(f"✅ Task '{task_name}' completed.")
+                logger.info(f"✅✅ Task '{task_name}' completed.")
                 kwargs_key = f"{task_name}_results"
                 kwargs[kwargs_key] = result_data
                 yield result_data
@@ -209,7 +209,6 @@ def personalization_agent(*args, **kwargs):
     key_differences_json = competitor_analysis_agent_results.get("key_differences", "")
     user_choice_justification_json = competitor_analysis_agent_results.get("user_choice_justification", "")
 
-
     combined_input = {
         "source" : source,
         "propensity_score" : propensity_score,
@@ -287,9 +286,3 @@ def sentiment_agent(*args, **kwargs):
         "justification": analysis.get("expected_output", {}).get("justification", "")
     }
     return filtered_results
-
-@gryd.is_a_task()
-def results(*args, **kwargs):
-    task_id = kwargs.get("task_id")
-    task = gryd_result(task_id)
-    return task

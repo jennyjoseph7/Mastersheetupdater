@@ -38,7 +38,7 @@ class PersonalizationAgent(BaseAgent):
             {json.dumps(self.source, indent=4)}
             - include a line of user_sentiments, sentiment_score,emotions and sentiment_justification from the user_sentiment json file. include a thinking line on it also.
             - Check for the prioritization_data file also, It contains very important data like Recommended Actions, Talking Points, Risk Factors, Customer Summary and  Task & Priority Info. consider it while thinking. I believe it will help you to think properly.
-            - Check propensity scores, it contains a score of the vehicle in its important aspects like comfort , safety, and others. consider it while drafting your message.
+            - Check propensity scores, It contains customer Propensity Score Data. Basically it has propensity scores of the customer's interests like comfort, safety, etc
         """
         messages = [] 
         
@@ -62,7 +62,7 @@ class PersonalizationAgent(BaseAgent):
 
             You will receive 4 input JSONs:
             1. Customer Engagement Data
-            2. Propensity Score Data
+            2. Customer Propensity Score Data. Basically it has propensity scores of the customer's interests like comfort, safety, etc
             3. Sentiment Result
             4. Competitor Analysis Data
 
@@ -73,7 +73,7 @@ class PersonalizationAgent(BaseAgent):
             - Return only the message — plain text, no formatting, no markdown, no \n characters.
             - Use emojis where appropriate to enhance tone (🚘, 💡, ⚡️, ✅, 🛞,👀,🛡️ ,✨,🥳,🤝, 😊).
             - Tone should be persuasive, emotionally engaging, human-like, and energetic — like a friendly car expert guiding the user.
-            - Message should be 15–20 lines, clean and readable with spaces (not line breaks or \n).
+            - Message should be 15-20 lines, clean and readable with spaces (not line breaks or \n).
 
             ---
 
