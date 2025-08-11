@@ -12,7 +12,7 @@ class PersonalizationAgent(BaseAgent):
         self.source = self._load_json(source=source)
         self.model_identifier = model_identifier
         
-    def thinking(self):
+    def new_lead_thinking(self):
         think_prompt = f"""
             You are a Personalization Agent for a car dealership or automotive brand.
 
@@ -88,7 +88,7 @@ class PersonalizationAgent(BaseAgent):
         messages.append(user_prompt_final)     
         return messages
 
-    def messages(self):
+    def new_lead_messages(self):
         system_prompt = f"""
             You are a Personalization Agent for a car dealership or automotive brand.
             description: >
@@ -208,11 +208,18 @@ class PersonalizationAgent(BaseAgent):
         message_log.append(system_prompt_final)
         message_log.append(user_prompt_final)
         return message_log
+    
+    def follow_up_thinking():
+        pass
+    
+    def follow_up_message():
+        pass
+    
 
     def run(self):
         try:
             ai_thinking = ai_service_app.get_llm_response(
-                messages=self.thinking(),
+                messages=self.new_lead_thinking(),
                 model_identifier=self.model_identifier
             )
         except Exception as e:
@@ -220,7 +227,7 @@ class PersonalizationAgent(BaseAgent):
 
         try:
             response = ai_service_app.get_llm_response(
-                messages=self.messages(),
+                messages=self.new_lead_messages(),
                 model_identifier=self.model_identifier
             )
         except Exception as e:
