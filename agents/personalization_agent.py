@@ -159,7 +159,7 @@ class PersonalizationAgent(BaseAgent):
             5. End with a warm and personalized message encouraging the user to take the next step (like booking a test drive or reaching out).
             Check for the prioritization_data file also, It contains very important data like Recommended Actions, Talking Points, Risk Factors, Customer Summary and  Task & Priority Info. consider it while drafting message. I believe it will help you to draft a proper personalized message. 
             Check propensity scores, it contains a score of the vehicle in its important aspects like comfort , safety, and others. consider it while drafting your message.
-            
+            - Do not say anything negative about the selected or interested model, You should make sure we don't mention any aspect where the competitor is better than the car the the user is interested in. Instead focus on the aspects where the selected car is better. Do not mention competetor cars name.
             Here is the input JSON data:
 
             Input:
