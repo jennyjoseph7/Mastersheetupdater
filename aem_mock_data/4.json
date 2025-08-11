@@ -1,0 +1,21 @@
+{
+    "uuid": "012d3456-e78f-90ab-cdef-567890123456",
+    "name": "Anita Menon",
+    "phone": "9555666777",
+    "email": "anita.menon@rediffmail.com",
+    "city": "Chennai",
+    "pincode": "600001",
+    "device": "mobile",
+    "os": "iOS",
+    "interested_models": ["Baleno"],
+    "preferred_contact_time": "Evening",
+    "lead_status": "Warm",
+    "source": "website",
+    "utm": {
+      "source": "youtube",
+      "medium": "video",
+      "campaign": "hatchback_comparison_series",
+      "term": "fuel efficient cars",
+      "content": "review video"
+    }
+}

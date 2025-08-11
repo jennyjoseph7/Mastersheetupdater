@@ -1,0 +1,21 @@
+{
+    "uuid": "789c0123-d45e-67f8-9012-345678901234",
+    "name": "Rajesh Kumar",
+    "phone": "9123456789",
+    "email": "rajesh.kumar@outlook.com",
+    "city": "Delhi",
+    "pincode": "110001",
+    "device": "tablet",
+    "os": "iOS",
+    "interested_models": ["Invicto"],
+    "preferred_contact_time": "Afternoon",
+    "lead_status": "Qualified",
+    "source": "dealer_referral",
+    "utm": {
+      "source": "instagram",
+      "medium": "social",
+      "campaign": "luxury_suv_showcase",
+      "term": "premium family car",
+      "content": "video ad"
+    }
+}
