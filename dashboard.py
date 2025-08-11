@@ -230,7 +230,7 @@ with tab6:
             response = st.write_stream(response_generator(response = reasoning))
         if isinstance(personalization_result, dict):
             message = personalization_result.get("personalization_agent_response")
-            st.text_area("Personalization Message : ", message, height=400)
+            st.text_area("Personalization Message : ", message, height=600)
     else:
         st.info("ℹ️ No personalization data yet.")
 
