@@ -183,7 +183,7 @@ def propensity_agent(*args, **kwargs):
 @gryd.is_a_task()
 def personalization_agent(*args, **kwargs):
     from agents.personalization_agent import PersonalizationAgent
-    source = kwargs['source']
+    source = kwargs.get("source", "")
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
 
     # Propensity Agent Results
@@ -202,7 +202,6 @@ def personalization_agent(*args, **kwargs):
     
     # Competitor Analysis Agent Results
     competitor_analysis_agent_results = kwargs.get("competitor_analysis_agent_results") or {}
-
     comparison_cars_json = competitor_analysis_agent_results.get("compared_cars_data", "")
     comparison_json = competitor_analysis_agent_results.get("comparisons", "")
     common_points_json = competitor_analysis_agent_results.get("common_points", "")
