@@ -79,7 +79,8 @@ def autobot_agents_trigger(*args, **kwargs):
     communication_agent_results = communication_agent.execute(*args, **kwargs)
     kwargs['communication_agent_results'] = communication_agent_results
 
-    task_results.extend([sentiment_agent_results,personalization_agent_results, communication_agent_results, aem_integration_agent_results])
+    task_results.extend([sentiment_agent_results, personalization_agent_results, communication_agent_results])
+    task_result.append(0, aem_integration_agent_results)
 
     logger.info(f"✅✅ Final Task results: {json.dumps(task_results, indent=4, default=str)}")
     return task_results
@@ -279,7 +280,7 @@ def communication_agent(*args, **kwargs):
             "communication_agent_result": "Email not sent as it's not a recommended action"
         }
     personalization_agent_results = kwargs.get("personalization_agent_results") or {}  
-    user_message= personalization_agent_results.get("personalization_agent_response")
+    user_message = personalization_agent_results.get("personalization_agent_response")
     if not user_message:
         logger.warning("No personalization message found. Cannot proceed with email drafting.")
         return {
