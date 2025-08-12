@@ -51,7 +51,7 @@ def autobot_agents_trigger(*args, **kwargs):
                     logger.info(f"✅✅ Task '{task_name}' completed with result: {json.dumps(result_data, indent=4, default=str)}")
                     task_results.append(result_data)
                 else:
-                    logger.warning(f"Task '{task_name}' failed or still pending. Status: {status}")
+                    logger.warning(f"⚠️⚠️Task '{task_name}' failed or still pending. Status: {status}")
         else:
             logger.info("Running tasks synchronously...")
             jobs = gryd.await_results(awaited_tasks, timeout=120)
@@ -80,7 +80,7 @@ def autobot_agents_trigger(*args, **kwargs):
     kwargs['communication_agent_results'] = communication_agent_results
 
     task_results.extend([sentiment_agent_results, personalization_agent_results, communication_agent_results])
-    task_result.append(0, aem_integration_agent_results)
+    task_results.insert(0, aem_integration_agent_results)
 
     logger.info(f"✅✅ Final Task results: {json.dumps(task_results, indent=4, default=str)}")
     return task_results
