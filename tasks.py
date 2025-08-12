@@ -267,7 +267,20 @@ def prioritization_agent(*args, **kwargs):
 
 @gryd.is_a_task()
 def communication_agent(*args, **kwargs):
-    return {"task" : "communication_agent", "results" : "communication_agent_results"}
+    from agents.communication_agent import CommunicationAgent
+    source = kwargs["source"]
+    model_identifier = kwargs.get("model_identifier","azure-gpt-4o")
+    communication_agent = CommunicationAgent(source=source,model_identifier=model_identifier)
+    personalization_agent_results = kwargs.get("personalization_agent_results") or {}  
+    user_message= personalization_agent_results.get("response")
+    commuication_info = communication_agent.draft_and_send_email(cc="",user_message=user_message)
+    
+    filtered_results = {
+        "task" : "communication_agent",
+        "communication_agent_result":commuication_info
+        
+    }
+    return filtered_results
 
 @gryd.is_a_task()
 def sentiment_agent(*args, **kwargs):
