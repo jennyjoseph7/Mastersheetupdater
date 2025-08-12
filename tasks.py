@@ -278,18 +278,46 @@ def communication_agent(*args, **kwargs):
             "email_draft": None,
             "communication_agent_result": "Email not sent as it's not a recommended action"
         }
-    communication_agent = CommunicationAgent(source=source,model_identifier=model_identifier)
     personalization_agent_results = kwargs.get("personalization_agent_results") or {}  
     user_message= personalization_agent_results.get("personalization_agent_response")
-    communication_info = communication_agent.draft_and_send_email(cc="",user_message=user_message)
-    
-    filtered_results = {
-        "task" : "communication_agent",
-        "email_draft":communication_info.get("draft"),
-        "communication_agent_result":communication_info.get("send_response")
+    if not user_message:
+        logger.warning("No personalization message found. Cannot proceed with email drafting.")
+        return {
+            "task": "communication_agent",
+            "email_draft": None,
+            "communication_agent_result": "Email not sent - no personalization message available",
+            "status": "failed",
+            "error": "Missing personalization_agent_response"
+        }
+    try:
+        communication_agent = CommunicationAgent(source=source, model_identifier=model_identifier)
         
-    }
-    return filtered_results
+        # Draft and send email
+        communication_info = communication_agent.draft_and_send_email(
+            cc="",
+            user_message=user_message
+        )
+        
+        filtered_results = {
+            "task": "communication_agent",
+            "email_draft": communication_info.get("draft"),
+            "communication_agent_result": communication_info.get("send_response"),
+            "status": "success"
+        }
+        
+        logger.info(f"Communication Agent Results: {json.dumps(filtered_results, indent=4, default=str)}")
+        return filtered_results
+        
+    except Exception as e:
+        logger.error(f"Communication Agent Error: {str(e)}")
+        traceback.print_exc()
+        return {
+            "task": "communication_agent",
+            "email_draft": None,
+            "communication_agent_result": f"Email sending failed: {str(e)}",
+            "status": "error",
+            "error": str(e)
+        }
 
 @gryd.is_a_task()
 def sentiment_agent(*args, **kwargs):

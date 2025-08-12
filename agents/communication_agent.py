@@ -106,19 +106,24 @@ class CommunicationAgent(BaseAgent):
                 "message": user_message
             }
 
-    def draft_and_send_email(self, email_id: str, cc: str, user_message: str):
+    def draft_and_send_email(self, cc: str, user_message: str):
         """
         Draft an email based on user message and send it.
         """
-        # Draft the email
+
         email_draft = self.draft_email(user_message)
         email_id = self.data.get("email")
+        if not email_id:
+            return {
+                "draft": None,
+                "send_response": "Email not sent - no recipient email ID available"
+            }
         
-        # Extract subject and message
+        
         subject = email_draft.get('subject', 'Important Message')
         message = email_draft.get('message', user_message)
-        
-        # Send the email
+
+
         response = self.send_email(
             email_id=email_id,
             subject=subject,
