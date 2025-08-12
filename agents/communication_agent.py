@@ -87,6 +87,7 @@ class CommunicationAgent(BaseAgent):
             - Make the email professional but friendly
             - Include proper greetings and closing
             - Use appropriate formatting with line breaks
+            - this email is sent from the team Dave
         """
         
         user_message_obj = {"role": "user", "content": prompt}
@@ -174,7 +175,6 @@ if __name__ == "__main__":
     # Send Email
     communication_agent = CommunicationAgent(source='/home/balaji/one/autobot_agents/agents/test.json',model_identifier='azure-gpt-4o')
     email_resp = communication_agent.draft_and_send_email(
-        email_id="balaji@iamdave.ai",
         cc="nbalaji743@gmail.com",
         user_message="im intrested in the grand vitara"
     )

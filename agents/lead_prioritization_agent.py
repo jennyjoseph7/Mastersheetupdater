@@ -205,7 +205,8 @@ class LeadPrioritizationAgent(BaseAgent):
                 'immediate_phone_call',
                 'dealer_assignment',
                 'special_offers',
-                'priority_scheduling'
+                'priority_scheduling',
+                "personalized_email"
             ])
             
             if data.get('book_test_drive'):
@@ -225,14 +226,14 @@ class LeadPrioritizationAgent(BaseAgent):
                 
         elif priority_level == 'COOL':
             actions.extend([
-                'educational_email',
+                'personalized_email',
                 'feature_highlights',
                 'nurture_campaign_enrollment'
             ])
             
         else:  # COLD
             actions.extend([
-                'general_email_marketing',
+                'personalized_email',
                 'retargeting_ads',
                 'awareness_campaign'
             ])

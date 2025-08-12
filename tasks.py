@@ -270,14 +270,23 @@ def communication_agent(*args, **kwargs):
     from agents.communication_agent import CommunicationAgent
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier","azure-gpt-4o")
+    prioritization_results = kwargs.get("prioritization_agent_results") or {} 
+    recommended_actions = prioritization_results.get("recommended_actions", [])
+    if "personalized_email" not in recommended_actions:
+        return {
+            "task": "communication_agent",
+            "email_draft": None,
+            "communication_agent_result": "Email not sent as it's not a recommended action"
+        }
     communication_agent = CommunicationAgent(source=source,model_identifier=model_identifier)
     personalization_agent_results = kwargs.get("personalization_agent_results") or {}  
-    user_message= personalization_agent_results.get("response")
-    commuication_info = communication_agent.draft_and_send_email(cc="",user_message=user_message)
+    user_message= personalization_agent_results.get("personalization_agent_response")
+    communication_info = communication_agent.draft_and_send_email(cc="",user_message=user_message)
     
     filtered_results = {
         "task" : "communication_agent",
-        "communication_agent_result":commuication_info
+        "email_draft":communication_info.get("draft"),
+        "communication_agent_result":communication_info.get("send_response")
         
     }
     return filtered_results
