@@ -24,13 +24,14 @@ class PersonalizationAgent(BaseAgent):
             - Consider the engagement level and where the user is in the buying journey.
             - Think about what would be a suitable next step for the user (e.g., visit showroom, schedule test drive).
             - Do not recommend a specific product or variant — that's handled by another agent.
+            - Maximum 15 lines. Try to make it shorter, Dont miss anything, just make everything short and comprehensive point wise.
 
             Think step by step like a human analyzing a lead:
             - Show your reasoning process: What do you observe? What can you infer?
             - End with: "Now, let's greet the user with a personalized message."
             - Do NOT write the actual message here.
             - Proper analyzation of each JSON file is need to add, include all features, why better than competetors, all tyhe features, user sentiment, etc everything.
-            - Write in plain text, not bold and big font. Strictly no big letyters no #### nothing, just plain text in normal size.
+            - Write in plain text, Strictly not bold and big font. Strictly no big letters no #### nothing, just plain text in normal size.
             """
             
         user_prompt = f""" 
@@ -65,7 +66,8 @@ class PersonalizationAgent(BaseAgent):
             {json.dumps({"key_differences": self.source.get("key_differences")}, indent=4)}
             Use this to clearly explain why your car is better or comparable to others. Must make sure we don't mention any aspect where the competitor is better than the car the the user is interested in. Instead focus on the aspects where the selected car is better. Do not include any competetor vehicle's name.
             Keep in mind: focus on differentiators that matter to the customer’s top interests from the propensity data.
-
+            Maximum 15 lines. Try to make it shorter, Dont miss anything, just make everything short and comprehensive
+            
             Additionally, Check for the prioritization_data file also, It contains very important data like Recommended Actions, Talking Points, Risk Factors, Customer Summary and  Task & Priority Info. consider it while thinking. I believe it will help you to think properly.
             {json.dumps({"prioritization_data": self.source.get("prioritization_data")}, indent=4)}
             This has Recommended Actions, Talking Points, Risk Factors, Customer Summary, Task & Priority Info.
@@ -115,7 +117,7 @@ class PersonalizationAgent(BaseAgent):
                 - "State the car model (from 'source' or 'comparison_cars') and the selected color (from JSON) in an enthusiastic, aspirational tone."
                 - "Blend appreciation with an emotional hook, showing how the color complements the design and personality of the car."
                 - "Example: 'Your choice of the Grand Vitara in Arctic White — a bold and elegant choice! 🚘 You're clearly someone who values innovation and safety. With this hybrid SUV, you’ve picked a feature-rich and future-ready vehicle.'" this is just an example, try to write better and more impressive than this.
-
+                - Not more than 3 points
               feature_highlights:
                 - Strictly in bullet points.
                 - "List features the customer engaged with using 'common_points', 'key_differences', or 'comparison'."
@@ -127,10 +129,12 @@ class PersonalizationAgent(BaseAgent):
                 - "Present in clear bullet points only — no paragraphs."
                 - "Begin with a confident opener such as 'Best in segment features because…' or 'A class apart thanks to…'."
                 - "Extract standout or segment-first features from 'comparison' or 'prioritization_data'."
+                - Do not say like beetter than competetor/competetors, say like as compared to others.
                 - "Write each as a short, punchy statement starting with ✅ or a relevant emoji."
                 - "Highlight exclusivity, innovation, and lifestyle benefits that resonate with the customer."
                 - "Include factual, positive competitor comparisons — focus on strengths without criticising others."
                 - "Keep each point crisp, engaging, and value-focused."
+                - Not more than 3 points
 
               closing:
                 - "If 'prioritization_data' shows a test drive booked → express genuine excitement, build anticipation with vivid imagery of the experience, and give a clear next-step cue."
@@ -140,22 +144,10 @@ class PersonalizationAgent(BaseAgent):
                 """
         user_prompt = f"""
             You are given a JSON file containing a user's interaction data (from website, walk-in, or WhatsApp). 
-
             Your task is to generate a personalized promotional message for the user. The message should have the following structure:
-
-            1. Greet the user.
-            2. Mention key features of the car, in this format:
-               - Feature name: short explanation
-            3. Highlight a few standout features as "best-in-segment" or "comparable to other cars in the segment".
-            4. Include a brief comparison with competitor cars. Focus only on where the interested or selected model is better. Do not include competetors names
-            5. End with a warm and personalized message encouraging the user to take the next step (like booking a test drive or reaching out).
-            Check for the prioritization_data file also, It contains very important data like Recommended Actions, Talking Points, Risk Factors, Customer Summary and  Task & Priority Info. consider it while drafting message. I believe it will help you to draft a proper personalized message. 
-            Check propensity scores, it contains a score of the vehicle in its important aspects like comfort , safety, and others. consider it while drafting your message.
-            - Do not say anything negative about the selected or interested model, You should make sure we don't mention any aspect where the competitor is better than the car the the user is interested in. Instead focus on the aspects where the selected car is better. Do not mention competetor cars name.
-          
             You will receive 4 input JSONs:
 
-           Customer Engagement Data → {json.dumps({"source": self.source.get("source")}, indent=4)}
+            Customer Engagement Data → {json.dumps({"source": self.source.get("source")}, indent=4)}
             Contains information about the customer’s interaction history, explored models, and selections
             Use this to identify the model name, color, features explored, and any special preferences shown during browsing.
             Keep in mind: mention exact color and model, and acknowledge their interest to build rapport.
@@ -182,7 +174,7 @@ class PersonalizationAgent(BaseAgent):
             {json.dumps({"common_points": self.source.get("common_points")}, indent=4)}
             {json.dumps({"key_differences": self.source.get("key_differences")}, indent=4)}
             Use this to clearly explain why your car is better or comparable to others. Must make sure we don't mention any aspect where the competitor is better than the car the the user is interested in. Instead focus on the aspects where the selected car is better. Do not include any competetor vehicle's name.
-            Keep in mind: focus on differentiators that matter to the customer’s top interests from the propensity data.
+            Keep in mind: focus on differentiators that matter to the customer’s top interests from the propensity data. Do not say competetor, say others
 
             Additionally, Check for the prioritization_data file also, It contains very important data like Recommended Actions, Talking Points, Risk Factors, Customer Summary and  Task & Priority Info. consider it while thinking. I believe it will help you to think properly.
             {json.dumps({"prioritization_data": self.source.get("prioritization_data")}, indent=4)}

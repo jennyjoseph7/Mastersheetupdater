@@ -82,6 +82,7 @@ class CompetitorAnalysis(BaseAgent):
             logger.info(e)
         
         formated_json['compared_cars_data'] = compared_car_data
+        logger.info(f"""**********************{formated_json},  """)    
         return formated_json
 
 
