@@ -1,0 +1,21 @@
+{
+  "uuid": "8b92e674-6b43-4a8f-bc14-7b3f92a1d9cb",
+  "name": "Shreyas Vaishnav",
+  "phone": "9673077640",
+  "email": "shreyas@iamdave.ai",
+  "city": "Pune",
+  "pincode": "411045",
+  "device": "laptop",
+  "os": "Windows",
+  "interested_models": ["Grand Vitara"],
+  "preferred_contact_time": "Afternoon",
+  "lead_status": "Interested",
+  "source": "website",
+  "utm": {
+    "source": "google",
+    "medium": "ppc",
+    "campaign": "festive_offer_campaign",
+    "term": "compact suv",
+    "content": "search ad"
+  }
+}
