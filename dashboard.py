@@ -27,7 +27,7 @@ else:
     st.sidebar.warning("⚠️ Please upload a valid JSON file.")
     run_agent = False
 
-tabs = ["Adobe Experience Manager", "Propensity Agent", "Comparison Analysis Agent", "Prioritization Agent", "Sentiment Analysis Agent", "Personalization Agent","Communication Agent"]
+tabs = ["Customer Data Platform (CDP)", "Propensity Agent", "Comparison Analysis Agent", "Prioritization Agent", "Sentiment Analysis Agent", "Personalization Agent","Communication Agent"]
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(tabs)
 
 propensity_result = None
@@ -113,7 +113,7 @@ if run_agent:
             traceback.print_exc()
             st.error(f"❌ Agent failed: {str(e)}")
 with tab1:
-    st.subheader("🧠 AEM ")
+    st.subheader("🧠 Customer Data Platform (CDP) ")
     if aem_result:
         st.success("✅ Customer Interaction Fetched Successfully from AEM.")
         if isinstance(aem_result, dict):
@@ -222,41 +222,6 @@ with tab3:
     else:
         st.info("ℹ️ Run the agent to see results.")
 
-with tab6:
-    st.subheader("🧠 Personalization Agent")
-    if personalization_result:
-        st.success("✅ Personalization Computed Successfully")
-        st.write("🧾 Personalization Results")
-        reasoning = personalization_result.get("reasoning")
-        if reasoning:
-            st.markdown("#### <Agent Reasoning>")
-            response = st.write_stream(response_generator(response = reasoning))
-        if isinstance(personalization_result, dict):
-            message = personalization_result.get("personalization_agent_response")
-            st.text_area("Personalization Message : ", message, height=600)
-    else:
-        st.info("ℹ️ No personalization data yet.")
-
-with tab5:
-    st.subheader("🧠 Sentiment Analysis Agent")
-    if sentiment_result:
-        st.success("✅ Sentiment Computed Successfully")
-        st.write("🧾 Sentiment Results")
-        if isinstance(sentiment_result, dict):
-            st.info(f"**User Input:** {sentiment_result.get('user_input')}\n\n**Justification:** {sentiment_result.get('justification')} \n\n**Emotions:** {sentiment_result.get('emotions')}\n\n**Sentiment Score:** {sentiment_result.get('sentiment_score')}")
-    else:
-        st.info("ℹ️ No sentiment data yet.")
-
-# with tab6:
-#     st.subheader("🧠 Prioritization Agent")
-#     if prioritization_result:
-#         st.success("✅ Prioritization Computed Successfully")
-#         st.write("🧾 Prioritization Results")
-#         if isinstance(prioritization_result, dict):
-#             st.json(prioritization_result)
-#     else:
-#         st.info("ℹ️ No prioritization data yet.")
-
 
 with tab4:
     st.subheader("🧠 Prioritization Agent")
@@ -294,102 +259,179 @@ with tab4:
             st.warning("No customer summary found.")
     else:
         st.info("ℹ️ No prioritization data yet.")
+
+
+with tab5:
+    st.subheader("🧠 Sentiment Analysis Agent")
+    if sentiment_result:
+        st.success("✅ Sentiment Computed Successfully")
+        st.write("🧾 Sentiment Results")
+        if isinstance(sentiment_result, dict):
+            st.info(f"**User Input:** {sentiment_result.get('user_input')}\n\n**Justification:** {sentiment_result.get('justification')} \n\n**Emotions:** {sentiment_result.get('emotions')}\n\n**Sentiment Score:** {sentiment_result.get('sentiment_score')}")
+    else:
+        st.info("ℹ️ No sentiment data yet.")
+
+with tab6:
+    st.subheader("🧠 Personalization Agent")
+    if personalization_result:
+        st.success("✅ Personalization Computed Successfully")
+        st.write("🧾 Personalization Results")
+        reasoning = personalization_result.get("reasoning")
+        if reasoning:
+            st.markdown("#### <Agent Reasoning>")
+            response = st.write_stream(response_generator(response = reasoning))
+        if isinstance(personalization_result, dict):
+            message = personalization_result.get("personalization_agent_response")
+            st.text_area("Personalization Message : ", message, height=600)
+    else:
+        st.info("ℹ️ No personalization data yet.")
+
+
         
+# with tab7:
+#     st.subheader("📧 Communication Agent")
+    
+#     if communication_result:
+#         # Get the status from the result
+#         status = communication_result.get("status", "unknown")
+#         email_draft = communication_result.get("email_draft")
+#         result_message = communication_result.get("communication_agent_result", "")
+#         error = communication_result.get("error")
+        
+#         # Display status based on result
+#         if status == "success":
+#             st.success("✅ Email Sent Successfully!")
+#             st.write("📨 **Email Status:** Delivered")
+            
+#             # Show the email draft if available
+#             if email_draft:
+#                 st.write("📄 **Email Draft:**")
+#                 with st.expander("View Email Content", expanded=True):
+#                     # Check if email_draft is a dict with subject/body or just text
+#                     if isinstance(email_draft, dict):
+#                         if "subject" in email_draft:
+#                             st.write(f"**Subject:** {email_draft['subject']}")
+#                         if "body" in email_draft:
+#                             st.write("**Body:**")
+#                             st.write(email_draft['body'])
+#                         if "to" in email_draft:
+#                             st.write(f"**To:** {email_draft['to']}")
+#                         if "cc" in email_draft:
+#                             st.write(f"**CC:** {email_draft['cc']}")
+#                     else:
+#                         st.write(email_draft)
+            
+#             # Show additional result info
+#             if result_message:
+#                 st.info(f"📋 **Details:** {result_message}")
+                
+#         elif status == "error":
+#             st.error("❌ Email Sending Failed!")
+#             st.write("📨 **Email Status:** Failed to Send")
+            
+#             if error:
+#                 st.error(f"**Error:** {error}")
+            
+#             if result_message:
+#                 st.write(f"**Details:** {result_message}")
+            
+#             # Show draft if it was created before failing
+#             if email_draft:
+#                 st.write("📄 **Draft Email (Not Sent):**")
+#                 with st.expander("View Draft Content"):
+#                     if isinstance(email_draft, dict):
+#                         if "subject" in email_draft:
+#                             st.write(f"**Subject:** {email_draft['subject']}")
+#                         if "body" in email_draft:
+#                             st.write("**Body:**")
+#                             st.write(email_draft['body'])
+#                     else:
+#                         st.write(email_draft)
+        
+#         elif status == "failed" or "not sent" in result_message.lower():
+#             st.warning("⚠️ Email Not Sent")
+#             st.write("📨 **Email Status:** Skipped")
+            
+#             if "not a recommended action" in result_message:
+#                 st.info("📋 **Reason:** Email sending was not recommended by the prioritization agent")
+#             elif "no personalization message" in result_message:
+#                 st.info("📋 **Reason:** Missing personalization data required for email content")
+#             else:
+#                 st.info(f"📋 **Reason:** {result_message}")
+        
+#         else:
+#             # Unknown status
+#             st.info("ℹ️ Communication Agent Completed")
+#             if result_message:
+#                 st.write(f"**Result:** {result_message}")
+            
+#             if email_draft:
+#                 st.write("📄 **Email Draft:**")
+#                 with st.expander("View Content"):
+#                     if isinstance(email_draft, dict):
+#                         st.json(email_draft)
+#                     else:
+#                         st.write(email_draft)
+        
+#         # Show full results in expandable section for debugging
+#         with st.expander("🔧 View Complete Results (Debug)", expanded=False):
+#             st.json(communication_result)
+    
+#     else:
+#         st.info("ℹ️ Communication agent hasn't been executed yet.")
+#         st.write("The communication agent will:")
+#         st.write("• Check if email sending is recommended")
+#         st.write("• Draft personalized email content")
+#         st.write("• Send email if conditions are met")
+#         st.write("• Provide detailed status and results")
+    
 with tab7:
     st.subheader("📧 Communication Agent")
-    
+
     if communication_result:
-        # Get the status from the result
+        # Extract data
         status = communication_result.get("status", "unknown")
         email_draft = communication_result.get("email_draft")
         result_message = communication_result.get("communication_agent_result", "")
         error = communication_result.get("error")
         
-        # Display status based on result
         if status == "success":
+            # Compact success tag
             st.success("✅ Email Sent Successfully!")
-            st.write("📨 **Email Status:** Delivered")
-            
-            # Show the email draft if available
+            # Email content
             if email_draft:
-                st.write("📄 **Email Draft:**")
-                with st.expander("View Email Content", expanded=True):
-                    # Check if email_draft is a dict with subject/body or just text
+                # st.markdown("### ✉️ Email Content")
+                st.write("✉️ Email Content:")
+                with st.expander("View Email", expanded=True):
                     if isinstance(email_draft, dict):
-                        if "subject" in email_draft:
-                            st.write(f"**Subject:** {email_draft['subject']}")
-                        if "body" in email_draft:
-                            st.write("**Body:**")
-                            st.write(email_draft['body'])
-                        if "to" in email_draft:
-                            st.write(f"**To:** {email_draft['to']}")
-                        if "cc" in email_draft:
-                            st.write(f"**CC:** {email_draft['cc']}")
+                        subject = email_draft.get('subject', '(No Subject)')
+                        message = email_draft.get('message', '')
+                        # Subject
+                        st.markdown(f"**📌 Subject:** {subject}")
+                        # Divider
+                        st.divider()
+                        # Body
+                        st.markdown("**Body:**")
+                        st.markdown(f"> {message}")
                     else:
                         st.write(email_draft)
-            
-            # Show additional result info
-            if result_message:
-                st.info(f"📋 **Details:** {result_message}")
+
+            # Optional result message
+            # if result_message:
+            #     st.info(f"📋 {result_message}")
                 
+
         elif status == "error":
             st.error("❌ Email Sending Failed!")
-            st.write("📨 **Email Status:** Failed to Send")
-            
-            if error:
-                st.error(f"**Error:** {error}")
-            
-            if result_message:
-                st.write(f"**Details:** {result_message}")
-            
-            # Show draft if it was created before failing
-            if email_draft:
-                st.write("📄 **Draft Email (Not Sent):**")
-                with st.expander("View Draft Content"):
-                    if isinstance(email_draft, dict):
-                        if "subject" in email_draft:
-                            st.write(f"**Subject:** {email_draft['subject']}")
-                        if "body" in email_draft:
-                            st.write("**Body:**")
-                            st.write(email_draft['body'])
-                    else:
-                        st.write(email_draft)
-        
+
         elif status == "failed" or "not sent" in result_message.lower():
             st.warning("⚠️ Email Not Sent")
-            st.write("📨 **Email Status:** Skipped")
-            
-            if "not a recommended action" in result_message:
-                st.info("📋 **Reason:** Email sending was not recommended by the prioritization agent")
-            elif "no personalization message" in result_message:
-                st.info("📋 **Reason:** Missing personalization data required for email content")
-            else:
-                st.info(f"📋 **Reason:** {result_message}")
-        
         else:
-            # Unknown status
             st.info("ℹ️ Communication Agent Completed")
-            if result_message:
-                st.write(f"**Result:** {result_message}")
-            
-            if email_draft:
-                st.write("📄 **Email Draft:**")
-                with st.expander("View Content"):
-                    if isinstance(email_draft, dict):
-                        st.json(email_draft)
-                    else:
-                        st.write(email_draft)
-        
-        # Show full results in expandable section for debugging
-        with st.expander("🔧 View Complete Results (Debug)", expanded=False):
+
+        # Debug section at the bottom
+        with st.expander("🔧 Debug Information"):
             st.json(communication_result)
-    
-    else:
-        st.info("ℹ️ Communication agent hasn't been executed yet.")
-        st.write("The communication agent will:")
-        st.write("• Check if email sending is recommended")
-        st.write("• Draft personalized email content")
-        st.write("• Send email if conditions are met")
-        st.write("• Provide detailed status and results")
-    
+
+
 
