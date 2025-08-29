@@ -36,6 +36,7 @@ class AEMIntegrationAgent(BaseAgent):
                 "exterior_views": 3,
                 "technology_views": ["EV mode", "Head Up Display", "Wireless Charging"],
                 "safety_views": ["6 Airbags As Standard", "Hill-descent Control"],
+                "variants": [],
                 "brochure_download": False,
                 "variants_and_pricing": True,
                 "build_your_own": False,
