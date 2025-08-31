@@ -41,11 +41,11 @@ class CompetitorAnalysis(BaseAgent):
 
     def get_compared_cars(self):
         compared=[]
-        user_model=self.source_data.get("user_choice")
+        user_model=self.source_data.get("user_choice", self.source_data.get("model"))
         logger.info(f"user model: {user_model}")
         user_choice = car_models(model=self.validate_model(user_model),top_n=self.top_n)
         if user_choice:
-            user_brand=user_choice[0].get("brand")
+            user_brand=user_choice[0].get("brand", user_choice[0].get("brand_name"))
             logger.info(f"user brand: {user_brand}")
         else:
             user_brand="None"

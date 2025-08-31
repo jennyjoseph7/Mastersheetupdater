@@ -158,7 +158,7 @@ with tab3:
         with st.expander("Full Data"):
             st.json(competitor_result)
         
-        st.markdown("#### 🚗 Car Variants")
+        st.markdown("#### 🚗 Competitor Car Variants")
 
         # Show car variant details in tabular format
         car_variants = []
@@ -166,14 +166,21 @@ with tab3:
         for car_group in car_groups:
             for variant in car_group:
                 car_variants.append({
-                    "brand": variant.get("brand"),
+                    "Brand": variant.get("brand", variant.get("brand_name")),
                     "Product Name": variant.get("product_name"),
-                    "Variant": variant.get("variant"),
-                    "Fuel Type": variant.get("fuel_type"),
+                    "Variant": variant.get("variant", variant.get("variant_name", "N/A")),
+                    "Fuel Type": variant.get("fuel_type", "N/A"),
+                    "Vehicle Type" : variant.get("vehicle_type", "N/A"),
                     "Price (₹)": float(variant.get("price", 0)),
-                    "Engine": variant.get("technology_and_performance", [])[0] if variant.get("technology_and_performance") else "N/A",
-                    "Transmission": variant.get("general", [])[3] if variant.get("general") and len(variant.get("general")) > 3 else "N/A",
-                    "Safety & Environment" : variant.get("safety_and_environment", [])
+                    "Technology & Performance" : variant.get("technology_and_performance", []),
+                    "General Info" : variant.get("general", []),
+                    
+                    # "Engine": variant.get("technology_and_performance", [])[0] if variant.get("technology_and_performance") else "N/A",
+                    # "Transmission": variant.get("general", [])[3] if variant.get("general") and len(variant.get("general")) > 3 else "N/A",
+                    "Safety & Environment" : variant.get("safety_and_environment", []),
+                    "Infotainment & Connectivity": variant.get("infotainment_and_connectivity", []), # "infotainment_connectivity"
+                    "Comfort & Convenience": variant.get("comfort_and_convenience", []),
+                    "Branding & Looks": variant.get("branding_and_looks", [])
                 })
 
         if car_variants:
