@@ -3,6 +3,9 @@ import json
 with open("./agents/competitor_analysis_agent/list_of_models.json", "r") as f:
     model_list = json.load(f)
 
+user_brand = "Maruti Suzuki"
+models_not_user_brand = [model for brand, models in model_list.items() if brand != user_brand for model in models]
+print(models_not_user_brand)
 def extract_valid_json_blocks(text, expected_keys=None):
     """
     Extracts all candidate JSON blocks from the text and returns the first valid one
@@ -50,23 +53,24 @@ def extract_valid_json_blocks(text, expected_keys=None):
 
 # ===== Example usage =====
 if __name__ == "__main__":
-    llm_output = """Some intro text...
-    ```json
-    {
-      "comparisons": {
-        "A vs B": { "price": { "A": "10", "B": "20" } }
-      },
-      "common_points": ["shared feature"],
-      "key_differences": { "A vs B": { "price": "A is cheaper" } },
-      "user_choice_justification": { "reason": "A is affordable." }
-    }
-    ```... some outro."""
+    pass
+    # llm_output = """Some intro text...
+    # ```json
+    # {
+    #   "comparisons": {
+    #     "A vs B": { "price": { "A": "10", "B": "20" } }
+    #   },
+    #   "common_points": ["shared feature"],
+    #   "key_differences": { "A vs B": { "price": "A is cheaper" } },
+    #   "user_choice_justification": { "reason": "A is affordable." }
+    # }
+    # ```... some outro."""
 
-    try:
-        json_data = extract_valid_json_blocks(
-            llm_output,
-            expected_keys=["comparisons", "common_points", "key_differences", "user_choice_justification"]
-        )
-        print("✅ Extracted and validated JSON:\n", )
-    except ValueError as e:
-        print(str(e))
+    # try:
+    #     json_data = extract_valid_json_blocks(
+    #         llm_output,
+    #         expected_keys=["comparisons", "common_points", "key_differences", "user_choice_justification"]
+    #     )
+    #     print("✅ Extracted and validated JSON:\n", )
+    # except ValueError as e:
+    #     print(str(e))

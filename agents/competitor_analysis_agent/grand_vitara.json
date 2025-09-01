@@ -1,0 +1,48 @@
+[
+    {
+      "price": 1050000.0,
+      "fuel_type": "Petrol",
+      "product_id": "grand-vitara-sigma-petrol",
+      "brand_name": "Maruti Suzuki NEXA",
+      "model_name": "Grand Vitara",
+      "variant_name": "Sigma",
+      "product_name": "Grand Vitara Sigma",
+      "general": "5-seater SUV, petrol engine with manual transmission, 2WD, warranty up to 2 years.",
+      "branding_and_looks": "Length 4345 mm, Width 1795 mm, Height 1645 mm, Wheelbase 2600 mm, projector headlamps with LED DRLs, LED tail lamps, shark fin antenna, alloy wheels (215/60 R17).",
+      "safety_and_environment": "6 airbags standard, ABS with EBD, ESP, Hill Hold Assist, TPMS, Suzuki TECT platform with high tensile steel, complies with BS-VI norms.",
+      "comfort_and_convenience": "Manual AC with rear AC vents, adjustable tilt steering, keyless entry with push start/stop button, power windows, fabric seats.",
+      "technology_and_performance": "1462 cc petrol engine, max power 103.06 PS @ 6000 rpm, torque 136.8 Nm @ 4400 rpm, mileage 21.11 kmpl (MT), 45L fuel tank, MacPherson strut front, torsion beam rear suspension.",
+      "infotainment_and_connectivity": "17.78 cm SmartPlay Pro touchscreen, Android Auto & Apple CarPlay, steering-mounted controls, MID with fuel consumption and gear shift indicator."
+    },
+    {
+      "price": 1450000.0,
+      "fuel_type": "Petrol / Hybrid",
+      "product_id": "grand-vitara-alpha+-petrol-hybrid",
+      "brand_name": "Maruti Suzuki NEXA",
+      "model_name": "Grand Vitara",
+      "variant_name": "Alpha+",
+      "product_name": "Grand Vitara Alpha+",
+      "general": "Premium SUV with Intelligent Electric Hybrid system, 5-seater, e-CVT automatic transmission, 2WD, warranty up to 2 years.",
+      "branding_and_looks": "Length 4345 mm, Width 1795 mm, Height 1645 mm, Wheelbase 2600 mm, dual-tone exterior options, panoramic sunroof, ambient lighting, leatherette upholstery.",
+      "safety_and_environment": "6 airbags, 360 view camera, ABS with EBD, ESP, Hill Hold Assist, electronic parking brake with auto hold, Suzuki TECT crash compliance, ISOFIX child seat anchors.",
+      "comfort_and_convenience": "Ventilated seats, 8-way powered driver seat, auto AC with rear vents, wireless charger, rear door sunshades, paddle shifters, keyless entry with push start.",
+      "technology_and_performance": "1490 cc petrol hybrid engine, system max power 115.56 PS, e-CVT automatic transmission, EV/Normal/Power drive modes, fuel efficiency 27.97 kmpl, 45L fuel tank, MacPherson strut front and torsion beam rear suspension.",
+      "infotainment_and_connectivity": "22.86 cm SmartPlay Pro+ touchscreen with wireless Android Auto & Apple CarPlay, Clarion premium sound system, 7-inch TFT multi-information display, head-up display, Suzuki Connect with smartwatch & Alexa compatibility."
+    },
+    {
+      "price": 1550000.0,
+      "fuel_type": "Petrol (ALLGRIP)",
+      "product_id": "grand-vitara-alpha-allgrip-petrol",
+      "brand_name": "Maruti Suzuki NEXA",
+      "model_name": "Grand Vitara",
+      "variant_name": "Alpha ALLGRIP",
+      "product_name": "Grand Vitara Alpha ALLGRIP",
+      "general": "SUV with Suzuki ALLGRIP Select 4WD technology, petrol engine, available with manual and automatic transmission, 5-seater, warranty up to 2 years.",
+      "branding_and_looks": "Length 4345 mm, Width 1795 mm, Height 1645 mm, Wheelbase 2600 mm, roof rails, skid plates, LED DRLs, LED projector headlamps, alloy wheels.",
+      "safety_and_environment": "6 airbags, ABS with EBD, ESP, Hill Descent Control, TPMS, ISOFIX, Suzuki TECT crash energy absorption platform.",
+      "comfort_and_convenience": "Panoramic sunroof, ventilated seats, rear AC vents, 60:40 folding rear seats, adjustable tilt & telescopic steering, push start/stop, cruise control.",
+      "technology_and_performance": "1462 cc petrol engine, max power 103.06 PS @ 6000 rpm, torque 136.8 Nm, mileage 19.20 kmpl (ALLGRIP AT), 45L fuel tank, selectable drive modes (Auto, Sport, Snow, Lock).",
+      "infotainment_and_connectivity": "SmartPlay Pro+ touchscreen, wireless charging, 7-inch TFT MID, head-up display, premium Clarion sound, Suzuki Connect with real-time telematics and alerts."
+    }
+  ]
+  

@@ -1,0 +1,33 @@
+[
+    {
+      "price": 1000000.0,
+      "fuel_type": "Petrol / Hybrid",
+      "product_id": "invicto-zeta+-petrol-hybrid",
+      "brand_name": "Maruti Suzuki NEXA",
+      "model_name": "Invicto",
+      "variant_name": "Zeta+",
+      "product_name": "Invicto Zeta+",
+      "general": "7/8-seater premium MPV with e-CVT transmission, Intelligent Electric Hybrid system, warranty up to 2 years, 2WD drive type.",
+      "branding_and_looks": "Length 4755 mm, Width 1845 mm, Height 1795 mm, Wheelbase 2850 mm, alloy wheels 215/60 R17, panoramic sunroof with ambient lighting, bold NEXWave grille, NEXTre DRLs, LED tail lamps.",
+      "safety_and_environment": "Dual airbags, ABS with EBD, 6 airbags, Vehicle Stability Control with Hill Start Assist, ISOFIX, rear parking sensors, BS-VI compliant, Suzuki Connect with eCall emergency support.",
+      "comfort_and_convenience": "One-touch powered tailgate, ventilated front seats, multi-zone climate control (front and rear), captain seats in 2nd row (7-seater) or 60:40 split seats (8-seater), keyless entry, electric ORVMs, smart key with push start.",
+      "technology_and_performance": "1987 cc petrol engine, max power 112 kW @ 6000 rpm, torque 188 Nm @ 4400-5200 rpm, hybrid system max power 137 kW, multiple drive modes (Eco/Normal/Power), EV mode, 52L fuel tank, Macpherson Strut front suspension, torsion beam rear, ventilated disc brakes front, solid disc rear.",
+      "infotainment_and_connectivity": "20.32 cm SmartPlay Magnum touchscreen, Apple CarPlay & Android Auto, digital + analogue MID with 7-inch TFT display, gear shift indicator, TPMS, low fuel and seatbelt alerts, steering-mounted controls, Suzuki Connect remote operations."
+    },
+    {
+      "price": 1200000.0,
+      "fuel_type": "Petrol / Hybrid",
+      "product_id": "invicto-alpha+-petrol-hybrid",
+      "brand_name": "Maruti Suzuki NEXA",
+      "model_name": "Invicto",
+      "variant_name": "Alpha+",
+      "product_name": "Invicto Alpha+",
+      "general": "7-seater luxury MPV with e-CVT transmission, Intelligent Electric Hybrid, advanced comfort and safety features, warranty up to 2 years.",
+      "branding_and_looks": "Length 4755 mm, Width 1850 mm, Height 1790 mm, Wheelbase 2850 mm, precision cut 17-inch alloys, premium interiors with champagne gold accents, leatherette seats, panoramic sunroof, ambient roof lighting.",
+      "safety_and_environment": "6 airbags, ABS with EBD, VSC with Hill Start Assist, electronic parking brake with auto hold, front & rear disc brakes, 360-view camera with dynamic guide lines, ISOFIX, TPMS, Suzuki Connect with emergency call.",
+      "comfort_and_convenience": "Ventilated seats, 8-way powered driver seat with memory function, captain seats with side tables, rear climate control (2nd zone), powered tailgate, retractable sunshades, walk-in slide and recline seats, cruise control with paddle shifters.",
+      "technology_and_performance": "1987 cc petrol hybrid engine, max system power 186.2 PS, AC synchronous motor with 83.73 kW power and 206 Nm torque, ECO/Normal/Power drive modes, EV mode, 52L fuel tank, front Macpherson Strut, rear torsion beam, ventilated + solid disc brakes.",
+      "infotainment_and_connectivity": "25.65 cm SmartPlay Magnum+ touchscreen, wireless Apple CarPlay, Android Auto, 6 speakers, digital MID themes based on drive mode, tyre pressure monitoring system, door/window/seatbelt alerts, Alexa & smartwatch connectivity, Suzuki Connect full remote features."
+    }
+  ]
+  

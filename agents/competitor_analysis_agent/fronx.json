@@ -1,0 +1,48 @@
+[
+    {
+      "price": 800000.0,
+      "fuel_type": "Petrol",
+      "product_id": "fronx-sigma-1.2l-petrol",
+      "brand_name": "Maruti Suzuki NEXA",
+      "model_name": "Fronx",
+      "variant_name": "Sigma 1.2L",
+      "product_name": "Fronx Sigma 1.2L",
+      "general": "5-seater compact SUV, manual transmission, warranty up to 2 years, based on Suzuki HEARTECT platform.",
+      "branding_and_looks": "Length 3995 mm, Width 1765 mm, Height 1550 mm, Wheelbase 2520 mm, steel wheels with wheel covers, halogen projector headlamps, NEXWave grille, connected LED RCL (non-lit centre).",
+      "safety_and_environment": "Dual airbags, ABS with EBD, ESP, hill-hold assist, ISOFIX child seat anchors, pedestrian protection compliance, BS-VI norms.",
+      "comfort_and_convenience": "Manual AC, tilt steering, power windows (front & rear), driver window auto up/down with anti-pinch, 60:40 split rear seats, central locking with keyless entry.",
+      "technology_and_performance": "1.2L K-Series Dual Jet Dual VVT petrol engine, 1197 cc, max power 89.73 PS @ 6000 rpm, torque 113 Nm @ 4400 rpm, 5MT gearbox, mileage 21.79 kmpl, fuel tank 37L, MacPherson Strut front & Torsion Beam rear suspension.",
+      "infotainment_and_connectivity": "Basic audio unit with speakers, gear shift indicator (MT only), seatbelt reminders, MID display."
+    },
+    {
+      "price": 900000.0,
+      "fuel_type": "Petrol / CNG",
+      "product_id": "fronx-delta-1.2l-petrol-cng",
+      "brand_name": "Maruti Suzuki NEXA",
+      "model_name": "Fronx",
+      "variant_name": "Delta 1.2L",
+      "product_name": "Fronx Delta 1.2L",
+      "general": "5-seater compact SUV available in petrol MT/AMT and CNG MT, warranty up to 2 years, built on Suzuki HEARTECT platform.",
+      "branding_and_looks": "Dual-tone interiors, halogen projector headlamps, LED DRLs, NEXWave grille, steel wheels with wheel covers, roof spoiler.",
+      "safety_and_environment": "Dual airbags, ABS with EBD, ESP, hill-hold assist, ISOFIX, rear parking sensors, rear defogger, high-tensile steel body structure.",
+      "comfort_and_convenience": "Manual AC with heater, tilt steering, electrically adjustable ORVMs, steering-mounted audio controls, power windows, 60:40 split rear seats.",
+      "technology_and_performance": "1.2L K-Series petrol engine with Idle Start Stop (ISS), petrol: 89.73 PS & 113 Nm, CNG: 77.5 PS & 98.5 Nm, 5MT/AMT, fuel efficiency 22.89 kmpl (petrol AMT), 28.51 km/kg (CNG), 37L petrol tank or 55L CNG tank, MacPherson Strut & Torsion Beam suspension.",
+      "infotainment_and_connectivity": "17.78 cm SmartPlay Pro touchscreen, wireless Android Auto & Apple CarPlay, 4 speakers, voice assistant ('Hi Suzuki'), OTA updates, USB & Bluetooth connectivity."
+    },
+    {
+      "price": 1100000.0,
+      "fuel_type": "Petrol (Turbo)",
+      "product_id": "fronx-alpha-1.0l-turbo-petrol",
+      "brand_name": "Maruti Suzuki NEXA",
+      "model_name": "Fronx",
+      "variant_name": "Alpha 1.0L Turbo",
+      "product_name": "Fronx Alpha 1.0L Turbo",
+      "general": "Top-end compact SUV with 1.0L Turbo Boosterjet petrol engine, available in MT/AT with paddle shifters, warranty up to 2 years.",
+      "branding_and_looks": "Length 3995 mm, Width 1765 mm, Height 1550 mm, Wheelbase 2520 mm, precision cut alloy wheels, LED multi-reflector headlamps with NEXTre’ DRLs, full connected LED RCL (lit centre), dual-tone body options, shark fin antenna, premium chrome accents.",
+      "safety_and_environment": "6 airbags (front, side, curtain), ESP, hill-hold assist, ABS with EBD, 360-view camera, rear parking sensors with infographic display, ISOFIX, TPMS, Suzuki Connect telematics, BS-VI norms.",
+      "comfort_and_convenience": "Automatic climate control, rear AC vents, wireless charger, cruise control, push start/stop with smart key, tilt & telescopic steering, height-adjustable driver seat, rear fast charging sockets (Type A & C), leather-wrapped flat-bottom steering wheel, 60:40 folding seats.",
+      "technology_and_performance": "998 cc Boosterjet turbo engine, max power 100.06 PS @ 5500 rpm, torque 147.6 Nm @ 2000-4500 rpm, 5MT & 6AT with paddle shifters, Smart Hybrid system with torque assist & regenerative braking, mileage 20.01 kmpl (AT), 21.5 kmpl (MT), 37L tank, MacPherson Strut & Torsion Beam suspension, ventilated disc front & drum rear brakes.",
+      "infotainment_and_connectivity": "22.86 cm SmartPlay Pro+ HD touchscreen, ARKAMYS Surround Sense premium audio, 6 speakers & tweeters, wireless Android Auto & Apple CarPlay, onboard voice assistant, HUD, 360-degree camera, Suzuki Connect with Alexa & smartwatch integration."
+    }
+  ]
+  
