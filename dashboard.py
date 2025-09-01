@@ -8,7 +8,7 @@ import pandas as pd
 logger = get_logger(__name__)
 gryd.SERVICE = GRYD_SERVICE
 gryd.set_queue_manager(config=GRYD_CONFIG)
-gryd.ENVIRONMENT = "local"
+gryd.ENVIRONMENT = "-local"
 
 st.set_page_config(page_title="AutoBot Agents", layout="wide")
 st.markdown("## 🤖 **AutoBot Agents**")
