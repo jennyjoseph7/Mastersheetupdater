@@ -3,7 +3,7 @@
       "price": 1000000.0,
       "fuel_type": "Petrol / Hybrid",
       "product_id": "invicto-zeta+-petrol-hybrid",
-      "brand_name": "Maruti Suzuki NEXA",
+      "brand_name": "Maruti Suzuki",
       "model_name": "Invicto",
       "variant_name": "Zeta+",
       "product_name": "Invicto Zeta+",
@@ -29,5 +29,5 @@
       "technology_and_performance": "1987 cc petrol hybrid engine, max system power 186.2 PS, AC synchronous motor with 83.73 kW power and 206 Nm torque, ECO/Normal/Power drive modes, EV mode, 52L fuel tank, front Macpherson Strut, rear torsion beam, ventilated + solid disc brakes.",
       "infotainment_and_connectivity": "25.65 cm SmartPlay Magnum+ touchscreen, wireless Apple CarPlay, Android Auto, 6 speakers, digital MID themes based on drive mode, tyre pressure monitoring system, door/window/seatbelt alerts, Alexa & smartwatch connectivity, Suzuki Connect full remote features."
     }
-  ]
+]
   

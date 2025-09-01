@@ -47,6 +47,6 @@
 
 from agents.competitor_analysis_agent.main import CompetitorAnalysis
 
-fp = "/Users/daveai/Documents/SocioGraph/ppp.json"
+fp = "/home/prince-hazarika/Documents/DaveAI LLMs/autobot_agents_/autobot_agents/aem_mock_data/1.json"
 comp_agent = CompetitorAnalysis(fp, model_identifier='azure-gpt-4o')
 print(comp_agent.get_analysis())

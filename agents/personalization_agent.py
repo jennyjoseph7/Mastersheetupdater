@@ -209,6 +209,21 @@ class PersonalizationAgent(BaseAgent):
     
 
     def run(self):
+        file_path = "fulldata.json"
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                try:
+                    data = json.load(f)
+                except json.JSONDecodeError:
+                    data = []  
+        else:
+            data = []
+        
+        data.append(self.source)
+
+        with open(file_path, "w") as f:
+            json.dump(data, f, indent=4)
+
         try:
             ai_thinking = ai_service_app.get_llm_response(
                 messages=self.new_lead_thinking(),
@@ -224,11 +239,30 @@ class PersonalizationAgent(BaseAgent):
             )
         except Exception as e:
             response = f"Error during message generation: {str(e)}"
+            
+        file_path = "personalization_agent_responses.json"
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                try:
+                    data = json.load(f)
+                except json.JSONDecodeError:
+                    data = []  
+        else:
+            data = []
+        
+        data.append({"response": response})
+
+        with open(file_path, "w") as f:
+            json.dump(data, f, indent=4)
 
         return {
             "response": response,
             "ai-thinking": ai_thinking
         }
+        
+        
+        
+        
 
 
 # Output Format:
