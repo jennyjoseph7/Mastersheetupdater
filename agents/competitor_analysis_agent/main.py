@@ -14,17 +14,19 @@ logger = get_logger(__name__)
 def load_special_json(file_name):
     try:
         with open(file_name, "r") as f:
+            logger.info(json.load(f))
             return json.load(f)
     except Exception as e:
         logger.error(f"Error loading {file_name}: {e}")
         return None
 
 special_models = {
-    "fronx": load_special_json("fronx.json"),
-    "grandvitara": load_special_json("grand_vitara.json"),
-    "baleno": load_special_json("baleno.json"),
-    "invicto": load_special_json("invicto.json"),
+    "fronx": load_special_json("./agents/competitor_analysis_agent/fronx.json"),
+    "grand_vitara": load_special_json("./agents/competitor_analysis_agent/grand_vitara.json"),
+    "baleno": load_special_json("./agents/competitor_analysis_agent/baleno.json"),
+    "invicto": load_special_json("./agents/competitor_analysis_agent/invicto.json"),
 }
+
 
 
 class CompetitorAnalysis(BaseAgent):
@@ -73,17 +75,17 @@ class CompetitorAnalysis(BaseAgent):
         user_model = str(self.source_data.get("user_choice", "")).lower()
         user_choice = None
 
-        # Use special JSONs if available
-        if user_model in special_models and special_models[user_model]:
-            user_choice = special_models[user_model]
-        else:
-            # Fallback to dynamic fetch
+        # Load special JSON only when that model is chosen
+        user_choice = load_special_json(user_model)
+
+        # If not a special model, fallback to dynamic fetch
+        if not user_choice:
             user_choice = car_models(model=self.validate_model(user_model), top_n=self.top_n)
 
         logger.info(f"user model: {user_model}")
 
         if user_choice:
-            user_brand = user_choice[0].get("brand")
+            user_brand = user_choice[0].get("brand_name")
             logger.info(f"user brand: {user_brand}")
         else:
             user_brand = "None"
