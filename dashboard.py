@@ -4,11 +4,12 @@ from gryd_worker import gryd
 from utils import *
 import plotly.io as pio
 import pandas as pd
+import os, sys, traceback
 
 logger = get_logger(__name__)
 gryd.SERVICE = GRYD_SERVICE
 gryd.set_queue_manager(config=GRYD_CONFIG)
-gryd.ENVIRONMENT = "-local"
+gryd.ENVIRONMENT = os.getenv("ENVIRONMENT", "-local")
 
 st.set_page_config(page_title="AutoBot Agents", layout="wide")
 st.markdown("## 🤖 **AutoBot Agents**")
