@@ -8551,5 +8551,1157 @@
                 "finance_consultation"
             ]
         }
+    },
+    {
+        "source": {
+            "uuid": "789c0123-d45e-67f8-9012-345678901234",
+            "name": "Sriram P H",
+            "phone": "9663399230",
+            "email": "sriram@iamdave.ai",
+            "city": "Delhi",
+            "pincode": "110001",
+            "device": "tablet",
+            "os": "iOS",
+            "interested_models": [
+                "Invicto"
+            ],
+            "preferred_contact_time": "Afternoon",
+            "lead_status": "Qualified",
+            "source": "dealer_referral",
+            "utm": {
+                "source": "instagram",
+                "medium": "social",
+                "campaign": "luxury_suv_showcase",
+                "term": "premium family car",
+                "content": "video ad"
+            },
+            "model": "Invicto",
+            "url": "https://www.nexaexperience.com/invicto",
+            "date": "2025-07-26",
+            "time": "10:45 +530",
+            "hd_view": "on",
+            "exterior": false,
+            "interior": true,
+            "performance": true,
+            "technology": true,
+            "safety": false,
+            "configure": false,
+            "suzuki_connect": true,
+            "colours": [
+                "Grandiose White",
+                "Intenso Brown"
+            ],
+            "final_colour": [
+                "Grandiose White"
+            ],
+            "interior_views": [
+                "Captain Seats",
+                "Premium Dashboard",
+                "Ambient Lighting"
+            ],
+            "performance_views": [
+                "Hybrid Powertrain",
+                "AWD System"
+            ],
+            "technology_views": [
+                "10-inch Infotainment",
+                "360-degree Camera",
+                "Premium Audio"
+            ],
+            "brochure_download": true,
+            "variants_and_pricing": false,
+            "build_your_own": false,
+            "transmission_types": [
+                "cvt"
+            ],
+            "powertrains": [
+                "hybrid"
+            ],
+            "compared_cars": [
+                "grand_vitara",
+                "xl6"
+            ],
+            "finance_and_offer": true,
+            "locate_dealer": false,
+            "book_test_drive": true
+        },
+        "propensity_score": {
+            "branding_and_looks": 0.6,
+            "safety_and_environment": 0.3,
+            "comfort_and_convenience": 0.8,
+            "technology_and_performance": 0.9,
+            "infotainment_and_connectivity": 0.85
+        },
+        "comparison": {
+            "Invicto Zeta+ vs Curvv": {
+                "price": {
+                    "Invicto Zeta+": "\u20b910,00,000",
+                    "Curvv": "Estimated \u20b912,00,000 (expected launch price)"
+                },
+                "fuel_efficiency": {
+                    "Invicto Zeta+": "Hybrid system with EV mode, expected mileage ~20 kmpl",
+                    "Curvv": "Electric and petrol variants expected, mileage details unavailable"
+                },
+                "safety_features": {
+                    "Invicto Zeta+": "6 airbags, ABS with EBD, Vehicle Stability Control, Hill Start Assist, ISOFIX",
+                    "Curvv": "Expected to have 6 airbags, ABS, ESC, and advanced safety features"
+                },
+                "technology_and_performance": {
+                    "Invicto Zeta+": "1987 cc petrol hybrid engine, max power 112 kW, multiple drive modes, EV mode",
+                    "Curvv": "Electric variant with cutting-edge EV technology, petrol variant expected with turbocharged engine"
+                },
+                "space_and_comfort": {
+                    "Invicto Zeta+": "7/8-seater MPV with captain seats, multi-zone climate control, panoramic sunroof",
+                    "Curvv": "Compact SUV with 5-seat layout, premium interiors expected"
+                },
+                "infotainment_and_connectivity": {
+                    "Invicto Zeta+": "20.32 cm touchscreen, Apple CarPlay, Android Auto, Suzuki Connect",
+                    "Curvv": "Expected advanced infotainment with touchscreen, connected car features"
+                }
+            },
+            "Invicto Zeta+ vs Seltos": {
+                "price": {
+                    "Invicto Zeta+": "\u20b910,00,000",
+                    "Seltos": "\u20b910,90,000 - \u20b920,35,000"
+                },
+                "fuel_efficiency": {
+                    "Invicto Zeta+": "Hybrid system with EV mode, expected mileage ~20 kmpl",
+                    "Seltos": "17 - 20.7 kmpl (petrol variants)"
+                },
+                "safety_features": {
+                    "Invicto Zeta+": "6 airbags, ABS with EBD, Vehicle Stability Control, ISOFIX",
+                    "Seltos": "6 airbags, ABS, ESC, ADAS (top variant)"
+                },
+                "technology_and_performance": {
+                    "Invicto Zeta+": "1987 cc petrol hybrid engine, max power 112 kW, EV mode",
+                    "Seltos": "Petrol and diesel engines, turbocharged options, advanced driving aids"
+                },
+                "space_and_comfort": {
+                    "Invicto Zeta+": "7/8-seater MPV, captain seats, panoramic sunroof, multi-zone climate control",
+                    "Seltos": "5-seater SUV, premium interiors, single-zone climate control"
+                },
+                "infotainment_and_connectivity": {
+                    "Invicto Zeta+": "20.32 cm touchscreen, Apple CarPlay, Android Auto, Suzuki Connect",
+                    "Seltos": "10.25-inch touchscreen, Apple CarPlay, Android Auto, connected car features"
+                }
+            }
+        },
+        "comparison_cars": [
+            "Curvv",
+            "Seltos"
+        ],
+        "common_points": [
+            "All cars have 6 airbags",
+            "All offer connected car technology",
+            "All include advanced infotainment systems",
+            "All have ABS with EBD and stability control",
+            "All are available in petrol or hybrid configurations"
+        ],
+        "key_differences": {
+            "price": {
+                "Invicto Zeta+": "\u20b910,00,000",
+                "Curvv": "Estimated \u20b912,00,000",
+                "Seltos": "\u20b910,90,000 - \u20b920,35,000"
+            },
+            "space_and_seating": {
+                "Invicto Zeta+": "7/8-seater MPV suitable for families",
+                "Curvv": "5-seater compact SUV, ideal for urban use",
+                "Seltos": "5-seater SUV with premium interiors"
+            },
+            "fuel_efficiency": {
+                "Invicto Zeta+": "Hybrid system with EV mode, expected mileage ~20 kmpl",
+                "Curvv": "Electric and petrol variants expected, mileage details unavailable",
+                "Seltos": "17 - 20.7 kmpl (petrol variants)"
+            },
+            "technology": {
+                "Invicto Zeta+": "Hybrid drivetrain, EV mode, multiple drive modes",
+                "Curvv": "Electric technology (expected), turbocharged petrol engine",
+                "Seltos": "ADAS, turbocharged engines, advanced driving aids"
+            }
+        },
+        "user_choice_justification": {
+            "Invicto Zeta+": "The Invicto Zeta+ is ideal for users seeking a spacious, family-friendly MPV with hybrid efficiency and advanced comfort features at an affordable price point. Its 7/8-seater configuration, EV mode, and multi-zone climate control make it perfect for long journeys and large families."
+        },
+        "user_sentiments": {
+            "task": "sentiment_analysis_agent",
+            "user_input": "Exploring features and options for the Invicto model, downloaded brochure, and booked a test drive.",
+            "sentiment_score": 0.85,
+            "emotions": [
+                "interest",
+                "satisfaction"
+            ],
+            "justification": "The user has shown proactive interest by downloading the brochure and booking a test drive, indicating positive engagement and satisfaction with the vehicle's features and options."
+        },
+        "sentiment_score": 0.85,
+        "emotions": [
+            "interest",
+            "satisfaction"
+        ],
+        "sentiment_justification": "The user has shown proactive interest by downloading the brochure and booking a test drive, indicating positive engagement and satisfaction with the vehicle's features and options.",
+        "prioritization_data": {
+            "task": "prioritization_agent",
+            "priority_level": "WARM",
+            "prioritization_score": 75,
+            "customer_summary": {
+                "contact_info": {
+                    "phone": "9663399230",
+                    "email": "sriram@iamdave.ai"
+                },
+                "customer_profile": {
+                    "location": "Delhi, 110001",
+                    "interested_models": "Invicto",
+                    "source": "dealer_referral",
+                    "preferred_colors": [
+                        "Grandiose White"
+                    ]
+                },
+                "key_interests": [
+                    "Finance options",
+                    "Hybrid Powertrain",
+                    "Premium Dashboard",
+                    "Technology features",
+                    "AWD System",
+                    "360-degree Camera",
+                    "Premium Audio",
+                    "Ambient Lighting",
+                    "10-inch Infotainment",
+                    "Captain Seats"
+                ],
+                "preferred_models": [
+                    "Invicto"
+                ],
+                "preferred_colors": [
+                    "Grandiose White"
+                ],
+                "budget_category": "premium"
+            },
+            "risk_factors": [
+                "Did not configure car",
+                "No exterior views explored"
+            ],
+            "talking_points": [
+                "Highlight the Hybrid Powertrain and AWD System for performance enthusiasts.",
+                "Emphasize the premium features like Ambient Lighting and 10-inch Infotainment system.",
+                "Discuss finance and offers to align with their interest in premium models.",
+                "Offer further insights on Grandiose White color to confirm their choice."
+            ],
+            "recommended_actions": [
+                "phone_call_within_2hrs",
+                "personalized_email",
+                "schedule_test_drive",
+                "send_pricing_details"
+            ]
+        }
+    },
+    {
+        "source": {
+            "uuid": "789c0123-d45e-67f8-9012-345678901234",
+            "name": "Sriram P H",
+            "phone": "9663399230",
+            "email": "sriram@iamdave.ai",
+            "city": "Delhi",
+            "pincode": "110001",
+            "device": "tablet",
+            "os": "iOS",
+            "interested_models": [
+                "Invicto"
+            ],
+            "preferred_contact_time": "Afternoon",
+            "lead_status": "Qualified",
+            "source": "dealer_referral",
+            "utm": {
+                "source": "instagram",
+                "medium": "social",
+                "campaign": "luxury_suv_showcase",
+                "term": "premium family car",
+                "content": "video ad"
+            },
+            "model": "Invicto",
+            "url": "https://www.nexaexperience.com/invicto",
+            "date": "2025-07-26",
+            "time": "10:45 +530",
+            "hd_view": "on",
+            "exterior": false,
+            "interior": true,
+            "performance": true,
+            "technology": true,
+            "safety": false,
+            "configure": false,
+            "suzuki_connect": true,
+            "colours": [
+                "Grandiose White",
+                "Intenso Brown"
+            ],
+            "final_colour": [
+                "Grandiose White"
+            ],
+            "interior_views": [
+                "Captain Seats",
+                "Premium Dashboard",
+                "Ambient Lighting"
+            ],
+            "performance_views": [
+                "Hybrid Powertrain",
+                "AWD System"
+            ],
+            "technology_views": [
+                "10-inch Infotainment",
+                "360-degree Camera",
+                "Premium Audio"
+            ],
+            "brochure_download": true,
+            "variants_and_pricing": false,
+            "build_your_own": false,
+            "transmission_types": [
+                "cvt"
+            ],
+            "powertrains": [
+                "hybrid"
+            ],
+            "compared_cars": [
+                "grand_vitara",
+                "xl6"
+            ],
+            "finance_and_offer": true,
+            "locate_dealer": false,
+            "book_test_drive": true
+        },
+        "propensity_score": {
+            "branding_and_looks": 0.6,
+            "safety_and_environment": 0.2,
+            "comfort_and_convenience": 0.8,
+            "technology_and_performance": 0.9,
+            "infotainment_and_connectivity": 0.85
+        },
+        "comparison": {
+            "Invicto Zeta+ vs i20": {
+                "price": {
+                    "Invicto Zeta+": "\u20b910,00,000",
+                    "i20": "\u20b97,19,000 - \u20b911,01,000"
+                },
+                "fuel_efficiency": {
+                    "Invicto Zeta+": "Petrol Hybrid; EV mode available",
+                    "i20": "Petrol and Diesel options; 20.35 - 25.2 kmpl"
+                },
+                "safety_features": {
+                    "Invicto Zeta+": "6 airbags, ABS with EBD, Vehicle Stability Control, ISOFIX",
+                    "i20": "6 airbags (top variant), ABS with EBD, ESC, ISOFIX"
+                },
+                "technology_and_performance": {
+                    "Invicto Zeta+": "1987 cc petrol hybrid engine, max power 112 kW @ 6000 rpm, EV mode",
+                    "i20": "1197 cc petrol engine or 1493 cc diesel engine, max power 88 PS (petrol)"
+                },
+                "space_and_comfort": {
+                    "Invicto Zeta+": "7/8-seater with captain seats, multi-zone climate control, panoramic sunroof",
+                    "i20": "5-seater hatchback, single-zone climate control, sunroof in top variant"
+                },
+                "infotainment": {
+                    "Invicto Zeta+": "20.32 cm SmartPlay Magnum touchscreen, Apple CarPlay & Android Auto",
+                    "i20": "10.25-inch touchscreen infotainment system, Apple CarPlay & Android Auto"
+                }
+            },
+            "Invicto Zeta+ vs Hilux": {
+                "price": {
+                    "Invicto Zeta+": "\u20b910,00,000",
+                    "Hilux": "\u20b933,99,000 - \u20b936,99,000"
+                },
+                "fuel_efficiency": {
+                    "Invicto Zeta+": "Petrol Hybrid; EV mode available",
+                    "Hilux": "Diesel; 10.0 - 14.0 kmpl"
+                },
+                "safety_features": {
+                    "Invicto Zeta+": "6 airbags, ABS with EBD, Vehicle Stability Control, ISOFIX",
+                    "Hilux": "7 airbags, ABS with EBD, ESC, Hill Assist Control"
+                },
+                "technology_and_performance": {
+                    "Invicto Zeta+": "1987 cc petrol hybrid engine, max power 112 kW @ 6000 rpm, EV mode",
+                    "Hilux": "2755 cc diesel engine, max power 204 PS @ 3400 rpm, 4WD"
+                },
+                "space_and_comfort": {
+                    "Invicto Zeta+": "7/8-seater with captain seats, multi-zone climate control, panoramic sunroof",
+                    "Hilux": "5-seater double-cab pickup truck, single-zone climate control"
+                },
+                "infotainment": {
+                    "Invicto Zeta+": "20.32 cm SmartPlay Magnum touchscreen, Apple CarPlay & Android Auto",
+                    "Hilux": "8-inch touchscreen infotainment system, Apple CarPlay & Android Auto"
+                }
+            }
+        },
+        "comparison_cars": [
+            "i20",
+            "Hilux"
+        ],
+        "common_points": [
+            "All cars have ABS with EBD",
+            "All cars offer Apple CarPlay & Android Auto",
+            "All have multiple safety airbags",
+            "All comply with BS-VI emission norms"
+        ],
+        "key_differences": {
+            "price": {
+                "Invicto Zeta+": "\u20b910,00,000",
+                "i20": "\u20b97,19,000 - \u20b911,01,000",
+                "Hilux": "\u20b933,99,000 - \u20b936,99,000"
+            },
+            "fuel_efficiency": {
+                "Invicto Zeta+": "Hybrid system with EV mode",
+                "i20": "20.35 - 25.2 kmpl (petrol/diesel)",
+                "Hilux": "10.0 - 14.0 kmpl (diesel)"
+            },
+            "space_and_comfort": {
+                "Invicto Zeta+": "7/8-seater MPV with captain seats and multi-zone climate control",
+                "i20": "5-seater hatchback with compact dimensions",
+                "Hilux": "5-seater double-cab pickup truck with rugged design"
+            },
+            "technology_and_performance": {
+                "Invicto Zeta+": "1987 cc petrol hybrid engine with EV mode",
+                "i20": "1197 cc petrol or 1493 cc diesel engine",
+                "Hilux": "2755 cc diesel engine with 4WD capabilities"
+            },
+            "infotainment": {
+                "Invicto Zeta+": "20.32 cm SmartPlay Magnum touchscreen",
+                "i20": "10.25-inch touchscreen system",
+                "Hilux": "8-inch touchscreen system"
+            }
+        },
+        "user_choice_justification": {
+            "Invicto Zeta+": "The Invicto Zeta+ stands out as a premium MPV offering advanced hybrid technology, spacious seating for 7/8 passengers, and a host of comfort features such as multi-zone climate control and captain seats. It is ideal for families seeking a versatile, fuel-efficient vehicle for city and highway use, without the high price tag of competitors like the Hilux. Compared to the i20, it provides significantly more space and utility, making it a better choice for larger families or group travel."
+        },
+        "user_sentiments": {
+            "task": "sentiment_analysis_agent",
+            "user_input": "Exploring features of the Invicto model and expressing interest in purchasing or test driving.",
+            "sentiment_score": 0.8,
+            "emotions": [
+                "interest",
+                "satisfaction"
+            ],
+            "justification": "The user has actively engaged with various features of the car, downloaded the brochure, and booked a test drive, indicating a positive and interested sentiment toward the product."
+        },
+        "sentiment_score": 0.8,
+        "emotions": [
+            "interest",
+            "satisfaction"
+        ],
+        "sentiment_justification": "The user has actively engaged with various features of the car, downloaded the brochure, and booked a test drive, indicating a positive and interested sentiment toward the product.",
+        "prioritization_data": {
+            "task": "prioritization_agent",
+            "priority_level": "WARM",
+            "prioritization_score": 75,
+            "customer_summary": {
+                "contact_info": {
+                    "phone": "9663399230",
+                    "email": "sriram@iamdave.ai"
+                },
+                "customer_profile": {
+                    "location": "Delhi, 110001",
+                    "interested_models": "Invicto",
+                    "source": "dealer_referral",
+                    "preferred_colors": [
+                        "Grandiose White"
+                    ]
+                },
+                "key_interests": [
+                    "360-degree Camera",
+                    "Premium Dashboard",
+                    "Hybrid Powertrain",
+                    "AWD System",
+                    "Finance options",
+                    "10-inch Infotainment",
+                    "Technology features"
+                ],
+                "preferred_models": [
+                    "Invicto"
+                ],
+                "preferred_colors": [
+                    "Grandiose White"
+                ],
+                "budget_category": "premium"
+            },
+            "risk_factors": [
+                "Lead has not explored pricing or variants",
+                "No configuration activity"
+            ],
+            "talking_points": [
+                "Highlight the Hybrid Powertrain and AWD System as key differentiators for Invicto.",
+                "Discuss the premium features such as the 10-inch infotainment system and 360-degree camera.",
+                "Leverage the brochure download and test drive booking to further engage the customer.",
+                "Reinforce the luxury and family-oriented aspects of Invicto, aligning with the campaign theme."
+            ],
+            "recommended_actions": [
+                "phone_call_within_2hrs",
+                "personalized_email",
+                "schedule_test_drive",
+                "send_pricing_details"
+            ]
+        }
+    },
+    {
+        "source": {
+            "uuid": "012d3456-e78f-90ab-cdef-567890123456",
+            "name": "Rahul Jha",
+            "phone": "9555666777",
+            "email": "rahul.jha@iamdave.ai",
+            "city": "Chennai",
+            "pincode": "600001",
+            "device": "mobile",
+            "os": "iOS",
+            "interested_models": [
+                "Baleno"
+            ],
+            "preferred_contact_time": "Evening",
+            "lead_status": "Warm",
+            "source": "website",
+            "utm": {
+                "source": "youtube",
+                "medium": "video",
+                "campaign": "hatchback_comparison_series",
+                "term": "fuel efficient cars",
+                "content": "review video"
+            },
+            "model": "Baleno",
+            "url": "https://www.nexaexperience.com/baleno",
+            "date": "2025-07-27",
+            "time": "18:20 +530",
+            "hd_view": "off",
+            "exterior": true,
+            "interior": false,
+            "performance": false,
+            "technology": true,
+            "safety": true,
+            "configure": true,
+            "suzuki_connect": false,
+            "colours": [
+                "Premium Silver",
+                "Phoenix Red",
+                "Grandeur Grey"
+            ],
+            "final_colour": [
+                "Premium Silver"
+            ],
+            "exterior_views": 4,
+            "technology_views": [
+                "SmartPlay Pro+",
+                "Cruise Control"
+            ],
+            "safety_views": [
+                "Dual Airbags",
+                "ABS",
+                "Reverse Parking Sensors"
+            ],
+            "brochure_download": false,
+            "variants_and_pricing": true,
+            "build_your_own": true,
+            "transmission_types": [
+                "manual",
+                "amt"
+            ],
+            "powertrains": [
+                "petrol"
+            ],
+            "compared_cars": [
+                "fronx",
+                "swift"
+            ],
+            "finance_and_offer": false,
+            "locate_dealer": true,
+            "book_test_drive": true
+        },
+        "propensity_score": {
+            "branding_and_looks": 0.6,
+            "safety_and_environment": 0.9,
+            "comfort_and_convenience": 0.5,
+            "technology_and_performance": 0.8,
+            "infotainment_and_connectivity": 0.7
+        },
+        "comparison": {
+            "Baleno Sigma MT vs Tata Tiago XZ": {
+                "price": {
+                    "Baleno Sigma MT": "\u20b97,00,000",
+                    "Tata Tiago XZ": "\u20b96,89,990"
+                },
+                "fuel_efficiency": {
+                    "Baleno Sigma MT": "22.35 kmpl",
+                    "Tata Tiago XZ": "19.01 kmpl"
+                },
+                "safety_features": {
+                    "Baleno Sigma MT": "Dual airbags, ABS with EBD, ESP with Hill Hold, ISOFIX",
+                    "Tata Tiago XZ": "Dual airbags, ABS with EBD, rear parking sensors, child safety locks"
+                },
+                "comfort_and_convenience": {
+                    "Baleno Sigma MT": "Manual AC, tilt steering, all power windows, rear defogger",
+                    "Tata Tiago XZ": "Automatic climate control, keyless entry, height-adjustable driver seat"
+                },
+                "technology_and_performance": {
+                    "Baleno Sigma MT": "1.2L petrol engine, 89.7 PS, 113 Nm, 22.35 kmpl",
+                    "Tata Tiago XZ": "1.2L petrol engine, 86 bhp, 113 Nm, 19.01 kmpl"
+                },
+                "infotainment": {
+                    "Baleno Sigma MT": "Basic SmartPlay Studio with 2 speakers, wired Android Auto & Apple CarPlay",
+                    "Tata Tiago XZ": "7-inch touchscreen with Android Auto & Apple CarPlay, 4 speakers"
+                }
+            },
+            "Baleno Sigma MT vs Tata Tiago XZ+": {
+                "price": {
+                    "Baleno Sigma MT": "\u20b97,00,000",
+                    "Tata Tiago XZ+": "\u20b97,29,990"
+                },
+                "fuel_efficiency": {
+                    "Baleno Sigma MT": "22.35 kmpl",
+                    "Tata Tiago XZ+": "19.01 kmpl"
+                },
+                "safety_features": {
+                    "Baleno Sigma MT": "Dual airbags, ABS with EBD, ESP with Hill Hold, ISOFIX",
+                    "Tata Tiago XZ+": "Dual airbags, ABS with EBD, rear parking sensors, ISOFIX"
+                },
+                "comfort_and_convenience": {
+                    "Baleno Sigma MT": "Manual AC, tilt steering, all power windows, rear defogger",
+                    "Tata Tiago XZ+": "Automatic climate control, keyless entry, cruise control"
+                },
+                "technology_and_performance": {
+                    "Baleno Sigma MT": "1.2L petrol engine, 89.7 PS, 113 Nm, 22.35 kmpl",
+                    "Tata Tiago XZ+": "1.2L petrol engine, 85 bhp, 113 Nm, 19.01 kmpl"
+                },
+                "infotainment": {
+                    "Baleno Sigma MT": "Basic SmartPlay Studio with 2 speakers, wired Android Auto & Apple CarPlay",
+                    "Tata Tiago XZ+": "7-inch touchscreen with Android Auto & Apple CarPlay, 4 speakers"
+                }
+            },
+            "Baleno Sigma MT vs Tata Altroz XM Plus": {
+                "price": {
+                    "Baleno Sigma MT": "\u20b97,00,000",
+                    "Tata Altroz XM Plus": "\u20b98,79,990"
+                },
+                "fuel_efficiency": {
+                    "Baleno Sigma MT": "22.35 kmpl",
+                    "Tata Altroz XM Plus": "23.64 kmpl"
+                },
+                "safety_features": {
+                    "Baleno Sigma MT": "Dual airbags, ABS with EBD, ESP with Hill Hold, ISOFIX",
+                    "Tata Altroz XM Plus": "Dual airbags, ABS with EBD, rear parking sensors, ISOFIX"
+                },
+                "comfort_and_convenience": {
+                    "Baleno Sigma MT": "Manual AC, tilt steering, all power windows, rear defogger",
+                    "Tata Altroz XM Plus": "Automatic climate control, keyless entry, 345L boot space"
+                },
+                "technology_and_performance": {
+                    "Baleno Sigma MT": "1.2L petrol engine, 89.7 PS, 113 Nm, 22.35 kmpl",
+                    "Tata Altroz XM Plus": "1.5L diesel engine, 90 bhp, 200 Nm, 23.64 kmpl"
+                },
+                "infotainment": {
+                    "Baleno Sigma MT": "Basic SmartPlay Studio with 2 speakers, wired Android Auto & Apple CarPlay",
+                    "Tata Altroz XM Plus": "7-inch touchscreen with Android Auto & Apple CarPlay, 4 speakers"
+                }
+            }
+        },
+        "comparison_cars": [
+            [
+                {
+                    "price": "689990.0",
+                    "general": [
+                        "Manual transmission",
+                        "5-speed manual transmission (MT)",
+                        "5 seating capacity",
+                        "BS6 compliant"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Tata",
+                    "product_id": "tata_tiago_xz_petrol_1672",
+                    "product_name": "Tiago",
+                    "variant_name": "Tata Tiago XZ",
+                    "vehicle_type": "hatchback",
+                    "branding_and_looks": [
+                        "hatchback",
+                        "Stylish Design",
+                        "Prominent front grille, with the Tata logo in the center",
+                        "Body-Colored Bumpers",
+                        "Chrome accents around the grille, fog lamps, and door handles",
+                        "LED Daytime Running Lights (DRLs)",
+                        "15-inch dual-tone alloy wheels",
+                        "LED tail-lights",
+                        "Roof rails may also be available",
+                        "Ocean Blue, Victory Yellow, Flame Red, Pure Silver, Tectonic Blue"
+                    ],
+                    "safety_and_environment": [
+                        "dual front airbags",
+                        "Anti-lock Braking System (ABS) and Electronic Brake-force Distribution (EBD)",
+                        "rear parking sensors",
+                        "child safety locks on the rear doors",
+                        "strong body structure with safety features like crumple zones and reinforced areas",
+                        "BS6 compliant",
+                        "Idle Start-Stop System",
+                        "No Intelligent Electric Hybrid System",
+                        "No Regenerative Braking"
+                    ],
+                    "comfort_and_convenience": [
+                        "premium dual-tone fabric upholstery",
+                        "automatic climate control",
+                        "ambient lighting",
+                        "keyless entry",
+                        "power windows with auto up/down functionality for the front windows",
+                        "power steering",
+                        "driver\u2019s seat is height-adjustable",
+                        "Bluetooth connectivity",
+                        "steering-mounted controls for audio and phone calls"
+                    ],
+                    "technology_and_performance": [
+                        "1199 cc, 3 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "1.2L, 3-cylinder, naturally aspirated petrol engine",
+                        "86 bhp and 113 Nm of torque",
+                        "5-speed manual transmission (MT)",
+                        "19-20 km/l",
+                        "light steering",
+                        "suspension system that provides a good balance of comfort and stability",
+                        "35 litres fuel capacity",
+                        "85 bhp @ 6000 rpm",
+                        "113 Nm @ 3300 rpm",
+                        "2400 mm wheelbase",
+                        "242 litres boot space",
+                        "19.01 kmpl fuel efficiency",
+                        "Manual - 5 Gears"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "7-inch touchscreen infotainment system with Apple CarPlay, Android Auto, Bluetooth, and USB connectivity",
+                        "semi-digital instrument cluster, with a digital display for key vehicle information",
+                        "7-inch SmartPlay Studio touchscreen",
+                        "Android Auto",
+                        "Apple CarPlay",
+                        "Bluetooth",
+                        "USB"
+                    ]
+                },
+                {
+                    "price": "729990.0",
+                    "general": [
+                        "Manual - 5 Gears transmission",
+                        "5 Seating capacity",
+                        "2024 year of manufacturing",
+                        "Active edition"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Tata",
+                    "product_id": "tata_tiago_xz_plus_petrol_1673",
+                    "product_name": "Tiago",
+                    "variant_name": "Tata Tiago XZ+",
+                    "vehicle_type": "hatchback",
+                    "branding_and_looks": [
+                        "Hatchback pattern",
+                        "Modern Design: Impact Design Philosophy, sleek lines, sculpted bonnet, bold front fascia",
+                        "Chrome Front Grille",
+                        "Halogen Projector Headlamps",
+                        "17-inch Alloy Wheels",
+                        "Roof Rails",
+                        "Body-Colored ORVMs",
+                        "Dimension: Length 3767 mm Width 1677 mm Height 1535 mm",
+                        "Wheelbase: 2400 mm",
+                        "Colours: Ocean Blue, Victory Yellow, Flame Red, Pure Silver, Tectonic Blue"
+                    ],
+                    "safety_and_environment": [
+                        "Dual Front Airbags",
+                        "ABS with EBD",
+                        "Rear Parking Sensors and Camera",
+                        "ISOFIX child seat mounts",
+                        "Child safety locks",
+                        "Sturdy Build: Safety cell and crumple zones",
+                        "BS6 compliant",
+                        "Idle Start-Stop System"
+                    ],
+                    "comfort_and_convenience": [
+                        "Premium fabric upholstery with dual-tone finish",
+                        "Automatic Climate Control",
+                        "Spacious cabin with ample headroom and legroom",
+                        "Keyless Entry",
+                        "Power windows with auto up/down for driver's window",
+                        "Steering-Mounted Controls",
+                        "Height-adjustable driver's seat",
+                        "Cruise Control",
+                        "Smart Boot Space: 242-liter boot space",
+                        "Split-folding rear seat"
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1.2L 3-cylinder Revotron petrol engine",
+                        "1199 cc, 3 Cylinders Inline, 4 Valves/Cylinder, DOHC engine",
+                        "Power: 85 bhp @ 6000 rpm",
+                        "Torque: 113 Nm @ 3300 rpm",
+                        "Fuel Capacity: 35 litres",
+                        "Fuel efficiency: 19.01 kmpl",
+                        "Performance: Smooth, responsive drive",
+                        "Light steering for city maneuverability",
+                        "Suspension ensures a comfortable ride"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "7-inch SmartPlay Studio touchscreen infotainment system",
+                        "Apple CarPlay support",
+                        "Android Auto support",
+                        "Bluetooth connectivity",
+                        "USB connectivity",
+                        "Semi-Digital Instrument Cluster with analog speedometer and digital display"
+                    ]
+                },
+                {
+                    "price": "499990.0",
+                    "general": [
+                        "Warranty: Not specified",
+                        "Transmission: Manual",
+                        "Fuel Compatibility: Petrol",
+                        "Seating Capacity: 5",
+                        "Basic Safety Info: Not specified"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Tata",
+                    "product_id": "tata_tiago_xt_petrol_1674",
+                    "product_name": "Tiago",
+                    "variant_name": "Tata Tiago XT",
+                    "vehicle_type": "hatchback",
+                    "branding_and_looks": [
+                        "Pattern: hatchback",
+                        "Modern Styling: The Tiago XT follows Tata's Impact Design Philosophy, offering a compact, stylish design with sleek lines and bold front styling.",
+                        "Chrome Front Grille: The car is equipped with a chrome-finished front grille, which adds a premium look to the front fascia.",
+                        "Halogen Headlights: The Tiago XT comes with halogen headlights, offering sufficient illumination for night driving. The car also features halogen fog lamps for improved visibility in low-light conditions.",
+                        "Body-Colored ORVMs: The body-colored outside rear-view mirrors (ORVMs) complement the car\u2019s overall design, enhancing its sleek and cohesive appearance.",
+                        "Steel Wheels with Covers: The Tiago XT comes with steel wheels with wheel covers. While not as premium as alloys, they are durable and functional, offering good performance.",
+                        "Black Bumpers and Side Cladding: The car features black bumpers and side body cladding, which enhance the car's rugged look while also providing protection to the bodywork.",
+                        "Wheelbase: 2400 mm",
+                        "Dimensions: Length 3765 mm, Width 1677 mm, Height 1535 mm",
+                        "Colors: Ocean Blue, Victory Yellow, Flame Red, Pure Silver, Tectonic Blue"
+                    ],
+                    "safety_and_environment": [
+                        "Dual Front Airbags: The Tiago XT comes with dual front airbags, providing essential protection for the driver and front passenger in the event of a collision.",
+                        "ABS with EBD: The car is equipped with Anti-lock Braking System (ABS) and Electronic Brake-force Distribution (EBD), enhancing braking performance, especially during sudden stops or emergency braking situations.",
+                        "Rear Parking Sensors: The Tiago XT features rear parking sensors, making it easier to reverse and park in tight spaces without the risk of bumping into obstacles.",
+                        "Child Safety Features: The car includes ISOFIX child seat mounts, ensuring the safe installation of child seats. It also features child safety locks on the rear doors for added security.",
+                        "Strong Build Quality: The Tiago is built with a strong body shell and features crumple zones, which help absorb impact forces during a collision, ensuring the safety of passengers",
+                        "BS6 compliant",
+                        "Idle Start-Stop System",
+                        "No Intelligent Electric Hybrid System",
+                        "No Regenerative Braking"
+                    ],
+                    "comfort_and_convenience": [
+                        "Premium Fabric Upholstery: The Tiago XT features premium fabric upholstery that provides a comfortable and durable seating experience for passengers. The upholstery is practical and easy to maintain.",
+                        "Spacious Cabin: The cabin is spacious for a compact hatchback, offering sufficient headroom and legroom for both front and rear passengers, making it comfortable for long trips.",
+                        "Manual Air Conditioning: The car comes with manual air conditioning, which allows you to easily control the cabin temperature, ensuring comfort in varying weather conditions.",
+                        "Ample Boot Space: The Tiago XT offers 242 liters of boot space, which is practical for carrying groceries, luggage, or other items. The split-folding rear seats enhance cargo space flexibility.",
+                        "Keyless Entry: The Tiago XT comes with keyless entry, making it more convenient to unlock the vehicle without taking out the key from your pocket or bag.",
+                        "Power Windows: The Tiago XT comes with power windows for all four doors, with auto-down functionality for the driver\u2019s window, making it convenient for quick access.",
+                        "Steering-Mounted Controls: The car features steering-mounted controls, allowing the driver to operate the audio system, adjust the volume, and answer calls without taking their hands off the steering wheel.",
+                        "Height-Adjustable Driver Seat: The driver\u2019s seat is height-adjustable, ensuring a comfortable driving position for drivers of varying statures.",
+                        "Manual Steering Adjustment: The steering wheel is tilt-adjustable, allowing the driver to find an optimal driving position.",
+                        "Cup Holders and Storage: The Tiago XT is equipped with cup holders and multiple storage compartments, providing convenient spaces to store small items like bottles, keys, and mobile phones."
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1199 cc, 3 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "Engine: The Tata Tiago XT Petrol is powered by the 1.2L 3-cylinder Revotron petrol engine. It delivers a balanced mix of performance and fuel efficiency, making it ideal for city driving.",
+                        "Power Output: The engine produces around 85 bhp and 113 Nm of torque, offering enough power for everyday driving needs.",
+                        "Power: 84.48 bhp@6000rpm",
+                        "Torque: 113Nm@3300rpm",
+                        "Transmission: Manual - 5 Gears",
+                        "Transmission: The Tiago XT comes with a 5-speed manual transmission, ensuring a direct and engaging driving experience. It is known for its smooth shifts and ease of use in urban environments.",
+                        "Fuel Efficiency: The car delivers excellent fuel efficiency, with a mileage of around 20-22 km/l under ideal driving conditions, making it an economical choice for daily commutes.",
+                        "Fuel efficiency: 20.09 kmpl",
+                        "Performance: The 1.2L petrol engine offers sufficient power for city driving, and the lightweight design of the Tiago ensures nimble handling. The car provides a comfortable and easy driving experience, especially in urban traffic.",
+                        "Fuel Capacity: 35 litres"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "Infotainment System: The Tiago XT comes with a 4-speaker audio system, which provides a decent listening experience for music, radio, and other media. The car also supports Bluetooth connectivity for hands-free calls and media streaming.",
+                        "Instrument Cluster: The instrument cluster features a digital-analog combination, displaying essential driving data such as speed, fuel efficiency, and trip information in an easy-to-read format.",
+                        "Technology: 7-inch SmartPlay Studio touchscreen, Android Auto, Apple CarPlay, Bluetooth, USB"
+                    ]
+                }
+            ],
+            [
+                {
+                    "price": "879990.0",
+                    "general": [
+                        "Year of manufacturing: 2024",
+                        "Active edition",
+                        "Seating: 5",
+                        "Transmission: Manual - 5 Gears",
+                        "Engine: 1199 cc, 3 Cylinders Inline, 4 Valves/Cylinder, DOHC"
+                    ],
+                    "fuel_type": "Diesel",
+                    "brand_name": "Tata",
+                    "product_id": "tata_altroz_xm_plus_diesel_1616",
+                    "product_name": "Altroz",
+                    "variant_name": "XM plus",
+                    "vehicle_type": "hatchback",
+                    "branding_and_looks": [
+                        "Pattern: hatchback",
+                        "Modern Design: The Altroz XM Plus Diesel features the sleek and premium design that is characteristic of the Altroz range.",
+                        "Bold Front Grille: The chrome-finished front grille gives the car a bold and classy look, making it easily recognizable.",
+                        "Halogen Headlamps",
+                        "LED Daytime Running Lights (DRLs)",
+                        "Body-Colored Bumpers",
+                        "Wheel Covers: 14-inch steel wheels with wheel covers",
+                        "Colours: Downtown Red, Avenue White, Skyline Silver, Harbour Blue, Golden Yellow",
+                        "Dimension: Length 3990 mm Width 1755 mm Height 1523 mm",
+                        "Wheelbase: 2501 mm"
+                    ],
+                    "safety_and_environment": [
+                        "Dual Front Airbags",
+                        "ABS with EBD",
+                        "Rear Parking Sensors",
+                        "Child safety locks on the rear doors",
+                        "ISOFIX child seat mounts",
+                        "Crash Protection: The Altroz is designed with a sturdy safety structure that includes crumple zones to absorb impact forces during a collision, ensuring better safety for the occupants.",
+                        "BS6 compliant"
+                    ],
+                    "comfort_and_convenience": [
+                        "Premium Upholstery: The interior of the Altroz XM Plus Diesel features premium fabric upholstery that offers comfort and durability.",
+                        "Spacious Cabin: The Altroz XM Plus Diesel offers a spacious cabin with ample headroom and legroom, ensuring comfort for both front and rear passengers.",
+                        "Automatic Climate Control",
+                        "Keyless Entry",
+                        "Power windows with auto-up/down functionality for the front windows",
+                        "Steering-Mounted Controls",
+                        "Driver Seat Height Adjustment",
+                        "Smart Boot Space: With 345 liters of boot space, the Altroz offers excellent storage capacity for luggage or groceries, making it practical for long trips.",
+                        "Boot Space: 345 litres"
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1.5L 4-cylinder turbocharged diesel engine",
+                        "Power Output: around 90 bhp and 200 Nm of torque",
+                        "Transmission: 5-speed manual transmission (MT)",
+                        "Fuel Efficiency: 23.64 kmpl",
+                        "Fuel Capicity: 37 litres",
+                        "Power: 89 bhp @ 4000 rpm",
+                        "Torque: 200 Nm @ 1250-3000 rpm",
+                        "Driving Experience: The Altroz XM Plus Diesel offers a smooth and comfortable ride, with light steering and responsive handling, making it easy to drive in city traffic or on the highway."
+                    ],
+                    "infotainment_and_connectivity": [
+                        "Infotainment System: The car is equipped with a 7-inch touchscreen infotainment system that supports Apple CarPlay, Android Auto, and Bluetooth connectivity, allowing for seamless integration with smartphones.",
+                        "Instrument Cluster: It comes with a semi-digital instrument cluster that provides essential information like speed, fuel efficiency, and more in an easy-to-read format.",
+                        "Technology: 7-inch touchscreen, Android Auto, Apple CarPlay, Bluetooth, USB"
+                    ]
+                },
+                {
+                    "price": "919990.0",
+                    "general": [
+                        "Manufactured in 2020",
+                        "Active edition",
+                        "5-speed manual transmission",
+                        "5 seating capacity"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Tata",
+                    "product_id": "altroz_xz_plus_s_petrol_1618",
+                    "product_name": "Altroz",
+                    "variant_name": "XZ Plus (S)",
+                    "vehicle_type": "hatchback",
+                    "branding_and_looks": [
+                        "Hatchback",
+                        "Premium and sporty design with sharp lines",
+                        "Signature dual-tone roof option",
+                        "Chrome accents",
+                        "Rear defogger",
+                        "Shark-fin antenna",
+                        "Integrated spoiler",
+                        "Downtown Red, Avenue White, Skyline Silver, Harbour Blue, Golden Yellow colours",
+                        "Wheelbase: 2501 mm",
+                        "Dimension: Length 3990 mm Width 1755 mm Height 1523 mm",
+                        "Boot Space: 345 litres",
+                        "Stylish R16 dual-tone alloy wheels"
+                    ],
+                    "safety_and_environment": [
+                        "Global NCAP Rating: 5-star safety rating",
+                        "Dual front airbags",
+                        "ABS with EBD and Corner Stability Control",
+                        "Rear parking sensors",
+                        "Reverse parking camera",
+                        "ISOFIX child seat mounts",
+                        "Automatic headlamps with rain-sensing wipers",
+                        "BS6 compliant",
+                        "Idle Start-Stop System"
+                    ],
+                    "comfort_and_convenience": [
+                        "Push-button start/stop",
+                        "Cruise control",
+                        "Rear AC vents",
+                        "Electrically adjustable and foldable ORVMs",
+                        "Height-adjustable driver seat",
+                        "Cooled glovebox",
+                        "Power windows",
+                        "Premium fabric upholstery with detailed stitching",
+                        "Rear armrest",
+                        "Ambient lighting",
+                        "Ample storage spaces"
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1.2-liter Revotron petrol engine",
+                        "1199 cc, 3 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "Power Output: 86.79 bhp @ 6000 rpm",
+                        "Torque: 113 Nm @ 3250 rpm",
+                        "Manual - 5 Gears transmission",
+                        "Fuel Efficiency: Approximately 19.33 kmpl (ARAI)",
+                        "Fuel Capacity: 37 litres"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "7-inch touchscreen with Android Auto and Apple CarPlay compatibility",
+                        "7-inch TFT digital instrument panel",
+                        "Bluetooth",
+                        "USB",
+                        "7-inch SmartPlay Studio touchscreen"
+                    ]
+                },
+                {
+                    "price": "1049990.0",
+                    "general": [
+                        "Warranty details not provided.",
+                        "Transmission: Manual - 6 Gears",
+                        "Fuel tank capacity: 37 litres",
+                        "Seating capacity: 5"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Tata",
+                    "product_id": "altroz_racer_r2_petrol_1621",
+                    "product_name": "Altroz",
+                    "variant_name": "Racer R2",
+                    "vehicle_type": "hatchback",
+                    "branding_and_looks": [
+                        "Pattern: hatchback",
+                        "Exterior Design: Sporty aesthetics with dual-tone paint options and distinctive decals.",
+                        "Wheels: 16-inch alloy wheels.",
+                        "Dimension: Length 3990 mm, Width 1755 mm, Height 1523 mm",
+                        "Colours: Downtown Red, Avenue White, Skyline Silver, Harbour Blue, Golden Yellow"
+                    ],
+                    "safety_and_environment": [
+                        "Airbags: Dual front airbags.",
+                        "Braking System: Anti-lock Braking System (ABS) with Electronic Brakeforce Distribution (EBD).",
+                        "Additional Safety Features: Rear parking sensors.",
+                        "Environmental Compliance: BS6 compliant, Idle Start-Stop System"
+                    ],
+                    "comfort_and_convenience": [
+                        "Seating: 5 occupants.",
+                        "Upholstery: Premium fabric seats with contrast stitching.",
+                        "Air Conditioning: Automatic climate control system.",
+                        "Front and rear power windows.",
+                        "Steering: Multi-function steering wheel with audio controls.",
+                        "ORVMs: Electrically adjustable and foldable exterior rearview mirrors."
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1199 cc, 3 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "Engine: 1.2-liter, three-cylinder, turbocharged petrol engine.",
+                        "Power Output: Approximately 118.35 bhp at 5,500 rpm",
+                        "Torque: 170 Nm between 1,750 and 4,000 rpm",
+                        "Transmission: 6-speed manual gearbox",
+                        "Fuel Efficiency: Offers a mileage of around 18.5 kmpl",
+                        "Wheelbase: 2501 mm",
+                        "Boot Space: 345 litres"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "Infotainment System: 7-inch touchscreen with Android Auto and Apple CarPlay compatibility.",
+                        "Technology: 7-inch SmartPlay Studio touchscreen, Android Auto, Apple CarPlay, Bluetooth, USB."
+                    ]
+                }
+            ]
+        ],
+        "common_points": [
+            "Dual airbags and ABS with EBD",
+            "5-seater hatchback design",
+            "BS6 compliant engines",
+            "Android Auto & Apple CarPlay compatibility",
+            "Manual transmission options"
+        ],
+        "key_differences": {
+            "price": {
+                "Baleno Sigma MT": "\u20b97,00,000",
+                "Tata Tiago XZ": "\u20b96,89,990",
+                "Tata Tiago XZ+": "\u20b97,29,990",
+                "Tata Altroz XM Plus": "\u20b98,79,990"
+            },
+            "fuel_efficiency": {
+                "Baleno Sigma MT": "22.35 kmpl",
+                "Tata Tiago XZ": "19.01 kmpl",
+                "Tata Tiago XZ+": "19.01 kmpl",
+                "Tata Altroz XM Plus": "23.64 kmpl"
+            },
+            "engine_performance": {
+                "Baleno Sigma MT": "1.2L petrol engine, 89.7 PS, 113 Nm",
+                "Tata Tiago XZ": "1.2L petrol engine, 86 bhp, 113 Nm",
+                "Tata Tiago XZ+": "1.2L petrol engine, 85 bhp, 113 Nm",
+                "Tata Altroz XM Plus": "1.5L diesel engine, 90 bhp, 200 Nm"
+            },
+            "infotainment": {
+                "Baleno Sigma MT": "Basic SmartPlay Studio with 2 speakers",
+                "Tata Tiago XZ": "7-inch touchscreen with 4 speakers",
+                "Tata Tiago XZ+": "7-inch touchscreen with 4 speakers",
+                "Tata Altroz XM Plus": "7-inch touchscreen with 4 speakers"
+            },
+            "comfort_and_features": {
+                "Baleno Sigma MT": "Basic features like manual AC, tilt steering",
+                "Tata Tiago XZ": "Automatic climate control, keyless entry",
+                "Tata Tiago XZ+": "Cruise control, automatic climate control",
+                "Tata Altroz XM Plus": "Automatic climate control, 345L boot space"
+            }
+        },
+        "user_choice_justification": {
+            "Baleno Sigma MT": "The Baleno Sigma MT offers a well-rounded package with excellent fuel efficiency, reliable Maruti Suzuki brand value, and essential safety features like ESP with Hill Hold at a competitive price point. It is ideal for users seeking a spacious, fuel-efficient hatchback for city and highway use within a budget."
+        },
+        "user_sentiments": {
+            "task": "sentiment_analysis_agent",
+            "user_input": "Exploring car features and configurations for Baleno, showing interest in specific aspects like exterior, technology, and safety, and actively engaging by booking a test drive.",
+            "sentiment_score": 0.8,
+            "emotions": [
+                "interest",
+                "satisfaction"
+            ],
+            "justification": "The user is actively exploring features and configurations of the Baleno, indicating a high level of interest and engagement. Booking a test drive suggests satisfaction with the information gathered and readiness to take the next step."
+        },
+        "sentiment_score": 0.8,
+        "emotions": [
+            "interest",
+            "satisfaction"
+        ],
+        "sentiment_justification": "The user is actively exploring features and configurations of the Baleno, indicating a high level of interest and engagement. Booking a test drive suggests satisfaction with the information gathered and readiness to take the next step.",
+        "prioritization_data": {
+            "task": "prioritization_agent",
+            "priority_level": "HOT",
+            "prioritization_score": 82,
+            "customer_summary": {
+                "contact_info": {
+                    "phone": "9555666777",
+                    "email": "rahul.jha@iamdave.ai"
+                },
+                "customer_profile": {
+                    "location": "Chennai, 600001",
+                    "interested_models": "Baleno",
+                    "source": "website",
+                    "preferred_colors": [
+                        "Premium Silver"
+                    ]
+                },
+                "key_interests": [
+                    "Safety Features",
+                    "Pricing and variants",
+                    "Technology Features",
+                    "Technology features",
+                    "Exterior Design",
+                    "Safety features"
+                ],
+                "preferred_models": [
+                    "Baleno"
+                ],
+                "preferred_colors": [
+                    "Premium Silver"
+                ],
+                "budget_category": "mid-range"
+            },
+            "risk_factors": [
+                "Brochure not downloaded",
+                "Finance and offers not explored"
+            ],
+            "talking_points": [
+                "Highlight the Premium Silver color chosen by the customer.",
+                "Discuss the advanced technology features like SmartPlay Pro+ and Cruise Control.",
+                "Emphasize safety features such as Dual Airbags, ABS, and Reverse Parking Sensors.",
+                "Confirm interest in manual or AMT transmission options and discuss pricing details.",
+                "Offer assistance in scheduling the test drive at the nearest dealer."
+            ],
+            "recommended_actions": [
+                "immediate_phone_call",
+                "dealer_assignment",
+                "special_offers",
+                "priority_scheduling",
+                "personalized_email",
+                "confirm_test_drive"
+            ]
+        }
     }
 ]
