@@ -241,6 +241,9 @@ class CompetitorAnalysis(BaseAgent):
         ]
 
         compared_cars = self.get_competitor(user_model, models_not_user_brand)
+        if not compared:
+            compared = random.sample(models_not_user_brand, 2)
+
         logger.info(f"Compared cars: {compared_cars}")
 
         if isinstance(compared_cars, list):
@@ -256,8 +259,6 @@ class CompetitorAnalysis(BaseAgent):
             if models_data:
                 compared.append(models_data)
 
-        if not compared:
-            compared = random.sample(models_not_user_brand, 2)
 
         return compared, user_choice
 
