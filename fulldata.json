@@ -6327,5 +6327,2229 @@
                 "finance_consultation"
             ]
         }
+    },
+    {
+        "source": {
+            "uuid": "012d3456-e78f-90ab-cdef-567890123456",
+            "name": "Rahul Jha",
+            "phone": "9555666777",
+            "email": "rahul.jha@iamdave.ai",
+            "city": "Chennai",
+            "pincode": "600001",
+            "device": "mobile",
+            "os": "iOS",
+            "interested_models": [
+                "Baleno"
+            ],
+            "preferred_contact_time": "Evening",
+            "lead_status": "Warm",
+            "source": "website",
+            "utm": {
+                "source": "youtube",
+                "medium": "video",
+                "campaign": "hatchback_comparison_series",
+                "term": "fuel efficient cars",
+                "content": "review video"
+            },
+            "model": "Baleno",
+            "url": "https://www.nexaexperience.com/baleno",
+            "date": "2025-07-27",
+            "time": "18:20 +530",
+            "hd_view": "off",
+            "exterior": true,
+            "interior": false,
+            "performance": false,
+            "technology": true,
+            "safety": true,
+            "configure": true,
+            "suzuki_connect": false,
+            "colours": [
+                "Premium Silver",
+                "Phoenix Red",
+                "Grandeur Grey"
+            ],
+            "final_colour": [
+                "Premium Silver"
+            ],
+            "exterior_views": 4,
+            "technology_views": [
+                "SmartPlay Pro+",
+                "Cruise Control"
+            ],
+            "safety_views": [
+                "Dual Airbags",
+                "ABS",
+                "Reverse Parking Sensors"
+            ],
+            "brochure_download": false,
+            "variants_and_pricing": true,
+            "build_your_own": true,
+            "transmission_types": [
+                "manual",
+                "amt"
+            ],
+            "powertrains": [
+                "petrol"
+            ],
+            "compared_cars": [
+                "fronx",
+                "swift"
+            ],
+            "finance_and_offer": false,
+            "locate_dealer": true,
+            "book_test_drive": true
+        },
+        "propensity_score": {
+            "branding_and_looks": 0.6,
+            "safety_and_environment": 0.8,
+            "comfort_and_convenience": 0.5,
+            "technology_and_performance": 0.7,
+            "infotainment_and_connectivity": 0.6
+        },
+        "comparison": {
+            "Baleno Sigma MT vs Hyundai i20 Sportz (O) 1.2 MT Dual Tone": {
+                "price": {
+                    "Baleno Sigma MT": "\u20b97,00,000",
+                    "Hyundai i20 Sportz (O) 1.2 MT Dual Tone": "\u20b98,91,800"
+                },
+                "fuel_efficiency": {
+                    "Baleno Sigma MT": "22.35 kmpl",
+                    "Hyundai i20 Sportz (O) 1.2 MT Dual Tone": "20.35 kmpl"
+                },
+                "safety_features": {
+                    "Baleno Sigma MT": "Dual airbags, ABS with EBD, ESP with Hill Hold, ISOFIX mounts",
+                    "Hyundai i20 Sportz (O) 1.2 MT Dual Tone": "Dual airbags, ABS with EBD, rear parking sensors, ISOFIX mounts"
+                },
+                "technology": {
+                    "Baleno Sigma MT": "Basic SmartPlay Studio with 2 speakers",
+                    "Hyundai i20 Sportz (O) 1.2 MT Dual Tone": "7-inch touchscreen with Android Auto & Apple CarPlay"
+                },
+                "space": {
+                    "Baleno Sigma MT": "Wheelbase: 2520 mm, Boot space: Not specified",
+                    "Hyundai i20 Sportz (O) 1.2 MT Dual Tone": "Wheelbase: 2580 mm, Boot space: 311 litres"
+                },
+                "comfort_and_convenience": {
+                    "Baleno Sigma MT": "Manual AC, tilt steering, all power windows",
+                    "Hyundai i20 Sportz (O) 1.2 MT Dual Tone": "Automatic climate control, auto-folding ORVMs, auto-dimming IRVM"
+                }
+            },
+            "Baleno Sigma MT vs Tata Altroz XM Plus Diesel": {
+                "price": {
+                    "Baleno Sigma MT": "\u20b97,00,000",
+                    "Tata Altroz XM Plus Diesel": "\u20b98,79,990"
+                },
+                "fuel_efficiency": {
+                    "Baleno Sigma MT": "22.35 kmpl (Petrol)",
+                    "Tata Altroz XM Plus Diesel": "23.64 kmpl (Diesel)"
+                },
+                "safety_features": {
+                    "Baleno Sigma MT": "Dual airbags, ABS with EBD, ESP with Hill Hold, ISOFIX mounts",
+                    "Tata Altroz XM Plus Diesel": "Dual airbags, ABS with EBD, ISOFIX mounts, crash protection structure"
+                },
+                "technology": {
+                    "Baleno Sigma MT": "Basic SmartPlay Studio with 2 speakers",
+                    "Tata Altroz XM Plus Diesel": "7-inch touchscreen with Android Auto & Apple CarPlay"
+                },
+                "space": {
+                    "Baleno Sigma MT": "Wheelbase: 2520 mm, Boot space: Not specified",
+                    "Tata Altroz XM Plus Diesel": "Wheelbase: 2501 mm, Boot space: 345 litres"
+                },
+                "comfort_and_convenience": {
+                    "Baleno Sigma MT": "Manual AC, tilt steering, all power windows",
+                    "Tata Altroz XM Plus Diesel": "Automatic climate control, keyless entry, height-adjustable driver seat"
+                }
+            }
+        },
+        "comparison_cars": [
+            [
+                {
+                    "price": "891800.0",
+                    "general": [
+                        "Warranty information not provided",
+                        "Transmission: Manual - 5 Gears",
+                        "Fuel type: Petrol",
+                        "Seating capacity: 5",
+                        "BS6 compliant"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Hyundai",
+                    "product_id": "i20_sportz_o_1_2_mt_dual_tone_petrol_430",
+                    "product_name": "i20",
+                    "variant_name": "Sportz (O) 1.2 MT Dual Tone",
+                    "vehicle_type": "hatchback",
+                    "branding_and_looks": [
+                        "Design: Dual-tone color scheme with a contrasting roof.",
+                        "Color Options: Fiery Red with Black Roof, Polar White with Black Roof",
+                        "Body Color: Typhoon Silver, Polar White, Starry Night, Fiery Red, Titan Grey, Midnight Black",
+                        "Wheelbase: 2580 mm",
+                        "Dimensions: Length 3995 mm, Width 1775 mm, Height 1505 mm",
+                        "Boot Space: 311 litres",
+                        "Year of manufacturing: 2020",
+                        "Edition: Active"
+                    ],
+                    "safety_and_environment": [
+                        "Dual front airbags",
+                        "Anti-lock Braking System (ABS) with Electronic Brakeforce Distribution (EBD)",
+                        "Rear parking sensors",
+                        "BS6 compliant",
+                        "Idle Start-Stop System"
+                    ],
+                    "comfort_and_convenience": [
+                        "Automatic climate control",
+                        "Multi-function steering wheel with mounted audio controls",
+                        "Power windows (front and rear)",
+                        "Auto-folding ORVMs",
+                        "Auto-dimming IRVM"
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1197 cc, 4 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "Power Output: 82 bhp @ 6,000 rpm",
+                        "Torque: 114.7 Nm @ 4,200 rpm",
+                        "Transmission: 5-speed manual gearbox",
+                        "Fuel Efficiency: 20.35 kmpl",
+                        "Fuel Tank Capacity: 37 litres",
+                        "Suspension system not provided",
+                        "Braking mechanism not provided"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "7-inch SmartPlay Studio touchscreen",
+                        "Android Auto",
+                        "Apple CarPlay",
+                        "Bluetooth",
+                        "USB"
+                    ]
+                },
+                {
+                    "price": "856800.0",
+                    "general": [
+                        "BS6 compliant",
+                        "Manual transmission - 5 Gears",
+                        "Petrol fuel type",
+                        "5 seater capacity",
+                        "2020 year of manufacturing",
+                        "Active edition"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Hyundai",
+                    "product_id": "i20_sportz_1.2_mt_dual_tone_petrol_431",
+                    "product_name": "i20",
+                    "variant_name": "Sportz 1.2 MT Dual Tone",
+                    "vehicle_type": "hatchback",
+                    "branding_and_looks": [
+                        "Hatchback pattern",
+                        "15-inch steel wheels with full wheel covers",
+                        "Dual-tone color schemes available (Fiery Red with Black Roof and Polar White with Black Roof)",
+                        "Length: 3995 mm",
+                        "Width: 1775 mm",
+                        "Height: 1505 mm",
+                        "Wheelbase: 2580 mm",
+                        "Boot Space: 311 litres",
+                        "Available in colors: Typhoon Silver, Polar White, Starry Night, Fiery Red, Titan Grey, Midnight Black"
+                    ],
+                    "safety_and_environment": [
+                        "Dual front airbags",
+                        "Anti-Lock Braking System (ABS)",
+                        "Electronic Brake-force Distribution (EBD)",
+                        "Brake Assist (BA)",
+                        "Rear parking sensors",
+                        "ISOFIX child seat anchorages",
+                        "High-speed alert system"
+                    ],
+                    "comfort_and_convenience": [
+                        "Manual air conditioning",
+                        "Tilt-adjustable steering wheel with mounted audio controls",
+                        "All four power windows with one-touch operation",
+                        "37 litres fuel capacity"
+                    ],
+                    "technology_and_performance": [
+                        "1197 cc, 4 Cylinders Inline, 4 Valves/Cylinder, DOHC engine",
+                        "82 bhp @ 6000 rpm power output",
+                        "114.7 Nm @ 4200 rpm torque",
+                        "5-speed manual transmission",
+                        "ARAI-certified mileage of 20.3 kmpl (Note: Carwale lists 19.0 kmpl in a separate field, sticking to the specific technology section for engine performance metrics)",
+                        "Idle Start-Stop System"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "7-inch SmartPlay Studio touchscreen",
+                        "Android Auto compatibility",
+                        "Apple CarPlay compatibility",
+                        "Bluetooth connectivity",
+                        "USB connectivity"
+                    ]
+                },
+                {
+                    "price": "778800.0",
+                    "general": [
+                        "Manual transmission - 5 gears",
+                        "5 seating capacity"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Hyundai",
+                    "product_id": "i20_magna_1.2_mt_petrol_432",
+                    "product_name": "i20",
+                    "variant_name": "Magna 1.2 MT",
+                    "vehicle_type": "hatchback",
+                    "branding_and_looks": [
+                        "Hatchback pattern",
+                        "Body-colored bumpers and side moldings",
+                        "Halogen headlamps",
+                        "Electrically adjustable exterior mirrors",
+                        "15-inch steel wheels with covers",
+                        "Typhoon Silver, Polar White, Starry Night, Fiery Red, Titan Grey, Midnight Black colours",
+                        "Wheelbase 2580 mm",
+                        "Length 3995 mm",
+                        "Width 1775 mm",
+                        "Height 1505 mm",
+                        "Boot Space 311 litres"
+                    ],
+                    "safety_and_environment": [
+                        "Anti-lock Braking System (ABS)",
+                        "Dual front airbags",
+                        "Rear parking sensors",
+                        "Reverse camera",
+                        "Driver and co-driver seat belt reminder",
+                        "Electronic Brake-force Distribution (EBD)",
+                        "BS6 compliant, Idle Start-Stop System"
+                    ],
+                    "comfort_and_convenience": [
+                        "Fabric upholstery",
+                        "Steering-mounted controls",
+                        "Manual air conditioning",
+                        "Rear power windows",
+                        "Tilt-adjustable steering",
+                        "Power windows (front and rear)",
+                        "Electrically adjustable ORVMs (Outside Rearview Mirrors)",
+                        "Remote central locking",
+                        "Multi-function steering wheel",
+                        "Front and rear USB charging ports"
+                    ],
+                    "technology_and_performance": [
+                        "1197 cc engine",
+                        "4 Cylinders Inline",
+                        "4 Valves/Cylinder",
+                        "DOHC",
+                        "1.2L petrol engine",
+                        "82 bhp at 6,000 rpm power",
+                        "115 Nm of torque at 4,200 rpm",
+                        "5-speed manual transmission",
+                        "Fuel efficiency of approximately 20.3 km/l",
+                        "Fuel Capacity 37 litres",
+                        "19.5 kmpl fuel efficiency",
+                        "Manual - 5 Gears transmission"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "8-inch touchscreen infotainment system with Apple CarPlay and Android Auto",
+                        "2-DIN audio system with Bluetooth",
+                        "7-inch SmartPlay Studio touchscreen",
+                        "Android Auto",
+                        "Apple CarPlay",
+                        "Bluetooth",
+                        "USB"
+                    ]
+                }
+            ],
+            [
+                {
+                    "price": "879990.0",
+                    "general": [
+                        "Year of manufacturing: 2024",
+                        "Active edition",
+                        "Seating: 5",
+                        "Transmission: Manual - 5 Gears",
+                        "Engine: 1199 cc, 3 Cylinders Inline, 4 Valves/Cylinder, DOHC"
+                    ],
+                    "fuel_type": "Diesel",
+                    "brand_name": "Tata",
+                    "product_id": "tata_altroz_xm_plus_diesel_1616",
+                    "product_name": "Altroz",
+                    "variant_name": "XM plus",
+                    "vehicle_type": "hatchback",
+                    "branding_and_looks": [
+                        "Pattern: hatchback",
+                        "Modern Design: The Altroz XM Plus Diesel features the sleek and premium design that is characteristic of the Altroz range.",
+                        "Bold Front Grille: The chrome-finished front grille gives the car a bold and classy look, making it easily recognizable.",
+                        "Halogen Headlamps",
+                        "LED Daytime Running Lights (DRLs)",
+                        "Body-Colored Bumpers",
+                        "Wheel Covers: 14-inch steel wheels with wheel covers",
+                        "Colours: Downtown Red, Avenue White, Skyline Silver, Harbour Blue, Golden Yellow",
+                        "Dimension: Length 3990 mm Width 1755 mm Height 1523 mm",
+                        "Wheelbase: 2501 mm"
+                    ],
+                    "safety_and_environment": [
+                        "Dual Front Airbags",
+                        "ABS with EBD",
+                        "Rear Parking Sensors",
+                        "Child safety locks on the rear doors",
+                        "ISOFIX child seat mounts",
+                        "Crash Protection: The Altroz is designed with a sturdy safety structure that includes crumple zones to absorb impact forces during a collision, ensuring better safety for the occupants.",
+                        "BS6 compliant"
+                    ],
+                    "comfort_and_convenience": [
+                        "Premium Upholstery: The interior of the Altroz XM Plus Diesel features premium fabric upholstery that offers comfort and durability.",
+                        "Spacious Cabin: The Altroz XM Plus Diesel offers a spacious cabin with ample headroom and legroom, ensuring comfort for both front and rear passengers.",
+                        "Automatic Climate Control",
+                        "Keyless Entry",
+                        "Power windows with auto-up/down functionality for the front windows",
+                        "Steering-Mounted Controls",
+                        "Driver Seat Height Adjustment",
+                        "Smart Boot Space: With 345 liters of boot space, the Altroz offers excellent storage capacity for luggage or groceries, making it practical for long trips.",
+                        "Boot Space: 345 litres"
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1.5L 4-cylinder turbocharged diesel engine",
+                        "Power Output: around 90 bhp and 200 Nm of torque",
+                        "Transmission: 5-speed manual transmission (MT)",
+                        "Fuel Efficiency: 23.64 kmpl",
+                        "Fuel Capicity: 37 litres",
+                        "Power: 89 bhp @ 4000 rpm",
+                        "Torque: 200 Nm @ 1250-3000 rpm",
+                        "Driving Experience: The Altroz XM Plus Diesel offers a smooth and comfortable ride, with light steering and responsive handling, making it easy to drive in city traffic or on the highway."
+                    ],
+                    "infotainment_and_connectivity": [
+                        "Infotainment System: The car is equipped with a 7-inch touchscreen infotainment system that supports Apple CarPlay, Android Auto, and Bluetooth connectivity, allowing for seamless integration with smartphones.",
+                        "Instrument Cluster: It comes with a semi-digital instrument cluster that provides essential information like speed, fuel efficiency, and more in an easy-to-read format.",
+                        "Technology: 7-inch touchscreen, Android Auto, Apple CarPlay, Bluetooth, USB"
+                    ]
+                },
+                {
+                    "price": "919990.0",
+                    "general": [
+                        "Manufactured in 2020",
+                        "Active edition",
+                        "5-speed manual transmission",
+                        "5 seating capacity"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Tata",
+                    "product_id": "altroz_xz_plus_s_petrol_1618",
+                    "product_name": "Altroz",
+                    "variant_name": "XZ Plus (S)",
+                    "vehicle_type": "hatchback",
+                    "branding_and_looks": [
+                        "Hatchback",
+                        "Premium and sporty design with sharp lines",
+                        "Signature dual-tone roof option",
+                        "Chrome accents",
+                        "Rear defogger",
+                        "Shark-fin antenna",
+                        "Integrated spoiler",
+                        "Downtown Red, Avenue White, Skyline Silver, Harbour Blue, Golden Yellow colours",
+                        "Wheelbase: 2501 mm",
+                        "Dimension: Length 3990 mm Width 1755 mm Height 1523 mm",
+                        "Boot Space: 345 litres",
+                        "Stylish R16 dual-tone alloy wheels"
+                    ],
+                    "safety_and_environment": [
+                        "Global NCAP Rating: 5-star safety rating",
+                        "Dual front airbags",
+                        "ABS with EBD and Corner Stability Control",
+                        "Rear parking sensors",
+                        "Reverse parking camera",
+                        "ISOFIX child seat mounts",
+                        "Automatic headlamps with rain-sensing wipers",
+                        "BS6 compliant",
+                        "Idle Start-Stop System"
+                    ],
+                    "comfort_and_convenience": [
+                        "Push-button start/stop",
+                        "Cruise control",
+                        "Rear AC vents",
+                        "Electrically adjustable and foldable ORVMs",
+                        "Height-adjustable driver seat",
+                        "Cooled glovebox",
+                        "Power windows",
+                        "Premium fabric upholstery with detailed stitching",
+                        "Rear armrest",
+                        "Ambient lighting",
+                        "Ample storage spaces"
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1.2-liter Revotron petrol engine",
+                        "1199 cc, 3 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "Power Output: 86.79 bhp @ 6000 rpm",
+                        "Torque: 113 Nm @ 3250 rpm",
+                        "Manual - 5 Gears transmission",
+                        "Fuel Efficiency: Approximately 19.33 kmpl (ARAI)",
+                        "Fuel Capacity: 37 litres"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "7-inch touchscreen with Android Auto and Apple CarPlay compatibility",
+                        "7-inch TFT digital instrument panel",
+                        "Bluetooth",
+                        "USB",
+                        "7-inch SmartPlay Studio touchscreen"
+                    ]
+                },
+                {
+                    "price": "1049990.0",
+                    "general": [
+                        "Warranty details not provided.",
+                        "Transmission: Manual - 6 Gears",
+                        "Fuel tank capacity: 37 litres",
+                        "Seating capacity: 5"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Tata",
+                    "product_id": "altroz_racer_r2_petrol_1621",
+                    "product_name": "Altroz",
+                    "variant_name": "Racer R2",
+                    "vehicle_type": "hatchback",
+                    "branding_and_looks": [
+                        "Pattern: hatchback",
+                        "Exterior Design: Sporty aesthetics with dual-tone paint options and distinctive decals.",
+                        "Wheels: 16-inch alloy wheels.",
+                        "Dimension: Length 3990 mm, Width 1755 mm, Height 1523 mm",
+                        "Colours: Downtown Red, Avenue White, Skyline Silver, Harbour Blue, Golden Yellow"
+                    ],
+                    "safety_and_environment": [
+                        "Airbags: Dual front airbags.",
+                        "Braking System: Anti-lock Braking System (ABS) with Electronic Brakeforce Distribution (EBD).",
+                        "Additional Safety Features: Rear parking sensors.",
+                        "Environmental Compliance: BS6 compliant, Idle Start-Stop System"
+                    ],
+                    "comfort_and_convenience": [
+                        "Seating: 5 occupants.",
+                        "Upholstery: Premium fabric seats with contrast stitching.",
+                        "Air Conditioning: Automatic climate control system.",
+                        "Front and rear power windows.",
+                        "Steering: Multi-function steering wheel with audio controls.",
+                        "ORVMs: Electrically adjustable and foldable exterior rearview mirrors."
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1199 cc, 3 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "Engine: 1.2-liter, three-cylinder, turbocharged petrol engine.",
+                        "Power Output: Approximately 118.35 bhp at 5,500 rpm",
+                        "Torque: 170 Nm between 1,750 and 4,000 rpm",
+                        "Transmission: 6-speed manual gearbox",
+                        "Fuel Efficiency: Offers a mileage of around 18.5 kmpl",
+                        "Wheelbase: 2501 mm",
+                        "Boot Space: 345 litres"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "Infotainment System: 7-inch touchscreen with Android Auto and Apple CarPlay compatibility.",
+                        "Technology: 7-inch SmartPlay Studio touchscreen, Android Auto, Apple CarPlay, Bluetooth, USB."
+                    ]
+                }
+            ]
+        ],
+        "common_points": [
+            "All cars have dual front airbags",
+            "All cars are BS6 compliant",
+            "All cars offer Android Auto and Apple CarPlay compatibility",
+            "All cars have 5 seats",
+            "Fuel tank capacity is approximately 37 litres across models"
+        ],
+        "key_differences": {
+            "price": {
+                "Baleno Sigma MT": "\u20b97,00,000",
+                "Hyundai i20 Sportz (O) 1.2 MT Dual Tone": "\u20b98,91,800",
+                "Tata Altroz XM Plus Diesel": "\u20b98,79,990"
+            },
+            "fuel_efficiency": {
+                "Baleno Sigma MT": "22.35 kmpl (Petrol)",
+                "Hyundai i20 Sportz (O) 1.2 MT Dual Tone": "20.35 kmpl (Petrol)",
+                "Tata Altroz XM Plus Diesel": "23.64 kmpl (Diesel)"
+            },
+            "safety_features": {
+                "Baleno Sigma MT": "ESP with Hill Hold, pedestrian protection compliance",
+                "Hyundai i20 Sportz (O) 1.2 MT Dual Tone": "Rear parking sensors, idle start-stop system",
+                "Tata Altroz XM Plus Diesel": "Crash protection structure, child safety locks"
+            },
+            "technology": {
+                "Baleno Sigma MT": "Basic SmartPlay Studio with 2 speakers",
+                "Hyundai i20 Sportz (O) 1.2 MT Dual Tone": "7-inch touchscreen with Android Auto & Apple CarPlay",
+                "Tata Altroz XM Plus Diesel": "7-inch touchscreen with Android Auto & Apple CarPlay"
+            },
+            "comfort_and_convenience": {
+                "Baleno Sigma MT": "Manual AC, tilt steering",
+                "Hyundai i20 Sportz (O) 1.2 MT Dual Tone": "Automatic climate control, auto-folding ORVMs",
+                "Tata Altroz XM Plus Diesel": "Automatic climate control, keyless entry"
+            }
+        },
+        "user_choice_justification": {
+            "Baleno Sigma MT": "The Baleno Sigma MT offers excellent affordability at \u20b97,00,000, making it one of the most budget-friendly options in its category. It delivers strong fuel efficiency (22.35 kmpl), making it ideal for city commutes and long drives. While its features are basic compared to higher-priced competitors, it provides essential safety features such as ABS with EBD, ESP, and ISOFIX mounts, ensuring passenger safety. The manual AC and tilt steering offer sufficient comfort for daily use, and its compact size makes it suitable for urban driving. For buyers prioritizing affordability and fuel efficiency, the Baleno Sigma MT is a compelling choice."
+        },
+        "user_sentiments": {
+            "task": "sentiment_analysis_agent",
+            "user_input": "Exploring details about the Baleno model with interest in features, pricing, and test drive options.",
+            "sentiment_score": 0.8,
+            "emotions": [
+                "interest",
+                "curiosity",
+                "satisfaction"
+            ],
+            "justification": "The user has shown consistent engagement by exploring various features such as exterior, technology, and safety, configuring the car, and expressing interest in variants, pricing, and test drive options. These actions indicate positive interest and curiosity."
+        },
+        "sentiment_score": 0.8,
+        "emotions": [
+            "interest",
+            "curiosity",
+            "satisfaction"
+        ],
+        "sentiment_justification": "The user has shown consistent engagement by exploring various features such as exterior, technology, and safety, configuring the car, and expressing interest in variants, pricing, and test drive options. These actions indicate positive interest and curiosity.",
+        "prioritization_data": {
+            "task": "prioritization_agent",
+            "priority_level": "HOT",
+            "prioritization_score": 82,
+            "customer_summary": {
+                "contact_info": {
+                    "phone": "9555666777",
+                    "email": "rahul.jha@iamdave.ai"
+                },
+                "customer_profile": {
+                    "location": "Chennai, 600001",
+                    "interested_models": "Baleno",
+                    "source": "website",
+                    "preferred_colors": [
+                        "Premium Silver"
+                    ]
+                },
+                "key_interests": [
+                    "Safety features",
+                    "Pricing and variants",
+                    "exterior",
+                    "safety",
+                    "technology",
+                    "Technology features",
+                    "configure options"
+                ],
+                "preferred_models": [
+                    "Baleno"
+                ],
+                "preferred_colors": [
+                    "Premium Silver"
+                ],
+                "budget_category": "mid-range"
+            },
+            "risk_factors": [
+                "Brochure not downloaded",
+                "Finance options not explored"
+            ],
+            "talking_points": [
+                "Discuss the Premium Silver color choice and its availability.",
+                "Highlight the technology features like SmartPlay Pro+ and Cruise Control.",
+                "Emphasize safety features such as Dual Airbags and ABS.",
+                "Explain the benefits of manual and AMT transmission options.",
+                "Offer assistance with test drive booking and dealer location."
+            ],
+            "recommended_actions": [
+                "immediate_phone_call",
+                "dealer_assignment",
+                "special_offers",
+                "priority_scheduling",
+                "personalized_email",
+                "confirm_test_drive"
+            ]
+        }
+    },
+    {
+        "source": {
+            "uuid": "012d3456-e78f-90ab-cdef-567890123456",
+            "name": "Rahul Jha",
+            "phone": "9555666777",
+            "email": "rahul.jha@iamdave.ai",
+            "city": "Chennai",
+            "pincode": "600001",
+            "device": "mobile",
+            "os": "iOS",
+            "interested_models": [
+                "Baleno"
+            ],
+            "preferred_contact_time": "Evening",
+            "lead_status": "Warm",
+            "source": "website",
+            "utm": {
+                "source": "youtube",
+                "medium": "video",
+                "campaign": "hatchback_comparison_series",
+                "term": "fuel efficient cars",
+                "content": "review video"
+            },
+            "model": "Baleno",
+            "url": "https://www.nexaexperience.com/baleno",
+            "date": "2025-07-27",
+            "time": "18:20 +530",
+            "hd_view": "off",
+            "exterior": true,
+            "interior": false,
+            "performance": false,
+            "technology": true,
+            "safety": true,
+            "configure": true,
+            "suzuki_connect": false,
+            "colours": [
+                "Premium Silver",
+                "Phoenix Red",
+                "Grandeur Grey"
+            ],
+            "final_colour": [
+                "Premium Silver"
+            ],
+            "exterior_views": 4,
+            "technology_views": [
+                "SmartPlay Pro+",
+                "Cruise Control"
+            ],
+            "safety_views": [
+                "Dual Airbags",
+                "ABS",
+                "Reverse Parking Sensors"
+            ],
+            "brochure_download": false,
+            "variants_and_pricing": true,
+            "build_your_own": true,
+            "transmission_types": [
+                "manual",
+                "amt"
+            ],
+            "powertrains": [
+                "petrol"
+            ],
+            "compared_cars": [
+                "fronx",
+                "swift"
+            ],
+            "finance_and_offer": false,
+            "locate_dealer": true,
+            "book_test_drive": true
+        },
+        "propensity_score": {
+            "branding_and_looks": 0.6,
+            "safety_and_environment": 0.8,
+            "comfort_and_convenience": 0.5,
+            "technology_and_performance": 0.7,
+            "infotainment_and_connectivity": 0.6
+        },
+        "comparison": {
+            "Baleno Sigma MT vs Safari": {
+                "price": {
+                    "Baleno Sigma MT": "\u20b97,00,000",
+                    "Safari": "\u20b915,84,900 - \u20b925,00,000"
+                },
+                "fuel_efficiency": {
+                    "Baleno Sigma MT": "22.35 kmpl (Petrol)",
+                    "Safari": "14 - 16 kmpl (Diesel)"
+                },
+                "safety_features": {
+                    "Baleno Sigma MT": "Dual airbags, ABS with EBD, ESP with Hill Hold, ISOFIX",
+                    "Safari": "6 airbags, ABS with EBD, ESC, Hill Hold, TPMS"
+                },
+                "technology": {
+                    "Baleno Sigma MT": "Basic SmartPlay Studio, Android Auto & Apple CarPlay (wired)",
+                    "Safari": "iRA connected car tech, 8.8-inch touchscreen, JBL sound system"
+                },
+                "space": {
+                    "Baleno Sigma MT": "5-seater hatchback",
+                    "Safari": "7-seater SUV with ample space"
+                },
+                "driving_comfort": {
+                    "Baleno Sigma MT": "Basic suspension setup for city use",
+                    "Safari": "Advanced suspension for highway and off-road comfort"
+                },
+                "resale_value": {
+                    "Baleno Sigma MT": "High resale value due to Maruti Suzuki's brand image",
+                    "Safari": "Moderate resale value in the SUV segment"
+                },
+                "brand_trust": {
+                    "Baleno Sigma MT": "Maruti Suzuki has a strong reputation for reliability and affordability",
+                    "Safari": "Tata Motors is known for robust build quality and Indian market focus"
+                }
+            },
+            "Baleno Sigma MT vs C5 Aircross": {
+                "price": {
+                    "Baleno Sigma MT": "\u20b97,00,000",
+                    "C5 Aircross": "\u20b936,67,000"
+                },
+                "fuel_efficiency": {
+                    "Baleno Sigma MT": "22.35 kmpl (Petrol)",
+                    "C5 Aircross": "17.5 kmpl (Diesel)"
+                },
+                "safety_features": {
+                    "Baleno Sigma MT": "Dual airbags, ABS with EBD, ESP with Hill Hold, ISOFIX",
+                    "C5 Aircross": "6 airbags, ABS with EBD, ESP, Hill Descent Control"
+                },
+                "technology": {
+                    "Baleno Sigma MT": "Basic SmartPlay Studio, Android Auto & Apple CarPlay (wired)",
+                    "C5 Aircross": "12.3-inch digital instrument cluster, 8-inch touchscreen, advanced driver-assist systems"
+                },
+                "space": {
+                    "Baleno Sigma MT": "5-seater hatchback",
+                    "C5 Aircross": "5-seater SUV with spacious interiors"
+                },
+                "driving_comfort": {
+                    "Baleno Sigma MT": "City-oriented suspension setup",
+                    "C5 Aircross": "Progressive Hydraulic Cushion suspension for superior comfort"
+                },
+                "resale_value": {
+                    "Baleno Sigma MT": "High resale value due to Maruti Suzuki's brand image",
+                    "C5 Aircross": "Lower resale value due to premium pricing and niche segment"
+                },
+                "brand_trust": {
+                    "Baleno Sigma MT": "Maruti Suzuki is widely trusted for affordability and service network",
+                    "C5 Aircross": "Citro\u00ebn is a niche brand with limited presence in India"
+                }
+            }
+        },
+        "comparison_cars": [
+            "Safari",
+            "C5 Aircross"
+        ],
+        "common_points": [
+            "All cars have ABS with EBD",
+            "All cars are available in petrol variants",
+            "All cars offer connected car technology"
+        ],
+        "key_differences": {
+            "price": {
+                "Baleno Sigma MT": "\u20b97,00,000",
+                "Safari": "\u20b915,84,900 - \u20b925,00,000",
+                "C5 Aircross": "\u20b936,67,000"
+            },
+            "fuel_efficiency": {
+                "Baleno Sigma MT": "22.35 kmpl (Petrol)",
+                "Safari": "14 - 16 kmpl (Diesel)",
+                "C5 Aircross": "17.5 kmpl (Diesel)"
+            },
+            "safety_features": {
+                "Baleno Sigma MT": "Dual airbags, ISOFIX, ESP with Hill Hold",
+                "Safari": "6 airbags, TPMS, Hill Hold",
+                "C5 Aircross": "6 airbags, Hill Descent Control, advanced driver-assist systems"
+            },
+            "technology": {
+                "Baleno Sigma MT": "Basic infotainment with wired Android Auto & Apple CarPlay",
+                "Safari": "iRA connected car tech, JBL sound system",
+                "C5 Aircross": "Advanced digital instrument cluster, driver-assist features"
+            },
+            "space and comfort": {
+                "Baleno Sigma MT": "Compact hatchback, 5-seater",
+                "Safari": "Spacious 7-seater SUV",
+                "C5 Aircross": "Spacious 5-seater premium SUV"
+            },
+            "brand trust": {
+                "Baleno Sigma MT": "Maruti Suzuki is trusted for reliability and affordability",
+                "Safari": "Tata Motors is recognized for robust build quality",
+                "C5 Aircross": "Citro\u00ebn has limited presence in India"
+            }
+        },
+        "user_choice_justification": {
+            "Baleno Sigma MT": "The Baleno Sigma MT is a highly affordable option for city use, offering excellent fuel efficiency, reliable safety features, and Maruti Suzuki's trusted service network. It is ideal for budget-conscious buyers seeking a practical and compact car for daily commuting."
+        },
+        "user_sentiments": {
+            "task": "sentiment_analysis_agent",
+            "user_input": "Exploring details about the Baleno car and showing interest in purchasing options.",
+            "sentiment_score": 0.8,
+            "emotions": [
+                "interest",
+                "curiosity",
+                "satisfaction"
+            ],
+            "justification": "The user has actively engaged with multiple features of the car, including exterior, technology, and safety views, while also configuring options and exploring variants and pricing. Additionally, they have shown intent by locating a dealer and booking a test drive, indicating positive interest and satisfaction."
+        },
+        "sentiment_score": 0.8,
+        "emotions": [
+            "interest",
+            "curiosity",
+            "satisfaction"
+        ],
+        "sentiment_justification": "The user has actively engaged with multiple features of the car, including exterior, technology, and safety views, while also configuring options and exploring variants and pricing. Additionally, they have shown intent by locating a dealer and booking a test drive, indicating positive interest and satisfaction.",
+        "prioritization_data": {
+            "task": "prioritization_agent",
+            "priority_level": "HOT",
+            "prioritization_score": 82,
+            "customer_summary": {
+                "contact_info": {
+                    "phone": "9555666777",
+                    "email": "rahul.jha@iamdave.ai"
+                },
+                "customer_profile": {
+                    "location": "Chennai, 600001",
+                    "interested_models": "Baleno",
+                    "source": "website",
+                    "preferred_colors": [
+                        "Premium Silver"
+                    ]
+                },
+                "key_interests": [
+                    "Pricing and variants",
+                    "Safety features",
+                    "Dual Airbags",
+                    "Cruise Control",
+                    "ABS",
+                    "Technology features",
+                    "SmartPlay Pro+",
+                    "Reverse Parking Sensors"
+                ],
+                "preferred_models": [
+                    "Baleno"
+                ],
+                "preferred_colors": [
+                    "Premium Silver"
+                ],
+                "budget_category": "mid-range"
+            },
+            "risk_factors": [
+                "Brochure not downloaded",
+                "Finance and offer not explored"
+            ],
+            "talking_points": [
+                "Highlight the Premium Silver color choice and its availability.",
+                "Discuss the advanced technology features like SmartPlay Pro+ and Cruise Control.",
+                "Emphasize safety features such as Dual Airbags and ABS.",
+                "Provide information on manual and AMT transmission options.",
+                "Offer assistance in locating a dealer and booking a test drive."
+            ],
+            "recommended_actions": [
+                "immediate_phone_call",
+                "dealer_assignment",
+                "special_offers",
+                "priority_scheduling",
+                "personalized_email",
+                "confirm_test_drive"
+            ]
+        }
+    },
+    {
+        "source": {
+            "uuid": "456b7890-f12c-34d5-b678-901234567890",
+            "name": "Puneet Sharma",
+            "phone": "9560365670",
+            "email": "puneet@iamdave.ai",
+            "city": "Mumbai",
+            "pincode": "400001",
+            "device": "mobile",
+            "os": "Android",
+            "interested_models": [
+                "Fronx"
+            ],
+            "preferred_contact_time": "Morning",
+            "lead_status": "Hot",
+            "source": "website",
+            "utm": {
+                "source": "google",
+                "medium": "organic",
+                "campaign": "fronx_launch_2024",
+                "term": "fronx compact suv",
+                "content": "search result"
+            },
+            "model": "Fronx",
+            "url": "https://www.nexaexperience.com/fronx",
+            "date": "2025-07-25",
+            "time": "14:15 +530",
+            "hd_view": "on",
+            "exterior": true,
+            "interior": true,
+            "performance": true,
+            "technology": false,
+            "safety": true,
+            "configure": true,
+            "suzuki_connect": true,
+            "colours": [
+                "Brave Khaki",
+                "Splendid Silver",
+                "Earthen Brown"
+            ],
+            "final_colour": [
+                "Brave Khaki",
+                "Splendid Silver"
+            ],
+            "exterior_views": 5,
+            "interior_views": [
+                "Dashboard",
+                "Seats",
+                "Boot Space"
+            ],
+            "performance_views": [
+                "Turbo Engine",
+                "Fuel Efficiency"
+            ],
+            "safety_views": [
+                "ABS with EBD",
+                "Dual Airbags",
+                "ESP"
+            ],
+            "brochure_download": true,
+            "variants_and_pricing": true,
+            "build_your_own": true,
+            "transmission_types": [
+                "manual",
+                "automatic"
+            ],
+            "powertrains": [
+                "petrol",
+                "cng"
+            ],
+            "compared_cars": [
+                "baleno",
+                "swift"
+            ],
+            "finance_and_offer": true,
+            "locate_dealer": true,
+            "book_test_drive": false
+        },
+        "propensity_score": {
+            "branding_and_looks": 0.8,
+            "safety_and_environment": 0.9,
+            "comfort_and_convenience": 0.7,
+            "technology_and_performance": 0.85,
+            "infotainment_and_connectivity": 0.6
+        },
+        "comparison": {
+            "Fronx Sigma 1.2L vs Tata Nexon XZ+ (O) Diesel": {
+                "price": {
+                    "Fronx Sigma 1.2L": "\u20b98,00,000",
+                    "Tata Nexon XZ+ (O) Diesel": "\u20b912,59,900"
+                },
+                "fuel_efficiency": {
+                    "Fronx Sigma 1.2L": "21.79 kmpl",
+                    "Tata Nexon XZ+ (O) Diesel": "21.1 kmpl"
+                },
+                "safety_features": {
+                    "Fronx Sigma 1.2L": "Dual airbags, ABS with EBD, ESP, hill-hold assist, ISOFIX",
+                    "Tata Nexon XZ+ (O) Diesel": "Dual airbags, ABS with EBD, ESP, traction control, hill-start assist, corner stability control"
+                },
+                "technology_and_performance": {
+                    "Fronx Sigma 1.2L": "1.2L petrol engine, 89.73 PS, 113 Nm torque, 5MT",
+                    "Tata Nexon XZ+ (O) Diesel": "1.5L turbo diesel engine, 110 PS, 260 Nm torque, 6MT"
+                },
+                "comfort_and_convenience": {
+                    "Fronx Sigma 1.2L": "Manual AC, power windows, tilt steering, central locking",
+                    "Tata Nexon XZ+ (O) Diesel": "Automatic climate control, height-adjustable driver seat, premium leatherette upholstery"
+                },
+                "infotainment": {
+                    "Fronx Sigma 1.2L": "Basic audio unit, MID display",
+                    "Tata Nexon XZ+ (O) Diesel": "8-inch touchscreen, Harman audio system, Android Auto, Apple CarPlay"
+                }
+            },
+            "Fronx Sigma 1.2L vs Hyundai Venue SX 1.5 CRDi": {
+                "price": {
+                    "Fronx Sigma 1.2L": "\u20b98,00,000",
+                    "Hyundai Venue SX 1.5 CRDi": "\u20b912,46,000"
+                },
+                "fuel_efficiency": {
+                    "Fronx Sigma 1.2L": "21.79 kmpl",
+                    "Hyundai Venue SX 1.5 CRDi": "23.4 kmpl"
+                },
+                "safety_features": {
+                    "Fronx Sigma 1.2L": "Dual airbags, ABS with EBD, ESP, hill-hold assist, ISOFIX",
+                    "Hyundai Venue SX 1.5 CRDi": "Dual airbags, ABS with EBD, ESC, hill-start assist, child safety locks"
+                },
+                "technology_and_performance": {
+                    "Fronx Sigma 1.2L": "1.2L petrol engine, 89.73 PS, 113 Nm torque, 5MT",
+                    "Hyundai Venue SX 1.5 CRDi": "1.5L diesel engine, 115 PS, 250 Nm torque, 6MT"
+                },
+                "comfort_and_convenience": {
+                    "Fronx Sigma 1.2L": "Manual AC, power windows, tilt steering, central locking",
+                    "Hyundai Venue SX 1.5 CRDi": "Tilt/telescopic steering, wireless charging, keyless entry"
+                },
+                "infotainment": {
+                    "Fronx Sigma 1.2L": "Basic audio unit, MID display",
+                    "Hyundai Venue SX 1.5 CRDi": "8-inch touchscreen, Android Auto, Apple CarPlay"
+                }
+            },
+            "Fronx Sigma 1.2L vs Hyundai Venue S 1.2 Petrol": {
+                "price": {
+                    "Fronx Sigma 1.2L": "\u20b98,00,000",
+                    "Hyundai Venue S 1.2 Petrol": "\u20b99,28,000"
+                },
+                "fuel_efficiency": {
+                    "Fronx Sigma 1.2L": "21.79 kmpl",
+                    "Hyundai Venue S 1.2 Petrol": "19.0 kmpl"
+                },
+                "safety_features": {
+                    "Fronx Sigma 1.2L": "Dual airbags, ABS with EBD, ESP, hill-hold assist, ISOFIX",
+                    "Hyundai Venue S 1.2 Petrol": "Dual airbags, ABS with EBD, ESP, traction control"
+                },
+                "technology_and_performance": {
+                    "Fronx Sigma 1.2L": "1.2L petrol engine, 89.73 PS, 113 Nm torque, 5MT",
+                    "Hyundai Venue S 1.2 Petrol": "1.2L petrol engine, 82 PS, 113.8 Nm torque, 5MT"
+                },
+                "comfort_and_convenience": {
+                    "Fronx Sigma 1.2L": "Manual AC, power windows, tilt steering, central locking",
+                    "Hyundai Venue S 1.2 Petrol": "Manual AC, tilt steering, power-adjustable ORVMs"
+                },
+                "infotainment": {
+                    "Fronx Sigma 1.2L": "Basic audio unit, MID display",
+                    "Hyundai Venue S 1.2 Petrol": "7-inch touchscreen, Android Auto, Apple CarPlay"
+                }
+            }
+        },
+        "comparison_cars": [
+            [
+                {
+                    "price": "1259900.0",
+                    "general": [
+                        "BS6 Compliant",
+                        "Idle Start-Stop System",
+                        "Manual - 6 Gears",
+                        "Sport Mode"
+                    ],
+                    "fuel_type": "Diesel",
+                    "brand_name": "Tata",
+                    "product_id": "tata_nexon_xz+_o_diesel_1654",
+                    "product_name": "Nexon",
+                    "variant_name": "XZ+ (O) (Top variant with more features)",
+                    "vehicle_type": "SUV",
+                    "branding_and_looks": [
+                        "SUV",
+                        "LED Projector Headlamps",
+                        "LED Daytime Running Lights (DRLs)",
+                        "19-inch Diamond-Cut Alloy Wheels",
+                        "Dual-Tone Roof Option",
+                        "Cascading Chrome Grille",
+                        "Rear Spoiler",
+                        "Roof Rails",
+                        "Length 3993 mm",
+                        "Width 1811 mm",
+                        "Height 1606 mm",
+                        "Wheelbase: 2498 mm",
+                        "SingleTone: Foliage Green, Daytona Grey, Tectonic Blue"
+                    ],
+                    "safety_and_environment": [
+                        "Dual Front Airbags",
+                        "ABS with EBD",
+                        "Electronic Stability Program (ESP)",
+                        "Rear Parking Camera",
+                        "Rear Parking Sensors",
+                        "Corner Stability Control",
+                        "Traction Control",
+                        "Child Safety Locks",
+                        "Hill Start Assist"
+                    ],
+                    "comfort_and_convenience": [
+                        "Premium Leatherette Upholstery",
+                        "8.0-inch Touchscreen Infotainment",
+                        "Apple CarPlay",
+                        "Android Auto",
+                        "Harman Kardon Audio System",
+                        "Automatic Climate Control",
+                        "Height-Adjustable Driver Seat",
+                        "Rear Armrest with Cupholders",
+                        "Ambient Lighting",
+                        "Cooled Glovebox",
+                        "Power Steering",
+                        "Electric ORVMs",
+                        "Tilt and Telescopic Steering Wheel",
+                        "Keyless Entry",
+                        "Push-Button Start",
+                        "One-Touch Power Windows",
+                        "Front and Rear USB Charging Ports",
+                        "Rain-Sensing Wipers",
+                        "Automatic Headlamps",
+                        "Auto-Dimming IRVM"
+                    ],
+                    "technology_and_performance": [
+                        "1497 cc, 4 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "1.5L 4-Cylinder Turbo Diesel Engine",
+                        "110 PS of power",
+                        "260 Nm of torque",
+                        "6-Speed Manual Transmission",
+                        "Fuel Tank Capacity: 44 litres",
+                        "Fuel efficiency: 21.1 kmpl",
+                        "350 litres Boot Space"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "Fully Digital Instrument Cluster",
+                        "7-inch touchscreen",
+                        "Android Auto",
+                        "Apple CarPlay",
+                        "Bluetooth",
+                        "USB"
+                    ]
+                },
+                {
+                    "price": "1209900.0",
+                    "general": [
+                        "Year of manufacturing: 2020",
+                        "Active/Inactive edition: Inactive",
+                        "Transmission: Manual - 6 Gears, Sport Mode",
+                        "Seating: 5"
+                    ],
+                    "fuel_type": "Diesel",
+                    "brand_name": "Tata",
+                    "product_id": "nexon_xz+ s_diesel_1656",
+                    "product_name": "Nexon",
+                    "variant_name": "XZ+ (S)",
+                    "vehicle_type": "SUV",
+                    "branding_and_looks": [
+                        "Pattern: SUV",
+                        "Bold Front Design: The Nexon XZ+ (S) Diesel boasts a bold front profile with a tri-arrow design grille and Tata's signature Humanity Line, enhancing its road presence.",
+                        "LED DRLs and Projector Headlamps: It features LED Daytime Running Lights (DRLs) along with projector headlamps, giving the car a modern and premium appeal.",
+                        "Dual Tone Roof: The dual-tone roof option adds a stylish contrast to the body color, making it visually appealing.",
+                        "Diamond-Cut Alloy Wheels: The 16-inch diamond-cut alloy wheels further enhance the car\u2019s sporty look and give it a premium touch.",
+                        "Roof Rails: The roof rails give the Nexon a rugged, SUV-like stance while adding utility for carrying additional luggage or equipment.",
+                        "Body-Colored ORVMs: The outside rear-view mirrors (ORVMs) are body-colored, which add to the cohesive, polished design of the vehicle.",
+                        "Dimension: Length 3993 mm Width 1811 mm Height 1606 mm",
+                        "Wheelbase: 2498 mm",
+                        "Boot Space: 350 litres",
+                        "Colours: SingleTone: Flame Red, White, Foliage Green"
+                    ],
+                    "safety_and_environment": [
+                        "Dual Front Airbags: The Nexon XZ+ (S) Diesel is equipped with dual front airbags, ensuring the safety of the driver and front passenger in the event of a collision.",
+                        "ABS with EBD: The Anti-lock Braking System (ABS) with Electronic Brake-force Distribution (EBD) ensures better control and braking performance, especially in emergency situations.",
+                        "ESP and TCS: The Electronic Stability Program (ESP) and Traction Control System (TCS) enhance the vehicle's stability, ensuring it remains planted on the road during challenging driving conditions.",
+                        "Rear Parking Sensors and Camera: The rear parking sensors and camera make reversing and parking easier, helping to avoid obstacles.",
+                        "Child Safety Locks: The child safety locks on the rear doors ensure that young passengers remain secure at all times.",
+                        "Hill Hold Control: The Hill Hold Control prevents the vehicle from rolling backward when starting on an incline, especially in hilly terrains.",
+                        "Eco Friendly: Diesel, BS6 Compliant, Regenerative Braking"
+                    ],
+                    "comfort_and_convenience": [
+                        "Power Steering: The power steering system ensures easy handling, making the Nexon convenient to drive, especially in traffic.",
+                        "Power Windows: The car comes with power windows, allowing you to adjust the windows with the push of a button.",
+                        "Cruise Control: The cruise control feature is ideal for long highway drives, allowing the vehicle to maintain a constant speed without the need for constant pedal input.",
+                        "Driver Seat Height Adjustment: The driver seat height adjustment allows the driver to customize the seating position for better comfort.",
+                        "Rear Seat Armrest: The rear seat armrest comes with cup holders for added comfort for rear-seat passengers.",
+                        "Keyless Entry and Push-Button Start: The keyless entry and push-button start systems add convenience and ease of use, letting you start the car without removing the key from your pocket."
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1497 cc, 4 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "Engine & Performance: 1.5L Turbocharged Diesel Engine: The Nexon XZ+ (S) Diesel is powered by a 1.5L turbocharged diesel engine, providing an excellent balance between power and fuel efficiency.",
+                        "Power Output: The engine produces 110 PS of power and 260 Nm of torque, delivering strong performance for both city driving and highway cruising.",
+                        "Fuel Capicity: 44 Litres",
+                        "Power: 108 bhp @ 4000 rpm",
+                        "torque: 260 Nm @ 1500 rpm",
+                        "Fuel efficiency: 21.1 kmpl",
+                        "Front-Wheel Drive (FWD): The Nexon XZ+ (S) Diesel is a front-wheel-drive vehicle, offering improved traction and stability on urban roads."
+                    ],
+                    "infotainment_and_connectivity": [
+                        "Interior: Premium Upholstery: The interior of the Nexon XZ+ (S) Diesel comes with premium dual-tone upholstery, combining comfort and style.",
+                        "7-inch Touchscreen Infotainment: The car features a 7-inch touchscreen infotainment system with Apple CarPlay, Android Auto, and Bluetooth connectivity, ensuring seamless connectivity and entertainment while on the go.",
+                        "Digital Instrument Cluster: The digital instrument cluster provides modern, easy-to-read information on speed, fuel consumption, and other vehicle details.",
+                        "Automatic Climate Control: The automatic climate control system offers consistent cabin comfort by maintaining a desired temperature.",
+                        "Wireless Charging: The wireless charging pad allows you to charge your devices without any cables, adding a layer of convenience.",
+                        "Leather-Wrapped Steering Wheel: The leather-wrapped steering wheel adds a premium touch to the car\u2019s interior.",
+                        "Technology: 7-inch touchscreen, Android Auto, Apple CarPlay, Bluetooth, USB"
+                    ]
+                },
+                {
+                    "price": "1144900.0",
+                    "general": [
+                        "Warranty information not specified.",
+                        "Available with 6-speed manual transmission and optional AMT.",
+                        "Supports Petrol fuel.",
+                        "5-seater capacity."
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Tata",
+                    "product_id": "nexon_xz+ s_petrol_1648",
+                    "product_name": "Nexon",
+                    "variant_name": "XZ+ (S)",
+                    "vehicle_type": "SUV",
+                    "branding_and_looks": [
+                        "Bold and sporty design with sharp, aggressive lines.",
+                        "Coupe-like roofline.",
+                        "16-inch dual-tone alloy wheels.",
+                        "Projector headlights with LED DRLs.",
+                        "LED tail-lights.",
+                        "Front fog lamps.",
+                        "Ground clearance of 209 mm.",
+                        "Integrated roof rails.",
+                        "Black body cladding.",
+                        "Exterior dimensions: Length 3993 mm, Width 1811 mm, Height 1606 mm.",
+                        "Wheelbase: 2498 mm.",
+                        "Available colors: Foliage Green, Flame Red, Glacier White, Pure Silver, Bombay Black."
+                    ],
+                    "safety_and_environment": [
+                        "Dual front airbags (driver and passenger).",
+                        "ABS with EBD.",
+                        "ESC (Electronic Stability Control).",
+                        "Rear parking sensors & camera.",
+                        "Built on a strong and robust platform with high-strength steel.",
+                        "ISOFIX child seat mounts.",
+                        "BS6 compliant.",
+                        "Idle Start-Stop System."
+                    ],
+                    "comfort_and_convenience": [
+                        "Automatic climate control with rear AC vents.",
+                        "Multifunction steering wheel with controls for audio, calls, and cruise control.",
+                        "Wireless charging (available in higher variants).",
+                        "Automatic power windows with one-touch functionality.",
+                        "Cruise Control (available in higher trims).",
+                        "Height-adjustable driver seat.",
+                        "Driver Information System.",
+                        "Keyless Entry & Push-Button Start."
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1.2L Revotron turbocharged petrol engine.",
+                        "Engine specifications: 1199 cc, 3 Cylinders Inline, 2 Valves/Cylinder, SOHC.",
+                        "Power Output: 110 bhp and 170 Nm of torque.",
+                        "Power: 118 bhp @ 5500 rpm.",
+                        "Torque: 170 Nm @ 1750 rpm.",
+                        "Fuel Efficiency: 17.33 kmpl.",
+                        "Fuel Tank Capacity: 44 litres.",
+                        "Transmission: Manual - 6 Gears, Sport Mode.",
+                        "Drive Modes: Eco and City."
+                    ],
+                    "infotainment_and_connectivity": [
+                        "7-inch touchscreen infotainment system.",
+                        "Apple CarPlay and Android Auto.",
+                        "Harman sound system.",
+                        "Fully digital or semi-digital instrument cluster.",
+                        "Bluetooth.",
+                        "USB."
+                    ]
+                }
+            ],
+            [
+                {
+                    "price": "1246000.0",
+                    "general": [
+                        "Warranty details not specified.",
+                        "6-speed manual transmission",
+                        "Diesel",
+                        "5 Seating capacity",
+                        "BS6 compliant"
+                    ],
+                    "fuel_type": "Diesel",
+                    "brand_name": "Hyundai",
+                    "product_id": "venue_sx_15_crdi_diesel_455",
+                    "product_name": "Venue",
+                    "variant_name": "SX 1.5 CRDi",
+                    "vehicle_type": "SUV",
+                    "branding_and_looks": [
+                        "Sleek & Modern Design",
+                        "LED Projector Headlamps",
+                        "16-inch diamond-cut alloy wheels",
+                        "LED Tail Lamps",
+                        "Chrome accents",
+                        "Length 3995 mm",
+                        "Width 1770 mm",
+                        "Height 1617 mm",
+                        "Typhoon Silver, Phantom Black, Polar White, Lava Orange"
+                    ],
+                    "safety_and_environment": [
+                        "Dual Front Airbags",
+                        "ABS with EBD",
+                        "Rear Parking Sensors",
+                        "Electronic Stability Control (ESC)",
+                        "Hill-Start Assist Control (HAC)",
+                        "Child safety locks",
+                        "Speed-sensing door locks",
+                        "BS6 compliant",
+                        "Idle Start-Stop System"
+                    ],
+                    "comfort_and_convenience": [
+                        "Keyless Entry & Push Button Start",
+                        "Tilt and telescopic adjustable steering wheel",
+                        "Electrically foldable outside rearview mirrors (ORVMs)",
+                        "Power windows",
+                        "Rear seat recline",
+                        "Wireless charging"
+                    ],
+                    "technology_and_performance": [
+                        "1.5-liter CRDi Diesel Engine",
+                        "115 PS of power",
+                        "250 Nm of torque",
+                        "6-speed manual transmission",
+                        "Fuel tank capacity: 45 litres",
+                        "Mileage: 23.4 kmpl",
+                        "6-speed manual transmission",
+                        "Suspension system not specified.",
+                        "Braking mechanism not specified."
+                    ],
+                    "infotainment_and_connectivity": [
+                        "8-inch touchscreen infotainment system",
+                        "Apple CarPlay integration",
+                        "Android Auto integration",
+                        "Digital instrument cluster",
+                        "Bluetooth",
+                        "USB"
+                    ]
+                },
+                {
+                    "price": "928000.0",
+                    "general": [
+                        "Transmission: Manual - 5 Gears",
+                        "Seating: 5",
+                        "Year of manufacturing: 2019",
+                        "Active edition"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Hyundai",
+                    "product_id": "venue_s_1.2_petrol_suv_454",
+                    "product_name": "Venue",
+                    "variant_name": "S 1.2 Petrol",
+                    "vehicle_type": "SUV",
+                    "branding_and_looks": [
+                        "Exterior: Body-colored bumpers and roof-mounted antenna.",
+                        "Exterior: Electrically adjustable outside rearview mirrors (ORVMs).",
+                        "Exterior: Roof rails for added utility.",
+                        "Dimension: Length 3995 mm Width 1770 mm Height 1617 mm",
+                        "Wheelbase: 2500 mm",
+                        "Standard tire size of 195/65 R15",
+                        "Colours: Typhoon Silver, Polar White, Starry Night, Fiery Red, Titan Grey, Midnight Black"
+                    ],
+                    "safety_and_environment": [
+                        "Safety: Anti-lock Braking System (ABS) with Electronic Brake-force Distribution (EBD) and Brake Assist (BA).",
+                        "Safety: Electronic Stability Program (ESP) and Hill Hold Control for improved stability.",
+                        "Safety: Traction Control System (TCS) for enhanced grip.",
+                        "Eco Friendly: BS6 compliant, Idle Start-Stop System"
+                    ],
+                    "comfort_and_convenience": [
+                        "Interior: Manual air conditioning.",
+                        "Interior: Tilt-adjustable steering wheel.",
+                        "Interior: Power-adjustable exterior rearview mirrors.",
+                        "Boot space of 350 liters.",
+                        "Fuel tank capacity of 45 liters."
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1197 cc, 4 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "Engine & Performance: Engine Type: 1.2L Kappa petrol engine.",
+                        "Power: 82 bhp @ 6000 rpm",
+                        "torque: 113.8 Nm @ 4000 rpm",
+                        "Fuel efficiency: 19.0 kmpl"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "Technology: 7-inch SmartPlay Studio touchscreen, Android Auto, Apple CarPlay, Bluetooth, USB"
+                    ]
+                },
+                {
+                    "price": "1079700.0",
+                    "general": [
+                        "BS6 Compliant",
+                        "Manual transmission",
+                        "Diesel",
+                        "5 Seating capacity",
+                        "Idle Start-Stop System"
+                    ],
+                    "fuel_type": "Diesel",
+                    "brand_name": "Hyundai",
+                    "product_id": "venue_s_plus_1.5_crdi_diesel_458",
+                    "product_name": "Venue",
+                    "variant_name": "S Plus 1.5 CRDi",
+                    "vehicle_type": "SUV",
+                    "branding_and_looks": [
+                        "SUV",
+                        "Steel Wheels with Covers",
+                        "Body-Colored Bumpers",
+                        "Body-Colored Door Handles",
+                        "Roof Rails",
+                        "Polar White",
+                        "Typhoon Silver",
+                        "Phantom Black",
+                        "Length 3995 mm",
+                        "Width 1770 mm",
+                        "Height 1617 mm",
+                        "Wheelbase 2500 mm",
+                        "Boot Space 350 litres"
+                    ],
+                    "safety_and_environment": [
+                        "Dual Front Airbags",
+                        "ABS with EBD",
+                        "Rear Parking Sensors",
+                        "Speed-Sensing Door Locks",
+                        "Child Safety Locks"
+                    ],
+                    "comfort_and_convenience": [
+                        "Fabric Upholstery",
+                        "Manual Air Conditioning",
+                        "Steering Mounted Controls",
+                        "Keyless Entry",
+                        "Manual Seat Adjustments",
+                        "Power Windows",
+                        "Electrically Adjustable ORVMs",
+                        "Tilt and Telescopic Steering"
+                    ],
+                    "technology_and_performance": [
+                        "1493 cc, 4 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "100 PS of power",
+                        "240 Nm of torque",
+                        "6-speed manual transmission",
+                        "45 Litres Fuel Capacity",
+                        "Fuel efficiency: 23.4 kmpl",
+                        "113 bhp @ 4000 rpm",
+                        "250 Nm @ 1500 rpm"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "7-inch Touchscreen Infotainment System",
+                        "Apple CarPlay",
+                        "Android Auto",
+                        "Analog Instrument Cluster",
+                        "Bluetooth",
+                        "USB",
+                        "8-inch touchscreen"
+                    ]
+                }
+            ]
+        ],
+        "common_points": [
+            "5-seater compact SUV",
+            "Manual transmission available",
+            "Dual airbags",
+            "ABS with EBD",
+            "BS-VI compliant",
+            "Tilt steering"
+        ],
+        "key_differences": {
+            "price": {
+                "Fronx Sigma 1.2L": "\u20b98,00,000",
+                "Tata Nexon XZ+ (O) Diesel": "\u20b912,59,900",
+                "Hyundai Venue SX 1.5 CRDi": "\u20b912,46,000",
+                "Hyundai Venue S 1.2 Petrol": "\u20b99,28,000"
+            },
+            "fuel_efficiency": {
+                "Fronx Sigma 1.2L": "21.79 kmpl",
+                "Tata Nexon XZ+ (O) Diesel": "21.1 kmpl",
+                "Hyundai Venue SX 1.5 CRDi": "23.4 kmpl",
+                "Hyundai Venue S 1.2 Petrol": "19.0 kmpl"
+            },
+            "engine_performance": {
+                "Fronx Sigma 1.2L": "1.2L petrol engine, 89.73 PS, 113 Nm torque",
+                "Tata Nexon XZ+ (O) Diesel": "1.5L diesel engine, 110 PS, 260 Nm torque",
+                "Hyundai Venue SX 1.5 CRDi": "1.5L diesel engine, 115 PS, 250 Nm torque",
+                "Hyundai Venue S 1.2 Petrol": "1.2L petrol engine, 82 PS, 113.8 Nm torque"
+            },
+            "comfort_and_features": {
+                "Fronx Sigma 1.2L": "Basic, manual AC, tilt steering",
+                "Tata Nexon XZ+ (O) Diesel": "Premium leatherette upholstery, automatic climate control",
+                "Hyundai Venue SX 1.5 CRDi": "Wireless charging, tilt/telescopic steering",
+                "Hyundai Venue S 1.2 Petrol": "Power-adjustable mirrors, manual AC"
+            }
+        },
+        "user_choice_justification": {
+            "Fronx Sigma 1.2L": "The Fronx Sigma 1.2L is the most affordable option among the compared models, making it ideal for budget-conscious buyers. It offers decent fuel efficiency, essential safety features, and a reliable petrol engine suitable for city driving. Its compact dimensions and manual transmission make it easy to maneuver in urban environments, while its competitive pricing ensures value for money."
+        },
+        "user_sentiments": {
+            "task": "sentiment_analysis_agent",
+            "user_input": "Exploring the Fronx model extensively with high interest in features, colors, and pricing.",
+            "sentiment_score": 0.85,
+            "emotions": [
+                "satisfaction",
+                "curiosity"
+            ],
+            "justification": "The user has downloaded the brochure, explored various features like exterior, interior, safety, and performance, configured the car, and viewed pricing and variants. These actions indicate strong interest and a positive sentiment toward the product."
+        },
+        "sentiment_score": 0.85,
+        "emotions": [
+            "satisfaction",
+            "curiosity"
+        ],
+        "sentiment_justification": "The user has downloaded the brochure, explored various features like exterior, interior, safety, and performance, configured the car, and viewed pricing and variants. These actions indicate strong interest and a positive sentiment toward the product.",
+        "prioritization_data": {
+            "task": "prioritization_agent",
+            "priority_level": "HOT",
+            "prioritization_score": 83,
+            "customer_summary": {
+                "contact_info": {
+                    "phone": "9560365670",
+                    "email": "puneet@iamdave.ai"
+                },
+                "customer_profile": {
+                    "location": "Mumbai, 400001",
+                    "interested_models": "Fronx",
+                    "source": "website",
+                    "preferred_colors": [
+                        "Brave Khaki",
+                        "Splendid Silver"
+                    ]
+                },
+                "key_interests": [
+                    "Exterior",
+                    "Performance",
+                    "Finance options",
+                    "Safety features",
+                    "Safety",
+                    "Interior",
+                    "Pricing and variants"
+                ],
+                "preferred_models": [
+                    "Fronx"
+                ],
+                "preferred_colors": [
+                    "Brave Khaki",
+                    "Splendid Silver"
+                ],
+                "budget_category": "mid-range"
+            },
+            "risk_factors": [
+                "No test drive booked",
+                "Limited engagement with technology features"
+            ],
+            "talking_points": [
+                "Discuss the Brave Khaki and Splendid Silver color options, as these are shortlisted.",
+                "Highlight the safety features like ABS with EBD, Dual Airbags, and ESP.",
+                "Explain the performance advantages of Turbo Engine and Fuel Efficiency.",
+                "Provide details on finance options and offers available.",
+                "Reinforce the mid-range pricing of Fronx and its value proposition."
+            ],
+            "recommended_actions": [
+                "immediate_phone_call",
+                "dealer_assignment",
+                "special_offers",
+                "priority_scheduling",
+                "personalized_email",
+                "finance_consultation"
+            ]
+        }
+    },
+    {
+        "source": {
+            "uuid": "456b7890-f12c-34d5-b678-901234567890",
+            "name": "Puneet Sharma",
+            "phone": "9560365670",
+            "email": "puneet@iamdave.ai",
+            "city": "Mumbai",
+            "pincode": "400001",
+            "device": "mobile",
+            "os": "Android",
+            "interested_models": [
+                "Fronx"
+            ],
+            "preferred_contact_time": "Morning",
+            "lead_status": "Hot",
+            "source": "website",
+            "utm": {
+                "source": "google",
+                "medium": "organic",
+                "campaign": "fronx_launch_2024",
+                "term": "fronx compact suv",
+                "content": "search result"
+            },
+            "model": "Fronx",
+            "url": "https://www.nexaexperience.com/fronx",
+            "date": "2025-07-25",
+            "time": "14:15 +530",
+            "hd_view": "on",
+            "exterior": true,
+            "interior": true,
+            "performance": true,
+            "technology": false,
+            "safety": true,
+            "configure": true,
+            "suzuki_connect": true,
+            "colours": [
+                "Brave Khaki",
+                "Splendid Silver",
+                "Earthen Brown"
+            ],
+            "final_colour": [
+                "Brave Khaki",
+                "Splendid Silver"
+            ],
+            "exterior_views": 5,
+            "interior_views": [
+                "Dashboard",
+                "Seats",
+                "Boot Space"
+            ],
+            "performance_views": [
+                "Turbo Engine",
+                "Fuel Efficiency"
+            ],
+            "safety_views": [
+                "ABS with EBD",
+                "Dual Airbags",
+                "ESP"
+            ],
+            "brochure_download": true,
+            "variants_and_pricing": true,
+            "build_your_own": true,
+            "transmission_types": [
+                "manual",
+                "automatic"
+            ],
+            "powertrains": [
+                "petrol",
+                "cng"
+            ],
+            "compared_cars": [
+                "baleno",
+                "swift"
+            ],
+            "finance_and_offer": true,
+            "locate_dealer": true,
+            "book_test_drive": false
+        },
+        "propensity_score": {
+            "branding_and_looks": 0.8,
+            "safety_and_environment": 0.9,
+            "comfort_and_convenience": 0.7,
+            "technology_and_performance": 0.85,
+            "infotainment_and_connectivity": 0.6
+        },
+        "comparison": {
+            "Fronx Sigma 1.2L vs Kia Seltos GTX Plus 1.5 Turbo Petrol DCT Dual Tone": {
+                "price": {
+                    "Fronx Sigma 1.2L": "\u20b98,00,000",
+                    "Kia Seltos GTX Plus 1.5 Turbo Petrol DCT Dual Tone": "\u20b920,19,900"
+                },
+                "fuel_efficiency": {
+                    "Fronx Sigma 1.2L": "21.79 kmpl",
+                    "Kia Seltos GTX Plus 1.5 Turbo Petrol DCT Dual Tone": "17.9 kmpl"
+                },
+                "safety_features": {
+                    "Fronx Sigma 1.2L": "Dual airbags, ABS with EBD, ESP, hill-hold assist, ISOFIX",
+                    "Kia Seltos GTX Plus 1.5 Turbo Petrol DCT Dual Tone": "6 airbags, ABS with EBD, ESC, hill assist, 360-degree camera"
+                },
+                "technology": {
+                    "Fronx Sigma 1.2L": "Basic audio unit, MID display",
+                    "Kia Seltos GTX Plus 1.5 Turbo Petrol DCT Dual Tone": "10.25-inch touchscreen, Android Auto & Apple CarPlay, paddle shifters"
+                },
+                "space_and_dimensions": {
+                    "Fronx Sigma 1.2L": "3995 mm length, 1765 mm width, 1550 mm height, 2520 mm wheelbase",
+                    "Kia Seltos GTX Plus 1.5 Turbo Petrol DCT Dual Tone": "4365 mm length, 1800 mm width, 1645 mm height, 2610 mm wheelbase"
+                },
+                "driving_comfort": {
+                    "Fronx Sigma 1.2L": "Manual AC, tilt steering, power windows",
+                    "Kia Seltos GTX Plus 1.5 Turbo Petrol DCT Dual Tone": "Dual-zone automatic climate control, adaptive cruise control, wireless phone charging"
+                }
+            },
+            "Fronx Sigma 1.2L vs Hyundai Creta S 1.5 Petrol": {
+                "price": {
+                    "Fronx Sigma 1.2L": "\u20b98,00,000",
+                    "Hyundai Creta S 1.5 Petrol": "\u20b913,53,700"
+                },
+                "fuel_efficiency": {
+                    "Fronx Sigma 1.2L": "21.79 kmpl",
+                    "Hyundai Creta S 1.5 Petrol": "17.5 kmpl"
+                },
+                "safety_features": {
+                    "Fronx Sigma 1.2L": "Dual airbags, ABS with EBD, ESP, hill-hold assist, ISOFIX",
+                    "Hyundai Creta S 1.5 Petrol": "Dual airbags, ABS with EBD, rear parking sensors"
+                },
+                "technology": {
+                    "Fronx Sigma 1.2L": "Basic audio unit, MID display",
+                    "Hyundai Creta S 1.5 Petrol": "7-inch touchscreen, Android Auto & Apple CarPlay"
+                },
+                "space_and_dimensions": {
+                    "Fronx Sigma 1.2L": "3995 mm length, 1765 mm width, 1550 mm height, 2520 mm wheelbase",
+                    "Hyundai Creta S 1.5 Petrol": "4330 mm length, 1790 mm width, 1635 mm height, 2610 mm wheelbase"
+                },
+                "driving_comfort": {
+                    "Fronx Sigma 1.2L": "Manual AC, tilt steering, power windows",
+                    "Hyundai Creta S 1.5 Petrol": "Manual AC, tilt steering, keyless entry"
+                }
+            }
+        },
+        "comparison_cars": [
+            [
+                {
+                    "price": "2019900.0",
+                    "general": [
+                        "5-seat configuration",
+                        "7-speed Dual-Clutch Transmission (DCT) with paddle shifters",
+                        "Petrol",
+                        "Active edition"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Kia",
+                    "product_id": "seltos_gtx-plus-15-turbo-petrol-dct-dual-tone_614",
+                    "product_name": "Seltos",
+                    "variant_name": "GTX Plus 1.5 Turbo Petrol DCT Dual Tone",
+                    "vehicle_type": "mid-size SUV",
+                    "branding_and_looks": [
+                        "Dual-tone roof options",
+                        "Sporty bumpers",
+                        "Chrome accents",
+                        "17-inch diamond-cut alloy wheels",
+                        "Intense Red with Aurora Black Pearl color option",
+                        "Glacier White with Aurora Black Pearl color option",
+                        "Steel Silver",
+                        "Intense Red",
+                        "Gravity Grey",
+                        "Aurora Black",
+                        "Clear White",
+                        "Length 4365 mm",
+                        "Width 1800 mm",
+                        "Height 1645 mm",
+                        "Wheelbase: 2610 mm"
+                    ],
+                    "safety_and_environment": [
+                        "6 airbags (driver, front passenger, side, and curtain)",
+                        "ABS with EBD and Brake Assist",
+                        "Electronic Stability Control (ESC)",
+                        "Hill Assist Control",
+                        "360-degree camera",
+                        "Rear parking sensors",
+                        "ISOFIX child seat mounts",
+                        "BS6 compliant",
+                        "Idle Start-Stop System"
+                    ],
+                    "comfort_and_convenience": [
+                        "Premium leatherette upholstery",
+                        "Dual-zone automatic climate control",
+                        "Leather-wrapped steering wheel with multifunction controls",
+                        "Smart key with push-button start/stop",
+                        "8-way power-adjustable driver seat with lumbar support",
+                        "Wireless smartphone charging pad",
+                        "Adaptive cruise control with speed limiter",
+                        "Bluetooth connectivity for hands-free calling"
+                    ],
+                    "technology_and_performance": [
+                        "1482 cc, 4 Cylinders Inline, 4 Valves/Cylinder, DOHC engine",
+                        "1.5-liter turbocharged petrol engine",
+                        "158 bhp at 5,500 rpm",
+                        "253 Nm between 1,500\u20133,500 rpm",
+                        "Front-Wheel Drive (FWD)",
+                        "50 litres fuel capacity",
+                        "17.9 kmpl fuel efficiency (ARAI certified)",
+                        "Automatic (DCT) - 7 Gears",
+                        "Paddle Shift"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "10.25-inch touchscreen system with Android Auto and Apple CarPlay",
+                        "7-inch SmartPlay Studio touchscreen",
+                        "Android Auto",
+                        "Apple CarPlay",
+                        "Bluetooth",
+                        "USB"
+                    ]
+                },
+                {
+                    "price": "2050900.0",
+                    "general": [
+                        "mid-size SUV",
+                        "5-seat configuration",
+                        "BS6 compliant",
+                        "Idle Start-Stop System",
+                        "Active edition",
+                        "Year of manufacturing: 2019"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Kia",
+                    "product_id": "kia_seltos_x_line_15_turbo_petrol_dct_615",
+                    "product_name": "Seltos",
+                    "variant_name": "X Line 1.5 Turbo Petrol DCT",
+                    "vehicle_type": "mid-size SUV",
+                    "branding_and_looks": [
+                        "Dual-tone roof options",
+                        "sporty bumpers",
+                        "blacked-out grille",
+                        "chrome accents",
+                        "LED projector headlamps with LED DRLs",
+                        "17-inch diamond-cut alloy wheels",
+                        "Available in Intense Red with Aurora Black Pearl and Glacier White with Aurora Black Pearl",
+                        "Steel Silver, Intense Red, Gravity Grey, Aurora Black, Clear White",
+                        "Length 4365 mm Width 1800 mm Height 1645 mm",
+                        "Wheelbase: 2610 mm",
+                        "Boot Space: 433 litres"
+                    ],
+                    "safety_and_environment": [
+                        "6 airbags (driver, front passenger, side, and curtain)",
+                        "ABS with EBD and Brake Assist",
+                        "Electronic Stability Control (ESC)",
+                        "Hill Assist Control",
+                        "360-degree camera",
+                        "rear parking sensors",
+                        "ISOFIX child seat mounts",
+                        "No Intelligent Electric Hybrid System",
+                        "No Regenerative Braking"
+                    ],
+                    "comfort_and_convenience": [
+                        "premium leatherette upholstery",
+                        "Dual-zone automatic climate control",
+                        "Leather-wrapped steering wheel with multifunction controls",
+                        "Smart key with push-button start/stop",
+                        "8-way power-adjustable driver seat with lumbar support",
+                        "Wireless smartphone charging pad",
+                        "Adaptive cruise control with speed limiter",
+                        "Bluetooth connectivity for hands-free calling"
+                    ],
+                    "technology_and_performance": [
+                        "1482 cc, 4 Cylinders Inline, 4 Valves/Cylinder, DOHC engine",
+                        "1.5-liter turbocharged petrol engine",
+                        "Power Output: 158 bhp at 5,500 rpm",
+                        "Torque: 253 Nm between 1,500\u20133,500 rpm",
+                        "7-speed Dual-Clutch Transmission (DCT) with paddle shifters",
+                        "Front-Wheel Drive (FWD)",
+                        "Fuel Efficiency: Approximately 17.9 kmpl (ARAI certified)",
+                        "Fuel Capicity: 50 litres",
+                        "Power: 158 bhp @ 5500 rpm",
+                        "torque: 253 Nm @ 1500-3500 rpm",
+                        "Transmission: Automatic (DCT) - 7 Gears, Paddle Shift",
+                        "Fuel efficiency: 17.9 kmpl"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "10.25-inch touchscreen system with Android Auto and Apple CarPlay",
+                        "7-inch SmartPlay Studio touchscreen",
+                        "Android Auto",
+                        "Apple CarPlay",
+                        "Bluetooth",
+                        "USB"
+                    ]
+                },
+                {
+                    "price": "1999900.0",
+                    "general": [
+                        "Warranty details not provided",
+                        "Transmission: Automatic (DCT) - 7 Gears, Paddle Shift",
+                        "Fuel: Petrol",
+                        "Seating capacity: 5",
+                        "BS6 compliant",
+                        "Year of manufacturing: 2019",
+                        "Active edition"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Kia",
+                    "product_id": "kiaseltosgtxplus1.5turbopetrolDCT_616",
+                    "product_name": "Seltos",
+                    "variant_name": "GTX Plus 1.5 Turbo Petrol DCT",
+                    "vehicle_type": "mid-size SUV",
+                    "branding_and_looks": [
+                        "mid-size SUV",
+                        "Dual-tone roof options",
+                        "sporty bumpers",
+                        "blacked-out grille",
+                        "chrome accents",
+                        "LED projector headlamps with LED DRLs",
+                        "17-inch diamond-cut alloy wheels",
+                        "Available body colors: Aurora Black Pearl, Gravity Grey, Imperial Blue, Pewter Olive, Intense Red, Sparkling Silver, Glacier White Pearl",
+                        "Length: 4365 mm",
+                        "Width: 1800 mm",
+                        "Height: 1645 mm",
+                        "Wheelbase: 2610 mm",
+                        "Boot Space: 433 litres"
+                    ],
+                    "safety_and_environment": [
+                        "6 airbags (driver, front passenger, side, and curtain)",
+                        "ABS with EBD and Brake Assist",
+                        "Electronic Stability Control (ESC)",
+                        "Hill Assist Control",
+                        "360-degree camera",
+                        "Rear parking sensors",
+                        "ISOFIX child seat mounts",
+                        "Idle Start-Stop System",
+                        "No Intelligent Electric Hybrid System",
+                        "No Regenerative Braking"
+                    ],
+                    "comfort_and_convenience": [
+                        "5-seat configuration",
+                        "premium leatherette upholstery",
+                        "10.25-inch touchscreen system with Android Auto and Apple CarPlay",
+                        "Dual-zone automatic climate control",
+                        "Leather-wrapped steering wheel with multifunction controls",
+                        "Smart key with push-button start/stop",
+                        "8-way power-adjustable driver seat with lumbar support",
+                        "Wireless smartphone charging pad",
+                        "Adaptive cruise control with speed limiter",
+                        "Bluetooth connectivity for hands-free calling"
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1.5-liter turbocharged petrol engine",
+                        "1482 cc",
+                        "4 Cylinders Inline",
+                        "4 Valves/Cylinder",
+                        "DOHC",
+                        "Power Output: 158 bhp at 5,500 rpm",
+                        "Torque: 253 Nm between 1,500\u20133,500 rpm",
+                        "Transmission: 7-speed Dual-Clutch Transmission (DCT) with paddle shifters",
+                        "Drivetrain: Front-Wheel Drive (FWD)",
+                        "Fuel Efficiency: Approximately 17.9 kmpl (ARAI certified)",
+                        "Fuel tank capacity: 50 litres"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "7-inch SmartPlay Studio touchscreen",
+                        "Android Auto",
+                        "Apple CarPlay",
+                        "Bluetooth",
+                        "USB"
+                    ]
+                }
+            ],
+            [
+                {
+                    "price": "1353700.0",
+                    "general": [
+                        "SUV",
+                        "BS6 Compliant",
+                        "Idle Start-Stop System",
+                        "5 Seating Capacity"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Hyundai",
+                    "product_id": "creta_s_1.5_petrol_409",
+                    "product_name": "Creta",
+                    "variant_name": "S 1.5 Petrol",
+                    "vehicle_type": "SUV",
+                    "branding_and_looks": [
+                        "Stylish 16-inch alloy wheels",
+                        "LED Daytime Running Lamps (DRLs)",
+                        "Halogen Headlamps",
+                        "Length 4330 mm",
+                        "Width 1790 mm",
+                        "Height 1635 mm",
+                        "Wheelbase 2610 mm",
+                        "Single Tone: Phantom Black, Typhoon Silver, Polar White",
+                        "Boot Space: 405 Litres"
+                    ],
+                    "safety_and_environment": [
+                        "Dual front airbags",
+                        "Anti-lock Braking System (ABS) with Electronic Brakeforce Distribution (EBD)",
+                        "Rear parking sensors",
+                        "Rear windshield defogger",
+                        "Child safety lock"
+                    ],
+                    "comfort_and_convenience": [
+                        "Spacious cabin with comfortable fabric upholstery",
+                        "Ergonomically designed seats",
+                        "Manual air conditioning",
+                        "Multi-function steering controls",
+                        "Power windows",
+                        "Keyless entry",
+                        "Electrically adjustable ORVMs",
+                        "Tilt steering (height and reach adjustable)",
+                        "Cup holders in the front and rear",
+                        "Ample boot space"
+                    ],
+                    "technology_and_performance": [
+                        "1.5L naturally aspirated petrol engine",
+                        "Engine: 1497 cc, 4 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "Power: 113 bhp @ 6300 rpm",
+                        "Torque: 143.8 Nm @ 4500 rpm",
+                        "Transmission: Manual - 6 Gears",
+                        "Fuel Capacity: 50 litres",
+                        "Fuel Efficiency: 17.5 kmpl",
+                        "7-inch touchscreen infotainment system",
+                        "Apple CarPlay and Android Auto",
+                        "Bluetooth",
+                        "USB"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "7-inch touchscreen infotainment system",
+                        "Apple CarPlay",
+                        "Android Auto",
+                        "Bluetooth",
+                        "USB"
+                    ]
+                },
+                {
+                    "price": "1596900.0",
+                    "general": [
+                        "BS6 Compliant",
+                        "Idle Start-Stop System",
+                        "Automatic (CVT) - 6 Gears, Paddle Shift",
+                        "Seating: 5"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Hyundai",
+                    "product_id": "creta_s_(o)_1.5_petrol_cvt_410",
+                    "product_name": "Creta",
+                    "variant_name": "S (O) 1.5 Petrol CVT",
+                    "vehicle_type": "SUV",
+                    "branding_and_looks": [
+                        "SUV",
+                        "Sleek Design",
+                        "Stylish front grille with chrome elements",
+                        "LED DRLs",
+                        "16-inch alloy wheels",
+                        "Roof Rails",
+                        "Halogen Projector Headlamps",
+                        "Dimension: Length 4330 mm Width 1790 mm Height 1635 mm",
+                        "Wheelbase: 2610 mm",
+                        "Boot Space: 405 Litres",
+                        "Colours: SingleTone: Phantom Black, Typhoon Silver, Polar White"
+                    ],
+                    "safety_and_environment": [
+                        "Dual Front Airbags",
+                        "ABS with EBD",
+                        "Rear Parking Sensors & Camera",
+                        "ESC and Vehicle Stability Management",
+                        "Rear Disc Brakes"
+                    ],
+                    "comfort_and_convenience": [
+                        "Premium Cabin",
+                        "Dual-tone cabin with premium fabric upholstery",
+                        "Spacious layout",
+                        "7-inch touchscreen infotainment system",
+                        "Supports Apple CarPlay, Android Auto, and Bluetooth connectivity",
+                        "Steering-Mounted Controls",
+                        "Automatic climate control",
+                        "Keyless Entry & Push Start Button",
+                        "Power windows",
+                        "Height-adjustable driver seats",
+                        "Cruise Control",
+                        "Wireless Phone Charging",
+                        "Drive Modes: Eco, Comfort, and Sport"
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1497 cc, 4 Cylinders Inline, 4 Valves/Cylinder, DOHC",
+                        "Power: 113 bhp @ 6300 rpm",
+                        "Torque: 143.8 Nm @ 4500 rpm",
+                        "Fuel Capacity: 50 litres",
+                        "Fuel efficiency: 17.0 kmpl",
+                        "Transmission: Automatic (CVT) - 6 Gears, Paddle Shift",
+                        "Transmission provides a smooth driving experience",
+                        "Engine offers a balance of power and efficiency"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "Digital instrument cluster",
+                        "10.25-inch touchscreen",
+                        "Android Auto",
+                        "Apple CarPlay",
+                        "Bluetooth",
+                        "USB"
+                    ]
+                },
+                {
+                    "price": "1110900.0",
+                    "general": [
+                        "Warranty: Not specified",
+                        "Transmission: 6-speed manual transmission",
+                        "Fuel Compatibility: Petrol",
+                        "Seating Capacity: 5",
+                        "Basic Safety: Dual front airbags, ABS with EBD, Rear parking sensors, Seat belt reminder",
+                        "Active edition"
+                    ],
+                    "fuel_type": "Petrol",
+                    "brand_name": "Hyundai",
+                    "product_id": "hyundai_creta_e_1.5_petrol_suv_411",
+                    "product_name": "Creta",
+                    "variant_name": "E 1.5 Petrol",
+                    "vehicle_type": "SUV",
+                    "branding_and_looks": [
+                        "Modern Design with bold front grille, sleek LED DRLs, and stylish projector headlights",
+                        "Body-Colored ORVMs and Door Handles",
+                        "16-inch Steel Wheels",
+                        "SUV body pattern",
+                        "Dimension: Length 4330 mm Width 1790 mm Height 1635 mm",
+                        "Wheelbase: 2610 mm",
+                        "Single Tone Colours: Phantom Black, Typhoon Silver, Polar White"
+                    ],
+                    "safety_and_environment": [
+                        "Dual Front Airbags",
+                        "ABS with EBD",
+                        "Rear Parking Sensors",
+                        "Seat Belt Reminder",
+                        "BS6 Compliant",
+                        "Idle Start-Stop System"
+                    ],
+                    "comfort_and_convenience": [
+                        "Basic but Functional Cabin with fabric upholstery",
+                        "Manual Air-Conditioning",
+                        "Power Steering",
+                        "Manual Windows",
+                        "Keyless Entry"
+                    ],
+                    "technology_and_performance": [
+                        "Engine: 1497 cc, 4 Cylinders Inline, 4 Valves/Cylinder, DOHC, 1.5L 4-cylinder naturally aspirated petrol engine",
+                        "Power: 115 PS @ 6300 rpm",
+                        "Torque: 144 Nm @ 4500 rpm",
+                        "Transmission: Manual - 6 Gears",
+                        "Fuel Capacity: 50 litres",
+                        "Fuel Efficiency: 17.0 kmpl",
+                        "Performance: Sufficient power for city commuting and highway cruising, refined and smooth driving experience",
+                        "Boot Space: 405 Litres",
+                        "Year of manufacturing: 2020"
+                    ],
+                    "infotainment_and_connectivity": [
+                        "Basic 2-DIN audio system with Bluetooth connectivity, USB, and auxiliary inputs",
+                        "8-inch touchscreen",
+                        "Android Auto",
+                        "Apple CarPlay",
+                        "Bluetooth",
+                        "USB"
+                    ]
+                }
+            ]
+        ],
+        "common_points": [
+            "All cars have 5-seater configurations",
+            "All are BS6 compliant",
+            "All feature ABS with EBD",
+            "All offer manual or automatic transmission options",
+            "All have Android Auto and Apple CarPlay (except Fronx Sigma 1.2L)"
+        ],
+        "key_differences": {
+            "price": {
+                "Fronx Sigma 1.2L": "\u20b98,00,000",
+                "Kia Seltos GTX Plus 1.5 Turbo Petrol DCT Dual Tone": "\u20b920,19,900",
+                "Hyundai Creta S 1.5 Petrol": "\u20b913,53,700"
+            },
+            "fuel_efficiency": {
+                "Fronx Sigma 1.2L": "21.79 kmpl",
+                "Kia Seltos GTX Plus 1.5 Turbo Petrol DCT Dual Tone": "17.9 kmpl",
+                "Hyundai Creta S 1.5 Petrol": "17.5 kmpl"
+            },
+            "safety": {
+                "Fronx Sigma 1.2L": "Dual airbags, ESP, ISOFIX",
+                "Kia Seltos GTX Plus 1.5 Turbo Petrol DCT Dual Tone": "6 airbags, ESC, 360-degree camera",
+                "Hyundai Creta S 1.5 Petrol": "Dual airbags, rear parking sensors"
+            },
+            "technology": {
+                "Fronx Sigma 1.2L": "Basic audio unit, MID display",
+                "Kia Seltos GTX Plus 1.5 Turbo Petrol DCT Dual Tone": "10.25-inch touchscreen, paddle shifters",
+                "Hyundai Creta S 1.5 Petrol": "7-inch touchscreen, Android Auto & Apple CarPlay"
+            },
+            "dimensions": {
+                "Fronx Sigma 1.2L": "3995 mm length, 1765 mm width, 1550 mm height",
+                "Kia Seltos GTX Plus 1.5 Turbo Petrol DCT Dual Tone": "4365 mm length, 1800 mm width, 1645 mm height",
+                "Hyundai Creta S 1.5 Petrol": "4330 mm length, 1790 mm width, 1635 mm height"
+            }
+        },
+        "user_choice_justification": {
+            "Fronx Sigma 1.2L": "The Fronx Sigma 1.2L is an affordable compact SUV with excellent fuel efficiency, making it ideal for budget-conscious buyers and daily city commuters. Its safety features like ESP and hill-hold assist add value, while its compact dimensions ensure easy maneuverability in urban areas. The manual transmission and basic infotainment system cater to users who prefer simplicity and reliability over advanced features."
+        },
+        "user_sentiments": {
+            "task": "sentiment_analysis_agent",
+            "user_input": "Exploring the Fronx model in detail with interest in purchasing options.",
+            "sentiment_score": 0.85,
+            "emotions": [
+                "interest",
+                "satisfaction"
+            ],
+            "justification": "The user has thoroughly explored various aspects of the Fronx model, including exterior, interior, performance, safety, and customization options. Actions like brochure download, viewing pricing, and configuring the vehicle indicate strong interest and satisfaction with the product."
+        },
+        "sentiment_score": 0.85,
+        "emotions": [
+            "interest",
+            "satisfaction"
+        ],
+        "sentiment_justification": "The user has thoroughly explored various aspects of the Fronx model, including exterior, interior, performance, safety, and customization options. Actions like brochure download, viewing pricing, and configuring the vehicle indicate strong interest and satisfaction with the product.",
+        "prioritization_data": {
+            "task": "prioritization_agent",
+            "priority_level": "HOT",
+            "prioritization_score": 83,
+            "customer_summary": {
+                "contact_info": {
+                    "phone": "9560365670",
+                    "email": "puneet@iamdave.ai"
+                },
+                "customer_profile": {
+                    "location": "Mumbai, 400001",
+                    "interested_models": "Fronx",
+                    "source": "website",
+                    "preferred_colors": [
+                        "Brave Khaki",
+                        "Splendid Silver"
+                    ]
+                },
+                "key_interests": [
+                    "Pricing and variants",
+                    "interior",
+                    "Safety features",
+                    "performance",
+                    "exterior",
+                    "configure",
+                    "safety",
+                    "Finance options"
+                ],
+                "preferred_models": [
+                    "Fronx"
+                ],
+                "preferred_colors": [
+                    "Brave Khaki",
+                    "Splendid Silver"
+                ],
+                "budget_category": "mid-range"
+            },
+            "risk_factors": [
+                "No test drive booking",
+                "Technology feature not explored"
+            ],
+            "talking_points": [
+                "Highlight the unique features of the Fronx, such as Turbo Engine and Fuel Efficiency.",
+                "Discuss the safety features like ABS with EBD, Dual Airbags, and ESP.",
+                "Explore financing options and offers since the customer showed interest in this area.",
+                "Emphasize the customization options available, including color choices and 'Build Your Own' feature."
+            ],
+            "recommended_actions": [
+                "immediate_phone_call",
+                "dealer_assignment",
+                "special_offers",
+                "priority_scheduling",
+                "personalized_email",
+                "finance_consultation"
+            ]
+        }
     }
 ]

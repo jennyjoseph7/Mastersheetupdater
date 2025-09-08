@@ -21,10 +21,10 @@
 #         return None
 
 # special_models = {
-#     "fronx": load_special_json("./agents/competitor_analysis_agent/fronx.json"),
-#     "grand_vitara": load_special_json("./agents/competitor_analysis_agent/grand_vitara.json"),
-#     "baleno": load_special_json("./agents/competitor_analysis_agent/baleno.json"),
-#     "invicto": load_special_json("./agents/competitor_analysis_agent/invicto.json"),
+#     "fronx": load_special_json("./agents/competitor_analysis_agent/maruti_models/fronx.json"),
+#     "grand_vitara": load_special_json("./agents/competitor_analysis_agent/maruti_models/grand_vitara.json"),
+#     "baleno": load_special_json("./agents/competitor_analysis_agent/maruti_models/baleno.json"),
+#     "invicto": load_special_json("./agents/competitor_analysis_agent/maruti_models/invicto.json"),
 # }
 
 
@@ -172,10 +172,10 @@ def load_special_json(file_name):
 
 
 special_models = {
-    "fronx": load_special_json("./agents/competitor_analysis_agent/fronx.json"),
-    "grand_vitara": load_special_json("./agents/competitor_analysis_agent/grand_vitara.json"),
-    "baleno": load_special_json("./agents/competitor_analysis_agent/baleno.json"),
-    "invicto": load_special_json("./agents/competitor_analysis_agent/invicto.json"),
+    "fronx": load_special_json("./agents/competitor_analysis_agent/maruti_models/fronx.json"),
+    "grand_vitara": load_special_json("./agents/competitor_analysis_agent/maruti_models/grand_vitara.json"),
+    "baleno": load_special_json("./agents/competitor_analysis_agent/maruti_models/baleno.json"),
+    "invicto": load_special_json("./agents/competitor_analysis_agent/maruti_models/invicto.json"),
 }
 
 
