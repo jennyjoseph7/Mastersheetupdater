@@ -154,6 +154,14 @@ def aem_integration_agent(*args, **kwargs):
     updated_source = aem_agent.run()
     return {"task": "aem_integration_agent", "updated_source": updated_source}
 
+@gryd.is_a_task()
+def dealer_locator_agent(*args, **kwargs):
+    from agents.dealer_locator_agent import DealerLocatorAgent
+    source = kwargs["source"]
+    model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+    location_agent = DealerLocatorAgent(source = source, model_identifier = model_identifier)
+    location = location_agent.run()
+    return {"task": "dealer_location_agent", "location": location}
     
 @gryd.is_a_task()    
 def propensity_agent(*args, **kwargs):

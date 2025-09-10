@@ -7,12 +7,13 @@ import requests
 import json
 
 class BaseAgent:
-    def __init__(self):
-        pass
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
 
     def _load_json(self, source : Union[Dict[str, Any], str]) -> Dict[str, Any]:
         """Load JSON from a dict, local path, or URL."""
-        if isinstance(source, dict):
+        if isinstance(source, (dict, list)):
             return source 
 
         if isinstance(source, str):

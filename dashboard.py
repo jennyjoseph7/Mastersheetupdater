@@ -5,12 +5,15 @@ from utils import *
 import plotly.io as pio
 import pandas as pd
 import os, sys, traceback
+import pydeck as pdk
 
 logger = get_logger(__name__)
 gryd.SERVICE = GRYD_SERVICE
 gryd.set_queue_manager(config=GRYD_CONFIG)
-gryd.ENVIRONMENT = os.getenv("ENVIRONMENT", "-local")
-
+environment = os.getenv("ENVIRONMENT", "-local")
+if not environment.startswith("-"):
+    environment = f"-{environment}"
+gryd.ENVIRONMENT = environment
 st.set_page_config(page_title="AutoBot Agents", layout="wide")
 st.markdown("## 🤖 **AutoBot Agents**")
 
@@ -28,8 +31,18 @@ else:
     st.sidebar.warning("⚠️ Please upload a valid JSON file.")
     run_agent = False
 
-tabs = ["Customer Data Platform (CDP)", "Propensity Agent", "Comparison Analysis Agent", "Prioritization Agent", "Sentiment Analysis Agent", "Personalization Agent","Communication Agent"]
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(tabs)
+tabs = [
+    "Customer Data Platform (CDP)", 
+    "Propensity Agent", 
+    "Comparison Analysis Agent", 
+    "Dealer Locator Agent", 
+    "Prioritization Agent", 
+    "Sentiment Analysis Agent", 
+    "Personalization Agent",
+    "Communication Agent"
+]
+
+tab1, tab2, tab3, dealer_locator_agent, tab4, tab5, tab6, tab7 = st.tabs(tabs)
 
 propensity_result = None
 competitor_result = None
@@ -39,24 +52,50 @@ sentiment_result = None
 prioritization_result = None
 communication_result = None
 
+dealer_locator_result = None
+
 def response_generator(response):
     for word in response.split():
         yield word + " "
         time.sleep(0.05)
 
+def run_autobot_agents_trigger(input_data):
+    global propensity_result, competitor_result, personalization_result, aem_result, sentiment_result, prioritization_result, communication_result
+    autobot_agents_trigger = [{
+        "task": "autobot_agents_trigger",
+        "service": GRYD_SERVICE,
+        "kwargs": {
+            "source": input_data,
+            "execution_mode": "async"
+        },
+        "args": (None)
+    }]
+    sync_result = gryd.await_results(autobot_agents_trigger)[0]
+    logger.info(json.dumps(sync_result, indent=4, default=str))
+    for job in sync_result:
+        if job is None:
+            continue
+        task_name = job.get("task")
+        if task_name == "propensity_agent":
+            propensity_result = job
+        elif task_name == "competitor_analysis_agent":
+            competitor_result = job
+        elif task_name == "personalization_agent":
+            personalization_result = job
+        elif task_name == "aem_integration_agent":
+            aem_result = job
+        elif task_name == "sentiment_analysis_agent":
+            sentiment_result = job
+        elif task_name == "prioritization_agent":
+            prioritization_result = job
+        elif task_name == "communication_agent":
+            communication_result = job
+    return propensity_result, competitor_result, personalization_result, aem_result, sentiment_result, prioritization_result, communication_result
+
 if run_agent:
     with st.spinner("Running agents..."):
-        try:
-            autobot_agents_trigger = [{
-                "task": "autobot_agents_trigger",
-                "service": GRYD_SERVICE,
-                "kwargs": {
-                    "source": input_data,
-                    "execution_mode": "async"
-                },
-                "args": (None)
-            }]
-            # async_jobs = [{
+        try:   
+            # autobot_agents_trigger_async = [{
             #     "task": "autobot_agents_trigger_generator",
             #     "service": GRYD_SERVICE,
             #     "kwargs": {
@@ -65,7 +104,7 @@ if run_agent:
             #     },
             #     "args": (None)
             # }]
-            # for job in gryd.yield_results(async_jobs):
+            # for job in gryd.yield_results(autobot_agents_trigger_async):
             #     task_name, status, result_data = job[1], job[3], job[4]
             #     if status != "result":
             #         logger.warning(f"⚠️ Task '{task_name}' failed or is still pending.")
@@ -85,31 +124,21 @@ if run_agent:
             #     elif task_name == "prioritization_agent":
             #         prioritization_result = result_data
 
+            propensity_result, competitor_result, personalization_result, aem_result, sentiment_result, prioritization_result, communication_result = run_autobot_agents_trigger(input_data)
 
+            # dealer locator agent seperate call
+            dealer_locator_agent_call = [{
+                    "task": "dealer_locator_agent",
+                    "service": GRYD_SERVICE,
+                    "kwargs": {
+                        "source": input_data,
+                        "execution_mode": "async"
+                    },
+                    "args": (None)
+            }]
 
-            sync_result = gryd.await_results(autobot_agents_trigger)[0]
-            # sync_result = list(sync_result[0])
-            logger.info(json.dumps(sync_result, indent=4, default=str))
-            for job in sync_result:
-                if job is None:
-                    continue
-                task_name = job.get("task")
-                if task_name == "propensity_agent":
-                    propensity_result = job
-                elif task_name == "competitor_analysis_agent":
-                    competitor_result = job
-                elif task_name == "personalization_agent":
-                    personalization_result = job
-                elif task_name == "aem_integration_agent":
-                    aem_result = job
-                elif task_name == "sentiment_analysis_agent":
-                    sentiment_result = job
-                elif task_name == "prioritization_agent":
-                    prioritization_result = job
-                elif task_name == "communication_agent":
-                    communication_result = job
-
-                
+            dealer_locator_result = gryd.await_results(dealer_locator_agent_call)[0]
+            logger.info(f"dealer_locator_result: {dealer_locator_result}")
         except Exception as e:
             traceback.print_exc()
             st.error(f"❌ Agent failed: {str(e)}")
@@ -161,7 +190,7 @@ with tab3:
         
         st.markdown("#### 🚗 Competitor Car Variants")
 
-        # Show car variant details in tabular format
+        # Showing car variant details in tabular format
         car_variants = []
         car_groups = competitor_result.get("compared_cars_data", [])
         for car_group in car_groups:
@@ -230,6 +259,81 @@ with tab3:
     else:
         st.info("ℹ️ Run the agent to see results.")
 
+with dealer_locator_agent:
+    def show_dealer_locations(dealer_locator_result):
+        st.subheader("🔎 Dealer Locator Agent")
+        if not dealer_locator_result:
+            st.info("ℹ️ Dealer locator agent yet to be written.")
+            return
+        
+        location_data = dealer_locator_result["location"]
+        for loc in location_data:
+            if "error" in loc:
+                return {"error" : loc} 
+        
+        st.success("✅ Dealer Locator Computed Successfully")
+        with st.expander("📦 Raw Data"):
+            st.json(dealer_locator_result)
+
+        locations_for_map = []
+        for dealer in location_data:
+            if "location" in dealer and dealer["location"]:
+                try:
+                    lat, lon = map(float, dealer["location"].split(","))
+                    locations_for_map.append({
+                        "Dealer": dealer.get("dealer_name", "Unknown"),
+                        "Address": dealer.get("dealer_address", "N/A"),
+                        "Latitude": lat,
+                        "Longitude": lon,
+                    })
+                except:
+                    pass
+
+        if locations_for_map:
+            df_map = pd.DataFrame(locations_for_map)
+            #Center map around first dealer
+            view_state = pdk.ViewState(
+                latitude=df_map["Latitude"].mean(),
+                longitude=df_map["Longitude"].mean(),
+                zoom=12,
+                pitch=0,
+            )
+            #dealer markers with tooltips
+            layer = pdk.Layer(
+                "ScatterplotLayer",
+                data=df_map,
+                get_position="[Longitude, Latitude]",
+                get_color="[200, 30, 0, 160]",
+                get_radius=100,
+                pickable=True,
+            )
+
+            tooltip = {
+                "html": "<b>{Dealer}</b><br/>{Address}",
+                "style": {"backgroundColor": "steelblue", "color": "white"},
+            }
+
+            st.pydeck_chart(pdk.Deck(
+                map_style="mapbox://styles/mapbox/streets-v12",
+                initial_view_state=view_state,
+                layers=[layer],
+                tooltip=tooltip,
+            ))
+        for dealer in location_data:
+            with st.container():
+                with st.expander(f"🏢 {dealer.get('dealer_name', 'Unknown')}"):
+                    st.write(f"**Address:** {dealer.get('dealer_address', 'N/A')}")
+                    st.write(f"**City:** {dealer.get('dealer_city', 'N/A')} ({dealer.get('dealer_state', 'N/A')})")
+                    st.write(f"**Pincode:** {dealer.get('dealer_pincode', 'N/A')}")
+                    st.write(f"**Channel:** {dealer.get('dealer_channel', 'N/A')}")
+                    st.write(f"**Type:** {dealer.get('dealer_type_name', 'N/A')}")
+                    st.write(f"**Open Hours:** {dealer.get('open_hours', 'N/A')}")
+                    st.write(f"**Contact Group:** {dealer.get('parent_group', 'N/A')}")
+                    st.write(f"**Active:** {'✅ Yes' if dealer.get('is_active') else '❌ No'}")
+                    if "location" in dealer and dealer["location"]:
+                        st.write(f"**Coordinates:** {dealer['location']}")
+
+    show_dealer_locations(dealer_locator_result)
 
 with tab4:
     st.subheader("🧠 Prioritization Agent")
@@ -294,150 +398,34 @@ with tab6:
     else:
         st.info("ℹ️ No personalization data yet.")
 
-
-        
-# with tab7:
-#     st.subheader("📧 Communication Agent")
-    
-#     if communication_result:
-#         # Get the status from the result
-#         status = communication_result.get("status", "unknown")
-#         email_draft = communication_result.get("email_draft")
-#         result_message = communication_result.get("communication_agent_result", "")
-#         error = communication_result.get("error")
-        
-#         # Display status based on result
-#         if status == "success":
-#             st.success("✅ Email Sent Successfully!")
-#             st.write("📨 **Email Status:** Delivered")
-            
-#             # Show the email draft if available
-#             if email_draft:
-#                 st.write("📄 **Email Draft:**")
-#                 with st.expander("View Email Content", expanded=True):
-#                     # Check if email_draft is a dict with subject/body or just text
-#                     if isinstance(email_draft, dict):
-#                         if "subject" in email_draft:
-#                             st.write(f"**Subject:** {email_draft['subject']}")
-#                         if "body" in email_draft:
-#                             st.write("**Body:**")
-#                             st.write(email_draft['body'])
-#                         if "to" in email_draft:
-#                             st.write(f"**To:** {email_draft['to']}")
-#                         if "cc" in email_draft:
-#                             st.write(f"**CC:** {email_draft['cc']}")
-#                     else:
-#                         st.write(email_draft)
-            
-#             # Show additional result info
-#             if result_message:
-#                 st.info(f"📋 **Details:** {result_message}")
-                
-#         elif status == "error":
-#             st.error("❌ Email Sending Failed!")
-#             st.write("📨 **Email Status:** Failed to Send")
-            
-#             if error:
-#                 st.error(f"**Error:** {error}")
-            
-#             if result_message:
-#                 st.write(f"**Details:** {result_message}")
-            
-#             # Show draft if it was created before failing
-#             if email_draft:
-#                 st.write("📄 **Draft Email (Not Sent):**")
-#                 with st.expander("View Draft Content"):
-#                     if isinstance(email_draft, dict):
-#                         if "subject" in email_draft:
-#                             st.write(f"**Subject:** {email_draft['subject']}")
-#                         if "body" in email_draft:
-#                             st.write("**Body:**")
-#                             st.write(email_draft['body'])
-#                     else:
-#                         st.write(email_draft)
-        
-#         elif status == "failed" or "not sent" in result_message.lower():
-#             st.warning("⚠️ Email Not Sent")
-#             st.write("📨 **Email Status:** Skipped")
-            
-#             if "not a recommended action" in result_message:
-#                 st.info("📋 **Reason:** Email sending was not recommended by the prioritization agent")
-#             elif "no personalization message" in result_message:
-#                 st.info("📋 **Reason:** Missing personalization data required for email content")
-#             else:
-#                 st.info(f"📋 **Reason:** {result_message}")
-        
-#         else:
-#             # Unknown status
-#             st.info("ℹ️ Communication Agent Completed")
-#             if result_message:
-#                 st.write(f"**Result:** {result_message}")
-            
-#             if email_draft:
-#                 st.write("📄 **Email Draft:**")
-#                 with st.expander("View Content"):
-#                     if isinstance(email_draft, dict):
-#                         st.json(email_draft)
-#                     else:
-#                         st.write(email_draft)
-        
-#         # Show full results in expandable section for debugging
-#         with st.expander("🔧 View Complete Results (Debug)", expanded=False):
-#             st.json(communication_result)
-    
-#     else:
-#         st.info("ℹ️ Communication agent hasn't been executed yet.")
-#         st.write("The communication agent will:")
-#         st.write("• Check if email sending is recommended")
-#         st.write("• Draft personalized email content")
-#         st.write("• Send email if conditions are met")
-#         st.write("• Provide detailed status and results")
-    
 with tab7:
     st.subheader("📧 Communication Agent")
-
     if communication_result:
-        # Extract data
         status = communication_result.get("status", "unknown")
         email_draft = communication_result.get("email_draft")
         result_message = communication_result.get("communication_agent_result", "")
         error = communication_result.get("error")
-        
         if status == "success":
-            # Compact success tag
             st.success("✅ Email Sent Successfully!")
-            # Email content
             if email_draft:
-                # st.markdown("### ✉️ Email Content")
                 st.write("✉️ Email Content:")
                 with st.expander("View Email", expanded=True):
                     if isinstance(email_draft, dict):
                         subject = email_draft.get('subject', '(No Subject)')
                         message = email_draft.get('message', '')
-                        # Subject
-                        st.markdown(f"**📌 Subject:** {subject}")
-                        # Divider
-                        st.divider()
-                        # Body
-                        st.markdown("**Body:**")
+                        st.markdown(f"**📌 Subject:** {subject}")# Subject
+                        st.divider()# Divider
+                        st.markdown("**Body:**")# Body
                         st.markdown(f"> {message}")
                     else:
                         st.write(email_draft)
 
-            # Optional result message
-            # if result_message:
-            #     st.info(f"📋 {result_message}")
-                
-
         elif status == "error":
             st.error("❌ Email Sending Failed!")
-
         elif status == "failed" or "not sent" in result_message.lower():
             st.warning("⚠️ Email Not Sent")
         else:
             st.info("ℹ️ Communication Agent Completed")
-
-        # Debug section at the bottom
         with st.expander("🔧 Debug Information"):
             st.json(communication_result)
 
