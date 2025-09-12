@@ -314,7 +314,8 @@ with dealer_locator_agent:
             }
 
             st.pydeck_chart(pdk.Deck(
-                map_style="mapbox://styles/mapbox/streets-v12",
+                # map_style="mapbox://styles/mapbox/streets-v12",
+                map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
                 initial_view_state=view_state,
                 layers=[layer],
                 tooltip=tooltip,
