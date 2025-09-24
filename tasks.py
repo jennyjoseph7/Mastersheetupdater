@@ -3,12 +3,23 @@ from gryd_worker.gryd_routes import gryd_result
 from utils import GRYD_SERVICE, GRYD_CONFIG, get_logger, upload_file
 from typing import Union, Dict, Any, Generator
 import json
-import traceback
-
+import traceback, os
+import AgentOrchestrator  
 logger = get_logger(__name__)
 
 gryd.SERVICE = GRYD_SERVICE
 gryd.set_queue_manager(config = GRYD_CONFIG)
+
+def environment(environment: str = "-local"):
+    if not environment.startswith("-"):
+        environment = f"-{environment}"
+    gryd.ENVIRONMENT = environment
+    message = {"message": f"Environment set to '{environment}'"}
+    logger.info(message)
+    return message
+
+GRYD_ENVIRONMENT = os.getenv("ENVIRONMENT", "-local")
+environment(environment = GRYD_ENVIRONMENT)
 
 @gryd.is_a_task()
 def autobot_agents_trigger(*args, **kwargs):
@@ -43,15 +54,15 @@ def autobot_agents_trigger(*args, **kwargs):
     def result_handler(awaited_tasks : list[dict], execution_mode : str):
         task_results = []
         if execution_mode == "async":
-            logger.info("🚀🚀 Running tasks asynchronously...")
+            logger.info("🚀 Running tasks asynchronously...")
             jobs = gryd.yield_results(awaited_tasks, timeout=120)
             for job in jobs:
                 task_name, status, result_data = job[1], job[3], job[4]
                 if status == "result":
-                    logger.info(f"✅✅ Task '{task_name}' completed with result: {json.dumps(result_data, indent=4, default=str)}")
+                    logger.info(f"✅ Task '{task_name}' completed with result: {json.dumps(result_data, indent=4, default=str)}")
                     task_results.append(result_data)
                 else:
-                    logger.warning(f"⚠️⚠️Task '{task_name}' failed or still pending. Status: {status}")
+                    logger.warning(f"⚠️ Task '{task_name}' failed or still pending. Status: {status}")
         else:
             logger.info("Running tasks synchronously...")
             jobs = gryd.await_results(awaited_tasks, timeout=120)
@@ -144,9 +155,13 @@ def autobot_agents_trigger_generator(*args, **kwargs) -> Generator:
         result = agent.execute(*args, **kwargs)
         kwargs[key] = result
         yield result
-
+        
+@AgentOrchestrator.register_agent(name="aem_integration_agent", depends_on=[])
 @gryd.is_a_task()
 def aem_integration_agent(*args, **kwargs):
+    """
+    Enriches customer data with AEM data. AEM tracks customer interactions on the website (pages viewed, actions taken, preferences) and, with Adobe Analytics/AEP, builds a real-time profile to enable personalization and insights.
+    """
     from agents.aem_integration_agent import AEMIntegrationAgent
     source = kwargs['source']
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
@@ -154,17 +169,28 @@ def aem_integration_agent(*args, **kwargs):
     updated_source = aem_agent.run()
     return {"task": "aem_integration_agent", "updated_source": updated_source}
 
+@AgentOrchestrator.register_agent(name="dealer_locator_agent", depends_on=['aem_integration_agent'])
 @gryd.is_a_task()
 def dealer_locator_agent(*args, **kwargs):
+    """
+    Locates the nearest dealer to the customer based on their location.
+    """
     from agents.dealer_locator_agent import DealerLocatorAgent
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
     location_agent = DealerLocatorAgent(source = source, model_identifier = model_identifier)
-    location = location_agent.run()
-    return {"task": "dealer_location_agent", "location": location}
+    try:
+        location = location_agent.run()
+        return {"task": "dealer_location_agent", "location": location}
+    except Exception as e:
+        return {"task": "dealer_location_agent", "error": f"Failed to locate nearest dealer : {str(e)}"}
     
 @gryd.is_a_task()    
+@AgentOrchestrator.register_agent(name="propensity_agent", depends_on=["aem_integration_agent"])
 def propensity_agent(*args, **kwargs):
+    """
+    This agent focuses on identifying what the customer really cares about in a car. It looks at their interaction patterns. for example: - Which product pages they've visited the most. - Whether they've spent more time reading about performance specs or checking out interior design. - If they clicked comparison charts, explored specific trims, or viewed certain features multiple times. From all these behavioral signals, the agent calculates a propensity score — essentially a number that tells us how strongly the customer is leaning towards certain feature sets, such as performance & handling, interior comfort & technology, or brand image & aesthetics
+    """
     try:
         from agents.propensity_agent import PropensityAgent
         source = kwargs["source"]
@@ -190,7 +216,19 @@ def propensity_agent(*args, **kwargs):
         traceback.print_exc()
 
 @gryd.is_a_task()
+@AgentOrchestrator.register_agent(
+    name="personalization_agent", 
+    depends_on=[
+        "aem_integration_agent", 
+        "propensity_agent", 
+        "sentiment_analysis_agent", 
+        "prioritization_agent", 
+        "competitor_analysis_agent"
+        ])
 def personalization_agent(*args, **kwargs):
+    """
+    Personalization agent generates a personalized email to the customer.
+    """
     from agents.personalization_agent import PersonalizationAgent
     source = kwargs.get("source", "")
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
@@ -243,7 +281,11 @@ def personalization_agent(*args, **kwargs):
     return filtered_results
 
 @gryd.is_a_task()
+@AgentOrchestrator.register_agent(name="competitor_analysis_agent", depends_on=["aem_integration_agent"])
 def competitor_analysis_agent(*args, **kwargs):
+    """
+    This agent ensures we understand the competitive landscape from the customer's perspective. It identifies rival cars in the same category or price range and pulls in their specifications, pricing, performance numbers, and standout features.
+    """
     from agents.competitor_analysis_agent.main import CompetitorAnalysis
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
@@ -262,7 +304,11 @@ def competitor_analysis_agent(*args, **kwargs):
     return filtered_results
 
 @gryd.is_a_task()
+@AgentOrchestrator.register_agent(name="prioritization_agent", depends_on=["aem_integration_agent"])
 def prioritization_agent(*args, **kwargs):
+    """
+    Suggests lead/deal prioritization. This agent decides how important and urgent this lead is for us. If the customer has interacted multiple times, they're likely a warm lead — someone worth immediate follow-up
+    """
     from agents.lead_prioritization_agent import LeadPrioritizationAgent
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier","azure-gpt-4o")
@@ -275,7 +321,11 @@ def prioritization_agent(*args, **kwargs):
     return filtered_results
 
 @gryd.is_a_task()
+@AgentOrchestrator.register_agent(name="communication_agent", depends_on=["aem_integration_agent", "prioritization_agent", "personalization_agent"])
 def communication_agent(*args, **kwargs):
+    """
+    Sends final communication via email/WhatsApp.
+    """
     from agents.communication_agent import CommunicationAgent
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier","azure-gpt-4o")
@@ -329,7 +379,11 @@ def communication_agent(*args, **kwargs):
         }
 
 @gryd.is_a_task()
+@AgentOrchestrator.register_agent(name="sentiment_agent", depends_on=["aem_integration_agent"])
 def sentiment_agent(*args, **kwargs):
+    """
+    Suggests lead/deal prioritization. This agent decides how important and urgent this lead is for us. If the customer has interacted multiple times, they're likely a warm lead — someone worth immediate follow-up"
+    """
     from agents.sentiment_agent import SentimentAnalysisAgent
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
@@ -344,3 +398,17 @@ def sentiment_agent(*args, **kwargs):
         "justification": analysis.get("expected_output", {}).get("justification", "")
     }
     return filtered_results
+
+logger.info(f"Global Agents: {json.dumps(AgentOrchestrator.GLOBAL_AGENT_REGISTRY, indent=4, default=str)}")
+@gryd.is_a_task()
+def query_orchestrator(*args, **kwargs):
+    from AgentOrchestrator import AgentOrchestrator
+    user_query = kwargs['user_query']
+    source = kwargs["source"]
+    model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+    a = AgentOrchestrator(model_identifier=model_identifier)
+    # for agent in a.AGENT_REGISTRY:
+    #     logger.info(f"Agent: {agent.name}, Description: {agent.description}, Depends on: {agent.depends_on}")
+    response = a.orchestrator(user_query, source=source)
+    for r in response:
+        yield r
