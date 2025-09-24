@@ -175,7 +175,7 @@ class AgentOrchestrator:
         logger.info(f"Query: {query}\n\n")
 
         system_prompt = f"""
-        You are an AI planning assistant.
+        You are an Smart AI Agent planning assistant.
         You will create a structured execution plan for a pipeline of agents.
 
         Rules:
@@ -202,14 +202,15 @@ class AgentOrchestrator:
             "kwargs": {{"some_key": "some_data"}}
         - Keep `args` as null unless there is a very strong reason otherwise (default: null).
         - Only include agents directly relevant to the query.
-        - Do not include unrelated agents, even if they are dependencies of other downstream agents.
-        - If the query is only about prioritization, run aem_integration_agent first (for enrichment) and then prioritization_agent only.
+        - Do not include unrelated agents, Only add if they are dependencies of other downstream agents.
 
         JSON schema (follow exactly): 
-        - Add a 'reasoning' key with a description of what the LLM is doing While generating the plan, describe your reasoning step by step: explain why you select each agent, what role it plays, and how it contributes to answering the user query. After summarizing your thought process, conclude with a sentence like 'Based on this reasoning, let's build an execution plan and begin executing. Should be 3-4 sentences max.
+        - Add a 'reasoning' key with a description of what the LLM is doing While generating the plan, describe your reasoning step by step: explain why you select each agent, what role it plays, and how it contributes to answering the user query. After summarizing your thought process, conclude with a sentence like 'Based on this reasoning, let's build an execution plan and begin executing. Should be 3-4 sentences max. Make it look like a human would write it. (Sentences like Let me think...etc are encouraged)'.
         - Strictly follow the Plan order while respecting dependencies.
         {json.dumps(self.JSON_PLAN, indent=4)}
         """
+
+        # - If the query is only about prioritization, run aem_integration_agent first (for enrichment) and then prioritization_agent only.
         user_prompt = (
             f"Query: {query}\n\n"
             f"Context kwargs: {json.dumps(source_data, indent=4)}\n\n"
@@ -231,8 +232,26 @@ class AgentOrchestrator:
         except Exception:
             traceback.print_exc()
             logger.error("Failed to parse plan JSON, fallback to default dependency plan.")
-            plan = self.JSON_PLAN["Plan"]
+            plan = self.JSON_PLAN
         return plan
+    
+    def conclusive_reasoning(self, accumulated_results: dict) -> str:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                "You are an smart AI agent summarizing assistant."
+                "You will summarize the results of a pipeline of agents in a concise and clear way. Create a short and clear summary of the results of the pipeline of agents."
+                "Include pointers from produced results to the original query."
+                ),
+            },
+            {
+                "role": "user", 
+                "content": json.dumps(accumulated_results, indent=4)
+            },
+        ]
+        response = ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
+        return response
     @timer(view_type=float)
     def orchestrator(self, user_query: str, *args, **agent_kwargs):
         if user_query is None:
@@ -258,7 +277,7 @@ class AgentOrchestrator:
                 })
                 aem_result = jobs[0]
                 if "error" in aem_result:
-                    yield {"error": aem_result["error"]}
+                    yield aem_result
                     return
                 agent_key = f"{step['task']}_result"
                 results_accumulator[agent_key] = aem_result
@@ -281,11 +300,13 @@ class AgentOrchestrator:
             })
             result_dict = jobs[0]
             if "error" in result_dict:
-                yield {"error": result_dict["error"]}
+                yield result_dict
                 return
             agent_key = f"{step['task']}_result"
             results_accumulator[agent_key] = result_dict
             yield {agent_key: result_dict}
+
+        yield {"conclusive_reasoning": self.conclusive_reasoning(results_accumulator)}
 if __name__ == "__main__":
     while True:
         query = str(input("Enter Query: "))

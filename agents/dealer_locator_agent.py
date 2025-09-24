@@ -17,6 +17,28 @@ class DealerLocatorAgent(BaseAgent):
     def __init__(self, source, model_identifier='azure-gpt-4o') -> None:
         self.model_identifier : str = model_identifier
         self.data : Union[dict, list] = self._load_json(source=source)
+
+    def _submit_messages(self, messages : list[dict]):
+        response = ai_service_app.get_llm_response(messages = messages, model_identifier=self.model_identifier)
+        if isinstance(response, str) and not "None" in response:
+            response = int(response.strip())
+        elif isinstance(response, str) and "None" in response:
+            response = None
+        return response
+    
+    def submit_messages(self, messages: list[dict]):
+        response = ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
+        if isinstance(response, str):
+            response = response.strip()
+            # Check if the response is exactly "None"
+            if response.lower() == "none":
+                return None
+            # Try to extract a number from the response
+            match = re.search(r'-?\d+', response)  # handles negative numbers too
+            if match:
+                return int(match.group(0))
+        # If not None and no number, return string
+        return response
     
     def _extract_pincode_from_source(self):
         if isinstance(self.data, dict):
@@ -43,11 +65,35 @@ class DealerLocatorAgent(BaseAgent):
             }
         ]
 
-        response = ai_service_app.get_llm_response(messages = conversation, model_identifier=self.model_identifier)
-        if isinstance(response, str) and not "None" in response:
-            response = int(response.strip())
-        elif isinstance(response, str) and "None" in response:
-            response = None
+        response = self.submit_messages(messages = conversation)
+        return response
+    
+    def _extract_city_from_source(self):
+        if isinstance(self.data, dict):
+            if 'city' in self.data:
+                return self.data['city']
+            elif 'dealer_city' in self.data:
+                return self.data['dealer_city']
+    
+        prompt = f"""
+        You are given a customer JSON object:
+        {self.data}
+
+        Task: Find and return the most likely **city** value.
+        - A city is a place in India or around the world.
+        - If multiple candidates exist, return the most relevant one.
+        - Respond ONLY with the city string, nothing else.
+        - If no city is found, return "None"
+        """
+
+        conversation = [
+            {
+                "role": "user",       
+                "content": prompt
+            }
+        ]
+
+        response = self.submit_messages(messages = conversation)
         return response
     
     def _request_data(self, pincode : int = None, latitude : float = None, longitude : float = None, distance : int = None, city : str = None) -> list[dict]:
@@ -79,6 +125,14 @@ class DealerLocatorAgent(BaseAgent):
             'X-I2CE-API-KEY': os.environ.get('DEALER_API_KEY'),
             'X-I2CE-USER-ID': os.environ.get('DEALER_USER_ID')
         }
+
+        headers = {
+            'Content-Type': 'application/json',
+            'X-I2CE-ENTERPRISE-ID': "maruti_core",
+            'X-I2CE-API-KEY': "aaec5be0-2ee4-39ee-9cd3-7cfb44a19b99",
+            'X-I2CE-USER-ID': "ananth+maruti_core@i2ce.in"
+        }
+
         try:
             response = requests.request("GET", url, headers=headers, data={})
             if "error" in response.json():
@@ -95,11 +149,21 @@ class DealerLocatorAgent(BaseAgent):
 
     def run(self):
         pincode = self._extract_pincode_from_source()
-        data = self._request_data(pincode=pincode)
+        print(f"Pincode: {pincode}")
+        city = self._extract_city_from_source()
+        print(f"City: {city}")
+
+        if not pincode and not city:
+            raise ValueError("Both pincode and city cannot be None. Please provide either pincode or city in the source JSON.")
+
+        if pincode: # Priority: pincode
+            data = self._request_data(pincode=pincode)
+        else: # Only city available
+            data = self._request_data(city=city)
         return data
 
 if __name__ == "__main__":
-    agent = DealerLocatorAgent(source={'pincode': '110001'})
+    # agent = DealerLocatorAgent(source={'pincode': '110001'})
     fp = "/home/shreyasvaishnav/autobot_agents/aem_mock_data/5.json"
     agent = DealerLocatorAgent(source=fp)
 

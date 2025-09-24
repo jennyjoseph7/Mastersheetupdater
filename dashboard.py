@@ -31,6 +31,9 @@ else:
     st.sidebar.warning("⚠️ Please upload a valid JSON file.")
     run_agent = False
 
+if st.button("Go to Orchestrator"):
+    st.switch_page("pages/orchestrator_dashboard.py")
+
 tabs = [
     "Customer Data Platform (CDP)", 
     "Propensity Agent", 
