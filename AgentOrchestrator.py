@@ -267,6 +267,7 @@ class AgentOrchestrator:
         results_accumulator = {}
         aem_result = None  # Special case to enrich data with AEM and dump this step from plan.
 
+        logger.info(f"Final Execution Plan: \n{json.dumps(plan, indent=4)}")
         for step in plan:
             if step.get("task").lower() == "aem_integration_agent":
                 jobs = gryd.await_results({
@@ -302,7 +303,7 @@ class AgentOrchestrator:
             if "error" in result_dict:
                 yield result_dict
                 return
-            agent_key = f"{step['task']}_result"
+            agent_key = f"{step['task']}_results"
             results_accumulator[agent_key] = result_dict
             yield {agent_key: result_dict}
 

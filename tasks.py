@@ -81,7 +81,7 @@ def autobot_agents_trigger(*args, **kwargs):
             kwargs["prioritization_agent_results"] = task_result
 
     # Use Kwargs for Next agent execution and return final dict.
-    sentiment_agent_results = sentiment_agent.execute(*args, **kwargs)
+    sentiment_agent_results = sentiment_analysis_agent.execute(*args, **kwargs)
     kwargs['sentiment_analysis_agent_results'] = sentiment_agent_results
 
     personalization_agent_results = personalization_agent.execute(*args, **kwargs)
@@ -146,7 +146,7 @@ def autobot_agents_trigger_generator(*args, **kwargs) -> Generator:
             yield job
     
     next_agents = {
-        "sentiment_analysis_agent_results": sentiment_agent,
+        "sentiment_analysis_agent_results": sentiment_analysis_agent,
         "personalization_agent_results": personalization_agent,
         "communication_agent_results": communication_agent,
     }
@@ -200,14 +200,15 @@ def propensity_agent(*args, **kwargs):
         scores = agent_response.get("scores")
         img_bytes = agent_response.get("img_bytes")
         reasoning = agent_response.get("reasoning")
+        fig_json = agent_response.get("fig_json")
         response = upload_file(img_bytes, {"autobot-agent": True})
         propensity_chart_url = response["cdn_url"] if isinstance(response, dict) else response
         filtered_results = {
             "task": "propensity_agent",
             "scores": scores,
             "propensity_chart_url": propensity_chart_url,
-            "reasoning": reasoning
-            # "propensity_chart_json": fig_json
+            "reasoning": reasoning,
+            "propensity_chart_json": fig_json
         }
         logger.info(f"Propensity Agent Results: {json.dumps(filtered_results, indent = 4, default = str)}")
         return filtered_results
@@ -327,6 +328,8 @@ def communication_agent(*args, **kwargs):
     Sends final communication via email/WhatsApp.
     """
     from agents.communication_agent import CommunicationAgent
+
+    logger.info(f"Running communication agent... \n {json.dumps(kwargs, indent=4)}")
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier","azure-gpt-4o")
     prioritization_results = kwargs.get("prioritization_agent_results") or {} 
@@ -379,8 +382,8 @@ def communication_agent(*args, **kwargs):
         }
 
 @gryd.is_a_task()
-@AgentOrchestrator.register_agent(name="sentiment_agent", depends_on=["aem_integration_agent"])
-def sentiment_agent(*args, **kwargs):
+@AgentOrchestrator.register_agent(name="sentiment_analysis_agent", depends_on=["aem_integration_agent"])
+def sentiment_analysis_agent(*args, **kwargs):
     """
     Suggests lead/deal prioritization. This agent decides how important and urgent this lead is for us. If the customer has interacted multiple times, they're likely a warm lead — someone worth immediate follow-up"
     """
