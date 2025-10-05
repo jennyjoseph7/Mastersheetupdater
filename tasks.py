@@ -156,7 +156,7 @@ def autobot_agents_trigger_generator(*args, **kwargs) -> Generator:
         kwargs[key] = result
         yield result
         
-@AgentOrchestrator.register_agent(name="aem_integration_agent", depends_on=[])
+@AgentOrchestrator.register_agent(name=None, depends_on=[])
 @gryd.is_a_task()
 def aem_integration_agent(*args, **kwargs):
     """
@@ -169,7 +169,7 @@ def aem_integration_agent(*args, **kwargs):
     updated_source = aem_agent.run()
     return {"task": "aem_integration_agent", "updated_source": updated_source}
 
-@AgentOrchestrator.register_agent(name="dealer_locator_agent", depends_on=['aem_integration_agent'])
+@AgentOrchestrator.register_agent(name=None, depends_on=['aem_integration_agent'])
 @gryd.is_a_task()
 def dealer_locator_agent(*args, **kwargs):
     """
@@ -183,10 +183,11 @@ def dealer_locator_agent(*args, **kwargs):
         location = location_agent.run()
         return {"task": "dealer_location_agent", "location": location}
     except Exception as e:
+        traceback.print_exc()
         return {"task": "dealer_location_agent", "error": f"Failed to locate nearest dealer : {str(e)}"}
     
 @gryd.is_a_task()    
-@AgentOrchestrator.register_agent(name="propensity_agent", depends_on=["aem_integration_agent"])
+@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"])
 def propensity_agent(*args, **kwargs):
     """
     This agent focuses on identifying what the customer really cares about in a car. It looks at their interaction patterns. for example: - Which product pages they've visited the most. - Whether they've spent more time reading about performance specs or checking out interior design. - If they clicked comparison charts, explored specific trims, or viewed certain features multiple times. From all these behavioral signals, the agent calculates a propensity score — essentially a number that tells us how strongly the customer is leaning towards certain feature sets, such as performance & handling, interior comfort & technology, or brand image & aesthetics
@@ -215,17 +216,10 @@ def propensity_agent(*args, **kwargs):
     except Exception as e:
         logger.error(f"Propensity Agent Error: \n\n")
         traceback.print_exc()
+        return {"task": "propensity_agent", "error": str(e).strip()}
 
 @gryd.is_a_task()
-@AgentOrchestrator.register_agent(
-    name="personalization_agent", 
-    depends_on=[
-        "aem_integration_agent", 
-        "propensity_agent", 
-        "sentiment_analysis_agent", 
-        "prioritization_agent", 
-        "competitor_analysis_agent"
-        ])
+@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent", "propensity_agent", "sentiment_analysis_agent", "prioritization_agent", "competitor_analysis_agent"])
 def personalization_agent(*args, **kwargs):
     """
     Personalization agent generates a personalized email to the customer.
@@ -282,7 +276,7 @@ def personalization_agent(*args, **kwargs):
     return filtered_results
 
 @gryd.is_a_task()
-@AgentOrchestrator.register_agent(name="competitor_analysis_agent", depends_on=["aem_integration_agent"])
+@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"])
 def competitor_analysis_agent(*args, **kwargs):
     """
     This agent ensures we understand the competitive landscape from the customer's perspective. It identifies rival cars in the same category or price range and pulls in their specifications, pricing, performance numbers, and standout features.
@@ -305,7 +299,7 @@ def competitor_analysis_agent(*args, **kwargs):
     return filtered_results
 
 @gryd.is_a_task()
-@AgentOrchestrator.register_agent(name="prioritization_agent", depends_on=["aem_integration_agent"])
+@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"])
 def prioritization_agent(*args, **kwargs):
     """
     Suggests lead/deal prioritization. This agent decides how important and urgent this lead is for us. If the customer has interacted multiple times, they're likely a warm lead — someone worth immediate follow-up
@@ -322,7 +316,7 @@ def prioritization_agent(*args, **kwargs):
     return filtered_results
 
 @gryd.is_a_task()
-@AgentOrchestrator.register_agent(name="communication_agent", depends_on=["aem_integration_agent", "prioritization_agent", "personalization_agent"])
+@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent", "prioritization_agent", "personalization_agent"])
 def communication_agent(*args, **kwargs):
     """
     Sends final communication via email/WhatsApp.
@@ -382,7 +376,7 @@ def communication_agent(*args, **kwargs):
         }
 
 @gryd.is_a_task()
-@AgentOrchestrator.register_agent(name="sentiment_analysis_agent", depends_on=["aem_integration_agent"])
+@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"])
 def sentiment_analysis_agent(*args, **kwargs):
     """
     Suggests lead/deal prioritization. This agent decides how important and urgent this lead is for us. If the customer has interacted multiple times, they're likely a warm lead — someone worth immediate follow-up"

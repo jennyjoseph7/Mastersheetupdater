@@ -264,6 +264,9 @@ class AgentOrchestrator:
         # logger.info(f"Reasoning: {reasoning}")
         yield {"reasoning": reasoning}
 
+        agents_lineup = [step.get("task") for step in plan]
+        yield {"agents_lineup": agents_lineup}
+
         results_accumulator = {}
         aem_result = None  # Special case to enrich data with AEM and dump this step from plan.
 

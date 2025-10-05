@@ -6,6 +6,7 @@ from utils import *
 import plotly.io as pio
 import pandas as pd
 import os, sys, traceback
+from graphviz import Digraph
 
 logger = get_logger(__name__)
 gryd.SERVICE = GRYD_SERVICE
@@ -67,6 +68,18 @@ if user_query:
             st.markdown("#### <Query Orchestrator Reasoning>")
             st.info(result["reasoning"])
             continue
+
+        if "agents_lineup" in result:
+            st.markdown("#### <Agents Execution Lineup>")
+            agents_lineup : list = result.get("agents_lineup")
+            dot = Digraph()
+            dot.attr(rankdir='LR')
+            for i, agent in enumerate(agents_lineup):
+                dot.node(f"{i}", agent, shape="box", style="filled", color="lightblue")
+            for i in range(len(agents_lineup) - 1):
+                dot.edge(f"{i}", f"{i+1}")
+            st.graphviz_chart(dot)
+            # continue
 
         if result.get("task") == "aem_integration_agent":
             continue
