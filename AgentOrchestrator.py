@@ -235,7 +235,7 @@ class AgentOrchestrator:
             plan = self.JSON_PLAN
         return plan
     
-    def conclusive_reasoning(self, accumulated_results: dict) -> str:
+    def conclusive_reasoning(self, query: str, accumulated_results: dict) -> str:
         messages = [
             {
                 "role": "system",
@@ -247,7 +247,7 @@ class AgentOrchestrator:
             },
             {
                 "role": "user", 
-                "content": json.dumps(accumulated_results, indent=4)
+                "content": f"Query: {query}\n\nAccumulated Results: {json.dumps(accumulated_results, indent=4)}"
             },
         ]
         response = ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
@@ -310,7 +310,7 @@ class AgentOrchestrator:
             results_accumulator[agent_key] = result_dict
             yield {agent_key: result_dict}
 
-        yield {"conclusive_reasoning": self.conclusive_reasoning(results_accumulator)}
+        yield {"conclusive_reasoning": self.conclusive_reasoning(user_query, results_accumulator)}
 if __name__ == "__main__":
     while True:
         query = str(input("Enter Query: "))
