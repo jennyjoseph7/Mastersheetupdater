@@ -177,7 +177,6 @@ class AgentOrchestrator:
         system_prompt = f"""
         You are an Smart AI Agent planning assistant.
         You will create a structured execution plan for a pipeline of agents.
-
         Rules:
         - Each agent has a `task` (agent name), `kwargs`, `args`, and `depends_on`.
         - Use only available agents.
@@ -205,7 +204,8 @@ class AgentOrchestrator:
         - Do not include unrelated agents, Only add if they are dependencies of other downstream agents.
 
         JSON schema (follow exactly): 
-        - Add a 'reasoning' key with a description of what the LLM is doing While generating the plan, describe your reasoning step by step: explain why you select each agent, what role it plays, and how it contributes to answering the user query. After summarizing your thought process, conclude with a sentence like 'Based on this reasoning, let's build an execution plan and begin executing. Should be 3-4 sentences max. Make it look like a human would write it. (Sentences like Let me think...etc are encouraged)'.
+        - Add a 'reasoning' key with a description of what the LLM is doing While generating the plan, describe your reasoning step by step: explain why you select each agent, what role it plays, and how it contributes to answering the user query. After summarizing your thought process, conclude with a sentence like 'Based on this reasoning, let's build an execution plan and begin executing. Should be 5-6 sentences max. Make it look like a human would write it. (Sentences like Hmm, Let me think...etc are encouraged)'. Give agent execution steps like below in reasoning: aem_integration_agent -> propensity_agent -> sentiment_analysis_agent -> ...etc.
+
         - Strictly follow the Plan order while respecting dependencies.
         {json.dumps(self.JSON_PLAN, indent=4)}
         """
@@ -267,7 +267,7 @@ class AgentOrchestrator:
         results_accumulator = {}
         aem_result = None  # Special case to enrich data with AEM and dump this step from plan.
 
-        logger.info(f"Final Execution Plan: \n{json.dumps(plan, indent=4)}")
+        logger.info(f"Final Execution Plan: \n{json.dumps(f_plan, indent=4)}")
         for step in plan:
             if step.get("task").lower() == "aem_integration_agent":
                 jobs = gryd.await_results({
