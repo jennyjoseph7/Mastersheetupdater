@@ -202,6 +202,7 @@ class AgentOrchestrator:
         - Keep `args` as null unless there is a very strong reason otherwise (default: null).
         - Only include agents directly relevant to the query.
         - Do not include unrelated agents, Only add if they are dependencies of other downstream agents.
+        - If the query is unrelated to any agent, just return an empty plan and don't include any agents. (Maybe in reasoning, mention that the query is unrelated to any agent and thus no plan is needed. Give an good understanding of available agents, what they do and how they can be used to answer the query maybe with some examples. Explain in a natural way with 6-7 sentences max so it doesn't feel too long.)
 
         JSON schema (follow exactly): 
 

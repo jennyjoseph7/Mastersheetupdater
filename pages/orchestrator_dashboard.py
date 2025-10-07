@@ -16,7 +16,7 @@ st.set_page_config(page_title="Multi-Agent Orchestrator Streaming", layout="wide
 st.markdown("## 🕵🏻 **Multi-Agent Orchestrator Streaming**")
 
 INITIAL_AGENT = ["aem_integration_agent"]
-INDIPENDENT_PARALLEL_AGENTS = ["propensity_agent", "competitor_analysis_agent", "prioritization_agent", "sentiment_analysis_agent", "dealer_locator_agent"]
+INDEPENDENT_PARALLEL_AGENTS = ["propensity_agent", "competitor_analysis_agent", "prioritization_agent", "sentiment_analysis_agent", "dealer_locator_agent"]
 DEPENDENT_AGENTS = ["personalization_agent", "communication_agent"]
 
 with st.sidebar:
@@ -45,8 +45,8 @@ def run_orchestrator(query: str):
             "source" : input_data,
             "user_query" : query
         },
-            "args": (None)
-        }
+        "args": (None)
+    }
 
     async_job = [job]
     for job in gryd.yield_results(async_job):
@@ -85,13 +85,16 @@ if run_clicked and user_query:
         for result in run_orchestrator(user_query):
             all_results.append(result)
             if "reasoning" in result:
-                st.markdown("#### Query Orchestrator Reasoning:")
+                st.markdown("#### ⚛︎ Query Orchestrator Reasoning:")
                 st.warning(result["reasoning"])
                 continue
 
             if "agents_lineup" in result:
-                st.markdown("#### Agents Execution Lineup:")
+                st.markdown("#### 🤖 Agents Execution Lineup:")
                 agents_lineup : list = result.get("agents_lineup")
+                if not agents_lineup:
+                    st.warning("No Agents Execution Lineup Found. Please check your query.")
+                    continue
                 dot = Digraph()
                 dot.attr(rankdir='LR')
                 for i, agent in enumerate(agents_lineup):
@@ -116,7 +119,7 @@ if run_clicked and user_query:
                 reasoning = propensity_result.get("reasoning")
                 propensity_chart_json = propensity_result.get("propensity_chart_json")
                 if reasoning:
-                    st.markdown("#### <Propensity Agent Reasoning>")
+                    st.markdown("#### Propensity Agent Reasoning:")
                     st.info(reasoning)
                     # response = st.write_stream(response_generator(response = reasoning))
                 st.write("Propensity Scores:")
@@ -300,7 +303,7 @@ if run_clicked and user_query:
                 st.success("✅ Personalization Computed Successfully")
                 reasoning = personalization_result.get("reasoning")
                 if reasoning:
-                    st.markdown("#### <Personalization Agent Reasoning>")
+                    st.markdown("####Personalization Agent Reasoning:")
                     # response = st.write_stream(response_generator(response = reasoning))
                     st.info(reasoning)
                 message = personalization_result.get("personalization_agent_response")
@@ -316,7 +319,7 @@ if run_clicked and user_query:
                 st.success("✅ Sentiment Computed Successfully")
                 reasoning = sentiment_result.get("reasoning")
                 if reasoning:
-                    st.markdown("#### <Sentiment Agent Reasoning>")
+                    st.markdown("#### Sentiment Agent Reasoning:")
                     # response = st.write_stream(response_generator(response = reasoning))
                     st.info(reasoning)
                 if isinstance(sentiment_result, dict):
@@ -332,7 +335,7 @@ if run_clicked and user_query:
                 st.success("✅ Communication Computed Successfully")
                 reasoning = communication_result.get("reasoning")
                 if reasoning:
-                    st.markdown("#### <Communication Agent Reasoning>")
+                    st.markdown("#### Communication Agent Reasoning:")
                     response = st.write_stream(response_generator(response = reasoning))
                 status = communication_result.get("status", "unknown")
                 email_draft = communication_result.get("email_draft")

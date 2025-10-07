@@ -156,6 +156,9 @@ def autobot_agents_trigger_generator(*args, **kwargs) -> Generator:
         result = agent.execute(*args, **kwargs)
         kwargs[key] = result
         yield result
+
+
+# ---------- Global Agents Start ----------
         
 @AgentOrchestrator.register_agent(name=None, depends_on=[])
 @gryd.is_a_task()
@@ -398,7 +401,7 @@ def communication_agent(*args, **kwargs):
 @AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"])
 def sentiment_analysis_agent(*args, **kwargs):
     """
-    Suggests lead/deal prioritization. This agent decides how important and urgent this lead is for us. If the customer has interacted multiple times, they're likely a warm lead — someone worth immediate follow-up"
+    This agent analyzes customer sentiment based on their interactions with the website.
     """
     try:
         from agents.sentiment_agent import SentimentAnalysisAgent
@@ -419,6 +422,8 @@ def sentiment_analysis_agent(*args, **kwargs):
         logger.error(f"Sentiment Analysis Agent Error: \n\n")
         traceback.print_exc()
         return {"task": "sentiment_analysis_agent", "error": str(e).strip()}
+
+# ---------- Global Agents Finish ----------
 
 logger.info(f"Global Agents: {json.dumps(AgentOrchestrator.GLOBAL_AGENT_REGISTRY, indent=4, default=str)}")
 @gryd.is_a_task()
