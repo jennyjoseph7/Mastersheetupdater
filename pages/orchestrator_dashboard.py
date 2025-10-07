@@ -70,7 +70,22 @@ def response_generator(response):
         time.sleep(0.05)
 
 # user_query = st.text_input("Enter your query and press Enter to run")
+
+# sample_queries = [
+#     "Which feature of the car this customer is mostly interested in?",
+#     "Is the customer happy?",
+#     "Create a final personalized communication to the customer but do not send it yet",
+#     "Send a promotional email to the customer",
+#     "Is the customer interested in buying the car?"
+# ]
+
+# selected_query = st.selectbox("📋 Sample Questions", ["-- Select a sample query --"] + sample_queries)
+
 user_query = st.text_input("Enter your query", key="user_query")
+# user_query = st.text_input("Or enter your own query:", key="user_query")
+# if selected_query != "-- Select a sample query --" and not user_query:
+#     user_query = selected_query
+    # st.session_state.user_query = user_query  # Optional, for persistence
 col1, col2 = st.columns([1, 2])
 
 with col1:

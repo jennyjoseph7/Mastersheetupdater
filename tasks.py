@@ -423,6 +423,19 @@ def sentiment_analysis_agent(*args, **kwargs):
         traceback.print_exc()
         return {"task": "sentiment_analysis_agent", "error": str(e).strip()}
 
+@gryd.is_a_task()
+@AgentOrchestrator.register_agent(name=None, depends_on=[])
+def get_current_datetime(*args, **kwargs):
+    """
+    This agent returns the current date and time.
+    """
+    import datetime
+    func_name = inspect.currentframe().f_code.co_name
+    current_datetime = datetime.datetime.now().strftime("%d-%m-%y %H:%M:%S")
+    return {
+        "task": func_name,
+        "current_datetime": current_datetime
+    }
 # ---------- Global Agents Finish ----------
 
 logger.info(f"Global Agents: {json.dumps(AgentOrchestrator.GLOBAL_AGENT_REGISTRY, indent=4, default=str)}")
