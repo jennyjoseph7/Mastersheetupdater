@@ -15,6 +15,10 @@ gryd.set_queue_manager(config=GRYD_CONFIG)
 st.set_page_config(page_title="Multi-Agent Orchestrator Streaming", layout="wide")
 st.markdown("## 🕵🏻 **Multi-Agent Orchestrator Streaming**")
 
+INITIAL_AGENT = ["aem_integration_agent"]
+INDIPENDENT_PARALLEL_AGENTS = ["propensity_agent", "competitor_analysis_agent", "prioritization_agent", "sentiment_analysis_agent", "dealer_locator_agent"]
+DEPENDENT_AGENTS = ["personalization_agent", "communication_agent"]
+
 with st.sidebar:
     if st.button("🧹 Clear All"):
         st.session_state.clear()
@@ -24,6 +28,8 @@ uploaded_file = st.sidebar.file_uploader("📁 Upload JSON file", type=["json"])
 if uploaded_file:
     try:
         input_data = json.load(uploaded_file)
+        # city = input_data.pop("city")
+        # pincode = input_data.pop("pincode")
         st.sidebar.success("✅ Customer data parsed successfully!")
         st.sidebar.json(input_data)
     except Exception as e:
@@ -65,19 +71,26 @@ def response_generator(response):
 
 # user_query = st.text_input("Enter your query and press Enter to run")
 user_query = st.text_input("Enter your query", key="user_query")
-if st.button("▶ Run Orchestrator", key="run_orchestrator"):
-    if user_query:
-        st.write(f"Running Orchestrator for: '{user_query}'")
-        all_results = []
+col1, col2 = st.columns([1, 2])
+
+with col1:
+    run_clicked = st.button("▶ Run Orchestrator", key="run_orchestrator1")
+with col2:
+    if run_clicked and user_query:
+        st.markdown(f"<p style='margin-top:8px;'>Running Orchestrator for: <b>{user_query}</b></p>", unsafe_allow_html=True)
+
+if run_clicked and user_query:
+    all_results = []
+    with st.spinner("🧠 Orchestrator is thinking and executing..."):
         for result in run_orchestrator(user_query):
             all_results.append(result)
             if "reasoning" in result:
-                st.markdown("#### <Query Orchestrator Reasoning>")
-                st.info(result["reasoning"])
+                st.markdown("#### Query Orchestrator Reasoning:")
+                st.warning(result["reasoning"])
                 continue
 
             if "agents_lineup" in result:
-                st.markdown("#### <Agents Execution Lineup>")
+                st.markdown("#### Agents Execution Lineup:")
                 agents_lineup : list = result.get("agents_lineup")
                 dot = Digraph()
                 dot.attr(rankdir='LR')
@@ -87,6 +100,7 @@ if st.button("▶ Run Orchestrator", key="run_orchestrator"):
                     dot.edge(f"{i}", f"{i+1}")
                 st.graphviz_chart(dot)
                 # continue
+                st.markdown("---")
 
             if result.get("task") == "aem_integration_agent":
                 continue
@@ -94,6 +108,9 @@ if st.button("▶ Run Orchestrator", key="run_orchestrator"):
             if "propensity_agent_results" in result:
                 st.success("✅ Propensity Scores Computed Successfully")
                 propensity_result = result.get("propensity_agent_results")
+                if "error" in propensity_result:
+                    st.error(propensity_result)
+                    continue
                 scores = propensity_result.get("scores")
                 propensity_img_url = propensity_result.get("propensity_chart_url")
                 reasoning = propensity_result.get("reasoning")
@@ -191,11 +208,17 @@ if st.button("▶ Run Orchestrator", key="run_orchestrator"):
             
             if "dealer_locator_agent_results" in result:
                 dealer_locator_result = result.get("dealer_locator_agent_results")
+                if "error" in dealer_locator_result:
+                    st.error(dealer_locator_result)
+                    continue
                 show_dealer_locations(dealer_locator_result)
                 st.markdown("---")
             
             if "competitor_analysis_agent_results" in result:
                 competitor_result = result.get("competitor_analysis_agent_results")
+                if "error" in competitor_result:
+                    st.error(competitor_result)
+                    continue
                 st.success("✅ Competitor Analysis Computed Successfully")
                 # full data
                 # with st.expander("Full Data"):
@@ -271,6 +294,9 @@ if st.button("▶ Run Orchestrator", key="run_orchestrator"):
 
             if "personalization_agent_results" in result:
                 personalization_result = result.get("personalization_agent_results")
+                if "error" in personalization_result:
+                    st.error(personalization_result)
+                    continue
                 st.success("✅ Personalization Computed Successfully")
                 reasoning = personalization_result.get("reasoning")
                 if reasoning:
@@ -284,6 +310,9 @@ if st.button("▶ Run Orchestrator", key="run_orchestrator"):
             
             if "sentiment_analysis_agent_results" in result:
                 sentiment_result = result.get("sentiment_analysis_agent_results")
+                if "error" in sentiment_result:
+                    st.error(sentiment_result)
+                    continue
                 st.success("✅ Sentiment Computed Successfully")
                 reasoning = sentiment_result.get("reasoning")
                 if reasoning:
@@ -297,6 +326,9 @@ if st.button("▶ Run Orchestrator", key="run_orchestrator"):
             
             if "communication_agent_results" in result:
                 communication_result = result.get("communication_agent_results")
+                if "error" in communication_result:
+                    st.error(communication_result)
+                    continue
                 st.success("✅ Communication Computed Successfully")
                 reasoning = communication_result.get("reasoning")
                 if reasoning:
@@ -329,6 +361,9 @@ if st.button("▶ Run Orchestrator", key="run_orchestrator"):
             
             if "prioritization_agent_results" in result:
                 prioritization_result = result.get("prioritization_agent_results")
+                if "error" in prioritization_result:
+                    st.error(prioritization_result)
+                    continue
                 st.success("✅ Priority Computed Successfully")
                 st.write("🧾 Prioritization Results")
                 st.markdown("#### 🔍 Prioritization Summary")
@@ -362,13 +397,13 @@ if st.button("▶ Run Orchestrator", key="run_orchestrator"):
 
             if "conclusive_reasoning" in result:
                 conclusive_reasoning = result.get("conclusive_reasoning")
-                st.write("🧾 Conclusive Reasoning")
+                st.markdown("#### 🧾 Conclusive Reasoning:")
                 st.success(conclusive_reasoning)
                 st.markdown("---")
             
 
         # Full Debug
-        with st.expander("Full Debug"):
+        with st.expander("Full Debug Information (For Developers)"):
             st.json(all_results)
 
 

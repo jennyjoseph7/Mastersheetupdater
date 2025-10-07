@@ -170,7 +170,7 @@ class AgentOrchestrator:
         
         source_data = self.load_json(agent_kwargs)
         logger.info("-------------------SOURCE DATA LOADED-------------------")
-        logger.info(f"{json.dumps(source_data, indent=4, default=str)}")
+        print(f"{json.dumps(source_data, indent=4, default=str)}")
         logger.info("-------------------SOURCE DATA ENDED-------------------")
         logger.info(f"Query: {query}\n\n")
 
@@ -204,12 +204,16 @@ class AgentOrchestrator:
         - Do not include unrelated agents, Only add if they are dependencies of other downstream agents.
 
         JSON schema (follow exactly): 
-        - Add a 'reasoning' key with a description of what the LLM is doing While generating the plan, describe your reasoning step by step: explain why you select each agent, what role it plays, and how it contributes to answering the user query. After summarizing your thought process, conclude with a sentence like 'Based on this reasoning, let's build an execution plan and begin executing. Should be 5-6 sentences max. Make it look like a human would write it. (Sentences like Hmm, Let me think...etc are encouraged)'. Give agent execution steps like below in reasoning: aem_integration_agent -> propensity_agent -> sentiment_analysis_agent -> ...etc.
+
+        - Add a 'reasoning' key that describes what the LLM is thinking while generating the plan. Write it in a step-by-step, natural way — like a human would explain their thought process. Use casual phrases like "Hmm, let me think…" or "Next, I'll…". Explain why each agent is chosen, the role it plays, and how it contributes to answering the user query (e.g., aem_integration_agent → propensity_agent → sentiment_analysis_agent → …). 
+        For each agent, explain why it is selected, what it does, and how it depends on or supports the next agent (e.g., aem_integration_agent → propensity_agent → sentiment_analysis_agent → …). Clearly mention the dependency flow — why one agent's output is needed for the next.
+        After laying out the reasoning, end with a short summary like: “Based on this reasoning, let's build an execution plan and begin executing.” Keep it 6-7 sentences max so it doesn't feel too long.
 
         - Strictly follow the Plan order while respecting dependencies.
         {json.dumps(self.JSON_PLAN, indent=4)}
         """
 
+        # - Add a 'reasoning' key with a description of what the LLM is doing While generating the plan, describe your reasoning step by step: explain why you select each agent, what role it plays, and how it contributes to answering the user query. After summarizing your thought process, conclude with a sentence like 'Based on this reasoning, let's build an execution plan and begin executing. Should be 5-6 sentences max. Make it look like a human would write it. (Sentences like Hmm, Let me think...etc are encouraged)'. Give agent execution steps like below in reasoning: aem_integration_agent -> propensity_agent -> sentiment_analysis_agent -> ...etc.
         # - If the query is only about prioritization, run aem_integration_agent first (for enrichment) and then prioritization_agent only.
         user_prompt = (
             f"Query: {query}\n\n"
@@ -303,9 +307,9 @@ class AgentOrchestrator:
                 "kwargs": enriched_kwargs
             })
             result_dict = jobs[0]
-            if "error" in result_dict:
-                yield result_dict
-                return
+            # if "error" in result_dict:
+            #     yield result_dict
+            #     return
             agent_key = f"{step['task']}_results"
             results_accumulator[agent_key] = result_dict
             yield {agent_key: result_dict}
