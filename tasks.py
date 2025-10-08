@@ -22,6 +22,9 @@ def environment(environment: str = "-local"):
 GRYD_ENVIRONMENT = os.getenv("ENVIRONMENT", "-local")
 environment(environment = GRYD_ENVIRONMENT)
 
+def get_function_name():
+    return inspect.currentframe().f_code.co_name
+
 @gryd.is_a_task()
 def autobot_agents_trigger(*args, **kwargs):
     source : Union[Dict, str] = kwargs.get("source", None)
@@ -196,7 +199,7 @@ def propensity_agent(*args, **kwargs):
     """
     This agent focuses on identifying what the customer really cares about in a car. It looks at their interaction patterns. for example: - Which product pages they've visited the most. - Whether they've spent more time reading about performance specs or checking out interior design. - If they clicked comparison charts, explored specific trims, or viewed certain features multiple times. From all these behavioral signals, the agent calculates a propensity score — essentially a number that tells us how strongly the customer is leaning towards certain feature sets, such as performance & handling, interior comfort & technology, or brand image & aesthetics
     """
-    function_name = inspect.currentframe().f_code.co_name
+    function_name = get_function_name()
     try:
         from agents.propensity_agent import PropensityAgent
         source = kwargs["source"]
@@ -430,15 +433,32 @@ def get_current_datetime(*args, **kwargs):
     This agent returns the current date and time.
     """
     import datetime
-    func_name = inspect.currentframe().f_code.co_name
+    func_name = get_function_name()
     current_datetime = datetime.datetime.now().strftime("%d-%m-%y %H:%M:%S")
     return {
         "task": func_name,
         "current_datetime": current_datetime
     }
-# ---------- Global Agents Finish ----------
+# ------------------ Global Agents Finish ------------------
 
-logger.info(f"Global Agents: {json.dumps(AgentOrchestrator.GLOBAL_AGENT_REGISTRY, indent=4, default=str)}")
+from dataclasses import asdict
+a = AgentOrchestrator.AgentOrchestrator()
+agents_list = []
+for agent in a.AGENT_REGISTRY:
+    agents_list.append({
+        "name": agent.name,
+        "description": agent.description,
+        "depends_on": agent.depends_on,
+        "expected_input": agent.expected_input,
+        "expected_output": agent.expected_output
+    })
+# agent_dicts = [asdict(agent) for agent in a.AGENT_REGISTRY]
+print(json.dumps(agents_list, indent=4))
+
+# for agent in a.AGENT_REGISTRY:
+#     logger.info(f"Agent: {agent.name}, Description: {agent.description}, Depends on: {agent.depends_on}")
+# logger.info(f"Local Agents: {json.dumps(a.AGENT_REGISTRY, indent=4, default=str)}")
+# logger.info(f"Global Agents: {json.dumps(AgentOrchestrator.GLOBAL_AGENT_REGISTRY, indent=4, default=str)}")
 @gryd.is_a_task()
 def query_orchestrator(*args, **kwargs):
     from AgentOrchestrator import AgentOrchestrator
@@ -446,8 +466,6 @@ def query_orchestrator(*args, **kwargs):
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
     a = AgentOrchestrator(model_identifier=model_identifier)
-    # for agent in a.AGENT_REGISTRY:
-    #     logger.info(f"Agent: {agent.name}, Description: {agent.description}, Depends on: {agent.depends_on}")
     response = a.orchestrator(user_query, source=source)
     for r in response:
         yield r

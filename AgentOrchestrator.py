@@ -26,18 +26,8 @@ def environment(environment: str = "-local"):
     logger.info(message)
     return message
 
-GLOBAL_AGENT_REGISTRY = OrderedDict()
-
 # GRYD_ENVIRONMENT = os.getenv("ENVIRONMENT", "-local")
 # environment(environment = GRYD_ENVIRONMENT)
-
-@dataclass
-class AgentConfig:
-    name: str
-    description: str
-    execute: Callable[..., Any]
-    depends_on: List[str] = field(default_factory=list)
-    # expected_outputs: Dict[str, Any] = field(default_factory=dict)
 
 def timer(view_type=float):
     if view_type not in (int, float):
@@ -72,22 +62,41 @@ def timer(view_type=float):
             return wrapper
     return decorator 
 
-def register_agent(name:str=None, description:str=None, depends_on:list[str]=None):
-    depends_on = depends_on or []
+# -------------------AGENT REGISTRY, DECORATORS & ORCHESTRATOR------------------->
+
+GLOBAL_AGENT_REGISTRY = OrderedDict()
+
+@dataclass
+class AgentConfig:
+    name: str
+    description: str
+    execute: Callable[..., Any]
+    depends_on: List[str] = field(default_factory=list)
+    expected_input: Dict[str, str] = field(default_factory=dict) 
+    expected_output: Dict[str, str] = field(default_factory=dict)
+
+def register_agent(name:str=None, description:str=None, depends_on:list[str]=None, expected_input:dict[str]=None, expected_output:dict[str]=None):
     """
     Decorator to register a function as an agent in the orchestrator's AGENT_REGISTRY.
     :param name: Optional name for the agent (default: function name)
-    :param description: Description of the agent
+    :param description: Description of the agent (default: function docstring)
     :param depends_on: List of agent names this agent depends on
+    :param expected_input: Expected input format for the agent [optional]
+    :param expected_output: Expected output format for the agent [optional]
     """
     def decorator(func):
+        dep_ = depends_on or []
+        exp_i = expected_input or {}
+        exp_o = expected_output or {}
         agent_name = name or func.__name__
-        agent_description = description or func.__doc__
+        agent_description = (description or func.__doc__ or "").strip()
         GLOBAL_AGENT_REGISTRY[agent_name] = {
             "name": agent_name,
-            "description": agent_description.strip(),
+            "description": agent_description,
             "execute": func,
-            "depends_on": depends_on
+            "depends_on": dep_,
+            "expected_input": exp_i,
+            "expected_output": exp_o
         }
         return func
     return decorator
@@ -101,9 +110,11 @@ class AgentOrchestrator:
             self.AGENT_REGISTRY.append(
                 AgentConfig(
                     name=name,
-                    description=meta.get("description", ""),
+                    description=meta.get("description"),
                     execute=meta.get("execute"),
-                    depends_on=meta.get("depends_on", [])
+                    depends_on=meta.get("depends_on"),
+                    expected_input=meta.get("expected_input"),
+                    expected_output=meta.get("expected_output"),
                 )
             )
 
@@ -119,9 +130,21 @@ class AgentOrchestrator:
             ],
             "reasoning" : None
         }
+
     @property
-    def agent_descriptions(self) -> List[str]:
-        return [f"{idx}.{agent.name}: {agent.description} (depends_on: {agent.depends_on})" for idx, agent in enumerate(self.AGENT_REGISTRY, start=1)]
+    def agent_descriptions(self) -> List[dict]:
+        agent_descriptions = []
+        for idx, agent in enumerate(self.AGENT_REGISTRY, start=1):
+            agent_descriptions.append({
+                "index": idx,
+                "name": agent.name,
+                "description": agent.description,
+                "depends_on": agent.depends_on,
+                "expected_input": agent.expected_input,
+                "expected_output": agent.expected_output
+            })
+        return agent_descriptions
+        # return [f"{idx}.{agent.name}: {agent.description} (depends_on: {agent.depends_on})" for idx, agent in enumerate(self.AGENT_REGISTRY, start=1)]
     
     @property
     def default_plan(self) -> dict:
@@ -216,10 +239,11 @@ class AgentOrchestrator:
 
         # - Add a 'reasoning' key with a description of what the LLM is doing While generating the plan, describe your reasoning step by step: explain why you select each agent, what role it plays, and how it contributes to answering the user query. After summarizing your thought process, conclude with a sentence like 'Based on this reasoning, let's build an execution plan and begin executing. Should be 5-6 sentences max. Make it look like a human would write it. (Sentences like Hmm, Let me think...etc are encouraged)'. Give agent execution steps like below in reasoning: aem_integration_agent -> propensity_agent -> sentiment_analysis_agent -> ...etc.
         # - If the query is only about prioritization, run aem_integration_agent first (for enrichment) and then prioritization_agent only.
+        logger.info(f"Agent Descriptions: {json.dumps(self.agent_descriptions, indent=4)}")
         user_prompt = (
             f"Query: {query}\n\n"
             f"Context kwargs: {json.dumps(source_data, indent=4)}\n\n"
-            f"Available Agents with dependencies:\n{self.agent_descriptions}"
+            f"Available Agents with dependencies:\n{json.dumps(self.agent_descriptions, indent=4)}"
         )
         messages = [
             {"role": "system", "content": system_prompt},
