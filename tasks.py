@@ -163,41 +163,57 @@ def autobot_agents_trigger_generator(*args, **kwargs) -> Generator:
 
 # ---------- Global Agents Start ----------
         
-@AgentOrchestrator.register_agent(name=None, depends_on=[])
+@AgentOrchestrator.register_agent(name=None, depends_on=[], expected_input={"source": "dict"})
 @gryd.is_a_task()
 def aem_integration_agent(*args, **kwargs):
     """
     Enriches customer data with AEM data. AEM tracks customer interactions on the website (pages viewed, actions taken, preferences) and, with Adobe Analytics/AEP, builds a real-time profile to enable personalization and insights.
     """
-    from agents.aem_integration_agent import AEMIntegrationAgent
-    source = kwargs['source']
-    model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-    aem_agent = AEMIntegrationAgent(source = source, model_identifier=model_identifier)
-    updated_source = aem_agent.run()
-    return {"task": "aem_integration_agent", "updated_source": updated_source}
+    function_name = get_function_name()
+    try:
+        from agents.aem_integration_agent import AEMIntegrationAgent
+        source = kwargs['source']
+        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+        aem_agent = AEMIntegrationAgent(source = source, model_identifier=model_identifier)
+        updated_source = aem_agent.run()
+        return {"task": function_name, "updated_source": updated_source}
+    except Exception as e:
+        logger.error(f"AEM Integration Agent Error: \n\n")
+        traceback.print_exc()
+        return {"task": function_name, "error": str(e).strip()}
 
-@AgentOrchestrator.register_agent(name=None, depends_on=['aem_integration_agent'])
+@AgentOrchestrator.register_agent(name=None, depends_on=['aem_integration_agent'], expected_input={"source": "dict"})
 @gryd.is_a_task()
 def dealer_locator_agent(*args, **kwargs):
     """
     Locates the nearest dealer to the customer based on their location.
     """
-    from agents.dealer_locator_agent import DealerLocatorAgent
-    source = kwargs["source"]
-    model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-    location_agent = DealerLocatorAgent(source = source, model_identifier = model_identifier)
+    function_name = get_function_name()
     try:
+        from agents.dealer_locator_agent import DealerLocatorAgent
+        source = kwargs["source"]
+        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+        location_agent = DealerLocatorAgent(source = source, model_identifier = model_identifier)
         location = location_agent.run()
-        return {"task": "dealer_location_agent", "location": location}
+        filtered_results = {
+            "task": function_name,
+            "location": location
+        }
+        return filtered_results
     except Exception as e:
         traceback.print_exc()
-        return {"task": "dealer_location_agent", "error": f"Failed to locate nearest dealer : {str(e)}"}
+        error_message = {
+            "task": function_name,
+            "error": f"Failed to locate nearest dealer : {str(e)}"
+        }
+        return error_message
     
 @gryd.is_a_task()    
-@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"])
+@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
 def propensity_agent(*args, **kwargs):
     """
-    This agent focuses on identifying what the customer really cares about in a car. It looks at their interaction patterns. for example: - Which product pages they've visited the most. - Whether they've spent more time reading about performance specs or checking out interior design. - If they clicked comparison charts, explored specific trims, or viewed certain features multiple times. From all these behavioral signals, the agent calculates a propensity score — essentially a number that tells us how strongly the customer is leaning towards certain feature sets, such as performance & handling, interior comfort & technology, or brand image & aesthetics
+    This agent focuses on identifying what the customer really cares about in a car. 
+    It looks at their interaction patterns. for example: - Which product pages they've visited the most. - Whether they've spent more time reading about performance specs or checking out interior design. - If they clicked comparison charts, explored specific trims, or viewed certain features multiple times. From all these behavioral signals, the agent calculates a propensity score — essentially a number that tells us how strongly the customer is leaning towards certain feature sets, such as performance & handling, interior comfort & technology, or brand image & aesthetics
     """
     function_name = get_function_name()
     try:
@@ -227,11 +243,24 @@ def propensity_agent(*args, **kwargs):
         return {"task": function_name, "error": str(e).strip()}
 
 @gryd.is_a_task()
-@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent", "propensity_agent", "sentiment_analysis_agent", "prioritization_agent", "competitor_analysis_agent"])
+@AgentOrchestrator.register_agent(
+    name=None, 
+    depends_on=[
+        "aem_integration_agent", "propensity_agent", 
+        "sentiment_analysis_agent", "prioritization_agent", 
+        "competitor_analysis_agent"],
+    expected_input={
+        "source": "dict",
+        "propensity_agent_results": "dict",
+        "sentiment_analysis_agent_results": "dict",
+        "prioritization_agent_results": "dict",
+        "competitor_analysis_agent_results": "dict"
+    })
 def personalization_agent(*args, **kwargs):
     """
     Personalization agent generates a personalized email to the customer.
     """
+    function_name = get_function_name()
     try:
         from agents.personalization_agent import PersonalizationAgent
         source = kwargs.get("source", "")
@@ -278,7 +307,7 @@ def personalization_agent(*args, **kwargs):
         agent = PersonalizationAgent(source=combined_input, model_identifier=model_identifier)
         personalization_agent_results = agent.run()
         filtered_results = {
-            "task": "personalization_agent",
+            "task": function_name,
             "personalization_agent_response": personalization_agent_results.get("response"),
             "reasoning": personalization_agent_results.get("ai-thinking")
         }
@@ -286,14 +315,16 @@ def personalization_agent(*args, **kwargs):
     except Exception as e:
         logger.error(f"Personalization Agent Error: \n\n")
         traceback.print_exc()
-        return {"task": "personalization_agent", "error": str(e).strip()}
+        return {"task": function_name, "error": str(e).strip()}
 
 @gryd.is_a_task()
-@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"])
+@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
 def competitor_analysis_agent(*args, **kwargs):
     """
-    This agent ensures we understand the competitive landscape from the customer's perspective. It identifies rival cars in the same category or price range and pulls in their specifications, pricing, performance numbers, and standout features.
+    This agent ensures we understand the competitive landscape from the customer's perspective. 
+    It identifies rival cars in the same category or price range and pulls in their specifications, pricing, performance numbers, and standout features.
     """
+    function_name = get_function_name()
     try:
         from agents.competitor_analysis_agent.main import CompetitorAnalysis
         source = kwargs["source"]
@@ -302,7 +333,7 @@ def competitor_analysis_agent(*args, **kwargs):
         competitor_agent = CompetitorAnalysis(source = source, model_identifier=model_identifier,top_n=top_n)
         analysis = competitor_agent.get_analysis()
         filtered_results = {
-            "task": "competitor_analysis_agent",
+            "task": function_name,
             "top_models": top_n,
             "compared_cars_data": analysis.get("compared_cars_data",""),
             "comparisons": analysis.get("comparisons",""),
@@ -314,14 +345,16 @@ def competitor_analysis_agent(*args, **kwargs):
     except Exception as e:
         logger.error(f"Competitor Analysis Agent Error: \n\n")
         traceback.print_exc()
-        return {"task": "competitor_analysis_agent", "error": str(e).strip()}
+        return {"task": function_name, "error": str(e).strip()}
 
 @gryd.is_a_task()
-@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"])
+@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
 def prioritization_agent(*args, **kwargs):
     """
-    Suggests lead/deal prioritization. This agent decides how important and urgent this lead is for us. If the customer has interacted multiple times, they're likely a warm lead — someone worth immediate follow-up. Basically a lead scoring agent.
+    Suggests lead/deal prioritization. This agent decides how important and urgent this lead is for us. 
+    If the customer has interacted multiple times, they're likely a warm lead — someone worth immediate follow-up. Basically a lead scoring agent.
     """
+    function_name = get_function_name()
     try:
         from agents.lead_prioritization_agent import LeadPrioritizationAgent
         source = kwargs["source"]
@@ -329,21 +362,24 @@ def prioritization_agent(*args, **kwargs):
         priority_agent = LeadPrioritizationAgent(source = source, model_identifier=model_identifier)
         lead_analysis = priority_agent.complete_analysis()
         filtered_results = {
-            "task":"prioritization_agent",
+            "task" : function_name,
             **lead_analysis
         }
         return filtered_results
     except Exception as e:
         logger.error(f"Prioritization Agent Error: \n\n")
         traceback.print_exc()
-        return {"task": "prioritization_agent", "error": str(e).strip()}
+        return {"task": function_name, "error": str(e).strip()}
 
 @gryd.is_a_task()
-@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent", "prioritization_agent", "personalization_agent"])
+@AgentOrchestrator.register_agent(
+    name=None, depends_on=["aem_integration_agent", "prioritization_agent", "personalization_agent"],
+    expected_input={"source": "dict", "prioritization_agent_results": "dict", "personalization_agent_results": "dict"})
 def communication_agent(*args, **kwargs):
     """
-    Sends final communication via email/WhatsApp.
+    This agent sends final communication via email/WhatsApp to the customer.
     """
+    function_name = get_function_name()
     from agents.communication_agent import CommunicationAgent
 
     logger.info(f"Running communication agent... \n {json.dumps(kwargs, indent=4)}")
@@ -353,7 +389,7 @@ def communication_agent(*args, **kwargs):
     recommended_actions = prioritization_results.get("recommended_actions", [])
     if "personalized_email" not in recommended_actions:
         return {
-            "task": "communication_agent",
+            "task": function_name,
             "email_draft": None,
             "status": "failed",
             "error": "Email not sent as it's not a recommended action",
@@ -364,7 +400,7 @@ def communication_agent(*args, **kwargs):
     if not user_message:
         logger.warning("No personalization message found. Cannot proceed with email drafting.")
         return {
-            "task": "communication_agent",
+            "task": function_name,
             "email_draft": None,
             "status": "failed",
             "error": "Missing personalization_agent_response",
@@ -380,7 +416,7 @@ def communication_agent(*args, **kwargs):
         )
         
         filtered_results = {
-            "task": "communication_agent",
+            "task": function_name,
             "email_draft": communication_info.get("draft"),
             "communication_agent_result": communication_info.get("send_response"),
             "status": "success"
@@ -393,7 +429,7 @@ def communication_agent(*args, **kwargs):
         logger.error(f"Communication Agent Error: {str(e)}")
         traceback.print_exc()
         return {
-            "task": "communication_agent",
+            "task": function_name,
             "email_draft": None,
             "communication_agent_result": f"Email sending failed: {str(e)}",
             "status": "error",
@@ -401,30 +437,38 @@ def communication_agent(*args, **kwargs):
         }
 
 @gryd.is_a_task()
-@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"])
+@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "either string or dict"})
 def sentiment_analysis_agent(*args, **kwargs):
     """
-    This agent analyzes customer sentiment based on their interactions with the website.
+    This agent analyzes customer sentiment and emotion patterns based on their interactions with the website or system data.
     """
+    function_name = get_function_name()
     try:
         from agents.sentiment_agent import SentimentAnalysisAgent
         source = kwargs["source"]
         model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
         sentiment_agent = SentimentAnalysisAgent(source=source, model_identifier=model_identifier)
         analysis = sentiment_agent.run()
-
         filtered_results = {
-            "task": "sentiment_analysis_agent",
-            "user_input": analysis.get("input", {}).get("user_input", ""),
-            "sentiment_score": analysis.get("expected_output", {}).get("sentiment_score", 0.0),
-            "emotions": analysis.get("expected_output", {}).get("emotions", []),
-            "justification": analysis.get("expected_output", {}).get("justification", "")
+            "task": function_name,
+            "user_input": analysis.get("user_input", ""),
+            "language": analysis.get("language", ""),
+            "sentiment_score": analysis.get("sentiment_score", 0.0),
+            "emotions": analysis.get("emotions", []),
+            "justification": analysis.get("justification", ""),
+            "thinking": analysis.get("thinking", ""),
+            "conversation_analytics": analysis.get("conversation_analytics", {})
         }
+
         return filtered_results
+
     except Exception as e:
-        logger.error(f"Sentiment Analysis Agent Error: \n\n")
+        logger.error(f"Sentiment Analysis Agent Error: {e}")
         traceback.print_exc()
-        return {"task": "sentiment_analysis_agent", "error": str(e).strip()}
+        return {
+            "task": function_name,
+            "error": str(e).strip()
+        }
 
 @gryd.is_a_task()
 @AgentOrchestrator.register_agent(name=None, depends_on=[])
@@ -439,6 +483,49 @@ def get_current_datetime(*args, **kwargs):
         "task": func_name,
         "current_datetime": current_datetime
     }
+
+@gryd.is_a_task()
+@AgentOrchestrator.register_agent(name=None, depends_on=[], expected_input={"user_query": "str"})
+def get_greeting(*args, **kwargs):
+    """
+    This agent returns a random greeting.
+    """
+    import random
+    query = kwargs.get("user_query")
+    func_name = get_function_name()
+    random_greetings = [
+        "Hello", "Hi", "Hey", "Howdy", "Hola", "Hello there", "Hi there", "Hey there", "Howdy there", "Hola there",
+    ]
+    return {
+        "task": func_name,
+        "greeting": random.choice(random_greetings)
+        }
+
+
+@gryd.is_a_task()
+@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
+def call_analytics_agent(*args, **kwargs):
+    """
+    This agent calls an analytics agent to process customer data. 
+    """
+    function_name = get_function_name()
+    try:
+        from agents.call_analytics_agent import CallQualityAnalysisAgent
+        source = kwargs["source"]
+        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+        analytics_agent = CallQualityAnalysisAgent(source=source, model_identifier=model_identifier)
+        output = analytics_agent.run()
+        return {
+            "task": function_name, **output
+        }
+    except Exception as e:
+        logger.error(f"Analytics Agent Error: {e}")
+        traceback.print_exc()
+        return {
+            "task": function_name,
+            "error": str(e).strip()
+        }
+
 # ------------------ Global Agents Finish ------------------
 
 from dataclasses import asdict
@@ -465,6 +552,7 @@ def query_orchestrator(*args, **kwargs):
     user_query = kwargs['user_query']
     source = kwargs["source"]
     model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+    # model_identifier = "groq-llama-3.3-70b"
     a = AgentOrchestrator(model_identifier=model_identifier)
     response = a.orchestrator(user_query, source=source)
     for r in response:
