@@ -18,6 +18,11 @@ logger = get_logger(__name__)
 # gryd.SERVICE = GRYD_SERVICE
 # gryd.set_queue_manager(config = GRYD_CONFIG)
 
+
+# r = ai_service_app.list_models(cloud="groq")
+# logger.info(f"AI Models: {json.dumps(r, indent=4)}")
+# assert False
+
 def environment(environment: str = "-local"):
     if not environment.startswith("-"):
         environment = f"-{environment}"
@@ -43,9 +48,9 @@ def timer(view_type=float):
                 end = time.perf_counter()
                 elapsed = end - start
                 if view_type is int:
-                    print(f"'{func.__name__}' executed in {int(elapsed)} sec")
+                    logger.info(f"'{func.__name__}' executed in {int(elapsed)} sec")
                 else:
-                    print(f"'{func.__name__}' executed in {elapsed:.6f} sec")
+                    logger.info(f"'{func.__name__}' executed in {elapsed:.6f} sec")
             return wrapper
         else:
             @functools.wraps(func)
@@ -55,9 +60,9 @@ def timer(view_type=float):
                 end = time.perf_counter()
                 elapsed = end - start
                 if view_type is int:
-                    print(f"'{func.__name__}' executed in {int(elapsed)} sec")
+                    logger.info(f"'{func.__name__}' executed in {int(elapsed)} sec")
                 else:
-                    print(f"'{func.__name__}' executed in {elapsed:.6f} sec")
+                    logger.info(f"'{func.__name__}' executed in {elapsed:.6f} sec")
                 return result
             return wrapper
     return decorator 
@@ -131,6 +136,11 @@ class AgentOrchestrator:
             "reasoning" : None
         }
 
+    def inspect_func_schema(self, func):
+        "Work in progress. We can try to find end to end function schema for better orchestration"
+        sig = inspect.signature(func)
+        return sig
+
     @property
     def agent_descriptions(self) -> List[dict]:
         agent_descriptions = []
@@ -187,6 +197,7 @@ class AgentOrchestrator:
         raise ValueError(f"Invalid JSON source: {source}")
 
     # ---------- Core Methods ----------
+    @timer(view_type=float)
     def llm_generate_plan(self, query: str, model_identifier: str = None, **agent_kwargs) -> List[Dict[str, Any]]:
         if model_identifier:
             self.model_identifier = model_identifier
@@ -218,6 +229,7 @@ class AgentOrchestrator:
             * Plan should include: 
             aem_integration_agent -> propensity_agent -> sentiment_analysis_agent -> competitor_analysis_agent -> prioritization_agent -> personalization_agent -> communication_agent
         - If `source` is empty, just pass it as an empty dict in kwargs.
+        - Understand 'expected_input' and 'expected_output' for each agent if given.
         - All inputs must be passed in `kwargs` as key-value pairs. 
             Example:
             "kwargs": {{"source": <source_data>}}
@@ -264,6 +276,18 @@ class AgentOrchestrator:
             plan = self.JSON_PLAN
         return plan
     
+    # Full Example: {{
+    # "task": "some_agent",
+    # "kwargs": {{"source": <source_data>}},
+    # "args": [],
+    # "depends_on": ["some_agent_1", "some_agent_2"]
+    # }} or 
+    # "task": "some_agent",
+    # "kwargs": {{"query": <source_data>}},
+    # "args": [],
+    # "depends_on": ["some_agent_1", "some_agent_2"]
+    # }}
+    
     def conclusive_reasoning(self, query: str, accumulated_results: dict) -> str:
         messages = [
             {
@@ -286,13 +310,13 @@ class AgentOrchestrator:
         if user_query is None:
             raise ValueError("'query' is required")
 
-        f_plan : dict = self.llm_generate_plan(query = user_query, **agent_kwargs)
+        f_plan : dict = self.llm_generate_plan(query = user_query, **agent_kwargs)        
         plan, reasoning = f_plan["plan"], f_plan["reasoning"]
         if reasoning is None:
             reasoning = "I am analyzing the user query to determine which agents are most suitable for each part of the task. For every step, I consider the agent's capabilities and how it can contribute to producing the correct result. I prioritize agents that can handle complex reasoning, data retrieval, or processing efficiently. Based on this reasoning, let's build an execution plan and begin executing."
+            f_plan["reasoning"] = reasoning
         # logger.info(f"Reasoning: {reasoning}")
-        yield {"reasoning": reasoning}
-
+        yield f_plan
         agents_lineup = [step.get("task") for step in plan]
         yield {"agents_lineup": agents_lineup}
 
@@ -309,9 +333,9 @@ class AgentOrchestrator:
                     "kwargs": step.get("kwargs")
                 })
                 aem_result = jobs[0]
-                if "error" in aem_result:
-                    yield aem_result
-                    return
+                # if "error" in aem_result:
+                #     yield aem_result
+                #     return
                 agent_key = f"{step['task']}_result"
                 results_accumulator[agent_key] = aem_result
                 yield {agent_key: aem_result}

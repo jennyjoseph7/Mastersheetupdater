@@ -27,6 +27,27 @@ class BaseAgent:
                     return json.load(f)
 
         raise ValueError(f"Invalid JSON source: {source}")
+    
+    def extract_json_from_llm_response(self, response: str) -> dict:
+        stack, start = [], None
+        for i, ch in enumerate(response):
+            if ch in "{[":
+                if not stack:
+                    start = i
+                stack.append(ch)
+            elif ch in "}]":
+                if not stack:
+                    continue
+                opening = stack.pop()
+                if (opening == "{" and ch != "}") or (opening == "[" and ch != "]"):
+                    return None
+                if not stack:
+                    json_str = response[start:i + 1]
+                    try:
+                        return json.loads(json_str)
+                    except Exception:
+                        return None
+        return None
 
 # import os 
 # import sys 

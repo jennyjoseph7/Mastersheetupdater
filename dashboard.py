@@ -16,6 +16,10 @@ if not environment.startswith("-"):
 gryd.ENVIRONMENT = environment
 st.set_page_config(page_title="AutoBot Agents", layout="wide")
 st.markdown("## 🤖 **AutoBot Agents**")
+st.sidebar.image(
+    "https://www.iamdave.ai/wp-content/uploads/2025/09/DaveAI_Logo.svg",
+    width=200
+)
 
 uploaded_file = st.sidebar.file_uploader("📁 Upload JSON file", type=["json"])
 if uploaded_file:
@@ -69,7 +73,7 @@ def run_autobot_agents_trigger(input_data):
         "service": GRYD_SERVICE,
         "kwargs": {
             "source": input_data,
-            "execution_mode": "async"
+            # "execution_mode": "async"
         },
         "args": (None)
     }]
@@ -383,7 +387,9 @@ with tab5:
         st.success("✅ Sentiment Computed Successfully")
         st.write("🧾 Sentiment Results")
         if isinstance(sentiment_result, dict):
-            st.info(f"**User Input:** {sentiment_result.get('user_input')}\n\n**Justification:** {sentiment_result.get('justification')} \n\n**Emotions:** {sentiment_result.get('emotions')}\n\n**Sentiment Score:** {sentiment_result.get('sentiment_score')}")
+            info_text = "\n".join([f"**{k}:** {v}" for k, v in sentiment_result.items()])
+            st.info(info_text)
+            # st.info(f"**User Input:** {sentiment_result.get('user_input')}\n\n**Justification:** {sentiment_result.get('justification')} \n\n**Emotions:** {sentiment_result.get('emotions')}\n\n**Sentiment Score:** {sentiment_result.get('sentiment_score')}")
     else:
         st.info("ℹ️ No sentiment data yet.")
 

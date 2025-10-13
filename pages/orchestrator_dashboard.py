@@ -14,9 +14,18 @@ gryd.set_queue_manager(config=GRYD_CONFIG)
 
 st.set_page_config(page_title="Multi-Agent Orchestrator Streaming", layout="wide")
 st.markdown("## 🕵🏻 **Multi-Agent Orchestrator Streaming**")
+st.sidebar.image(
+    "https://www.iamdave.ai/wp-content/uploads/2025/09/DaveAI_Logo.svg",
+    # use_container_width=True,
+    width=200
+)
 
 INITIAL_AGENT = ["aem_integration_agent"]
-INDEPENDENT_PARALLEL_AGENTS = ["propensity_agent", "competitor_analysis_agent", "prioritization_agent", "sentiment_analysis_agent", "dealer_locator_agent"]
+INDEPENDENT_PARALLEL_AGENTS = [
+    "propensity_agent", "competitor_analysis_agent", 
+    "prioritization_agent", "sentiment_analysis_agent", 
+    "dealer_locator_agent", "call_analytics_agent"
+    ]
 DEPENDENT_AGENTS = ["personalization_agent", "communication_agent"]
 
 with st.sidebar:
@@ -36,6 +45,9 @@ if uploaded_file:
         st.sidebar.error(f"❌ Failed to parse JSON: {e}")
 else:
     st.sidebar.warning("⚠️ Please upload a valid JSON file.")
+
+# if st.button("Go to All Agents Trigger Dashboard"):
+#     st.switch_page("../dashboard.py")
 
 def run_orchestrator(query: str):
     job = {
@@ -338,7 +350,8 @@ if run_clicked and user_query:
                     # response = st.write_stream(response_generator(response = reasoning))
                     st.info(reasoning)
                 if isinstance(sentiment_result, dict):
-                    st.info(f"**User Input:** {sentiment_result.get('user_input')}\n\n**Justification:** {sentiment_result.get('justification')} \n\n**Emotions:** {sentiment_result.get('emotions')}\n\n**Sentiment Score:** {sentiment_result.get('sentiment_score')}")
+                    st.info(sentiment_result)
+                    # st.info(f"**User Input:** {sentiment_result.get('user_input')}\n\n**Justification:** {sentiment_result.get('justification')} \n\n**Emotions:** {sentiment_result.get('emotions')}\n\n**Sentiment Score:** {sentiment_result.get('sentiment_score')}")
                 # st.text_area("Sentiment Message : ", message, height=600)
                 st.markdown("---")
             

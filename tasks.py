@@ -23,39 +23,29 @@ GRYD_ENVIRONMENT = os.getenv("ENVIRONMENT", "-local")
 environment(environment = GRYD_ENVIRONMENT)
 
 def get_function_name():
+    # return inspect.currentframe().f_back.f_code.co_name
     return inspect.currentframe().f_code.co_name
 
 @gryd.is_a_task()
 def autobot_agents_trigger(*args, **kwargs):
-    source : Union[Dict, str] = kwargs.get("source", None)
+    source: Union[dict, str] = kwargs.get("source", None)
     if source is None:
         raise ValueError("'source' is required. Either pass a valid dict or a valid URL or filepath for JSON.")
-    
+
     execution_mode = kwargs.get("execution_mode", "async").lower()
 
     aem_integration_agent_results = aem_integration_agent.execute(*args, **kwargs)
-    kwargs['aem_integration_agent_results'] = aem_integration_agent_results
-    kwargs['source'] = aem_integration_agent_results.get("updated_source")
+    kwargs["aem_integration_agent_results"] = aem_integration_agent_results
+    kwargs["source"] = aem_integration_agent_results.get("updated_source")
 
     awaited_tasks = [
-        {
-            "task": "propensity_agent",
-            "service": GRYD_SERVICE,
-            "kwargs": kwargs
-        },
-        {
-            "task": "competitor_analysis_agent",
-            "service": GRYD_SERVICE,
-            "kwargs": kwargs
-        },
-        {
-            "task": "prioritization_agent",
-            "service": GRYD_SERVICE,
-            "kwargs": kwargs
-        }
+        {"task": "propensity_agent", "service": GRYD_SERVICE, "kwargs": kwargs},
+        {"task": "competitor_analysis_agent", "service": GRYD_SERVICE, "kwargs": kwargs},
+        {"task": "prioritization_agent", "service": GRYD_SERVICE, "kwargs": kwargs},
+        {"task": "sentiment_analysis_agent", "service": GRYD_SERVICE, "kwargs": kwargs},
     ]
 
-    def result_handler(awaited_tasks : list[dict], execution_mode : str):
+    def result_handler(awaited_tasks: list[dict], execution_mode: str):
         task_results = []
         if execution_mode == "async":
             logger.info("🚀 Running tasks asynchronously...")
@@ -74,31 +64,34 @@ def autobot_agents_trigger(*args, **kwargs):
                 task_results.append(job)
         return task_results
 
-    task_results : list = result_handler(awaited_tasks, execution_mode=execution_mode)
+    task_results: list = result_handler(awaited_tasks, execution_mode=execution_mode)
+
+    task_key_map = {
+        "propensity_agent": "propensity_agent_results",
+        "competitor_analysis_agent": "competitor_analysis_agent_results",
+        "prioritization_agent": "prioritization_agent_results",
+        "sentiment_analysis_agent": "sentiment_analysis_agent_results",
+    }
 
     for task_result in task_results:
-        if task_result.get("task") == "propensity_agent":
-            kwargs["propensity_agent_results"] = task_result
-        elif task_result.get("task") == "competitor_analysis_agent":
-            kwargs["competitor_analysis_agent_results"] = task_result
-        elif task_result.get("task") == "prioritization_agent":
-            kwargs["prioritization_agent_results"] = task_result
+        task_name = task_result.get("task")
+        if task_name in task_key_map:
+            task_result_key = task_key_map[task_name]
+            kwargs[task_result_key] = task_result
 
-    # Use Kwargs for Next agent execution and return final dict.
-    sentiment_agent_results = sentiment_analysis_agent.execute(*args, **kwargs)
-    kwargs['sentiment_analysis_agent_results'] = sentiment_agent_results
+    next_agents = {
+        "personalization_agent_results": personalization_agent,
+        "communication_agent_results": communication_agent,
+    }
 
-    personalization_agent_results = personalization_agent.execute(*args, **kwargs)
-    kwargs['personalization_agent_results'] = personalization_agent_results
-
-    communication_agent_results = communication_agent.execute(*args, **kwargs)
-    kwargs['communication_agent_results'] = communication_agent_results
-
-    task_results.extend([sentiment_agent_results, personalization_agent_results, communication_agent_results])
+    for result_key, agent in next_agents.items():
+        result = agent.execute(*args, **kwargs)
+        kwargs[result_key] = result
+        task_results.append(result)
     task_results.insert(0, aem_integration_agent_results)
-
     logger.info(f"✅✅ Final Task results: {json.dumps(task_results, indent=4, default=str)}")
     return task_results
+
 
 @gryd.is_a_task()
 def autobot_agents_trigger_generator(*args, **kwargs) -> Generator:
@@ -169,7 +162,7 @@ def aem_integration_agent(*args, **kwargs):
     """
     Enriches customer data with AEM data. AEM tracks customer interactions on the website (pages viewed, actions taken, preferences) and, with Adobe Analytics/AEP, builds a real-time profile to enable personalization and insights.
     """
-    function_name = get_function_name()
+    function_name = inspect.currentframe().f_code.co_name #get_function_name()
     try:
         from agents.aem_integration_agent import AEMIntegrationAgent
         source = kwargs['source']
@@ -188,7 +181,7 @@ def dealer_locator_agent(*args, **kwargs):
     """
     Locates the nearest dealer to the customer based on their location.
     """
-    function_name = get_function_name()
+    function_name = inspect.currentframe().f_code.co_name #get_function_name()
     try:
         from agents.dealer_locator_agent import DealerLocatorAgent
         source = kwargs["source"]
@@ -215,7 +208,7 @@ def propensity_agent(*args, **kwargs):
     This agent focuses on identifying what the customer really cares about in a car. 
     It looks at their interaction patterns. for example: - Which product pages they've visited the most. - Whether they've spent more time reading about performance specs or checking out interior design. - If they clicked comparison charts, explored specific trims, or viewed certain features multiple times. From all these behavioral signals, the agent calculates a propensity score — essentially a number that tells us how strongly the customer is leaning towards certain feature sets, such as performance & handling, interior comfort & technology, or brand image & aesthetics
     """
-    function_name = get_function_name()
+    function_name = inspect.currentframe().f_code.co_name #get_function_name()
     try:
         from agents.propensity_agent import PropensityAgent
         source = kwargs["source"]
@@ -260,7 +253,7 @@ def personalization_agent(*args, **kwargs):
     """
     Personalization agent generates a personalized email to the customer.
     """
-    function_name = get_function_name()
+    function_name = inspect.currentframe().f_code.co_name #get_function_name()
     try:
         from agents.personalization_agent import PersonalizationAgent
         source = kwargs.get("source", "")
@@ -324,7 +317,7 @@ def competitor_analysis_agent(*args, **kwargs):
     This agent ensures we understand the competitive landscape from the customer's perspective. 
     It identifies rival cars in the same category or price range and pulls in their specifications, pricing, performance numbers, and standout features.
     """
-    function_name = get_function_name()
+    function_name = inspect.currentframe().f_code.co_name #get_function_name()
     try:
         from agents.competitor_analysis_agent.main import CompetitorAnalysis
         source = kwargs["source"]
@@ -354,7 +347,7 @@ def prioritization_agent(*args, **kwargs):
     Suggests lead/deal prioritization. This agent decides how important and urgent this lead is for us. 
     If the customer has interacted multiple times, they're likely a warm lead — someone worth immediate follow-up. Basically a lead scoring agent.
     """
-    function_name = get_function_name()
+    function_name = inspect.currentframe().f_code.co_name #get_function_name()
     try:
         from agents.lead_prioritization_agent import LeadPrioritizationAgent
         source = kwargs["source"]
@@ -379,7 +372,7 @@ def communication_agent(*args, **kwargs):
     """
     This agent sends final communication via email/WhatsApp to the customer.
     """
-    function_name = get_function_name()
+    function_name = inspect.currentframe().f_code.co_name #get_function_name()
     from agents.communication_agent import CommunicationAgent
 
     logger.info(f"Running communication agent... \n {json.dumps(kwargs, indent=4)}")
@@ -442,7 +435,7 @@ def sentiment_analysis_agent(*args, **kwargs):
     """
     This agent analyzes customer sentiment and emotion patterns based on their interactions with the website or system data.
     """
-    function_name = get_function_name()
+    function_name = inspect.currentframe().f_code.co_name #get_function_name()
     try:
         from agents.sentiment_agent import SentimentAnalysisAgent
         source = kwargs["source"]
@@ -477,7 +470,7 @@ def get_current_datetime(*args, **kwargs):
     This agent returns the current date and time.
     """
     import datetime
-    func_name = get_function_name()
+    func_name = inspect.currentframe().f_code.co_name #get_function_name()
     current_datetime = datetime.datetime.now().strftime("%d-%m-%y %H:%M:%S")
     return {
         "task": func_name,
@@ -492,7 +485,7 @@ def get_greeting(*args, **kwargs):
     """
     import random
     query = kwargs.get("user_query")
-    func_name = get_function_name()
+    func_name = inspect.currentframe().f_code.co_name #get_function_name()
     random_greetings = [
         "Hello", "Hi", "Hey", "Howdy", "Hola", "Hello there", "Hi there", "Hey there", "Howdy there", "Hola there",
     ]
@@ -508,7 +501,7 @@ def call_analytics_agent(*args, **kwargs):
     """
     This agent calls an analytics agent to process customer data. 
     """
-    function_name = get_function_name()
+    function_name = inspect.currentframe().f_code.co_name #get_function_name()
     try:
         from agents.call_analytics_agent import CallQualityAnalysisAgent
         source = kwargs["source"]
