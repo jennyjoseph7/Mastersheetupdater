@@ -73,6 +73,16 @@ GLOBAL_AGENT_REGISTRY = OrderedDict()
 
 @dataclass
 class AgentConfig:
+    """
+    Agent configuration class.
+    
+    :param name (str): Name of the agent.
+    :param description (str): Description of the agent.
+    :param execute (Callable[..., Any]): Function to execute the agent.
+    :param depends_on (List[str], optional): List of agent names this agent depends on.
+    :param expected_input (Dict[str, str], optional): Expected input format for the agent.
+    :param expected_output (Dict[str, str], optional): Expected output format for the agent.
+    """
     name: str
     description: str
     execute: Callable[..., Any]
@@ -83,6 +93,7 @@ class AgentConfig:
 def register_agent(name:str=None, description:str=None, depends_on:list[str]=None, expected_input:dict[str]=None, expected_output:dict[str]=None):
     """
     Decorator to register a function as an agent in the orchestrator's AGENT_REGISTRY.
+    
     :param name: Optional name for the agent (default: function name)
     :param description: Description of the agent (default: function docstring)
     :param depends_on: List of agent names this agent depends on
@@ -90,6 +101,7 @@ def register_agent(name:str=None, description:str=None, depends_on:list[str]=Non
     :param expected_output: Expected output format for the agent [optional]
     """
     def decorator(func):
+        # nonlocal name, description, depends_on, expected_input, expected_output
         dep_ = depends_on or []
         exp_i = expected_input or {}
         exp_o = expected_output or {}
@@ -129,7 +141,9 @@ class AgentOrchestrator:
                     "task": agent.name,
                     "kwargs": {},
                     "args": (None),  
-                    "depends_on": agent.depends_on
+                    "depends_on": agent.depends_on,
+                    "expected_input": agent.expected_input,
+                    "expected_output": agent.expected_output
                 }
                 for agent in self.AGENT_REGISTRY
             ],

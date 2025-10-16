@@ -103,23 +103,14 @@ def autobot_agents_trigger_generator(*args, **kwargs) -> Generator:
     kwargs['aem_integration_agent_results'] = aem_integration_agent_results
     kwargs['source'] = aem_integration_agent_results.get("updated_source")
     yield aem_integration_agent_results
+
     awaited_tasks = [
-        {
-            "task": "propensity_agent",
-            "service": GRYD_SERVICE,
-            "kwargs": kwargs
-        },
-        {
-            "task": "competitor_analysis_agent",
-            "service": GRYD_SERVICE,
-            "kwargs": kwargs
-        },
-        {
-            "task": "prioritization_agent",
-            "service": GRYD_SERVICE,
-            "kwargs": kwargs
-        }
+        {"task": "propensity_agent", "service": GRYD_SERVICE, "kwargs": kwargs},
+        {"task": "competitor_analysis_agent", "service": GRYD_SERVICE, "kwargs": kwargs},
+        {"task": "prioritization_agent", "service": GRYD_SERVICE, "kwargs": kwargs},
+        {"task": "sentiment_analysis_agent", "service": GRYD_SERVICE, "kwargs": kwargs},
     ]
+
     if execution_mode == "async":
         logger.info("🚀 Running tasks asynchronously...")
         jobs = gryd.yield_results(awaited_tasks, timeout=120)
@@ -143,7 +134,6 @@ def autobot_agents_trigger_generator(*args, **kwargs) -> Generator:
             yield job
     
     next_agents = {
-        "sentiment_analysis_agent_results": sentiment_analysis_agent,
         "personalization_agent_results": personalization_agent,
         "communication_agent_results": communication_agent,
     }
@@ -179,7 +169,7 @@ def aem_integration_agent(*args, **kwargs):
 @gryd.is_a_task()
 def dealer_locator_agent(*args, **kwargs):
     """
-    Locates the nearest dealer to the customer based on their location.
+    This agent locates the nearest dealer to the customer based on their location. 
     """
     function_name = inspect.currentframe().f_code.co_name #get_function_name()
     try:
@@ -263,14 +253,14 @@ def personalization_agent(*args, **kwargs):
         propensity_agent_results = kwargs.get("propensity_agent_results") or {}  
         propensity_score = propensity_agent_results.get("scores","")
         
-        #sentiment analysis agent results:
+        # Sentiment analysis agent results:
         
         sentiment_results = kwargs.get("sentiment_analysis_agent_results") or {} 
         sentiment_score = sentiment_results.get("sentiment_score","")
         emotions = sentiment_results.get("emotions","")
         sentiment_justification = sentiment_results.get("justification","")
         
-        #prioritization agent results:
+        # Prioritization agent results:
         prioritization_results = kwargs.get("prioritization_agent_results") or {} 
         
         # Competitor Analysis Agent Results
@@ -487,7 +477,10 @@ def get_greeting(*args, **kwargs):
     query = kwargs.get("user_query")
     func_name = inspect.currentframe().f_code.co_name #get_function_name()
     random_greetings = [
-        "Hello", "Hi", "Hey", "Howdy", "Hola", "Hello there", "Hi there", "Hey there", "Howdy there", "Hola there",
+        "Hello", "Hi", "Hey", 
+        "Howdy", "Hola", "Hello there", 
+        "Hi there", "Hey there", 
+        "Howdy there", "Hola there",
     ]
     return {
         "task": func_name,
