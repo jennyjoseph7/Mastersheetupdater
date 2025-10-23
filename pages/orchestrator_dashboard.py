@@ -110,6 +110,7 @@ if run_clicked and user_query:
     all_results = []
     with st.spinner("🧠 Orchestrator is thinking and executing..."):
         for result in run_orchestrator(user_query):
+            # logger.info(f"Yielded Result: {json.dumps(result, indent=4, default=str)}")
             all_results.append(result)
             if "reasoning" in result:
                 st.markdown("#### ⚛︎ Query Orchestrator Reasoning:")
@@ -134,6 +135,16 @@ if run_clicked and user_query:
 
             if result.get("task") == "aem_integration_agent":
                 continue
+
+            if "general_query_agent_results" in result:
+                general_query_result = result.get("general_query_agent_results")
+                if "error" in general_query_result:
+                    st.error(general_query_result)
+                    continue
+                st.success("✅ General Query Computed Successfully")
+                st.write("General Query Results:")
+                st.json(general_query_result)
+                st.markdown("---")
             
             if "propensity_agent_results" in result:
                 st.success("✅ Propensity Scores Computed Successfully")
@@ -350,7 +361,8 @@ if run_clicked and user_query:
                     # response = st.write_stream(response_generator(response = reasoning))
                     st.info(reasoning)
                 if isinstance(sentiment_result, dict):
-                    st.info(sentiment_result)
+                    # st.info(sentiment_result)
+                    st.json(sentiment_result)
                     # st.info(f"**User Input:** {sentiment_result.get('user_input')}\n\n**Justification:** {sentiment_result.get('justification')} \n\n**Emotions:** {sentiment_result.get('emotions')}\n\n**Sentiment Score:** {sentiment_result.get('sentiment_score')}")
                 # st.text_area("Sentiment Message : ", message, height=600)
                 st.markdown("---")

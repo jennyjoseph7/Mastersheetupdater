@@ -487,6 +487,41 @@ def get_greeting(*args, **kwargs):
         "greeting": random.choice(random_greetings)
         }
 
+@gryd.is_a_task()
+@AgentOrchestrator.register_agent(name=None, depends_on=[], expected_input={"user_query": "str"})
+def general_query_agent(*args, **kwargs):
+    """
+    This agent will handle general purpose queries. The kind of queries that can be handled by this agent are not limited to anything specific task.
+    """
+    function_name = inspect.currentframe().f_code.co_name
+    try:
+        from ai_service import ai_service_app
+        llm_function = lambda x : ai_service_app.get_llm_response(messages=x, model_identifier="azure-gpt-4o")
+        query = kwargs.get("user_query")
+        messages = [
+            {
+                "role": "system",
+                "content" : "You are a general purpose AI assistant. You will answer any general purpose question."
+            },
+            {
+                "role": "user",
+                "content": query
+            }
+        ]
+        response = llm_function(x = messages)
+        return {
+            "task": function_name,
+            "response": response
+        }
+    except Exception as e:
+        logger.error(f"General Query Agent Error: {e}")
+        traceback.print_exc()
+        return {
+            "task": function_name,
+            "error": str(e).strip()
+        }
+        
+
 
 @gryd.is_a_task()
 @AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
@@ -514,7 +549,6 @@ def call_analytics_agent(*args, **kwargs):
 
 # ------------------ Global Agents Finish ------------------
 
-from dataclasses import asdict
 a = AgentOrchestrator.AgentOrchestrator()
 agents_list = []
 for agent in a.AGENT_REGISTRY:
@@ -525,21 +559,15 @@ for agent in a.AGENT_REGISTRY:
         "expected_input": agent.expected_input,
         "expected_output": agent.expected_output
     })
-# agent_dicts = [asdict(agent) for agent in a.AGENT_REGISTRY]
 print(json.dumps(agents_list, indent=4))
 
-# for agent in a.AGENT_REGISTRY:
-#     logger.info(f"Agent: {agent.name}, Description: {agent.description}, Depends on: {agent.depends_on}")
-# logger.info(f"Local Agents: {json.dumps(a.AGENT_REGISTRY, indent=4, default=str)}")
-# logger.info(f"Global Agents: {json.dumps(AgentOrchestrator.GLOBAL_AGENT_REGISTRY, indent=4, default=str)}")
+
 @gryd.is_a_task()
 def query_orchestrator(*args, **kwargs):
     from AgentOrchestrator import AgentOrchestrator
-    user_query = kwargs['user_query']
-    source = kwargs["source"]
-    model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-    # model_identifier = "groq-llama-3.3-70b"
-    a = AgentOrchestrator(model_identifier=model_identifier)
-    response = a.orchestrator(user_query, source=source)
+    agent_kwargs = kwargs
+    logger.info(f"Agent Kwargs: {json.dumps(agent_kwargs, indent=4, default=str)}")
+    a = AgentOrchestrator(model_identifier="azure-gpt-4o")
+    response = a.orchestrator(**agent_kwargs)
     for r in response:
         yield r

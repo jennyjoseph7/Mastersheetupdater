@@ -15,13 +15,12 @@ from collections import OrderedDict
 
 logger = get_logger(__name__)
 
-# gryd.SERVICE = GRYD_SERVICE
-# gryd.set_queue_manager(config = GRYD_CONFIG)
+gryd.SERVICE = GRYD_SERVICE
+gryd.set_queue_manager(config = GRYD_CONFIG)
 
-
-# r = ai_service_app.list_models(cloud="groq")
-# logger.info(f"AI Models: {json.dumps(r, indent=4)}")
-# assert False
+def list_llm_models(cloud = "azure"):
+    models = ai_service_app.list_models(cloud = cloud)
+    return models
 
 def environment(environment: str = "-local"):
     if not environment.startswith("-"):
@@ -30,9 +29,6 @@ def environment(environment: str = "-local"):
     message = {"message": f"Environment set to '{environment}'"}
     logger.info(message)
     return message
-
-# GRYD_ENVIRONMENT = os.getenv("ENVIRONMENT", "-local")
-# environment(environment = GRYD_ENVIRONMENT)
 
 def timer(view_type=float):
     if view_type not in (int, float):
@@ -121,6 +117,7 @@ def register_agent(name:str=None, description:str=None, depends_on:list[str]=Non
 class AgentOrchestrator:
     def __init__(self, model_identifier: str = "azure-gpt-4o"):
         self.model_identifier : str = model_identifier
+        self.llm_function : Callable = lambda messages : ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)    
         self.AGENT_REGISTRY: List[AgentConfig] = []
 
         for name, meta in GLOBAL_AGENT_REGISTRY.items():
@@ -147,8 +144,20 @@ class AgentOrchestrator:
                 }
                 for agent in self.AGENT_REGISTRY
             ],
-            "reasoning" : None
+            # "reasoning" : None
         }
+
+        # self.JSON_PLAN = [
+        #     {
+        #         "task": agent.name,
+        #         "kwargs": {},
+        #         "args": (None),  
+        #         "depends_on": agent.depends_on,
+        #         "expected_input": agent.expected_input,
+        #         "expected_output": agent.expected_output
+        #     }
+        #     for agent in self.AGENT_REGISTRY
+        # ]
 
     def inspect_func_schema(self, func):
         "Work in progress. We can try to find end to end function schema for better orchestration"
@@ -168,11 +177,6 @@ class AgentOrchestrator:
                 "expected_output": agent.expected_output
             })
         return agent_descriptions
-        # return [f"{idx}.{agent.name}: {agent.description} (depends_on: {agent.depends_on})" for idx, agent in enumerate(self.AGENT_REGISTRY, start=1)]
-    
-    @property
-    def default_plan(self) -> dict:
-        return self.JSON_PLAN['Plan']
     
     def extract_json_from_llm_response(self, response: str) -> dict:
         stack, start = [], None
@@ -209,13 +213,39 @@ class AgentOrchestrator:
                 with open(source, 'r') as f:
                     return json.load(f)
         raise ValueError(f"Invalid JSON source: {source}")
+    
 
+    def _llm_generate_reasoning(self, query: str, **agent_kwargs) -> str:
+        source_data = self.load_json(agent_kwargs)
+
+        system_prompt = """
+        You are a Smart AI reasoning assistant.
+        You will explain your reasoning process for selecting agents to execute a given query.
+        Write the reasoning step-by-step in a natural and conversational tone.
+        Use phrases like "Hmm, let me think..." or "Next, I'll..." to sound human-like. Be creative.
+        Explain why each agent is chosen, its role, and dependency chain.
+        End with a short summary like: “Based on this reasoning, let's build an execution plan and begin executing.”
+        Keep it concise (6-7 sentences max).
+        If the query is unrelated to any of the available agents, respond with how the query is unrelated to any agent and thus no plan is needed. Give an good understanding of available agents, what they do and how they can be used to answer the query with some examples. Explain in a natural way with 6-7 sentences max so it doesn't feel too long.
+        """
+
+        user_prompt = f"""
+        Query: {query}
+        Context kwargs: {json.dumps(source_data, indent=4)}
+        Available Agents with dependencies: {json.dumps(self.agent_descriptions, indent=4)}
+        """
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        reasoning = self.llm_function(messages = messages)
+        return reasoning
+    
     # ---------- Core Methods ----------
     @timer(view_type=float)
-    def llm_generate_plan(self, query: str, model_identifier: str = None, **agent_kwargs) -> List[Dict[str, Any]]:
-        if model_identifier:
-            self.model_identifier = model_identifier
-        
+    def llm_generate_plan(self, query: str, **agent_kwargs) -> List[Dict[str, Any]]:
         source_data = self.load_json(agent_kwargs)
         logger.info("-------------------SOURCE DATA LOADED-------------------")
         print(f"{json.dumps(source_data, indent=4, default=str)}")
@@ -225,6 +255,7 @@ class AgentOrchestrator:
         system_prompt = f"""
         You are an Smart AI Agent planning assistant.
         You will create a structured execution plan for a pipeline of agents.
+
         Rules:
         - Each agent has a `task` (agent name), `kwargs`, `args`, and `depends_on`.
         - Use only available agents.
@@ -250,21 +281,31 @@ class AgentOrchestrator:
             "kwargs": {{"some_key": "some_data"}}
         - Keep `args` as null unless there is a very strong reason otherwise (default: null).
         - Only include agents directly relevant to the query.
-        - Do not include unrelated agents, Only add if they are dependencies of other downstream agents.
-        - If the query is unrelated to any agent, just return an empty plan and don't include any agents. (Maybe in reasoning, mention that the query is unrelated to any agent and thus no plan is needed. Give an good understanding of available agents, what they do and how they can be used to answer the query maybe with some examples. Explain in a natural way with 6-7 sentences max so it doesn't feel too long.)
+        - If query is unrelated, return an empty plan list {{"plan": []}}.
 
-        JSON schema (follow exactly): 
-
-        - Add a 'reasoning' key that describes what the LLM is thinking while generating the plan. Write it in a step-by-step, natural way — like a human would explain their thought process. Use casual phrases like "Hmm, let me think…" or "Next, I'll…". Explain why each agent is chosen, the role it plays, and how it contributes to answering the user query (e.g., aem_integration_agent → propensity_agent → sentiment_analysis_agent → …). 
-        For each agent, explain why it is selected, what it does, and how it depends on or supports the next agent (e.g., aem_integration_agent → propensity_agent → sentiment_analysis_agent → …). Clearly mention the dependency flow — why one agent's output is needed for the next.
-        After laying out the reasoning, end with a short summary like: “Based on this reasoning, let's build an execution plan and begin executing.” Keep it 6-7 sentences max so it doesn't feel too long.
-
-        - Strictly follow the Plan order while respecting dependencies.
+        - Strictly follow the Plan order while respecting dependencies. 
+        - Below is JSON plan template: (It's a dict with a single key 'plan' which is a list of dicts)
         {json.dumps(self.JSON_PLAN, indent=4)}
         """
 
         # - Add a 'reasoning' key with a description of what the LLM is doing While generating the plan, describe your reasoning step by step: explain why you select each agent, what role it plays, and how it contributes to answering the user query. After summarizing your thought process, conclude with a sentence like 'Based on this reasoning, let's build an execution plan and begin executing. Should be 5-6 sentences max. Make it look like a human would write it. (Sentences like Hmm, Let me think...etc are encouraged)'. Give agent execution steps like below in reasoning: aem_integration_agent -> propensity_agent -> sentiment_analysis_agent -> ...etc.
         # - If the query is only about prioritization, run aem_integration_agent first (for enrichment) and then prioritization_agent only.
+        # - Do not include unrelated agents, Only add if they are dependencies of other downstream agents.
+        # - If the query is unrelated to any agent, just return an empty plan and don't include any agents. (Maybe in reasoning, mention that the query is unrelated to any agent and thus no plan is needed. Give an good understanding of available agents, what they do and how they can be used to answer the query maybe with some examples. Explain in a natural way with 6-7 sentences max so it doesn't feel too long.)
+        # (It's a dict with a single key 'plan' which is a list of dicts)
+
+        # JSON schema (follow exactly): 
+
+        # - Add a 'reasoning' key that describes what the LLM is thinking while generating the plan. Write it in a step-by-step, natural way — like a human would explain their thought process. Use casual phrases like "Hmm, let me think…" or "Next, I'll…". Explain why each agent is chosen, the role it plays, and how it contributes to answering the user query (e.g., aem_integration_agent → propensity_agent → sentiment_analysis_agent → …). 
+        # For each agent, explain why it is selected, what it does, and how it depends on or supports the next agent (e.g., aem_integration_agent → propensity_agent → sentiment_analysis_agent → …). Clearly mention the dependency flow — why one agent's output is needed for the next.
+        # After laying out the reasoning, end with a short summary like: “Based on this reasoning, let's build an execution plan and begin executing.” Keep it 6-7 sentences max so it doesn't feel too long.
+
+        # if "plan_reasoning" in agent_kwargs:
+        #     reasoning = agent_kwargs["plan_reasoning"]
+        #     system_prompt += f"""
+        #     Reasoning: {reasoning}
+        #     """
+
         logger.info(f"Agent Descriptions: {json.dumps(self.agent_descriptions, indent=4)}")
         user_prompt = (
             f"Query: {query}\n\n"
@@ -275,7 +316,7 @@ class AgentOrchestrator:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        response = ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
+        response = self.llm_function(messages = messages)
         logger.info(f"-------------------LLM RESPONSE RAW-------------------")
         logger.info(f"{response} \n\n")
         logger.info(f"-------------------END LLM RESPONSE RAW-------------------")
@@ -289,18 +330,6 @@ class AgentOrchestrator:
             logger.error("Failed to parse plan JSON, fallback to default dependency plan.")
             plan = self.JSON_PLAN
         return plan
-    
-    # Full Example: {{
-    # "task": "some_agent",
-    # "kwargs": {{"source": <source_data>}},
-    # "args": [],
-    # "depends_on": ["some_agent_1", "some_agent_2"]
-    # }} or 
-    # "task": "some_agent",
-    # "kwargs": {{"query": <source_data>}},
-    # "args": [],
-    # "depends_on": ["some_agent_1", "some_agent_2"]
-    # }}
     
     def conclusive_reasoning(self, query: str, accumulated_results: dict) -> str:
         messages = [
@@ -317,20 +346,23 @@ class AgentOrchestrator:
                 "content": f"Query: {query}\n\nAccumulated Results: {json.dumps(accumulated_results, indent=4)}"
             },
         ]
-        response = ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
+        response = self.llm_function(messages = messages)
         return response
     @timer(view_type=float)
-    def orchestrator(self, user_query: str, *args, **agent_kwargs):
+    def orchestrator(self, user_query: str, **agent_kwargs):
         if user_query is None:
             raise ValueError("'query' is required")
 
+        plan_reasoning : str = self._llm_generate_reasoning(query = user_query, **agent_kwargs)
+        yield {"reasoning": plan_reasoning}
+
+        agent_kwargs['plan_reasoning'] = plan_reasoning
+
         f_plan : dict = self.llm_generate_plan(query = user_query, **agent_kwargs)        
-        plan, reasoning = f_plan["plan"], f_plan["reasoning"]
-        if reasoning is None:
-            reasoning = "I am analyzing the user query to determine which agents are most suitable for each part of the task. For every step, I consider the agent's capabilities and how it can contribute to producing the correct result. I prioritize agents that can handle complex reasoning, data retrieval, or processing efficiently. Based on this reasoning, let's build an execution plan and begin executing."
-            f_plan["reasoning"] = reasoning
-        # logger.info(f"Reasoning: {reasoning}")
+        plan = f_plan["plan"]
+
         yield f_plan
+
         agents_lineup = [step.get("task") for step in plan]
         yield {"agents_lineup": agents_lineup}
 
@@ -358,8 +390,9 @@ class AgentOrchestrator:
 
         for step in plan:
             logger.info(f"Running step: {step}")
-            if aem_result:
-                step["kwargs"]["source"] = aem_result.get("updated_source", {})  
+            if "aem_integration_agent" in step.get("depends_on"):
+                if aem_result:
+                    step["kwargs"]["source"] = aem_result.get("updated_source", {})           
             step_kwargs = step.get("kwargs") or {}
             enriched_kwargs = {**results_accumulator, **step_kwargs}
             # logger.info(f"Enriched Kwargs: {json.dumps(enriched_kwargs, indent=4, default=str)}")
@@ -387,3 +420,9 @@ if __name__ == "__main__":
         a = AgentOrchestrator()
         for idx, update in enumerate(a.orchestrator(user_query=query, source=source_data), start=1):
             print(f"Yielded Iteration {idx}: {json.dumps(update, indent=4, default=str)}")
+
+
+#  - add empathatic filler (as soon as need to be yielded)
+#  - rephrase & reasoning
+#  - Plan 
+#  - run the agents as per plan
