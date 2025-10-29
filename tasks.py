@@ -26,6 +26,12 @@ def get_function_name():
     # return inspect.currentframe().f_back.f_code.co_name
     return inspect.currentframe().f_code.co_name
 
+
+def get_gryd_docs():
+    docs = gryd.LIST_OF_DOCS
+    return docs 
+
+
 @gryd.is_a_task()
 def autobot_agents_trigger(*args, **kwargs):
     source: Union[dict, str] = kwargs.get("source", None)
@@ -520,8 +526,384 @@ def general_query_agent(*args, **kwargs):
             "task": function_name,
             "error": str(e).strip()
         }
-        
 
+@gryd.is_a_task()
+@AgentOrchestrator.register_agent(depends_on=[], expected_input={"source": "dict"}) # , capability_function = "gryd_task_name"
+def weather_agent(*args, **kwargs):
+    """
+    This agent fetches the current weather and forecast for a given city.
+    """
+    import asyncio
+    import python_weather
+
+    func_name = inspect.currentframe().f_code.co_name
+    source = kwargs.get("source")
+    
+    city = None
+    for key in ["city", "location", "dealer_city", "dealer_location"]:
+        if key in source:
+            city = source[key]
+            break
+
+    if not city:
+        return {
+            "task": func_name, 
+            "error": "City not found in source"
+            }
+
+    async def fetch_weather():
+        async with python_weather.Client(unit=python_weather.METRIC) as client:
+            weather = await client.get(city)
+            forecast = []
+            for daily in weather:
+                # logger.info(f"daily: {daily}")
+                daily_info = {
+                    "date": str(daily.date),
+                    "temperature": daily.temperature,
+                    "hourly": []
+                }
+                for hourly in daily:
+                    daily_info["hourly"].append({
+                        "time": str(hourly.time),
+                        "temperature": hourly.temperature
+                    })
+                forecast.append(daily_info)
+
+            return {
+                "task": func_name,
+                "city": city,
+                "temperature": weather.temperature,
+                "unit": "°C",
+                "forecast": forecast
+            }
+    if os.name == 'nt':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    result = asyncio.run(fetch_weather())
+    return result
+
+
+# @gryd.is_a_task()
+# @AgentOrchestrator.register_agent(name=None, depends_on=[], expected_input={"source": "dict"})
+# def compute_on_road_price(*args, **kwargs):
+#     function_name = inspect.currentframe().f_code.co_name 
+
+#     ENGINE_TYPES = ["petrol", "diesel", "cng", "ev"]
+
+#     source = kwargs.get("source")
+#     state = source.get("state")
+#     engine_type = source.get("engine_type")  # petrol, diesel, cng, ev
+#     ex_showroom_price = source.get("ex_showroom_price")
+#     is_company_vehicle = source.get("is_company_vehicle", False)
+#     is_on_loan = source.get("is_on_loan", False)
+
+
+#     ROAD_TAX_SLABS = [
+#         {"min": 0, "max": 6_00_000, "label": "Up to ₹6 lakh"},
+#         {"min": 0, "max": 10_00_000, "label": "Up to ₹10 lakh"},
+#         {"min": 0, "max": 5_00_000, "label": "Up to ₹5 lakh"},
+#         {"min": 5_00_000, "max": 10_00_000, "label": "₹5 lakh to ₹10 lakh"},
+#         {"min": 10_00_000, "max": 20_00_000, "label": "₹10 lakh to ₹20 lakh"},
+#         {"min": 20_00_000, "max": float("inf"), "label": "₹20 lakh and above"},
+#         {"min": 3_00_000, "max": 5_00_000, "label": "₹3 lakh to ₹5 lakh"},
+#         {"min": 5_00_000, "max": 10_00_000, "label": "₹5 lakh to ₹10 lakh"},
+#         {"min": 10_00_000, "max": 15_00_000, "label": "₹10 lakh to ₹15 lakh"},
+#         {"min": 15_00_000, "max": 18_00_000, "label": "₹15 lakh to ₹18 lakh"},
+#         {"min": 18_00_000, "max": 20_00_000, "label": "₹18 lakh to ₹20 lakh"},
+#         {"min": 20_00_000, "max": float("inf"), "label": "₹20 lakh and above"},
+#         {"min": 3_00_000, "max": 15_00_000, "label": "₹3 lakh to ₹15 lakh"},
+#         {"min": 15_00_000, "max": 20_00_000, "label": "₹15 lakh to ₹20 lakh"},
+#         {"min": 20_00_000, "max": float("inf"), "label": "₹20 lakh and above"},
+#         {"min": 0, "max": 10_00_000, "label": "Up to ₹10 lakh"},
+#         {"min": 10_00_000, "max": float("inf"), "label": "Over ₹10 lakh"},
+#     ]
+
+#     with open("state_charges_2.json", "r") as f:
+#         rto_data = json.load(f)
+#         rto_data.pop('metadata', None)
+#     if engine_type.lower() not in ENGINE_TYPES:
+#         raise ValueError(f"Invalid engine type: {engine_type}") 
+    
+#     STATES = list(rto_data.keys())
+#     ROAD_TAX_SLABS = []
+
+#     for state in STATES:
+#         road_tax_slabs = rto_data[state]["road_tax"].get("vehicle_cost_slab") or rto_data[state]["road_tax"].get("vehicle_cost_slabs") or []
+#         ROAD_TAX_SLABS.append({"state": state, "road_tax_slabs": road_tax_slabs})
+
+#     # logger.info(f"States: {json.dumps(STATES, indent=4, default=str)}")
+#     logger.info(f"Road Tax Slabs: {json.dumps(ROAD_TAX_SLABS, indent=4, default=str, ensure_ascii=False)}")
+
+#     if state not in rto_data:
+#         raise ValueError(f"State '{state}' not found in RTO data.")
+    
+#     state_data = rto_data[state]
+#     logger.info(f"State Data: {json.dumps(state_data, indent=4, default=str)}")
+
+#     # --- Get registration data ---
+#     registration = state_data.get("registration", {})
+#     road_tax = state_data.get("road_tax", {})
+    
+#     # --- Flat charges ---
+#     registration_charges = float(registration.get("registration_charges", 600))
+#     hypothecation_charges = float(registration.get("hypothecation_charges", 0)) if is_on_loan else 0
+#     number_plate_charges = float(registration.get("number_plate_fee", 400))
+    
+#     temp_reg = registration.get("temporary_registration_charges", {})
+#     temporary_registration_charges = float(temp_reg.get("max", 2000))
+    
+#     fast_tag = registration.get("fast_tag_charges", {})
+#     fast_tag_charges = float(fast_tag.get("max", 600))
+    
+#     # --- Other charges (parking fee, road safety tax, etc.) ---
+#     other_charges = registration.get("other_charges", {})
+#     parking_fee = 0
+#     if "parking_fee" in other_charges:
+#         parking_data = other_charges["parking_fee"]
+#         if isinstance(parking_data, dict):
+#             # Handle cases like Delhi where parking fee depends on vehicle cost
+#             if ex_showroom_price < 400000:
+#                 parking_fee = float(parking_data.get("below_4_lakh", 0))
+#             else:
+#                 parking_fee = float(parking_data.get("above_4_lakh", 0))
+#         else:
+#             parking_fee = float(parking_data)
+    
+#     road_safety_tax = float(other_charges.get("road_safety_tax", 0))
+    
+#     # --- Calculate road tax ---
+#     road_tax_charges = 0
+    
+#     # Check if road_tax has vehicle_cost_slabs (for states like Karnataka, Arunachal Pradesh, Assam)
+#     if "vehicle_cost_slabs" in road_tax:
+#         slabs = road_tax["vehicle_cost_slabs"]
+#         for slab in slabs:
+#             # Find the appropriate slab based on ex_showroom_price
+#             # This is a simplified approach - you may need to parse the range strings
+#             private_tax = slab.get("private_road_tax", {})
+#             company_tax = slab.get("company_road_tax", {})
+            
+#             if is_company_vehicle and company_tax:
+#                 road_tax_rate = float(company_tax.get(engine_type, company_tax.get("all_fuel_types", 0)))
+#             else:
+#                 road_tax_rate = float(private_tax.get(engine_type, private_tax.get("all_fuel_types", 0)))
+            
+#             # Use the last applicable slab (simplified - you may want to add proper range checking)
+#             road_tax_charges = ex_showroom_price * road_tax_rate
+#     else:
+#         # Standard road tax calculation
+#         if is_company_vehicle:
+#             company_tax = road_tax.get("company_road_tax", {})
+#             road_tax_rate = float(company_tax.get(engine_type, company_tax.get("all_fuel_types", 0)))
+#         else:
+#             private_tax = road_tax.get("private_road_tax", {})
+#             road_tax_rate = float(private_tax.get(engine_type, private_tax.get("all_fuel_types", 0)))
+        
+#         road_tax_charges = ex_showroom_price * road_tax_rate
+    
+#     # --- Aggregate results ---
+#     result = {
+#         "task": function_name,
+#         "ex_showroom_price": round(ex_showroom_price, 2),
+#         "registration_charges": round(registration_charges, 2),
+#         "road_tax_charges": round(road_tax_charges, 2),
+#         "hypothecation_charges": round(hypothecation_charges, 2),
+#         "number_plate_charges": round(number_plate_charges, 2),
+#         "parking_fee_state_development_charges": round(parking_fee + road_safety_tax, 2),
+#         "temporary_registration_charges": round(temporary_registration_charges, 2),
+#         "fast_tag_charges": round(fast_tag_charges, 2),
+#     }
+
+#     # --- Final On-road Price ---
+#     total_rto_charges = (
+#         result["registration_charges"] +
+#         result["road_tax_charges"] +
+#         result["hypothecation_charges"] +
+#         result["number_plate_charges"] +
+#         result["parking_fee_state_development_charges"] +
+#         result["temporary_registration_charges"] +
+#         result["fast_tag_charges"]
+#     )
+    
+#     result["total_rto_charges"] = round(total_rto_charges, 2)
+#     result["on_road_price"] = round(ex_showroom_price + total_rto_charges, 2)
+
+#     return result
+
+@gryd.is_a_task()
+@AgentOrchestrator.register_agent(depends_on=[], expected_input={"source": "dict"})
+def compute_on_road_price(*args, **kwargs):
+    function_name = inspect.currentframe().f_code.co_name # get_function_name()
+    ENGINE_TYPES = ["petrol", "diesel", "cng", "ev"]
+
+    # --- Static base charges ---
+    BASE_CHARGES = {
+        "registration_charges": {
+            "amount": 600,
+            "unit": "INR",
+            "is_applicable": True,
+            "description": "RTO registration fees for new vehicle"
+        },
+        "hypothecation_charges": {
+            "amount": 1500,
+            "unit": "INR",
+            "is_applicable": "if_loan",
+            "description": "Applicable if car is purchased on loan"
+        },
+        "number_plate_charges": {
+            "amount": 400,
+            "unit": "INR",
+            "is_applicable": True,
+            "description": "HSRP number plate cost"
+        },
+        "parking_fee_charges": {
+            "amount": {
+                "below_4_lakh": 2000,
+                "above_4_lakh": 4000
+            },
+            "unit": "INR",
+            "is_applicable": "state_specific",
+            "description": "MCD or state parking/development fees"
+        },
+        "temporary_registration_charges": {
+            "amount": 2500,
+            "unit": "INR",
+            "is_applicable": "if_temp_registration",
+            "description": "Temporary registration valid for up to 1 month"
+        },
+        "road_tax_charges": {
+            "amount": "state_specific",
+            "unit": "percent",
+            "is_applicable": True,
+            "description": "State-wise applicable road tax rate"
+        },
+        "fasttag_charges": {
+            "amount": 600,
+            "unit": "INR",
+            "is_applicable": True,
+            "description": "FasTag issue cost"
+        }
+    }
+
+    try:
+        source = kwargs.get("source", {})
+        state = source.get("state", None)
+        ex_showroom_price = source.get("ex_showroom_price", 0)
+        is_company_vehicle = source.get("is_company_vehicle", False)
+        is_on_loan = source.get("is_on_loan", False)
+        has_temp_registration = source.get("has_temp_registration", True)
+        engine_type = source.get("engine_type", "petrol")
+        gst_rate = source.get("gst_rate", None)
+
+        if gst_rate:
+            ex_showroom_price = ex_showroom_price * (1 + (gst_rate / 100))
+
+        if engine_type.lower() not in ENGINE_TYPES:
+            error = f"Invalid engine type: '{engine_type}'. Valid engine types are: '{ENGINE_TYPES}'"
+            return {"task": function_name, "error": error}
+        
+        all_road_tax_data : list[dict] = json.load(open("road_tax_data.json", "r"))
+
+        ALL_STATES = [i['state'] for i in all_road_tax_data]
+        if state not in ALL_STATES:
+            error = f"Invalid state: '{state}'. Valid states are: '{ALL_STATES}'"
+            return {"task": function_name, "error": error}
+
+        road_tax_data = None
+        for data in all_road_tax_data:
+            if data['state'] == state:
+                road_tax_data = data
+                break
+
+        if not road_tax_data:
+            error = f"Road tax data not found for state: {state}"
+            return {"task": function_name, "error": error}
+        
+        tax_slabs = road_tax_data.get("tax_slabs", {})
+        registration_charges = road_tax_data.get("registration_charges", 0)
+        additional_charges_data = road_tax_data.get("additional_charges", [])
+
+        vehicle_type_key = None
+        if "all_vehicle" in tax_slabs:
+            vehicle_type_key = "all_vehicle"
+        else:
+            if is_company_vehicle:
+                vehicle_type_key = "company_vehicle"
+            else:
+                vehicle_type_key = "private_vehicle"
+        
+        engine_slabs = tax_slabs.get(vehicle_type_key, {}).get(engine_type, [])
+
+        if not engine_slabs:
+            error = f"Engine slabs not found for state: {state}, vehicle_type: {vehicle_type_key}, engine_type: {engine_type}"
+            return {"task": function_name, "error": error}
+
+        applicable_rate = None
+        for slab in engine_slabs:
+            min_val = slab["min"]
+            max_val = slab["max"]
+            if max_val is None or (ex_showroom_price >= min_val and ex_showroom_price <= max_val):
+                applicable_rate = slab["rate"]
+                break
+
+        road_tax = (ex_showroom_price * applicable_rate) / 100
+        additional_charge = 0
+        for add in additional_charges_data:
+            min_val = add["min"]
+            max_val = add["max"]
+            if max_val is None or (ex_showroom_price >= min_val and ex_showroom_price <= max_val):
+                additional_charge = add["rate"]
+                break
+
+        # --- Optional local charges ---
+        total_misc_charges = 0
+
+        total_misc_charges += BASE_CHARGES["registration_charges"]["amount"]
+
+        parking_fee = BASE_CHARGES["parking_fee_charges"]["amount"]["below_4_lakh"] if ex_showroom_price <= 400000 else BASE_CHARGES["parking_fee_charges"]["amount"]["above_4_lakh"]
+        total_misc_charges += parking_fee
+
+        total_misc_charges += BASE_CHARGES["number_plate_charges"]["amount"]
+
+        total_misc_charges += BASE_CHARGES["fasttag_charges"]["amount"]
+
+        if is_on_loan:
+            total_misc_charges += BASE_CHARGES["hypothecation_charges"]["amount"]
+
+        if has_temp_registration:
+            total_misc_charges += BASE_CHARGES["temporary_registration_charges"]["amount"]
+        
+        total_on_road_price = ex_showroom_price + road_tax + total_misc_charges + additional_charge
+        final_result = {
+            "task": function_name,
+            "state": state,
+            "engine_type": engine_type,
+            "is_company_vehicle": is_company_vehicle,
+            "ex_showroom_price": ex_showroom_price,
+            "road_tax_rate": applicable_rate,
+            "road_tax": round(road_tax, 2),
+            "registration_charges": registration_charges,
+            "misc_charges_breakdown": {
+                "parking_fee": parking_fee,
+                "number_plate": BASE_CHARGES["number_plate_charges"]["amount"],
+                "fasttag": BASE_CHARGES["fasttag_charges"]["amount"],
+                "hypothecation": BASE_CHARGES["hypothecation_charges"]["amount"] if is_on_loan else 0,
+                "temporary_registration": BASE_CHARGES["temporary_registration_charges"]["amount"] if has_temp_registration else 0
+            },
+            "additional_charge": additional_charge,
+            "total_misc_charges": total_misc_charges,
+            "total_on_road_price": round(total_on_road_price, 2)
+        }
+        if gst_rate:
+            final_result["gst"] = gst_rate
+        return final_result
+    except Exception as e:
+        logger.error(f"Compute On Road Price Error: {e}")
+        traceback.print_exc()
+        return {
+            "task": function_name,
+            "error": str(e).strip()
+        }
 
 @gryd.is_a_task()
 @AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
@@ -571,3 +953,84 @@ def query_orchestrator(*args, **kwargs):
     response = a.orchestrator(**agent_kwargs)
     for r in response:
         yield r
+
+if __name__ == "__main__":
+    r = compute_on_road_price(source = {"state" : "Punjab", "engine_type" : "petrol", "ex_showroom_price" : 950000, "gst_rate" : 18})
+    logger.info(f"Result: {json.dumps(r, indent=4, default=str)}")
+
+
+
+
+# def compute_on_road_price(ex_showroom_price: float,
+#                           engine_type: str,
+#                           state: str,
+#                           enterprise_id: str) -> dict:
+#     """
+#     Compute on-road price breakdown using dynamic models.
+#     - Engine-type–specific data (registration, road tax) comes from dedicated models.
+#     - State-only charges (like number plate, fast tag, parking, etc.) come from a common model.
+#     """
+
+#     # --- Engine-type dependent models ---
+#     registration_rate_model = model.Model("state_registration_charges", enterprise_id)
+#     road_tax_rate_model = model.Model("state_road_tax_charges", enterprise_id)
+
+#     # --- Common model for state-only fixed charges ---
+#     state_flat_charges_model = model.Model("state_flat_charges", enterprise_id)
+#     # Example structure of this model:
+#     # {
+#     #   "Karnataka": {
+#     #       "number_plate_charges": 1000,
+#     #       "temporary_registration_charges": 500,
+#     #       "fast_tag_charges": 500,
+#     #       "parking_fee_state_development_charges": 2000,
+#     #       "hypothecation_charges": 0
+#     #   },
+#     #   "Tamil Nadu": {...}
+#     # }
+
+#     # --- Fetch engine-type specific rates ---
+#     reg_rate = registration_rate_model.get(state, {}).get(engine_type)
+#     road_rate = road_tax_rate_model.get(state, {}).get(engine_type)
+
+#     # --- Fetch state-only flat charges ---
+#     state_flat = state_flat_charges_model.get(state, {})
+
+#     # Safety checks
+#     if reg_rate is None or road_rate is None:
+#         raise ValueError(f"Rates not defined for state={state}, engine_type={engine_type}")
+
+#     # --- Compute each component ---
+#     reg_charges = ex_showroom_price * reg_rate
+#     road_tax_charges = ex_showroom_price * road_rate
+
+#     hypothecation_charges = state_flat.get("hypothecation_charges", 0)
+#     number_plate_charges = state_flat.get("number_plate_charges", 0)
+#     parking_dev_charges = state_flat.get("parking_fee_state_development_charges", 0)
+#     temp_registration_charges = state_flat.get("temporary_registration_charges", 0)
+#     fast_tag_charges = state_flat.get("fast_tag_charges", 0)
+
+#     # --- Aggregate all ---
+#     result = {
+#         "ex_showroom_price": round(ex_showroom_price, 2),
+#         "registration_charges": round(reg_charges, 2),
+#         "hypothecation_charges": round(hypothecation_charges, 2),
+#         "number_plate_charges": round(number_plate_charges, 2),
+#         "parking_fee_state_development_charges": round(parking_dev_charges, 2),
+#         "temporary_registration_charges": round(temp_registration_charges, 2),
+#         "road_tax_charges": round(road_tax_charges, 2),
+#         "fast_tag_charges": round(fast_tag_charges, 2),
+#     }
+
+#     result["on_road_price"] = round(sum(result.values()), 2)
+
+#     return result
+
+
+# rm = gryd.get_service_connection()                      service_id = str(gryd.hp.make_uuid3(service, gryd.ENVIRONMENT))
+# r = rm.get_worker(service_id)
+# rr = r.get('list_of_docs', {})
+
+
+# rm = gryd.get_service_connection() 
+# list(rm.list())
