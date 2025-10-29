@@ -787,6 +787,7 @@ def compute_on_road_price(*args, **kwargs):
 
     try:
         source = kwargs.get("source", {})
+
         state = source.get("state", None)
         ex_showroom_price = source.get("ex_showroom_price", 0)
         is_company_vehicle = source.get("is_company_vehicle", False)
@@ -828,7 +829,7 @@ def compute_on_road_price(*args, **kwargs):
             vehicle_type_key = "all_vehicle"
         else:
             if is_company_vehicle:
-                vehicle_type_key = "company_vehicle"
+                vehicle_type_key = "commercial_vehicle"
             else:
                 vehicle_type_key = "private_vehicle"
         
@@ -955,7 +956,7 @@ def query_orchestrator(*args, **kwargs):
         yield r
 
 if __name__ == "__main__":
-    r = compute_on_road_price(source = {"state" : "Punjab", "engine_type" : "petrol", "ex_showroom_price" : 950000, "gst_rate" : 18})
+    r = compute_on_road_price(source = {"state" : "Andhra Pradesh", "engine_type" : "ev", "ex_showroom_price" : 950000, "gst_rate" : 18})
     logger.info(f"Result: {json.dumps(r, indent=4, default=str)}")
 
 
