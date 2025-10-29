@@ -1,0 +1,508 @@
+[
+    {
+        "state" : "Andhra Pradesh",
+        "tax_slabs": {
+            "all_vehicle" : {
+                "petrol" : [
+                    {"min": 0, "max": 1000000, "rate": 12},
+                    {"min": 1000001, "max": null, "rate": 14}
+                ],
+                "diesel" : [
+                    {"min": 0, "max": 1000000, "rate": 12},
+                    {"min": 1000001, "max": null, "rate": 14}
+                ],
+                "cng" : [],
+                "ev" : []
+            }
+        },
+        "registration_charges": 600
+    },
+    {
+        "state" : "Assam",
+        "tax_slabs": {
+            "all_vehicle" : {
+                "petrol" : [
+                    {"min": 0, "max": 400000, "rate": 5},
+                    {"min": 400001, "max": 600000, "rate": 6},
+                    {"min": 600001, "max": 1200000, "rate": 7},
+                    {"min": 1200001, "max": 1500000, "rate": 7.5},
+                    {"min": 1500001, "max": 2000000, "rate": 9},
+                    {"min": 1500001, "max": 2000000, "rate": 12}
+                ],
+                "diesel" : [
+                    {"min": 0, "max": 400000, "rate": 5},
+                    {"min": 400001, "max": 600000, "rate": 6},
+                    {"min": 600001, "max": 1200000, "rate": 7},
+                    {"min": 1200001, "max": 1500000, "rate": 7.5},
+                    {"min": 1500001, "max": 2000000, "rate": 9},
+                    {"min": 1500001, "max": 2000000, "rate": 12}
+                ],
+                "cng" : [],
+                "ev" : []
+            }
+        },
+        "registration_charges": 500
+    },
+    {
+        "state" : "Bihar",
+        "tax_slabs": {
+            "all_vehicle": {
+                "petrol" : [
+                    {"min": 0, "max": 800000, "rate": 7},
+                    {"min": 800001, "max": null, "rate": 13}
+                ],
+                "diesel" : [
+                    {"min": 0, "max": 800000, "rate": 7},
+                    {"min": 800001, "max": null, "rate": 13}
+                ],
+                "cng" : [],
+                "ev" : []
+            }
+        },
+        "registration_charges": 500
+    },
+    {
+        "state" : "Chandigarh",
+        "tax_slabs": {
+            "all_vehicle": {
+                "petrol" : [
+                    {"min": 0, "max": 2000000, "rate": 6},
+                    {"min": 2000001, "max": null, "rate": 8}
+                ],
+                "diesel" : [
+                    {"min": 0, "max": 2000000, "rate": 6},
+                    {"min": 2000001, "max": null, "rate": 8}
+                ],
+                "cng" : [],
+                "ev" : []
+            }
+        },
+        "registration_charges": 600
+    },
+        {
+        "state" : "Chhattisgarh",
+            "tax_slabs": [
+                {"min": 0, "max": 500000, "rate": 5},
+                {"min": 500001, "max": 1000000, "rate": 6}
+            ],
+            "registration_charges": 500
+        },
+
+
+        {
+            "state": "Delhi",
+            "tax_slabs": {
+                "private_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": 600000, "rate": 4},
+                        {"min": 600001, "max": 1000000, "rate": 7},
+                        {"min": 1000001, "max": null, "rate": 10}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 600000, "rate": 5},
+                        {"min": 600001, "max": 1000000, "rate": 8.75},
+                        {"min": 1000001, "max": null, "rate": 12.5}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                },
+                "commercial_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": 600000, "rate": 5},
+                        {"min": 600001, "max": 1000000, "rate": 8.75},
+                        {"min": 1000001, "max": null, "rate": 12.5}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 600000, "rate": 6.25},
+                        {"min": 600001, "max": 1000000, "rate": 10.94},
+                        {"min": 1000001, "max": null, "rate": 15.63}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 600
+        },
+        {
+        "state":"Goa",
+            "tax_slabs": {
+                "all_vehicle": {
+                    "petrol" : [
+                        {"min": 0, "max": 600000, "rate": 9},
+                        {"min": 600001, "max": 1000000, "rate": 11},
+                        {"min": 1000001, "max": null, "rate": 12}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 600000, "rate": 9},
+                        {"min": 600001, "max": 1000000, "rate": 11},
+                        {"min": 1000001, "max": null, "rate": 12}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+                },
+            "registration_charges": 500,
+            "additional_charges": [
+                {"min": 1000000, "max": 2000000, "rate": 12000},
+                {"min": 2000001, "max": 4000000, "rate": 40000},
+                {"min": 4000001, "max": 6000000, "rate": 75000},
+                {"min": 6000001, "max": null, "rate": 100000}
+            ]
+        },
+
+        {
+        "state" : "Gujarat",    
+            "tax_slabs": {
+                "private_vehicle" : {
+                    "petrol" : [{"min": 0, "max": null, "rate": 6}],
+                    "diesel" : [{"min": 0, "max": null, "rate": 6}],
+                    "cng" : [],
+                    "ev" : []
+                },
+                "commercial_vehicle" : {
+                    "petrol" : [{"min": 0, "max": null, "rate": 12}],
+                    "diesel" : [{"min": 0, "max": null, "rate": 12}],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 600,
+            "additional_charges": [
+                {"min": 0, "max": null, "rate": 5}
+            ]
+        },
+        {   
+        "state" : "Haryana",
+            "tax_slabs": {
+                "all_vehicle":{
+                    "petrol" : [
+                        {"min": 0, "max": 600000, "rate": 5},
+                        {"min": 600001, "max": 2000000, "rate": 8},
+                        {"min": 2000001, "max": null, "rate": 10}
+                    ],
+
+                    "diesel" : [
+                        {"min": 0, "max": 600000, "rate": 6},
+                        {"min": 600001, "max": 2000000, "rate": 9},
+                        {"min": 2000001, "max": null, "rate": 11}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 600
+        },
+        {
+        "state" : "Himachal Pradesh",
+            "tax_slabs": {
+                "all_vehicle":{
+                    "petrol" : [
+                        {"min": 0, "max": null, "rate": 3}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": null, "rate": 3}
+                    ],
+                    "cng" : [],
+                    "ev" : []}
+            },
+            "registration_charges": 300
+        },
+        {
+        "state" : "Jammu and Kashmir",
+            "tax_slabs": {
+                "all_vehicle":{
+                    "petrol" : [
+                        {"min": 0, "max": null, "rate": 9}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": null, "rate": 9}
+                    ],
+                    "cng" : [],
+                    "ev" : []}
+            },
+            "registration_charges": 500
+        },
+        {
+        "state":"Jharkhand",
+            "tax_slabs": {
+                "all_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": 1500000, "rate": 6},
+                        {"min": 1500001, "max": null, "rate": 9}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 1500000, "rate": 6},
+                        {"min": 1500001, "max": null, "rate": 9}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 500
+        },
+        {
+            "state": "Karnataka",
+            "tax_slabs": {
+                "all_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": 400000, "rate": 13},
+                        {"min": 400001, "max": 500000, "rate": 13},
+                        {"min": 500001, "max": 1000000, "rate": 14},
+                        {"min": 1000001, "max": 2000000, "rate": 17},
+                        {"min": 2000001, "max": null, "rate": 18}  
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 400000, "rate": 13},
+                        {"min": 400001, "max": 500000, "rate": 13},
+                        {"min": 500001, "max": 1000000, "rate": 14},
+                        {"min": 1000001, "max": 2000000, "rate": 17},
+                        {"min": 2000001, "max": null, "rate": 18}
+                    ],
+                    "cng" : [],
+                    "ev" : []}
+            },
+            "registration_charges": 1000
+        },
+        {
+            "state": "Kerala",
+            "tax_slabs": {
+                "all_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": 500000, "rate": 6},
+                        {"min": 500001, "max": 1000000, "rate": 8},
+                        {"min": 1000001, "max": 1500000, "rate": 10},
+                        {"min": 1500001, "max": 2000000, "rate": 15},
+                        {"min": 2000001, "max": null, "rate": 20}  
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 500000, "rate": 6},
+                        {"min": 500001, "max": 1000000, "rate": 8},
+                        {"min": 1000001, "max": 1500000, "rate": 10},
+                        {"min": 1500001, "max": 2000000, "rate": 15},
+                        {"min": 2000001, "max": null, "rate": 20}  
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 700
+        },
+        {
+            "state":"Madhya Pradesh",
+            "tax_slabs": {
+                "all_vehicle":{
+                    "petrol" : [
+                        {"min": 0, "max": 1000000, "rate": 8},
+                        {"min": 1000001, "max": 2000000, "rate": 8},
+                        {"min": 2000001, "max": null, "rate": 16}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 1000000, "rate": 8},
+                        {"min": 1000001, "max": 2000000, "rate": 9},
+                        {"min": 2000001, "max": null, "rate": 16}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 600
+        },
+
+        {
+            "state":"Maharashtra",
+            "tax_slabs": {
+                "private_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": 1000000, "rate": 11},
+                        {"min": 1000001, "max": 2000000, "rate": 12},
+                        {"min": 2000001, "max": null, "rate": 13}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 1000000, "rate": 13},
+                        {"min": 1000001, "max": 2000000, "rate": 14},
+                        {"min": 2000001, "max": null, "rate": 15}
+                    ],
+                    "cng" : [
+                        {"min": 0, "max": 1000000, "rate": 7},
+                        {"min": 1000001, "max": 2000000, "rate": 12},
+                        {"min": 2000001, "max": null, "rate": 13} 
+                    ],
+                    "ev" : []
+                },
+                "commercial_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": 1000000, "rate": 11},
+                        {"min": 1000001, "max": 2000000, "rate": 12},
+                        {"min": 2000001, "max": null, "rate": 13}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 1000000, "rate": 13},
+                        {"min": 1000001, "max": 2000000, "rate": 14},
+                        {"min": 2000001, "max": null, "rate": 15}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 800
+        },
+        {
+            "state":"Odisha",
+            "tax_slabs": {
+                "all_vehicle": {
+                    "petrol" : [
+                        {"min": 0, "max": 500000, "rate": 6},
+                        {"min": 500001, "max": 1000000, "rate": 8},
+                        {"min": 1000001, "max": null, "rate": 10}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 500000, "rate": 6},
+                        {"min": 500001, "max": 1000000, "rate": 8},
+                        {"min": 1000001, "max": null, "rate": 10}
+                    ],
+                    "cng" : [
+                        {"min": 0, "max": 500000, "rate": 6},
+                        {"min": 500001, "max": 1000000, "rate": 8},
+                        {"min": 1000001, "max": null, "rate": 10}
+                    ],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 500
+        },
+         {
+            "state":"Punjab",
+            "tax_slabs": {
+                "all_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": null, "rate": 8}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": null, "rate": 8}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 600,
+            "additional_charges": [
+                {"min": 0, "max": null, "rate": 2}
+            ]
+        },
+        {
+            "state":"Rajasthan",
+            "tax_slabs": {
+                "all_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": 600000, "rate": 6},
+                        {"min": 600001, "max": 1000000, "rate": 9},
+                        {"min": 1000001, "max": null, "rate": 10}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 600000, "rate": 8},
+                        {"min": 600001, "max": 1000000, "rate": 11},
+                        {"min": 1000001, "max": null, "rate": 12}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 600
+        },
+        {
+            "state":"Tamil Nadu",
+            "tax_slabs": {
+                "all_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": 1000000, "rate": 10},
+                        {"min": 1000001, "max": null, "rate": 15}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 1000000, "rate": 10},
+                        {"min": 1000001, "max": null, "rate": 15}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 700
+        },
+       {
+        "state":"Telangana",
+            "tax_slabs": {
+                "all_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": 1000000, "rate": 12},
+                        {"min": 1000001, "max": null, "rate": 14}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 1000000, "rate": 10},
+                        {"min": 1000001, "max": null, "rate": 14}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 700
+        },
+        {
+            "state":"Uttar Pradesh",
+            "tax_slabs": {
+                "all_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": 1000000, "rate": 8},
+                        {"min": 1000001, "max": null, "rate": 10}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 1000000, "rate": 8},
+                        {"min": 1000001, "max": null, "rate": 10}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 2000
+        },
+        {
+            "state":"Uttarakhand",
+            "tax_slabs": {
+               "all_vehicle" : {
+                    "petrol" : [
+                        {"min": 0, "max": 500000, "rate": 8},
+                        {"min": 500001, "max": 1000000, "rate": 9},
+                        {"min": 1000001, "max": null, "rate": 10}
+                    ],
+                    "diesel" : [
+                        {"min": 0, "max": 500000, "rate": 8},
+                        {"min": 500001, "max": 1000000, "rate": 9},
+                        {"min": 1000001, "max": null, "rate": 10}
+                    ],
+                    "cng" : [],
+                    "ev" : []
+                }
+            },
+            "registration_charges": 500
+        },
+        {
+            "state":"West Bengal",   
+            "tax_slabs": {
+                "all_vehicle": {
+                    "petrol": [
+                        {"min": 0, "max": 600000, "rate": 10},
+                        {"min": 600001, "max": 1000000, "rate": 10},
+                        {"min": 1000001, "max": 1500000, "rate": 10},
+                        {"min": 1500001, "max": null, "rate": 10}
+                    ],
+                    "diesel": [
+                        {"min": 0, "max": 600000, "rate": 10},
+                        {"min": 600001, "max": 1000000, "rate": 10},
+                        {"min": 1000001, "max": 1500000, "rate": 10},
+                        {"min": 1500001, "max": null, "rate": 10}
+                    ],
+                    "cng": [],
+                    "ev": []
+                }
+            },
+            "registration_charges": 600
+        }
+    ]
