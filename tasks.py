@@ -583,206 +583,86 @@ def weather_agent(*args, **kwargs):
     return result
 
 
-# @gryd.is_a_task()
-# @AgentOrchestrator.register_agent(name=None, depends_on=[], expected_input={"source": "dict"})
-# def compute_on_road_price(*args, **kwargs):
-#     function_name = inspect.currentframe().f_code.co_name 
+STATE_ALIASES_MAP = {
+    "Andhra Pradesh": ["andhra", "ap", "andhrapradesh", "andhra pradesh"],
+    "Assam": ["asm", "assam"],
+    "Bihar": ["br", "bihar"],
+    "Chandigarh": ["ch", "chd"],
+    "Chhattisgarh": ["cg", "chhattis", "chattisgarh"],
+    "Delhi": ["dl", "delhi", "new delhi"],
+    "Goa": ["ga"],
+    "Gujarat": ["gj", "guj", "gujrath"],
+    "Haryana": ["hr"],
+    "Himachal Pradesh": ["hp", "himachal"],
+    "Jammu and Kashmir": ["jk", "j&k", "jammu", "kashmir"],
+    "Jharkhand": ["jh"],
+    "Karnataka": ["ka", "blr", "bangalore", "bengaluru"],
+    "Kerala": ["kl", "keral"],
+    "Madhya Pradesh": ["mp", "madhyapradesh"],
+    "Maharashtra": ["mh", "maha", "maharastra", "maharashtr"],
+    "Odisha": ["od", "orissa", "odisha"],
+    "Punjab": ["pb", "punjab"],
+    "Rajasthan": ["rj", "rajas", "rajsthan"],
+    "Tamil Nadu": ["tn", "tamlnadu", "tamilnadu"],
+    "Telangana": ["ts", "tel", "telangana"],
+    "Uttar Pradesh": ["up", "uttarpradesh"],
+    "Uttarakhand": ["uk", "uttaranchal", "uttarkhand"],
+    "West Bengal": ["wb", "bengal", "westbengal"],
+}
 
-#     ENGINE_TYPES = ["petrol", "diesel", "cng", "ev"]
-
-#     source = kwargs.get("source")
-#     state = source.get("state")
-#     engine_type = source.get("engine_type")  # petrol, diesel, cng, ev
-#     ex_showroom_price = source.get("ex_showroom_price")
-#     is_company_vehicle = source.get("is_company_vehicle", False)
-#     is_on_loan = source.get("is_on_loan", False)
-
-
-#     ROAD_TAX_SLABS = [
-#         {"min": 0, "max": 6_00_000, "label": "Up to ₹6 lakh"},
-#         {"min": 0, "max": 10_00_000, "label": "Up to ₹10 lakh"},
-#         {"min": 0, "max": 5_00_000, "label": "Up to ₹5 lakh"},
-#         {"min": 5_00_000, "max": 10_00_000, "label": "₹5 lakh to ₹10 lakh"},
-#         {"min": 10_00_000, "max": 20_00_000, "label": "₹10 lakh to ₹20 lakh"},
-#         {"min": 20_00_000, "max": float("inf"), "label": "₹20 lakh and above"},
-#         {"min": 3_00_000, "max": 5_00_000, "label": "₹3 lakh to ₹5 lakh"},
-#         {"min": 5_00_000, "max": 10_00_000, "label": "₹5 lakh to ₹10 lakh"},
-#         {"min": 10_00_000, "max": 15_00_000, "label": "₹10 lakh to ₹15 lakh"},
-#         {"min": 15_00_000, "max": 18_00_000, "label": "₹15 lakh to ₹18 lakh"},
-#         {"min": 18_00_000, "max": 20_00_000, "label": "₹18 lakh to ₹20 lakh"},
-#         {"min": 20_00_000, "max": float("inf"), "label": "₹20 lakh and above"},
-#         {"min": 3_00_000, "max": 15_00_000, "label": "₹3 lakh to ₹15 lakh"},
-#         {"min": 15_00_000, "max": 20_00_000, "label": "₹15 lakh to ₹20 lakh"},
-#         {"min": 20_00_000, "max": float("inf"), "label": "₹20 lakh and above"},
-#         {"min": 0, "max": 10_00_000, "label": "Up to ₹10 lakh"},
-#         {"min": 10_00_000, "max": float("inf"), "label": "Over ₹10 lakh"},
-#     ]
-
-#     with open("state_charges_2.json", "r") as f:
-#         rto_data = json.load(f)
-#         rto_data.pop('metadata', None)
-#     if engine_type.lower() not in ENGINE_TYPES:
-#         raise ValueError(f"Invalid engine type: {engine_type}") 
-    
-#     STATES = list(rto_data.keys())
-#     ROAD_TAX_SLABS = []
-
-#     for state in STATES:
-#         road_tax_slabs = rto_data[state]["road_tax"].get("vehicle_cost_slab") or rto_data[state]["road_tax"].get("vehicle_cost_slabs") or []
-#         ROAD_TAX_SLABS.append({"state": state, "road_tax_slabs": road_tax_slabs})
-
-#     # logger.info(f"States: {json.dumps(STATES, indent=4, default=str)}")
-#     logger.info(f"Road Tax Slabs: {json.dumps(ROAD_TAX_SLABS, indent=4, default=str, ensure_ascii=False)}")
-
-#     if state not in rto_data:
-#         raise ValueError(f"State '{state}' not found in RTO data.")
-    
-#     state_data = rto_data[state]
-#     logger.info(f"State Data: {json.dumps(state_data, indent=4, default=str)}")
-
-#     # --- Get registration data ---
-#     registration = state_data.get("registration", {})
-#     road_tax = state_data.get("road_tax", {})
-    
-#     # --- Flat charges ---
-#     registration_charges = float(registration.get("registration_charges", 600))
-#     hypothecation_charges = float(registration.get("hypothecation_charges", 0)) if is_on_loan else 0
-#     number_plate_charges = float(registration.get("number_plate_fee", 400))
-    
-#     temp_reg = registration.get("temporary_registration_charges", {})
-#     temporary_registration_charges = float(temp_reg.get("max", 2000))
-    
-#     fast_tag = registration.get("fast_tag_charges", {})
-#     fast_tag_charges = float(fast_tag.get("max", 600))
-    
-#     # --- Other charges (parking fee, road safety tax, etc.) ---
-#     other_charges = registration.get("other_charges", {})
-#     parking_fee = 0
-#     if "parking_fee" in other_charges:
-#         parking_data = other_charges["parking_fee"]
-#         if isinstance(parking_data, dict):
-#             # Handle cases like Delhi where parking fee depends on vehicle cost
-#             if ex_showroom_price < 400000:
-#                 parking_fee = float(parking_data.get("below_4_lakh", 0))
-#             else:
-#                 parking_fee = float(parking_data.get("above_4_lakh", 0))
-#         else:
-#             parking_fee = float(parking_data)
-    
-#     road_safety_tax = float(other_charges.get("road_safety_tax", 0))
-    
-#     # --- Calculate road tax ---
-#     road_tax_charges = 0
-    
-#     # Check if road_tax has vehicle_cost_slabs (for states like Karnataka, Arunachal Pradesh, Assam)
-#     if "vehicle_cost_slabs" in road_tax:
-#         slabs = road_tax["vehicle_cost_slabs"]
-#         for slab in slabs:
-#             # Find the appropriate slab based on ex_showroom_price
-#             # This is a simplified approach - you may need to parse the range strings
-#             private_tax = slab.get("private_road_tax", {})
-#             company_tax = slab.get("company_road_tax", {})
-            
-#             if is_company_vehicle and company_tax:
-#                 road_tax_rate = float(company_tax.get(engine_type, company_tax.get("all_fuel_types", 0)))
-#             else:
-#                 road_tax_rate = float(private_tax.get(engine_type, private_tax.get("all_fuel_types", 0)))
-            
-#             # Use the last applicable slab (simplified - you may want to add proper range checking)
-#             road_tax_charges = ex_showroom_price * road_tax_rate
-#     else:
-#         # Standard road tax calculation
-#         if is_company_vehicle:
-#             company_tax = road_tax.get("company_road_tax", {})
-#             road_tax_rate = float(company_tax.get(engine_type, company_tax.get("all_fuel_types", 0)))
-#         else:
-#             private_tax = road_tax.get("private_road_tax", {})
-#             road_tax_rate = float(private_tax.get(engine_type, private_tax.get("all_fuel_types", 0)))
+VALID_STATES = list(STATE_ALIASES_MAP.keys())
+CUSTOM_ALIASES = {}
+import difflib
+def normalize_state_name(state_name, learn=True):
+    if not state_name or not isinstance(state_name, str):
+        raise ValueError("Invalid input: 'state_name' must be a non-empty string.")
+    clean = state_name.strip().lower().replace(".", "").replace(",", "")
+    if clean in CUSTOM_ALIASES:
+        return CUSTOM_ALIASES[clean]
+   
+    for state in VALID_STATES:
+        if state.lower() == clean:
+            return state
         
-#         road_tax_charges = ex_showroom_price * road_tax_rate
-    
-#     # --- Aggregate results ---
-#     result = {
-#         "task": function_name,
-#         "ex_showroom_price": round(ex_showroom_price, 2),
-#         "registration_charges": round(registration_charges, 2),
-#         "road_tax_charges": round(road_tax_charges, 2),
-#         "hypothecation_charges": round(hypothecation_charges, 2),
-#         "number_plate_charges": round(number_plate_charges, 2),
-#         "parking_fee_state_development_charges": round(parking_fee + road_safety_tax, 2),
-#         "temporary_registration_charges": round(temporary_registration_charges, 2),
-#         "fast_tag_charges": round(fast_tag_charges, 2),
-#     }
-
-#     # --- Final On-road Price ---
-#     total_rto_charges = (
-#         result["registration_charges"] +
-#         result["road_tax_charges"] +
-#         result["hypothecation_charges"] +
-#         result["number_plate_charges"] +
-#         result["parking_fee_state_development_charges"] +
-#         result["temporary_registration_charges"] +
-#         result["fast_tag_charges"]
-#     )
-    
-#     result["total_rto_charges"] = round(total_rto_charges, 2)
-#     result["on_road_price"] = round(ex_showroom_price + total_rto_charges, 2)
-
-#     return result
+    for state, aliases in STATE_ALIASES_MAP.items():
+        if clean in [a.lower() for a in aliases]:
+            return state
+        
+    for state in VALID_STATES:
+        if clean in state.lower():
+            if learn:
+                CUSTOM_ALIASES[clean] = state
+            return state
+        
+    all_aliases_flat = [a.lower() for aliases in STATE_ALIASES_MAP.values() for a in aliases]
+    possible_matches = difflib.get_close_matches(clean, all_aliases_flat + [s.lower() for s in VALID_STATES], n=3, cutoff=0.6)
+    if possible_matches:
+        matched = possible_matches[0]
+        for state, aliases in STATE_ALIASES_MAP.items():
+            if matched in [a.lower() for a in aliases] or matched == state.lower():
+                if learn:
+                    CUSTOM_ALIASES[clean] = state
+                return state
+    raise ValueError(
+        f"State '{state_name}' not recognized.\n"
+        f"Available states: {', '.join(VALID_STATES)}"
+    )
 
 @gryd.is_a_task()
 @AgentOrchestrator.register_agent(depends_on=[], expected_input={"source": "dict"})
 def compute_on_road_price(*args, **kwargs):
     function_name = inspect.currentframe().f_code.co_name # get_function_name()
-    ENGINE_TYPES = ["petrol", "diesel", "cng", "ev"]
+    ENGINE_TYPES = ["petrol", "diesel", "cng", "ev", "hybrid"]
 
     # --- Static base charges ---
     BASE_CHARGES = {
-        "registration_charges": {
-            "amount": 600,
-            "unit": "INR",
-            "is_applicable": True,
-            "description": "RTO registration fees for new vehicle"
-        },
-        "hypothecation_charges": {
-            "amount": 1500,
-            "unit": "INR",
-            "is_applicable": "if_loan",
-            "description": "Applicable if car is purchased on loan"
-        },
-        "number_plate_charges": {
-            "amount": 400,
-            "unit": "INR",
-            "is_applicable": True,
-            "description": "HSRP number plate cost"
-        },
-        "parking_fee_charges": {
-            "amount": {
-                "below_4_lakh": 2000,
-                "above_4_lakh": 4000
-            },
-            "unit": "INR",
-            "is_applicable": "state_specific",
-            "description": "MCD or state parking/development fees"
-        },
-        "temporary_registration_charges": {
-            "amount": 2500,
-            "unit": "INR",
-            "is_applicable": "if_temp_registration",
-            "description": "Temporary registration valid for up to 1 month"
-        },
-        "road_tax_charges": {
-            "amount": "state_specific",
-            "unit": "percent",
-            "is_applicable": True,
-            "description": "State-wise applicable road tax rate"
-        },
-        "fasttag_charges": {
-            "amount": 600,
-            "unit": "INR",
-            "is_applicable": True,
-            "description": "FasTag issue cost"
-        }
+        "registration_charges": {"amount": 600, "unit": "INR", "is_applicable": True, "description": "RTO registration fees for new vehicle"},
+        "hypothecation_charges": {"amount": 1500, "unit": "INR", "is_applicable": "if_loan", "description": "Applicable if car is purchased on loan"},
+        "number_plate_charges": {"amount": 400, "unit": "INR", "is_applicable": True, "description": "HSRP number plate cost"},
+        "parking_fee_charges": {"amount": {"below_4_lakh": 2000, "above_4_lakh": 4000},"unit": "INR","is_applicable": "state_specific","description": "MCD or state parking/development fees"},
+        "temporary_registration_charges": {"amount": 2500,"unit": "INR","is_applicable": "if_temp_registration","description": "Temporary registration valid for up to 1 month"},
+        "road_tax_charges": {"amount": "state_specific","unit": "percent","is_applicable": True,"description": "State-wise applicable road tax rate"},
+        "fasttag_charges": {"amount": 600,"unit": "INR","is_applicable": True,"description": "FasTag issue cost"}
     }
 
     try:
@@ -793,11 +673,32 @@ def compute_on_road_price(*args, **kwargs):
         is_company_vehicle = source.get("is_company_vehicle", False)
         is_on_loan = source.get("is_on_loan", False)
         has_temp_registration = source.get("has_temp_registration", True)
-        engine_type = source.get("engine_type", "petrol")
+        engine_type = source.get("engine_type", "petrol").lower()
         gst_rate = source.get("gst_rate", None)
+        engine_capacity = source.get("engine_capacity", 0)
 
-        if gst_rate:
-            ex_showroom_price = ex_showroom_price * (1 + (gst_rate / 100))
+        if gst_rate is None and engine_capacity == 0:
+            raise ValueError("Either 'gst_rate' or 'engine_capacity' must be provided.")
+
+        if gst_rate is not None and engine_capacity != 0:
+            raise ValueError("Both 'gst_rate' and 'engine_capacity' cannot be provided.")
+        
+        if gst_rate is None and engine_capacity != 0:
+            if engine_type in ["petrol", "hybrid"] and engine_capacity < 1200 and ex_showroom_price < 400000:
+                gst_rate = 18
+            elif engine_type == "diesel" and engine_capacity < 1500 and ex_showroom_price < 400000:
+                gst_rate = 18
+            elif engine_type in ["petrol", "diesel"] and (engine_capacity >= 1200 or ex_showroom_price >= 400000):
+                gst_rate = 40
+            elif engine_type == "ev":
+                gst_rate = 5
+            elif engine_type == "ambulance":
+                gst_rate = 18
+            else:
+                gst_rate = 40
+
+        gst_amount = ex_showroom_price * (gst_rate / 100)
+        ex_showroom_price = ex_showroom_price + gst_amount
 
         if engine_type.lower() not in ENGINE_TYPES:
             error = f"Invalid engine type: '{engine_type}'. Valid engine types are: '{ENGINE_TYPES}'"
@@ -805,6 +706,10 @@ def compute_on_road_price(*args, **kwargs):
         
         all_road_tax_data : list[dict] = json.load(open("road_tax_data.json", "r"))
 
+        try:
+            state = normalize_state_name(state)
+        except ValueError as e:
+            return {"error": str(e)}
         ALL_STATES = [i['state'] for i in all_road_tax_data]
         if state not in ALL_STATES:
             error = f"Invalid state: '{state}'. Valid states are: '{ALL_STATES}'"
@@ -853,15 +758,22 @@ def compute_on_road_price(*args, **kwargs):
             min_val = add["min"]
             max_val = add["max"]
             if max_val is None or (ex_showroom_price >= min_val and ex_showroom_price <= max_val):
-                additional_charge = add["rate"]
+                if add["type"] == "percentage":
+                    additional_charge = ex_showroom_price * (add["rate"] / 100)
+                else:
+                    additional_charge = add["rate"]
                 break
 
         # --- Optional local charges ---
         total_misc_charges = 0
 
         total_misc_charges += BASE_CHARGES["registration_charges"]["amount"]
-
-        parking_fee = BASE_CHARGES["parking_fee_charges"]["amount"]["below_4_lakh"] if ex_showroom_price <= 400000 else BASE_CHARGES["parking_fee_charges"]["amount"]["above_4_lakh"]
+        
+        parking_fee = 0
+        if ex_showroom_price <= 400000:
+            parking_fee = BASE_CHARGES["parking_fee_charges"]["amount"]["below_4_lakh"]
+        else:
+            parking_fee = BASE_CHARGES["parking_fee_charges"]["amount"]["above_4_lakh"]
         total_misc_charges += parking_fee
 
         total_misc_charges += BASE_CHARGES["number_plate_charges"]["amount"]
@@ -875,10 +787,17 @@ def compute_on_road_price(*args, **kwargs):
             total_misc_charges += BASE_CHARGES["temporary_registration_charges"]["amount"]
         
         total_on_road_price = ex_showroom_price + road_tax + total_misc_charges + additional_charge
+        DISCLAIMER = (
+            "The prices are calculated based on the currently available data." 
+            "All prices are subject to change without prior notice."  
+            "Please check with the dealer for exact details." )
         final_result = {
             "task": function_name,
             "state": state,
+            "gst_rate": gst_rate,
+            "gst_cost": round(gst_amount, 2),
             "engine_type": engine_type,
+            "engine_capacity": engine_capacity,
             "is_company_vehicle": is_company_vehicle,
             "ex_showroom_price": ex_showroom_price,
             "road_tax_rate": applicable_rate,
@@ -893,10 +812,9 @@ def compute_on_road_price(*args, **kwargs):
             },
             "additional_charge": additional_charge,
             "total_misc_charges": total_misc_charges,
-            "total_on_road_price": round(total_on_road_price, 2)
+            "total_on_road_price": round(total_on_road_price, 2),
+            "disclaimer": DISCLAIMER
         }
-        if gst_rate:
-            final_result["gst"] = gst_rate
         return final_result
     except Exception as e:
         logger.error(f"Compute On Road Price Error: {e}")
@@ -956,7 +874,7 @@ def query_orchestrator(*args, **kwargs):
         yield r
 
 if __name__ == "__main__":
-    r = compute_on_road_price(source = {"state" : "Andhra Pradesh", "engine_type" : "ev", "ex_showroom_price" : 950000, "gst_rate" : 18})
+    r = compute_on_road_price(source = {"state" : "maha", "engine_type" : "ev", "ex_showroom_price" : 950000, "gst_rate" : 18})
     logger.info(f"Result: {json.dumps(r, indent=4, default=str)}")
 
 
