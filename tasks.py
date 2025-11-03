@@ -336,6 +336,45 @@ def competitor_analysis_agent(*args, **kwargs):
         traceback.print_exc()
         return {"task": function_name, "error": str(e).strip()}
 
+
+
+@gryd.is_a_task()
+@AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
+def competitor_analysis_agent(*args, **kwargs):
+    """
+    
+    """
+    function_name = inspect.currentframe().f_code.co_name #get_function_name()
+    try:
+        from agents.recommendation_agent import RecommendationAgent
+        source = kwargs["source"]
+        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+        max_number = kwargs.get("Max number")
+        maintainer_agent = RecommendationAgent(model_identifier=model_identifier)
+        recommended_data = maintainer_agent.main(data=source)
+        filtered_results = {
+            "task": function_name,
+            "Max number": max_number,
+            "next_offset": recommended_data.get("next_offset",0),
+            "top_vehicles": recommended_data.get("top_vehicles",""),
+            "total_vehicles_found": recommended_data.get("total_vehicles_found",""),
+            "match_refining_questions": recommended_data.get("match_refining_questions",""),
+
+        }
+        return filtered_results
+    except Exception as e:
+        logger.error(f"Recommendation Agent Error: \n\n")
+        traceback.print_exc()
+        return {"task": function_name, "error": str(e).strip()}
+
+
+
+
+
+
+
+
+
 @gryd.is_a_task()
 @AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
 def prioritization_agent(*args, **kwargs):
