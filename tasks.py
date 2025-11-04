@@ -340,9 +340,10 @@ def competitor_analysis_agent(*args, **kwargs):
 
 @gryd.is_a_task()
 @AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
-def competitor_analysis_agent(*args, **kwargs):
+def recommendation_agent_v1(*args, **kwargs):
     """
-    
+    This agent recommends vehicles to the customer based on their preferences and previous interactions.
+    The agent takes in a dictionary of the customer's preferences and previous interactions and returns a list of recommended vehicles.
     """
     function_name = inspect.currentframe().f_code.co_name #get_function_name()
     try:
@@ -366,9 +367,6 @@ def competitor_analysis_agent(*args, **kwargs):
         logger.error(f"Recommendation Agent Error: \n\n")
         traceback.print_exc()
         return {"task": function_name, "error": str(e).strip()}
-
-
-
 
 
 
