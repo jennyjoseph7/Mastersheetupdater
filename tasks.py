@@ -350,7 +350,7 @@ def recommendation_agent_v1(*args, **kwargs):
         from agents.recommendation_agent import RecommendationAgent
         source = kwargs["source"]
         model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-        max_number = kwargs.get("Max number")g
+        max_number = kwargs.get("Max number")
         maintainer_agent = RecommendationAgent(model_identifier=model_identifier)
         recommended_data = maintainer_agent.main(data=source)
         filtered_results = {
@@ -367,15 +367,7 @@ def recommendation_agent_v1(*args, **kwargs):
         logger.error(f"Recommendation Agent Error: \n\n")
         traceback.print_exc()
         return {"task": function_name, "error": str(e).strip()}
-
-<<<<<<< HEAD
-
-
-
-
-
-=======
->>>>>>> 04bb0015d723ed95f0cbab28ba31ec922db67795
+    
 @gryd.is_a_task()
 @AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
 def prioritization_agent(*args, **kwargs):
