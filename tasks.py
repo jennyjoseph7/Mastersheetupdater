@@ -344,13 +344,13 @@ def recommendation_agent_v1(*args, **kwargs):
     """
     This agent recommends vehicles to the customer based on their preferences and previous interactions.
     The agent takes in a dictionary of the customer's preferences and previous interactions and returns a list of recommended vehicles.
-    """
+"""
     function_name = inspect.currentframe().f_code.co_name #get_function_name()
     try:
         from agents.recommendation_agent import RecommendationAgent
         source = kwargs["source"]
         model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-        max_number = kwargs.get("Max number")
+        max_number = kwargs.get("Max number")g
         maintainer_agent = RecommendationAgent(model_identifier=model_identifier)
         recommended_data = maintainer_agent.main(data=source)
         filtered_results = {
@@ -368,11 +368,14 @@ def recommendation_agent_v1(*args, **kwargs):
         traceback.print_exc()
         return {"task": function_name, "error": str(e).strip()}
 
+<<<<<<< HEAD
 
 
 
 
 
+=======
+>>>>>>> 04bb0015d723ed95f0cbab28ba31ec922db67795
 @gryd.is_a_task()
 @AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
 def prioritization_agent(*args, **kwargs):
@@ -624,27 +627,27 @@ STATE_ALIASES_MAP = {
     "Andhra Pradesh": ["andhra", "ap", "andhrapradesh", "andhra pradesh"],
     "Assam": ["asm", "assam"],
     "Bihar": ["br", "bihar"],
-    "Chandigarh": ["ch", "chd"],
+    "Chandigarh": ["ch", "chd", "chandigarh"],
     "Chhattisgarh": ["cg", "chhattis", "chattisgarh"],
     "Delhi": ["dl", "delhi", "new delhi"],
-    "Goa": ["ga"],
-    "Gujarat": ["gj", "guj", "gujrath"],
-    "Haryana": ["hr"],
-    "Himachal Pradesh": ["hp", "himachal"],
-    "Jammu and Kashmir": ["jk", "j&k", "jammu", "kashmir"],
-    "Jharkhand": ["jh"],
-    "Karnataka": ["ka", "blr", "bangalore", "bengaluru"],
-    "Kerala": ["kl", "keral"],
-    "Madhya Pradesh": ["mp", "madhyapradesh"],
+    "Goa": ["ga", "goa"],
+    "Gujarat": ["gj", "guj", "gujrath", "gujarat"],
+    "Haryana": ["hr", "haryana", "harayna"],
+    "Himachal Pradesh": ["hp", "himachal", "himachal pradesh"],
+    "Jammu and Kashmir": ["jk", "j&k", "jammu", "kashmir", "jammu and kashmir"],
+    "Jharkhand": ["jh", "jharkhand", "jharkand"],
+    "Karnataka": ["ka", "karnataka", "karnatka"],
+    "Kerala": ["kl", "keral", "kerala"],
+    "Madhya Pradesh": ["mp", "madhyapradesh", "madhya pradesh"],
     "Maharashtra": ["mh", "maha", "maharastra", "maharashtr"],
     "Odisha": ["od", "orissa", "odisha"],
     "Punjab": ["pb", "punjab"],
     "Rajasthan": ["rj", "rajas", "rajsthan"],
-    "Tamil Nadu": ["tn", "tamlnadu", "tamilnadu"],
+    "Tamil Nadu": ["tn", "tamlnadu", "tamilnadu", "tamil nadu"],
     "Telangana": ["ts", "tel", "telangana"],
-    "Uttar Pradesh": ["up", "uttarpradesh"],
+    "Uttar Pradesh": ["up", "uttarpradesh", "uttar pradesh"],
     "Uttarakhand": ["uk", "uttaranchal", "uttarkhand"],
-    "West Bengal": ["wb", "bengal", "westbengal"],
+    "West Bengal": ["wb", "bengal", "westbengal", "west bengal"],
 }
 
 VALID_STATES = list(STATE_ALIASES_MAP.keys())
@@ -654,6 +657,7 @@ def normalize_state_name(state_name, learn=True):
     if not state_name or not isinstance(state_name, str):
         raise ValueError("Invalid input: 'state_name' must be a non-empty string.")
     clean = state_name.strip().lower().replace(".", "").replace(",", "")
+    logger.info(f"Normalizing state name: {state_name} -> {clean}")
     if clean in CUSTOM_ALIASES:
         return CUSTOM_ALIASES[clean]
    
@@ -670,7 +674,7 @@ def normalize_state_name(state_name, learn=True):
             if learn:
                 CUSTOM_ALIASES[clean] = state
             return state
-        
+
     all_aliases_flat = [a.lower() for aliases in STATE_ALIASES_MAP.values() for a in aliases]
     possible_matches = difflib.get_close_matches(clean, all_aliases_flat + [s.lower() for s in VALID_STATES], n=3, cutoff=0.6)
     if possible_matches:
@@ -691,7 +695,7 @@ def compute_on_road_price(*args, **kwargs):
     function_name = inspect.currentframe().f_code.co_name # get_function_name()
     ENGINE_TYPES = ["petrol", "diesel", "cng", "ev", "hybrid"]
 
-    # --- Static base charges ---
+    # --- Static base charges --- # 
     BASE_CHARGES = {
         "registration_charges": {"amount": 600, "unit": "INR", "is_applicable": True, "description": "RTO registration fees for new vehicle"},
         "hypothecation_charges": {"amount": 1500, "unit": "INR", "is_applicable": "if_loan", "description": "Applicable if car is purchased on loan"},
@@ -801,7 +805,7 @@ def compute_on_road_price(*args, **kwargs):
                     additional_charge = add["rate"]
                 break
 
-        # --- Optional local charges ---
+        # --- Optional local charges --- # 
         total_misc_charges = 0
 
         total_misc_charges += BASE_CHARGES["registration_charges"]["amount"]

@@ -339,6 +339,7 @@ class AgentOrchestrator:
                 "You are an smart AI agent summarizing assistant."
                 "You will summarize the results of a pipeline of agents in a concise and clear way. Create a short and clear summary of the results of the pipeline of agents."
                 "Include pointers from produced results to the original query."
+                "If there's no satisfactory output or if there's any error for additional information, Ask back the user for the missing information."
                 ),
             },
             {
