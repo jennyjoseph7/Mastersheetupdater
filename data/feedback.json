@@ -1,0 +1,171 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "feedback",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "person_id",
+            "refers": "parents.person.user_id"
+        },
+        {
+            "name": "person_name",
+            "refers": "parents.person.name"
+        },
+        {
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id"
+        },
+        {
+            "name": "dealership_name",
+            "refers": "parents.dealership.dealership_name"
+        },
+        {
+            "name": "service_visit_id",
+            "refers": "parents.service_visit.service_visit_id"
+        },
+        {
+            "name": "service_date",
+            "refers": "parents.service_visit.service_date"
+        },
+        {
+            "name": "variant_id",
+            "refers": "parents.variant.variant_id"
+        },
+        {
+            "name": "variant_name",
+            "refers": "parents.variant.variant_name"
+        },
+        {
+            "name": "model_id",
+            "refers": "parents.model.model_id"
+        },
+        {
+            "name": "model_name",
+            "refers": "parents.model.model_name"
+        },
+        {
+            "name": "brand_id",
+            "refers": "parents.brand.brand_id"
+        },
+        {
+            "name": "brand_name",
+            "refers": "parents.brand.brand_name"
+        },
+        {
+            "name": "feedback_category",
+            "type": "text",
+            "options": [
+                "Sales Experience",
+                "Service Quality",
+                "Vehicle Performance",
+                "Staff Behaviour",
+                "Price / Billing",
+                "Other"
+            ]
+        },
+        {
+            "name": "feedback_source",
+            "type": "text",
+            "options": [
+                "In-person",
+                "Website",
+                "Mobile App",
+                "Email",
+                "SMS",
+                "Call",
+                "WhatsApp",
+                "Survey Form"
+            ]
+        },
+        {
+            "name": "rating",
+            "type": "number"
+        },
+        {
+            "name": "comments",
+            "type": "text"
+        },
+        {
+            "name": "suggestions",
+            "type": "text"
+        },
+        {
+            "name": "follow_up_required",
+            "type": "boolean",
+            "default": false
+        },
+        {
+            "name": "follow_up_by",
+            "type": "text"
+        },
+        {
+            "name": "follow_up_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+
+        },
+        {
+            "name": "status",
+            "type": "text",
+            "options": [
+                "New",
+                "Reviewed",
+                "Action Taken",
+                "Closed"
+            ]
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": [
+                    "brand_name",
+                    "model_name",
+                    "variant_name",
+                    "person_name",
+                    "feedback_category",
+                    "service_date"
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " - "
+                }
+            },
+            "name": "feedback_id",
+            "type": "uid",
+            "id": true
+        }
+    ],
+    "parents": [
+        "brand",
+        "model",
+        "variant",
+        "person",
+        "dealership",
+        "service_visit"
+    ]
+}
+
+
+
+
