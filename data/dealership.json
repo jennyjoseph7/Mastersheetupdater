@@ -1,217 +1,290 @@
 {
-            "timezone": "Asia/Kolkata",
-            "name": "dealership",
-            "model_type": "default",
-            "attributes": [
-                 {
-                    "name": "created",
-                    "type": "number",
-                    "auto_updater": true,
-                    "default": {
-                        "function": "now_ctime"
-                    }
-                },
-                {
-                    "name": "updated",
-                    "type": "number",
-                    "auto_updater": true,
-                    "force_update": true,
-                    "default": {
-                        "function": "now_ctime"
-                    }
-                },
-                {
-                    "name": "dealer_name",
-                    "type": "name",
-                    "indexed": true
-                },
-                {
-                    "name":"credits_balance",
-                    "type":"number",
-                    "default":{
-                        "function":"get_from_model",
-                        "args":[
-                            "billing",
-                            "dealership_id",
-                            "credits_balance"
-                        ]
-                    }
-                },
-                {
-                    "name": "dealer_group_id",
-                    "refers":"parents.dealer_group.dealer_group_id",
-                    "required": true
-                },
-                {
-                    "name":"dealer_group_name",
-                    "refers":"parents.dealer_group.dealer_group_name",
-                    "indexed": true
-                },
-                {
-                    "name":"supported_brands",
-                    "type":"list",
-                    "ui_element":"multi_select",
-                    "options":"options/brand/brand_name",
-                    "required":false
-                },
-                {
-                    "name":"channels",
-                    "type":"list",
-                    "options": [
-                        "rcs",
-                        "email",
-                        "web_chat",
-                        "web_chat_voice",
-                        "fb_chat",
-                        "insta_chat",
-                        "twitter_chat",
-                        "voice_phone",
-                        "whatsapp_chat",
-                        "whatsapp_voice_note",
-                        "whatsapp_voice_call",
-                        "zoom_bot",
-                        "ms_teams"
-                    ],
-                    "ui_element": "multi_select"
-                
-                },
-                {
-                    "name":"region_id",
-                    "refers":"parents.region.region_id",
-                    "required": true
-                },
-                {
-                    "name":"region_name",
-                    "refers":"parents.region.region_name",
-                    "required": true
-                },
-                {
-                    "name": "showroom_center_count",
-                    "type": "number"
-                },
-                {
-                    "name": "service_center_count",
-                    "type": "number"
-                },
-                {
-                    "name":"buyback_center_count",
-                    "type": "number"
-                },
-                
-                {
-                    "name": "website",
-                    "type": "text",
-                    "constraint": {
-                        "function": "url_validator"
-                    }
-                },
-                {
-                    "name": "linkedin_url",
-                    "type": "text",
-                    "constraint": {
-                        "function": "url_validator"
-                    }
-                },
-
-                {
-                    "name": "year_established",
-                    "type": "number"
-                },
-                {
-                    "name":"dealer_city",
-                    "type":"text"
-                },
-                {
-                    "name":"dealer_state",
-                    "type":"text"
-                },
-                {
-                    "name":"dealer_country",
-                    "type":"text"
-                },
-                {
-                    "name":"dealer_location",
-                    "type":"geolocation",
-                    "indexed":true
-                },
-                {
-                    "name": "primary_contact_name",
-                    "type": "text",
-                    "indexed": true
-                },
-                {
-                    "name": "primary_contact_role",
-                    "type": "text"
-                },
-                {
-                    "name": "primary_contact_email",
-                    "type": "text",
-                    "constraint": {
-                        "function": "email_validator"
-                    }
-                },
-                {
-                    "name": "primary_contact_phone",
-                    "type": "text",
-                    "constraint": {
-                        "function": "phone_validator"
-                    }
-                },
-                {
-                    "name": "secondary_contact_name",
-                    "type": "text"
-                },
-                {
-                    "name": "secondary_contact_role",
-                    "type": "text"
-                },
-                {
-                    "name": "secondary_contact_email",
-                    "type": "text",
-                    "constraint": {
-                        "function": "email_validator"
-                    }
-                },
-                {
-                    "name": "secondary_contact_phone",
-                    "type": "text",
-                    "constraint": {
-                        "function": "phone_validator"
-                    }
-                },
-                {
-                    "name": "dealer_status",
-                    "type": "text",
-                    "options": [
-                        "active",
-                        "inactive",
-                        "suspended"
-                    ],
-                    "indexed": true
-                },
-                {
-                    "name": "dealership_id",
-                    "type": "uid",
-                    "indexed": true,
-                    "id": true,
-                    "default": {
-                        "function": "name_to_id",
-                        "args":[
-                            "dealer_name",
-                            "dealer_group_name",
-                            "region_name"
-                        ],
-                        "kwargs":{
-                            "is_unique":true,
-                            "separator":"_",
-                            "skip_empty":true
-                        }
-                    },
-                    "auto_updater":true
-                }
-            ],
-            "parents":[
-                "dealer_group",
-                "region"
+    "timezone": "Asia/Kolkata",
+    "name": "dealership",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "dealer_name",
+            "type": "name",
+            "indexed": true,
+            "required": true
+        },
+        {
+            "name": "credits_balance",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "billing",
+                    "dealership_id",
+                    "credits_balance"
+                ]
+            }
+        },
+        {
+            "name": "dealer_group_id",
+            "refers": "parents.dealer_group.dealer_group_id"
+        },
+        {
+            "name": "dealer_group_name",
+            "refers": "parents.dealer_group.dealer_group_name"
+        },
+        {
+            "name": "dealership_type",
+            "type": "text",
+            "options": [
+                "Single Brand",
+                "Multi Brand"
             ]
+        },
+        {
+            "name": "supported_brands",
+            "type": "list",
+            "ui_element": "multiselect",
+            "options": "/options/brand/brand_name",
+            "required": false
+        },
+        {
+            "name": "channels",
+            "type": "list",
+            "options": [
+                "rcs",
+                "email",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "voice_phone",
+                "whatsapp_chat",
+                "whatsapp_voice_note",
+                "whatsapp_voice_call",
+                "zoom_bot",
+                "ms_teams"
+            ],
+            "ui_element": "multiselect"
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.region.region_id",
+            "required": true
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.region.region_name"
+        },
+        {
+            "name": "showroom_center_count",
+            "type": "number"
+        },
+        {
+            "name": "workshop_center_count",
+            "type": "number"
+        },
+        {
+            "name": "buyback_center_count",
+            "type": "number"
+        },
+        {
+            "name": "website",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealer_group",
+                    "dealer_group_id",
+                    "website"
+                ]
+            }
+        },
+        {
+            "name": "linkedin_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealer_group",
+                    "dealer_group_id",
+                    "linkedin_url"
+                ]
+            }
+        },
+        {
+            "name": "year_established",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealer_group",
+                    "dealer_group_id",
+                    "year_established"
+                ]
+            }
+        },
+        {
+            "name": "primary_contact_name",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealer_group",
+                    "dealer_group_id",
+                    "primary_contact_name"
+                ]
+            }
+        },
+        {
+            "name": "primary_contact_role",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealer_group",
+                    "dealer_group_id",
+                    "primary_contact_role"
+                ]
+            }
+        },
+        {
+            "name": "primary_contact_email",
+            "type": "text",
+            "constraint": {
+                "function": "email_validator"
+            },
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealer_group",
+                    "dealer_group_id",
+                    "primary_contact_email"
+                ]
+            }
+        },
+        {
+            "name": "primary_contact_phone",
+            "type": "text",
+            "constraint": {
+                "function": "phone_validator"
+            },
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealer_group",
+                    "dealer_group_id",
+                    "primary_contact_phone"
+                ]
+            }
+        },
+        {
+            "name": "secondary_contact_name",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealer_group",
+                    "dealer_group_id",
+                    "secondary_contact_name"
+                ]
+            }
+        },
+        {
+            "name": "secondary_contact_role",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealer_group",
+                    "dealer_group_id",
+                    "secondary_contact_role"
+                ]
+            }
+        },
+        {
+            "name": "secondary_contact_email",
+            "type": "text",
+            "constraint": {
+                "function": "email_validator"
+            },
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealer_group",
+                    "dealer_group_id",
+                    "secondary_contact_email"
+                ]
+            }
+        },
+        {
+            "name": "secondary_contact_phone",
+            "type": "text",
+            "constraint": {
+                "function": "phone_validator"
+            },
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealer_group",
+                    "dealer_group_id",
+                    "secondary_contact_phone"
+                ]
+            }
+        },
+        {
+            "name": "dealer_status",
+            "type": "text",
+            "options": [
+                "active",
+                "inactive",
+                "suspended"
+            ],
+            "indexed": true
+        },
+        {
+            "name": "dealership_id",
+            "type": "uid",
+            "indexed": true,
+            "id": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "dealer_name",
+                    "dealer_group_name",
+                    "region_name"
+                ],
+                "kwargs": {
+                    "is_unique": true,
+                    "separator": "_",
+                    "skip_empty": true
+                }
+            },
+            "auto_updater": true
         }
+    ],
+    "parents": [
+        "dealer_group",
+        "region"
+    ]
+}
