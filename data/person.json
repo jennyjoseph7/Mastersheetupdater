@@ -40,7 +40,7 @@
             "title": "Phone Number",
             "type": "text",
             "constraint": {
-                "function": "validate_phone_number"
+                "function": "phone_validator"  
             },
             "ui_element": "tel",
             "indexed": true
@@ -50,7 +50,7 @@
             "title": "Email",
             "type": "text",
             "constraint": {
-                "function": "validate_email"
+                "function": "email_validator"
             },
             "ui_element": "email",
             "indexed": true
@@ -102,7 +102,7 @@
             "title": "Alt Phone Number 2",
             "type": "text",
             "constraint": {
-                "function": "validate_phone_number"
+                "function": "phone_validator"
             },
             "ui_element": "tel"
         },
@@ -111,7 +111,7 @@
             "title": "Alt Phone Number 3",
             "type": "text",
             "constraint": {
-                "function": "validate_phone_number"
+                "function": "phone_validator"
             },      
             "ui_element": "tel"
         },
@@ -120,7 +120,7 @@
             "title": "Alt Phone Number 4",
             "type": "text",
             "constraint": {
-                "function": "validate_phone_number"
+                "function": "phone_validator"
             },
             "ui_element": "tel"
         },
@@ -129,7 +129,7 @@
             "title": "Alt Email 2",
             "type": "text",
             "constraint": {
-                "function": "validate_email"
+                "function": "email_validator"
             },
             "ui_element": "email"
         },
@@ -138,7 +138,7 @@
             "title": "Alt Email 3",
             "type": "text",
             "constraint": {
-                "function": "validate_email"
+                "function": "email_validator"
             },
             "ui_element": "email"
         },
@@ -147,7 +147,7 @@
             "title": "Alt Email 4",
             "type": "text",
             "constraint": {
-                "function": "validate_email"
+                "function": "email_validator"
             },
             "ui_element": "email"
         },
