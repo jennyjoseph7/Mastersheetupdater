@@ -21,19 +21,26 @@
             }
         },
         {
-            "name": "session_id",
-            "type": "uid",
-            "indexed": true,
-            "id": true,
-            "default": {
-                "function": "make_uuid3"
-            }
-        },
-        {
             "name": "user_id",
             "type": "uid",
             "indexed": true,
             "required" : true
+        },
+        {
+            "name" : "phone_number",
+            "type": "text",
+            "constraint": {
+                "function": "phone_validator"  
+            },
+            "indexed" : true
+        },
+        {
+            "name" : "email",
+            "type": "text",
+            "constraint": {
+                "function": "email_validator"
+            },
+            "indexed" : true
         },
         {
             "name": "start_time",
@@ -42,6 +49,17 @@
         {
             "name": "end_time",
             "type": "number"
+        },
+        {
+            "name" : "duration",
+            "default" : {
+                "function" : "time_diff",
+                "args" : ["end_time","start_time"],
+                "kwargs": {
+                    "units": "seconds"
+                }
+            },
+            "auto_updater" : true
         },
         {
             "name": "channel",
@@ -71,7 +89,7 @@
         {
             "name" : "campaign_type",
             "type" : "text",
-            "options" : ["inbound","pre_sales","post_sales"],
+            "options" : ["inbound","pre_sales","post_sales","dealer"],
             "default" : "inbound"
         },
         {
@@ -80,10 +98,29 @@
             "required" : false
         },
         {
-            "name" : "duration",
+            "name" : "id_salt",
+            "type" : "text",
             "default" : {
-                "function" : "time_diff",
-                "args" : ["end_time","start_time"]
+                "function" : "make_view_id",
+                "kwargs":{
+                    "make_unique":false
+                }
+            }
+        },
+        {
+            "name": "session_id",
+            "type": "uid",
+            "indexed": true,
+            "id": true,
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "created",
+                    "id_salt",
+                    "user_id",
+                    "campaign_id",
+                    "channel"
+                ]
             }
         },
         {
@@ -114,7 +151,9 @@
         },
         {
             "name" : "session_live",
-            "type" : "text",
+            "type" : "bool",
+            "indexed": true,
+            "default" : true,
             "required" : false
         },
         {
@@ -140,6 +179,7 @@
                 "pre-initiated"
             ],
             "indexed" : true,
+            "option_others":true,
             "default" : "pre-initiated"
         },
         {
@@ -212,8 +252,8 @@
             "name" : "sentiment_score"
         },
         {
-            "name" : "propensity_scores",
-            "type" : "nested_object"
+            "name" : "lead_id",
+            "type" : "text"
         },
         {
             "name" : "summary",
@@ -235,8 +275,8 @@
             "type" : "number"
         },
         {
-            "name" : "history",
-            "type" : "object_list"
+            "name" : "human_agents",
+            "type" : "string_list"
         }
         
 

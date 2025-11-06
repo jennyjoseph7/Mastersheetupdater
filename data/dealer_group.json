@@ -21,44 +21,159 @@
                     }
                 },
                 {
-                    "name": "dealer_group_id",
-                    "type": "uid",
-                    "indexed": true,
-                    "id": true,
-                    "default": {
-                        "function": "make_uuid_timestamp"
-                    }
-                },
-                {
                     "name": "dealer_group_name",
                     "type": "text",
                     "indexed": true
                 },
                 {
-                    "name": "dealer_group_description",
+                    "name": "year_established",
+                    "type": "number"
+                },
+                {
+                    "name": "headquarters_city",
                     "type": "text"
                 },
                 {
-                    "name": "dealer_group_address",
+                    "name": "headquarters_state",
                     "type": "text"
                 },
                 {
-                    "name": "dealer_group_phone_number",
+                    "name": "headquarters_country",
+                    "type": "text"
+                },
+                {
+                    "name":"dealer_group_location",
+                    "type":"geolocation"
+                },
+                {
+                    "name": "operating_brands",
+                    "type": "list",
+                    "ui_element": "multi_select",
+                    "options": "options/brand/brand_name"
+                },
+                {
+                    "name": "showroom_center_count",
+                    "type": "number"
+                },
+                {
+                    "name": "service_center_count",
+                    "type": "number"
+                },
+                {
+                    "name":"buyback_center_count",
+                    "type": "number"
+                },
+                {
+                    "name": "regions",
+                    "type": "list",
+                    "ui_element": "multi_select",
+                    "refers": "options/region/region_name"
+                },
+                {
+                    "name": "website",
                     "type": "text",
                     "constraint": {
-                        "format": "phone_validator"
+                        "function": "url_validator"
                     }
                 },
                 {
-                    "name": "dealer_group_email",
+                    "name": "linkedin_url",
                     "type": "text",
                     "constraint": {
-                        "format": "email_validator"
+                        "function": "url_validator"
                     }
+                },
+                {
+                    "name": "primary_contact_name",
+                    "type": "text"
+                },
+                {
+                    "name": "primary_contact_role",
+                    "type": "text"
+                },
+                {
+                    "name": "primary_contact_email",
+                    "type": "text",
+                    "constraint": {
+                        "function": "email_validator"
+                    }
+                },
+                {
+                    "name": "primary_contact_phone",
+                    "type": "text",
+                    "constraint": {
+                        "function": "phone_validator"
+                    }
+                },
+                {   
+                    "name": "legal_entity_type",
+                    "type": "text",
+                    "options": ["pvt_ltd", "llp", "public_ltd", "partnership"]
+                },
+                {
+                    "name": "annual_revenue_inr",
+                    "type": "number"
+                },
+                {
+                    "name": "dms",
+                    "type": "text"
+                },
+                {
+                    "name": "crm",
+                    "type": "text"
+                },
+                {
+                    "name": "service_mgmt_tools",
+                    "type": "list"
+                },
+                {
+                    "name": "channels",
+                    "type": "list",
+                    "options": [
+                        "rcs",
+                        "email",
+                        "web_chat",
+                        "web_chat_voice",
+                        "fb_chat",
+                        "insta_chat",
+                        "twitter_chat",
+                        "voice_phone",
+                        "whatsapp_chat",
+                        "whatsapp_voice_note",
+                        "whatsapp_voice_call",
+                        "zoom_bot",
+                        "ms_teams"
+                    ],
+                    "ui_element": "multi_select"
+                },
+                {
+                    "name": "lqs",
+                    "type": "text"
+                },
+                {
+                    "name": "staff_strength",
+                    "type": "number"
+                },
+                {
+                    "name": "other_tools",
+                    "type": "list"
+                },
+                {
+                    "name": "crm_dms_integration_feasibility",
+                    "type": "text",
+                    "options": ["yes", "no", "partial"]
+                },
+                {
+                    "name": "leadership_team",
+                    "type": "list"
+                },
+                {
+                    "name": "group_notes",
+                    "type": "text"
                 },
                 {
                     "name": "tags",
-                    "type": "nested_object"
+                    "type": "list"
                 },
                 {
                     "name": "status",
@@ -69,6 +184,15 @@
                         "suspended"
                     ],
                     "indexed": true
+                },
+                {
+                    "name": "dealer_group_id",
+                    "type": "uid",
+                    "indexed": true,
+                    "id": true,
+                    "default": {
+                        "function": "make_uuid_timestamp"
+                    }
                 }
             ]
         }

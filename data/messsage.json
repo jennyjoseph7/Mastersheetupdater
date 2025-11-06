@@ -3,13 +3,15 @@
     "name": "message",
     "model_type": "default",
     "attributes": [
+        
         {
-            "name": "message_id",
-            "type": "uid",
-            "indexed": true,
-            "id": true,
-            "default": {
-                "function": "make_uuid_timestamp"
+            "name" : "id_salt",
+            "type" : "text",
+            "default" : {
+                "function" : "make_view_id",
+                "kwargs":{
+                    "make_unique":false
+                }
             }
         },
         {
@@ -30,6 +32,14 @@
             }
         },
         {
+            "name" : "sender_id",
+            "type" : "text"
+        },
+        {
+            "name" : "message_initiated",
+            "type" : "number"
+        },
+        {
             "name" : "provider_received_time",
             "type" : "number"
         },
@@ -40,6 +50,25 @@
         {
             "name" : "provider_sent_time",
             "type" : "number"
+        },
+        {
+            "name" : "reply_to_message_id",
+            "type" : "text"
+        },
+        {
+            "name" : "reply_to_sender_id",
+            "type" : "text"
+        },
+        {
+            "name": "delivered_to",
+            "adder": {
+                "function": "list_adder",
+                "kwargs": {
+                    "unique": true
+                }
+            },
+            "type": "list",
+            "default": []
         },
         {
             "name": "session_id",
@@ -64,7 +93,7 @@
             ]
         },
         {
-            "name": "response",
+            "name": "message_text",
             "type": "text"
         },
         {
@@ -73,11 +102,11 @@
             "default" : 0
         },
         {
-            "name": "response_data",
+            "name": "message_data",
             "type": "nested_object"
         },
         {
-            "name" : "response_type",
+            "name" : "message_type",
             "type" : "text",
             "options" : [
                 "text",
@@ -98,13 +127,30 @@
                 "sent",
                 "delivered",
                 "failed",
-                "read"
+                "read",
+                "error"
             ],
             "indexed": true
         },
         {
             "name" : "feedback",
             "type" : "text"
+        },
+        {
+            "name": "message_id",
+            "type": "uid",
+            "indexed": true,
+            "id": true,
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "created",
+                    "id_salt",
+                    "sender_id",
+                    "session_id",
+                    "message_text"
+                ]
+            }
         }
     ]
 }
