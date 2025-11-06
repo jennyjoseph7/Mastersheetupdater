@@ -21,22 +21,31 @@
       }
     },
     {
-      "name": "region_code",
-      "type": "text"
-    },
-    {
       "name": "region_name",
       "type": "text",
       "indexed": true
     },
     {
-      "name": "country",
+      "name": "country_name",
       "type": "text"
+    },
+    {
+      "name": "region_level_guidelines",
+      "type": "text"
+    },
+    {
+        "name":"timezones",
+        "type":"text",
+        "options": "/options/model/timezone"
+    },
+    {
+        "name":"region_guardrails",
+        "type":"text"
     },
     {
       "auto_updater": true,
       "default": {
-        "args": ["region_code", "region_name"],
+        "args": ["region_name"],
         "function": "name_to_id",
         "kwargs": {
           "attribute_join": " ",

@@ -38,12 +38,12 @@
       "type": "text"
     },
     {
-      "name": "fuel_type",
+      "name": "fuel_types",
       "type": "list",
       "options":["Petrol", "Diesel", "CNG", "Electric", "Hybrid"]
     },
     {
-        "name":"transmission_type",
+        "name":"transmission_types",
         "type":"list",
         "options":["Automatic", "Manual"]
     },
@@ -54,7 +54,7 @@
     {
       "auto_updater": true,
       "default": {
-        "args": ["brand_name", "model_name"],
+        "args": ["model_name","brand_name"],
         "function": "name_to_id",
         "kwargs": {
           "attribute_join": " ",
@@ -62,7 +62,7 @@
           "separator": " - "
         }
       },
-      "name": "model_id",
+      "name": "vehicle_model_id",
       "type": "uid",
       "id": true
     }
