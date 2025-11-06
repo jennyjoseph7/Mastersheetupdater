@@ -1,9 +1,1 @@
-gryd-worker @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/gryd_worker/gryd_worker-0.4.2-py3-none-any.whl
-helpers @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/helpers/helpers-0.1.4-py3-none-any.whl
-models @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/models/models-1.1.3-py3-none-any.whl
-streamlit
-pyppeteer
-plotly
-matplotlib
-kaleido
-ai-service @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/ai_service/ai_service-0.0.6-py3-none-any.whl
+ai-service @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/ai_service/ai_service-0.0.7-py3-none-any.whl
