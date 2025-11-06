@@ -1,0 +1,216 @@
+{
+    "name": "pre_sale_leads",
+    "model_type": "default",
+    "attributes" : [
+        {
+            "name": "customer_id",
+            "type": "uid",
+            "id": true,
+            "required": true
+        },
+        {
+            "name": "customer_name",
+            "type": "text",
+            "required": true
+        },
+        {
+         "name": "phone_number",
+         "type": "number",
+         "required": true,
+         "default":{
+            "function":"phone_validator"
+         }
+        },
+        {
+            "name": "email",
+            "type": "text",
+            "default": {
+                "function": "email_validator"
+            }
+        },
+        {
+            "name": "address",
+            "type": "address",
+            "required": true
+        },
+        {
+            "name": "budget_range",
+            "type": "text"
+        },
+        {
+            "name": "brand_preference",
+            "type": "text"
+        },
+        {
+            "name": "variant_preference",
+            "type": "text"
+        },
+        {
+            "name": "color_preference",
+            "type": "text"
+        },
+        {
+            "name": "model_preference",
+            "type": "text"
+        },
+        {
+            "name": "fuel_type_preference",
+            "type": "text"
+        },
+        {
+            "name": "transmission_preference",
+            "type": "text"
+        },
+        {
+            "name": "seating_capacity_preference",
+            "type":"text"
+        },
+        {
+            "name": "usuage_type",
+            "type": "text",
+            "options": [
+                "commercial",
+                "personal"
+            ],
+            "required": true
+        },
+        {
+            "name": "remarks",
+            "type": "discription"
+        },
+        {
+            "name": "dealer_id",
+            "type": "uid",
+            "required": true
+        },
+        {
+            "name": "dealer_name",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "delar",
+                    "dealer_id",
+                    "dealer_name"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": true,
+            "required":true
+        },
+        {
+            "name": "dealer_code",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealer",
+                    "dealer_id",
+                    "dealer_code"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": true,
+            "required": true
+        },
+        {
+            "name": "lead_source",
+            "type": "text",
+            "options": [
+                "Walk-in",
+                "CRM",
+                "Dealership Website",
+                "OEM Website",
+                "Online Marketplace",
+                "Google Ads",
+                "Facebook Ads",
+                "Instagram Ads",
+                "WhatsApp",
+                "Email Campaign",
+                "Event",
+                "Exhibition",
+                "Customer",
+                "Employee",
+                "Fleet",
+                "OEM Lead System",
+                "Finance Partner",
+                "Insurance Partner",
+                "Used Car Exchange",
+                "Others"
+            ],
+            "required": true
+        },
+        {
+            "name": "lead_type",
+            "type": "text",
+            "options": [
+                "purchase_within_15_days",
+                "purchase_within_1_to_3_months",
+                "exploring_options",
+                "no_buying_intent",
+                "purchased_elsewhere",
+                "converted"
+            ],
+            "required": true
+        },
+        {
+            "constraint": {
+                "function": "to_bool_from_true_false"
+            },
+            "name": "finance_required",
+            "type": "text",
+            "default": "false"
+        },
+        {
+            "constraint": {
+                "function": "to_bool_from_true_false"
+            },
+            "name": "qualified_lead",
+            "type": "text",
+            "required": true
+        },
+        {
+            "name": "created_at",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "auto_updater": true,
+            "name": "updated_at",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "model_interest",
+            "type": "text"
+        },
+        {
+            "name": "requested_activities",
+            "type": "list",
+            "options": [
+                "test_drive", 
+                "brochure", 
+                "pricing", 
+                "vehicle_demo", 
+                "specifications",
+                "dealership_details",
+                "others",
+                "Nothing"
+            ],
+            "required": true
+        },
+        {
+            "name": "customer_requirements",
+            "type": "discription"
+        },
+        {
+            "constraint": {
+                "function": "to_bool_from_true_false"
+            },
+            "name": "exchange",
+            "type": "text"
+        }
+    ]
+}
