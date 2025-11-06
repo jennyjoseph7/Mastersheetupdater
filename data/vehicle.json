@@ -1,0 +1,235 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "vehicle",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "oem_id",
+            "refers": "parents.oem.oem_id"
+        },
+        {
+            "name": "brand_id",
+            "refers": "parents.brand.brand_id"
+        },
+        {
+            "name": "brand_name",
+            "refers": "parents.brand.brand_name"
+        },
+        {
+            "name": "model_id",
+            "refers": "parents.model.model_id"
+        },
+        {
+            "name": "model_name",
+            "refers": "parents.model.model_name"
+        },
+        {
+            "name": "variant_id",
+            "refers": "parents.variant.variant_id"
+        },
+        {
+            "name": "variant_name",
+            "refers": "parents.variant.variant_name"
+        },
+        {
+            "name": "model_year_id",
+            "refers": "parents.model_year.model_year_id"
+        },
+        {
+            "name": "model_year",
+            "refers": "parents.model_year.year"
+        },
+        {
+            "name": "color_id",
+            "refers": "parents.color.color_id"
+        },
+        {
+            "name": "color_name",
+            "refers": "parents.color.color_name"
+        },
+        {
+            "name": "vehicle_type",
+            "type": "text",
+            "options": [
+                "Customer Vehicle",
+                "Test Drive Vehicle",
+                "Display Vehicle",
+                "Loaner Vehicle",
+                "Service Vehicle",
+                "Inventory Vehicle"
+            ]
+        },
+        {
+            "name": "vin_number",
+            "type": "text",
+            "title": "Vehicle Identification Number (VIN)",
+            "indexed": true
+        },
+        {
+            "name": "chassis_number",
+            "type": "text"
+        },
+        {
+            "name": "engine_number",
+            "type": "text"
+        },
+        {
+            "name": "registration_number",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "registration_date",
+            "type": "datetime"
+        },
+        {
+            "name": "fuel_type",
+            "type": "text",
+            "options": [
+                "Petrol",
+                "Diesel",
+                "CNG",
+                "Electric",
+                "Hybrid"
+            ]
+        },
+        {
+            "name": "transmission",
+            "type": "text",
+            "options": [
+                "Manual",
+                "Automatic",
+                "AMT",
+                "CVT",
+                "DCT"
+            ]
+        },
+        {
+            "name": "ownership_status",
+            "type": "text",
+            "options": [
+                "Owned by Customer",
+                "Owned by Dealership",
+                "Owned by OEM",
+                "Leased",
+                "In Transit"
+            ]
+        },
+        {
+            "name": "current_owner_id",
+            "refers": "parents.person.user_id"
+        },
+        {
+            "name": "current_owner_name",
+            "refers": "parents.person.name"
+        },
+        {
+            "name": "purchase_date",
+            "type": "datetime"
+        },
+        {
+            "name": "warranty_expiry_date",
+            "type": "datetime"
+        },
+        {
+            "name": "insurance_expiry_date",
+            "type": "datetime"
+        },
+        {
+            "name": "current_mileage_km",
+            "type": "number",
+            "units": "km"
+        },
+        {
+            "name": "service_due_date",
+            "type": "datetime"
+        },
+        {
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id"
+        },
+        {
+            "name": "dealership_name",
+            "refers": "parents.dealership.dealership_name"
+        },
+        {
+            "name": "workshop_id",
+            "refers": "parents.workshop.workshop_id"
+        },
+        {
+            "name": "workshop_name",
+            "refers": "parents.workshop.workshop_name"
+        },
+        {
+            "name": "status",
+            "type": "text",
+            "options": [
+                "Active",
+                "Inactive",
+                "Sold",
+                "Under Service",
+                "Awaiting Delivery",
+                "Scrapped"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "description",
+            "type": "text",
+            "title": "Vehicle Description or Notes"
+        },
+        {
+            "name": "images",
+            "type": "list",
+            "title": "Vehicle Images"
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": [
+                    "brand_name",
+                    "model_name",
+                    "variant_name",
+                    "vin_number"
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " - "
+                }
+            },
+            "name": "vehicle_id",
+            "type": "uid",
+            "id": true
+        }
+    ],
+    "parents": [
+        "oem",
+        "brand",
+        "model",
+        "variant",
+        "model_year",
+        "color",
+        "person",
+        "dealership",
+        "workshop"
+    ]
+}

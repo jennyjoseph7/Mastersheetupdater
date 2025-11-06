@@ -1,0 +1,134 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "model_year",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "model_id",
+      "refers": "parents.model.model_id",
+      "auto_updater": true
+    },
+    {
+      "name": "model_name",
+      "refers": "parents.model.model_name"
+    },
+    {
+      "name": "brand_id",
+      "auto_updater": true,
+      "refers": "parents.model.brand_id"
+    },
+    {
+      "name": "brand_name",
+      "refers": "parents.model.brand_name"
+    },
+    {
+      "name": "oem_id",
+      "auto_updater": true,
+      "refers": "parents.model.oem_id"
+    },
+    {
+      "name": "oem_name",
+      "refers": "parents.model.oem_name"
+    },
+    {
+      "name": "year",
+      "type": "number",
+      "indexed": true
+    },
+    {
+      "name": "launch_date",
+      "type": "datetime"
+    },
+    {
+      "name": "discontinuation_date",
+      "type": "datetime"
+    },
+    {
+      "name": "year_label",
+      "type": "text"
+    },
+    {
+      "name": "price_range",
+      "type": "nested_object",
+      "dict_keys": [
+        "min_price",
+        "max_price"
+      ]
+    },
+    {
+      "name": "facelift",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "name": "facelift_description",
+      "type": "text"
+    },
+    {
+      "name": "major_changes",
+      "type": "multi_select",
+      "options": [
+        "Exterior Design Update",
+        "Interior Update",
+        "Engine Upgrade",
+        "Safety Feature Update",
+        "Infotainment Update",
+        "Variant Restructure",
+        "facelift",
+        "Other"
+      ]
+    },
+    {
+      "name": "year_status",
+      "type": "text",
+      "options": [
+        "Active",
+        "Discontinued",
+        "Upcoming"
+      ]
+    },
+    {
+      "name": "remarks",
+      "type": "text"
+    },
+    {
+      "auto_updater": true,
+      "default": {
+        "args": [
+          "brand_name",
+          "model_name",
+          "year"
+        ],
+        "function": "name_to_id",
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " - "
+        }
+      },
+      "name": "model_year_id",
+      "type": "uid",
+      "id": true
+    }
+  ],
+  "parents": [
+    "model"
+  ]
+}

@@ -7,31 +7,32 @@
       "name": "created",
       "type": "number",
       "auto_updater": true,
-      "default": {
-        "function": "now_ctime"
-      }
+      "default": { "function": "now_ctime" }
     },
     {
       "name": "updated",
       "type": "number",
       "auto_updater": true,
       "force_update": true,
-      "default": {
-        "function": "now_ctime"
-      }
+      "default": { "function": "now_ctime" }
     },
     {
       "name": "brand_id",
-      "refers": "parents.brand.brand_id"
+      "refers": "parents.model.brand_id"
     },
     {
       "name": "brand_name",
-      "refers": "parents.brand.brand_name"
+      "refers": "parents.model.brand_name"
     },
     {
       "name": "color_name",
       "type": "text",
-      "indexed": true  
+      "indexed": true
+    },
+    {
+      "name": "paint_code",
+      "type": "text",
+      "title": "Manufacturer Paint Code"
     },
     {
       "name": "hex_code",
@@ -44,12 +45,40 @@
     {
       "name": "finish_type",
       "type": "text",
-      "options": ["Metallic", "Matte", "Pearl", "Solid"],
+      "options": ["Metallic", "Matte", "Pearl", "Solid", "Satin", "Chrome"],
       "ui_element": "select"
+    },
+    {
+      "name": "tone_type",
+      "type": "text",
+      "options": ["Single Tone", "Dual Tone", "Triple Tone"],
+      "ui_element": "select"
+    },
+    {
+      "name": "secondary_tone",
+      "type": "nested_object",
+      "dict_keys": ["color_name", "hex_code", "finish_type"],
+      "title": "Secondary Tone (for Dual Tone)"
+    },
+    {
+      "name": "tertiary_tone",
+      "type": "nested_object",
+      "dict_keys": ["color_name", "hex_code", "finish_type"],
+      "title": "Tertiary Tone (for Triple Tone)"
+    },
+    {
+      "name": "tone_description",
+      "type": "text",
+      "title": "Tone Combination Description"
     },
     {
       "name": "texture",
       "type": "text"
+    },
+    {
+      "name": "description",
+      "type": "text",
+      "title": "Color Description"
     },
     {
       "name": "image_url",
@@ -57,14 +86,48 @@
       "ui_element": "image"
     },
     {
+      "name": "gallery_images",
+      "type": "list",
+      "title": "Gallery Images"
+    },
+    {
       "name": "additional_cost",
       "type": "number"
     },
     {
+      "name": "dual_tone_extra_cost",
+      "type": "number",
+      "title": "Additional Cost for Dual Tone"
+    },
+    {
+      "name": "triple_tone_extra_cost",
+      "type": "number",
+      "title": "Additional Cost for Triple Tone"
+    },
+    {
       "name": "availability_status",
       "type": "text",
-      "options": ["Available", "Limited", "Discontinued"],
+      "options": ["Available", "Limited", "Discontinued", "Upcoming"],
       "ui_element": "select"
+    },
+    {
+      "name": "launch_date",
+      "type": "datetime"
+    },
+    {
+      "name": "discontinuation_date",
+      "type": "datetime"
+    },
+    {
+      "name": "compatible_variants",
+      "type": "object_list",
+      "list_type": "nested_object",
+      "dict_keys": ["variant_id", "variant_name", "fuel_type", "transmission"],
+      "title": "Compatible Variants"
+    },
+    {
+      "name": "notes",
+      "type": "text"
     },
     {
       "name": "color_status",
@@ -75,7 +138,7 @@
     {
       "auto_updater": true,
       "default": {
-        "args": ["brand_name", "color_name", "finish_type"],
+        "args": ["brand_name", "color_name", "finish_type", "tone_type"],
         "function": "name_to_id",
         "kwargs": {
           "attribute_join": " ",
@@ -88,5 +151,5 @@
       "id": true
     }
   ],
-  "parents": ["oem", "brand"]
+  "parents": ["model"]
 }

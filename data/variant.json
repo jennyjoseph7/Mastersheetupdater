@@ -22,19 +22,19 @@
     },
     {
       "name": "model_id",
-      "refers": "parents.model.model_id"
+      "refers": "parents.model_year.model_id"
     },
     {
       "name": "model_name",
-      "refers": "parents.model.model_name"
+      "refers": "parents.model_year.model_name"
     },
     {
       "name": "brand_id",
-      "refers": "parents.brand.brand_id"
+      "refers": "parents.model_year.brand_id"
     },
     {
       "name": "brand_name",
-      "refers": "parents.brand.brand_name"
+      "refers": "parents.model_year.brand_name"
     },
     {
       "name": "variant_name",
@@ -42,7 +42,7 @@
       "indexed": true
     },
     {
-      "name": "fuel_type",
+      "name": "engine_type",
       "type": "text",
       "options": ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"],
       "ui_element": "select"
@@ -121,5 +121,7 @@
       "id": true
     }
   ],
-  "parents": ["brand", "model"]
+  "parents": [
+    "model_year"
+  ]
 }

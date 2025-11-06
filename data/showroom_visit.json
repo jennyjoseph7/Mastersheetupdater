@@ -18,11 +18,11 @@
     },
     {
       "name": "dealership_id",
-      "refers": "parents.dealership.dealership_id"
+      "refers": "parents.showroom.dealership_id"
     },
     {
       "name": "dealership_name",
-      "refers": "parents.dealership.dealership_name"
+      "refers": "parents.showroom.dealership_name"
     },
     {
       "name": "showroom_id",
@@ -34,19 +34,19 @@
     },
     {
       "name": "brand_id",
-      "refers": "parents.brand.brand_id"
+      "refers": "parents.showroom.brand_id"
     },
     {
       "name": "brand_name",
-      "refers": "parents.brand.brand_name"
+      "refers": "parents.showroom.brand_name"
     },
     {
       "name": "region_id",
-      "refers": "parents.region.region_id"
+      "refers": "parents.showroom.region_id"
     },
     {
       "name": "region_name",
-      "refers": "parents.region.region_name"
+      "refers": "parents.showroom.region_name"
     },
     {
       "name": "person_id",
@@ -58,11 +58,13 @@
     },
     {
       "name": "visit_date",
-      "type": "datetime"
+      "type": "number",
+      "auto_updater": true,
+      "default": { "function": "now_ctime" }
     },
     {
       "name": "purpose_of_visit",
-      "type": "text",
+      "type": "multi_select",
       "options": [
         "New Car Inquiry",
         "Test Drive",
@@ -75,21 +77,30 @@
         "Other"
       ]
     },
+
     {
-      "name": "variant_id",
-      "refers": "parents.variant.variant_id"
+      "name":"showroom_id",
+      "refers":"parents.showroom.showroom_id",
+      "auto_updater": true
+
+    },
+    {
+      "name":"pre_sales_lead_id",
+      "refers":"parents.pre_sales_leads.pre_sales_lead_id",
+      "auto_updater": true
     },
     {
       "name": "variant_name",
-      "refers": "parents.variant.variant_name"
+      "refers": "parents.pre_sales_leads.variant_name"
     },
     {
       "name": "model_id",
-      "refers": "parents.model.model_id"
+      "refers": "parents.pre_sales_leads.model_id",
+      "auto_updater": true
     },
     {
       "name": "model_name",
-      "refers": "parents.model.model_name"
+      "refers": "parents.pre_sales_leads.model_name"
     },
     {
       "name": "executive_name",
@@ -171,12 +182,7 @@
     }
   ],
   "parents": [
-    "region",
-    "brand",
-    "dealership",
-    "showroom",
-    "person",
-    "model",
-    "variant"
+    "pre_sales_leads",
+    "showroom"
   ]
 }

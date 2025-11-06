@@ -30,19 +30,19 @@
     },
     {
       "name": "model_id",
-      "refers": "parents.model.model_id"
+      "refers": "parents.variant.model_id"
     },
     {
       "name": "model_name",
-      "refers": "parents.model.model_name"
+      "refers": "parents.variant.model_name"
     },
     {
       "name": "brand_id",
-      "refers": "parents.brand.brand_id"
+      "refers": "parents.variant.brand_id"
     },
     {
       "name": "brand_name",
-      "refers": "parents.brand.brand_name"
+      "refers": "parents.variant.brand_name"
     },
     {
       "name": "color_name",
@@ -95,5 +95,5 @@
       "id": true
     }
   ],
-  "parents": ["brand", "model", "variant"]
+  "parents": ["variant"]
 }

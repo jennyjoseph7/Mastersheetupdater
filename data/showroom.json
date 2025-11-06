@@ -1,6 +1,6 @@
 {
   "timezone": "Asia/Kolkata",
-  "name": "workshop",
+  "name": "showroom",
   "model_type": "default",
   "attributes": [
     {
@@ -18,48 +18,41 @@
     },
     {
       "name": "dealership_id",
-      "refers": "parents.dealership.dealership_id"
+      "refers": "parents.dealership.dealership_id",
+      "auto_updater": true
     },
     {
       "name": "dealership_name",
       "refers": "parents.dealership.dealership_name"
     },
     {
-      "name": "brand_id",
-      "refers": "parents.dealership.brand_id",
-      "required": false
-    },
-    {
       "name": "brand_name",
       "refers": "parents.dealership.brand_name"
-    },
-    {
-      "name": "region_id",
-      "refers": "parents.dealership.region_id"
     },
     {
       "name": "region_name",
       "refers": "parents.dealership.region_name"
     },
     {
-      "name": "workshop_name",
+      "name": "showroom_name",
       "type": "text",
       "indexed": true
     },
     {
-      "name": "workshop_code",
+      "name": "showroom_code",
       "type": "text",
       "indexed": true
     },
     {
-      "name": "workshop_type",
+      "name": "showroom_type",
       "type": "text",
       "options": [
-        "Main Workshop",
-        "Satellite Workshop",
-        "Mobile Workshop",
-        "Body Shop",
-        "Express Service Center"
+        "Main Showroom",
+        "City Outlet",
+        "Express Outlet",
+        "Experience Center",
+        "Mall Kiosk",
+        "Virtual Showroom"
       ]
     },
     {
@@ -109,51 +102,6 @@
       ]
     },
     {
-      "name": "total_service_bays",
-      "type": "number"
-    },
-    {
-      "name": "total_technicians",
-      "type": "number"
-    },
-    {
-      "name": "daily_service_capacity",
-      "type": "number"
-    },
-    {
-      "name": "services_offered",
-      "type": "multi_select",
-      "options": [
-        "General Service",
-        "Repair",
-        "Body Shop",
-        "Paint",
-        "Tyre Alignment",
-        "Wheel Balancing",
-        "AC Service",
-        "Battery Service",
-        "Electrical Work",
-        "Detailing",
-        "Car Wash",
-        "Pickup & Drop",
-        "Roadside Assistance"
-      ]
-    },
-    {
-      "name": "special_facilities",
-      "type": "multi_select",
-      "options": [
-        "Customer Lounge",
-        "Wi-Fi",
-        "CCTV Waiting Area",
-        "Quick Service Bay",
-        "EV Charging Point",
-        "Wheel Alignment",
-        "Cafe/Refreshments",
-        "Child Play Zone"
-      ]
-    },
-    {
       "name": "manager_name",
       "type": "text"
     },
@@ -162,17 +110,53 @@
       "type": "text"
     },
     {
-      "name": "workshop_status",
+      "name": "total_sales_executives",
+      "type": "number"
+    },
+    {
+      "name": "daily_walkin_capacity",
+      "type": "number"
+    },
+    {
+      "name": "facilities_available",
+      "type": "multi_select",
+      "options": [
+        "Customer Lounge",
+        "Wi-Fi",
+        "Cafe / Refreshments",
+        "Test Drive Zone",
+        "Display Vehicles",
+        "Finance Desk",
+        "Insurance Desk",
+        "Accessories Section",
+        "EV Charging Point",
+        "Children Play Area",
+        "Parking Facility"
+      ]
+    },
+    {
+      "name": "parking_capacity",
+      "type": "number"
+    },
+    {
+      "name": "display_vehicle_count",
+      "type": "number"
+    },
+    {
+      "name": "virtual_tour_url",
+      "type": "text"
+    },
+    {
+      "name": "status",
       "type": "text",
-      "options": ["Active", "Inactive", "Under Renovation"],
-      "indexed": true
+      "options": ["Active", "Inactive", "Under Renovation"]
     },
     {
       "auto_updater": true,
       "default": {
         "args": [
           "dealership_name",
-          "workshop_name",
+          "showroom_name",
           "city"
         ],
         "function": "name_to_id",
@@ -182,7 +166,7 @@
           "separator": " - "
         }
       },
-      "name": "workshop_id",
+      "name": "showroom_id",
       "type": "uid",
       "id": true
     }
