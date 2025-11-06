@@ -53,7 +53,7 @@
             "default" : {
                 "function" : "name_to_id",
                 "args": [
-                    "human_agent_agent_name",
+                    "human_agent_name",
                     "dealership_id"
                 ],
                 "kwargs" : {
