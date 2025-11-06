@@ -1,0 +1,97 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "brand",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "oem_id",
+      "refers": "parents.oem.oem_id"
+    },
+    {
+      "name": "oem_name",
+      "refers": "parents.oem.oem_name"
+    },
+    {
+        "name":"oem_brand_awareness",
+        "refers":"parents.oem.oem_brand_awareness"
+    },
+    {
+        "name":"oem_wiki_description",
+        "refers": "parents.oem.oem_wiki_description"
+    },
+    {
+        "name":"oem_vehicle_categories",
+        "refers":"parents.oem.oem_vehicle_categories"
+    },
+    {
+        "name":"oem_country_of_origin",
+        "refers": "parents.oem.oem_country_of_origin"
+    },
+    {
+      "name": "region_id",
+      "refers": "parents.region.region_id"
+    },
+    {
+      "name": "region_name",
+      "refers": "parents.region.region_name"
+    },
+    {
+        "name":"country_name",
+        "refers":"parents.region.country_name"
+    },
+    {
+        "name":"region_level_guidelines",
+        "refers":"parents.region.region_level_guidelines"
+    },
+    {
+        "name":"guardrails",
+        "refers":"parents.region.guardrails"
+    },
+    {
+      "name": "brand_name",
+      "type": "text",
+      "indexed": true
+    },
+    {
+      "name": "logo_url",
+      "type": "text"
+    },
+    {
+      "name": "website",
+      "type": "text"
+    },
+    {
+      "auto_updater": true,
+      "default": {
+        "args": ["region_name","brand_name"],
+        "function": "name_to_id",
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " - "
+        }
+      },
+      "name": "brand_id",
+      "type": "uid",
+      "id": true
+    }
+  ],
+  "parents":["oem", "region"]
+}

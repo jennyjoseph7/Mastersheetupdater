@@ -1,0 +1,174 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "dealership_campaign",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id"
+        },
+        {
+            "name": "dealership_name",
+            "refers": "parents.dealership.dealership_name"
+        },
+        {
+            "name": "brand_id",
+            "refers": "parents.brand.brand_id"
+        },
+        {
+            "name": "brand_name",
+            "refers": "parents.brand.brand_name"
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.region.region_id"
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.region.region_name"
+        },
+        {
+            "name": "campaign_name",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "campaign_type",
+            "type": "text",
+            "options": [
+                "Lead Generation",
+                "Brand Awareness",
+                "Sales Promotion",
+                "After-Sales Service",
+                "Event",
+                "Digital Ad",
+                "Referral Program",
+                "Other"
+            ]
+        },
+        {
+            "name": "description",
+            "type": "text"
+        },
+        {
+            "name": "start_date",
+            "type": "datetime"
+        },
+        {
+            "name": "end_date",
+            "type": "datetime"
+        },
+        {
+            "name": "channels_used",
+            "type": "list",
+            "options": [
+                "Facebook",
+                "Instagram",
+                "Google Ads",
+                "Email",
+                "SMS",
+                "WhatsApp",
+                "Telemarketing",
+                "Print Media",
+                "Event",
+                "Billboard"
+            ]
+        },
+        {
+            "name": "target_audience",
+            "type": "text"
+        },
+        {
+            "name": "target_vehicle_models",
+            "type": "list"
+        },
+        {
+            "name": "expected_leads",
+            "type": "number"
+        },
+        {
+            "name": "budget_allocated",
+            "type": "number"
+        },
+        {
+            "name": "actual_spent",
+            "type": "number"
+        },
+        {
+            "name": "leads_generated",
+            "type": "number"
+        },
+        {
+            "name": "conversion_count",
+            "type": "number"
+        },
+        {
+            "name": "conversion_rate_percent",
+            "type": "number"
+        },
+        {
+            "name": "roi_percent",
+            "type": "number"
+        },
+        {
+            "name": "campaign_status",
+            "type": "text",
+            "options": [
+                "Planned",
+                "Active",
+                "Completed",
+                "On Hold",
+                "Cancelled"
+            ]
+        },
+        {
+            "name": "responsible_person",
+            "type": "text"
+        },
+        {
+            "name": "remarks",
+            "type": "text"
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": [
+                    "dealership_name",
+                    "campaign_name",
+                    "start_date"
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " - "
+                }
+            },
+            "name": "dealership_campaign_id",
+            "type": "uid",
+            "id": true
+        }
+    ],
+    "parents": [
+        "region",
+        "brand",
+        "dealership"
+    ]
+}

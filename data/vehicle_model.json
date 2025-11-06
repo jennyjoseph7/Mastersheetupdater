@@ -1,0 +1,71 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "model",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "brand_id",
+      "refers": "parents.brand.brand_id"
+    },
+    {
+      "name": "brand_name",
+      "refers": "parents.brand.brand_name"
+    },
+    {
+      "name": "model_name",
+      "type": "text",
+      "indexed": true
+    },
+    {
+      "name": "body_type", 
+      "type": "text"
+    },
+    {
+      "name": "fuel_types",
+      "type": "list",
+      "options":["Petrol", "Diesel", "CNG", "Electric", "Hybrid"]
+    },
+    {
+        "name":"transmission_types",
+        "type":"list",
+        "options":["Automatic", "Manual"]
+    },
+    {
+        "name":"year_launched",
+        "type":"number"
+    },
+    {
+      "auto_updater": true,
+      "default": {
+        "args": ["model_name","brand_name"],
+        "function": "name_to_id",
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " - "
+        }
+      },
+      "name": "vehicle_model_id",
+      "type": "uid",
+      "id": true
+    }
+  ],
+  "parents":["brand"]
+}
