@@ -1,0 +1,74 @@
+{
+            "timezone": "Asia/Kolkata",
+            "name": "dealer_group",
+            "model_type": "default",
+            "attributes": [
+                {
+                    "name": "created",
+                    "type": "number",
+                    "auto_updater": true,
+                    "default": {
+                        "function": "now_ctime"
+                    }
+                },
+                {
+                    "name": "updated",
+                    "type": "number",
+                    "auto_updater": true,
+                    "force_update": true,
+                    "default": {
+                        "function": "now_ctime"
+                    }
+                },
+                {
+                    "name": "dealer_group_id",
+                    "type": "uid",
+                    "indexed": true,
+                    "id": true,
+                    "default": {
+                        "function": "make_uuid_timestamp"
+                    }
+                },
+                {
+                    "name": "dealer_group_name",
+                    "type": "text",
+                    "indexed": true
+                },
+                {
+                    "name": "dealer_group_description",
+                    "type": "text"
+                },
+                {
+                    "name": "dealer_group_address",
+                    "type": "text"
+                },
+                {
+                    "name": "dealer_group_phone_number",
+                    "type": "text",
+                    "constraint": {
+                        "format": "phone_number_validator"
+                    }
+                },
+                {
+                    "name": "dealer_group_email",
+                    "type": "text",
+                    "constraint": {
+                        "format": "email_validator"
+                    }
+                },
+                {
+                    "name": "tags",
+                    "type": "nested_object"
+                },
+                {
+                    "name": "status",
+                    "type": "text",
+                    "options": [
+                        "active",
+                        "inactive",
+                        "suspended"
+                    ],
+                    "indexed": true
+                }
+            ]
+        }
