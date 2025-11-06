@@ -1,6 +1,7 @@
 {
     "name" : "human_agent",
     "timezone" : "Asia/Kolkata",
+    "model_type": "default",
     "attributes" : [
         {
             "name": "created",
@@ -40,6 +41,7 @@
             "name" : "human_agent_id",
             "type" : "uid",
             "id" : true,
+            "auto_updater":true,
             "default" : {
                 "function" : "name_to_id",
                 "args": [
