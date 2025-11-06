@@ -355,8 +355,20 @@
             "type": "nested_object"
         },
         {
-            "name": "previous_interaction_id",
-            "type": "text"
+            "name": "previous_interaction_ids",
+            "type": "list",
+            "list_type": "text"        
+        },
+        {
+            "name": "previous_interaction_details",
+            "type": "list",
+            "list_type": "nested_list",
+            "default":{
+                "function": "get_from_model_map",
+                "args": [
+                    "previous_interaction_ids"
+                ]
+            }
         },
         {
             "name": "showroom_id",
