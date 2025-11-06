@@ -24,52 +24,61 @@
       "type": "text",
       "indexed": true
     },
+
     {
-      "name": "oem_code",
+      "name": "oem_country_of_origin",
+      "type": "text"
+    },
+    {
+      "name": "oem_headquarters",
+      "type": "text"
+    },
+    {
+      "name": "oem_logo_url",
       "type": "text",
-      "indexed": true
+      "constraint": {
+        "function": "url_validator"
+      },
+     "converter": {
+        "function": "url_converter"
+      }
     },
     {
-      "name": "country_of_origin",
+      "name": "oem_website_url",
       "type": "text"
     },
     {
-        "name":"headquarters",
-        "type":"text"
+        "name":"oem_brand_awareness",
+        "type": "text"
     },
     {
-        "name": "logo_url",
-        "type":"link"
+        "name":"parent_company",
+        "type": "text"
     },
     {
-      "name": "website_url",
-      "type": "text"
+        "name":"oem_wiki_description",
+        "type": "text"
+
     },
     {
-        "name":"email",
-        "type":"text"   
+        "name":"oem_vehicle_categories",
+        "type": "list",
+        "options":["Passenger vehicles", "Commercial Vehicles", "Two Wheelers", "Three Wheelers","Truck" , "Bus" ,"Electric Vehicles"]
     },
     {
-        "name":"phone",
-        "type":"text"
-    },
-    {
-        "auto_updater": true,
-        "default": {
-            "args": [
-                "oem_code",
-                "oem_name"
-            ],
-            "function": "name_to_id",
-            "kwargs": {
-                "attribute_join": " ",
-                "is_unique": true,
-                "separator": " - "
-            }
-        },
-        "name": "oem_id",
-        "type": "uid",
-        "id": true
+      "auto_updater": true,
+      "default": {
+        "args": ["oem_name"],
+        "function": "name_to_id",
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " - "
+        }
+      },
+      "name": "oem_id",
+      "type": "uid",
+      "id": true
     }
   ]
 }
