@@ -26,6 +26,10 @@
             "indexed" : true
         },
         {
+            "name" : "email",
+            "type" : "text"
+        },
+        {
             "name" : "role",
             "type" : "text"
         },
@@ -42,7 +46,8 @@
             "type" : "text",
             "options" : [
                 "call",
-                "chat"
+                "chat",
+                "email"
             ]
         },
         {
