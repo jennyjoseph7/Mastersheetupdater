@@ -224,6 +224,18 @@
             ]
         },
         {
+            "name" : "emotions",
+            "type" : "string_list"
+        },
+        {
+            "type" : "number",
+            "name" : "sentiment_score"
+        },
+        {
+            "name" : "propensity_scores",
+            "type" : "nested_object"
+        },
+        {
             "name": "dealership_id",
             "type": "uid",
             "required": true
