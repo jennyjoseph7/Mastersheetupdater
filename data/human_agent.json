@@ -21,34 +21,81 @@
             }
         },
         {
-            "name" : "human_agent_name",
+            "name" : "agent_name",
             "type" : "name",
+            "required": true,
             "indexed" : true
         },
         {
+            "name": "phone_number",
+            "type": "text",
+            "constraint": {
+                "function": "phone_validator"
+            },
+            "indexed": true
+        },
+        {
             "name" : "email",
-            "type" : "text"
+            "type" : "text",
+            "constraint": {
+                "function": "email_validator"
+            },
+            "indexed": true
         },
         {
             "name" : "role",
-            "type" : "text"
+            "type" : "text",
+            "options": [
+                "Workshop Manager",
+                "Relationship Manager",
+                "Sales Executive",
+                "Service Executive",
+                "Customer Support Executive",
+                "Marketing Executive",
+                "Other"
+            ],
+            "option_others": true
         },
         {
             "name" : "active",
-            "type" : "boolean"
+            "type" : "boolean",
+            "default": true
         },
         {
             "name" : "availability",
-            "type" : "boolean"
+            "type" : "nested_object",
+            "dict_keys": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         },
         {
-            "name" : "engagement_type",
-            "type" : "text",
+            "name" : "channels",
+            "type" : "string_list",
             "options" : [
-                "call",
-                "chat",
-                "email"
-            ]
+                "rcs",
+                "email",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "voice_phone",
+                "whatsapp_chat",
+                "whatsapp_voice_note",
+                "whatsapp_voice_call",
+                "zoom_bot",
+                "ms_teams"
+            ],
+            "ui_element": "multiselect"
+        },
+        {
+            "name": "password",
+            "type": "password",
+            "required": true,
+            "default": {
+                "function": "make_view_id",
+                "kwargs": {
+                    "make_unique": false
+                }
+            }
         },
         {
             "name" : "human_agent_id",
@@ -58,11 +105,11 @@
             "default" : {
                 "function" : "name_to_id",
                 "args": [
-                    "human_agent_name",
+                    "agent_name",
                     "dealership_id"
                 ],
                 "kwargs" : {
-                    "is_unique" : true,
+                    "is_unique" : false,
                     "separator" : "_",
                     "skip_empty" : true
                 }
@@ -71,5 +118,6 @@
     ],
     "parents" : [
         "dealership"
-    ]
+    ],
+    "has_login": true
 }
