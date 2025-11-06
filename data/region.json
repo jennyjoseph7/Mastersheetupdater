@@ -30,6 +30,10 @@
       "type": "text"
     },
     {
+        "name":"currency",
+        "type":"text"
+    },
+    {
       "name": "region_level_guidelines",
       "type": "text"
     },

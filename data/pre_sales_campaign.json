@@ -1,0 +1,174 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "pre_sales_campaign",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+        "name":"dealership_id",
+        "refers":"parents.dealership.dealership_id"
+    },
+    {
+      "name": "dealer_name",
+      "refers": "parents.dealership.dealer_name"
+    },
+    {
+      "name": "dealership_type",
+      "refers": "parents.dealership.dealership_type"
+    },
+   
+    {
+      "name": "region_name",
+      "refers": "parents.dealership.region_name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "text",
+      "indexed": true
+    },
+    {
+        "name":"channels",
+        "refers": "parents.dealership.region_name"
+        
+    },
+    {
+        "name": "campaign_type",
+        "type": "list",
+        "options": [
+          "Awareness",
+          "Lead Generation",
+          "Lead Qualification",
+          "Sales Promotion",
+          "Lead Nurture",
+          "Cross Sell",
+          "Other"
+        ]
+      },
+    {
+        "name":"campaign_sub_type",
+        "type":"list",
+        "options":[
+            "brand awareness",
+            "product awareness",
+            "event",
+            "lead generation"
+        ]
+    },
+    {
+      "name": "campaign_objective",
+      "type": "text"
+    },
+    {
+        "name":"campaign_objective_type",
+        "type":"list",
+        "options":[
+            "lead volume",
+            "budget based",
+            "roi target"
+        ]
+    },
+    {
+      "name": "campaign_start_date",
+      "type": "number"
+    },
+    {
+      "name": "campaign_end_date",
+      "type": "number"
+    },
+    {
+        "name":"campaign_user_source",
+        "type":"nested_object",
+        "required":true
+    },
+    {
+      "name": "target_audience",
+      "type": "list",
+      "options":[
+        "upload_csv",
+        "autoselect"
+    ]
+    },
+    {
+      "name": "target_vehicle_models",
+      "type": "list"
+    },
+    {
+      "name": "expected_leads",
+      "type": "number"
+    },
+    {
+      "name": "budget_allocated",
+      "type": "number"
+    },
+    {
+      "name": "actual_spent",
+      "type": "number"
+    },
+    {
+      "name": "leads_generated",
+      "type": "number"
+    },
+    
+    {
+      "name": "conversion_rate_percent",
+      "type": "number"
+    },
+    {
+      "name": "roi_percent",
+      "type": "number"
+    },
+    {
+      "name": "campaign_status",
+      "type": "text",
+      "options": ["Planned", "Active", "Completed", "On Hold", "Cancelled"]
+    },
+    {
+      "name": "responsible_person",
+      "type": "text"
+    },
+    {
+      "name": "responsible_contact",
+      "type": "text"
+    },
+    {
+      "name": "remarks",
+      "type": "text"
+    },
+    {
+      "name": "attachments",
+      "type": "list"
+    },
+    {
+      "auto_updater": true,
+      "default": {
+        "args": ["dealership_name", "campaign_name", "start_date"],
+        "function": "name_to_id",
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " - "
+        }
+      },
+      "name": "pre_sales_campaign_id",
+      "type": "uid",
+      "id": true
+    }
+  ],
+  "parents": ["dealership"]
+}

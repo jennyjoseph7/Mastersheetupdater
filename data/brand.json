@@ -22,7 +22,8 @@
     },
     {
       "name": "oem_id",
-      "refers": "parents.oem.oem_id"
+      "refers": "parents.oem.oem_id",
+      "required": true
     },
     {
       "name": "oem_name",
@@ -46,7 +47,8 @@
     },
     {
       "name": "region_id",
-      "refers": "parents.region.region_id"
+      "refers": "parents.region.region_id",
+      "required": true
     },
     {
       "name": "region_name",
@@ -71,7 +73,13 @@
     },
     {
       "name": "logo_url",
-      "type": "text"
+      "type": "text",
+      "constraint": {
+        "function": "url_validator"
+      },
+     "converter": {
+        "function": "url_converter"
+      }
     },
     {
       "name": "website",

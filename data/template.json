@@ -1,0 +1,118 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "template",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "template_name",
+      "type": "text",
+      "indexed": true
+    },
+    {
+        "name":"communication_credentials_id",
+        "refers":"parents.communication_credentials.communication_credentials_id",
+        "required":true
+    },
+    {
+      "name": "provider_name",
+      "refers": "parents.communication_credentials.provider_name",
+      "indexed": true
+    },
+    {
+      "name": "channel",
+      "refers": "parents.communication_credentials.channel"
+    },
+    {
+      "name": "sender",
+      "refers": "parents.communication_credentials.sender"
+    },
+    {
+      "name": "region_name",
+      "refers": "parents.communication_credentials.region_name"
+    },
+    {
+      "name": "dealer_name",
+      "refers": "parents.communication_credentials.dealer_name"
+    },
+    {
+      "name": "template_type",
+      "type": "text"
+    },
+    {
+      "name": "template_message",
+      "type": "text"
+    },
+    {
+      "name": "template_variables",
+      "type": "list"
+    },
+    {
+      "name": "template_buttons_payload",
+      "type": "list"
+    },
+    {
+      "name": "template_media_id",
+      "type": "text"
+    },
+    {
+      "name": "media_file_name",
+      "type": "text"
+    },
+    {
+      "name": "template_media_type",
+      "type": "text"
+    },
+    {
+      "name": "template_media_url",
+      "type": "text"
+    },
+    {
+      "name": "template_payload",
+      "type": "text"
+    },
+    {
+      "name": "language",
+      "default": "ENGLISH",
+      "option_other": true,
+      "options": [
+        "ENGLISH",
+        "HINDI",
+        "KANNADA",
+        "TELUGU",
+        "TAMIL",
+        "MALAYALAM",
+        "ODIA",
+        "BENGALI",
+        "MARATHI",
+        "GUJURATI"
+      ],
+      "type": "text"
+    },
+    {
+      "name": "template_id",
+      "type": "uid",
+      "indexed": true,
+      "id": true,
+      "default": {
+        "function": "make_uuid_timestamp"
+      }
+    }
+  ]
+}

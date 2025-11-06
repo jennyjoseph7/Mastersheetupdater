@@ -1,0 +1,171 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "post_sales_campaign",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "showroom_id",
+      "refers": "parents.showroom.showroom_id"
+    },
+    {
+      "name": "dealership_name",
+      "refers": "parents.showroom.dealership_name"
+    },
+    {
+      "name": "brand_name",
+      "refers": "parents.showroom.brand_name"
+    },
+    {
+      "name": "region_name",
+      "refers": "parents.showroom.region_name"
+    },
+    {
+      "name": "campaign_name",
+      "type": "text",
+      "indexed": true
+    },
+    {
+      "name": "campaign_type",
+      "type": "list",
+      "options": [
+        "Ownership & Onboarding",
+        "Service & Maintenance",
+        "Loyalty & Rewards",
+        "Awareness & Feedback",
+        "Recall"
+      ]
+    },
+    {
+      "name": "campaign_objective",
+      "type": "text"
+    },
+    {
+      "name": "campaign_start_date",
+      "type": "number"
+    },
+    {
+      "name": "campaign_end_date",
+      "type": "number"
+    },
+    {
+      "name": "campaign_user_source",
+      "type": "nested_object",
+      "required": true
+    },
+    {
+      "name": "channels_used",
+      "type": "list",
+      "options": [
+        "Email",
+        "SMS",
+        "WhatsApp",
+        "Phone Call",
+        "Website",
+        "Mobile App",
+        "Event",
+        "Social Media",
+        "Newspaper Ad",
+        "Banner / Billboard"
+      ]
+    },
+    {
+      "name": "target_audience_type",
+      "type": "list",
+      "options": [
+        "Existing Customers",
+        "Expired Warranty Customers",
+        "Inactive Customers",
+        "High Mileage Owners",
+        "Fleet Customers",
+        "Insurance Renewal Customers",
+        "General Public"
+      ]
+    },
+    {
+      "name": "target_vehicle_models",
+      "type": "list"
+    },
+    {
+      "name": "expected_customers",
+      "type": "number"
+    },
+    {
+      "name": "customers_reached",
+      "type": "number"
+    },
+    {
+      "name": "customers_participated",
+      "type": "number"
+    },
+    {
+      "name": "feedback_collected",
+      "type": "number"
+    },
+    {
+      "name": "budget_allocated",
+      "type": "number"
+    },
+    {
+      "name": "actual_spent",
+      "type": "number"
+    },
+    {
+      "name": "roi_percent",
+      "type": "number"
+    },
+    {
+      "name": "campaign_status",
+      "type": "list",
+      "options": ["Planned", "Active", "Completed", "On Hold", "Cancelled"]
+    },
+    {
+      "name": "responsible_person",
+      "type": "text"
+    },
+    {
+      "name": "responsible_contact",
+      "type": "text"
+    },
+    {
+      "name": "remarks",
+      "type": "text"
+    },
+    {
+      "name": "attachments",
+      "type": "list"
+    },
+    {
+      "auto_updater": true,
+      "default": {
+        "args": ["dealership_name", "campaign_name", "start_date"],
+        "function": "name_to_id",
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " - "
+        }
+      },
+      "name": "post_sales_campaign_id",
+      "type": "uid",
+      "id": true
+    }
+  ],
+  "parents": ["showroom"]
+}
