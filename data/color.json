@@ -53,7 +53,8 @@
     },
     {
       "name": "image_url",
-      "type": "text"
+      "type": "text",
+      "ui_element": "image"
     },
     {
       "name": "additional_cost",

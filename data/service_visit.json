@@ -87,7 +87,7 @@
         },
         {
             "name": "vehicle_id",
-            "refers": "parents.workshop.workshop_id",
+            "refers": "parents.vehicle_model.vehicle_model_id",
 
             "indexed": true
         },
@@ -132,9 +132,10 @@
     "parents": [
         "brand",
         "model",
+        "workshop",
         "variant",
-        "person",
-        "dealership"
+        "dealership",
+        "vehicle_model"
     ]
 
 }
