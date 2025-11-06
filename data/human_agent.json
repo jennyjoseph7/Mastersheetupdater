@@ -38,6 +38,14 @@
             "type" : "boolean"
         },
         {
+            "name" : "engagement_type",
+            "type" : "text",
+            "options" : [
+                "call",
+                "chat"
+            ]
+        },
+        {
             "name" : "human_agent_id",
             "type" : "uid",
             "id" : true,
