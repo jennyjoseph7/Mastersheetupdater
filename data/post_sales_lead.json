@@ -1,0 +1,202 @@
+{
+    "name": "post_sales_lead",
+    "model_type": "default",
+    "parents": [
+        "post_sales_campaign"
+    ],
+    "attributes" : [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "vehicle_id",
+            "type": "uid",
+            "required": true
+        },
+        {
+            "name": "vehicle_brand",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "vehicle_brand"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "vehicle_id"
+        },
+        {
+            "name": "vehicle_model",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "vehicle_model"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "vehicle_id"
+        },
+        {
+            "name": "vehicle_variant",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "vehicle_variant"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "vehicle_id"
+        },
+        {
+            "type" : "number",
+            "name" : "customer_score"
+        },
+        {
+            "name": "dealership_id",
+            "type": "uid",
+            "required": true
+        },
+        {
+            "name": "dealer_name",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealer_name"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "dealership_id"
+        },
+        {
+            "name": "dealer_location",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealer_location"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "dealership_id"
+        },
+        {
+            "name": "dealer_address",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealer_address"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "dealership_id"
+        },
+        {
+            "name": "campaign_id",
+            "type": "uid",
+            "required": false
+        },
+        {
+            "name": "campaign_name",
+            "refers": "parents.post_sales_campaign.campaign_name"
+        },
+        {
+            "name": "campaign_type",
+            "refers": "parents.post_sales_campaign.campaign_type"
+        },
+        {
+            "type" : "bool",
+            "name": "exchanged_vehicle"
+        },
+        {
+            "name": "exchanged_remark",
+            "type": "text"
+        },
+        {
+            "name": "exchanged_car_details",
+            "type": "nested_object"
+        },
+        {
+            "name": "showroom_id",
+            "type": "uid",
+            "required": false
+        },
+        {
+            "name": "showroom_name",
+            "type": "text",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "showroom_name"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "showroom_id"
+        },
+        {
+            "name": "showroom_address",
+            "type": "text",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "showroom_address"
+                ]
+            },
+
+            "auto_updater": true,
+            "force_update": "showroom_id"
+        },
+        {
+            "name": "user_remark",
+            "type": "list"
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": ["vehicle_id", "dealership_id", "campaign_id"],
+                "function": "name_to_id",
+                "kwargs": {
+                "attribute_join": " ",
+                "is_unique": true,
+                "separator": " - ",
+                "skip_empty": true
+                }
+            },
+            "name": "post_sales_lead_id",
+            "type": "uid",
+            "id": true
+        }
+    ]
+}

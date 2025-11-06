@@ -39,6 +39,8 @@
                     "person_number"
                 ]
             },
+            "auto_updater": true,
+            "force_update": "user_id",
             "indexed": true
         },
         {
@@ -51,6 +53,8 @@
                     "person_email"
                 ]
             },
+            "auto_updater": true,
+            "force_update": "user_id",
             "indexed": true
         },
         {
@@ -62,7 +66,9 @@
                     "user_id",
                     "person_city"
                 ]
-            }
+            },
+            "auto_updater": true,
+            "force_update": "user_id"
         },
         {
             "name": "area",
@@ -73,7 +79,9 @@
                     "user_id",
                     "person_area"
                 ]
-            }
+            },
+            "auto_updater": true,
+            "force_update": "user_id"
         },
         {
             "name": "pincode",
@@ -84,7 +92,9 @@
                     "user_id",
                     "person_pincode"
                 ]
-            }
+            },
+            "auto_updater": true,
+            "force_update": "user_id"
         },
         {
             "name": "preferred_contact_window",
@@ -95,7 +105,9 @@
                     "user_id",
                     "preferred_contact_window"
                 ]
-            }
+            },
+            "auto_updater": true,
+            "force_update": "user_id"
         },
         {
             "name": "preferred_contact_channel",
@@ -106,7 +118,9 @@
                     "user_id",
                     "preferred_contact_channel"
                 ]
-            }
+            },
+            "auto_updater": true,
+            "force_update": "user_id"
         },
         {
             "name": "previous_contact_channel",
@@ -117,7 +131,9 @@
                     "user_id",
                     "previous_contact_channel"
                 ]
-            }
+            },
+            "auto_updater": true,
+            "force_update": "user_id"
         },
         {
             "name": "budget_range",
@@ -219,8 +235,7 @@
                 "cash",
                 "bank transfer",
                 "loan",
-                "emi",
-                "lease"
+                "emi"
             ]
         },
         {
@@ -380,7 +395,9 @@
                 "args": [
                     "previous_interaction_ids"
                 ]
-            }
+            },
+            "auto_updater": true,
+            "force_update": "previous_interaction_ids"
         },
         {
             "name": "showroom_id",
