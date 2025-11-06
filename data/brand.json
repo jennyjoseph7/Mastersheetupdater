@@ -1,0 +1,69 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "brand",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "epoch"
+      }
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "epoch"
+      }
+    },
+    {
+      "name": "oem_id",
+      "refers": "parents.oem.oem_id"
+    },
+    {
+      "name": "oem_name",
+      "refers": "parents.oem.oem_name"
+    },
+    {
+      "name": "region_id",
+      "refers": "parents.region.region_id"
+    },
+    {
+      "name": "region_name",
+      "refers": "parents.region.region_name"
+    },
+    {
+      "name": "brand_name",
+      "type": "text",
+      "indexed": true
+    },
+    {
+      "name": "logo_url",
+      "type": "text"
+    },
+    {
+      "name": "website",
+      "type": "text"
+    },
+    {
+      "auto_updater": true,
+      "default": {
+        "args": ["brand_name", "region_name", "oem_id"],
+        "function": "name_to_id",
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " - "
+        }
+      },
+      "name": "region_id",
+      "type": "uid",
+      "id": true
+    }
+  ],
+  "parents":["oem", "region"]
+}
