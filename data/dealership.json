@@ -47,6 +47,14 @@
             "refers": "parents.dealer_group.dealer_group_name"
         },
         {
+            "name":"dealer_group_guidelines",
+            "refers":"parents.dealer_group.dealer_group_guidelines"
+        },
+        {
+            "name":"dealer_group_description",
+            "refers":"parents.dealer_group.dealer_group_description"
+        },
+        {
             "name": "dealership_type",
             "type": "text",
             "options": [
@@ -89,6 +97,10 @@
         {
             "name": "region_name",
             "refers": "parents.region.region_name"
+        },
+        {
+            "name":"region_level_guidelines",
+            "refers":"parents.region.region_level_guidelines"
         },
         {
             "name": "showroom_center_count",
@@ -251,6 +263,14 @@
                     "secondary_contact_phone"
                 ]
             }
+        },
+        {
+            "name":"dealership_guidelines",
+            "type":"text"
+        },
+        {
+            "name":"dealership_description",
+            "type":"text"
         },
         {
             "name": "dealer_status",

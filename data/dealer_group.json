@@ -46,6 +46,14 @@
             "type":"geolocation"
         },
         {
+            "name":"dealer_group_guidelines",
+            "type":"text"
+        },
+        {
+            "name":"dealer_group_description",
+            "type":"text"
+        },
+        {
             "name": "operating_brands",
             "type": "list",
             "ui_element": "multiselect",
