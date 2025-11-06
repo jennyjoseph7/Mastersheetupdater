@@ -1,0 +1,125 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "variant",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "model_id",
+      "refers": "parents.model.model_id"
+    },
+    {
+      "name": "model_name",
+      "refers": "parents.model.model_name"
+    },
+    {
+      "name": "brand_id",
+      "refers": "parents.brand.brand_id"
+    },
+    {
+      "name": "brand_name",
+      "refers": "parents.brand.brand_name"
+    },
+    {
+      "name": "variant_name",
+      "type": "text",
+      "indexed": true
+    },
+    {
+      "name": "fuel_type",
+      "type": "text",
+      "options": ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"],
+      "ui_element": "select"
+    },
+    {
+      "name": "transmission",
+      "type": "text",
+      "options": ["Manual", "Automatic", "AMT", "CVT", "DCT"],
+      "ui_element": "select"
+    },
+    {
+      "name": "drivetrain",
+      "type": "text",
+      "options": ["FWD", "RWD", "AWD", "4WD"],
+      "ui_element": "select"
+    },
+    {
+      "name": "engine_capacity_cc",
+      "type": "number"
+    },
+    {
+      "name": "power_bhp",
+      "type": "number"
+    },
+    {
+      "name": "torque_nm",
+      "type": "number"
+    },
+    {
+      "name": "mileage_kmpl",
+      "type": "number"
+    },
+    {
+      "name": "seating_capacity",
+      "type": "number"
+    },
+    {
+      "name": "fuel_tank_capacity_litres",
+      "type": "number"
+    },
+    {
+      "name": "boot_space_litres",
+      "type": "number"
+    },
+    {
+      "name": "price_ex_showroom",
+      "type": "number"
+    },
+    {
+      "name": "on_road_price",
+      "type": "number"
+    },
+    {
+      "name": "safety_rating",
+      "type": "number"
+    },
+    {
+      "name": "variant_status",
+      "type": "text",
+      "options": ["Available", "Discontinued", "Upcoming"],
+      "ui_element": "select"
+    },
+    {
+      "auto_updater": true,
+      "default": {
+        "args": ["brand_name", "model_name", "variant_name", "fuel_type", "transmission"],
+        "function": "name_to_id",
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " - "
+        }
+      },
+      "name": "variant_id",
+      "type": "uid",
+      "id": true
+    }
+  ],
+  "parents": ["brand", "model"]
+}

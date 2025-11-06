@@ -8,7 +8,7 @@
       "type": "number",
       "auto_updater": true,
       "default": {
-        "function": "epoch"
+        "function": "now_ctime"
       }
     },
     {
@@ -17,7 +17,7 @@
       "auto_updater": true,
       "force_update": true,
       "default": {
-        "function": "epoch"
+        "function": "now_ctime"
       }
     },
     {
@@ -29,12 +29,40 @@
       "refers": "parents.oem.oem_name"
     },
     {
+        "name":"oem_brand_awareness",
+        "refers":"parents.oem.oem_brand_awareness"
+    },
+    {
+        "name":"oem_wiki_description",
+        "refers": "parents.oem.oem_wiki_description"
+    },
+    {
+        "name":"oem_vehicle_categories",
+        "refers":"parents.oem.oem_vehicle_categories"
+    },
+    {
+        "name":"oem_country_of_origin",
+        "refers": "parents.oem.oem_country_of_origin"
+    },
+    {
       "name": "region_id",
       "refers": "parents.region.region_id"
     },
     {
       "name": "region_name",
       "refers": "parents.region.region_name"
+    },
+    {
+        "name":"country_name",
+        "refers":"parents.region.country_name"
+    },
+    {
+        "name":"region_level_guidelines",
+        "refers":"parents.region.region_level_guidelines"
+    },
+    {
+        "name":"guardrails",
+        "refers":"parents.region.guardrails"
     },
     {
       "name": "brand_name",
@@ -52,7 +80,7 @@
     {
       "auto_updater": true,
       "default": {
-        "args": ["brand_name", "region_name", "oem_id"],
+        "args": ["region_name","brand_name"],
         "function": "name_to_id",
         "kwargs": {
           "attribute_join": " ",
@@ -60,7 +88,7 @@
           "separator": " - "
         }
       },
-      "name": "region_id",
+      "name": "brand_id",
       "type": "uid",
       "id": true
     }

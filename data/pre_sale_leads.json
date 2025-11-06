@@ -3,12 +3,6 @@
     "model_type": "default",
     "attributes" : [
         {
-            "name": "customer_id",
-            "type": "uid",
-            "id": true,
-            "required": true
-        },
-        {
             "name": "customer_name",
             "type": "text",
             "required": true
@@ -211,6 +205,21 @@
             },
             "name": "exchange",
             "type": "text"
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": ["customer_name", "phone_number", "dealer_id"],
+                "function": "name_to_id",
+                "kwargs": {
+                "attribute_join": " ",
+                "is_unique": true,
+                "separator": " - "
+                }
+            },
+            "name": "customer_id",
+            "type": "uid",
+            "id": true
         }
     ]
 }

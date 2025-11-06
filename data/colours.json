@@ -1,6 +1,6 @@
 {
   "timezone": "Asia/Kolkata",
-  "name": "model",
+  "name": "color",
   "model_type": "default",
   "attributes": [
     {
@@ -29,32 +29,52 @@
       "refers": "parents.brand.brand_name"
     },
     {
-      "name": "model_name",
+      "name": "color_name",
       "type": "text",
-      "indexed": true
+      "indexed": true  
     },
     {
-      "name": "body_type", 
+      "name": "hex_code",
       "type": "text"
     },
     {
-      "name": "fuel_type",
-      "type": "list",
-      "options":["Petrol", "Diesel", "CNG", "Electric", "Hybrid"]
+      "name": "rgb_code",
+      "type": "text"
     },
     {
-        "name":"transmission_type",
-        "type":"list",
-        "options":["Automatic", "Manual"]
+      "name": "finish_type",
+      "type": "text",
+      "options": ["Metallic", "Matte", "Pearl", "Solid"],
+      "ui_element": "select"
     },
     {
-        "name":"year_launched",
-        "type":"number"
+      "name": "texture",
+      "type": "text"
+    },
+    {
+      "name": "image_url",
+      "type": "text"
+    },
+    {
+      "name": "additional_cost",
+      "type": "number"
+    },
+    {
+      "name": "availability_status",
+      "type": "text",
+      "options": ["Available", "Limited", "Discontinued"],
+      "ui_element": "select"
+    },
+    {
+      "name": "color_status",
+      "type": "text",
+      "options": ["Active", "Inactive"],
+      "ui_element": "select"
     },
     {
       "auto_updater": true,
       "default": {
-        "args": ["brand_name", "model_name"],
+        "args": ["brand_name", "color_name", "finish_type"],
         "function": "name_to_id",
         "kwargs": {
           "attribute_join": " ",
@@ -62,10 +82,10 @@
           "separator": " - "
         }
       },
-      "name": "model_id",
+      "name": "color_id",
       "type": "uid",
       "id": true
     }
   ],
-  "parents":["brand"]
+  "parents": ["oem", "brand"]
 }
