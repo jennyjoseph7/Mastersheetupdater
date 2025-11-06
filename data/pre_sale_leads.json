@@ -1,30 +1,64 @@
 {
     "name": "pre_sale_leads",
     "model_type": "default",
+    "parents": [
+        "dealership",
+        "pre_sales_campaign"
+    ],
     "attributes" : [
         {
-            "name": "customer_name",
-            "type": "text",
+            "name": "person_id",
+            "type": "uid",
             "required": true
         },
         {
+            "name": "person_name",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "person_id",
+                    "person_name"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": true,
+            "required":true
+        },
+        {
          "name": "phone_number",
-         "type": "number",
-         "required": true,
          "default":{
-            "function":"phone_validator"
-         }
+            "function": "get_from_model",
+                "args": [
+                    "person",
+                    "person_id",
+                    "person_number"
+                ]
+         },
+         "required": true
         },
         {
             "name": "email",
-            "type": "text",
-            "default": {
-                "function": "email_validator"
-            }
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "person_id",
+                    "person_number"
+                ]
+            },
+            "required": true
         },
         {
-            "name": "address",
-            "type": "address",
+            "name": "pincode",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "person_id",
+                    "person_pincode"
+                ]
+            },
             "required": true
         },
         {
@@ -73,37 +107,34 @@
             "type": "discription"
         },
         {
-            "name": "dealer_id",
+            "name": "dealership_id",
             "type": "uid",
             "required": true
         },
         {
             "name": "dealer_name",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "delar",
-                    "dealer_id",
-                    "dealer_name"
-                ]
-            },
-            "auto_updater": true,
-            "force_update": true,
-            "required":true
+            "refers": "parents.dealership.dealer_name"
         },
         {
-            "name": "dealer_code",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "dealer",
-                    "dealer_id",
-                    "dealer_code"
-                ]
-            },
-            "auto_updater": true,
-            "force_update": true,
-            "required": true
+            "name": "dealer_location",
+            "refers": "parents.dealership.dealer_location"
+        },
+        {
+            "name": "dealer_address",
+            "refers": "parents.dealership.dealer_address"
+        },
+        {
+            "name": "campaign_id",
+            "type": "uid",
+            "required": false
+        },
+        {
+            "name": "campaign_name",
+            "refers": "parents.pre_sales_campaign.campaign_name"
+        },
+        {
+            "name": "campaign_type",
+            "refers": "parents.pre_sales_campaign.campaign_type"
         },
         {
             "name": "lead_source",
@@ -177,10 +208,6 @@
             }
         },
         {
-            "name": "model_interest",
-            "type": "text"
-        },
-        {
             "name": "requested_activities",
             "type": "list",
             "options": [
@@ -209,7 +236,7 @@
         {
             "auto_updater": true,
             "default": {
-                "args": ["customer_name", "phone_number", "dealer_id"],
+                "args": ["person_id", "dealership_id"],
                 "function": "name_to_id",
                 "kwargs": {
                 "attribute_join": " ",
@@ -217,7 +244,7 @@
                 "separator": " - "
                 }
             },
-            "name": "customer_id",
+            "name": "pre_sale_lead_id",
             "type": "uid",
             "id": true
         }
