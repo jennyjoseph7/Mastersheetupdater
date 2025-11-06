@@ -1,0 +1,462 @@
+{
+    "name": "person",
+    "title": "Person",
+    "expand_attributes": true,
+    "attributes": [
+        {
+            "name": "name",
+            "title": "Name",
+            "type": "text",
+            "required": true,
+            "ui_element": "text"
+        },
+        {
+            "name": "full_name",
+            "title": "Name",
+            "type": "text",
+            "ui_element": "text"
+        },
+        {
+            "name": "name_title",
+            "title": "Name",
+            "type": "text",
+            "options": [
+                "Mr.",
+                "Ms.",
+                "Mrs.",
+                "Dr.",
+                "Prof.",
+                "Rev.",
+                "Fr.",
+                "Sister",
+                "Brother",
+                ""
+            ],
+            "default": "",
+            "ui_element": "text"
+        },
+        {
+            "name": "phone_number",
+            "title": "Phone Number",
+            "type": "text",
+            "constraint": {
+                "function": "validate_phone_number"
+            },
+            "ui_element": "tel",
+            "indexed": true
+        },
+        {
+            "name": "email",
+            "title": "Email",
+            "type": "text",
+            "constraint": {
+                "function": "validate_email"
+            },
+            "ui_element": "email",
+            "indexed": true
+        },
+        {
+            "name": "user_id",
+            "id": true,
+            "type": "uid",
+            "auto_updater": true,
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "name",
+                    "phone_number",
+                    "email"
+                ]
+            }
+        },
+        {
+            "name": "area",
+            "title": "Area or Region",
+            "type": "text"
+        },
+        {
+            "name": "city",
+            "title": "City or District",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "pincode",
+            "title": "Pincode",
+            "type": "text"
+        },
+        {
+            "name": "address",
+            "title": "Address",
+            "type": "text",
+            "ui_element": "textarea"
+        },
+        {
+            "name": "geolocation",
+            "title": "Geolocation",
+            "type": "geolocation",
+            "ui_element": "geolocation"
+        },
+        {
+            "name": "alt_phone_number_2",
+            "title": "Alt Phone Number 2",
+            "type": "text",
+            "constraint": {
+                "function": "validate_phone_number"
+            },
+            "ui_element": "tel"
+        },
+        {
+            "name": "alt_phone_number_3",
+            "title": "Alt Phone Number 3",
+            "type": "text",
+            "constraint": {
+                "function": "validate_phone_number"
+            },      
+            "ui_element": "tel"
+        },
+        {
+            "name": "alt_phone_number_4",
+            "title": "Alt Phone Number 4",
+            "type": "text",
+            "constraint": {
+                "function": "validate_phone_number"
+            },
+            "ui_element": "tel"
+        },
+        {
+            "name": "alt_email_2",
+            "title": "Alt Email 2",
+            "type": "text",
+            "constraint": {
+                "function": "validate_email"
+            },
+            "ui_element": "email"
+        },
+        {
+            "name": "alt_email_3",
+            "title": "Alt Email 3",
+            "type": "text",
+            "constraint": {
+                "function": "validate_email"
+            },
+            "ui_element": "email"
+        },
+        {
+            "name": "alt_email_4",
+            "title": "Alt Email 4",
+            "type": "text",
+            "constraint": {
+                "function": "validate_email"
+            },
+            "ui_element": "email"
+        },
+        {
+            "name": "preferred_language",
+            "title": "Preferred Language",
+            "type": "text",
+            "ui_element": "select",
+            "options": [
+                "Spanish (Mexico)",
+                "Spanish",
+                "Spanish (Argentina)",
+                "Spanish (South America)",
+                "Arabic (Qatar)",
+                "Arabic (UAE)",
+                "Arabic (KSA)",
+                "Arabic (Oman)",
+                "Arabic (Kuwait)",
+                "English (India)",
+                "English (USA)",
+                "English (UK)",
+                "English (Australia)",
+                "Assamese",
+                "Hindi",
+                "Tamil",
+                "Telugu",
+                "Kannada",
+                "Malayalam",
+                "Marathi",
+                "Bengali",
+                "Gujarati",
+                "Punjabi",
+                "Odia",
+                "Other"
+            ],
+            "option_others": true
+        },
+        {
+            "name": "known_languages",
+            "title": "Known Languages",
+            "type": "string_list",
+            "ui_element": "multiselect",
+            "options": [
+                "Spanish (Mexico)",
+                "Spanish",
+                "Spanish (Argentina)",
+                "Spanish (South America)",
+                "Arabic (Qatar)",
+                "Arabic (UAE)",
+                "Arabic (KSA)",
+                "Arabic (Oman)",
+                "Arabic (Kuwait)",
+                "English (India)",
+                "English (USA)",
+                "English (UK)",
+                "English (Australia)",
+                "Assamese",
+                "Hindi",
+                "Tamil",
+                "Telugu",
+                "Kannada",
+                "Malayalam",
+                "Marathi",
+                "Bengali",
+                "Gujarati",
+                "Punjabi",
+                "Odia",
+                "Other"
+            ],
+            "option_others": true
+        },
+        {
+            "name": "profile_summary",
+            "title": "Profile Summary",
+            "type": "text",
+            "ui_element": "textarea"
+        },
+        {
+            "name": "preferred_communication_channel",
+            "title": "Preferred Communication Channel",
+            "type": "text",
+            "ui_element": "select",
+            "options": [
+                "Phone",
+                "WhatsApp",
+                "Email",
+                "SMS",
+                "In-person"
+            ],
+            "option_others": true
+        },
+        {
+            "name": "timezone",
+            "title": "Timezone",
+            "type": "text",
+            "default": "Asia/Kolkata",
+            "ui_element": "select",
+            "options": "/unique/model/timezone"
+        },
+        {
+            "name": "data_consent",
+            "title": "Data Consent",
+            "type": "bool",
+            "ui_element": "switch",
+            "default": false
+        },
+        {
+            "name": "preferred_contact_window",
+            "title": "Preferred Contact Window",
+            "type": "nested_object",
+            "dict_keys": [
+                "start_time",
+                "end_time"
+            ],
+            "ui_element": "time_interval"
+        },
+        {
+            "name": "vehicles_owned",
+            "title": "Vehicles Owned",
+            "type": "nested_object", 
+            "dict_keys": [
+                "vehicle_id",
+                "brand",
+                "model",
+                "year",
+                "fuel_train",
+                "transmission",
+                "variant",
+                "colour",
+                "resale_value"
+            ]
+        },
+        {
+            "name": "vehicles_connected_with",
+            "title": "Vehicles Connected With",
+            "type": "object_list",
+            "list_type": "nested_object",
+            "dict_keys": [
+                "vehicle_id",
+                "brand",
+                "model",
+                "year",
+                "fuel_train",
+                "transmission",
+                "variant",
+                "colour",
+                "resale_value"
+            ]
+        },
+        {
+            "name": "previous_vehicles",
+            "title": "Previous Vehicles",
+            "type": "object_list",
+            "list_type": "nested_object",
+            "dict_keys": [
+                "vehicle_id",
+                "brand",
+                "model",
+                "year",
+                "fuel_train",
+                "transmission",
+                "variant",
+                "colour",
+                "resale_value"
+            ]
+        },
+        {
+            "name": "current_dealership",
+            "title": "Current Dealership",
+            "type": "nested_object",
+            "dict_keys": [
+                "dealership_id",
+                "name",
+                "address",
+                "city",
+                "state",
+                "pincode"
+            ]
+        },
+        {
+            "name": "last_contacted_whatsapp_number",
+            "title": "Last Contacted WhatsApp Number",
+            "type": "text",
+            "auto_updater": true,
+            "default": {
+                "function": "copy_attribute",
+                "args": [
+                    "phone_number"
+                ]
+            },
+            "ui_element": "tel"
+        },
+        {
+            "name": "last_contacted_email",
+            "title": "Last Contacted Email",
+            "type": "text",
+            "auto_updater": true,
+            "default": {
+                "function": "copy_attribute",
+                "args": [
+                    "email"
+                ]
+            },
+            "ui_element": "email"
+        },
+        {
+            "name": "last_contacted_phone_number",
+            "title": "Last Contacted Phone Number",
+            "type": "text",
+            "auto_updater": true,
+            "default": {
+                "function": "copy_attribute",
+                "args": [
+                    "phone_number"
+                ]
+            },
+            "ui_element": "tel"
+        },
+        {
+            "name": "gender",
+            "title": "Gender",
+            "type": "text",
+            "ui_element": "select",
+            "options": [
+                "Male",
+                "Female",
+                "Other"
+            ],
+            "option_others": true
+        },
+        {
+            "name": "estimated_monthly_income",
+            "title": "Estimated Monthly Income",
+            "type": "number",
+            "ui_element": "number",
+            "units": "INR"
+        },
+        {
+            "name": "education_level",
+            "title": "Education Level",
+            "type": "text",
+            "ui_element": "select",
+            "options": [
+                "Unknown",
+                "High School",
+                "Undergraduate",
+                "Diploma",
+                "Postgraduate",
+                "Doctorate",
+                "Other"
+            ],
+            "option_others": true
+        },
+        {
+            "name": "fleet_owner",
+            "title": "Fleet Owner",
+            "type": "bool",
+            "ui_element": "switch", 
+            "default": false
+        },
+        {
+            "name": "family_size",
+            "title": "Family Size",
+            "type": "number",
+            "ui_element": "number"
+        },
+        {
+            "name": "marital_status",
+            "title": "Marital Status",
+            "type": "text",
+            "ui_element": "select",
+            "options": [
+                "Single",
+                "Married",
+                "Divorced",
+                "Widowed",
+                "Other"
+            ],
+            "option_others": true
+        },
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            },
+            "indexed": true
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            },
+            "indexed": true
+        }
+    ],
+    "quick_views": {
+        "default": [
+            "name",
+            "city",
+            "phone_number",
+            "email",
+            "preferred_language",
+            "preferred_communication_channel",
+            "profile_summary"
+        ]
+    }
+}
