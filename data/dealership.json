@@ -57,6 +57,9 @@
                 },
                 {
                     "name": "dealer_phone_number",
+                    "constraint":{
+                        "function": "phone_validator"
+                    },
                     "type": "text"
                 },
                 {
