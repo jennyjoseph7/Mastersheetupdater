@@ -1,0 +1,182 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "showroom_visit",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": { "function": "now_ctime" }
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": { "function": "now_ctime" }
+    },
+    {
+      "name": "dealership_id",
+      "refers": "parents.dealership.dealership_id"
+    },
+    {
+      "name": "dealership_name",
+      "refers": "parents.dealership.dealership_name"
+    },
+    {
+      "name": "showroom_id",
+      "refers": "parents.showroom.showroom_id"
+    },
+    {
+      "name": "showroom_name",
+      "refers": "parents.showroom.showroom_name"
+    },
+    {
+      "name": "brand_id",
+      "refers": "parents.brand.brand_id"
+    },
+    {
+      "name": "brand_name",
+      "refers": "parents.brand.brand_name"
+    },
+    {
+      "name": "region_id",
+      "refers": "parents.region.region_id"
+    },
+    {
+      "name": "region_name",
+      "refers": "parents.region.region_name"
+    },
+    {
+      "name": "person_id",
+      "refers": "parents.person.user_id"
+    },
+    {
+      "name": "person_name",
+      "refers": "parents.person.name"
+    },
+    {
+      "name": "visit_date",
+      "type": "datetime"
+    },
+    {
+      "name": "purpose_of_visit",
+      "type": "text",
+      "options": [
+        "New Car Inquiry",
+        "Test Drive",
+        "Vehicle Booking",
+        "Finance Discussion",
+        "Exchange Offer",
+        "Service Inquiry",
+        "Accessory Inquiry",
+        "Complaint / Feedback",
+        "Other"
+      ]
+    },
+    {
+      "name": "variant_id",
+      "refers": "parents.variant.variant_id"
+    },
+    {
+      "name": "variant_name",
+      "refers": "parents.variant.variant_name"
+    },
+    {
+      "name": "model_id",
+      "refers": "parents.model.model_id"
+    },
+    {
+      "name": "model_name",
+      "refers": "parents.model.model_name"
+    },
+    {
+      "name": "executive_name",
+      "type": "text"
+    },
+    {
+      "name": "executive_contact",
+      "type": "text"
+    },
+    {
+      "name": "test_drive_offered",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "name": "test_drive_done",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "name": "test_drive_vehicle_reg",
+      "type": "text"
+    },
+    {
+      "name": "customer_feedback",
+      "type": "text"
+    },
+    {
+      "name": "rating_out_of_5",
+      "type": "number"
+    },
+    {
+      "name": "follow_up_date",
+      "type": "datetime"
+    },
+    {
+      "name": "lead_status",
+      "type": "text",
+      "options": [
+        "Active",
+        "Converted to Booking",
+        "Lost",
+        "Follow-Up Scheduled",
+        "Not Interested"
+      ]
+    },
+    {
+      "name": "remarks",
+      "type": "text"
+    },
+    {
+      "name": "tags",
+      "type": "nested_object"
+    },
+    {
+      "name": "showroom_visit_status",
+      "type": "text",
+      "options": ["Open", "Closed", "Follow-Up"]
+    },
+    {
+      "auto_updater": true,
+      "default": {
+        "args": [
+          "dealership_name",
+          "person_name",
+          "visit_date",
+          "purpose_of_visit"
+        ],
+        "function": "name_to_id",
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " - "
+        }
+      },
+      "name": "showroom_visit_id",
+      "type": "uid",
+      "id": true
+    }
+  ],
+  "parents": [
+    "region",
+    "brand",
+    "dealership",
+    "showroom",
+    "person",
+    "model",
+    "variant"
+  ]
+}
