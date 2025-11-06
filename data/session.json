@@ -1,0 +1,245 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "session",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "session_id",
+            "type": "uid",
+            "indexed": true,
+            "id": true,
+            "default": {
+                "function": "make_uuid3"
+            }
+        },
+        {
+            "name": "user_id",
+            "type": "uid",
+            "indexed": true,
+            "required" : true
+        },
+        {
+            "name": "start_time",
+            "type": "number"
+        },
+        {
+            "name": "end_time",
+            "type": "number"
+        },
+        {
+            "name": "channel",
+            "type": "text",
+            "options": [
+                "rcs",
+                "email",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "voice_phone",
+                "whatsapp_chat",
+                "whatsapp_voice_note",
+                "whatsapp_voice_call",
+                "zoom_bot",
+                "ms_teams"
+            ]
+        },
+        {
+            "name" : "campaign_id",
+            "type" : "text",
+            "indexed" : true,
+            "default" : "inbound"
+        },
+        {
+            "name" : "campaign_type",
+            "type" : "text",
+            "options" : ["inbound","pre_sales","post_sales"],
+            "default" : "inbound"
+        },
+        {
+            "name" : "origin",
+            "type" : "text",
+            "required" : false
+        },
+        {
+            "name" : "duration",
+            "default" : {
+                "function" : "time_diff",
+                "args" : ["end_time","start_time"]
+            }
+        },
+        {
+            "name" : "browser",
+            "type" : "text",
+            "required" : false
+        },
+        {
+            "name" : "os",
+            "type" : "text",
+            "required" : false
+        },
+        {
+            "name" : "device_type",
+            "type" : "text",
+            "required" : false
+        },
+        {
+            "name" : "last_response_time",
+            "type" : "number",
+            "required" : false
+        },
+        {
+            "name" : "last_interaction_time",
+            "type" : "number",
+            "indexed":true,
+            "required" : false
+        },
+        {
+            "name" : "session_live",
+            "type" : "text",
+            "required" : false
+        },
+        {
+            "name" : "status",
+            "type" : "text",
+            "options": [
+                "ongoing",
+                "completed",
+                "failed",
+                "sent",
+                "delivered",
+                "read",
+                "initiated",
+                "engaged",
+                "converted",
+                "queued",
+                "ringing",
+                "in-progress",
+                "busy",
+                "no-answer",
+                "cancelled",
+                "failed",
+                "pre-initiated"
+            ],
+            "indexed" : true,
+            "default" : "pre-initiated"
+        },
+        {
+            "name" : "history_updated_time",
+            "type" : "type",
+            "required" : false
+        },
+        {
+            "name" : "history",
+            "type" : "list",
+            "required" : false
+        },
+        {
+            "name" : "disposition",
+            "type" : "text",
+            "options": [
+                "queued",
+                "attempted",
+                "reached",
+                "contacted",
+                "engaged",
+                "converted",
+                "failed",
+                "error"
+            ]
+        },
+        {
+            "name" : "disposition_detail",
+            "type" : "text",
+            "options": [
+                "Invalid no.",
+                "Not registered on Whatsapp",
+                "User's no. is part of an experiment",
+                "Message undeliverable",
+                "Unable to send message",
+                "Unable to deliver message to deliver message/Unsubcribed",
+                "Message not delivered to maintained healty ecosystem management",
+                "Invalid / Doesn't exist",
+                "DND",
+                "Not reachable",
+                "Didnt pickup",
+                "Rejected"
+            ],
+            "option_others" : true
+        },
+        {
+            "name" : "error_reason",
+            "type" : "text",
+            "required" : false
+        },
+        {
+            "name" : "failed_reason",
+            "type" : "text",
+            "required" : false
+        },
+        {
+            "name" : "queries_per_session",
+            "type" : "number"
+        },
+        {
+            "name" : "unknown_queries_per_session",
+            "type" : "number"
+        },
+        {
+            "name" : "emotions",
+            "type" : "string_list"
+        },
+        {
+            "type" : "number",
+            "name" : "sentiment_score"
+        },
+        {
+            "name" : "propensity_scores",
+            "type" : "nested_object"
+        },
+        {
+            "name" : "summary",
+            "type" : "text",
+            "required" : false
+        },
+        {
+            "name" : "audio_transcript",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            }
+        },
+        {
+            "name" : "escalations",
+            "type" : "number"
+        },
+        {
+            "name" : "history",
+            "type" : "object_list"
+        }
+        
+
+        
+    ]
+}
