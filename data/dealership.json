@@ -31,12 +31,16 @@
                     "required": true
                 },
                 {
-                    "name":"brand_id",
-                    "refers":"parents.brand.brand_id"
+                    "name":"supported_brands",
+                    "type":"list",
+                    "ui_element":"multi_select",
+                    "options":"options/brand/brand_name",
+                    "required":false
                 },
                 {
-                    "name":"brand_name",
-                    "refers":"parents.brand.brand_name"
+                    "name":"region_id",
+                    "refers":"parents.region.region_id",
+                    "required": true
                 },
                 {
                     "name":"billing_id",
@@ -63,14 +67,6 @@
                     }
                 },
                 {
-                    "name": "notes",
-                    "type": "text"
-                },
-                {
-                    "name": "tags",
-                    "type": "nested_object"
-                },
-                {
                     "name": "dealer_status",
                     "type": "text",
                     "options": [
@@ -89,10 +85,20 @@
                         "function": "name_to_id",
                         "args":[
                             "dealer_name",
-                            "brand_name"
-                        ]
+                            "region_id",
+                            "brand_id"
+                        ],
+                        "kwargs":{
+                            "is_unique":true,
+                            "separator":"_",
+                            "skip_empty":true
+                        }
                     },
                     "auto_updater":true
                 }
+            ],
+            "parents":[
+                "dealer_group",
+                "region"
             ]
         }
