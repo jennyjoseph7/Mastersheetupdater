@@ -1,0 +1,189 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "workshop",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": { "function": "now_ctime" }
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": { "function": "now_ctime" }
+    },
+    {
+      "name": "dealership_id",
+      "refers": "parents.dealership.dealership_id"
+    },
+    {
+      "name": "dealership_name",
+      "refers": "parents.dealership.dealership_name"
+    },
+    {
+      "name": "brand_id",
+      "refers": "parents.brand.brand_id"
+    },
+    {
+      "name": "brand_name",
+      "refers": "parents.brand.brand_name"
+    },
+    {
+      "name": "region_id",
+      "refers": "parents.region.region_id"
+    },
+    {
+      "name": "region_name",
+      "refers": "parents.region.region_name"
+    },
+    {
+      "name": "workshop_name",
+      "type": "text",
+      "indexed": true
+    },
+    {
+      "name": "workshop_code",
+      "type": "text",
+      "indexed": true
+    },
+    {
+      "name": "workshop_type",
+      "type": "text",
+      "options": [
+        "Main Workshop",
+        "Satellite Workshop",
+        "Mobile Workshop",
+        "Body Shop",
+        "Express Service Center"
+      ]
+    },
+    {
+      "name": "contact_number",
+      "type": "text"
+    },
+    {
+      "name": "email",
+      "type": "text"
+    },
+    {
+      "name": "address",
+      "type": "text"
+    },
+    {
+      "name": "city",
+      "type": "text"
+    },
+    {
+      "name": "state",
+      "type": "text"
+    },
+    {
+      "name": "pincode",
+      "type": "text"
+    },
+    {
+      "name": "geolocation",
+      "type": "geolocation"
+    },
+    {
+      "name": "operating_hours",
+      "type": "nested_object",
+      "dict_keys": ["opening_time", "closing_time"]
+    },
+    {
+      "name": "days_open",
+      "type": "list",
+      "options": [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ]
+    },
+    {
+      "name": "total_service_bays",
+      "type": "number"
+    },
+    {
+      "name": "total_technicians",
+      "type": "number"
+    },
+    {
+      "name": "daily_service_capacity",
+      "type": "number"
+    },
+    {
+      "name": "services_offered",
+      "type": "list",
+      "options": [
+        "General Service",
+        "Repair",
+        "Body Shop",
+        "Paint",
+        "Tyre Alignment",
+        "Wheel Balancing",
+        "AC Service",
+        "Battery Service",
+        "Electrical Work",
+        "Detailing",
+        "Car Wash",
+        "Pickup & Drop",
+        "Roadside Assistance"
+      ]
+    },
+    {
+      "name": "special_facilities",
+      "type": "list",
+      "options": [
+        "Customer Lounge",
+        "Wi-Fi",
+        "CCTV Waiting Area",
+        "Quick Service Bay",
+        "EV Charging Point",
+        "Wheel Alignment",
+        "Cafe/Refreshments",
+        "Child Play Zone"
+      ]
+    },
+    {
+      "name": "manager_name",
+      "type": "text"
+    },
+    {
+      "name": "manager_contact",
+      "type": "text"
+    },
+    {
+      "name": "workshop_status",
+      "type": "text",
+      "options": ["Active", "Inactive", "Under Renovation"]
+    },
+    {
+      "auto_updater": true,
+      "default": {
+        "args": [
+          "dealership_name",
+          "workshop_name",
+          "city"
+        ],
+        "function": "name_to_id",
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " - "
+        }
+      },
+      "name": "workshop_id",
+      "type": "uid",
+      "id": true
+    }
+  ],
+  "parents": ["region", "brand", "dealership"]
+}

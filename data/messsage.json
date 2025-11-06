@@ -1,0 +1,110 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "message",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "message_id",
+            "type": "uid",
+            "indexed": true,
+            "id": true,
+            "default": {
+                "function": "make_uuid_timestamp"
+            }
+        },
+        {
+            "name": "created",
+            "type": "datetime",
+            "auto_updater": true,
+            "default": {
+                "function": "now"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "datetime",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now"
+            }
+        },
+        {
+            "name" : "provider_received_time",
+            "type" : "number"
+        },
+        {
+            "name" : "conversation_process_end_time",
+            "type" : "number"
+        },
+        {
+            "name" : "provider_sent_time",
+            "type" : "number"
+        },
+        {
+            "name": "session_id",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "campaign_id",
+            "type": "text"
+        },
+        {
+            "type" : "text",
+            "name" : "channel"
+        },
+        {
+            "name": "role",
+            "type": "text",
+            "options" : [
+                "user",
+                "human_agent",
+                "system"
+            ]
+        },
+        {
+            "name": "response",
+            "type": "text"
+        },
+        {
+            "name" : "index",
+            "type" : "number",
+            "default" : 0
+        },
+        {
+            "name": "response_data",
+            "type": "nested_object"
+        },
+        {
+            "name" : "response_type",
+            "type" : "text",
+            "options" : [
+                "text",
+                "audio",
+                "video",
+                "image",
+                "template"
+            ]
+        },
+        {
+            "name" : "agent_id",
+            "type" : "text"
+        },
+        {
+            "name": "status",
+            "type": "text",
+            "options": [
+                "sent",
+                "delivered",
+                "failed",
+                "read"
+            ],
+            "indexed": true
+        },
+        {
+            "name" : "feedback",
+            "type" : "text"
+        }
+    ]
+}

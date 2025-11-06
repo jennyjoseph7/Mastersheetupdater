@@ -21,22 +21,6 @@
             }
         },
         {
-            "name": "dealership_id",
-            "refers": "parents.dealership.dealership_id"
-        },
-        {
-            "name": "dealership_name",
-            "refers": "parents.dealership.dealership_name"
-        },
-        {
-            "name": "brand_id",
-            "refers": "parents.brand.brand_id"
-        },
-        {
-            "name": "brand_name",
-            "refers": "parents.brand.brand_name"
-        },
-        {
             "name": "region_id",
             "refers": "parents.region.region_id"
         },
@@ -92,15 +76,24 @@
             ]
         },
         {
-            "name": "target_audience",
-            "type": "text"
+            "name": "number_targeted",
+            "type": "number"
         },
         {
-            "name": "target_vehicle_models",
-            "type": "list"
+            "name": "number_reached",
+            "type": "number"
+        },
+        
+        {
+            "name": "number_contacted",
+            "type": "number"
         },
         {
-            "name": "expected_leads",
+            "name": "number_engaged",
+            "type": "number"
+        },
+        {
+            "name": "number_converted",
             "type": "number"
         },
         {
@@ -112,20 +105,20 @@
             "type": "number"
         },
         {
-            "name": "leads_generated",
-            "type": "number"
-        },
-        {
-            "name": "conversion_count",
-            "type": "number"
-        },
-        {
             "name": "conversion_rate_percent",
-            "type": "number"
+            "type": "number",
+            "default":{
+                "function": "divide_attributes",
+                "args":["number_converted","number_contacted"]
+            }
         },
         {
-            "name": "roi_percent",
-            "type": "number"
+            "name": "cost_per_lead",
+            "type": "number",
+            "default":{
+                "function": "divide_attributes",
+                "args":["actual_spent", "number_converted"]
+            }
         },
         {
             "name": "campaign_status",
@@ -167,8 +160,6 @@
         }
     ],
     "parents": [
-        "region",
-        "brand",
-        "dealership"
+        "region"
     ]
 }

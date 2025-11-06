@@ -1,0 +1,431 @@
+{
+    "name": "pre_sales_lead",
+    "model_type": "default",
+    "parents": [
+        "dealership",
+        "pre_sales_campaign"
+    ],
+    "attributes" : [
+        {
+            "name": "user_id",
+            "type": "uid",
+            "required": true
+        },
+        {
+            "name": "assigned_to",
+            "type": "nested_object"
+        },
+        {
+            "name": "person_name",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "person_name"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "user_id"
+        },
+        {
+            "name": "phone_number",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "person_number"
+                ]
+            },
+            "indexed": true
+        },
+        {
+            "name": "email",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "person_email"
+                ]
+            },
+            "indexed": true
+        },
+        {
+            "name": "city",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "person_city"
+                ]
+            }
+        },
+        {
+            "name": "area",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "person_area"
+                ]
+            }
+        },
+        {
+            "name": "pincode",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "person_pincode"
+                ]
+            }
+        },
+        {
+            "name": "preferred_contact_window",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "preferred_contact_window"
+                ]
+            }
+        },
+        {
+            "name": "preferred_contact_channel",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "preferred_contact_channel"
+                ]
+            }
+        },
+        {
+            "name": "previous_contact_channel",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "previous_contact_channel"
+                ]
+            }
+        },
+        {
+            "name": "budget_range",
+            "type": "text"
+        },
+        {
+            "name": "brand_preference",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "variant_preference",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "color_preference",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "model_preference",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "engine_type_preference",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "transmission_preference",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "range_preference",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "seating_capacity_preference",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "segment_preference",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "usage_pattern",
+            "required": false
+        },
+        {
+            "name": "usage_type",
+            "type": "text",
+            "options": [
+                "commercial",
+                "personal"
+            ],
+            "required": true
+        },
+        {
+            "name": "preference_remark",
+            "type": "text"
+        },
+        {
+            "name": "user_remark",
+            "type": "text"
+        },
+        {
+            "name": "lifestyle_type",
+            "type": "text",
+            "options": [
+                "young urban professional",
+                "family oriented",
+                "vehicle enthusiast",
+                "feature focused",
+                "brand conscious",
+                "others"
+            ]
+        },
+        {
+            "name": "brand_perception",
+            "type": "text",
+            "options": [
+                "reliable",
+                "luxury",
+                "comfort",
+                "stylish",
+                "innovative"
+            ]
+        },
+        {
+            "name": "payment_preference",
+            "type": "text",
+            "options": [
+                "cash",
+                "bank transfer",
+                "loan",
+                "emi",
+                "lease"
+            ]
+        },
+        {
+            "name" : "emotions",
+            "type" : "string_list"
+        },
+        {
+            "type" : "number",
+            "name" : "sentiment_score"
+        },
+        {
+            "name" : "propensity_scores",
+            "type" : "nested_object"
+        },
+        {
+            "name": "dealership_id",
+            "type": "uid",
+            "required": true
+        },
+        {
+            "name": "dealer_name",
+            "refers": "parents.dealership.dealer_name"
+        },
+        {
+            "name": "dealer_location",
+            "refers": "parents.dealership.dealer_location"
+        },
+        {
+            "name": "dealer_address",
+            "refers": "parents.dealership.dealer_address"
+        },
+        {
+            "name": "campaign_id",
+            "type": "uid",
+            "required": false
+        },
+        {
+            "name": "campaign_name",
+            "refers": "parents.pre_sales_campaign.campaign_name"
+        },
+        {
+            "name": "campaign_type",
+            "refers": "parents.pre_sales_campaign.campaign_type"
+        },
+        {
+            "name": "lead_source",
+            "type": "text",
+            "options": [
+                "Walk-in",
+                "CRM",
+                "Dealership Website",
+                "OEM Website",
+                "Online Marketplace",
+                "Google Ads",
+                "Facebook Ads",
+                "Instagram Ads",
+                "WhatsApp",
+                "Email Campaign",
+                "Event",
+                "Exhibition",
+                "Customer",
+                "Employee",
+                "Fleet",
+                "OEM Lead System",
+                "Finance Partner",
+                "Insurance Partner",
+                "Used Car Exchange",
+                "Others"
+            ],
+            "required": true
+        },
+        {
+            "name": "lead_type",
+            "type": "text",
+            "options": [
+                "purchase_within_15_days",
+                "purchase_within_1_to_3_months",
+                "exploring_options",
+                "no_buying_intent",
+                "purchased_elsewhere",
+                "converted"
+            ],
+            "required": true
+        },
+        {
+            "name": "finance_required",
+            "type": "bool",
+            "default": "false"
+        },
+        {
+            "name": "finance_remark",
+            "type": "text"
+        },
+        {
+            "type" : "bool",
+            "name": "qualified_lead",
+            "required": true
+        },
+        {
+            "name": "created",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "auto_updater": true,
+            "name": "updated",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "engangement_event",
+            "type": "list",
+            "list_type": "text",
+            "options": [
+                "test_drive", 
+                "brochure", 
+                "pricing", 
+                "vehicle_demo", 
+                "specifications",
+                "dealership_details",
+                "others",
+                "nothing"
+            ],
+            "default": "nothing"
+        },
+        {
+            "name": "customer_requirements",
+            "type": "text"
+        },
+        {
+            "type" : "bool",
+            "name": "exchange"
+        },
+        {
+            "name": "exchange_remark",
+            "type": "text"
+        },
+        {
+            "name": "old_car_details",
+            "type": "nested_object"
+        },
+        {
+            "name": "previous_interaction_ids",
+            "type": "list",
+            "list_type": "text"        
+        },
+        {
+            "name": "previous_interaction_details",
+            "type": "list",
+            "list_type": "nested_list",
+            "default":{
+                "function": "get_from_model_map",
+                "args": [
+                    "previous_interaction_ids"
+                ]
+            }
+        },
+        {
+            "name": "showroom_id",
+            "type": "uid",
+            "required": false
+        },
+        {
+            "name": "showroom_name",
+            "type": "text",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "showroom_name"
+                ]
+            }   
+        },
+        {
+            "name": "showroom_address",
+            "type": "text",
+            "default":{
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "showroom_address"
+                ]
+            }   
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": ["user_id", "dealership_id", "campaign_id"],
+                "function": "name_to_id",
+                "kwargs": {
+                "attribute_join": " ",
+                "is_unique": true,
+                "separator": " - ",
+                "skip_empty": true
+                }
+            },
+            "name": "pre_sales_lead_id",
+            "type": "uid",
+            "id": true
+        }
+    ]
+}
