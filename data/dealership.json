@@ -1,0 +1,98 @@
+{
+            "timezone": "Asia/Kolkata",
+            "name": "dealership",
+            "model_type": "default",
+            "attributes": [
+                 {
+                    "name": "created",
+                    "type": "number",
+                    "auto_updater": true,
+                    "default": {
+                        "function": "now_ctime"
+                    }
+                },
+                {
+                    "name": "updated",
+                    "type": "number",
+                    "auto_updater": true,
+                    "force_update": true,
+                    "default": {
+                        "function": "now_ctime"
+                    }
+                },
+                {
+                    "name": "dealer_name",
+                    "type": "name",
+                    "indexed": true
+                },
+                {
+                    "name": "dealer_group_id",
+                    "refers":"parents.dealer_group.dealer_group_id",
+                    "required": true
+                },
+                {
+                    "name":"brand_id",
+                    "refers":"parents.brand.brand_id"
+                },
+                {
+                    "name":"brand_name",
+                    "refers":"parents.brand.brand_name"
+                },
+                {
+                    "name":"billing_id",
+                    "refers":"parents.billing.billing_id",
+                    "required": true
+                },
+                {
+                    "name": "dealer_location",
+                    "type": "geolocation"
+                },
+                {
+                    "name": "dealer_address",
+                    "type": "text"
+                },
+                {
+                    "name": "dealer_phone_number",
+                    "type": "text"
+                },
+                {
+                    "name": "dealer_email",
+                    "type": "text",
+                    "constraint": {
+                        "function": "email_validator"
+                    }
+                },
+                {
+                    "name": "notes",
+                    "type": "text"
+                },
+                {
+                    "name": "tags",
+                    "type": "nested_object"
+                },
+                {
+                    "name": "dealer_status",
+                    "type": "text",
+                    "options": [
+                        "active",
+                        "inactive",
+                        "suspended"
+                    ],
+                    "indexed": true
+                },
+                {
+                    "name": "dealership_id",
+                    "type": "uid",
+                    "indexed": true,
+                    "id": true,
+                    "default": {
+                        "function": "name_to_id",
+                        "args":[
+                            "dealer_name",
+                            "brand_name"
+                        ]
+                    },
+                    "auto_updater":true
+                }
+            ]
+        }
