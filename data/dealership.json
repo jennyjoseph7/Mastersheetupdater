@@ -26,9 +26,26 @@
                     "indexed": true
                 },
                 {
+                    "name":"credits_balance",
+                    "type":"number",
+                    "default":{
+                        "function":"get_from_model",
+                        "args":[
+                            "billing",
+                            "dealership_id",
+                            "credits_balance"
+                        ]
+                    }
+                },
+                {
                     "name": "dealer_group_id",
                     "refers":"parents.dealer_group.dealer_group_id",
                     "required": true
+                },
+                {
+                    "name":"dealer_group_name",
+                    "refers":"parents.dealer_group.dealer_group_name",
+                    "indexed": true
                 },
                 {
                     "name":"supported_brands",
@@ -38,35 +55,128 @@
                     "required":false
                 },
                 {
+                    "name":"channels",
+                    "type":"list",
+                    "options": [
+                        "rcs",
+                        "email",
+                        "web_chat",
+                        "web_chat_voice",
+                        "fb_chat",
+                        "insta_chat",
+                        "twitter_chat",
+                        "voice_phone",
+                        "whatsapp_chat",
+                        "whatsapp_voice_note",
+                        "whatsapp_voice_call",
+                        "zoom_bot",
+                        "ms_teams"
+                    ],
+                    "ui_element": "multi_select"
+                
+                },
+                {
                     "name":"region_id",
                     "refers":"parents.region.region_id",
                     "required": true
                 },
                 {
-                    "name":"billing_id",
-                    "refers":"parents.billing.billing_id",
+                    "name":"region_name",
+                    "refers":"parents.region.region_name",
                     "required": true
                 },
                 {
-                    "name": "dealer_location",
-                    "type": "geolocation"
+                    "name": "showroom_center_count",
+                    "type": "number"
                 },
                 {
-                    "name": "dealer_address",
+                    "name": "service_center_count",
+                    "type": "number"
+                },
+                {
+                    "name":"buyback_center_count",
+                    "type": "number"
+                },
+                
+                {
+                    "name": "website",
+                    "type": "text",
+                    "constraint": {
+                        "function": "url_validator"
+                    }
+                },
+                {
+                    "name": "linkedin_url",
+                    "type": "text",
+                    "constraint": {
+                        "function": "url_validator"
+                    }
+                },
+
+                {
+                    "name": "year_established",
+                    "type": "number"
+                },
+                {
+                    "name":"dealer_city",
+                    "type":"text"
+                },
+                {
+                    "name":"dealer_state",
+                    "type":"text"
+                },
+                {
+                    "name":"dealer_country",
+                    "type":"text"
+                },
+                {
+                    "name":"dealer_location",
+                    "type":"geolocation",
+                    "indexed":true
+                },
+                {
+                    "name": "primary_contact_name",
+                    "type": "text",
+                    "indexed": true
+                },
+                {
+                    "name": "primary_contact_role",
                     "type": "text"
                 },
                 {
-                    "name": "dealer_phone_number",
-                    "constraint":{
-                        "function": "phone_validator"
-                    },
-                    "type": "text"
-                },
-                {
-                    "name": "dealer_email",
+                    "name": "primary_contact_email",
                     "type": "text",
                     "constraint": {
                         "function": "email_validator"
+                    }
+                },
+                {
+                    "name": "primary_contact_phone",
+                    "type": "text",
+                    "constraint": {
+                        "function": "phone_validator"
+                    }
+                },
+                {
+                    "name": "secondary_contact_name",
+                    "type": "text"
+                },
+                {
+                    "name": "secondary_contact_role",
+                    "type": "text"
+                },
+                {
+                    "name": "secondary_contact_email",
+                    "type": "text",
+                    "constraint": {
+                        "function": "email_validator"
+                    }
+                },
+                {
+                    "name": "secondary_contact_phone",
+                    "type": "text",
+                    "constraint": {
+                        "function": "phone_validator"
                     }
                 },
                 {
@@ -88,8 +198,8 @@
                         "function": "name_to_id",
                         "args":[
                             "dealer_name",
-                            "region_id",
-                            "brand_id"
+                            "dealer_group_name",
+                            "region_name"
                         ],
                         "kwargs":{
                             "is_unique":true,
