@@ -46,7 +46,7 @@
                     "name": "dealer_group_phone_number",
                     "type": "text",
                     "constraint": {
-                        "format": "phone_number_validator"
+                        "format": "phone_validator"
                     }
                 },
                 {
