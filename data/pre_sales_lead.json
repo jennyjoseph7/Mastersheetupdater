@@ -5,7 +5,7 @@
         "dealership",
         "pre_sales_campaign"
     ],
-    "attributes" : [
+    "attributes": [
         {
             "name": "user_id",
             "type": "uid",
@@ -31,7 +31,7 @@
         },
         {
             "name": "phone_number",
-            "default":{
+            "default": {
                 "function": "get_from_model",
                 "args": [
                     "person",
@@ -45,7 +45,7 @@
         },
         {
             "name": "email",
-            "default":{
+            "default": {
                 "function": "get_from_model",
                 "args": [
                     "person",
@@ -59,7 +59,7 @@
         },
         {
             "name": "city",
-            "default":{
+            "default": {
                 "function": "get_from_model",
                 "args": [
                     "person",
@@ -72,7 +72,7 @@
         },
         {
             "name": "area",
-            "default":{
+            "default": {
                 "function": "get_from_model",
                 "args": [
                     "person",
@@ -85,7 +85,7 @@
         },
         {
             "name": "pincode",
-            "default":{
+            "default": {
                 "function": "get_from_model",
                 "args": [
                     "person",
@@ -98,7 +98,7 @@
         },
         {
             "name": "preferred_contact_window",
-            "default":{
+            "default": {
                 "function": "get_from_model",
                 "args": [
                     "person",
@@ -111,7 +111,7 @@
         },
         {
             "name": "preferred_contact_channel",
-            "default":{
+            "default": {
                 "function": "get_from_model",
                 "args": [
                     "person",
@@ -124,7 +124,7 @@
         },
         {
             "name": "previous_contact_channel",
-            "default":{
+            "default": {
                 "function": "get_from_model",
                 "args": [
                     "person",
@@ -175,9 +175,15 @@
             "list_type": "text"
         },
         {
+            "name": "feature_preferences",
+            "type": "string_list",
+            "list_type": "text",
+            "ui_element": "tags"
+        },
+        {
             "name": "seating_capacity_preference",
-            "type": "list",
-            "list_type": "text"
+            "type": "text",
+            "placeholder": "Enter the seating capacity preference as a range"
         },
         {
             "name": "segment_preference",
@@ -239,16 +245,16 @@
             ]
         },
         {
-            "name" : "emotions",
-            "type" : "string_list"
+            "name": "emotions",
+            "type": "string_list"
         },
         {
-            "type" : "number",
-            "name" : "sentiment_score"
+            "type": "number",
+            "name": "sentiment_score"
         },
         {
-            "name" : "propensity_scores",
-            "type" : "nested_object"
+            "name": "propensity_scores",
+            "type": "nested_object"
         },
         {
             "name": "dealership_id",
@@ -330,7 +336,7 @@
             "type": "text"
         },
         {
-            "type" : "bool",
+            "type": "bool",
             "name": "qualified_lead",
             "required": true
         },
@@ -350,27 +356,27 @@
             }
         },
         {
-            "name": "engangement_event",
-            "type": "list",
+            "name": "engangement_events",
+            "type": "string_list",
             "list_type": "text",
             "options": [
-                "test_drive", 
-                "brochure", 
-                "pricing", 
-                "vehicle_demo", 
+                "test_drive",
+                "showroom_visit",
+                "brochure",
+                "pricing",
+                "vehicle_demo",
                 "specifications",
                 "dealership_details",
-                "others",
-                "nothing"
+                "others"
             ],
-            "default": "nothing"
+            "ui_element": "multiselect"
         },
         {
             "name": "customer_requirements",
             "type": "text"
         },
         {
-            "type" : "bool",
+            "type": "bool",
             "name": "exchange"
         },
         {
@@ -384,13 +390,13 @@
         {
             "name": "previous_interaction_ids",
             "type": "list",
-            "list_type": "text"        
+            "list_type": "text"
         },
         {
             "name": "previous_interaction_details",
             "type": "list",
             "list_type": "nested_list",
-            "default":{
+            "default": {
                 "function": "get_from_model_map",
                 "args": [
                     "previous_interaction_ids"
@@ -407,42 +413,56 @@
         {
             "name": "showroom_name",
             "type": "text",
-            "default":{
+            "force_update": "showroom_id",
+            "default": {
                 "function": "get_from_model",
                 "args": [
                     "showroom",
                     "showroom_id",
                     "showroom_name"
                 ]
-            }   
+            }
         },
         {
             "name": "showroom_address",
             "type": "text",
-            "default":{
+            "force_update": "showroom_id",
+            "default": {
                 "function": "get_from_model",
                 "args": [
                     "showroom",
                     "showroom_id",
                     "address"
                 ]
-            }   
+            }
         },
         {
             "auto_updater": true,
             "default": {
-                "args": ["user_id", "dealership_id", "campaign_id"],
+                "args": [
+                    "user_id",
+                    "dealership_id",
+                    "campaign_id"
+                ],
                 "function": "name_to_id",
                 "kwargs": {
-                "attribute_join": " ",
-                "is_unique": true,
-                "separator": " - ",
-                "skip_empty": true
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " - ",
+                    "skip_empty": true
                 }
             },
             "name": "pre_sales_lead_id",
             "type": "uid",
             "id": true
+        },
+        {
+            "name": "follow_up_date",
+            "type": "number"
+        },
+        {
+            "name": "lead_summary",
+            "type": "text"
         }
     ]
 }
