@@ -6,19 +6,19 @@
         
         {
             "name": "created",
-            "type": "datetime",
+            "type": "number",
             "auto_updater": true,
             "default": {
-                "function": "now"
+                "function": "now_ctime"
             }
         },
         {
             "name": "updated",
-            "type": "datetime",
+            "type": "number",
             "auto_updater": true,
             "force_update": true,
             "default": {
-                "function": "now"
+                "function": "now_ctime"
             }
         },
         {
@@ -34,6 +34,15 @@
             "indexed" : true
         },
         {
+            "name" : "sender_role",
+            "type" : "text",
+            "options" : [
+                "user",
+                "human_agent",
+                "system"
+            ]
+        },
+        {
             "name" : "message_id",
             "type" : "number",
             "required" : true,
@@ -44,6 +53,15 @@
             "type" : "number",
             "required" : true,
             "indexed" : true
+        },
+        {
+            "name" : "receiver_role",
+            "type" : "text",
+            "options" : [
+                "user",
+                "human_agent",
+                "system"
+            ]
         },
         {
             "name" : "sent_time",

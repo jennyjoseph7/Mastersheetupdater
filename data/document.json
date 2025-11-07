@@ -1,0 +1,161 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "document",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "required": true,
+            "name": "document_description",
+            "type": "text"
+        },
+        {
+            "required": true,
+            "name": "document_tags",
+            "type": "string_list"
+        },
+        {
+            "required": true,
+            "name": "document_name",
+            "type": "text"
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": [
+                    "document_name"
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "attribute_join": "",
+                    "is_unique": true,
+                    "separator": "_"
+                }
+            },
+            "id": true,
+            "name": "document_id",
+            "type": "uid"
+        },
+        {
+            "required": true,
+            "name": "document",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            }
+        },
+        {
+            "required": false,
+            "name": "raw_doc",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            }
+        },
+        {
+            "name" : "document_type",
+            "type" : "text",
+            "options" : [
+                "txt",
+                "pdf",
+                "doc",
+                "docx",
+                "xls",
+                "xlsx",
+                "csv",
+                "html",
+                "xml",
+                "json"
+            ]
+        },
+        {
+            "required": false,
+            "name": "original_name",
+            "type": "text"
+        },
+        {
+            "force_update": [
+                "document_name",
+                "document_tags"
+            ],
+            "name": "search_term",
+            "indexed": true,
+            "type": "text",
+            "default": {
+                "args": [
+                    "document_name",
+                    "document_tags"
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": "-"
+                }
+            }
+        },
+        {
+            "name" : "brand_affiliations",
+            "type" : "string_list",
+            "placeholder" : "documents specific to a brand",
+            "indexed": true
+        },
+        {
+            "name" : "oem_affiliations",
+            "type" : "string_list",
+            "placeholder" : "documents specific to an oem",
+            "indexed": true
+        },
+        {
+            "name" : "dealership_affiliations",
+            "type" : "string_list",
+            "placeholder" : "documents specific to an dealership",
+            "indexed": true
+        },
+        {
+            "name" : "vehicle_affiliations",
+            "type" : "string_list",
+            "placeholder" : "documents specific to an vehicle",
+            "indexed": true
+        },
+        {
+            "name" : "model_year_affiliations",
+            "type" : "string_list",
+            "placeholder" : "documents specific to an model_year",
+            "indexed": true
+        },
+        {
+            "name" : "variant_affiliations",
+            "type" : "string_list",
+            "placeholder" : "documents specific to an variant",
+            "indexed": true
+        },
+        {
+            "name": "updated_user_id",
+            "required": false,
+            "type": "text"
+        }
+    ]
+}

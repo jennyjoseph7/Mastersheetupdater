@@ -52,8 +52,14 @@
       "refers": "parents.communication_credentials.dealer_name"
     },
     {
+      "name":"template_name",
+      "type":"text",
+      "indexed":true
+    },
+    {
       "name": "template_type",
-      "type": "text"
+      "type": "text",
+      "required": true
     },
     {
       "name": "template_message",
@@ -89,21 +95,26 @@
     },
     {
       "name": "language",
-      "default": "ENGLISH",
+      "default": "english",
       "option_other": true,
       "options": [
-        "ENGLISH",
-        "HINDI",
-        "KANNADA",
-        "TELUGU",
-        "TAMIL",
-        "MALAYALAM",
-        "ODIA",
-        "BENGALI",
-        "MARATHI",
-        "GUJURATI"
+        "english",
+        "hindi",
+        "kannada",
+        "telugu",
+        "tamil",
+        "malayalam",
+        "odia",
+        "bengali",
+        "marathi",
+        "gujurati"
       ],
       "type": "text"
+    },
+    {
+      "name":"status",
+      "type":"list",
+      "options":["pending","approved","rejected"]
     },
     {
       "name": "template_id",

@@ -153,6 +153,81 @@
             "refers": "parents.channel_provider.channel_provider_name"
         },
         {
+            "name": "language",
+            "type": "text",
+            "default": "english",
+            "option_other": true,
+            "options": [
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujurati",
+                "bengali",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "template_id",
+            "type": "text",
+            "required": true
+        },
+        {
+            "name": "template_type",
+            "type": "text",
+            "options": [
+                "text",
+                "media",
+                "carousel",
+                "form"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "template_text",
+            "type": "text",
+            "ui_element": "textarea"
+        },
+        {
+            "name": "template_variables",
+            "type": "string_list",
+            "list_type": "text",
+            "ui_element": "tags"
+        },
+        {
+            "name": "template_buttons_payload",
+            "type": "list"
+        },
+        {
+            "name": "template_media_id",
+            "type": "text"
+        },
+        {
+            "name": "media_file_name",
+            "type": "text"
+        },
+        {
+            "name": "template_media_type",
+            "type": "text"
+        },
+        {
+            "name": "template_media_url",
+            "type": "text"
+        },
+        {
+            "name": "template_payload",
+            "type": "text"
+        },
+        {
             "name": "on_error_retries",
             "type": "number",
             "default": 0
@@ -191,15 +266,7 @@
                 "task",
                 "service",
                 "kwargs",
-                "args",
-                "channel",
-                "channel_provider",
-                "template_type",
-                "template_name",
-                "template_id",
-                "language",
-                "template_variables",
-                "template_buttons_payload"
+                "args"
             ]
         },
         {
@@ -225,15 +292,7 @@
                 "task",
                 "service",
                 "kwargs",
-                "args",
-                "channel",
-                "channel_provider",
-                "template_type",
-                "template_name",
-                "template_id",
-                "language",
-                "template_variables",
-                "template_buttons_payload"
+                "args"
             ]
         },
         {
@@ -256,14 +315,10 @@
             "name": "on_reached_trigger",
             "type": "nested_object",
             "dict_keys": [
-                "channel",
-                "channel_provider",
-                "template_type",
-                "template_name",
-                "template_id",
-                "language",
-                "template_variables",
-                "template_buttons_payload"
+                "task",
+                "service",
+                "kwargs",
+                "args"
             ]
         },
         {
@@ -289,15 +344,7 @@
                 "task",
                 "service",
                 "kwargs",
-                "args",
-                "channel",
-                "channel_provider",
-                "template_type",
-                "template_name",
-                "template_id",
-                "language",
-                "template_variables",
-                "template_buttons_payload"
+                "args"
             ]
         },
         {
@@ -323,15 +370,7 @@
                 "task",
                 "service",
                 "kwargs",
-                "args",
-                "channel",
-                "channel_provider",
-                "template_type",
-                "template_name",
-                "template_id",
-                "language",
-                "template_variables",
-                "template_buttons_payload"
+                "args"
             ]
         },
         {
@@ -347,15 +386,7 @@
                 "task",
                 "service",
                 "kwargs",
-                "args",
-                "channel",
-                "channel_provider",
-                "template_type",
-                "template_name",
-                "template_id",
-                "language",
-                "template_variables",
-                "template_buttons_payload"
+                "args"
             ]
         }
     ]
