@@ -134,49 +134,6 @@
       ],
       "option_others": true
     },
-
-    {
-      "name": "template_id",
-      "type": "text",
-      "required": true
-    },
-    {
-      "name": "template_type",
-      "type": "text"
-    },
-    {
-      "name": "template_variables",
-      "type": "list"
-    },
-    {
-      "name": "template_buttons_payload",
-      "type": "list"
-    },
-    {
-      "name": "cta",
-      "type": "string_list"
-    },
-    {
-      "name": "template_media_id",
-      "type": "text"
-    },
-    {
-      "name": "media_file_name",
-      "type": "text"
-    },
-    {
-      "name": "template_media_type",
-      "type": "text"
-    },
-    {
-      "name": "template_media_url",
-      "type": "text"
-    },
-    {
-      "name": "template_payload",
-      "type": "text"
-    },
-
     {
       "name": "number_targeted",
       "type": "number"
