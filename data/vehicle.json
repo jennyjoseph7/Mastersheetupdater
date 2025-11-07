@@ -21,26 +21,6 @@
             }
         },
         {
-            "name": "oem_id",
-            "refers": "parents.oem.oem_id"
-        },
-        {
-            "name": "brand_id",
-            "refers": "parents.brand.brand_id"
-        },
-        {
-            "name": "brand_name",
-            "refers": "parents.brand.brand_name"
-        },
-        {
-            "name": "model_id",
-            "refers": "parents.model.model_id"
-        },
-        {
-            "name": "model_name",
-            "refers": "parents.model.model_name"
-        },
-        {
             "name": "variant_id",
             "refers": "parents.variant.variant_id"
         },
@@ -49,66 +29,73 @@
             "refers": "parents.variant.variant_name"
         },
         {
+            "name": "oem_id",
+            "refers": "parents.variant.oem_id"
+        },
+        {
+            "name": "brand_id",
+            "refers": "parents.variant.brand_id"
+        },
+        {
+            "name": "brand_name",
+            "refers": "parents.variant.brand_name"
+        },
+        {
+            "name": "model_id",
+            "refers": "parents.variant.model_id"
+        },
+        {
+            "name": "model_name",
+            "refers": "parents.variant.model_name"
+        },
+        {
+            "name": "variant_color_id",
+            "refers": "parents.variant_color.variant_color_id"
+        },
+        {
+            "name": "variant_color_name",
+            "refers": "parents.variant_color.variant_color_name"
+        },
+        {
             "name": "model_year_id",
-            "refers": "parents.model_year.model_year_id"
+            "refers": "parents.variant.model_year_id"
         },
         {
-            "name": "model_year",
-            "refers": "parents.model_year.year"
+            "name": "model_launch_year",
+            "refers": "parents.variant.model_year"
         },
         {
-            "name": "color_id",
-            "refers": "parents.color.color_id"
+            "name": "reg_number",
+            "type": "text",
+            "indexed": true
         },
         {
-            "name": "color_name",
-            "refers": "parents.color.color_name"
+            "name": "vin_number",
+            "type": "text",
+            "indexed": true
         },
         {
             "name": "vehicle_type",
             "type": "text",
             "options": [
-                "Customer Vehicle",
-                "Test Drive Vehicle",
-                "Display Vehicle",
-                "Loaner Vehicle",
-                "Service Vehicle",
-                "Inventory Vehicle"
-            ]
-        },
-        {
-            "name": "vin_number",
-            "type": "text",
-            "title": "Vehicle Identification Number (VIN)",
-            "indexed": true
-        },
-        {
-            "name": "chassis_number",
-            "type": "text"
-        },
-        {
-            "name": "engine_number",
-            "type": "text"
-        },
-        {
-            "name": "registration_number",
-            "type": "text",
-            "indexed": true
-        },
-        {
-            "name": "registration_date",
-            "type": "datetime"
-        },
-        {
-            "name": "fuel_type",
-            "type": "text",
-            "options": [
-                "Petrol",
-                "Diesel",
-                "CNG",
-                "Electric",
-                "Hybrid"
-            ]
+                "Hatchback",
+                "Sedan",
+                "SUV",
+                "MUV",
+                "Coupe",
+                "Convertible",
+                "Station Wagon",
+                "Pickup Truck",
+                "Sports Car",
+                "Luxury Car",
+                "EV",
+                "Hybrid",
+                "Commercial Vehicle",
+                "Two-Wheeler",
+                "Three-Wheeler",
+                "Other"
+            ],
+            "ui_element": "select"
         },
         {
             "name": "transmission",
@@ -118,95 +105,357 @@
                 "Automatic",
                 "AMT",
                 "CVT",
-                "DCT"
+                "DCT",
+                "Other"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "fuel_type",
+            "type": "text",
+            "options": [
+                "Petrol",
+                "Diesel",
+                "Electric",
+                "CNG",
+                "Hybrid",
+                "LPG",
+                "Other"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "engine_capacity",
+            "type": "number",
+            "units": "cc"
+        },
+        {
+            "name": "drivetrain",
+            "type": "text",
+            "options": [
+                "FWD",
+                "RWD",
+                "AWD",
+                "4WD"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "engine_number",
+            "type": "text"
+        },
+        {
+            "name": "chassis_number",
+            "type": "text"
+        },
+        {
+            "name": "purchase_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "registration_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "delivery_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "last_service_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "next_service_due",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "warranty_expiry_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "insurance_expiry_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "loan_end_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "odometer_reading",
+            "type": "number",
+            "units": "km"
+        },
+        {
+            "name": "odometer_reading_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "avg_monthly_mileage",
+            "type": "number",
+            "units": "km"
+        },
+        {
+            "name": "vehicle_usage_category",
+            "type": "text",
+            "options": [
+                "Personal",
+                "Fleet",
+                "Commercial",
+                "Rental",
+                "Demo"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "battery_health",
+            "type": "text",
+            "options": [
+                "Good",
+                "Average",
+                "Weak",
+                "Needs Replacement"
             ]
+        },
+        {
+            "name": "battery_warranty",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "oil_change",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "brake_pad_change",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "tyre_change",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "wheel_alignment",
+            "type": "text",
+            "options": [
+                "Front-end",
+                "Thrust",
+                "Four-wheel"
+            ]
+        },
+        {
+            "name": "suspension_check",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "coolant_radiator_service",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "ac_vent_cleaning",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "underbody_coating",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "car_wash",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "repair_notes",
+            "type": "text"
+        },
+        {
+            "name": "first_owner_name",
+            "type": "text"
         },
         {
             "name": "ownership_status",
             "type": "text",
             "options": [
-                "Owned by Customer",
-                "Owned by Dealership",
-                "Owned by OEM",
+                "Owned",
                 "Leased",
-                "In Transit"
+                "Financed",
+                "Fleet"
             ]
         },
         {
-            "name": "current_owner_id",
-            "refers": "parents.person.user_id"
+            "name": "loan_provider",
+            "type": "text"
         },
         {
-            "name": "current_owner_name",
-            "refers": "parents.person.name"
+            "name": "loan_account_number",
+            "type": "text"
         },
         {
-            "name": "purchase_date",
-            "type": "datetime"
-        },
-        {
-            "name": "warranty_expiry_date",
-            "type": "datetime"
-        },
-        {
-            "name": "insurance_expiry_date",
-            "type": "datetime"
-        },
-        {
-            "name": "current_mileage_km",
+            "name": "loan_amount",
             "type": "number",
-            "units": "km"
+            "units": "INR"
         },
         {
-            "name": "service_due_date",
-            "type": "datetime"
+            "name": "emi_amount",
+            "type": "number",
+            "units": "INR"
         },
         {
-            "name": "dealership_id",
-            "refers": "parents.dealership.dealership_id"
+            "name": "emi_due_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
         },
         {
-            "name": "dealership_name",
-            "refers": "parents.dealership.dealership_name"
+            "name": "insurance",
+            "type": "nested_object",
+            "dict_keys": [
+                "policy_number",
+                "provider",
+                "expiry_date",
+                "insured_value"
+            ]
         },
         {
-            "name": "workshop_id",
-            "refers": "parents.workshop.workshop_id"
+            "name": "puc",
+            "type": "nested_object",
+            "dict_keys": [
+                "certificate_number",
+                "expiry_date"
+            ]
         },
         {
-            "name": "workshop_name",
-            "refers": "parents.workshop.workshop_name"
+            "name": "gps_tracker",
+            "type": "nested_object",
+            "dict_keys": [
+                "device_id",
+                "installed_date",
+                "last_location",
+                "last_online"
+            ]
+        },
+        {
+            "name": "current_location",
+            "type": "geolocation",
+            "title": "Current GPS Location"
+        },
+        {
+            "name": "last_trip_summary",
+            "type": "nested_object",
+            "dict_keys": [
+                "trip_distance_km",
+                "avg_speed_kmph",
+                "fuel_used_ltr",
+                "duration_min"
+            ]
+        },
+        {
+            "name": "documents",
+            "type": "object_list",
+            "list_type": "nested_object",
+            "dict_keys": [
+                "doc_type",
+                "doc_number",
+                "expiry_date",
+                "file_url"
+            ]
+        },
+        {
+            "name": "fastag_id",
+            "type": "text"
+        },
+        {
+            "name": "rc_book_number",
+            "type": "text"
+        },
+        {
+            "name": "rc_scanned_copy",
+            "type": "text",
+            "ui_element": "file"
+        },
+        {
+            "name": "vehicle_persona_summary",
+            "type": "text"
+        },
+        {
+            "name": "customer_score",
+            "type": "number"
         },
         {
             "name": "status",
             "type": "text",
             "options": [
                 "Active",
-                "Inactive",
+                "In Service",
                 "Sold",
-                "Under Service",
-                "Awaiting Delivery",
-                "Scrapped"
+                "Scrapped",
+                "Pending Transfer",
+                "Inactive"
             ],
             "ui_element": "select"
         },
         {
             "name": "description",
-            "type": "text",
-            "title": "Vehicle Description or Notes"
-        },
-        {
-            "name": "images",
-            "type": "list",
-            "title": "Vehicle Images"
+            "type": "text"
         },
         {
             "auto_updater": true,
             "default": {
                 "args": [
-                    "brand_name",
-                    "model_name",
                     "variant_name",
+                    "variant_color_name",
                     "vin_number"
                 ],
                 "function": "name_to_id",
@@ -222,14 +471,7 @@
         }
     ],
     "parents": [
-        "oem",
-        "brand",
-        "model",
         "variant",
-        "model_year",
-        "color",
-        "person",
-        "dealership",
-        "workshop"
+        "variant_color"
     ]
 }
