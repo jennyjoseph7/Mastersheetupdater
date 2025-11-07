@@ -1,0 +1,100 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "message_event",
+    "model_type": "default",
+    "attributes": [
+        
+        {
+            "name": "created",
+            "type": "datetime",
+            "auto_updater": true,
+            "default": {
+                "function": "now"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "datetime",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now"
+            }
+        },
+        {
+            "name" : "session_id",
+            "type" : "text",
+            "required" : true,
+            "indexed" : true
+        },
+        {
+            "name" : "sender_id",
+            "type" : "text",
+            "required" : true,
+            "indexed" : true
+        },
+        {
+            "name" : "message_id",
+            "type" : "number",
+            "required" : true,
+            "indexed" : true
+        },
+        {
+            "name" : "receiver_id",
+            "type" : "number",
+            "required" : true,
+            "indexed" : true
+        },
+        {
+            "name" : "sent_time",
+            "type" : "number",
+            "required" : true
+        },
+        {
+            "name" : "delivered_time",
+            "type" : "number"
+        },
+        {
+            "name" : "read_time",
+            "type" : "text"
+        },       
+        {
+            "name": "status",
+            "type": "text",
+            "options": [
+                "sent",
+                "delivered",
+                "failed",
+                "read",
+                "error"
+            ],
+            "indexed": true
+        },
+        {
+            "name" : "error_reason",
+            "type" : "text",
+            "required" : false
+        },
+        {
+            "name" : "failed_reason",
+            "type" : "text",
+            "required" : false
+        },
+        {
+            "name": "message_event_id",
+            "type": "uid",
+            "indexed": true,
+            "id": true,
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "created",
+                    "sender_id",
+                    "session_id",
+                    "message_id",
+                    "sent_to"
+                ]
+            }
+        }
+    ]
+}
