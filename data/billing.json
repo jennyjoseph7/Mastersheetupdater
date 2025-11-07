@@ -1,0 +1,241 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "billing",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "billing_address",
+            "type": "text",
+            "required": true,
+            "indexed": true
+        },
+        {
+            "name": "billing_contact_name",
+            "type": "text",
+            "required": true,
+            "indexed": true
+        },
+        {
+            "name": "billing_contact_email",
+            "type": "text",
+            "constraint": {
+                "function": "email_validator"
+            },
+            "required": true,
+            "indexed": true
+        },
+        {
+            "name": "billing_contact_phone",
+            "type": "text",
+            "constraint": {
+                "function": "phone_validator"
+            },
+            "required": true,
+            "indexed": true
+        },
+        {
+            "name": "currency",
+            "type": "list",
+            "default": "INR",
+            "options": ["INR", "USD", "EUR", "GBP"],
+            "required": true
+        },
+        {
+            "name": "billing_cycle",
+            "type": "text",
+            "options": ["monthly", "quarterly", "yearly", "on_demand"],
+            "default": "on_demand"
+        },
+        {
+            "name": "plan_type",
+            "type": "text",
+            "options": ["prepaid", "postpaid"],
+            "default": "prepaid"
+        },
+        {
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id",
+            "required": true
+        },
+        {
+            "name": "campaign_workflow_id",
+            "refers": "parents.campaign_workflow.campaign_workflow_id",
+            "required": false
+        },
+        {
+            "name": "invoice_number",
+            "type": "number",
+            "indexed": true
+        },
+        {
+            "name": "invoice_date",
+            "type": "number"
+        },
+        {
+            "name": "payment_date",
+            "type": "number"
+        },
+        {
+            "name": "payment_mode",
+            "type": "text",
+            "options": [
+                "upi",
+                "net_banking",
+                "credit_card",
+                "debit_card",
+                "bank_transfer",
+                "wallet",
+                "nft"
+            ]
+        },
+        {
+            "name": "payment_gateway",
+            "type": "text",
+            "options": [
+                "razorpay",
+                "stripe",
+                "paypal",
+                "cashfree",
+                "manual"
+            ]
+        },
+        {
+            "name": "transaction_id",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "payment_status",
+            "type": "text",
+            "options": ["initiated", "success", "failed", "refunded", "pending"],
+            "default": "initiated",
+            "indexed": true
+        },
+        
+        {
+            "name": "invoice_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            }
+        },
+        {
+            "name": "amount",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "tax_amount",
+            "type": "number"
+        },
+        {
+            "name": "total_amount",
+            "type": "number"
+        },
+        {
+            "name": "credit_added",
+            "type": "number"        
+        },
+        {
+            "name": "credit_balance_before",
+            "type": "number"
+        },
+        {
+            "name": "credit_balance_after",
+            "type": "number"
+        },
+        {
+            "name": "gst_number",
+            "type": "text"
+        },
+        {
+            "name": "sgst_number",
+            "type": "text"
+        },
+        {
+            "name": "vat_number",
+            "type": "text"
+        },
+        {
+            "name": "gst",
+            "type": "number"
+        },
+        {
+            "name": "sgst",
+            "type": "number"
+        },
+        {
+            "name": "vat",
+            "type": "number"
+        },
+        
+        {
+            "name": "usage_summary",
+            "type": "text"
+        },
+        {
+            "name": "remarks",
+            "type": "text"
+        },
+        {
+            "name": "auto_renewal_enabled",
+            "type": "bool",
+            "default": false
+        },
+        {
+            "name": "refund_reference_id",
+            "type": "text"
+        },
+        {
+            "name": "refund_amount",
+            "type": "number"
+        },
+        {
+            "name": "refund_status",
+            "type": "text",
+            "options": ["none", "initiated", "completed", "failed"],
+            "default": "none"
+        },
+        {
+            "name": "billing_id",
+            "type": "uid",
+            "indexed": true,
+            "id": true,
+            "default": {
+                "function": "make_uuid_3",
+                "args": [
+                    "dealership_id",
+                    "invoice_number",
+                    "transaction_id"
+                ],
+                "kwargs": {
+                    "is_unique": true,
+                    "separator": "_",
+                    "skip_empty": true
+                }
+            },
+            "auto_updater": true
+        }
+    ],
+    "parents": [
+        "dealership",
+        "campaign_workflow"
+    ]
+}

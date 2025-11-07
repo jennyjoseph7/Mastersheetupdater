@@ -29,7 +29,7 @@
         {
             "name": "credits_balance",
             "type": "number",
-            "default": {
+            "": {
                 "function": "get_from_model",
                 "args": [
                     "billing",
@@ -54,7 +54,8 @@
             "name":"dealer_group_description",
             "refers":"parents.dealer_group.dealer_group_description"
         },
-        {
+        {   
+            "default":"Single Brand",
             "name": "dealership_type",
             "type": "text",
             "options": [
