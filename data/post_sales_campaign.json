@@ -20,22 +20,7 @@
         "function": "now_ctime"
       }
     },
-    {
-      "name": "showroom_id",
-      "refers": "parents.showroom.showroom_id"
-    },
-    {
-      "name": "dealership_name",
-      "refers": "parents.showroom.dealership_name"
-    },
-    {
-      "name": "brand_name",
-      "refers": "parents.showroom.brand_name"
-    },
-    {
-      "name": "region_name",
-      "refers": "parents.showroom.region_name"
-    },
+
     {
       "name": "campaign_name",
       "type": "text",
@@ -44,25 +29,8 @@
     {
       "name": "campaign_type",
       "type": "list",
-      "options": [
-        "Ownership & Onboarding",
-        "Service & Maintenance",
-        "Loyalty & Rewards",
-        "Awareness & Feedback",
-        "Recall"
-      ]
-    },
-    {
-      "name": "campaign_objective",
-      "type": "text"
-    },
-    {
-      "name": "campaign_start_date",
-      "type": "number"
-    },
-    {
-      "name": "campaign_end_date",
-      "type": "number"
+      "options": ["pre-sales", "post-sales", "dealership"],
+      "default": "post-sales"
     },
     {
       "name": "campaign_user_source",
@@ -70,52 +38,153 @@
       "required": true
     },
     {
-      "name": "channels_used",
+      "name": "campaign_objective",
       "type": "list",
       "options": [
-        "Email",
-        "SMS",
-        "WhatsApp",
-        "Phone Call",
-        "Website",
-        "Mobile App",
-        "Event",
-        "Social Media",
-        "Newspaper Ad",
-        "Banner / Billboard"
-      ]
+        "Ownership & Onboarding",
+        "Service & Maintenance",
+        "Loyalty & Rewards",
+        "Awareness & Feedback",
+        "Recall"
+      ],
+      "option_others": true
     },
     {
-      "name": "target_audience_type",
+      "name": "campaign_sub_type",
+      "type": "text"
+    },
+    {
+      "name": "campaign_objective_type",
+      "type": "list",
+      "options": ["lead volume", "budget based", "roi target"]
+    },
+    {
+      "name": "campaign_offer",
+      "type": "text"
+    },
+    {
+      "name": "campaign_description",
+      "type": "text"
+    },
+    {
+      "name": "start_date",
+      "type": "number"
+    },
+    {
+      "name": "end_date",
+      "type": "number"
+    },
+    {
+      "name": "channels",
       "type": "list",
       "options": [
-        "Existing Customers",
-        "Expired Warranty Customers",
-        "Inactive Customers",
-        "High Mileage Owners",
-        "Fleet Customers",
-        "Insurance Renewal Customers",
-        "General Public"
-      ]
+        "rcs",
+        "email",
+        "web_chat",
+        "web_chat_voice",
+        "fb_chat",
+        "insta_chat",
+        "twitter_chat",
+        "voice_phone",
+        "whatsapp_chat",
+        "whatsapp_voice_note",
+        "whatsapp_voice_call",
+        "zoom_bot",
+        "ms_teams"
+      ],
+      "ui_element": "multiselect"
     },
     {
-      "name": "target_vehicle_models",
+      "name": "language",
+      "default": "english",
+      "option_other": true,
+      "options": [
+        "english",
+        "hindi",
+        "kannada",
+        "telugu",
+        "tamil",
+        "malayalam",
+        "odia",
+        "bengali",
+        "marathi",
+        "gujurati"
+      ],
+      "type": "text"
+    },
+    {
+      "name": "urgency_hook",
+      "type": "list",
+      "options": [
+        "Only 10 cars left",
+        "Valid this week",
+        "First 25 customers bonus",
+        "Limited time",
+        "Book today"
+      ],
+      "option_others": true
+    },
+
+    {
+      "name": "template_id",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "template_type",
+      "type": "text"
+    },
+    {
+      "name": "template_variables",
       "type": "list"
     },
     {
-      "name": "expected_customers",
+      "name": "template_buttons_payload",
+      "type": "list"
+    },
+    {
+      "name": "cta",
+      "type": "string_list"
+    },
+    {
+      "name": "template_media_id",
+      "type": "text"
+    },
+    {
+      "name": "media_file_name",
+      "type": "text"
+    },
+    {
+      "name": "template_media_type",
+      "type": "text"
+    },
+    {
+      "name": "template_media_url",
+      "type": "text"
+    },
+    {
+      "name": "template_payload",
+      "type": "text"
+    },
+
+    {
+      "name": "number_targeted",
       "type": "number"
     },
     {
-      "name": "customers_reached",
+      "name": "number_reached",
       "type": "number"
     },
     {
-      "name": "customers_participated",
+      "name": "number_contacted",
       "type": "number"
     },
     {
-      "name": "feedback_collected",
+      "name": "number_engaged",
+      "type": "number"
+    },
+    {
+      "name": "number_converted",
       "type": "number"
     },
     {
@@ -127,12 +196,24 @@
       "type": "number"
     },
     {
-      "name": "roi_percent",
-      "type": "number"
+      "name": "conversion_rate_percent",
+      "type": "number",
+      "default": {
+        "function": "divide_attributes",
+        "args": ["number_converted", "number_contacted"]
+      }
+    },
+    {
+      "name": "cost_per_lead",
+      "type": "number",
+      "default": {
+        "function": "divide_attributes",
+        "args": ["actual_spent", "number_converted"]
+      }
     },
     {
       "name": "campaign_status",
-      "type": "list",
+      "type": "text",
       "options": ["Planned", "Active", "Completed", "On Hold", "Cancelled"]
     },
     {
@@ -140,32 +221,22 @@
       "type": "text"
     },
     {
-      "name": "responsible_contact",
-      "type": "text"
-    },
-    {
       "name": "remarks",
       "type": "text"
     },
     {
-      "name": "attachments",
-      "type": "list"
-    },
-    {
-      "auto_updater": true,
       "default": {
-        "args": ["dealership_name", "campaign_name", "start_date"],
-        "function": "name_to_id",
-        "kwargs": {
-          "attribute_join": " ",
-          "is_unique": true,
-          "separator": " - "
-        }
+        "function": "make_uuid3",
+        "args": [
+          "campaign_name",
+          "start_date",
+          "campaign_type",
+          "campaign_objective"
+        ]
       },
-      "name": "post_sales_campaign_id",
+      "name": "campaign_id",
       "type": "uid",
       "id": true
     }
-  ],
-  "parents": ["showroom"]
+  ]
 }
