@@ -7,14 +7,18 @@
       "name": "created",
       "type": "number",
       "auto_updater": true,
-      "default": { "function": "now_ctime" }
+      "default": {
+        "function": "now_ctime"
+      }
     },
     {
       "name": "updated",
       "type": "number",
       "auto_updater": true,
       "force_update": true,
-      "default": { "function": "now_ctime" }
+      "default": {
+        "function": "now_ctime"
+      }
     },
     {
       "name": "dealership_id",
@@ -86,7 +90,10 @@
     {
       "name": "operating_hours",
       "type": "nested_object",
-      "dict_keys": ["opening_time", "closing_time"]
+      "dict_keys": [
+        "opening_time",
+        "closing_time"
+      ]
     },
     {
       "name": "days_open",
@@ -155,7 +162,11 @@
     {
       "name": "status",
       "type": "text",
-      "options": ["Active", "Inactive", "Under Renovation"]
+      "options": [
+        "Active",
+        "Inactive",
+        "Under Renovation"
+      ]
     },
     {
       "auto_updater": true,
@@ -177,5 +188,7 @@
       "id": true
     }
   ],
-  "parents": ["dealership"]
+  "parents": [
+    "dealership"
+  ]
 }
