@@ -171,7 +171,7 @@
                 "args": [
                     "showroom",
                     "showroom_id",
-                    "showroom_address"
+                    "address"
                 ]
             },
 
