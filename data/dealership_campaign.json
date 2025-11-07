@@ -69,11 +69,11 @@
       },
       {
         "name": "start_date",
-        "type": "datetime"
+        "type": "number"
       },
       {
         "name": "end_date",
-        "type": "datetime"
+        "type": "number"
       },
       {
         "name": "channels",

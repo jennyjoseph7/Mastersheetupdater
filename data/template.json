@@ -112,6 +112,11 @@
       "type": "text"
     },
     {
+      "name":"status",
+      "type":"list",
+      "options":["pending","approved","rejected"]
+    },
+    {
       "name": "template_id",
       "type": "uid",
       "indexed": true,

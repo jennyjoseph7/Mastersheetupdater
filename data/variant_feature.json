@@ -21,11 +21,27 @@
       }
     },
     {
+      "name": "is_standard",
+      "type": "bool"
+    },
+    {
+      "name": "is_engine_dependent",
+      "type": "bool"
+    },
+    {
+      "name": "is_transmission_dependent",
+      "type": "bool"
+    },
+    {
+      "name": "is_drivetrain_dependent",
+      "type": "bool"
+    },
+    {
       "name": "variant_id",
       "refers": "parents.variant.variant_id"
     },
     {
-      "auto_updater" :  true,
+      "auto_updater": true,
       "name": "variant_name",
       "refers": "parents.variant.variant_name"
     },
@@ -34,12 +50,12 @@
       "refers": "parents.feature.feature_id"
     },
     {
-      "auto_updater" : true,
+      "auto_updater": true,
       "name": "feature_name",
       "refers": "parents.feature.feature_name"
     },
     {
-      "auto_updater" :  true,
+      "auto_updater": true,
       "name": "feature_category",
       "refers": "parents.feature.feature_category"
     },
@@ -48,7 +64,7 @@
       "refers": "parents.feature.aliases"
     },
     {
-      "auto_updater" :  true,
+      "auto_updater": true,
       "name": "feature_description",
       "refers": "parents.feature.feature_description"
     },
@@ -61,12 +77,12 @@
       "refers": "parents.feature.additional_cost_unit"
     },
     {
-      "auto_updater" :  true,
+      "auto_updater": true,
       "name": "feature_category",
       "refers": "parents.feature.feature_category"
     },
     {
-      "auto_updater" :  true,
+      "auto_updater": true,
       "name": "feature_type",
       "refers": "parents.feature.feature_type"
     },
@@ -83,13 +99,13 @@
       "refers": "parents.feature.videos"
     },
     {
-      "auto_updater" :  true,
+      "auto_updater": true,
       "name": "feature_value",
       "type": "text",
       "title": "Feature Value"
     },
     {
-      "auto_updater" :  true,
+      "auto_updater": true,
       "name": "unit_of_measure",
       "refers": "parents.feature.unit_of_measure"
     },
@@ -108,11 +124,7 @@
     },
     {
       "name": "discontinuation_date",
-      "type": "number",
-      "default": {
-        "function": "now_ctime"
-      },
-      "auto_updater": true
+      "type": "number"
     },
     {
       "name": "remarks",
@@ -120,7 +132,7 @@
     },
     {
       "name": "status",
-     "refers" : "parents.variant.variant_status"
+      "refers": "parents.variant.variant_status"
     },
     {
       "auto_updater": true,

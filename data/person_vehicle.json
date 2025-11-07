@@ -1,79 +1,88 @@
- {
-            "timezone": "Asia/Kolkata",
-            "name": "person_vehicle",
-            "model_type": "default",
-            "attributes": [
-                {
-                    "name": "person_vehicle_id",
-                    "type": "uid",
-                    "indexed": true,
-                    "id": true,
-                    "default": {
-                        "function": "name_to_id",
-                        "args": [
-                        "person_id",
-                        "vehicle_id",
-                        "created"
-                        ],
-                        "kwargs": {
-                            "is_unique": true,
-                            "separator": "_",
-                            "skip_empty": true
-                        }
-
-                    }
-                },
-                {
-                    "name": "person_id",
-                    "type": "parents.person.user_id",
-                    "indexed": true
-                },
-                {
-                    "name": "person_name",
-                    "type": "parents.person.name",
-                    "indexed": true
-                },
-                {
-                    "name": "vehicle_id",
-                    "type": "text",
-                    "refers" : "parents.vehicle.vehicle_id",
-                    "indexed": true
-                },
-                {
-                    "name": "relationship_type",
-                    "type": "text",
-                    "options": [
-                        "owner",
-                        "co_owner",
-                        "driver",
-                        "finance_holder"
-                    ],
-                    "indexed": true
-                },
-                {
-                    "name": "since",
-                    "type": "datetime"
-                },
-                {
-                    "name": "notes",
-                    "type": "text"
-                },
-                {
-                    "name": "created",
-                    "type": "datetime",
-                    "auto_updater": true,
-                    "default": {
-                        "function": "now"
-                    }
-                },
-                {
-                    "name": "updated",
-                    "type": "datetime",
-                    "auto_updater": true,
-                    "force_update": true,
-                    "default": {
-                        "function": "now"
-                    }
+{
+    "timezone": "Asia/Kolkata",
+    "name": "person_vehicle",
+    "model_type": "default",
+    "parents": [
+        "person",
+        "vehicle"
+    ],
+    "attributes": [
+        {
+            "name": "person_id",
+            "type": "parents.person.user_id",
+            "indexed": true,
+            "required": true
+        },
+        {
+            "name": "person_name",
+            "type": "parents.person.name",
+            "indexed": true
+        },
+        {
+            "name": "vehicle_id",
+            "type": "text",
+            "refers": "parents.vehicle.vehicle_id",
+            "indexed": true,
+            "required": true
+        },
+        {
+            "name": "relationship_type",
+            "type": "text",
+            "options": [
+                "owner",
+                "co_owner",
+                "family_member",
+                "friend",
+                "driver",
+                "finance_holder",
+                "other"
+            ],
+            "indexed": true,
+            "default": "owner"
+        },
+        {
+            "name": "since",
+            "type": "datetime"
+        },
+        {
+            "name": "notes",
+            "type": "text"
+        },
+        {
+            "name": "created",
+            "type": "datetime",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "datetime",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "person_vehicle_id",
+            "type": "uid",
+            "indexed": true,
+            "id": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "person_id",
+                    "vehicle_id",
+                    "created"
+                ],
+                "kwargs": {
+                    "is_unique": true,
+                    "separator": "_",
+                    "skip_empty": true
                 }
-            ]
+            }
         }
+    ]
+}
