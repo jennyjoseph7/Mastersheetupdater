@@ -194,6 +194,10 @@
             "type": "text"
         },
         {
+            "name": "cgst_number",
+            "type": "text"
+        },
+        {
             "name": "sgst_number",
             "type": "text"
         },

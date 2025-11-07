@@ -6,7 +6,7 @@ import datetime, time
 
 
 
-def calulate_total_billing_amount_func(ins, model, action, **kwargs):
+def calulate_total_billing_func(ins, model, attribute, action, **kwargs):
   
     filter = ''
     if ins.get('quick_select'):
@@ -28,7 +28,7 @@ def get_campaign_end_date_func(ins, campaign_id, campaign_end_date, **kwargs):
     pass
 
 val.make_function(
-    calulate_total_billing_amount_func,
+    calulate_total_billing_func,
     "calulate_total_billing_amount",
     given_args="instance",
     is_idempotent=False, 
