@@ -48,10 +48,6 @@
             "indexed": true
         },
         {
-            "name": "feature_",
-            "type": "text"
-        },
-        {
             "name": "feature_type",
             "type": "text",
             "options": [
@@ -144,11 +140,21 @@
             "type": "text",
             "options": [
                 "number",
-                "category"
-
+                "category",
+                "boolean",
+                "description"
             ],
-            "option_others": true,
             "ui_element": "select"
+        },
+        {
+            "name": "showcase_image",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            }
         },
         {
             "name": "images",
@@ -162,14 +168,12 @@
         },
         {
             "name": "additional_cost",
-            "type": "number",
-            "units": "INR"
+            "type": "number"
         },
         {
             "name": "additional_cost_unit",
             "type": "list",
-            
-            "units": [
+            "options": [
                 "INR",
                 "USD",
                 "EUR",
