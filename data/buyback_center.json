@@ -35,8 +35,10 @@
             "force_update": true,
             "type": "datetime"
         },
-        { "name": "workshop_id", "refers": "parents.workshop.workshop_id" },
-
+        {
+            "name": "workshop_id",
+            "refers": "parents.workshop.workshop_id"
+        },
         {
             "name": "dealership_id",
             "refers": "parents.dealership.dealership_id",
@@ -55,181 +57,150 @@
             "refers": "parents.dealership.region_name"
         },
         {
-            "name": "type",
+            "name": "center_name",
             "type": "text",
-            "options": [
-                "Customer Return",
-                "Test Drive Return",
-                "Loaner Return",
-                "Service Return",
-                "Exchange Return",
-                "Vehicle Replacement",
-                "Lease Return",
-                "Other"
-            ],
-            "ui_element": "select",
             "indexed": true
         },
         {
-            "name": "reason",
+            "name": "center_code",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "centre_type",
             "type": "text",
             "options": [
-                "End of Test Drive",
-                "End of Service",
-                "End of Lease",
-                "Replacement Requested",
-                "Complaint Resolution",
-                "Accident Case",
-                "Customer Unsatisfied",
+                "Main Center",
+                "City Center",
+                "Express Center",
+                "Experience Center",
+                "Mall Kiosk",
+                "Virtual Center",
                 "Other"
-            ],
-            "ui_element": "select"
+            ]
         },
         {
-            "name": "return_date",
-            "type": "datetime",
-            "auto_updater": true
-        },
-        {
-            "name": "odometer",
-            "type": "number",
-            "units": "km"
-        },
-        {
-            "name": "fuel_level",
-            "type": "number",
-            "units": "litres"
-        },
-        {
-            "name": "vehicle_condition",
+            "name": "contact_number",
             "type": "text",
-            "options": [
-                "Excellent",
-                "Good",
-                "Minor Scratches",
-                "Moderate Damage",
-                "Major Damage"
-            ],
-            "ui_element": "select"
+            "constraint": {
+                "function": "phone_validator"
+            }
         },
         {
-            "name": "condition_description",
+            "name": "email",
             "type": "text",
-            "title": "Detailed Condition Notes"
+            "constraint": {
+                "function": "email_validator"
+            }
         },
         {
-            "name": "images_at_return",
-            "type": "list",
-            "title": "Images Captured at Return"
-        },
-        {
-            "name": "inspected_by",
-            "type": "text",
-            "title": "Inspection Staff Name"
-        },
-        {
-            "name": "verified_by",
-            "type": "text",
-            "title": "Return Verified By"
-        },
-        {
-            "name": "next_action",
-            "type": "text",
-            "options": [
-                "Ready for Next Customer",
-                "Send to Workshop",
-                "Clean and Inspect",
-                "Send to OEM",
-                "Return to Fleet",
-                "Dispose or Replace"
-            ],
-            "ui_element": "select"
-        },
-        {
-            "name": "estimated_repair_cost",
-            "type": "number",
-            "units": "INR",
-            "title": "Estimated Repair Cost (if any)"
-        },
-        {
-            "name": "repair_required",
-            "type": "boolean",
-            "default": false
-        },
-        {
-            "name": "remarks",
+            "name": "address",
             "type": "text"
         },
         {
-            "name": "return_status",
+            "name": "city",
+            "type": "text"
+        },
+        {
+            "name": "state",
+            "type": "text"
+        },
+        {
+            "name": "pincode",
+            "type": "text"
+        },
+        {
+            "name": "geolocation",
+            "type": "geolocation"
+        },
+        {
+            "name": "operating_hours",
+            "type": "nested_object",
+            "dict_keys": [
+                "opening_time",
+                "closing_time"
+            ]
+        },
+        {
+            "name": "days_open",
+            "type": "nested_object",
+            "options": [
+                "Day",
+                "start_time",
+                "end_time",
+                "is_closed",
+                "special_notes"
+            ]
+        },
+        {
+            "name": "manager_name",
+            "type": "text"
+        },
+        {
+            "name": "manager_contact",
+            "type": "text"
+        },
+        {
+            "name": "total_sales_executives",
+            "type": "number"
+        },
+        {
+            "name": "daily_walkin_capacity",
+            "type": "number"
+        },
+        {
+            "name": "facilities_available",
+            "type": "multiselect",
+            "options": [
+                "Customer Lounge",
+                "Wi-Fi",
+                "Cafe / Refreshments",
+                "Help Desk",
+                "Vehicle Display Area",
+                "Finance Assistance",
+                "Insurance Support",
+                "Accessories Section",
+                "EV Charging Point",
+                "Parking Facility",
+                "Virtual Experience Zone",
+                "Online Booking Support",
+                "Home Visit Support",
+                "Personal Assistance Desk",
+                "Extended Working Hours",
+                "Weekend Availability",
+                "Special Promotions",
+                "Loyalty Programs"
+            ],
+            "ui_element": "multiselect"
+        },
+        {
+            "name": "parking_capacity",
+            "type": "number"
+        },
+        {
+            "name": "display_vehicle_count",
+            "type": "number"
+        },
+        {
+            "name": "virtual_tour_url",
+            "type": "text"
+        },
+        {
+            "name": "status",
             "type": "text",
             "options": [
-                "Pending Inspection",
-                "Inspected",
-                "Approved",
-                "Completed",
-                "Rejected"
-            ],
-            "ui_element": "select",
-            "indexed": true
-        },
-        {
-            "name": "pickup_required",
-            "type": "bool",
-            "default": false,
-            "ui_element": "switch"
-        },
-        {
-            "name": "pickup_location",
-            "type": "text",
-            "ui_element": "textarea"
-        },
-        {
-            "name": "type_of_pickup_mode",
-            "type": "text",
-            "options": [
-                "In-Person",
-                "Home Pickup",
-                "Third-Party Courier",
-                "OEM Logistic"
-            ],
-            "ui_element": "select"
-        },
-        {
-            "name": "return_acknowledgement_number",
-            "type": "text",
-            "title": "System/Manual Acknowledgement ID"
-        },
-        {
-            "name": "inspection_report_url",
-            "type": "text",
-            "ui_element": "file",
-            "title": "Upload Inspection Report"
-        },
-        {
-            "name": "refund_amount",
-            "type": "number",
-            "title": "Refund Amount (if applicable)"
-        },
-        {
-            "name": "customer_feedback",
-            "type": "text",
-            "ui_element": "textarea",
-            "title": "Customer Feedback on Return Process"
-        },
-        {
-            "name": "quality_check_passed",
-            "type": "bool",
-            "default": false,
-            "title": "Quality Check Passed after Return"
+                "Active",
+                "Inactive",
+                "Under Renovation"
+            ]
         },
         {
             "auto_updater": true,
             "default": {
                 "args": [
-                    "vehicle_reg_number",
-                    "return_date",
-                    "return_type"
+                    "dealership_name",
+                    "center_name",
+                    "city"
                 ],
                 "function": "name_to_id",
                 "kwargs": {
@@ -238,18 +209,12 @@
                     "separator": " - "
                 }
             },
-            "name": "return_id",
+            "name": "center_id",
             "type": "uid",
             "id": true
         }
     ],
     "parents": [
-        "oem",
-        "brand",
-        "model",
-        "variant",
-        "vehicle",
-        "dealership",
-        "person"
+        "dealership"
     ]
 }
