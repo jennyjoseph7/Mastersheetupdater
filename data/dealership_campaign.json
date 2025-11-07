@@ -110,7 +110,12 @@
           "odia",
           "bengali",
           "marathi",
-          "gujurati"
+          "gujarati",
+          "bengali",
+          "assamese",
+          "punjabi",
+          "spanish",
+          "arabic"
         ],
         "type": "list"
       },

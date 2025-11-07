@@ -44,12 +44,7 @@
     },
     {
       "name": "campaign_type",
-      "type": "list",
-      "options": [
-        "pre-sales",
-        "post-sales",
-        "dealership"
-      ],
+      "type": "text",
       "default": "pre-sales"
     },
     {
@@ -86,11 +81,18 @@
     {
       "name": "campaign_objective_type",
       "type": "list",
+      "options": ["lead volume", "budget based", "roi target"]
+    },
+    {
+      "name": "campaign_sub_type",
+      "type": "list",
       "options": [
-        "lead volume",
-        "budget based",
-        "roi target"
-      ]
+        "brand awareness",
+        "product awareness",
+        "event",
+        "lead generation"
+      ],
+      "option_others": true
     },
     {
       "name": "campaign_offer",
@@ -128,7 +130,7 @@
         "odia",
         "bengali",
         "marathi",
-        "gujurati",
+        "gujarati",
         "bengali",
         "assamese",
         "punjabi",
@@ -173,10 +175,7 @@
       "type": "number",
       "default": {
         "function": "divide_attributes",
-        "args": [
-          "number_converted",
-          "number_contacted"
-        ]
+        "args": ["number_converted", "number_contacted"]
       }
     },
     {
@@ -184,22 +183,13 @@
       "type": "number",
       "default": {
         "function": "divide_attributes",
-        "args": [
-          "actual_spent",
-          "number_converted"
-        ]
+        "args": ["actual_spent", "number_converted"]
       }
     },
     {
       "name": "campaign_status",
       "type": "text",
-      "options": [
-        "Planned",
-        "Active",
-        "Completed",
-        "On Hold",
-        "Cancelled"
-      ]
+      "options": ["Planned", "Active", "Completed", "On Hold", "Cancelled"]
     },
     {
       "name": "responsible_person",

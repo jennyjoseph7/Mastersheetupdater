@@ -1,6 +1,6 @@
 {
   "timezone": "Asia/Kolkata",
-  "name": "model",
+  "name": "vehicle_model",
   "model_type": "default",
   "attributes": [
     {
