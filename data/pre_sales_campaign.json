@@ -33,7 +33,6 @@
       "name": "dealership_type",
       "refers": "parents.dealership.dealership_type"
     },
-
     {
       "name": "region_name",
       "refers": "parents.dealership.region_name"
@@ -46,7 +45,11 @@
     {
       "name": "campaign_type",
       "type": "list",
-      "options": ["pre-sales", "post-sales", "dealership"],
+      "options": [
+        "pre-sales",
+        "post-sales",
+        "dealership"
+      ],
       "default": "pre-sales"
     },
     {
@@ -54,7 +57,6 @@
       "type": "nested_object",
       "required": true
     },
-    
     {
       "name": "campaign_objective",
       "type": "list",
@@ -84,7 +86,11 @@
     {
       "name": "campaign_objective_type",
       "type": "list",
-      "options": ["lead volume", "budget based", "roi target"]
+      "options": [
+        "lead volume",
+        "budget based",
+        "roi target"
+      ]
     },
     {
       "name": "campaign_offer",
@@ -107,9 +113,11 @@
       "refers": "parents.dealership.channels"
     },
     {
-      "name": "language",
+      "name": "languages",
       "default": "english",
-      "option_other": true,
+      "type": "string_list",
+      "option_others": true,
+      "ui_element": "tags",
       "options": [
         "english",
         "hindi",
@@ -120,21 +128,17 @@
         "odia",
         "bengali",
         "marathi",
-        "gujarati"
-      ],
-      "type": "text"
+        "gujurati",
+        "bengali",
+        "assamese",
+        "punjabi",
+        "spanish",
+        "arabic"
+      ]
     },
     {
       "name": "urgency_hook",
-      "type": "list",
-      "options": [
-        "Only 10 cars left",
-        "Valid this week",
-        "First 25 customers bonus",
-        "Limited time",
-        "Book today"
-      ],
-      "option_others": true
+      "type": "text"
     },
     {
       "name": "number_targeted",
@@ -169,7 +173,10 @@
       "type": "number",
       "default": {
         "function": "divide_attributes",
-        "args": ["number_converted", "number_contacted"]
+        "args": [
+          "number_converted",
+          "number_contacted"
+        ]
       }
     },
     {
@@ -177,13 +184,22 @@
       "type": "number",
       "default": {
         "function": "divide_attributes",
-        "args": ["actual_spent", "number_converted"]
+        "args": [
+          "actual_spent",
+          "number_converted"
+        ]
       }
     },
     {
       "name": "campaign_status",
       "type": "text",
-      "options": ["Planned", "Active", "Completed", "On Hold", "Cancelled"]
+      "options": [
+        "Planned",
+        "Active",
+        "Completed",
+        "On Hold",
+        "Cancelled"
+      ]
     },
     {
       "name": "responsible_person",
@@ -209,5 +225,7 @@
       "id": true
     }
   ],
-  "parents": ["dealership"]
+  "parents": [
+    "dealership"
+  ]
 }
