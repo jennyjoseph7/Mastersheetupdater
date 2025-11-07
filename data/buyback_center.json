@@ -1,75 +1,61 @@
 {
     "timezone": "Asia/Kolkata",
-    "name": "buyback",
+    "name": "buyback_center",
     "model_type": "default",
     "attributes": [
         {
             "name": "created",
             "type": "number",
             "auto_updater": true,
-            "default": { "function": "now_ctime" }
+            "default": {
+                "function": "now_ctime"
+            }
         },
         {
             "name": "updated",
             "type": "number",
             "auto_updater": true,
             "force_update": true,
-            "default": { "function": "now_ctime" }
+            "default": {
+                "function": "now_ctime"
+            }
         },
         {
-            "name": "oem_id",
-            "refers": "parents.oem.oem_id"
+            "name": "inspection_date",
+            "force_update": true,
+            "type": "datetime"
         },
         {
-            "name": "brand_id",
-            "refers": "parents.brand.brand_id"
+            "name": "approval_date",
+            "force_update": true,
+            "type": "datetime"
         },
         {
-            "name": "brand_name",
-            "refers": "parents.brand.brand_name"
+            "name": "completion_date",
+            "force_update": true,
+            "type": "datetime"
         },
-        {
-            "name": "model_id",
-            "refers": "parents.model.model_id"
-        },
-        {
-            "name": "model_name",
-            "refers": "parents.model.model_name"
-        },
-        {
-            "name": "variant_id",
-            "refers": "parents.variant.variant_id"
-        },
-        {
-            "name": "variant_name",
-            "refers": "parents.variant.variant_name"
-        },
-        {
-            "name": "vehicle_id",
-            "refers": "parents.vehicle.vehicle_id"
-        },
-        {
-            "name": "vehicle_reg_number",
-            "refers": "parents.vehicle.reg_number"
-        },
+        { "name": "workshop_id", "refers": "parents.workshop.workshop_id" },
+
         {
             "name": "dealership_id",
-            "refers": "parents.dealership.dealership_id"
+            "refers": "parents.dealership.dealership_id",
+            "auto_updater": true
         },
         {
             "name": "dealership_name",
             "refers": "parents.dealership.dealership_name"
         },
         {
-            "name": "person_id",
-            "refers": "parents.person.user_id"
+            "name": "brand_name",
+            "refers": "parents.dealership.brand_name"
         },
         {
-            "name": "person_name",
-            "refers": "parents.person.name"
+            "name": "region_name",
+            "refers": "parents.dealership.region_name"
         },
         {
-            "name": "return_type",
+            "name": "type",
             "type": "text",
             "options": [
                 "Customer Return",
@@ -85,7 +71,7 @@
             "indexed": true
         },
         {
-            "name": "return_reason",
+            "name": "reason",
             "type": "text",
             "options": [
                 "End of Test Drive",
@@ -101,15 +87,16 @@
         },
         {
             "name": "return_date",
-            "type": "datetime"
+            "type": "datetime",
+            "auto_updater": true
         },
         {
-            "name": "odometer_at_return",
+            "name": "odometer",
             "type": "number",
             "units": "km"
         },
         {
-            "name": "fuel_level_at_return",
+            "name": "fuel_level",
             "type": "number",
             "units": "litres"
         },
@@ -141,7 +128,7 @@
             "title": "Inspection Staff Name"
         },
         {
-            "name": "return_verified_by",
+            "name": "verified_by",
             "type": "text",
             "title": "Return Verified By"
         },
@@ -186,7 +173,6 @@
             "ui_element": "select",
             "indexed": true
         },
-
         {
             "name": "pickup_required",
             "type": "bool",
@@ -199,9 +185,14 @@
             "ui_element": "textarea"
         },
         {
-            "name": "return_mode",
+            "name": "type_of_pickup_mode",
             "type": "text",
-            "options": ["In-Person", "Home Pickup", "Third-Party Courier", "OEM Logistic"],
+            "options": [
+                "In-Person",
+                "Home Pickup",
+                "Third-Party Courier",
+                "OEM Logistic"
+            ],
             "ui_element": "select"
         },
         {
@@ -210,26 +201,14 @@
             "title": "System/Manual Acknowledgement ID"
         },
         {
-            "name": "return_receipt_url",
-            "type": "text",
-            "ui_element": "file",
-            "title": "Upload Return Receipt"
-        },
-        {
             "name": "inspection_report_url",
             "type": "text",
             "ui_element": "file",
             "title": "Upload Inspection Report"
         },
         {
-            "name": "replacement_vehicle_id",
-            "refers": "parents.vehicle.vehicle_id",
-            "title": "Replacement Vehicle (if provided)"
-        },
-        {
             "name": "refund_amount",
             "type": "number",
-            "units": "INR",
             "title": "Refund Amount (if applicable)"
         },
         {
@@ -244,11 +223,14 @@
             "default": false,
             "title": "Quality Check Passed after Return"
         },
-
         {
             "auto_updater": true,
             "default": {
-                "args": ["vehicle_reg_number", "return_date", "return_type"],
+                "args": [
+                    "vehicle_reg_number",
+                    "return_date",
+                    "return_type"
+                ],
                 "function": "name_to_id",
                 "kwargs": {
                     "attribute_join": " ",
