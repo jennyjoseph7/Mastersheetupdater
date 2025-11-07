@@ -84,13 +84,15 @@
             "name" : "campaign_id",
             "type" : "text",
             "indexed" : true,
-            "default" : "inbound"
+            "default" : "inbound",
+            "required":true
         },
         {
             "name" : "campaign_type",
             "type" : "text",
             "options" : ["inbound","pre_sales","post_sales","dealer"],
-            "default" : "inbound"
+            "default" : "inbound",
+            "required":true
         },
         {
             "name" : "origin",
