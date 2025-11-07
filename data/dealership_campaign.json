@@ -99,6 +99,7 @@
         "name": "language",
         "default": "english",
         "option_other": true,
+        "ui_element": "multiselect",
         "options": [
           "english",
           "hindi",
@@ -115,57 +116,13 @@
       },
       {
         "name": "urgency_hook",
-        "type": "list",
-        "options": [
-          "Only 10 cars left",
-          "Valid this week",
-          "First 25 customers bonus",
-          "Limited time",
-          "Book today"
-        ],
-        "option_others": true
-      },
-
-      {
-        "name": "template_id",
-        "type": "text",
-        "required": true
-      },
-      {
-        "name": "template_type",
         "type": "text"
       },
       {
-        "name": "template_variables",
-        "type": "list"
-      },
-      {
-        "name": "template_buttons_payload",
-        "type": "list"
-      },
-      {
-        "name": "cta",
-        "type": "string_list"
-      },
-      {
-        "name": "template_media_id",
-        "type": "text"
-      },
-      {
-        "name": "media_file_name",
-        "type": "text"
-      },
-      {
-        "name": "template_media_type",
-        "type": "text"
-      },
-      {
-        "name": "template_media_url",
-        "type": "text"
-      },
-      {
-        "name": "template_payload",
-        "type": "text"
+        "name": "ctas",
+        "type": "string_list",
+        "list_type": "text",
+        "ui_element": "tags"
       },
       {
         "name": "number_targeted",

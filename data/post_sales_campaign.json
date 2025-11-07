@@ -20,7 +20,27 @@
         "function": "now_ctime"
       }
     },
-
+    {
+      "name": "workshop_id",
+      "refers": "parents.workshop.workshop_id",
+      "required": true
+    },
+    {
+      "name": "dealership_name",
+      "refers": "parents.workshop.dealership_name"
+    },
+    {
+      "name": "region_name",
+      "refers": "parents.workshop.region_name"
+    },
+    {
+      "name": "workshop_code",
+      "refers": "parents.workshop.workshop_code"
+    },
+    {
+      "name": "workshop_name",
+      "refers": "parents.workshop.workshop_name"
+    },
     {
       "name": "campaign_name",
       "type": "text",
@@ -126,48 +146,6 @@
     },
 
     {
-      "name": "template_id",
-      "type": "text",
-      "required": true
-    },
-    {
-      "name": "template_type",
-      "type": "text"
-    },
-    {
-      "name": "template_variables",
-      "type": "list"
-    },
-    {
-      "name": "template_buttons_payload",
-      "type": "list"
-    },
-    {
-      "name": "cta",
-      "type": "string_list"
-    },
-    {
-      "name": "template_media_id",
-      "type": "text"
-    },
-    {
-      "name": "media_file_name",
-      "type": "text"
-    },
-    {
-      "name": "template_media_type",
-      "type": "text"
-    },
-    {
-      "name": "template_media_url",
-      "type": "text"
-    },
-    {
-      "name": "template_payload",
-      "type": "text"
-    },
-
-    {
       "name": "number_targeted",
       "type": "number"
     },
@@ -228,6 +206,7 @@
       "default": {
         "function": "make_uuid3",
         "args": [
+          "workshop_name",
           "campaign_name",
           "start_date",
           "campaign_type",
@@ -238,5 +217,6 @@
       "type": "uid",
       "id": true
     }
-  ]
+  ],
+  "parents": ["workshop"]
 }

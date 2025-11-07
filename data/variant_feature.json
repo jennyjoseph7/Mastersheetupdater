@@ -23,6 +23,8 @@
     { "name": "feature_category", "refers": "parents.feature.feature_category" },
     { "name": "aliases", "refers": "parents.feature.aliases" },
     { "name": "feature_description", "refers": "parents.feature.feature_description" },
+    { "name": "additional_cost", "refers": "parents.feature.additional_cost" },
+    { "name": "additional_cost_unit", "refers": "parents.feature.additional_cost_unit" },
 
     {
       "name": "feature_category",
@@ -37,30 +39,26 @@
       "refers": "parents.feature.availability_status"
     },
     {
+      "name": "images",
+      "refers": "parents.feature.images"
+
+    },
+    {
+      "name": "videos",
+      "refers": "parents.feature.videos"
+
+    },
+
+    {
       "name": "feature_value",
       "type": "text",
       "title": "Feature Value / Specification"
     },
     {
-      "auto_updater" : true,
       "name": "unit_of_measure",
       "refers": "parents.feature.unit_of_measure"
     },
-    {
-      "name": "is_standard",
-      "type": "bool",
-      "default": false
-    },
-    {
-      "name": "is_optional",
-      "type": "bool",
-      "default": false
-    },
-    {
-      "name": "is_package_feature",
-      "type": "bool",
-      "default": false
-    },
+
     {
       "name": "package_name",
       "type": "text",
@@ -73,22 +71,15 @@
     },
     {
       "name": "launch_date",
-      "type": "datetime"
+      "type": "datetime",
+      "auto_updater":true
     },
     {
       "name": "discontinuation_date",
-      "type": "datetime"
+      "type": "datetime",
+      "auto_updater":true
     },
-    {
-      "name": "images",
-      "type": "list",
-      "title": "Feature Images"
-    },
-    {
-      "name": "videos",
-      "type": "list",
-      "title": "Feature Videos"
-    },
+ 
     {
       "name": "remarks",
       "type": "text"
@@ -97,7 +88,8 @@
       "name": "status",
       "type": "text",
       "options": ["Active", "Inactive", "Discontinued"],
-      "ui_element": "select"
+      "ui_element": "select",
+      "default":"Active"
     },
     {
       "auto_updater": true,
