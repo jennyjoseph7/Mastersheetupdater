@@ -3,161 +3,243 @@
     "name": "dealership_campaign",
     "model_type": "default",
     "attributes": [
-        {
-            "name": "created",
-            "type": "number",
-            "auto_updater": true,
-            "default": {
-                "function": "now_ctime"
-            }
-        },
-        {
-            "name": "updated",
-            "type": "number",
-            "auto_updater": true,
-            "force_update": true,
-            "default": {
-                "function": "now_ctime"
-            }
-        },
-        {
-            "name": "region_id",
-            "refers": "parents.region.region_id"
-        },
-        {
-            "name": "region_name",
-            "refers": "parents.region.region_name"
-        },
-        {
-            "name": "campaign_name",
-            "type": "text",
-            "indexed": true
-        },
-        {
-            "name": "campaign_type",
-            "type": "text",
-            "options": [
-                "Lead Generation",
-                "Brand Awareness",
-                "Sales Promotion",
-                "After-Sales Service",
-                "Event",
-                "Digital Ad",
-                "Referral Program",
-                "Other"
-            ]
-        },
-        {
-            "name": "description",
-            "type": "text"
-        },
-        {
-            "name": "start_date",
-            "type": "datetime"
-        },
-        {
-            "name": "end_date",
-            "type": "datetime"
-        },
-        {
-            "name": "channels_used",
-            "type": "list",
-            "options": [
-                "Facebook",
-                "Instagram",
-                "Google Ads",
-                "Email",
-                "SMS",
-                "WhatsApp",
-                "Telemarketing",
-                "Print Media",
-                "Event",
-                "Billboard"
-            ]
-        },
-        {
-            "name": "number_targeted",
-            "type": "number"
-        },
-        {
-            "name": "number_reached",
-            "type": "number"
-        },
-        
-        {
-            "name": "number_contacted",
-            "type": "number"
-        },
-        {
-            "name": "number_engaged",
-            "type": "number"
-        },
-        {
-            "name": "number_converted",
-            "type": "number"
-        },
-        {
-            "name": "budget_allocated",
-            "type": "number"
-        },
-        {
-            "name": "actual_spent",
-            "type": "number"
-        },
-        {
-            "name": "conversion_rate_percent",
-            "type": "number",
-            "default":{
-                "function": "divide_attributes",
-                "args":["number_converted","number_contacted"]
-            }
-        },
-        {
-            "name": "cost_per_lead",
-            "type": "number",
-            "default":{
-                "function": "divide_attributes",
-                "args":["actual_spent", "number_converted"]
-            }
-        },
-        {
-            "name": "campaign_status",
-            "type": "text",
-            "options": [
-                "Planned",
-                "Active",
-                "Completed",
-                "On Hold",
-                "Cancelled"
-            ]
-        },
-        {
-            "name": "responsible_person",
-            "type": "text"
-        },
-        {
-            "name": "remarks",
-            "type": "text"
-        },
-        {
-            "auto_updater": true,
-            "default": {
-                "args": [
-                    "dealership_name",
-                    "campaign_name",
-                    "start_date"
-                ],
-                "function": "name_to_id",
-                "kwargs": {
-                    "attribute_join": " ",
-                    "is_unique": true,
-                    "separator": " - "
-                }
-            },
-            "name": "dealership_campaign_id",
-            "type": "uid",
-            "id": true
+      {
+        "name": "created",
+        "type": "number",
+        "auto_updater": true,
+        "default": {
+          "function": "now_ctime"
         }
+      },
+      {
+        "name": "updated",
+        "type": "number",
+        "auto_updater": true,
+        "force_update": true,
+        "default": {
+          "function": "now_ctime"
+        }
+      },
+      {
+        "name": "region_id",
+        "refers": "parents.region.region_id"
+      },
+      {
+        "name": "region_name",
+        "refers": "parents.region.region_name"
+      },
+      {
+        "name": "campaign_name",
+        "type": "text",
+        "indexed": true
+      },
+      {
+        "name": "campaign_type",
+        "type": "list",
+        "options": ["pre-sales", "post-sales", "dealership"],
+        "default": "dealership"
+      },
+      {
+        "name": "campaign_user_source",
+        "type": "nested_object",
+        "required": true
+      },
+      {
+        "name": "campaign_objective",
+        "type": "list",
+        "options": [
+          "Lead Generation",
+          "Brand Awareness",
+          "Sales Promotion",
+          "After-Sales Service",
+          "Event",
+          "Digital Ad",
+          "Referral Program",
+          "Other"
+        ],
+        "option_others": true
+      },
+      {
+        "name": "campaign_offer",
+        "type": "text"
+      },
+      {
+        "name": "campaign_description",
+        "type": "text"
+      },
+      {
+        "name": "start_date",
+        "type": "datetime"
+      },
+      {
+        "name": "end_date",
+        "type": "datetime"
+      },
+      {
+        "name": "channels",
+        "type": "list",
+        "options": [
+          "rcs",
+          "email",
+          "web_chat",
+          "web_chat_voice",
+          "fb_chat",
+          "insta_chat",
+          "twitter_chat",
+          "voice_phone",
+          "whatsapp_chat",
+          "whatsapp_voice_note",
+          "whatsapp_voice_call",
+          "zoom_bot",
+          "ms_teams"
+        ],
+        "ui_element": "multiselect"
+      },
+      {
+        "name": "language",
+        "default": "english",
+        "option_other": true,
+        "options": [
+          "english",
+          "hindi",
+          "kannada",
+          "telugu",
+          "tamil",
+          "malayalam",
+          "odia",
+          "bengali",
+          "marathi",
+          "gujurati"
+        ],
+        "type": "list"
+      },
+      {
+        "name": "urgency_hook",
+        "type": "list",
+        "options": [
+          "Only 10 cars left",
+          "Valid this week",
+          "First 25 customers bonus",
+          "Limited time",
+          "Book today"
+        ],
+        "option_others": true
+      },
+
+      {
+        "name": "template_id",
+        "type": "text",
+        "required": true
+      },
+      {
+        "name": "template_type",
+        "type": "text"
+      },
+      {
+        "name": "template_variables",
+        "type": "list"
+      },
+      {
+        "name": "template_buttons_payload",
+        "type": "list"
+      },
+      {
+        "name": "cta",
+        "type": "string_list"
+      },
+      {
+        "name": "template_media_id",
+        "type": "text"
+      },
+      {
+        "name": "media_file_name",
+        "type": "text"
+      },
+      {
+        "name": "template_media_type",
+        "type": "text"
+      },
+      {
+        "name": "template_media_url",
+        "type": "text"
+      },
+      {
+        "name": "template_payload",
+        "type": "text"
+      },
+      {
+        "name": "number_targeted",
+        "type": "number"
+      },
+      {
+        "name": "number_reached",
+        "type": "number"
+      },
+      {
+        "name": "number_contacted",
+        "type": "number"
+      },
+      {
+        "name": "number_engaged",
+        "type": "number"
+      },
+      {
+        "name": "number_converted",
+        "type": "number"
+      },
+      {
+        "name": "budget_allocated",
+        "type": "number"
+      },
+      {
+        "name": "actual_spent",
+        "type": "number"
+      },
+      {
+        "name": "conversion_rate_percent",
+        "type": "number",
+        "default": {
+          "function": "divide_attributes",
+          "args": ["number_converted", "number_contacted"]
+        }
+      },
+      {
+        "name": "cost_per_lead",
+        "type": "number",
+        "default": {
+          "function": "divide_attributes",
+          "args": ["actual_spent", "number_converted"]
+        }
+      },
+      {
+        "name": "campaign_status",
+        "type": "text",
+        "options": ["Planned", "Active", "Completed", "On Hold", "Cancelled"]
+      },
+      {
+        "name": "responsible_person",
+        "type": "text"
+      },
+      {
+        "name": "remarks",
+        "type": "text"
+      },
+
+      {
+        "name": "campaign_id",
+        "type": "uid",
+        "indexed": true,
+        "id": true,
+        "default": {
+          "function": "make_uuid3",
+          "args": [
+            "campaign_name",
+            "start_date",
+            "campaign_type",
+            "campaign_objective"
+          ]
+        }
+      }
     ],
     "parents": [
         "region"

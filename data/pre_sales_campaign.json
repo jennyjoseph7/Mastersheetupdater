@@ -21,8 +21,9 @@
       }
     },
     {
-        "name":"dealership_id",
-        "refers":"parents.dealership.dealership_id"
+      "name": "dealership_id",
+      "refers": "parents.dealership.dealership_id",
+      "required": true
     },
     {
       "name": "dealer_name",
@@ -32,7 +33,7 @@
       "name": "dealership_type",
       "refers": "parents.dealership.dealership_type"
     },
-   
+
     {
       "name": "region_name",
       "refers": "parents.dealership.region_name"
@@ -43,73 +44,157 @@
       "indexed": true
     },
     {
-        "name":"channels",
-        "refers": "parents.dealership.region_name"
-        
+      "name": "campaign_type",
+      "type": "list",
+      "options": ["pre-sales", "post-sales", "dealership"],
+      "default": "pre-sales"
     },
     {
-        "name": "campaign_type",
-        "type": "list",
-        "options": [
-          "Awareness",
-          "Lead Generation",
-          "Lead Qualification",
-          "Sales Promotion",
-          "Lead Nurture",
-          "Cross Sell",
-          "Other"
-        ]
-      },
-    {
-        "name":"campaign_sub_type",
-        "type":"list",
-        "options":[
-            "brand awareness",
-            "product awareness",
-            "event",
-            "lead generation"
-        ]
+      "name": "campaign_user_source",
+      "type": "nested_object",
+      "required": true
     },
     {
       "name": "campaign_objective",
+      "type": "list",
+      "options": [
+        "Awareness",
+        "Lead Generation",
+        "Lead Qualification",
+        "Sales Promotion",
+        "Lead Nurture",
+        "Cross Sell",
+        "Other"
+      ],
+      "option_others": true
+    },
+    {
+      "name": "campaign_sub_type",
+      "type": "list",
+      "options": [
+        "brand awareness",
+        "product awareness",
+        "event",
+        "lead generation"
+      ],
+      "option_others": true
+    },
+    {
+      "name": "campaign_objective_type",
+      "type": "list",
+      "options": ["lead volume", "budget based", "roi target"]
+    },
+    {
+      "name": "campaign_offer",
       "type": "text"
     },
     {
-        "name":"campaign_objective_type",
-        "type":"list",
-        "options":[
-            "lead volume",
-            "budget based",
-            "roi target"
-        ]
+      "name": "campaign_description",
+      "type": "text"
     },
     {
-      "name": "campaign_start_date",
+      "name": "start_date",
       "type": "number"
     },
     {
-      "name": "campaign_end_date",
+      "name": "end_date",
       "type": "number"
     },
     {
-        "name":"campaign_user_source",
-        "type":"nested_object",
-        "required":true
+      "name": "channels",
+      "refers": "parents.dealership.channels"
     },
     {
-      "name": "target_audience",
+      "name": "language",
+      "default": "english",
+      "option_other": true,
+      "options": [
+        "english",
+        "hindi",
+        "kannada",
+        "telugu",
+        "tamil",
+        "malayalam",
+        "odia",
+        "bengali",
+        "marathi",
+        "gujurati"
+      ],
+      "type": "text"
+    },
+    {
+      "name": "urgency_hook",
       "type": "list",
-      "options":[
-        "upload_csv",
-        "autoselect"
-    ]
+      "options": [
+        "Only 10 cars left",
+        "Valid this week",
+        "First 25 customers bonus",
+        "Limited time",
+        "Book today"
+      ],
+      "option_others": true
+    },
+
+    {
+      "name": "template_id",
+      "type": "text",
+      "required": true
     },
     {
-      "name": "target_vehicle_models",
+      "name": "template_type",
+      "type": "text"
+    },
+    {
+      "name": "template_variables",
       "type": "list"
     },
     {
-      "name": "expected_leads",
+      "name": "template_buttons_payload",
+      "type": "list"
+    },
+    {
+      "name": "cta",
+      "type": "string_list"
+    },
+    {
+      "name": "template_media_id",
+      "type": "text"
+    },
+    {
+      "name": "media_file_name",
+      "type": "text"
+    },
+    {
+      "name": "template_media_type",
+      "type": "text"
+    },
+    {
+      "name": "template_media_url",
+      "type": "text"
+    },
+    {
+      "name": "template_payload",
+      "type": "text"
+    },
+
+    {
+      "name": "number_targeted",
+      "type": "number"
+    },
+    {
+      "name": "number_reached",
+      "type": "number"
+    },
+    {
+      "name": "number_contacted",
+      "type": "number"
+    },
+    {
+      "name": "number_engaged",
+      "type": "number"
+    },
+    {
+      "name": "number_converted",
       "type": "number"
     },
     {
@@ -121,17 +206,20 @@
       "type": "number"
     },
     {
-      "name": "leads_generated",
-      "type": "number"
-    },
-    
-    {
       "name": "conversion_rate_percent",
-      "type": "number"
+      "type": "number",
+      "default": {
+        "function": "divide_attributes",
+        "args": ["number_converted", "number_contacted"]
+      }
     },
     {
-      "name": "roi_percent",
-      "type": "number"
+      "name": "cost_per_lead",
+      "type": "number",
+      "default": {
+        "function": "divide_attributes",
+        "args": ["actual_spent", "number_converted"]
+      }
     },
     {
       "name": "campaign_status",
@@ -143,29 +231,21 @@
       "type": "text"
     },
     {
-      "name": "responsible_contact",
-      "type": "text"
-    },
-    {
       "name": "remarks",
       "type": "text"
     },
     {
-      "name": "attachments",
-      "type": "list"
-    },
-    {
-      "auto_updater": true,
       "default": {
-        "args": ["dealership_name", "campaign_name", "start_date"],
-        "function": "name_to_id",
-        "kwargs": {
-          "attribute_join": " ",
-          "is_unique": true,
-          "separator": " - "
-        }
+        "function": "make_uuid3",
+        "args": [
+          "dealership_name",
+          "campaign_name",
+          "start_date",
+          "campaign_type",
+          "campaign_objective"
+        ]
       },
-      "name": "pre_sales_campaign_id",
+      "name": "campaign_id",
       "type": "uid",
       "id": true
     }
