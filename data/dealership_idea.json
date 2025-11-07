@@ -67,5 +67,8 @@
                     "name": "notes",
                     "type": "text"
                 }
-            ]
+            ],
+            "parents": [
+                "dealership"
+    ]
         }
