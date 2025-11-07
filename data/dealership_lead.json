@@ -144,7 +144,6 @@
     ],
     "parents": [
         "dealership",
-        "dealership_campaign",
-        "brand"
+        "dealership_campaign"
     ]
 }
