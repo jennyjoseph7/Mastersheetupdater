@@ -41,7 +41,9 @@ orchestrator will output
     a) if pure single sequence it will call it without doing sqs or anything
     b) if branching is there, then it will do yield results. if dependencies are there, then multi level yieldresults.
 
-
+Every agent returning placeholder in async -
+    first response sent as is
+    second reponse onwards check if anything extra, rephrase if needed and then send to the channels
 
 
 Important Notes
