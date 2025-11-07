@@ -112,11 +112,17 @@
     },
     {
       "name": "launch_date",
-      "type": "datetime"
+      "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
     },
     {
       "name": "discontinuation_date",
-      "type": "datetime"
+      "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
     },
     {
       "name": "compatible_variants",
