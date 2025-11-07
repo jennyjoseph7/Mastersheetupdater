@@ -51,5 +51,9 @@
                 "function":"to_lowercase"
             }
         }
+    ],
+
+    "parents":[
+        "campaign_workflow"
     ]
 }
