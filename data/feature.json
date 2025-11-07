@@ -20,17 +20,10 @@
                 "function": "now_ctime"
             }
         },
-
-        {
-            "atype": "stringlist",
-            "name": "aliases",
-            "type":"list"
-        },
         {
             "name": "feature_category",
             "type": "text",
             "options": [
-
                 "general",
                 "branding_and_looks",
                 "safety_and_environment",
@@ -48,12 +41,20 @@
             "indexed": true
         },
         {
+            "name": "aliases",
+            "type":"string_list",
+            "converter" : {
+                "function" : "ensure_in_list",
+                "args" : ["feature_name"]
+            }
+        },
+        {
             "name": "feature_type",
             "type": "text",
             "options": [
                 "Standard",
                 "Optional",
-                "Add-on",
+                "Add-On",
                 "Package-only"
             ],
             "ui_element": "select"
@@ -199,7 +200,7 @@
     {
         "auto_updater": true,
         "default": {
-          "args": ["oem_name", "feature_name"],
+          "args": ["feature_category","feature_name","value","unit"],
           "function": "name_to_id",
           "kwargs": {
             "attribute_join": " ",
@@ -213,11 +214,8 @@
       },
         {
             "name":"replacement",
-            "type" :"text"
-
-
+            "type" :"string_list",
+            "placeholder" : "feature_ids list that can replace this feature"
         }
-    ],
-    "parents": ["oem"
     ]
 }
