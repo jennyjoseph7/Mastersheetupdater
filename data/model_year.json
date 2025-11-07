@@ -83,7 +83,7 @@
     },
     {
       "name": "major_changes",
-      "type": "multi_select",
+      "type": "multiselect",
       "options": [
         "Exterior Design Update",
         "Interior Update",
