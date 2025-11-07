@@ -54,28 +54,30 @@
       "type": "nested_object",
       "required": true
     },
+    
     {
       "name": "campaign_objective",
       "type": "list",
       "options": [
-        "Awareness",
-        "Lead Generation",
-        "Lead Qualification",
-        "Sales Promotion",
-        "Lead Nurture",
-        "Cross Sell",
-        "Other"
-      ],
-      "option_others": true
-    },
-    {
-      "name": "campaign_sub_type",
-      "type": "list",
-      "options": [
-        "brand awareness",
-        "product awareness",
-        "event",
-        "lead generation"
+        "Product Launch / Reveal",
+        "Event Promotion",
+        "Cold List Activation",
+        "Event/Expo Data Activation",
+        "Dormant CRM Reactivation",
+        "Interest Confirmation & Qualification",
+        "Profile Completion Campaign",
+        "Dealer / OEM Offer Promotion",
+        "Exchange / Loyalty Bonus Offer",
+        "EMI / Finance Scheme Push",
+        "Year-End / Stock Clearance",
+        "New Variant / Feature Highlight",
+        "Price Drop / Offer Re-Nudge",
+        "Comparison / Decision Aid Campaign",
+        "Test Drive Reminder / Showroom Visit Reminder / Follow-Up",
+        "Accessory Promotion",
+        "Insurance / Finance Add-On",
+        "Upgrade Offer for Existing Owner",
+        "Custom Campaign"
       ],
       "option_others": true
     },
@@ -118,7 +120,7 @@
         "odia",
         "bengali",
         "marathi",
-        "gujurati"
+        "gujarati"
       ],
       "type": "text"
     },
