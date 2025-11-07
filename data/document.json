@@ -75,6 +75,22 @@
             }
         },
         {
+            "name" : "document_type",
+            "type" : "text",
+            "options" : [
+                "txt",
+                "pdf",
+                "doc",
+                "docx",
+                "xls",
+                "xlsx",
+                "csv",
+                "html",
+                "xml",
+                "json"
+            ]
+        },
+        {
             "required": false,
             "name": "original_name",
             "type": "text"
