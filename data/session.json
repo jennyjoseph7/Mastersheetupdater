@@ -95,9 +95,63 @@
             "required":true
         },
         {
+            "name": "campaign_model",
+            "type": "text",
+            "options": [
+                "pre_sales_campaign",
+                "post_sales_campaign",
+                "dealership_campaign"
+            ],
+            "auto_updater": true,
+            "force_update": [
+                "campaign_id"
+            ],
+            "default": {
+                "function": "attribute_mapper",
+                "args": [
+                    "campaign_type",
+                    null
+                ],
+                "kwargs": {
+                    "pre-sales": "pre_sales_campaign",
+                    "post-sales": "post_sales_campaign",
+                    "dealership": "dealership_campaign"
+                }
+            }
+        },
+        {
+            "name": "lead_model",
+            "type": "text",
+            "options": [
+                "pre_sales_lead",
+                "post_sales_lead",
+                "dealership_lead"
+            ],
+            "auto_updater": true,
+            "force_update": [
+                "campaign_id"
+            ],
+            "default": {
+                "function": "attribute_mapper",
+                "args": [
+                    "campaign_type",
+                    null
+                ],
+                "kwargs": {
+                    "pre-sales": "pre_sales_lead",
+                    "post-sales": "post_sales_lead",
+                    "dealership": "dealership_lead"
+                }
+            }
+        },
+        {
             "name" : "origin",
             "type" : "text",
             "required" : false
+        },
+        {
+            "name": "referrer",
+            "type": "text"
         },
         {
             "name" : "id_salt",
@@ -124,6 +178,22 @@
                     "channel"
                 ]
             }
+        },
+        { "name": "utm_source",
+            "type": "text"
+        },
+        { "name": "utm_medium",
+            "type": "text"
+        },
+        { "name": "utm_campaign",
+            "type": "text"
+        },
+        {
+            "name": "utm_term",
+            "type": "text"
+        },
+        { "name": "utm_content",
+            "type": "text"
         },
         {
             "name" : "browser",
