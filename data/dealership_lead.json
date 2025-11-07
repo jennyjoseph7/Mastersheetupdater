@@ -29,12 +29,8 @@
             "refers": "parents.dealership.dealer_name"
         },
         {
-            "name": "brand_id",
-            "refers": "parents.brand.brand_id"
-        },
-        {
-            "name": "brand_name",
-            "refers": "parents.brand.brand_name"
+            "name": "supported_brands",
+            "refers": "parents.dealership.supported_brands"
         },
         {
             "name": "region_id",
