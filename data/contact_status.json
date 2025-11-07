@@ -30,6 +30,32 @@
             "name" : "session_id",
             "type" : "text" 
         },
+        {
+            "name":"phone_number",
+            "type":"number",
+            "default":{
+                "function":"get_from_model",
+                "args":[
+                    "session",
+                    "session_id",
+                    "phone_number"
+                ]
+            },
+            "indexed":true
+        },
+        {
+            "name":"email",
+            "type":"number",
+            "default":{
+                "function":"get_from_model",
+                "args":[
+                    "session",
+                    "session_id",
+                    "email"
+                ]
+            },
+            "indexed":true
+        },
        {
             "name" : "campaign_id",
             "type" : "text",
@@ -43,6 +69,17 @@
             "options" : ["inbound","pre_sales","post_sales","dealer"],
             "default" : "inbound",
             "required":true
+        },
+        {
+            "name":"campaign_end_date",
+            "type":"number",
+            "default":{
+                "function":"get_campaign_end_date",
+                "args":[
+                    "campaign_id",
+                    "campaign_type"
+                ]
+            }
         },
         {
             "name":"provider_status",

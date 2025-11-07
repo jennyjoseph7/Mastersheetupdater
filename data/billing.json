@@ -63,33 +63,19 @@
         },
         {
             "name": "billing_address",
-            "type": "text",
-            "required": true,
-            "indexed": true
+            "refers": "parents.dealership.dealership_address"
         },
         {
             "name": "billing_contact_name",
-            "type": "text",
-            "required": true,
-            "indexed": true
+            "refers": "parents.dealership.billing_contact_name"
         },
         {
             "name": "billing_contact_email",
-            "type": "text",
-            "constraint": {
-                "function": "email_validator"
-            },
-            "required": true,
-            "indexed": true
+            "refers": "parents.dealership.billing_contact_email"
         },
         {
             "name": "billing_contact_phone",
-            "type": "text",
-            "constraint": {
-                "function": "phone_validator"
-            },
-            "required": true,
-            "indexed": true
+            "refers": "parents.dealership.billing_contact_phone"
         },
         {
             "name": "payment_mode",
@@ -118,6 +104,10 @@
         {
             "name": "transaction_id",
             "type": "text",
+            "default":{
+                "function": "generate_transaction_id"
+            },
+            "auto_updater": true,
             "indexed": true
         },
         {
@@ -185,7 +175,15 @@
         },
         {
             "name": "credit_balance_before",
-            "type": "number"
+            "type": "number",
+            "default":{
+                "function":"get_from_model",
+                "args":[
+                    "dealership",
+                    "dealership_id",
+                    "credits_balance"
+                ]
+            }
         },
         {
             "name": "credit_balance_after",

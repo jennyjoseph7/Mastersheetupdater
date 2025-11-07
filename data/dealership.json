@@ -29,7 +29,8 @@
         {
             "name": "credits_balance",
             "type": "number",
-            "units": "credits"
+            "units": "credits",
+            "default": 0
         },
         {
             "name": "dealer_group_id",
@@ -183,6 +184,28 @@
                     "dealer_group_id",
                     "year_established"
                 ]
+            }
+        },
+                {
+            "name": "billing_address",
+            "type": "text"
+        },
+        {
+            "name": "billing_contact_name",
+            "type": "text"
+        },
+        {
+            "name": "billing_contact_email",
+            "type": "text",
+            "constraint": {
+                "function": "email_validator"
+            }
+        },
+        {
+            "name": "billing_contact_phone",
+            "type": "text",
+            "constraint": {
+                "function": "phone_validator"
             }
         },
         {

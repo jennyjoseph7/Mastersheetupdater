@@ -1,1 +1,75 @@
-{}
+{
+    "timezone": "Asia/Kolkata",
+    "name": "dealership",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name":"start_date",
+            "type":"number"
+        },
+        {
+            "name":"end_date",
+            "type":"number"
+        },
+        {
+            "name":"quick_select",
+            "type":"text",
+            "options":[
+                "month",
+                "week",
+                "two_months",
+                "three_months",
+                "quarter",
+                "year"
+            ]
+        },
+        {
+            "name":"dealership_id",
+            "refers":"parents.dealership.dealership_id",
+            "required":true
+        },
+        {
+            "name": "dealer_name",
+            "refers": "parents.dealership.dealership_name"
+        },
+        {
+            "name":"total_billed_amount",
+            "type":"number",
+            "default":{
+                "function":"calulate_total_billing_amount",
+                "args":[
+                    "billing",
+                    "sum"
+                ]
+            }
+        },
+        {
+            "name":"generate_invoice",
+            "type":"text",
+            "default":{
+                "function":"generate_billing_invoice",
+                "args":["billing"]
+            }
+        }
+    ],
+    "parents": [
+        "dealership"    
+    ]
+}
