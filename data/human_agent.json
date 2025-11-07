@@ -62,6 +62,11 @@
             "default": true
         },
         {
+            "name" : "engaged",
+            "type" : "boolean",
+            "default" : false
+        },
+        {
             "name" : "availability",
             "type" : "nested_object",
             "dict_keys": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
