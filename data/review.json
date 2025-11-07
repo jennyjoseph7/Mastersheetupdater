@@ -49,10 +49,43 @@
             "refers": "parents.showroom_visit.purpose_of_visit"
         },
         {
-            "name": "model_name",
-            "refers": "parents.showroom_visit.model_name"
-        },        
-
+            "name": "models_interested_in",
+            "refers": "parents.showroom_visit.models_interested_in"
+        },
+        {
+            "name": "variants_interested_in",
+            "refers": "parents.showroom_visit.variants_interested_in"
+        },
+        {
+            "name": "test_drive_offered",
+            "type": "boolean",
+            "default": false
+        },
+        {
+            "name": "test_drive_done",
+            "type": "boolean",
+            "default": false
+        },
+        {
+            "name": "visit_helped_in_decision",
+            "type": "boolean",
+            "default": false
+        },
+        {
+            "name": "able_to_make_a_decision",
+            "type": "boolean",
+            "default": false
+        },
+        {
+            "name": "competitor_brands_considered",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "likely_to_purchase_models",
+            "type": "list",
+            "list_type": "text"
+        },
         {
             "name": "source_type",
             "type": "text",
@@ -126,19 +159,43 @@
         },
         {
             "name": "sentiment",
-            "type": "text",
+            "type": "list",
+            "list_type": "text",
+            "ui_element": "tags",
+            "option_others": true,
             "options": [
                 "Positive",
                 "Neutral",
-                "Negative"
+                "Negative",
+                "Curious",
+                "Angry",
+                "Impressed",
+                "Disinterested",
+                "Disappointed",
+                "Happy",
+                "Surprised",
+                "Excited",
+                "Frustrated",
+                "Satisfied",
+                "Interested",
+                "Confused",
+                "Bored",
+                "Sleepy",
+                "Stressed",
+                "Anxious"
             ],
-            "ui_element": "select"
+            "converter": {
+                "function": "make_title"
+            }
+        },
+        {
+            "name": "sentiment_score",
+            "type": "number"
         },
         {
             "name": "feedback_category",
             "type": "text",
             "options": [
-                
                 "Suggestion",
                 "Complaint"
             ],
@@ -157,20 +214,12 @@
             "ui_element": "select"
         },
         {
-            "name": "response_text",
-            "type": "text",
-            "title": "Response Message",
-            "ui_element": "textarea"
-        },
-        {
             "name": "review_date",
-            "type": "datetime",
-            "auto_updater":true
+            "type": "datetime"
         },
         {
             "name": "resolved_date",
-            "type": "datetime",
-            "auto_updater":true
+            "type": "datetime"
         },
         {
             "name": "review_status",
@@ -196,16 +245,18 @@
             "auto_updater": true,
             "default": {
                 "args": [
-                    "dealership_name",
+                    "showroom_name",
+                    "phone_number",
+                    "email",
                     "person_name",
-                    "review_type",
-                    "created"
+                    "visit_date"
                 ],
                 "function": "name_to_id",
                 "kwargs": {
-                    "attribute_join": " ",
+                    "attribute_join": "-",
                     "is_unique": true,
-                    "separator": " - "
+                    "separator": "-",
+                    "skip_empty": true
                 }
             },
             "name": "review_id",
