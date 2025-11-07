@@ -42,6 +42,7 @@
       "title": "Feature Value / Specification"
     },
     {
+      "auto_updater" : true,
       "name": "unit_of_measure",
       "refers": "parents.feature.unit_of_measure"
     },
