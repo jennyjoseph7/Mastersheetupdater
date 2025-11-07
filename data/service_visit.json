@@ -33,8 +33,6 @@
                 "function": "now_ctime"
             }
         },
-
-
         {
             "name": "variant_id",
             "refers": "parents.variant.variant_id"

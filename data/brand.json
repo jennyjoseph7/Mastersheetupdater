@@ -63,13 +63,24 @@
         "refers":"parents.region.region_level_guidelines"
     },
     {
-        "name":"guardrails",
+        "name":"region_level_guardrails",
         "refers":"parents.region.guardrails"
+    },
+    {
+      "name": "brand_level_guidelines",
+      "type": "text",
+      "ui_element": "textarea"
+    },
+    {
+      "name": "brand_level_guardrails",
+      "type": "text",
+      "ui_element": "textarea"
     },
     {
       "name": "brand_name",
       "type": "text",
-      "indexed": true
+      "indexed": true,
+      "required": true
     },
     {
       "name": "logo_url",
@@ -79,19 +90,27 @@
       },
      "converter": {
         "function": "url_converter"
-      }
+      },
+      "ui_element": "image"
     },
     {
       "name": "website",
-      "type": "text"
+      "type": "text",
+      "constraint": {
+        "function": "url_validator"
+      },
+     "converter": {
+        "function": "url_converter"
+      },
+      "ui_element": "url"
     },
     {
       "auto_updater": true,
       "default": {
-        "args": ["region_name","brand_name"],
+        "args": ["brand_name","oem_name","region_name"],
         "function": "name_to_id",
         "kwargs": {
-          "attribute_join": " ",
+          "attribute_join": "_",
           "is_unique": true,
           "separator": " - "
         }

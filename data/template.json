@@ -85,7 +85,7 @@
     },
     {
       "name": "template_payload",
-      "type": "text"
+      "type": "nested_object"
     },
     {
       "name": "language",
