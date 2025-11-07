@@ -1,0 +1,362 @@
+{
+    "name": "campaign_workflow",
+    "attributes": [
+        {
+            "name": "campaign_id",
+            "type": "text",
+            "indexed": true,
+            "required": true,
+            "refers": "parents.campaign.campaign_id"
+        },
+        {
+            "name": "campaign_type",
+            "type": "text",
+            "required": true,
+            "indexed": true,
+            "refers": "parents.campaign.campaign_type"
+        },
+        {
+            "name": "campaign_model",
+            "type": "text",
+            "options": [
+                "pre_sales_campaign",
+                "post_sales_campaign",
+                "dealership_campaign"
+            ],
+            "auto_updater": true,
+            "force_update": [
+                "campaign_id"
+            ],
+            "default": {
+                "function": "attribute_mapper",
+                "args": [
+                    "campaign_type",
+                    null
+                ],
+                "kwargs": {
+                    "pre-sales": "pre_sales_campaign",
+                    "post-sales": "post_sales_campaign",
+                    "dealership": "dealership_campaign"
+                }
+            }
+        },
+        {
+            "name": "campaign_name",
+            "refers": "parents.campaign.campaign_name"
+        },
+        {
+            "name": "campaign_objective",
+            "refers": "parents.campaign.campaign_objective"
+        },
+        {
+            "name": "dealership_id",
+            "type": "uid",
+            "force_update": [
+                "campaign_id"
+            ],
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealership_id",
+                    "dave"
+                ]
+            }
+        },
+        {
+            "name": "channel",
+            "type": "text",
+            "indexed": true,
+            "required": true,
+            "options": [
+                "rcs",
+                "whatsapp",
+                "email",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "voice_phone",
+                "whatsapp_chat",
+                "whatsapp_voice_note",
+                "whatsapp_voice_call",
+                "zoom_bot",
+                "ms_teams"
+            ]
+        },
+        {
+            "name": "provider_name",
+            "type": "text",
+            "options": "/options/communication_credentials/provider_name?dealership_id={dealership_id}&channel={channel}"
+        },
+        {
+            "name": "provider_name",
+            "type": "text",
+            "options": "/options/communication_credentials/provider_name?dealership_id={dealership_id}"
+        },
+        {
+            "name": "campaign_workflow_stage",
+            "type": "text",
+            "options": [
+                "pre-initiated",
+                "initiated",
+                "contacted",
+                "engaged",
+                "converted"
+            ],
+            "option_others": true
+        },
+        {
+            "name": "campaign_workflow_id",
+            "id": true,
+            "type": "uid",
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "channel",
+                    "campaign_id",
+                    "campaign_type",
+                    "campaign_objective",
+                    "campaign_workflow_stage"
+                ]
+            }
+        },
+        {
+            "name": "campaign_workflow_name",
+            "type": "text",
+            "force_update": [
+                "campaign_id",
+                "channel",
+                "campaign_objective",
+                "campaign_workflow_stage"
+            ],
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "campaign_name",
+                    "channel",
+                    "campaign_objective",
+                    "campaign_workflow_stage"
+                ],
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " "
+                }
+            }
+        },
+        {
+            "name": "channel_provider",
+            "type": "text",
+            "refers": "parents.channel_provider.channel_provider_name"
+        },
+        {
+            "name": "on_error_retries",
+            "type": "number",
+            "default": 0
+        },
+        {
+            "name": "on_error_delay",
+            "type": "number",
+            "default": 10
+        },
+        {
+            "name": "on_error_trigger_id",
+            "type": "uid",
+            "option_others": true,
+            "options": "/options/campaign_workflow/campaign_workflow_name"
+        },
+        {
+            "name": "on_failed_retries",
+            "type": "number",
+            "default": 3
+        },
+        {
+            "name": "on_failed_delay",
+            "type": "number",
+            "default": 600
+        },
+        {
+            "name": "on_failed_trigger_id",
+            "type": "uid",
+            "option_others": true,
+            "options": "/options/campaign_workflow/campaign_workflow_name"
+        },
+        {
+            "name": "on_failed_trigger",
+            "type": "nested_object",
+            "dict_keys": [
+                "task",
+                "service",
+                "kwargs",
+                "args",
+                "channel",
+                "channel_provider",
+                "template_type",
+                "template_name",
+                "template_id",
+                "language",
+                "template_variables",
+                "template_buttons_payload"
+            ]
+        },
+        {
+            "name": "on_attempted_retries",
+            "type": "number",
+            "default": 3
+        },
+        {
+            "name": "on_attempted_delay",
+            "type": "number",
+            "default": 600
+        },
+        {
+            "name": "on_attempted_trigger_id",
+            "type": "uid",
+            "option_others": true,
+            "options": "/options/campaign_workflow/campaign_workflow_name"
+        },
+        {
+            "name": "on_attempted_trigger",
+            "type": "nested_object",
+            "dict_keys": [
+                "task",
+                "service",
+                "kwargs",
+                "args",
+                "channel",
+                "channel_provider",
+                "template_type",
+                "template_name",
+                "template_id",
+                "language",
+                "template_variables",
+                "template_buttons_payload"
+            ]
+        },
+        {
+            "name": "on_reached_retries",
+            "type": "number",
+            "default": 0
+        },
+        {
+            "name": "on_reached_delay",
+            "type": "number",
+            "default": 10
+        },
+        {
+            "name": "on_reached_trigger_id",
+            "type": "uid",
+            "option_others": true,
+            "options": "/options/campaign_workflow/campaign_workflow_name"
+        },
+        {
+            "name": "on_reached_trigger",
+            "type": "nested_object",
+            "dict_keys": [
+                "channel",
+                "channel_provider",
+                "template_type",
+                "template_name",
+                "template_id",
+                "language",
+                "template_variables",
+                "template_buttons_payload"
+            ]
+        },
+        {
+            "name": "on_contacted_retries",
+            "type": "number",
+            "default": 1
+        },
+        {
+            "name": "on_contacted_delay",
+            "type": "number",
+            "default": 10
+        },
+        {
+            "name": "on_contacted_trigger_id",
+            "type": "uid",
+            "option_others": true,
+            "options": "/options/campaign_workflow/campaign_workflow_name"
+        },
+        {
+            "name": "on_contacted_trigger",
+            "type": "nested_object",
+            "dict_keys": [
+                "task",
+                "service",
+                "kwargs",
+                "args",
+                "channel",
+                "channel_provider",
+                "template_type",
+                "template_name",
+                "template_id",
+                "language",
+                "template_variables",
+                "template_buttons_payload"
+            ]
+        },
+        {
+            "name": "on_engaged_retries",
+            "type": "number",
+            "default": 1
+        },
+        {
+            "name": "on_engaged_delay",
+            "type": "number",
+            "default": 86400
+        },
+        {
+            "name": "on_engaged_trigger_id",
+            "type": "uid",
+            "option_others": true,
+            "options": "/options/campaign_workflow/campaign_workflow_name"
+        },
+        {
+            "name": "on_engaged_trigger",
+            "type": "nested_object",
+            "dict_keys": [
+                "task",
+                "service",
+                "kwargs",
+                "args",
+                "channel",
+                "channel_provider",
+                "template_type",
+                "template_name",
+                "template_id",
+                "language",
+                "template_variables",
+                "template_buttons_payload"
+            ]
+        },
+        {
+            "name": "on_converted_trigger_id",
+            "type": "uid",
+            "option_others": true,
+            "options": "/options/campaign_workflow/campaign_workflow_name"
+        },
+        {
+            "name": "on_converted_trigger",
+            "type": "nested_object",
+            "dict_keys": [
+                "task",
+                "service",
+                "kwargs",
+                "args",
+                "channel",
+                "channel_provider",
+                "template_type",
+                "template_name",
+                "template_id",
+                "language",
+                "template_variables",
+                "template_buttons_payload"
+            ]
+        }
+    ]
+}

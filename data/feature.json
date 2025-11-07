@@ -1,0 +1,219 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "feature",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+
+        {
+            "atype": "stringlist",
+            "name": "aliases",
+            "type":"list"
+        },
+        {
+            "name": "feature_category",
+            "type": "text",
+            "options": [
+
+                "general",
+                "branding_and_looks",
+                "safety_and_environment",
+                "comfort_and_convenience",
+                "technology_and_performance",
+                "infotainment_and_connectivity",                
+                "others"
+            ],
+            "ui_element": "select",
+            "indexed": true
+        },
+        {
+            "name": "feature_name",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "feature_",
+            "type": "text"
+        },
+        {
+            "name": "feature_type",
+            "type": "text",
+            "options": [
+                "Standard",
+                "Optional",
+                "Add-on",
+                "Package-only"
+            ],
+            "ui_element": "select"
+        },
+
+        {
+            "name": "tags",
+            "type": "string_list",
+            "ui_element": "multiselect",
+            "options": [
+              "premium",
+              "essential",
+              "popular",
+              "new",
+              "limited",
+              "electric",
+              "safety",
+              "luxury",
+              "comfort"
+            ],
+            "option_others": true
+          },
+        {
+            "name": "feature_description",
+            "type": "text",
+            "ui_element": "textarea"
+        },
+        {
+            "name": "value",
+            "type": "text"
+        },
+        {
+            "name": "unit",
+            "type": "text",
+            "required": false,
+
+            "options":[
+                "mm",
+                "cm",
+                "m",
+                "inch",
+                "ft",
+              
+                "litre",
+                "ml",
+                "gallon_us",
+                "gallon_uk",
+              
+                "kg",
+                "g",
+                "ton",
+              
+                "hp",
+                "bhp",
+                "ps",
+                "kw",
+              
+                "Nm",
+                "lb_ft",
+              
+                "sec",
+                "ms",
+              
+                "kmph",
+                "mph",
+              
+                "km",
+                "mile",
+              
+                "kWh",
+                "Wh",
+                "Ah",
+                "V",
+              
+                "deg",
+                "percent",
+              
+                "other"
+              ],              
+            "ui_element": "select"
+        },
+        {
+            "name": "value_type",
+            "type": "text",
+            "options": [
+                "number",
+                "category"
+
+            ],
+            "option_others": true,
+            "ui_element": "select"
+        },
+        {
+            "name": "images",
+            "type": "list",
+            "title": "Feature Images"
+        },
+        {
+            "name": "videos",
+            "type": "list",
+            "title": "Feature Videos"
+        },
+        {
+            "name": "additional_cost",
+            "type": "number",
+            "units": "INR"
+        },
+        {
+            "name": "additional_cost_unit",
+            "type": "list",
+            
+            "units": [
+                "INR",
+                "USD",
+                "EUR",
+                "GBP",
+                "JPY",
+                "AED",
+                "AUD",
+                "CAD",
+                "CNY",
+                "CHF",
+                "SGD",
+                "HKD",
+                "THB",
+                "NZD",
+                "KRW",
+                "ZAR"
+              ],
+              "option_others": true
+
+              
+        },
+
+    {
+        "auto_updater": true,
+        "default": {
+          "args": ["oem_name", "feature_name"],
+          "function": "name_to_id",
+          "kwargs": {
+            "attribute_join": " ",
+            "is_unique": true,
+            "separator": " - "
+          }
+        },
+        "name": "feature_id",
+        "type": "uid",
+        "id": true
+      },
+        {
+            "name":"replacement",
+            "type" :"text"
+
+
+        }
+    ],
+    "parents": ["oem"
+    ]
+}

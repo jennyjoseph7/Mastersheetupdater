@@ -64,7 +64,7 @@
     },
     {
       "name": "purpose_of_visit",
-      "type": "multi_select",
+      "type": "multiselect",
       "options": [
         "New Car Inquiry",
         "Test Drive",
@@ -135,17 +135,6 @@
     {
       "name": "follow_up_date",
       "type": "datetime"
-    },
-    {
-      "name": "lead_status",
-      "type": "text",
-      "options": [
-        "Active",
-        "Converted to Booking",
-        "Lost",
-        "Follow-Up Scheduled",
-        "Not Interested"
-      ]
     },
     {
       "name": "remarks",

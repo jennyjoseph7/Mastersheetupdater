@@ -90,15 +90,13 @@
     },
     {
       "name": "days_open",
-      "type": "multi_select",
+      "type": "nested_object",
       "options": [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-        "Sunday"
+        "Day",
+        "start_time",
+        "end_time",
+        "is_closed",
+        "special_notes"
       ]
     },
     {
@@ -119,7 +117,7 @@
     },
     {
       "name": "facilities_available",
-      "type": "multi_select",
+      "type": "multiselect",
       "options": [
         "Customer Lounge",
         "Wi-Fi",
@@ -131,7 +129,15 @@
         "Accessories Section",
         "EV Charging Point",
         "Children Play Area",
-        "Parking Facility"
+        "Parking Facility",
+        "Virtual Reality Experience",
+        "Online Booking Portal",
+        "Home Test Drive",
+        "Personal Sales Consultant",
+        "Extended Working Hours",
+        "Weekend Availability",
+        "Festive Offers",
+        "Loyalty Programs"
       ]
     },
     {

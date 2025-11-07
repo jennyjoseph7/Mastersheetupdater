@@ -1,0 +1,153 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "dealership_lead",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id"
+        },
+        {
+            "name": "dealer_name",
+            "refers": "parents.dealership.dealer_name"
+        },
+        {
+            "name": "brand_id",
+            "refers": "parents.brand.brand_id"
+        },
+        {
+            "name": "brand_name",
+            "refers": "parents.brand.brand_name"
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.region.region_id"
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.region.region_name"
+        },
+        {
+            "name": "campaign_id",
+            "refers": "parents.dealership_campaign.dealership_campaign_id"
+        },
+        {
+            "name": "campaign_name",
+            "refers": "parents.dealership_campaign.campaign_name"
+        },
+        {
+            "name": "lead_source",
+            "type": "text",
+            "options": [
+                "Walk-In",
+                "Website",
+                "Phone Call",
+                "Referral",
+                "Social Media",
+                "Campaign",
+                "Event",
+                "Other"
+            ]
+        },
+        {
+            "name": "dealer_group_id",
+            "refers": "parents.dealership.dealer_group_id" 
+        },
+        {
+            "name": "lead_type",
+            "type": "text",
+            "options": [
+            "purchase_within_15_days",
+            "purchase_within_1_to_3_months",
+            "exploring_options",
+            "no_buying_intent",
+            "purchased_elsewhere",
+            "converted"
+             ]
+             },
+        {
+            "name": "assigned_to",
+            "type": "nested_object",
+            "dict_keys" : [
+                "human_agent_id",
+                "agent_name",
+                "phone_number",
+                "email"
+            ]
+        },
+        {
+            "name": "channel",
+            "type": "text",
+            "options": [
+            "rcs",
+            "email",
+            "web_chat",
+            "web_chat_voice",
+            "fb_chat",
+            "insta_chat",
+            "twitter_chat",
+            "voice_phone",
+            "whatsapp_chat",
+            "whatsapp_voice_note",
+            "whatsapp_voice_call",
+            "zoom_bot",
+            "ms_teams"
+             ]
+         },
+        {
+            "name": "user_requirements",
+            "type": "text"
+        },
+        {
+            "name": "showroom_center_count",
+            "refers": "parents.dealership.showroom_center_count" 
+        },
+        {
+            "name": "buyback_center_count",
+            "refers": "parents.dealership.buyback_center_count"
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": [
+                    "dealership_id",
+                    "campaign_id",
+                    "channel",
+                    "showroom_center_count",
+                    "buyback_center_count"
+
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " - "
+                }
+            },
+            "name": "dealership_lead_id",
+            "type": "uid",
+            "id": true
+        }
+    ],
+    "parents": [
+        "dealership",
+        "dealership_campaign"
+    ]
+}

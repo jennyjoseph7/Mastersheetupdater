@@ -1,0 +1,232 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "billing",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "transaction_date",
+            "type": "text"
+        },
+        {
+            "name": "transaction_type",
+            "type": "text",
+            "options": ["credit", "debit", "refund"]
+        },
+        {
+            "name": "item_name",
+            "type": "text"
+        },
+        {
+            "name": "item_description",
+            "type": "text"
+        },
+        {
+            "name": "item_quantity",
+            "type": "number"
+        },
+        {
+            "name": "item_price",
+            "type": "number"
+        },
+        {
+            "name": "item_total",
+            "type": "number"
+        },
+        {
+            "name": "currency",
+            "type": "list",
+            "default": "INR",
+            "options": ["INR", "USD", "EUR", "GBP"],
+            "required": true
+        },
+        {
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id",
+            "required": true
+        },
+        {
+            "name": "billing_address",
+            "type": "text",
+            "required": true,
+            "indexed": true
+        },
+        {
+            "name": "billing_contact_name",
+            "type": "text",
+            "required": true,
+            "indexed": true
+        },
+        {
+            "name": "billing_contact_email",
+            "type": "text",
+            "constraint": {
+                "function": "email_validator"
+            },
+            "required": true,
+            "indexed": true
+        },
+        {
+            "name": "billing_contact_phone",
+            "type": "text",
+            "constraint": {
+                "function": "phone_validator"
+            },
+            "required": true,
+            "indexed": true
+        },
+        {
+            "name": "payment_mode",
+            "type": "text",
+            "options": [
+                "upi",
+                "net_banking",
+                "credit_card",
+                "debit_card",
+                "bank_transfer",
+                "wallet",
+                "nft"
+            ]
+        },
+        {
+            "name": "payment_gateway",
+            "type": "text",
+            "options": [
+                "razorpay",
+                "stripe",
+                "paypal",
+                "cashfree",
+                "manual"
+            ]
+        },
+        {
+            "name": "transaction_id",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "status",
+            "type": "text",
+            "options": ["initiated", "success", "failed", "refunded", "pending"],
+            "default": "initiated",
+            "indexed": true
+        },       
+        {
+            "name": "invoice_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            }
+        },
+        {
+            "name": "gst_percentage",
+            "type": "number"
+        },
+        {
+            "name": "gst_amount",
+            "type": "number"
+        },
+        {
+            "name": "sgst_percentage",
+            "type": "number"
+        },
+        {
+            "name": "sgst_amount",
+            "type": "number"
+        },
+        {
+            "name": "cgst_percentage",
+            "type": "number"
+        },
+        {
+            "name": "cgst_amount",
+            "type": "number"
+        },
+        {
+            "name": "hsn_code",
+            "type": "text"
+        },
+        {
+            "name": "vat_percentage",
+            "type": "number"
+        },
+        {
+            "name": "vat_amount",
+            "type": "number"
+        },
+        {
+            "name": "total_tax_percentage",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "total_tax_amount",
+            "type": "number"
+        },
+        {
+            "name": "total_amount",
+            "type": "number"
+        },
+        {
+            "name": "credit_balance_before",
+            "type": "number"
+        },
+        {
+            "name": "credit_balance_after",
+            "type": "number"
+        },
+        {
+            "name": "gst_number",
+            "type": "text"
+        },
+        {
+            "name": "sgst_number",
+            "type": "text"
+        },
+        {
+            "name": "vat_number",
+            "type": "text"
+        },
+        {
+            "name": "remarks",
+            "type": "text"
+        },
+        {
+            "name": "billing_id",
+            "type": "uid",
+            "indexed": true,
+            "id": true,
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "dealership_id",
+                    "item_name",
+                    "item_description",
+                    "item_quantity",
+                    "transaction_date",
+                    "created"
+                ]
+            },
+            "auto_updater": true
+        }
+    ],
+    "parents": [
+        "dealership"
+    ]
+}
