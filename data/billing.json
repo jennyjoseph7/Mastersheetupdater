@@ -21,6 +21,47 @@
             }
         },
         {
+            "name": "transaction_date",
+            "type": "text"
+        },
+        {
+            "name": "transaction_type",
+            "type": "text",
+            "options": ["credit", "debit", "refund"]
+        },
+        {
+            "name": "item_name",
+            "type": "text"
+        },
+        {
+            "name": "item_description",
+            "type": "text"
+        },
+        {
+            "name": "item_quantity",
+            "type": "number"
+        },
+        {
+            "name": "item_price",
+            "type": "number"
+        },
+        {
+            "name": "item_total",
+            "type": "number"
+        },
+        {
+            "name": "currency",
+            "type": "list",
+            "default": "INR",
+            "options": ["INR", "USD", "EUR", "GBP"],
+            "required": true
+        },
+        {
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id",
+            "required": true
+        },
+        {
             "name": "billing_address",
             "type": "text",
             "required": true,
@@ -49,48 +90,6 @@
             },
             "required": true,
             "indexed": true
-        },
-        {
-            "name": "currency",
-            "type": "list",
-            "default": "INR",
-            "options": ["INR", "USD", "EUR", "GBP"],
-            "required": true
-        },
-        {
-            "name": "billing_cycle",
-            "type": "text",
-            "options": ["monthly", "quarterly", "yearly", "on_demand"],
-            "default": "on_demand"
-        },
-        {
-            "name": "plan_type",
-            "type": "text",
-            "options": ["prepaid", "postpaid"],
-            "default": "prepaid"
-        },
-        {
-            "name": "dealership_id",
-            "refers": "parents.dealership.dealership_id",
-            "required": true
-        },
-        {
-            "name": "campaign_workflow_id",
-            "refers": "parents.campaign_workflow.campaign_workflow_id",
-            "required": false
-        },
-        {
-            "name": "invoice_number",
-            "type": "number",
-            "indexed": true
-        },
-        {
-            "name": "invoice_date",
-            "type": "number"
-        },
-        {
-            "name": "payment_date",
-            "type": "number"
         },
         {
             "name": "payment_mode",
@@ -122,13 +121,12 @@
             "indexed": true
         },
         {
-            "name": "payment_status",
+            "name": "status",
             "type": "text",
             "options": ["initiated", "success", "failed", "refunded", "pending"],
             "default": "initiated",
             "indexed": true
-        },
-        
+        },       
         {
             "name": "invoice_url",
             "type": "text",
@@ -137,21 +135,53 @@
             }
         },
         {
-            "name": "amount",
+            "name": "gst_percentage",
+            "type": "number"
+        },
+        {
+            "name": "gst_amount",
+            "type": "number"
+        },
+        {
+            "name": "sgst_percentage",
+            "type": "number"
+        },
+        {
+            "name": "sgst_amount",
+            "type": "number"
+        },
+        {
+            "name": "cgst_percentage",
+            "type": "number"
+        },
+        {
+            "name": "cgst_amount",
+            "type": "number"
+        },
+        {
+            "name": "hsn_code",
+            "type": "text"
+        },
+        {
+            "name": "vat_percentage",
+            "type": "number"
+        },
+        {
+            "name": "vat_amount",
+            "type": "number"
+        },
+        {
+            "name": "total_tax_percentage",
             "type": "number",
             "required": true
         },
         {
-            "name": "tax_amount",
+            "name": "total_tax_amount",
             "type": "number"
         },
         {
             "name": "total_amount",
             "type": "number"
-        },
-        {
-            "name": "credit_added",
-            "type": "number"        
         },
         {
             "name": "credit_balance_before",
@@ -174,44 +204,8 @@
             "type": "text"
         },
         {
-            "name": "gst",
-            "type": "number"
-        },
-        {
-            "name": "sgst",
-            "type": "number"
-        },
-        {
-            "name": "vat",
-            "type": "number"
-        },
-        
-        {
-            "name": "usage_summary",
-            "type": "text"
-        },
-        {
             "name": "remarks",
             "type": "text"
-        },
-        {
-            "name": "auto_renewal_enabled",
-            "type": "bool",
-            "default": false
-        },
-        {
-            "name": "refund_reference_id",
-            "type": "text"
-        },
-        {
-            "name": "refund_amount",
-            "type": "number"
-        },
-        {
-            "name": "refund_status",
-            "type": "text",
-            "options": ["none", "initiated", "completed", "failed"],
-            "default": "none"
         },
         {
             "name": "billing_id",
@@ -219,23 +213,20 @@
             "indexed": true,
             "id": true,
             "default": {
-                "function": "make_uuid_3",
+                "function": "make_uuid3",
                 "args": [
                     "dealership_id",
-                    "invoice_number",
-                    "transaction_id"
-                ],
-                "kwargs": {
-                    "is_unique": true,
-                    "separator": "_",
-                    "skip_empty": true
-                }
+                    "item_name",
+                    "item_description",
+                    "item_quantity",
+                    "transaction_date",
+                    "created"
+                ]
             },
             "auto_updater": true
         }
     ],
     "parents": [
-        "dealership",
-        "campaign_workflow"
+        "dealership"
     ]
 }
