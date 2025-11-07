@@ -56,32 +56,35 @@
             "name": "lead_source",
             "type": "text",
             "options": [
+                "Meta",
+                "Google",
+                "LinkedIn",
+                "Sales Qualified Lead",
                 "Website",
-                "Campaign",
                 "Event",
                 "Other"
             ]
         },
         {
             "name": "dealer_group_id",
-            "refers": "parents.dealership.dealer_group_id" 
+            "refers": "parents.dealership.dealer_group_id"
         },
         {
             "name": "lead_type",
             "type": "text",
             "options": [
-            "purchase_within_15_days",
-            "purchase_within_1_to_3_months",
-            "exploring_options",
-            "no_buying_intent",
-            "purchased_elsewhere",
-            "converted"
-             ]
-             },
+                "purchase_within_15_days",
+                "purchase_within_1_to_3_months",
+                "exploring_options",
+                "no_buying_intent",
+                "purchased_elsewhere",
+                "converted"
+            ]
+        },
         {
             "name": "assigned_to",
             "type": "nested_object",
-            "dict_keys" : [
+            "dict_keys": [
                 "human_agent_id",
                 "agent_name",
                 "phone_number",
@@ -92,28 +95,28 @@
             "name": "channel",
             "type": "text",
             "options": [
-            "rcs",
-            "email",
-            "web_chat",
-            "web_chat_voice",
-            "fb_chat",
-            "insta_chat",
-            "twitter_chat",
-            "voice_phone",
-            "whatsapp_chat",
-            "whatsapp_voice_note",
-            "whatsapp_voice_call",
-            "zoom_bot",
-            "ms_teams"
-             ]
-         },
+                "rcs",
+                "email",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "voice_phone",
+                "whatsapp_chat",
+                "whatsapp_voice_note",
+                "whatsapp_voice_call",
+                "zoom_bot",
+                "ms_teams"
+            ]
+        },
         {
             "name": "user_requirements",
             "type": "text"
         },
         {
             "name": "showroom_center_count",
-            "refers": "parents.dealership.showroom_center_count" 
+            "refers": "parents.dealership.showroom_center_count"
         },
         {
             "name": "buyback_center_count",
@@ -128,7 +131,6 @@
                     "channel",
                     "showroom_center_count",
                     "buyback_center_count"
-
                 ],
                 "function": "name_to_id",
                 "kwargs": {

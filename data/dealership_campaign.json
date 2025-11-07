@@ -120,21 +120,15 @@
       },
       {
         "name": "ctas",
+        "title": "Call to Actions",
         "type": "string_list",
         "list_type": "text",
-        "ui_element": "tags"
-      },
-      {
-        "name": "number_targeted",
-        "type": "number"
-      },
-      {
-        "name": "number_reached",
-        "type": "number"
-      },
-      {
-        "name": "number_contacted",
-        "type": "number"
+        "ui_element": "tags",
+        "options": [
+          "Book a Demo",
+          "Start a Trial",
+          "Watch Video"
+        ]
       },
       {
         "name": "number_engaged",
