@@ -33,7 +33,6 @@
       "name": "dealership_type",
       "refers": "parents.dealership.dealership_type"
     },
-
     {
       "name": "region_name",
       "refers": "parents.dealership.region_name"
@@ -45,8 +44,7 @@
     },
     {
       "name": "campaign_type",
-      "type": "list",
-      "options": ["pre-sales", "post-sales", "dealership"],
+      "type": "text",
       "default": "pre-sales"
     },
     {
@@ -58,15 +56,32 @@
       "name": "campaign_objective",
       "type": "list",
       "options": [
-        "Awareness",
-        "Lead Generation",
-        "Lead Qualification",
-        "Sales Promotion",
-        "Lead Nurture",
-        "Cross Sell",
-        "Other"
+        "Product Launch / Reveal",
+        "Event Promotion",
+        "Cold List Activation",
+        "Event/Expo Data Activation",
+        "Dormant CRM Reactivation",
+        "Interest Confirmation & Qualification",
+        "Profile Completion Campaign",
+        "Dealer / OEM Offer Promotion",
+        "Exchange / Loyalty Bonus Offer",
+        "EMI / Finance Scheme Push",
+        "Year-End / Stock Clearance",
+        "New Variant / Feature Highlight",
+        "Price Drop / Offer Re-Nudge",
+        "Comparison / Decision Aid Campaign",
+        "Test Drive Reminder / Showroom Visit Reminder / Follow-Up",
+        "Accessory Promotion",
+        "Insurance / Finance Add-On",
+        "Upgrade Offer for Existing Owner",
+        "Custom Campaign"
       ],
       "option_others": true
+    },
+    {
+      "name": "campaign_objective_type",
+      "type": "list",
+      "options": ["lead volume", "budget based", "roi target"]
     },
     {
       "name": "campaign_sub_type",
@@ -78,11 +93,6 @@
         "lead generation"
       ],
       "option_others": true
-    },
-    {
-      "name": "campaign_objective_type",
-      "type": "list",
-      "options": ["lead volume", "budget based", "roi target"]
     },
     {
       "name": "campaign_offer",
@@ -105,9 +115,11 @@
       "refers": "parents.dealership.channels"
     },
     {
-      "name": "language",
+      "name": "languages",
       "default": "english",
-      "option_other": true,
+      "type": "string_list",
+      "option_others": true,
+      "ui_element": "tags",
       "options": [
         "english",
         "hindi",
@@ -118,21 +130,17 @@
         "odia",
         "bengali",
         "marathi",
-        "gujurati"
-      ],
-      "type": "text"
+        "gujarati",
+        "bengali",
+        "assamese",
+        "punjabi",
+        "spanish",
+        "arabic"
+      ]
     },
     {
       "name": "urgency_hook",
-      "type": "list",
-      "options": [
-        "Only 10 cars left",
-        "Valid this week",
-        "First 25 customers bonus",
-        "Limited time",
-        "Book today"
-      ],
-      "option_others": true
+      "type": "text"
     },
     {
       "name": "number_targeted",
@@ -207,5 +215,7 @@
       "id": true
     }
   ],
-  "parents": ["dealership"]
+  "parents": [
+    "dealership"
+  ]
 }

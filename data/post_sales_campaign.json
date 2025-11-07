@@ -48,8 +48,7 @@
     },
     {
       "name": "campaign_type",
-      "type": "list",
-      "options": ["pre-sales", "post-sales", "dealership"],
+      "type": "text",
       "default": "post-sales"
     },
     {
@@ -61,17 +60,36 @@
       "name": "campaign_objective",
       "type": "list",
       "options": [
-        "Ownership & Onboarding",
-        "Service & Maintenance",
-        "Loyalty & Rewards",
-        "Awareness & Feedback",
-        "Recall"
+        "Post-Purchase Call",
+        "Welcome Email / WhatsApp",
+        "First-Service Reminder",
+        "Accessory Suggestion",
+        "Insurance / RSA Onboarding",
+        "Scheduled Service Reminder",
+        "Missed Service Follow-Up",
+        "Seasonal Check-Up / Awareness",
+        "AMC Renewal",
+        "Warranty Expiry Offer",
+        "Referral Program / Loyalty",
+        "Birthday / Anniversary Offer",
+        "Exclusive Member Event",
+        "Post-Service Feedback (CSI / NPS)",
+        "Customer Education / How-To",
+        "Recall",
+        "Recall Follow-Up Call / WhatsApp",
+        "Recall Completion Confirmation"
       ],
       "option_others": true
     },
     {
       "name": "campaign_sub_type",
-      "type": "text"
+      "type": "list",
+      "options": [
+        "workshop awareness",
+        "offers",
+        "new accessories",
+        "new procedures"
+      ]
     },
     {
       "name": "campaign_objective_type",
@@ -115,9 +133,11 @@
       "ui_element": "multiselect"
     },
     {
-      "name": "language",
+      "name": "languages",
       "default": "english",
-      "option_other": true,
+      "type": "string_list",
+      "option_others": true,
+      "ui_element": "tags",
       "options": [
         "english",
         "hindi",
@@ -128,21 +148,17 @@
         "odia",
         "bengali",
         "marathi",
-        "gujurati"
-      ],
-      "type": "text"
+        "gujarati",
+        "bengali",
+        "assamese",
+        "punjabi",
+        "spanish",
+        "arabic"
+      ]
     },
     {
       "name": "urgency_hook",
-      "type": "list",
-      "options": [
-        "Only 10 cars left",
-        "Valid this week",
-        "First 25 customers bonus",
-        "Limited time",
-        "Book today"
-      ],
-      "option_others": true
+      "type": "text"
     },
 
     {

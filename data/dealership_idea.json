@@ -1,74 +1,143 @@
- {
-            "timezone": "Asia/Kolkata",
-            "name": "dealership_idea",
-            "model_type": "default",
-            "attributes": [
-                {
-                    "name": "created",
-                    "type": "datetime",
-                    "auto_updater": true,
-                    "default": {
-                        "function": "now_ctime"
-                    }
-                },
-                {
-                    "name": "updated",
-                    "type": "datetime",
-                    "auto_updater": true,
-                    "force_update": true,
-                    "default": {
-                        "function": "now_ctime"
-                    }
-                },
-                {
-                    "name": "dealership_id",
-                    "type": "parents.dealership.dealership_id",
-                    "indexed": true
-                },
-                {
-                "name": "dealership_idea_id",
-                "type": "uid",
-                "indexed": true,
-                "id": true,
-                "default": {
-                    "function": "name_to_id",
-                    "args": [
-                        "dealership_id",
-                        "created"
-                    ],
-                    "kwargs": {
-                        "is_unique": true,
-                        "separator": "_",
-                        "skip_empty": true
-                    }
-                },
-                "auto_updater": true
-                },
-                {
-                    "name": "idea",
-                    "type": "text"
-                },
-                {
-                    "name": "attachments",
-                    "type": "file"
-                },
-                {
-                    "name": "status",
-                    "type": "text",
-                    "options": [
-                        "new",
-                        "reviewing",
-                        "approved",
-                        "rejected"
-                    ],
-                    "indexed": true
-                },
-                {
-                    "name": "notes",
-                    "type": "text"
-                }
-            ],
-            "parents": [
-                "dealership"
-    ]
+{
+  "timezone": "Asia/Kolkata",
+  "name": "dealership_idea",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "datetime",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "updated",
+      "type": "datetime",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "dealership_id",
+      "type": "parents.dealership.dealership_id",
+      "indexed": true
+    },
+    {
+      "name": "dealership_idea_id",
+      "type": "uid",
+      "indexed": true,
+      "id": true,
+      "default": {
+        "function": "name_to_id",
+        "args": [
+          "dealership_id",
+          "created"
+        ],
+        "kwargs": {
+          "is_unique": true,
+          "separator": "_",
+          "skip_empty": true
         }
+      },
+      "auto_updater": true
+    },
+    {
+      "name": "campaign_name",
+      "type": "text",
+      "indexed": true
+    },
+    {
+      "name": "campaign_type",
+      "type": "list",
+      "options": [
+        "pre-sales",
+        "post-sales",
+        "dealership"
+      ],
+      "default": "pre-sales"
+    },
+    {
+      "name": "campaign_objective",
+      "type": "list",
+      "options": [
+        "Awareness",
+        "Lead Generation",
+        "Lead Qualification",
+        "Sales Promotion",
+        "Lead Nurture",
+        "Cross Sell",
+        "Other"
+      ],
+      "option_others": true
+    },
+    {
+      "name": "campaign_sub_type",
+      "type": "list",
+      "options": [
+        "brand awareness",
+        "product awareness",
+        "event",
+        "lead generation"
+      ],
+      "option_others": true
+    },
+    {
+      "name": "campaign_objective_type",
+      "type": "list",
+      "options": [
+        "lead volume",
+        "budget based",
+        "roi target"
+      ]
+    },
+    {
+      "name": "campaign_offer",
+      "type": "text"
+    },
+    {
+      "name": "campaign_description",
+      "type": "text"
+    },
+    {
+      "name": "urgency_hook",
+      "type": "list",
+      "options": [
+        "Only 10 cars left",
+        "Valid this week",
+        "First 25 customers bonus",
+        "Limited time",
+        "Book today"
+      ],
+      "option_others": true
+    },
+    {
+      "name": "idea",
+      "type": "text"
+    },
+    {
+      "name": "attachments",
+      "type": "file"
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "options": [
+        "new",
+        "reviewing",
+        "approved",
+        "rejected"
+      ],
+      "indexed": true
+    },
+    {
+      "name": "notes",
+      "type": "text"
+    }
+  ],
+  "parents": [
+    "dealership"
+  ]
+}

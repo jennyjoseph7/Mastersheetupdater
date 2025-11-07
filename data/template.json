@@ -26,9 +26,9 @@
       "indexed": true
     },
     {
-        "name":"communication_credentials_id",
-        "refers":"parents.communication_credentials.communication_credentials_id",
-        "required":true
+      "name": "communication_credentials_id",
+      "refers": "parents.communication_credentials.communication_credentials_id",
+      "required": true
     },
     {
       "name": "provider_name",
@@ -52,9 +52,9 @@
       "refers": "parents.communication_credentials.dealer_name"
     },
     {
-      "name":"template_name",
-      "type":"text",
-      "indexed":true
+      "name": "template_name",
+      "type": "text",
+      "indexed": true
     },
     {
       "name": "template_type",
@@ -95,6 +95,7 @@
     },
     {
       "name": "language",
+      "type": "text",
       "default": "english",
       "option_other": true,
       "options": [
@@ -107,14 +108,19 @@
         "odia",
         "bengali",
         "marathi",
-        "gujurati"
+        "gujarati",
+        "bengali",
+        "assamese",
+        "punjabi",
+        "spanish",
+        "arabic"
       ],
-      "type": "text"
+      "ui_element": "select"
     },
     {
-      "name":"status",
-      "type":"list",
-      "options":["pending","approved","rejected"]
+      "name": "status",
+      "type": "list",
+      "options": ["pending", "approved", "rejected"]
     },
     {
       "name": "template_id",

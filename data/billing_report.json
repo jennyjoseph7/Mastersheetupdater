@@ -21,14 +21,6 @@
             }
         },
         {
-            "name":"start_date",
-            "type":"number"
-        },
-        {
-            "name":"end_date",
-            "type":"number"
-        },
-        {
             "name":"quick_select",
             "type":"text",
             "options":[
@@ -40,6 +32,23 @@
                 "year"
             ]
         },
+        {
+            "name":"start_date",
+            "type":"text"
+        },
+        {
+            "name":"end_date",
+            "type":"text"
+        },
+        {
+            "name":"start_date",
+            "type":"number"
+        },
+        {
+            "name":"end_date",
+            "type":"number"
+        },
+
         {
             "name":"dealership_id",
             "refers":"parents.dealership.dealership_id",
@@ -53,13 +62,116 @@
             "name":"total_billed_amount",
             "type":"number",
             "default":{
-                "function":"calulate_total_billing_amount",
+                "function":"calulate_total_billing",
                 "args":[
                     "billing",
+                    "total_amount",
                     "sum"
                 ]
             }
         },
+        {
+            "name": "total_tax",
+            "type": "number",
+            "default": {
+                "function": "calulate_total_billing",
+                "args": [
+                    "billing",
+                    "total_tax_amount",
+                    "sum"
+                ]
+            }
+        },
+        {
+            "name": "total_amount",
+            "type": "number",
+            "default": {
+                "function": "calulate_total_billing",
+                "args": [
+                    "billing",
+                    "total_amount",
+                    "sum"
+                ]
+            }
+        },
+        {
+            "name": "total_credits_consumed",
+            "refers":"parents.dealership.credits_balance"
+            
+        },
+        {
+            "name": "total_credits_remaining",
+            "type": "number",
+            "default": {
+                "function": "calulate_total_billing",
+                "args": [
+                    "billing",
+                    "credit_balance_after",
+                    "sum"
+                ]
+            }
+        },
+        {
+            "name": "currancy",
+            "type": "string",
+            "default": {
+                "function": "calulate_total_billing",
+                "args": [
+                    "billing",
+                    "currency",
+                    "first"
+                ]
+            }
+        },
+        {
+            "name": "total_gst",
+            "type": "number",
+            "default": {
+                "function": "calulate_total_billing",
+                "args": [
+                    "billing",
+                    "gst_amount",
+                    "sum"
+                ]
+            }
+        },
+        {
+            "name": "total_sgst",
+            "type": "number",
+            "default": {
+                "function": "calulate_total_billing",
+                "args": [
+                    "billing",
+                    "sgst_amount",
+                    "sum"
+                ]
+            }
+        },
+        {
+            "name": "total_cgst",
+            "type": "number",
+            "default": {
+                "function": "calulate_total_billing",
+                "args": [
+                    "billing",
+                    "cgst_amount",
+                    "sum"
+                ]
+            }
+        },
+        {
+            "name": "total_vat",
+            "type": "number",
+            "default": {
+                "function": "calulate_total_billing",
+                "args": [
+                    "billing",
+                    "vat_amount",
+                    "sum"
+                ]
+            }
+        },
+
         {
             "name":"generate_invoice",
             "type":"text",
@@ -68,8 +180,8 @@
                 "args":["billing"]
             }
         }
+   
     ],
-    "parents": [
-        "dealership"    
-    ]
+
+    "parents": ["dealership" ]
 }

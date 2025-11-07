@@ -67,6 +67,10 @@
         "refers":"parents.region.guardrails"
     },
     {
+      "name": "parent_company",
+      "refers": "parents.oem.parent_company"
+    },
+    {
       "name": "brand_level_guidelines",
       "type": "text",
       "ui_element": "textarea"
