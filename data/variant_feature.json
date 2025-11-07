@@ -20,6 +20,10 @@
     { "name": "variant_name", "refers": "parents.variant.variant_name" },
     { "name": "feature_id", "refers": "parents.feature.feature_id" },
     { "name": "feature_name", "refers": "parents.feature.feature_name" },
+    { "name": "feature_category", "refers": "parents.feature.feature_category" },
+    { "name": "aliases", "refers": "parents.feature.aliases" },
+    { "name": "feature_description", "refers": "parents.feature.feature_description" },
+
     {
       "name": "feature_category",
       "refers": "parents.feature.feature_category"

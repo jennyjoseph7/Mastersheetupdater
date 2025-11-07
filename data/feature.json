@@ -48,7 +48,7 @@
             "indexed": true
         },
         {
-            "name": "feature_code",
+            "name": "feature_",
             "type": "text"
         },
         {
@@ -92,6 +92,8 @@
         {
             "name": "unit",
             "type": "text",
+            "required": false,
+
             "options":[
                 "mm",
                 "cm",
@@ -138,7 +140,7 @@
             "ui_element": "select"
         },
         {
-            "name": "value type",
+            "name": "value_type",
             "type": "text",
             "options": [
                 "number",
@@ -166,6 +168,7 @@
         {
             "name": "additional_cost_unit",
             "type": "list",
+            
             "units": [
                 "INR",
                 "USD",
@@ -188,6 +191,22 @@
 
               
         },
+
+    {
+        "auto_updater": true,
+        "default": {
+          "args": ["oem_name", "feature_name"],
+          "function": "name_to_id",
+          "kwargs": {
+            "attribute_join": " ",
+            "is_unique": true,
+            "separator": " - "
+          }
+        },
+        "name": "feature_id",
+        "type": "uid",
+        "id": true
+      },
         {
             "name":"replacement",
             "type" :"text"
@@ -195,6 +214,6 @@
 
         }
     ],
-    "parents": [
+    "parents": ["oem"
     ]
 }
