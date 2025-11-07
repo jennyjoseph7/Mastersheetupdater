@@ -71,12 +71,18 @@
     },
     {
       "name": "launch_date",
-      "type": "datetime",
+      "type": "number",
+            "default": {
+                "function": "now_ctime"
+            },
       "auto_updater":true
     },
     {
       "name": "discontinuation_date",
-      "type": "datetime",
+      "type": "number",
+            "default": {
+                "function": "now_ctime"
+            },
       "auto_updater":true
     },
  

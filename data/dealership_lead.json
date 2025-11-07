@@ -56,11 +56,7 @@
             "name": "lead_source",
             "type": "text",
             "options": [
-                "Walk-In",
                 "Website",
-                "Phone Call",
-                "Referral",
-                "Social Media",
                 "Campaign",
                 "Event",
                 "Other"
@@ -148,6 +144,8 @@
     ],
     "parents": [
         "dealership",
-        "dealership_campaign"
+        "dealership_campaign",
+        "brand",
+        "region"
     ]
 }

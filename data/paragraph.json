@@ -21,6 +21,11 @@
             }
         },
         {
+            "name" : "keywords",
+            "type" : "string_list",
+            "indexed": true
+        },
+        {
             "name": "paragraph_text",
             "type": "text"
         },

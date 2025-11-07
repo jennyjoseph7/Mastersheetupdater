@@ -1,0 +1,221 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "review",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "showroom_name",
+            "refers": "parents.showroom.showroom_name"
+        },
+        {
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id"
+        },
+        {
+            "name": "dealership_name",
+            "refers": "parents.dealership.dealership_name"
+        },
+        {
+            "name": "person_id",
+            "refers": "parents.person.user_id"
+        },
+        {
+            "name": "person_name",
+            "refers": "parents.person.name"
+        },
+        {
+            "name": "visit_date",
+            "refers": "parents.showroom_visit.visit_date"
+        },
+        {
+            "name": "purpose_of_visit",
+            "refers": "parents.showroom_visit.purpose_of_visit"
+        },
+        {
+            "name": "model_name",
+            "refers": "parents.showroom_visit.model_name"
+        },        
+
+        {
+            "name": "source_type",
+            "type": "text",
+            "options": [
+                "Google",
+                "Facebook",
+                "Instagram",
+                "WhatsApp",
+                "SMS",
+                "In-person",
+                "Phone Call",
+                "Email",
+                "Other"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "review_type",
+            "type": "text",
+            "options": [
+                "Showroom Experience",
+                "Service Experience",
+                "Sales Experience",
+                "Product Feedback",
+                "Website/App Experience",
+                "Delivery Experience",
+                "Support/Communication"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "rating_overall",
+            "type": "number",
+            "title": "Overall Rating (1-5)",
+            "constraint": {
+                "min": 1,
+                "max": 5
+            },
+            "ui_element": "rating"
+        },
+        {
+            "name": "rating_staff_behavior",
+            "type": "number",
+            "title": "Staff Behavior Rating (1-5)",
+            "constraint": {
+                "min": 1,
+                "max": 5
+            },
+            "ui_element": "rating"
+        },
+        {
+            "name": "rating_service_quality",
+            "type": "number",
+            "title": "Service Quality Rating (1-5)",
+            "constraint": {
+                "min": 1,
+                "max": 5
+            },
+            "ui_element": "rating"
+        },
+        {
+            "name": "review_text",
+            "type": "text",
+            "title": "Review Comments",
+            "ui_element": "textarea"
+        },
+        {
+            "name": "media_attachments",
+            "type": "list",
+            "title": "Photos / Videos Attached (URLs)"
+        },
+        {
+            "name": "sentiment",
+            "type": "text",
+            "options": [
+                "Positive",
+                "Neutral",
+                "Negative"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "feedback_category",
+            "type": "text",
+            "options": [
+                
+                "Suggestion",
+                "Complaint"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "response_status",
+            "type": "text",
+            "options": [
+                "Pending",
+                "Acknowledged",
+                "Resolved",
+                "Escalated",
+                "Closed"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "response_text",
+            "type": "text",
+            "title": "Response Message",
+            "ui_element": "textarea"
+        },
+        {
+            "name": "review_date",
+            "type": "datetime",
+            "auto_updater":true
+        },
+        {
+            "name": "resolved_date",
+            "type": "datetime",
+            "auto_updater":true
+        },
+        {
+            "name": "review_status",
+            "type": "text",
+            "options": [
+                "Active",
+                "Flagged",
+                "Hidden",
+                "Archived"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "review_tags",
+            "type": "list",
+            "title": "Tags / Keywords"
+        },
+        {
+            "name": "remarks",
+            "type": "text"
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": [
+                    "dealership_name",
+                    "person_name",
+                    "review_type",
+                    "created"
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " - "
+                }
+            },
+            "name": "review_id",
+            "type": "uid",
+            "id": true
+        }
+    ],
+    "parents": [
+        "dealership",
+        "person",
+        "showroom_visit"
+    ]
+}

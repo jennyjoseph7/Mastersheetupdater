@@ -134,7 +134,10 @@
     },
     {
       "name": "follow_up_date",
-      "type": "datetime"
+      "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
     },
     {
       "name": "remarks",
