@@ -162,7 +162,6 @@
             "options": [
                 "ongoing",
                 "completed",
-                "failed",
                 "sent",
                 "delivered",
                 "read",
