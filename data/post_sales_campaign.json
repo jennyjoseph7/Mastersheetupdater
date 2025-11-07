@@ -20,7 +20,27 @@
         "function": "now_ctime"
       }
     },
-
+    {
+      "name": "workshop_id",
+      "refers": "parents.workshop.workshop_id",
+      "required": true
+    },
+    {
+      "name": "dealership_name",
+      "refers": "parents.workshop.dealership_name"
+    },
+    {
+      "name": "region_name",
+      "refers": "parents.workshop.region_name"
+    },
+    {
+      "name": "workshop_code",
+      "refers": "parents.workshop.workshop_code"
+    },
+    {
+      "name": "workshop_name",
+      "refers": "parents.workshop.workshop_name"
+    },
     {
       "name": "campaign_name",
       "type": "text",
@@ -124,7 +144,7 @@
       ],
       "option_others": true
     },
-  
+
     {
       "name": "number_targeted",
       "type": "number"
@@ -186,6 +206,7 @@
       "default": {
         "function": "make_uuid3",
         "args": [
+          "workshop_name",
           "campaign_name",
           "start_date",
           "campaign_type",
@@ -196,5 +217,6 @@
       "type": "uid",
       "id": true
     }
-  ]
+  ],
+  "parents": ["workshop"]
 }
