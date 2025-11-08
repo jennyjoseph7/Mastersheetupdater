@@ -94,7 +94,11 @@
     {
       "name": "campaign_objective_type",
       "type": "list",
-      "options": ["lead volume", "budget based", "roi target"]
+      "options": [
+        "lead volume",
+        "budget based",
+        "roi target"
+      ]
     },
     {
       "name": "campaign_offer",
@@ -160,7 +164,13 @@
       "name": "urgency_hook",
       "type": "text"
     },
-
+    {
+      "name": "ctas",
+      "title": "Call to Actions",
+      "type": "string_list",
+      "list_type": "text",
+      "ui_element": "tags"
+    },
     {
       "name": "number_targeted",
       "type": "number"
@@ -194,7 +204,10 @@
       "type": "number",
       "default": {
         "function": "divide_attributes",
-        "args": ["number_converted", "number_contacted"]
+        "args": [
+          "number_converted",
+          "number_contacted"
+        ]
       }
     },
     {
@@ -202,13 +215,22 @@
       "type": "number",
       "default": {
         "function": "divide_attributes",
-        "args": ["actual_spent", "number_converted"]
+        "args": [
+          "actual_spent",
+          "number_converted"
+        ]
       }
     },
     {
       "name": "campaign_status",
       "type": "text",
-      "options": ["Planned", "Active", "Completed", "On Hold", "Cancelled"]
+      "options": [
+        "Planned",
+        "Active",
+        "Completed",
+        "On Hold",
+        "Cancelled"
+      ]
     },
     {
       "name": "responsible_person",
@@ -234,5 +256,7 @@
       "id": true
     }
   ],
-  "parents": ["workshop"]
+  "parents": [
+    "workshop"
+  ]
 }
