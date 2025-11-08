@@ -30,7 +30,59 @@
             "name": "credits_balance",
             "type": "number",
             "units": "credits",
-            "default": 0
+            "default": 0 
+        },
+        {
+            "name" : "dealership_url",
+            "type" : "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+                "converter": {
+                "function": "url_converter"
+            }
+        },
+        {
+            "name" : "pan_card",
+            "type" : "file"
+            
+        },
+        {
+            "name" : "pan_card_link",
+            "type" : "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+                "converter": {
+                "function": "url_converter"
+            },
+            "ui_element" : "file"
+
+        },
+        {
+            "name" : "gstin",
+            "type" : "text"
+        },
+        {
+            "name" : "gst_certificate",
+            "type" : "file"
+
+        },
+        {
+            "name" : "dealership_legal_name",
+            "type" : "text"
+        },
+        {
+            "name" : "certificate_of_incorporation",
+            "type" : "file"
+        },
+        {
+            "name": "aliases",
+            "type":"string_list",
+            "converter" : {
+                "function" : "ensure_in_list",
+                "args" : ["dealership_legal_name","dealer_name"]
+            }
         },
         {
             "name": "dealer_group_id",

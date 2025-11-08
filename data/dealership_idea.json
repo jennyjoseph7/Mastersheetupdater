@@ -102,6 +102,18 @@
       "type": "text"
     },
     {
+      "name": "campaign_tone",
+      "type": "text"
+    },
+    {
+      "name": "campaign_tagline",
+      "type": "text"
+    },
+    {
+      "name": "call_to_actions",
+      "type": "list"
+    },
+    {
       "name": "urgency_hook",
       "type": "list",
       "options": [
@@ -141,3 +153,4 @@
     "dealership"
   ]
 }
+
