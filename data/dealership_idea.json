@@ -148,10 +148,6 @@
       "type": "text"
     },
     {
-      "name": "call_to_actions",
-      "type": "list"
-    },
-    {
       "name": "urgency_hook",
       "type": "list",
       "list_type": "text"
@@ -183,6 +179,16 @@
         "rejected"
       ],
       "indexed": true
+    },
+    {
+      "name" : "start_date",
+      "type" : "number"
+
+    },
+    {
+      "name" : "end_date",
+      "type" : "number"
+
     },
     {
       "name": "notes",
