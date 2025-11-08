@@ -463,6 +463,55 @@
         {
             "name": "lead_summary",
             "type": "text"
+        },
+        {
+            "name": "disposition",
+            "type": "text",
+            "options": [
+                "queued",
+                "attempted",
+                "reached",
+                "contacted",
+                "engaged",
+                "converted",
+                "failed",
+                "error"
+            ]
+        },
+        {
+            "name": "disposition_detail",
+            "type": "text",
+            "options": [
+                "Invalid no.",
+                "Not registered on Whatsapp",
+                "User's no. is part of an experiment",
+                "Message undeliverable",
+                "Unable to send message",
+                "Unable to deliver message to deliver message/Unsubcribed",
+                "Message not delivered to maintained healty ecosystem management",
+                "Invalid / Doesn't exist",
+                "DND",
+                "Not reachable",
+                "Didnt pickup",
+                "Rejected",
+                "Will decide later, will purchase within 15 days",
+                "Will decide later, will purchase within 1 to 3 months",
+                "Will decide later, exploring options",
+                "No buying intent",
+                "Just Exploring",
+                "Purchased elsewhere",
+                "Converted",
+                "Enquired for Pricing",
+                "Enquired for Specifications",
+                "Enquired for Test Drive",
+                "Enquired for Showroom Visit",
+                "Enquired for Brochure",
+                "Enquired for Dealership Details",
+                "Enquired for Others",
+                "Comparing with another brand",
+                "Others"
+            ],
+            "option_others": true
         }
     ]
 }

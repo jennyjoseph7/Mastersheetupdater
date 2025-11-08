@@ -25,6 +25,10 @@
             "type": "bool"
           },
           {
+            "name":"likely_to_recommend",
+            "type":"bool"
+          },
+          {
             "name": "is_engine_dependent",
             "type": "bool"
           },

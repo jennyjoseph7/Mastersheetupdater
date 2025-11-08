@@ -50,3 +50,6 @@ Thumbs.db
 
 audit_logs/*
 *__pycache__*
+.env/*
+setup.sh
+*.sw*

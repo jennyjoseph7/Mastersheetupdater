@@ -124,8 +124,8 @@
             }
         },
         {
-            "name":"provider_status",
-            "type":"text",
+           "name":"provider_status",
+           "type":"text",
            "options":[
                 "initiated",
                 "sent",

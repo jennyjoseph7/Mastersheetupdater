@@ -114,6 +114,34 @@
     },
     {
       "auto_updater": true,
+      "name": "feature_value_type",
+      "refer": "parents.feature.feature_value_type"
+    },
+    {
+      "name": "source_reference",
+      "type": "text",
+      "title": "Source Reference"
+    },
+    {
+      "name": "source_reference",
+      "type": "text",
+      "title": "Source Reference"
+    },
+    {
+      "name": "source_path",
+      "type": "text",
+      "title": "Source Path"
+    },
+    {
+      "name": "source_date",
+      "type": "timestamp"
+    },
+    {
+      "name": "confidence_score",
+      "type": "text"
+    },
+    {
+      "auto_updater": true,
       "type": "text",
       "name": "unit_of_measure"
     },
