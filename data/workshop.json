@@ -167,6 +167,61 @@
       "options": ["Active", "Inactive", "Under Renovation"],
       "indexed": true
     },
+     {
+      "name": "display_vehicle_count",
+      "type": "number"
+    },
+    
+    {
+      "name": "google_reviews_rating",
+      "type": "text"
+    },
+    {
+      "name": "google_reviews",
+      "type": "text"
+    },
+    {
+      "name": "google_my_business_listing",
+      "type": "text"
+    },
+    {
+      "name": "workshop_reviews",
+      "type": "text"
+    },
+    {
+      "name": "workshop_photos",
+      "type": "text"
+    },
+    {
+      "name": "workshop_rating",
+      "type": "text"
+    },
+    
+    {
+        "name":"region_level_guidelines",
+        "refers":"parents.dealership.region_level_guidelines"
+    },
+    {
+        "name":"region_level_guardrails",
+        "refers":"parents.dealership.region_level_guardrails"
+    },
+    {
+      "name": "brand_level_guidelines",
+      "refers":"parents.dealership.brand_level_guidelines"
+    },
+    {
+      "name": "brand_level_guardrails",
+      "refers":"parents.dealership.brand_level_guardrails"
+    },
+    {
+      "name": "workshop_level_guidelines",
+      "type": "text"
+    },
+    {
+      "name": "workshop_level_guardrails",
+      "type": "text"
+    },
+    
     {
       "auto_updater": true,
       "default": {

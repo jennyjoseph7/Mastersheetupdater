@@ -97,6 +97,30 @@
                 "args" : ["dealership_legal_name","dealer_name"]
             }
         },
+       {
+      "name": "languages",
+      "default": "english",
+      "type": "list",
+      "option_others": true,
+      "ui_element": "tags",
+      "options": [
+        "english",
+        "hindi",
+        "kannada",
+        "telugu",
+        "tamil",
+        "malayalam",
+        "odia",
+        "bengali",
+        "marathi",
+        "gujarati",
+        "bengali",
+        "assamese",
+        "punjabi",
+        "spanish",
+        "arabic"
+      ]
+    },
         {
             "name": "dealer_group_id",
             "refers": "parents.dealer_group.dealer_group_id",
