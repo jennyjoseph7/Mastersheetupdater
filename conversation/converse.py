@@ -48,8 +48,26 @@ def WARM_UP():
         # capability_function = None #:Union[Dict[str, str], None] Defaults to using Docstring
         )
 def converse(*args, **kwargs):
+    '''
+    Converse task to setup what to reply and call task avaibale in temporary data depending on channel.
+    sample kwargs :- 
+    {
+        "intent" : "",
+        "customer_response" : "",
+        "session_id":""
+        "channel":"whatsapp_chat",
+        "temporary_data": {"channel_response_task":{"service":"channel_service_name_for_task","task":"send_reply_task_name"}},
+        "response_length":"full/sentence/paragraph/agent",
+        "communication_data":{
+            "whatsapp_message_id":"",
+            "user_sent_time":"airtel webhook timestamp",
+            "webhook_received_time":"comm webhook received time"
+        }
+    }
+    '''
     logger = kwargs.get("logger")
     logger.info("converse")
+    
     awaited_tasks= [
             {
                 "task":"get_primary_prompt",
@@ -63,7 +81,7 @@ def converse(*args, **kwargs):
     loopers = gryd.yield_results(awaited_tasks, timeout=30)
     for result in loopers:
         logger.info(result)
-    yield {"placeholder" : "here praveen enjoy my response","intent" : "wow_intent","message_id":str(time.time()),"reply_to" : str(time.time()-1000),"is_last":True}
+    
     return
 
 @gryd.is_a_task(
