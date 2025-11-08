@@ -81,20 +81,6 @@
             ]
         },
         {
-            "name": "feedback_source",
-            "type": "text",
-            "options": [
-                "In-person",
-                "Website",
-                "Mobile App",
-                "Email",
-                "SMS",
-                "Call",
-                "WhatsApp",
-                "Survey Form"
-            ]
-        },
-        {
             "name": "rating",
             "type": "number"
         },
@@ -124,13 +110,16 @@
 
         },
         {
-            "name": "status",
+            "name": "response_status",
             "type": "text",
             "options": [
                 "New",
+                "Acknowledged",
                 "Reviewed",
                 "Action Taken",
-                "Closed"
+                "Escalated",
+                "Closed",
+                "Rejected"
             ]
         },
         {

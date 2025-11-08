@@ -137,9 +137,9 @@
             "ui_element": "rating"
         },
         {
-            "name": "rating_service_quality",
+            "name": "rating_showroom_experience",
             "type": "number",
-            "title": "Service Quality Rating (1-5)",
+            "title": "Showroom Experience Rating (1-5)",
             "constraint": {
                 "min": 1,
                 "max": 5
@@ -158,7 +158,7 @@
             "title": "Photos / Videos Attached (URLs)"
         },
         {
-            "name": "sentiment",
+            "name": "emotions",
             "type": "list",
             "list_type": "text",
             "ui_element": "tags",
@@ -193,33 +193,26 @@
             "type": "number"
         },
         {
-            "name": "feedback_category",
-            "type": "text",
-            "options": [
-                "Suggestion",
-                "Complaint"
-            ],
-            "ui_element": "select"
-        },
-        {
             "name": "response_status",
             "type": "text",
             "options": [
-                "Pending",
+                "New",
                 "Acknowledged",
-                "Resolved",
+                "Reviewed",
+                "Action Taken",
                 "Escalated",
-                "Closed"
+                "Closed",
+                "Rejected"
             ],
             "ui_element": "select"
         },
         {
             "name": "review_date",
-            "type": "datetime"
+            "type": "text"
         },
         {
-            "name": "resolved_date",
-            "type": "datetime"
+            "name": "resolved_timestamp",
+            "type": "number"
         },
         {
             "name": "review_status",
