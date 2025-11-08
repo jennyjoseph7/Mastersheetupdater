@@ -40,7 +40,15 @@
             "type" : "number"
         },
         {
-            "name" : "provider_received_time",
+            "name" : "user_sent_time",
+            "type" : "number"
+        },
+        {
+            "name" : "webhook_received_time",
+            "type" : "number"
+        },
+        {
+            "name" : "conversation_process_start_time",
             "type" : "number"
         },
         {
@@ -48,9 +56,18 @@
             "type" : "number"
         },
         {
-            "name" : "provider_sent_time",
+            "name" : "response_sent_start_time",
             "type" : "number"
         },
+        {
+            "name" : "response_sent_time",
+            "type" : "number"
+        },
+        {
+            "name" : "response_delivered_time",
+            "type" : "number"
+        },
+
         {
             "name" : "reply_to_message_id",
             "type" : "text"
@@ -134,6 +151,10 @@
         },
         {
             "name" : "feedback",
+            "type" : "text"
+        },
+        {
+            "name" : "channel_message_id",
             "type" : "text"
         },
         {

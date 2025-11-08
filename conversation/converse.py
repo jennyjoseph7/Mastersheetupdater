@@ -29,7 +29,8 @@ logger = gryd.hp.get_logger(__name__)
 def WARM_UP():
     logger.info("WARM_UP CALLED")
     with get_pg_connector() as pg:
-        pass 
+        pass
+        
     return
 
 @gryd.is_a_task(

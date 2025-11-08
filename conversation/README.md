@@ -2,6 +2,13 @@ TODO --
 create a session_data_cache - iadd type setup to input all data about user into this. To be deleted at the end of all sessions
 prompt template model(has template for primary prompt or other types of prompts that will have tags for diff scenarios and also have variables mentioned)
 
+create tasks:-
+converse
+session_close
+add_to_session_cache
+get_primary_prompt
+run_orchestrator
+response_pruning
 
 
 
