@@ -129,8 +129,7 @@
       "title": "Call to Actions",
       "type": "string_list",
       "list_type": "text",
-      "ui_element": "tags",
-      "options": []
+      "ui_element": "tags"
     },
     {
       "name": "campaign_offer",
