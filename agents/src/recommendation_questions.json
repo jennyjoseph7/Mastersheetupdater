@@ -1,0 +1,199 @@
+[
+    {
+            "question": "Let’s start with your situation — what brings you here today?",
+            "intent": "purchase_reason",
+            "options": [
+                "I’m buying my first car",
+                "I’m looking to upgrade my current car",
+                "I want to buy an additional car",
+                "I’m buying a car for my spouse",
+                "I’m buying a car for my children"
+             ]
+             
+             
+       },
+       {
+           "question": "Got a budget in mind?",
+           "intent": "price_range",
+           "options": [
+               "₹5 Lakh – ₹10 Lakh",
+               "₹10 Lakh – ₹25 Lakh",
+               "₹25 Lakh – ₹50 Lakh",
+               "₹50 Lakh and above",
+               "Not sure yet / No budget in mind"
+            ]
+            
+            
+
+       },
+       {
+           "question": "How do you plan to use your new car most of the time?",
+           "intent": "usage",
+           "options": [
+               "Getting to work or college (daily commute)",
+               "Running family errands or outings",
+               "Weekend getaways",
+               "For business or work travel",
+               "Ride-sharing or commercial use",
+               "Driving in rural or off-road areas"
+            ]
+            
+            
+
+       },
+       {
+           "question": "What features matter most to you in your new car? (Pick up to 5)",
+           "intent": "feature",
+           "options": [
+               "Strong safety rating",
+               "Good fuel efficiency",
+               "Comfort and interior space",
+               "Stylish design and looks",
+               "Latest tech & infotainment",
+               "Low maintenance needs",
+               "Good service support nearby",
+               "Environmentally friendly",
+               "Trusted brand value",
+               "Strong engine performance",
+               "Great value for money",
+               "High resale value",
+               "Off-road capabilities"
+            ]
+            
+            
+
+       },
+        {
+            "question": "Who’s going to be driving the car most often?",
+             "intent": "driver",
+             "options": [
+                 "I’ll be driving it myself",
+                 "I have a full-time driver",
+                 "It will be shared among family members"
+              ]
+              
+              
+
+         },
+       {
+           "question": "How many people do you usually travel with?",
+           "intent": "seating",
+           "options": [
+               "Mostly just me",
+               "2 to 3 people",
+               "4 to 5 people",
+               "More than 5 (big family or group)"
+            ]
+            
+            
+
+       },
+       {
+           "question": "Is there anything physical we should consider while recommending cars?",
+           "intent": "physical_considerations",
+           "options": [
+               "I’m tall (over 6 feet)",
+               "I’m shorter than average",
+               "I have back or joint issues",
+               "None of these apply"
+            ]
+            
+            
+
+       },
+         {
+             "question": "How are you planning to finance your purchase?",
+             "intent": "financing",
+             "options": [
+                 "I’ll pay in cash",
+                 "Planning to exchange an old car",
+                 "Taking a loan",
+                 "Support from family or friends",
+                 "Through company lease or credit"
+              ]
+              
+              
+
+         },
+       {
+           "question": "Which of these best describes you or your lifestyle?",
+           "intent": "lifestyle",
+           "options": [
+               "Student",
+               "Business owner",
+               "Working in a corporate job",
+               "Government or public service",
+               "Farmer or rural professional",
+               "Field job (sales, support, etc.)",
+               "Homemaker",
+               "Retired",
+               "Other",
+               "I’d prefer not to say"
+            ]
+            
+            
+       },
+
+       {
+           "question": "What kind of vehicles are you interested in?",
+           "intent": "vehicle_type",
+           "options": [
+               "Hatchback",
+               "Sedan",
+               "SUV",
+               "MUV / MPV",
+               "Electric Vehicle (EV)",
+               "Hybrid",
+               "Pickup Truck"
+            ]
+            
+            
+       },
+
+       {
+           "question": "Do you have a preferred fuel type?",
+           "intent": "fuel_type",
+           "options": [
+               "No strong preference",
+               "Petrol",
+               "CNG",
+               "Strong Hybrid",
+               "Electric (EV)",
+               "Diesel"
+            ]
+            
+            
+       },
+
+       {
+           "question": "Are there any car brands you prefer?",
+           "intent": "brand_name",
+           "options": [
+               "Toyota", 
+               "Maruti", 
+               "Hyundai",
+               "Tata", 
+               "Kia", 
+               "Mahindra", 
+               "Honda",
+               "Skoda", 
+               "MG",
+               "Volkswagen", 
+               "Renault"
+            ]
+            
+            
+       },
+
+       {
+           "question": "What’s your preference when it comes to transmission?",
+           "intent": "transmission",
+           "options": [
+               "I’m open to both automatic and manual",
+               "Prefer automatic",
+               "Prefer manual"
+            ]
+            
+            
+       }
+   ]

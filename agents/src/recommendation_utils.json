@@ -1,0 +1,130 @@
+
+{
+  "price_range": {
+    "below ₹5 lakh": {
+      "lte": 500000
+    },
+    "₹5 lakh – ₹10 lakh": {
+      "gte": 500000,
+      "lte": 1000000
+    },
+    "₹10 lakh – ₹25 lakh": {
+      "gte": 1000000,
+      "lte": 2500000
+    },
+    "₹25 lakh – ₹50 lakh": {
+      "gte": 2500000,
+      "lte": 5000000
+    },
+    "₹50 lakh and above": {
+      "gte": 5000000
+    }
+  },
+  "seating": {
+    "mostly just me": ["1"],
+    "2 to 3 people": ["2", "3"],
+    "4 to 5 people": ["4", "5"],
+    "more than 5 (big family or group)": ["6", "7", "8", "9", "10"]
+  },
+  "vehicle_type": {
+    "Hatchback": [
+      "hatchback",
+      "hatchback sedan",
+      "hatchback crossover",
+      "microcar",
+      "compact ev car"
+    ],
+    "Sedan": [
+      "sedan",
+      "electric sedan",
+      "luxury cars"
+    ],
+    "SUV": [
+      "suv",
+      "mid-size suv",
+      "suv coupe",
+      "compact crossover",
+      "crossover"
+    ],
+    "MUV / MPV": [
+      "mpv",
+      "muv",
+      "passenger van"
+    ],
+    "Electric Vehicle (EV)": [
+      "electric sedan",
+      "electric vehicle",
+      "electric car",
+      "compact ev car"
+    ],
+    "Pickup Truck": [
+      "pickup truck"
+    ],
+    "Other": [
+      "sports car",
+      "sportback",
+      "sports coupe",
+      "luxury sports coupe.",
+      "coupe",
+      "grand tourer coupe",
+      "grand tourer",
+      "cabriolet",
+      "roadster",
+      "supercar",
+      "commercial vehicle",
+      "hybrid",
+      "hybrid coupe"
+    ]
+  },
+  "fuel_type":{
+    "Petrol": [
+      "petrol",
+      "lpg"
+    ],
+    "CNG":[
+      "cng"
+    ],
+    "Diesel": [
+      "diesel"
+    ],
+    "Strong Hybrid": [
+      "hybrid",
+      "hybrid (electric + petrol)",
+      "mild hybrid(electric + petrol)"
+    ],
+    "Electric (EV)": [
+      "electric"
+    ]
+    },  
+  "transmission_type": {
+    "I’m open to both automatic and manual":[
+            "manual",
+      "clutchless manual",
+      "automatic",
+      "automatic dual-clutch",
+      "tiptronic"
+
+    ],
+    "Prefer manual": [
+      "manual",
+      "clutchless manual"
+    ],
+    "Prefer automatic": [
+      "automatic",
+      "automatic dual-clutch",
+      "tiptronic"
+    ],
+    "Prefer hybrid": [
+      "manual automatic",
+      "manual cvt",
+      "amt"
+    ],
+    "Other": [
+      "cvt",
+      "dct",
+      "dual-clutch",
+      "electric drive transmission"
+    ]
+  }
+  
+}
