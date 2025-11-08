@@ -6,12 +6,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from gryd_worker import gryd
 from autocrm_db_helper import get_pg_connector
+from prompt import yield_primary_prompt
 
-
-from prompt import get_primary_prompt
 
 import time
-
+import json
 
 
 gryd.SERVICE = os.environ.get("AUTOBOT_CONVERSATION_SERVICE_NAME","autocrm-conversation")
@@ -29,8 +28,7 @@ logger = gryd.hp.get_logger(__name__)
 def WARM_UP():
     logger.info("WARM_UP CALLED")
     with get_pg_connector() as pg:
-        pass
-        
+        pass    
     return
 
 @gryd.is_a_task(
@@ -54,7 +52,7 @@ def converse(*args, **kwargs):
     logger.info("converse")
     awaited_tasks= [
             {
-                "task":"ask_insights",
+                "task":"get_primary_prompt",
                 "service" : gryd.SERVICE,
                 "kwargs" : {
                     "attr1" : "value1",
@@ -65,6 +63,7 @@ def converse(*args, **kwargs):
     loopers = gryd.yield_results(awaited_tasks, timeout=30)
     for result in loopers:
         logger.info(result)
+    yield {"placeholder" : "here praveen enjoy my response","intent" : "wow_intent","message_id":str(time.time()),"reply_to" : str(time.time()-1000),"is_last":True}
     return
 
 @gryd.is_a_task(
@@ -96,5 +95,26 @@ def test_agent(*args, **kwargs):
 def get_primary_prompt(*args, **kwargs):
     logger = kwargs.get("logger",logger)
     logger.info("get_primary_prompt")
-    yield from get_primary_prompt(*args, **kwargs)
-    return
+    yield from yield_primary_prompt(*args, **kwargs)
+    
+
+@gryd.is_a_task()
+def session_close(*args, **kwargs):
+    logger = kwargs.get("logger",logger)
+    logger.info("session_close")
+    yield {"status" : "complete","session_id":kwargs.get("session_id")}
+
+@gryd.is_a_task()
+def add_to_session_cache(*args, **kwargs):
+    logger = kwargs.get("logger",logger)
+    logger.info("add_to_session_cache")
+    yield {"status" : "complete","session_id":kwargs.get("session_id")}
+
+@gryd.is_a_task()
+def run_orchestrator(*args, **kwargs):
+    logger = kwargs.get("logger",logger)
+    logger.info("run_orchestrator")
+    reply_to = str(time.time())
+    yield {"placeholder":"agent 1 response","intent" : "agent_one","reply_to":reply_to, "message_id" : str(time.time()),"is_last":False,"index" : 1}
+    yield {"placeholder":"agent 2 response","intent" : "agent_two","reply_to":reply_to, "message_id" : str(time.time()),"is_last":False,"index" : 2}
+    yield {"placeholder":"agent 3 response","intent" : "agent_three","reply_to":reply_to, "message_id" : str(time.time()),"is_last":True,"index" : 3}
