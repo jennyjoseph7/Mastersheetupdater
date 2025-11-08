@@ -3,13 +3,19 @@
 
 from contextlib import contextmanager
 from collections.abc import Generator
-from PGConnector import AutoCRMPGConnector
+from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 import time
 from gryd_worker import gryd
+import os
 
 logger = gryd.hp.get_logger(__name__)
+
+AUTOCRM_APP_ENTERPRISE_ID =  os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
+
+
+JOB_CONNECT = {}
 @ contextmanager
-def get_pg_connector(enterprise_id, close_on_exit = True) -> Generator[AutoCRMPGConnector, None, None]:
+def get_pg_connector(enterprise_id=AUTOCRM_APP_ENTERPRISE_ID, close_on_exit = True) -> Generator[AutoCRMPGConnector, None, None]:
     """
     Context manager to get a job connector for a specific enterprise.
 
@@ -25,17 +31,15 @@ def get_pg_connector(enterprise_id, close_on_exit = True) -> Generator[AutoCRMPG
     """
     global JOB_CONNECT
     try:
-        if not enterprise_id:
-            enterprise_id = "autobotcrm"
-        if not JOB_CONNECT.get(enterprise_id):
+        if not JOB_CONNECT:
             t = time.time()
-            JOB_CONNECT[enterprise_id] = gryd.db.(enterprise_id)
+            JOB_CONNECT = AutoCRMPGConnector(enterprise_id)
             logger.info("creating pg_con for enterprise {} in {} seconds".format(enterprise_id, time.time() - t))
-        yield JOB_CONNECT[enterprise_id]
+        yield JOB_CONNECT
     except Exception as e:
         gryd.hp.print_error(e)
         raise
     finally:
-        if close_on_exit and (enterprise_id in JOB_CONNECT):
-            JOB_CONNECT[enterprise_id].close()
-            JOB_CONNECT.pop(enterprise_id, None)
+        if close_on_exit and JOB_CONNECT:
+            JOB_CONNECT.close()
+            JOB_CONNECT = None
