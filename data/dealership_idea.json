@@ -26,6 +26,16 @@
       "indexed": true
     },
     {
+      "name": "campaign_type",
+      "type": "list",
+      "options": [
+        "pre-sales",
+        "post-sales",
+        "dealership"
+      ],
+      "default": "pre-sales"
+    },
+    {
       "name": "dealership_idea_id",
       "type": "uid",
       "indexed": true,
@@ -34,6 +44,7 @@
         "function": "name_to_id",
         "args": [
           "dealership_id",
+          "campaign_type",
           "created"
         ],
         "kwargs": {
@@ -48,16 +59,6 @@
       "name": "campaign_name",
       "type": "text",
       "indexed": true
-    },
-    {
-      "name": "campaign_type",
-      "type": "list",
-      "options": [
-        "pre-sales",
-        "post-sales",
-        "dealership"
-      ],
-      "default": "pre-sales"
     },
     {
       "name": "campaign_objective",
@@ -116,22 +117,24 @@
     {
       "name": "urgency_hook",
       "type": "list",
-      "options": [
-        "Only 10 cars left",
-        "Valid this week",
-        "First 25 customers bonus",
-        "Limited time",
-        "Book today"
-      ],
-      "option_others": true
+      "list_type": "text"
     },
     {
       "name": "idea",
-      "type": "text"
+      "type": "text",
+      "ui_element": "textarea"
     },
     {
       "name": "attachments",
-      "type": "file"
+      "list_type": "text",
+      "type": "string_list",
+      "ui_element": "file",
+      "constraint": {
+        "function": "url_validator"
+      },
+      "converter": {
+        "function": "url_converter"
+      }
     },
     {
       "name": "status",
@@ -153,4 +156,3 @@
     "dealership"
   ]
 }
-

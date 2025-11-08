@@ -70,11 +70,24 @@
         },
         {
             "name" : "dealership_legal_name",
-            "type" : "text"
+            "type" : "text",
+            "default": {
+                "function": "copy_attribute",
+                "args": [
+                    "dealer_name"
+                ]
+            }
         },
         {
             "name" : "certificate_of_incorporation",
-            "type" : "file"
+            "type" : "text",
+            "ui_element": "file",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            }
         },
         {
             "name": "aliases",
@@ -86,7 +99,8 @@
         },
         {
             "name": "dealer_group_id",
-            "refers": "parents.dealer_group.dealer_group_id"
+            "refers": "parents.dealer_group.dealer_group_id",
+            "required": false
         },
         {
             "name": "dealer_group_name",
@@ -185,6 +199,10 @@
             "refers": "parents.region.region_level_guidelines"
         },
         {
+            "name": "region_level_guardrails",
+            "refers": "parents.region.region_level_guardrails"
+        },
+        {
             "name": "showroom_center_count",
             "type": "number"
         },
@@ -199,6 +217,9 @@
         {
             "name": "website",
             "type": "text",
+            "converter": {
+                "function": "url_converter"
+            },
             "constraint": {
                 "function": "url_validator"
             },
@@ -214,6 +235,9 @@
         {
             "name": "linkedin_url",
             "type": "text",
+            "converter": {
+                "function": "url_converter"
+            },
             "constraint": {
                 "function": "url_validator"
             },
@@ -238,7 +262,7 @@
                 ]
             }
         },
-                {
+        {
             "name": "billing_address",
             "type": "text"
         },
@@ -316,41 +340,17 @@
         },
         {
             "name": "secondary_contact_name",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "dealer_group",
-                    "dealer_group_id",
-                    "secondary_contact_name"
-                ]
-            }
+            "type": "text"
         },
         {
             "name": "secondary_contact_role",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "dealer_group",
-                    "dealer_group_id",
-                    "secondary_contact_role"
-                ]
-            }
+            "type": "text"
         },
         {
             "name": "secondary_contact_email",
             "type": "text",
             "constraint": {
                 "function": "email_validator"
-            },
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "dealer_group",
-                    "dealer_group_id",
-                    "secondary_contact_email"
-                ]
             }
         },
         {
@@ -358,18 +358,14 @@
             "type": "text",
             "constraint": {
                 "function": "phone_validator"
-            },
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "dealer_group",
-                    "dealer_group_id",
-                    "secondary_contact_phone"
-                ]
             }
         },
         {
             "name": "dealership_guidelines",
+            "type": "text"
+        },
+        {
+            "name": "dealership_guardrails",
             "type": "text"
         },
         {
@@ -399,8 +395,9 @@
                     "region_name"
                 ],
                 "kwargs": {
+                    "attribute_join": "-",
                     "is_unique": true,
-                    "separator": "_",
+                    "separator": "-",
                     "skip_empty": true
                 }
             },
