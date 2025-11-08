@@ -181,16 +181,6 @@
       "indexed": true
     },
     {
-      "name" : "start_date",
-      "type" : "number"
-
-    },
-    {
-      "name" : "end_date",
-      "type" : "number"
-
-    },
-    {
       "name": "notes",
       "type": "text"
     }
