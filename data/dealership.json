@@ -151,7 +151,6 @@
             "name": "supported_brands",
             "type": "list",
             "ui_element": "multiselect",
-            "options": "/options/brand/brand_name",
             "required": false
         },
         {

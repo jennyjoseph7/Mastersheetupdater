@@ -3,14 +3,14 @@ from gryd_worker.gryd_routes import payload_decorator
 from models import model as base_model
 from ai_service import ai_service_app
 import os
-AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm-app")
+AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 AUTOCRM_ADMIN_ID = os.environ.get("AUTOCRM_ADMIN_ID", "ananth+autocrm-app@i2ce.in")
 AUTOCRM_ADMIN_PHONE_NUMBER = os.environ.get("AUTOCRM_ADMIN_PHONE_NUMBER", "99980838165")
-AUTOCRM_ADMIN_PASSWORD = os.environ.get("AUTOCRM_ADMIN_PASSWORD", "password")
+AUTOCRM_ADMIN_PASSWORD = os.environ.get("AUTOCRM_ADMIN_PASSWORD", "D@vei2ce")
 BASE_DIR = hp.dirname(__file__)
 DATA_DIR = hp.join(BASE_DIR, "data")
 
-gryd.SERVICE = AUTOCRM_APP_ENTERPRISE_ID
+gryd.SERVICE = f"{AUTOCRM_APP_ENTERPRISE_ID}-app"
 QM = gryd.set_queue_manager()
 logger = gryd.hp.get_logger(AUTOCRM_APP_ENTERPRISE_ID)
 
