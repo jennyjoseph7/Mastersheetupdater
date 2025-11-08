@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 
 from gryd_worker import gryd
-
+from autocrm_db_helper import get_pg_connector
 
 
 from prompt import get_primary_prompt
@@ -28,7 +28,7 @@ logger = gryd.hp.get_logger(__name__)
 
 def WARM_UP():
     logger.info("WARM_UP CALLED")
-    with get_pg_connector("autobotcrm", True) as pg:
+    with get_pg_connector() as pg:
         pass 
     return
 
