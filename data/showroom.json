@@ -29,10 +29,7 @@
       "name": "dealership_name",
       "refers": "parents.dealership.dealership_name"
     },
-    {
-      "name": "brand_name",
-      "refers": "parents.dealership.brand_name"
-    },
+    
     {
       "name": "region_name",
       "refers": "parents.dealership.region_name"
@@ -43,10 +40,10 @@
       "indexed": true
     },
     {
-      "name": "showroom_code",
-      "type": "text",
-      "indexed": true
+      "name": "supported_brands",
+      "refers": "parents.dealership.supported_brands"
     },
+    
     {
       "name": "showroom_type",
       "type": "text",
@@ -155,17 +152,68 @@
       "name": "display_vehicle_count",
       "type": "number"
     },
+    
     {
-      "name": "virtual_tour_url",
+      "name": "google_reviews_rating",
       "type": "text"
     },
+    {
+      "name": "google_reviews",
+      "type": "text"
+    },
+    {
+      "name": "google_my_business_listing",
+      "type": "text"
+    },
+    {
+      "name": "showroom_reviews",
+      "type": "text"
+    },
+    {
+      "name": "showroom_photos",
+      "type": "text"
+    },
+    {
+      "name": "showroom_rating",
+      "type": "text"
+    },
+    
+    {
+        "name":"region_level_guidelines",
+        "refers":"parents.dealership.region_level_guidelines"
+    },
+    {
+        "name":"region_level_guardrails",
+        "refers":"parents.dealership.region_level_guardrails"
+    },
+    {
+      "name": "brand_level_guidelines",
+      "refers":"parents.dealership.brand_level_guidelines"
+    },
+    {
+      "name": "brand_level_guardrails",
+      "refers":"parents.dealership.brand_level_guardrails"
+    },
+    {
+      "name": "showroom_level_guidelines",
+      "type": "text"
+    },
+    {
+      "name": "showroom_level_guardrails",
+      "type": "text"
+    },
+    
     {
       "name": "status",
       "type": "text",
       "options": [
         "Active",
         "Inactive",
-        "Under Renovation"
+        "Under Renovation",
+        "Coming Soon",
+        "Temporarily Closed",
+        "Permanently Closed",
+        "Seasonal Operation"
       ]
     },
     {
