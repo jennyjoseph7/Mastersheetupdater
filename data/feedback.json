@@ -69,32 +69,6 @@
             "refers": "parents.brand.brand_name"
         },
         {
-            "name": "feedback_category",
-            "type": "text",
-            "options": [
-                "Sales Experience",
-                "Service Quality",
-                "Vehicle Performance",
-                "Staff Behaviour",
-                "Price / Billing",
-                "Other"
-            ]
-        },
-        {
-            "name": "feedback_source",
-            "type": "text",
-            "options": [
-                "In-person",
-                "Website",
-                "Mobile App",
-                "Email",
-                "SMS",
-                "Call",
-                "WhatsApp",
-                "Survey Form"
-            ]
-        },
-        {
             "name": "rating",
             "type": "number"
         },
@@ -112,6 +86,27 @@
             "default": false
         },
         {
+            "name": "document",
+            "type": "list",
+            "title": "Upload Document"
+        },
+        {
+            "name": "rating_service_quality",
+            "type": "number"
+        },
+        {
+            "name": "rating_vehicle_performance",
+            "type": "number"
+        },
+        {
+            "name": "rating_staff_behaviour",
+            "type": "number"
+        },
+        {
+            "name": "did_they_overcharge",
+            "type": "boolean"
+        },
+        {
             "name": "follow_up_by",
             "type": "text"
         },
@@ -121,16 +116,186 @@
             "default": {
                 "function": "now_ctime"
             }
-
         },
         {
-            "name": "status",
+            "name": "engine_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "Engine Serviced"
+        },
+        {
+            "name": "brakes_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "Brakes Serviced"
+        },
+        {
+            "name": "transmission_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "Transmission / Gearbox Serviced"
+        },
+        {
+            "name": "ac_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "AC / HVAC System Serviced"
+        },
+        {
+            "name": "electrical_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "Electrical Components Serviced"
+        },
+        {
+            "name": "battery_replaced",
+            "type": "boolean",
+            "default": false,
+            "title": "Battery Serviced / Replaced"
+        },
+        {
+            "name": "tyres_replaced",
+            "type": "boolean",
+            "default": false,
+            "title": "Tyres Replaced / Rotated"
+        },
+        {
+            "name": "suspension_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "Suspension / Shock Absorbers Serviced"
+        },
+        {
+            "name": "steering_system_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "Steering System Serviced"
+        },
+        {
+            "name": "exhaust_system_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "Exhaust / Emission System Serviced"
+        },
+        {
+            "name": "fuel_system_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "Fuel System Serviced"
+        },
+        {
+            "name": "cooling_system_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "Cooling / Radiator System Serviced"
+        },
+        {
+            "name": "interior_cleaning_done",
+            "type": "boolean",
+            "default": false,
+            "title": "Interior Cleaning / Detailing Done"
+        },
+        {
+            "name": "exterior_polishing_done",
+            "type": "boolean",
+            "default": false,
+            "title": "Exterior Polishing / Paint Protection Done"
+        },
+        {
+            "name": "bodywork_done",
+            "type": "boolean",
+            "default": false,
+            "title": "Bodywork / Denting / Painting Done"
+        },
+        {
+            "name": "lighting_system_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "Lighting / Headlamps Serviced"
+        },
+        {
+            "name": "wiper_system_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "Wiper / Washer System Serviced"
+        },
+        {
+            "name": "sensor_system_serviced",
+            "type": "boolean",
+            "default": false,
+            "title": "Sensor / Electronics Calibration Done"
+        },
+        {
+            "name": "software_updated",
+            "type": "boolean",
+            "default": false,
+            "title": "Software / ECU Updated"
+        },
+        {
+            "name": "navigation_updated",
+            "type": "boolean",
+            "default": false,
+            "title": "Navigation / Infotainment Updated"
+        },
+        {
+            "name": "recall_action_performed",
+            "type": "boolean",
+            "default": false,
+            "title": "Recall Action Performed"
+        },
+        {
+            "name": "accessories_installed",
+            "type": "boolean",
+            "default": false,
+            "title": "Accessories Installed / Replaced"
+        },
+        {
+            "name": "general_checkup_done",
+            "type": "boolean",
+            "default": false,
+            "title": "General Health Check-up Done"
+        },
+        {
+            "name": "preventive_maintenance_done",
+            "type": "boolean",
+            "default": false,
+            "title": "Preventive Maintenance Done"
+        },
+        {
+            "name": "emission_test_done",
+            "type": "boolean",
+            "default": false,
+            "title": "Emission / Pollution Test Done"
+        },
+        {
+            "name": "alignment_balancing_done",
+            "type": "boolean",
+            "default": false,
+            "title": "Wheel Alignment / Balancing Done"
+        },
+        {
+            "name": "oil_changed",
+            "type": "boolean",
+            "default": false,
+            "title": "Engine Oil / Filter Changed"
+        },
+        {
+            "name": "warranty_claim_processed",
+            "type": "boolean",
+            "default": false,
+            "title": "Warranty Claim Processed"
+        },
+        {
+            "name": "response_status",
             "type": "text",
             "options": [
                 "New",
+                "Acknowledged",
                 "Reviewed",
                 "Action Taken",
-                "Closed"
+                "Escalated",
+                "Closed",
+                "Rejected"
             ]
         },
         {
@@ -165,7 +330,3 @@
         "service_visit"
     ]
 }
-
-
-
-
