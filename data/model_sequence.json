@@ -6,6 +6,7 @@
     "document",
     "region",
     "session",
+    "session_data_cache",
     "brand",
     "model",
     "model_year",
