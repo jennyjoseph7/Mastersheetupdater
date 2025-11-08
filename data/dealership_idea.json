@@ -26,6 +26,16 @@
       "indexed": true
     },
     {
+      "name": "campaign_type",
+      "type": "list",
+      "options": [
+        "pre-sales",
+        "post-sales",
+        "dealership"
+      ],
+      "default": "pre-sales"
+    },
+    {
       "name": "dealership_idea_id",
       "type": "uid",
       "indexed": true,
@@ -34,6 +44,7 @@
         "function": "name_to_id",
         "args": [
           "dealership_id",
+          "campaign_type",
           "created"
         ],
         "kwargs": {
@@ -50,26 +61,42 @@
       "indexed": true
     },
     {
-      "name": "campaign_type",
-      "type": "list",
-      "options": [
-        "pre-sales",
-        "post-sales",
-        "dealership"
-      ],
-      "default": "pre-sales"
-    },
-    {
       "name": "campaign_objective",
       "type": "list",
       "options": [
-        "Awareness",
-        "Lead Generation",
-        "Lead Qualification",
-        "Sales Promotion",
-        "Lead Nurture",
-        "Cross Sell",
-        "Other"
+        "Product Launch / Reveal",
+        "Event Promotion",
+        "Cold List Activation",
+        "Event/Expo Data Activation",
+        "Dormant CRM Reactivation",
+        "Interest Confirmation & Qualification",
+        "Profile Completion Campaign",
+        "Dealer / OEM Offer Promotion",
+        "Exchange / Loyalty Bonus Offer",
+        "EMI / Finance Scheme Push",
+        "Year-End / Stock Clearance",
+        "New Variant / Feature Highlight",
+        "Price Drop / Offer Re-Nudge",
+        "Comparison / Decision Aid Campaign",
+        "Test Drive Reminder / Showroom Visit Reminder / Follow-Up",
+        "Accessory Promotion / Suggestion",
+        "Insurance / Finance / RSA Add-On",
+        "Upgrade Offer for Existing Owner",
+        "Custom Campaign",
+        "Post-Purchase Call",
+        "Welcome Email / WhatsApp",
+        "First-Service Reminder",
+        "Scheduled Service Reminder",
+        "Missed Service Follow-Up",
+        "Seasonal Check-Up / Awareness",
+        "AMC Renewal",
+        "Warranty Expiry Offer",
+        "Referral Program / Loyalty",
+        "Birthday / Anniversary Offer",
+        "Exclusive Member Event",
+        "Post-Service Feedback (CSI / NPS)",
+        "Customer Education / How-To",
+        "Recall / Recall Follow-Up / Completion Confirmation"
       ],
       "option_others": true
     },
@@ -80,7 +107,11 @@
         "brand awareness",
         "product awareness",
         "event",
-        "lead generation"
+        "lead generation",
+        "workshop awareness",
+        "offers",
+        "new accessories",
+        "new procedures"
       ],
       "option_others": true
     },
@@ -94,6 +125,13 @@
       ]
     },
     {
+      "name": "ctas",
+      "title": "Call to Actions",
+      "type": "string_list",
+      "list_type": "text",
+      "ui_element": "tags"
+    },
+    {
       "name": "campaign_offer",
       "type": "text"
     },
@@ -102,24 +140,38 @@
       "type": "text"
     },
     {
-      "name": "urgency_hook",
-      "type": "list",
-      "options": [
-        "Only 10 cars left",
-        "Valid this week",
-        "First 25 customers bonus",
-        "Limited time",
-        "Book today"
-      ],
-      "option_others": true
-    },
-    {
-      "name": "idea",
+      "name": "campaign_tone",
       "type": "text"
     },
     {
+      "name": "campaign_tagline",
+      "type": "text"
+    },
+    {
+      "name": "call_to_actions",
+      "type": "list"
+    },
+    {
+      "name": "urgency_hook",
+      "type": "list",
+      "list_type": "text"
+    },
+    {
+      "name": "idea",
+      "type": "text",
+      "ui_element": "textarea"
+    },
+    {
       "name": "attachments",
-      "type": "file"
+      "list_type": "text",
+      "type": "string_list",
+      "ui_element": "file",
+      "constraint": {
+        "function": "url_validator"
+      },
+      "converter": {
+        "function": "url_converter"
+      }
     },
     {
       "name": "status",

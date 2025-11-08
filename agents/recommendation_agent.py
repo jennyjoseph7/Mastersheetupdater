@@ -19,10 +19,48 @@ class RecommendationAgent(BaseAgent):
         # self.data : Union[dict, list] = self._load_json(source=source)
     
 
-    def _extract_pattern(self,data):
-        # with open("/agent/pattern.json", "r") as f:    
-        #     data = json.load(f)
-        return data
+    def _extract_pattern(self,input_data):
+      formater={
+        "brand_preference": "brand_name",
+        "variant_preference": "variant_name",
+        "color_preference": "available_colours",
+        "model_preference": "product_name",
+        "engine_type_preference": "engine",
+        "transmission_preference": "transmission_type",
+        "range_preference": "price",
+        # "feature_preferences": "comfort_and_convenience",
+        "seating_capacity_preference": "seating",
+        "segment_preference": "vehicle_type"
+        } 
+      filter_keys = formater.keys()
+
+      if "user_profile" not in input_data and "user_preference" not in input_data:
+          
+          data["user_profile"] = []
+          data["user_preference"] = []
+
+          for key, value in input_data.items():
+              if key in filter_keys:
+                  data["user_preference"].append({
+                      "intent": key,
+                      "answer": value
+                  })
+              else:
+                  data["user_profile"].append({
+                      "question": key.replace("_", " ").capitalize() + "?",
+                      "answer": value
+                  })
+
+
+          fix_keys=[j for j in formater.keys()]
+          for filter in data['user_preference']:
+              intent=filter.get("intent")
+
+              if intent in fix_keys:
+                print("fixing the input intent")
+                filter['intent']=[formater[intent]]
+          print(data)
+      return data
 
     def _request_data(self, data:dict) -> list[dict]:
 
@@ -59,12 +97,17 @@ class RecommendationAgent(BaseAgent):
     def main(self,data):
         data = self._extract_pattern(data)
         result = self._request_data(data)
+
         return result
 
 if __name__ == "__main__":
     
     agent = RecommendationAgent()
     # fp = "/home/shreyasvaishnav/autobot_agents/aem_mock_data/5.json"
+
+
+
+    
     data= {
     "user_profile": [
       {
@@ -90,10 +133,23 @@ if __name__ == "__main__":
     ],
     "Max number":   10,
     "collection": "autobot_test_22"
-  }
+    } 
 
 
-    res=agent.main(data)
+
+    input_data = {
+          "brand_preference": ["Hyundai"],
+          "product_name": ["Creta"],
+          "range_preference": ["10-20 Lakh INR"],
+          "usage_type": ["personal"],
+          "lifestyle_type": ["family oriented"]
+      }
+
+
+
+
+
+    res=agent.main(input_data)
     da=(json.dumps(res, indent=4, default=str))
     print(da)
 

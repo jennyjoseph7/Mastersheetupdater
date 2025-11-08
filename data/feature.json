@@ -21,6 +21,26 @@
             }
         },
         {
+            "name": "is_standard",
+            "type": "bool"
+          },
+          {
+            "name":"likely_to_recommend",
+            "type":"bool"
+          },
+          {
+            "name": "is_engine_dependent",
+            "type": "bool"
+          },
+          {
+            "name": "is_transmission_dependent",
+            "type": "bool"
+          },
+          {
+            "name": "is_drivetrain_dependent",
+            "type": "bool"
+          },
+        {
             "name": "feature_category",
             "type": "text",
             "options": [
@@ -40,52 +60,14 @@
             "type": "text",
             "indexed": true
         },
-        {
-            "name": "aliases",
-            "type":"string_list",
-            "converter" : {
-                "function" : "ensure_in_list",
-                "args" : ["feature_name"]
-            }
-        },
-        {
-            "name": "feature_type",
-            "type": "text",
-            "options": [
-                "Standard",
-                "Optional",
-                "Add-On",
-                "Package-only"
-            ],
-            "ui_element": "select"
-        },
 
-        {
-            "name": "tags",
-            "type": "string_list",
-            "ui_element": "multiselect",
-            "options": [
-              "premium",
-              "essential",
-              "popular",
-              "new",
-              "limited",
-              "electric",
-              "safety",
-              "luxury",
-              "comfort"
-            ],
-            "option_others": true
-          },
+
         {
             "name": "feature_description",
             "type": "text",
             "ui_element": "textarea"
         },
-        {
-            "name": "value",
-            "type": "text"
-        },
+
         {
             "name": "unit",
             "type": "text",
@@ -147,30 +129,7 @@
             ],
             "ui_element": "select"
         },
-        {
-            "name": "showcase_image",
-            "type": "text",
-            "constraint": {
-                "function": "url_validator"
-            },
-            "converter": {
-                "function": "url_converter"
-            }
-        },
-        {
-            "name": "images",
-            "type": "list",
-            "title": "Feature Images"
-        },
-        {
-            "name": "videos",
-            "type": "list",
-            "title": "Feature Videos"
-        },
-        {
-            "name": "additional_cost",
-            "type": "number"
-        },
+
         {
             "name": "additional_cost_unit",
             "type": "list",

@@ -21,20 +21,48 @@
       }
     },
     {
+      "name": "feature_type",
+      "type": "text",
+      "options": [
+        "Standard",
+        "Optional",
+        "Add-On",
+        "Package-only"
+      ],
+      "ui_element": "select"
+    },
+    {
+      "name": "tags",
+      "type": "string_list",
+      "ui_element": "multiselect",
+      "options": [
+        "premium",
+        "essential",
+        "popular",
+        "new",
+        "limited",
+        "electric",
+        "safety",
+        "luxury",
+        "comfort"
+      ],
+      "option_others": true
+    },
+    {
       "name": "is_standard",
-      "type": "bool"
+      "refers": "parents.feature.is_standard"
     },
     {
       "name": "is_engine_dependent",
-      "type": "bool"
+      "refers": "parents.feature.is_engine_dependent"
     },
     {
       "name": "is_transmission_dependent",
-      "type": "bool"
+      "refers": "parents.feature.is_transmission_dependent"
     },
     {
       "name": "is_drivetrain_dependent",
-      "type": "bool"
+      "refers": "parents.feature.is_drivetrain_dependent"
     },
     {
       "name": "variant_id",
@@ -61,7 +89,13 @@
     },
     {
       "name": "aliases",
-      "refers": "parents.feature.aliases"
+      "type": "string_list",
+      "converter": {
+        "function": "ensure_in_list",
+        "args": [
+          "feature_name"
+        ]
+      }
     },
     {
       "auto_updater": true,
@@ -69,34 +103,8 @@
       "refers": "parents.feature.feature_description"
     },
     {
-      "name": "additional_cost",
-      "refers": "parents.feature.additional_cost"
-    },
-    {
       "name": "additional_cost_unit",
       "refers": "parents.feature.additional_cost_unit"
-    },
-    {
-      "auto_updater": true,
-      "name": "feature_category",
-      "refers": "parents.feature.feature_category"
-    },
-    {
-      "auto_updater": true,
-      "name": "feature_type",
-      "refers": "parents.feature.feature_type"
-    },
-    {
-      "name": "showcase_image",
-      "refers": "parents.feature.showcase_image"
-    },
-    {
-      "name": "images",
-      "refers": "parents.feature.images"
-    },
-    {
-      "name": "videos",
-      "refers": "parents.feature.videos"
     },
     {
       "auto_updater": true,
@@ -106,13 +114,41 @@
     },
     {
       "auto_updater": true,
-      "name": "unit_of_measure",
-      "refers": "parents.feature.unit_of_measure"
+      "name": "feature_value_type",
+      "refer": "parents.feature.feature_value_type"
+    },
+    {
+      "name": "source_reference",
+      "type": "text",
+      "title": "Source Reference"
+    },
+    {
+      "name": "source_reference",
+      "type": "text",
+      "title": "Source Reference"
+    },
+    {
+      "name": "source_path",
+      "type": "text",
+      "title": "Source Path"
+    },
+    {
+      "name": "source_date",
+      "type": "timestamp"
+    },
+    {
+      "name": "confidence_score",
+      "type": "text"
+    },
+    {
+      "auto_updater": true,
+      "type": "text",
+      "name": "unit_of_measure"
     },
     {
       "name": "package_name",
       "type": "text",
-      "title": "Package (If Applicable)"
+      "title": "Package name"
     },
     {
       "name": "launch_date",
@@ -133,6 +169,30 @@
     {
       "name": "status",
       "refers": "parents.variant.variant_status"
+    },
+    {
+      "name": "showcase_image",
+      "type": "text",
+      "constraint": {
+        "function": "url_validator"
+      },
+      "converter": {
+        "function": "url_converter"
+      }
+    },
+    {
+      "name": "images",
+      "type": "list",
+      "title": "Feature Images"
+    },
+    {
+      "name": "videos",
+      "type": "list",
+      "title": "Feature Videos"
+    },
+    {
+      "name": "additional_cost",
+      "type": "number"
     },
     {
       "auto_updater": true,

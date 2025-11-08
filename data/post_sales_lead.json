@@ -4,7 +4,7 @@
     "parents": [
         "post_sales_campaign"
     ],
-    "attributes" : [
+    "attributes": [
         {
             "name": "created",
             "type": "number",
@@ -70,8 +70,56 @@
             "force_update": "vehicle_id"
         },
         {
-            "type" : "number",
-            "name" : "customer_score"
+            "name": "reg_number",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "reg_number"
+                ]
+            }
+        },
+        {
+            "name": "vin_number",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "reg_number"
+                ]
+            }
+        },
+        {
+            "name": "persons_involved",
+            "type": "object_list",
+            "dict_keys": [
+                "user_id",
+                "person_name",
+                "last_contacted_whatsapp_number",
+                "last_contacted_email",
+                "last_contacted_phone_number"
+            ],
+            "auto_updater": true,
+            "force_update": "vehicle_id",
+            "default": {
+                "function": "pivot_from_model",
+                "args": [
+                    "person_vehicle",
+                    "vehicle_id",
+                    "unique_object_list"
+                ],
+                "kwargs": {
+                    "vehicle_id": "{vehicle_id}"
+                }
+            }
+        },
+        {
+            "type": "number",
+            "name": "customer_score"
         },
         {
             "name": "dealership_id",
@@ -133,65 +181,52 @@
             "refers": "parents.post_sales_campaign.campaign_type"
         },
         {
-            "type" : "bool",
-            "name": "exchanged_vehicle"
-        },
-        {
-            "name": "exchanged_remark",
-            "type": "text"
-        },
-        {
-            "name": "exchanged_car_details",
-            "type": "nested_object"
-        },
-        {
-            "name": "showroom_id",
+            "name": "workshop_id",
             "type": "uid",
             "required": false
         },
         {
-            "name": "showroom_name",
+            "name": "workshop_name",
             "type": "text",
-            "default":{
+            "default": {
                 "function": "get_from_model",
                 "args": [
-                    "showroom",
-                    "showroom_id",
-                    "showroom_name"
+                    "workshop",
+                    "workshop_id",
+                    "workshop_name"
                 ]
             },
             "auto_updater": true,
-            "force_update": "showroom_id"
+            "force_update": "workshop_id"
         },
         {
-            "name": "showroom_address",
+            "name": "workshop_address",
             "type": "text",
-            "default":{
+            "default": {
                 "function": "get_from_model",
                 "args": [
-                    "showroom",
-                    "showroom_id",
+                    "workshop",
+                    "workshop_id",
                     "address"
                 ]
             },
-
             "auto_updater": true,
-            "force_update": "showroom_id"
-        },
-        {
-            "name": "user_remark",
-            "type": "list"
+            "force_update": "workshop_id"
         },
         {
             "auto_updater": true,
             "default": {
-                "args": ["vehicle_id", "dealership_id", "campaign_id"],
+                "args": [
+                    "vehicle_reg_number",
+                    "dealership_name",
+                    "campaign_name"
+                ],
                 "function": "name_to_id",
                 "kwargs": {
-                "attribute_join": " ",
-                "is_unique": true,
-                "separator": " - ",
-                "skip_empty": true
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " - ",
+                    "skip_empty": true
                 }
             },
             "name": "post_sales_lead_id",

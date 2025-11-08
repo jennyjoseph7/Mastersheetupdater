@@ -1,0 +1,220 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "buyback_center",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "inspection_date",
+            "force_update": true,
+            "type": "datetime"
+        },
+        {
+            "name": "approval_date",
+            "force_update": true,
+            "type": "datetime"
+        },
+        {
+            "name": "completion_date",
+            "force_update": true,
+            "type": "datetime"
+        },
+        {
+            "name": "workshop_id",
+            "refers": "parents.workshop.workshop_id"
+        },
+        {
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id",
+            "auto_updater": true
+        },
+        {
+            "name": "dealership_name",
+            "refers": "parents.dealership.dealership_name"
+        },
+        {
+            "name": "brand_name",
+            "refers": "parents.dealership.brand_name"
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.dealership.region_name"
+        },
+        {
+            "name": "center_name",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "center_code",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "centre_type",
+            "type": "text",
+            "options": [
+                "Main Center",
+                "City Center",
+                "Express Center",
+                "Experience Center",
+                "Mall Kiosk",
+                "Virtual Center",
+                "Other"
+            ]
+        },
+        {
+            "name": "contact_number",
+            "type": "text",
+            "constraint": {
+                "function": "phone_validator"
+            }
+        },
+        {
+            "name": "email",
+            "type": "text",
+            "constraint": {
+                "function": "email_validator"
+            }
+        },
+        {
+            "name": "address",
+            "type": "text"
+        },
+        {
+            "name": "city",
+            "type": "text"
+        },
+        {
+            "name": "state",
+            "type": "text"
+        },
+        {
+            "name": "pincode",
+            "type": "text"
+        },
+        {
+            "name": "geolocation",
+            "type": "geolocation"
+        },
+        {
+            "name": "operating_hours",
+            "type": "nested_object",
+            "dict_keys": [
+                "opening_time",
+                "closing_time"
+            ]
+        },
+        {
+            "name": "days_open",
+            "type": "nested_object",
+            "options": [
+                "Day",
+                "start_time",
+                "end_time",
+                "is_closed",
+                "special_notes"
+            ]
+        },
+        {
+            "name": "manager_name",
+            "type": "text"
+        },
+        {
+            "name": "manager_contact",
+            "type": "text"
+        },
+        {
+            "name": "total_sales_executives",
+            "type": "number"
+        },
+        {
+            "name": "daily_walkin_capacity",
+            "type": "number"
+        },
+        {
+            "name": "facilities_available",
+            "type": "multiselect",
+            "options": [
+                "Customer Lounge",
+                "Wi-Fi",
+                "Cafe / Refreshments",
+                "Help Desk",
+                "Vehicle Display Area",
+                "Finance Assistance",
+                "Insurance Support",
+                "Accessories Section",
+                "EV Charging Point",
+                "Parking Facility",
+                "Virtual Experience Zone",
+                "Online Booking Support",
+                "Home Visit Support",
+                "Personal Assistance Desk",
+                "Extended Working Hours",
+                "Weekend Availability",
+                "Special Promotions",
+                "Loyalty Programs"
+            ],
+            "ui_element": "multiselect"
+        },
+        {
+            "name": "parking_capacity",
+            "type": "number"
+        },
+        {
+            "name": "display_vehicle_count",
+            "type": "number"
+        },
+        {
+            "name": "virtual_tour_url",
+            "type": "text"
+        },
+        {
+            "name": "status",
+            "type": "text",
+            "options": [
+                "Active",
+                "Inactive",
+                "Under Renovation"
+            ]
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": [
+                    "dealership_name",
+                    "center_name",
+                    "city"
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " - "
+                }
+            },
+            "name": "center_id",
+            "type": "uid",
+            "id": true
+        }
+    ],
+    "parents": [
+        "dealership"
+    ]
+}

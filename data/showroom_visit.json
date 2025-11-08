@@ -33,14 +33,6 @@
       "refers": "parents.showroom.showroom_name"
     },
     {
-      "name": "brand_id",
-      "refers": "parents.showroom.brand_id"
-    },
-    {
-      "name": "brand_name",
-      "refers": "parents.showroom.brand_name"
-    },
-    {
       "name": "region_id",
       "refers": "parents.showroom.region_id"
     },
@@ -57,14 +49,26 @@
       "refers": "parents.person.name"
     },
     {
+      "name": "appointment_date",
+      "type": "text"
+    },
+    {
+      "name": "appointment_time",
+      "type": "text"
+    },
+    {
       "name": "visit_date",
-      "type": "number",
-      "auto_updater": true,
-      "default": { "function": "now_ctime" }
+      "type": "text"
+    },
+    {
+      "name": "visit_timestamp",
+      "type": "number"
     },
     {
       "name": "purpose_of_visit",
-      "type": "multiselect",
+      "type": "string_list",
+      "list_type": "text",
+      "ui_element": "multiselect",
       "options": [
         "New Car Inquiry",
         "Test Drive",
@@ -77,7 +81,6 @@
         "Other"
       ]
     },
-
     {
       "name":"showroom_id",
       "refers":"parents.showroom.showroom_id",
@@ -94,13 +97,18 @@
       "refers": "parents.pre_sales_leads.variant_name"
     },
     {
-      "name": "model_id",
-      "refers": "parents.pre_sales_leads.model_id",
-      "auto_updater": true
+      "name": "models_interested_in",
+      "type": "string_list",
+      "list_type": "text",
+      "ui_element": "tags"
     },
     {
-      "name": "model_name",
-      "refers": "parents.pre_sales_leads.model_name"
+      "name": "variants_interested_in",
+      "type": "nested_object",
+      "dict_keys": [
+        "variant_id",
+        "variant_name"
+      ]
     },
     {
       "name": "executive_name",

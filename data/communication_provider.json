@@ -50,9 +50,9 @@
           "args": ["provider_name","channel"],
           "function": "name_to_id",
           "kwargs": {
-            "attribute_join": " ",
             "is_unique": true,
-            "separator": " - "
+            "separator": "_",
+            "skip_empty": true
           }
         },
         "name": "communication_provider_id",
