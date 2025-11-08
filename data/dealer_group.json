@@ -57,7 +57,15 @@
             "name": "operating_brands",
             "type": "list",
             "ui_element": "multiselect",
-            "options": "/options/brand/brand_name"
+            "default": {
+                "function": "pivot_from_model",
+                "args": [
+                    "brand",
+                    "brand_name",
+                    "unique_list"
+                ]
+                
+            }
         },
         {
             "name": "showroom_center_count",
@@ -75,7 +83,15 @@
             "name": "regions",
             "type": "list",
             "ui_element": "multi_select",
-            "refers": "options/region/region_name"
+            "default": {
+                "function": "pivot_from_model",
+                "args": [
+                    "region",
+                    "region_name",
+                    "unique_list"
+                ]
+                
+            }
         },
         {
             "name": "website",
