@@ -44,10 +44,14 @@
         "is_available": false
       }
     },
-    "channels": ["whatsapp_chat", "phone", "email"],
-    "dealership_id": "nexa-delhi-south",
+    "channels": [
+      "whatsapp_chat",
+      "phone",
+      "email"
+    ],
     "created": 1704067200,
-    "updated": 1704067200
+    "updated": 1704067200,
+    "password": null
   },
   {
     "human_agent_id": "agent-002",
@@ -94,10 +98,15 @@
         "is_available": true
       }
     },
-    "channels": ["whatsapp_chat", "phone", "email", "web_chat"],
-    "dealership_id": "nexa-delhi-south",
+    "channels": [
+      "whatsapp_chat",
+      "phone",
+      "email",
+      "web_chat"
+    ],
     "created": 1704067200,
-    "updated": 1704067200
+    "updated": 1704067200,
+    "password": null
   },
   {
     "human_agent_id": "agent-003",
@@ -144,10 +153,13 @@
         "is_available": false
       }
     },
-    "channels": ["whatsapp_chat", "phone", "email"],
-    "dealership_id": "nexa-mumbai-west",
+    "channels": [
+      "whatsapp_chat",
+      "phone",
+      "email"
+    ],
     "created": 1704067200,
-    "updated": 1704067200
+    "updated": 1704067200,
+    "password": null
   }
 ]
-

@@ -2,20 +2,43 @@
   {
     "dealership_lead_id": "dealership-lead-001",
     "dealership_id": "nexa-delhi-south",
-    "dealership_name": "NEXA Delhi South",
     "lead_source": "Website",
-    "lead_status": "New",
     "created": 1704067200,
-    "updated": 1704067200
+    "updated": 1704067200,
+    "campaign_id": null,
+    "campaign_name": null,
+    "dealer_group_id": null,
+    "showroom_center_count": null,
+    "region_id": null,
+    "user_requirements": null,
+    "supported_brands": null,
+    "channel": null,
+    "dealer_name": null,
+    "dealer_group_name": null,
+    "region_name": null,
+    "buyback_center_count": null,
+    "lead_type": null,
+    "assigned_to": {}
   },
   {
     "dealership_lead_id": "dealership-lead-002",
     "dealership_id": "nexa-mumbai-west",
-    "dealership_name": "NEXA Mumbai West",
     "lead_source": "Walk-in",
-    "lead_status": "New",
     "created": 1704153600,
-    "updated": 1704153600
+    "updated": 1704153600,
+    "campaign_id": null,
+    "campaign_name": null,
+    "dealer_group_id": null,
+    "showroom_center_count": null,
+    "region_id": null,
+    "user_requirements": null,
+    "supported_brands": null,
+    "channel": null,
+    "dealer_name": null,
+    "dealer_group_name": null,
+    "region_name": null,
+    "buyback_center_count": null,
+    "lead_type": null,
+    "assigned_to": {}
   }
 ]
-

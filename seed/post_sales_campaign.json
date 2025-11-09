@@ -21,10 +21,21 @@
     "campaign_description": "Remind customers about their upcoming scheduled service appointments",
     "start_date": 1704067200,
     "end_date": 1735689600,
-    "channels": ["whatsapp_chat", "email", "voice_phone"],
-    "languages": ["english", "hindi"],
+    "channels": [
+      "whatsapp_chat",
+      "email",
+      "voice_phone"
+    ],
+    "languages": [
+      "english",
+      "hindi"
+    ],
     "urgency_hook": "Your vehicle service is due in 30 days. Book now to avoid last-minute rush!",
-    "ctas": ["Book Service", "Schedule Appointment", "Call Now"],
+    "ctas": [
+      "Book Service",
+      "Schedule Appointment",
+      "Call Now"
+    ],
     "number_targeted": 500,
     "number_reached": 450,
     "number_contacted": 380,
@@ -36,7 +47,10 @@
     "responsible_person": "Rajesh Kumar",
     "remarks": "Focus on high-value customers with service history",
     "created": 1704067200,
-    "updated": 1704067200
+    "updated": 1704067200,
+    "campaign_id": null,
+    "conversion_rate_percent": 0,
+    "cost_per_lead": 0
   },
   {
     "workshop_id": "nexa-mumbai-west-workshop-1",
@@ -60,10 +74,23 @@
     "campaign_description": "Promote extended warranty packages to customers whose vehicles are nearing warranty expiry",
     "start_date": 1704153600,
     "end_date": 1735776000,
-    "channels": ["whatsapp_chat", "email", "web_chat", "voice_phone"],
-    "languages": ["english", "hindi", "marathi"],
+    "channels": [
+      "whatsapp_chat",
+      "email",
+      "web_chat",
+      "voice_phone"
+    ],
+    "languages": [
+      "english",
+      "hindi",
+      "marathi"
+    ],
     "urgency_hook": "Your warranty expires soon! Secure extended protection at special rates.",
-    "ctas": ["Buy Extended Warranty", "Know More", "Contact Advisor"],
+    "ctas": [
+      "Buy Extended Warranty",
+      "Know More",
+      "Contact Advisor"
+    ],
     "number_targeted": 300,
     "number_reached": 280,
     "number_contacted": 240,
@@ -75,6 +102,9 @@
     "responsible_person": "Suresh Iyer",
     "remarks": "Target customers with good service history for better conversion",
     "created": 1704153600,
-    "updated": 1704153600
+    "updated": 1704153600,
+    "campaign_id": null,
+    "conversion_rate_percent": 0,
+    "cost_per_lead": 0
   }
 ]

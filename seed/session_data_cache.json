@@ -1,31 +1,16 @@
 [
   {
-    "cache_id": "cache-001",
     "session_id": "session-001",
     "user_id": "person-001",
-    "cache_key": "user_preferences",
-    "cache_data": {
-      "interested_models": ["Baleno"],
-      "budget_range": "10-12 Lakhs",
-      "preferred_colors": ["Premium Silver", "Phoenix Red"]
-    },
-    "expiry_time": 1704153600,
     "created": 1704067200,
-    "updated": 1704067200
+    "updated": 1704067200,
+    "history": []
   },
   {
-    "cache_id": "cache-002",
     "session_id": "session-002",
     "user_id": "person-002",
-    "cache_key": "user_preferences",
-    "cache_data": {
-      "interested_models": ["Fronx"],
-      "budget_range": "12-15 Lakhs",
-      "preferred_colors": ["Magma Grey"]
-    },
-    "expiry_time": 1704240000,
     "created": 1704153600,
-    "updated": 1704153600
+    "updated": 1704153600,
+    "history": []
   }
 ]
-

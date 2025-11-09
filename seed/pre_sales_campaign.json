@@ -21,10 +21,22 @@
     "campaign_description": "Generate test drive bookings for Baleno by targeting interested customers",
     "start_date": 1704067200,
     "end_date": 1735689600,
-    "channels": ["whatsapp_chat", "email", "web_chat", "voice_phone"],
-    "languages": ["english", "hindi"],
+    "channels": [
+      "whatsapp_chat",
+      "email",
+      "web_chat",
+      "voice_phone"
+    ],
+    "languages": [
+      "english",
+      "hindi"
+    ],
     "urgency_hook": "Limited slots available! Book your test drive today and experience the premium Baleno.",
-    "ctas": ["Book Test Drive", "Schedule Visit", "Know More"],
+    "ctas": [
+      "Book Test Drive",
+      "Schedule Visit",
+      "Know More"
+    ],
     "number_targeted": 1000,
     "number_reached": 900,
     "number_contacted": 750,
@@ -36,7 +48,10 @@
     "responsible_person": "Rahul Mehta",
     "remarks": "Focus on customers who have shown interest in Baleno in the past 30 days",
     "created": 1704067200,
-    "updated": 1704067200
+    "updated": 1704067200,
+    "campaign_id": null,
+    "conversion_rate_percent": 0,
+    "cost_per_lead": 0
   },
   {
     "dealership_id": "nexa-mumbai-west",
@@ -66,9 +81,17 @@
       "fb_chat",
       "voice_phone"
     ],
-    "languages": ["english", "hindi", "marathi"],
+    "languages": [
+      "english",
+      "hindi",
+      "marathi"
+    ],
     "urgency_hook": "Be among the first to own the all-new Fronx! Limited launch offer available.",
-    "ctas": ["Book Now", "Know More", "Schedule Test Drive"],
+    "ctas": [
+      "Book Now",
+      "Know More",
+      "Schedule Test Drive"
+    ],
     "number_targeted": 2000,
     "number_reached": 1800,
     "number_contacted": 1500,
@@ -80,6 +103,9 @@
     "responsible_person": "Anjali Desai",
     "remarks": "Leverage launch excitement to drive high engagement and conversions",
     "created": 1704153600,
-    "updated": 1704153600
+    "updated": 1704153600,
+    "campaign_id": null,
+    "conversion_rate_percent": 0,
+    "cost_per_lead": 0
   }
 ]

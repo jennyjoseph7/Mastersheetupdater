@@ -5,23 +5,36 @@
     "showroom_name": "NEXA Delhi South - Main Showroom",
     "dealership_id": "nexa-delhi-south",
     "dealership_name": "NEXA Delhi South",
-    "user_id": "person-001",
     "person_name": "Anita Menon",
-    "phone_number": "9555666777",
-    "email": "anita.menon@rediffmail.com",
     "visit_date": 1704153600,
-    "visit_time": "14:30",
     "purpose_of_visit": "Test Drive",
-    "models_interested_in": ["Baleno"],
-    "variants_interested_in": ["Zeta AGS"],
+    "models_interested_in": [
+      "Baleno"
+    ],
+    "variants_interested_in": [
+      "Zeta AGS"
+    ],
     "test_drive_offered": true,
     "test_drive_done": true,
-    "test_drive_model": "Baleno",
-    "test_drive_variant": "Zeta AGS",
-    "sales_executive_name": "Sneha Patel",
-    "visit_duration_minutes": 45,
     "created": 1704153600,
-    "updated": 1704153600
+    "updated": 1704153600,
+    "rating_out_of_5": 0,
+    "visit_timestamp": 0,
+    "variant_name": null,
+    "tags": {},
+    "region_id": null,
+    "showroom_visit_status": null,
+    "appointment_time": null,
+    "executive_name": null,
+    "executive_contact": null,
+    "test_drive_vehicle_reg": null,
+    "customer_feedback": null,
+    "remarks": null,
+    "region_name": null,
+    "person_id": null,
+    "follow_up_date": 0,
+    "appointment_date": null,
+    "pre_sales_lead_id": null
   },
   {
     "showroom_visit_id": "visit-002",
@@ -29,21 +42,35 @@
     "showroom_name": "NEXA Mumbai West - Main Showroom",
     "dealership_id": "nexa-mumbai-west",
     "dealership_name": "NEXA Mumbai West",
-    "user_id": "person-002",
     "person_name": "Rajesh Kumar",
-    "phone_number": "9876543210",
-    "email": "rajesh.kumar@gmail.com",
     "visit_date": 1704240000,
-    "visit_time": "16:00",
     "purpose_of_visit": "Vehicle Inspection",
-    "models_interested_in": ["Fronx"],
-    "variants_interested_in": ["Alpha Plus AGS"],
+    "models_interested_in": [
+      "Fronx"
+    ],
+    "variants_interested_in": [
+      "Alpha Plus AGS"
+    ],
     "test_drive_offered": true,
     "test_drive_done": false,
-    "sales_executive_name": "Rohit Kulkarni",
-    "visit_duration_minutes": 30,
     "created": 1704240000,
-    "updated": 1704240000
+    "updated": 1704240000,
+    "rating_out_of_5": 0,
+    "visit_timestamp": 0,
+    "variant_name": null,
+    "tags": {},
+    "region_id": null,
+    "showroom_visit_status": null,
+    "appointment_time": null,
+    "executive_name": null,
+    "executive_contact": null,
+    "test_drive_vehicle_reg": null,
+    "customer_feedback": null,
+    "remarks": null,
+    "region_name": null,
+    "person_id": null,
+    "follow_up_date": 0,
+    "appointment_date": null,
+    "pre_sales_lead_id": null
   }
 ]
-

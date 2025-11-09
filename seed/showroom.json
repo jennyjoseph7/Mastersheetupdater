@@ -4,7 +4,9 @@
     "dealership_id": "nexa-delhi-south",
     "dealership_name": "NEXA Delhi South",
     "region_name": "North India",
-    "supported_brands": ["NEXA"],
+    "supported_brands": [
+      "NEXA"
+    ],
     "showroom_name": "NEXA Delhi South - Main Showroom",
     "showroom_type": "Main Showroom",
     "contact_number": "+91-9876543301",
@@ -60,14 +62,35 @@
     },
     "manager_name": "Karan Malhotra",
     "created": 1704067200,
-    "updated": 1704067200
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "brand_level_guardrails": null,
+    "google_reviews": null,
+    "brand_level_guidelines": null,
+    "region_level_guidelines": null,
+    "showroom_rating": null,
+    "manager_contact": null,
+    "showroom_photos": null,
+    "showroom_level_guidelines": null,
+    "status": null,
+    "parking_capacity": 0,
+    "facilities_available": null,
+    "region_level_guardrails": null,
+    "display_vehicle_count": 0,
+    "google_my_business_listing": null,
+    "showroom_level_guardrails": null,
+    "google_reviews_rating": null,
+    "showroom_reviews": null
   },
   {
     "showroom_id": "nexa-mumbai-west-showroom-1",
     "dealership_id": "nexa-mumbai-west",
     "dealership_name": "NEXA Mumbai West",
     "region_name": "West India",
-    "supported_brands": ["NEXA"],
+    "supported_brands": [
+      "NEXA"
+    ],
     "showroom_name": "NEXA Mumbai West - Main Showroom",
     "showroom_type": "Main Showroom",
     "contact_number": "+91-9876543302",
@@ -123,7 +146,25 @@
     },
     "manager_name": "Priya Shah",
     "created": 1704067200,
-    "updated": 1704067200
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "brand_level_guardrails": null,
+    "google_reviews": null,
+    "brand_level_guidelines": null,
+    "region_level_guidelines": null,
+    "showroom_rating": null,
+    "manager_contact": null,
+    "showroom_photos": null,
+    "showroom_level_guidelines": null,
+    "status": null,
+    "parking_capacity": 0,
+    "facilities_available": null,
+    "region_level_guardrails": null,
+    "display_vehicle_count": 0,
+    "google_my_business_listing": null,
+    "showroom_level_guardrails": null,
+    "google_reviews_rating": null,
+    "showroom_reviews": null
   }
 ]
-
