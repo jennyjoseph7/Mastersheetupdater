@@ -22,7 +22,7 @@
     },
     {
       "name": "dealership_id",
-      "type": "parents.dealership.dealership_id",
+      "refers": "parents.dealership.dealership_id",
       "indexed": true
     },
     {

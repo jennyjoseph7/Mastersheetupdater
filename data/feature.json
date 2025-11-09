@@ -21,26 +21,6 @@
             }
         },
         {
-            "name": "is_standard",
-            "type": "bool"
-          },
-          {
-            "name":"likely_to_recommend",
-            "type":"bool"
-          },
-          {
-            "name": "is_engine_dependent",
-            "type": "bool"
-          },
-          {
-            "name": "is_transmission_dependent",
-            "type": "bool"
-          },
-          {
-            "name": "is_drivetrain_dependent",
-            "type": "bool"
-          },
-        {
             "name": "feature_category",
             "type": "text",
             "options": [
@@ -49,7 +29,7 @@
                 "safety_and_environment",
                 "comfort_and_convenience",
                 "technology_and_performance",
-                "infotainment_and_connectivity",                
+                "infotainment_and_connectivity",
                 "others"
             ],
             "ui_element": "select",
@@ -60,67 +40,65 @@
             "type": "text",
             "indexed": true
         },
-
-
+        {
+            "name": "aliases",
+            "type": "string_list",
+            "converter": {
+                "function": "ensure_in_list",
+                "args": [
+                    "feature_name"
+                ]
+            }
+        },
         {
             "name": "feature_description",
             "type": "text",
             "ui_element": "textarea"
         },
-
         {
             "name": "unit",
             "type": "text",
             "required": false,
-
-            "options":[
+            "option_others": true,
+            "options": [
                 "mm",
                 "cm",
                 "m",
                 "inch",
                 "ft",
-              
                 "litre",
                 "ml",
                 "gallon_us",
                 "gallon_uk",
-              
                 "kg",
                 "g",
                 "ton",
-              
                 "hp",
                 "bhp",
                 "ps",
                 "kw",
-              
                 "Nm",
                 "lb_ft",
-              
                 "sec",
                 "ms",
-              
                 "kmph",
                 "mph",
-              
                 "km",
                 "mile",
-              
                 "kWh",
                 "Wh",
                 "Ah",
                 "V",
-              
                 "deg",
                 "percent",
-              
                 "other"
-              ],              
+            ],
             "ui_element": "select"
         },
         {
             "name": "value_type",
             "type": "text",
+            "indexed": true,
             "options": [
                 "number",
                 "category",
@@ -129,52 +107,47 @@
             ],
             "ui_element": "select"
         },
-
         {
-            "name": "additional_cost_unit",
+            "name": "showcase_image",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            }
+        },
+        {
+            "name": "images",
             "type": "list",
-            "options": [
-                "INR",
-                "USD",
-                "EUR",
-                "GBP",
-                "JPY",
-                "AED",
-                "AUD",
-                "CAD",
-                "CNY",
-                "CHF",
-                "SGD",
-                "HKD",
-                "THB",
-                "NZD",
-                "KRW",
-                "ZAR"
-              ],
-              "option_others": true
-
-              
+            "title": "Feature Images"
         },
-
-    {
-        "auto_updater": true,
-        "default": {
-          "args": ["feature_category","feature_name","value","unit"],
-          "function": "name_to_id",
-          "kwargs": {
-            "attribute_join": " ",
-            "is_unique": true,
-            "separator": " - "
-          }
-        },
-        "name": "feature_id",
-        "type": "uid",
-        "id": true
-      },
         {
-            "name":"replacement",
-            "type" :"string_list",
-            "placeholder" : "feature_ids list that can replace this feature"
+            "name": "videos",
+            "type": "list",
+            "title": "Feature Videos"
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": [
+                    "feature_category",
+                    "feature_name",
+                    "value_type",
+                    "unit"
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "case": "lower",
+                    "skip_empty": true,
+                    "attribute_join": "-",
+                    "is_unique": true,
+                    "separator": "-"
+                }
+            },
+            "name": "feature_id",
+            "type": "uid",
+            "id": true
         }
     ]
 }

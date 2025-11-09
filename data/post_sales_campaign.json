@@ -23,15 +23,29 @@
     {
       "name": "workshop_id",
       "refers": "parents.workshop.workshop_id",
+      "required": false
+    },
+    {
+      "name": "dealership_id",
+      "refers": "parents.dealership.dealership_id",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "workshop",
+          "workshop_id",
+          "dealership_id"
+        ]
+      },
+      "force_update": "workshop_id",
       "required": true
     },
     {
-      "name": "dealership_name",
-      "refers": "parents.workshop.dealership_name"
+      "name": "dealer_name",
+      "refers": "parents.dealership.dealer_name"
     },
     {
       "name": "region_name",
-      "refers": "parents.workshop.region_name"
+      "refers": "parents.dealership.region_name"
     },
     {
       "name": "workshop_code",
@@ -42,13 +56,47 @@
       "refers": "parents.workshop.workshop_name"
     },
     {
+      "name": "region_id",
+      "refers": "parents.dealership.region_id"
+    },
+    {
+      "name": "region_name",
+      "refers": "parents.dealership.region_name"
+    },
+    {
+      "name": "region_level_guidelines",
+      "refers": "parents.dealership.region_level_guidelines"
+    },
+    {
+      "name": "region_level_guardrails",
+      "refers": "parents.dealership.region_level_guardrails"
+    },
+    {
+      "name": "supported_brands",
+      "refers": "parents.dealership.supported_brands"
+    },
+    {
+      "name": "supported_brands_guidelines",
+      "refers": "parents.dealership.supported_brands_guidelines"
+    },
+    {
+      "name": "workshop_level_guidelines",
+      "refers": "parents.workshop.workshop_level_guidelines"
+    },
+    {
+      "name": "workshop_level_guardrails",
+      "refers": "parents.workshop.workshop_level_guardrails"
+    },
+    {
       "name": "campaign_name",
       "type": "text",
+      "required": true,
       "indexed": true
     },
     {
       "name": "campaign_type",
       "type": "text",
+      "auto_updater": true,
       "default": "post-sales"
     },
     {
@@ -169,7 +217,16 @@
       "title": "Call to Actions",
       "type": "string_list",
       "list_type": "text",
-      "ui_element": "tags"
+      "ui_element": "tags",
+      "options": [
+        "book-service",
+        "order-accessory",
+        "renew-insurance",
+        "order-spare-part",
+        "order-extended-warranty",
+        "order-care-package"
+      ],
+      "option_others": true
     },
     {
       "name": "number_targeted",
@@ -257,6 +314,7 @@
     }
   ],
   "parents": [
-    "workshop"
+    "workshop",
+    "dealership"
   ]
 }

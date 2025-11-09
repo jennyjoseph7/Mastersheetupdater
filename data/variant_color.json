@@ -1,6 +1,6 @@
 {
   "timezone": "Asia/Kolkata",
-  "name": "variant_feature",
+  "name": "variant_color",
   "model_type": "default",
   "attributes": [
     {
@@ -19,58 +19,6 @@
       "default": {
         "function": "now_ctime"
       }
-    },
-    {
-      "name": "feature_id",
-      "refers": "parents.feature.feature_id"
-    },
-    {
-      "name": "feature_name",
-      "refers": "parents.feature.feature_name"
-    },
-    {
-      "name": "feature_category",
-      "refers": "parents.feature.feature_category"
-    },
-    {
-      "name": "value_type",
-      "refers": "parents.feature.value_type"
-    },
-    {
-      "name": "unit",
-      "refers": "parents.feature.unit"
-    },
-    {
-      "name": "feature_aliases",
-      "refers": "parents.feature.aliases"
-    },
-    {
-      "name": "feature_type",
-      "type": "text",
-      "options": [
-        "Standard",
-        "Optional",
-        "Add-On",
-        "Package-only"
-      ],
-      "ui_element": "select"
-    },
-    {
-      "name": "tags",
-      "type": "string_list",
-      "ui_element": "multiselect",
-      "options": [
-        "premium",
-        "essential",
-        "popular",
-        "new",
-        "limited",
-        "electric",
-        "safety",
-        "luxury",
-        "comfort"
-      ],
-      "option_others": true
     },
     {
       "name": "variant_id",
@@ -217,93 +165,44 @@
       "refers": "parents.variant.on_road_price"
     },
     {
-      "name": "price_units",
-      "refers": "parents.variant.price_units"
+      "name": "color_id",
+      "refers": "parents.color.color_id"
     },
     {
-      "name": "feature_value",
-      "type": "multi"
+      "name": "finish_type",
+      "refers": "parents.color.finish_type"
+    },
+    {
+      "name": "availability_status",
+      "refers": "parents.color.availability_status"
+    },
+    {
+      "name": "image_url",
+      "refers": "parents.color.image_url"
     },
     {
       "name": "additional_cost",
       "type": "number"
     },
     {
-      "name": "source_reference",
-      "type": "text"
-    },
-    {
-      "name": "source_path",
-      "type": "text"
-    },
-    {
-      "name": "source_date",
-      "type": "number"
-    },
-    {
-      "name": "confidence_score",
-      "type": "text"
-    },
-    {
-      "name": "package_name",
-      "type": "text",
-      "title": "Package name"
-    },
-    {
-      "name": "remarks",
-      "type": "text"
-    },
-    {
-      "name": "showcase_image",
-      "type": "text",
-      "constraint": {
-        "function": "url_validator"
-      },
-      "converter": {
-        "function": "url_converter"
-      }
-    },
-    {
-      "name": "showcase_video",
-      "type": "text",
-      "constraint": {
-        "function": "url_validator"
-      },
-      "converter": {
-        "function": "url_converter"
-      }
-    },
-    {
-      "name": "images",
-      "refers": "parents.feature.images"
-    },
-    {
-      "name": "videos",
-      "refers": "parents.feature.videos"
+      "name": "price_units",
+      "refers": "parents.variant.price_units"
     },
     {
       "auto_updater": true,
       "default": {
-        "args": [
-          "variant_name",
-          "feature_name"
-        ],
+        "args": ["variant_id", "color_id"],
         "function": "name_to_id",
         "kwargs": {
-          "case": "lower",
-          "skip_empty": true,
           "attribute_join": "-",
           "is_unique": true,
           "separator": "-"
         }
       },
-      "name": "variant_feature_id",
+      "name": "variant_color_id",
       "type": "uid",
       "id": true
     }
   ],
-  "parents": [
-    "variant",
-    "feature"
-  ]
+  "parents": ["variant", "color"]
 }
