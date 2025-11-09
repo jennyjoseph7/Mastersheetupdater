@@ -1,0 +1,59 @@
+[
+  {
+    "post_sales_lead_id": "vehicle-001-nexa-delhi-south-post-sales-campaign-001",
+    "vehicle_id": "vehicle-001",
+    "vehicle_brand": "NEXA",
+    "vehicle_model": "Baleno",
+    "vehicle_variant": "Zeta AGS",
+    "reg_number": "DL-01-AB-1234",
+    "vin_number": "MAJ3M2F1234567890",
+    "persons_involved": [
+      {
+        "user_id": "person-001",
+        "person_name": "Anita Menon",
+        "last_contacted_whatsapp_number": "9555666777",
+        "last_contacted_email": "anita.menon@rediffmail.com",
+        "last_contacted_phone_number": "9555666777"
+      }
+    ],
+    "customer_score": 85,
+    "dealership_id": "nexa-delhi-south",
+    "dealer_name": "NEXA Delhi South",
+    "campaign_id": "post-sales-campaign-001",
+    "campaign_name": "Service Reminder Campaign",
+    "campaign_type": "post-sales",
+    "workshop_id": "nexa-delhi-south-workshop-1",
+    "workshop_name": "NEXA Delhi South - Service Center",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "post_sales_lead_id": "vehicle-002-nexa-mumbai-west-post-sales-campaign-002",
+    "vehicle_id": "vehicle-002",
+    "vehicle_brand": "NEXA",
+    "vehicle_model": "Fronx",
+    "vehicle_variant": "Alpha Plus AGS",
+    "reg_number": "MH-01-CD-5678",
+    "vin_number": "MAJ3M2F9876543210",
+    "persons_involved": [
+      {
+        "user_id": "person-002",
+        "person_name": "Rajesh Kumar",
+        "last_contacted_whatsapp_number": "9876543210",
+        "last_contacted_email": "rajesh.kumar@gmail.com",
+        "last_contacted_phone_number": "9876543210"
+      }
+    ],
+    "customer_score": 90,
+    "dealership_id": "nexa-mumbai-west",
+    "dealer_name": "NEXA Mumbai West",
+    "campaign_id": "post-sales-campaign-002",
+    "campaign_name": "Extended Warranty Campaign",
+    "campaign_type": "post-sales",
+    "workshop_id": "nexa-mumbai-west-workshop-1",
+    "workshop_name": "NEXA Mumbai West - Service Center",
+    "created": 1704153600,
+    "updated": 1704153600
+  }
+]
+

@@ -1,0 +1,27 @@
+[
+  {
+    "idea_id": "idea-001",
+    "dealership_id": "nexa-delhi-south",
+    "dealership_name": "NEXA Delhi South",
+    "idea_title": "Weekend Test Drive Drive-In",
+    "idea_description": "Organize a weekend test drive event with special offers",
+    "idea_category": "Marketing",
+    "status": "approved",
+    "created_by": "Rahul Mehta",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "idea_id": "idea-002",
+    "dealership_id": "nexa-mumbai-west",
+    "dealership_name": "NEXA Mumbai West",
+    "idea_title": "Service Package Promotion",
+    "idea_description": "Launch a promotional service package for existing customers",
+    "idea_category": "Service",
+    "status": "under_review",
+    "created_by": "Anjali Desai",
+    "created": 1704153600,
+    "updated": 1704153600
+  }
+]
+

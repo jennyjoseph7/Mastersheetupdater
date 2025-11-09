@@ -1,0 +1,43 @@
+[
+  {
+    "provider_id": "whatsapp-business-api",
+    "provider_name": "WhatsApp Business API",
+    "provider_type": "messaging",
+    "supported_channels": ["whatsapp_chat", "whatsapp_voice_note"],
+    "api_endpoint": "https://api.whatsapp.com",
+    "status": "active",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "provider_id": "twilio",
+    "provider_name": "Twilio",
+    "provider_type": "communication",
+    "supported_channels": ["voice_phone", "sms", "whatsapp_chat"],
+    "api_endpoint": "https://api.twilio.com",
+    "status": "active",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "provider_id": "sendgrid",
+    "provider_name": "SendGrid",
+    "provider_type": "email",
+    "supported_channels": ["email"],
+    "api_endpoint": "https://api.sendgrid.com",
+    "status": "active",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "provider_id": "intercom",
+    "provider_name": "Intercom",
+    "provider_type": "chat",
+    "supported_channels": ["web_chat", "fb_chat", "insta_chat"],
+    "api_endpoint": "https://api.intercom.io",
+    "status": "active",
+    "created": 1704067200,
+    "updated": 1704067200
+  }
+]
+

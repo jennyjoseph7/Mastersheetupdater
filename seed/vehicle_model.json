@@ -1,0 +1,75 @@
+[
+  {
+    "vehicle_model_id": "nexa-baleno",
+    "brand_id": "nexa-north-india",
+    "brand_name": "NEXA",
+    "model_name": "Baleno",
+    "body_type": "Hatchback",
+    "fuel_types": ["Petrol", "CNG"],
+    "transmission_types": ["Manual", "Automatic"],
+    "year_launched": 2015,
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "vehicle_model_id": "nexa-fronx",
+    "brand_id": "nexa-north-india",
+    "brand_name": "NEXA",
+    "model_name": "Fronx",
+    "body_type": "SUV",
+    "fuel_types": ["Petrol"],
+    "transmission_types": ["Manual", "Automatic"],
+    "year_launched": 2023,
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "vehicle_model_id": "nexa-grand-vitara",
+    "brand_id": "nexa-north-india",
+    "brand_name": "NEXA",
+    "model_name": "Grand Vitara",
+    "body_type": "SUV",
+    "fuel_types": ["Petrol", "Hybrid"],
+    "transmission_types": ["Manual", "Automatic"],
+    "year_launched": 2022,
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "vehicle_model_id": "nexa-invicto",
+    "brand_id": "nexa-north-india",
+    "brand_name": "NEXA",
+    "model_name": "Invicto",
+    "body_type": "MPV",
+    "fuel_types": ["Hybrid"],
+    "transmission_types": ["Automatic"],
+    "year_launched": 2023,
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "vehicle_model_id": "arena-swift",
+    "brand_id": "arena-north-india",
+    "brand_name": "Arena",
+    "model_name": "Swift",
+    "body_type": "Hatchback",
+    "fuel_types": ["Petrol", "CNG"],
+    "transmission_types": ["Manual", "Automatic"],
+    "year_launched": 2005,
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "vehicle_model_id": "hyundai-verna",
+    "brand_id": "hyundai-south-india",
+    "brand_name": "Hyundai",
+    "model_name": "Verna",
+    "body_type": "Sedan",
+    "fuel_types": ["Petrol", "Diesel"],
+    "transmission_types": ["Manual", "Automatic"],
+    "year_launched": 2006,
+    "created": 1704067200,
+    "updated": 1704067200
+  }
+]
+

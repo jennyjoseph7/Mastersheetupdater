@@ -1,0 +1,57 @@
+[
+  {
+    "variant_feature_id": "nexa-baleno-2024-zeta-ags-smartplay-pro-plus",
+    "variant_id": "nexa-baleno-2024-zeta-ags-petrol",
+    "feature_id": "smartplay-pro-plus",
+    "feature_name": "SmartPlay Pro+",
+    "is_standard": true,
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "variant_feature_id": "nexa-baleno-2024-zeta-ags-cruise-control",
+    "variant_id": "nexa-baleno-2024-zeta-ags-petrol",
+    "feature_id": "cruise-control",
+    "feature_name": "Cruise Control",
+    "is_standard": true,
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "variant_feature_id": "nexa-baleno-2024-zeta-ags-dual-airbags",
+    "variant_id": "nexa-baleno-2024-zeta-ags-petrol",
+    "feature_id": "dual-airbags",
+    "feature_name": "Dual Airbags",
+    "is_standard": true,
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "variant_feature_id": "nexa-baleno-2024-zeta-ags-abs-ebd",
+    "variant_id": "nexa-baleno-2024-zeta-ags-petrol",
+    "feature_id": "abs-ebd",
+    "feature_name": "ABS with EBD",
+    "is_standard": true,
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "variant_feature_id": "nexa-baleno-2024-zeta-ags-reverse-parking-sensors",
+    "variant_id": "nexa-baleno-2024-zeta-ags-petrol",
+    "feature_id": "reverse-parking-sensors",
+    "feature_name": "Reverse Parking Sensors",
+    "is_standard": true,
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "variant_feature_id": "nexa-baleno-2024-alpha-ags-suzuki-connect",
+    "variant_id": "nexa-baleno-2024-alpha-ags-petrol",
+    "feature_id": "suzuki-connect",
+    "feature_name": "Suzuki Connect",
+    "is_standard": true,
+    "created": 1704067200,
+    "updated": 1704067200
+  }
+]
+

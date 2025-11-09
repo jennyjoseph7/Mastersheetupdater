@@ -1,0 +1,155 @@
+[
+  {
+    "center_id": "nexa-delhi-south-buyback-1",
+    "workshop_id": "nexa-delhi-south-workshop-1",
+    "dealership_id": "nexa-delhi-south",
+    "dealership_name": "NEXA Delhi South",
+    "brand_name": "NEXA",
+    "region_name": "North India",
+    "center_name": "NEXA Delhi South - Buyback Center",
+    "center_code": "NDS-BBC-001",
+    "centre_type": "Main Center",
+    "contact_number": "+91-9876543501",
+    "email": "buyback@nexadelhisouth.com",
+    "address": "123, Auto Hub, Buyback Section, South Extension, South Delhi, Delhi - 110001",
+    "city": "Delhi",
+    "state": "Delhi",
+    "pincode": "110001",
+    "geolocation": {
+      "latitude": 28.5355,
+      "longitude": 77.2167
+    },
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "18:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "10:00",
+        "end_time": "16:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": "Amit Verma",
+    "manager_contact": "+91-9876543501",
+    "total_sales_executives": 4,
+    "daily_walkin_capacity": 20,
+    "facilities_available": ["Customer Lounge", "Wi-Fi", "Help Desk", "Finance Assistance", "Insurance Support", "Parking Facility", "Online Booking Support", "Personal Assistance Desk", "Extended Working Hours", "Weekend Availability"],
+    "parking_capacity": 15,
+    "display_vehicle_count": 5,
+    "virtual_tour_url": "https://www.nexadelhisouth.com/buyback-center-tour",
+    "status": "Active",
+    "inspection_date": 1704067200,
+    "approval_date": 1704153600,
+    "completion_date": 1704240000,
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "center_id": "nexa-mumbai-west-buyback-1",
+    "workshop_id": "nexa-mumbai-west-workshop-1",
+    "dealership_id": "nexa-mumbai-west",
+    "dealership_name": "NEXA Mumbai West",
+    "brand_name": "NEXA",
+    "region_name": "West India",
+    "center_name": "NEXA Mumbai West - Buyback Center",
+    "center_code": "NMW-BBC-001",
+    "centre_type": "Main Center",
+    "contact_number": "+91-9876543502",
+    "email": "buyback@nexamumbaiwest.com",
+    "address": "456, Auto Mall, Buyback Section, Andheri West, Mumbai - 400053",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "pincode": "400053",
+    "geolocation": {
+      "latitude": 19.1364,
+      "longitude": 72.8297
+    },
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "18:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "10:00",
+        "end_time": "16:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": "Vikram Rao",
+    "manager_contact": "+91-9876543502",
+    "total_sales_executives": 5,
+    "daily_walkin_capacity": 25,
+    "facilities_available": ["Customer Lounge", "Wi-Fi", "Cafe / Refreshments", "Help Desk", "Finance Assistance", "Insurance Support", "Parking Facility", "Online Booking Support", "Personal Assistance Desk", "Extended Working Hours", "Weekend Availability", "Special Promotions"],
+    "parking_capacity": 20,
+    "display_vehicle_count": 6,
+    "virtual_tour_url": "https://www.nexamumbaiwest.com/buyback-center-tour",
+    "status": "Active",
+    "inspection_date": 1704067200,
+    "approval_date": 1704153600,
+    "completion_date": 1704240000,
+    "created": 1704067200,
+    "updated": 1704067200
+  }
+]
+

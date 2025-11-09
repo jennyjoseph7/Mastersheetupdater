@@ -1,0 +1,167 @@
+[
+  {
+    "showroom_id": "nexa-delhi-south-showroom-1",
+    "dealership_id": "nexa-delhi-south",
+    "dealership_name": "NEXA Delhi South",
+    "region_name": "North India",
+    "supported_brands": ["NEXA"],
+    "showroom_name": "NEXA Delhi South - Main Showroom",
+    "showroom_type": "Main Showroom",
+    "contact_number": "+91-9876543301",
+    "email": "showroom1@nexadelhisouth.com",
+    "address": "123, Auto Hub, South Extension, South Delhi, Delhi - 110001",
+    "city": "Delhi",
+    "state": "Delhi",
+    "pincode": "110001",
+    "geolocation": {
+      "latitude": 28.5355,
+      "longitude": 77.2167
+    },
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "20:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "10:00",
+        "end_time": "18:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": "Karan Malhotra",
+    "manager_contact": "+91-9876543301",
+    "total_sales_executives": 12,
+    "daily_walkin_capacity": 50,
+    "facilities_available": ["Customer Lounge", "Wi-Fi", "Cafe / Refreshments", "Test Drive Zone", "Display Vehicles", "Finance Desk", "Insurance Desk", "Accessories Section", "Parking Facility", "Personal Sales Consultant", "Extended Working Hours", "Weekend Availability"],
+    "parking_capacity": 30,
+    "display_vehicle_count": 8,
+    "google_reviews_rating": "4.5",
+    "google_reviews": "125",
+    "google_my_business_listing": "https://g.page/nexa-delhi-south-showroom",
+    "showroom_reviews": "Excellent service and premium experience. Staff is knowledgeable and helpful.",
+    "showroom_photos": "https://www.nexadelhisouth.com/showroom-photos",
+    "showroom_rating": "4.5",
+    "region_level_guidelines": "Focus on fuel efficiency and value for money. Emphasize family-oriented features.",
+    "region_level_guardrails": "Avoid aggressive sales tactics. Respect local customs and festivals.",
+    "brand_level_guidelines": "Premium positioning. Focus on design, technology, and customer experience.",
+    "brand_level_guardrails": "Maintain premium brand image. No discounting without approval.",
+    "showroom_level_guidelines": "Provide exceptional customer service. Maintain premium brand standards. Focus on personalized experience.",
+    "showroom_level_guardrails": "No unauthorized discounts. All communications must be professional. Maintain showroom cleanliness and organization.",
+    "status": "Active",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "showroom_id": "nexa-mumbai-west-showroom-1",
+    "dealership_id": "nexa-mumbai-west",
+    "dealership_name": "NEXA Mumbai West",
+    "region_name": "West India",
+    "supported_brands": ["NEXA"],
+    "showroom_name": "NEXA Mumbai West - Main Showroom",
+    "showroom_type": "Main Showroom",
+    "contact_number": "+91-9876543302",
+    "email": "showroom1@nexamumbaiwest.com",
+    "address": "456, Auto Mall, Andheri West, Mumbai - 400053",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "pincode": "400053",
+    "geolocation": {
+      "latitude": 19.1364,
+      "longitude": 72.8297
+    },
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "20:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "20:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "20:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "20:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "20:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "20:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "21:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "10:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": "Priya Shah",
+    "manager_contact": "+91-9876543302",
+    "total_sales_executives": 15,
+    "daily_walkin_capacity": 70,
+    "facilities_available": ["Customer Lounge", "Wi-Fi", "Cafe / Refreshments", "Test Drive Zone", "Display Vehicles", "Finance Desk", "Insurance Desk", "Accessories Section", "EV Charging Point", "Parking Facility", "Virtual Reality Experience", "Personal Sales Consultant", "Extended Working Hours", "Weekend Availability", "Loyalty Programs"],
+    "parking_capacity": 40,
+    "display_vehicle_count": 10,
+    "google_reviews_rating": "4.6",
+    "google_reviews": "180",
+    "google_my_business_listing": "https://g.page/nexa-mumbai-west-showroom",
+    "showroom_reviews": "Premium showroom with excellent customer service. Modern facilities and knowledgeable staff.",
+    "showroom_photos": "https://www.nexamumbaiwest.com/showroom-photos",
+    "showroom_rating": "4.6",
+    "region_level_guidelines": "Focus on style and performance. Highlight urban driving capabilities.",
+    "region_level_guardrails": "Avoid making assumptions about customer preferences. Provide detailed information.",
+    "brand_level_guidelines": "Premium positioning. Focus on design, technology, and customer experience.",
+    "brand_level_guardrails": "Maintain premium brand image. No discounting without approval.",
+    "showroom_level_guidelines": "Focus on customer satisfaction. Emphasize technology and premium features. Create memorable experiences.",
+    "showroom_level_guardrails": "Maintain brand standards. Professional communication only. Ensure all staff are well-trained.",
+    "status": "Active",
+    "created": 1704067200,
+    "updated": 1704067200
+  }
+]
+

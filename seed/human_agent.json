@@ -1,0 +1,153 @@
+[
+  {
+    "human_agent_id": "agent-001",
+    "agent_name": "Rahul Mehta",
+    "phone_number": "+91-9876543202",
+    "email": "rahul.mehta@nexadelhisouth.com",
+    "role": "Relationship Manager",
+    "active": true,
+    "engaged": false,
+    "availability": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_available": true
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_available": true
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_available": true
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_available": true
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_available": true
+      },
+      "Saturday": {
+        "start_time": "10:00",
+        "end_time": "16:00",
+        "is_available": true
+      },
+      "Sunday": {
+        "start_time": "10:00",
+        "end_time": "14:00",
+        "is_available": false
+      }
+    },
+    "channels": ["whatsapp_chat", "phone", "email"],
+    "dealership_id": "nexa-delhi-south",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "human_agent_id": "agent-002",
+    "agent_name": "Sneha Patel",
+    "phone_number": "+91-9876543203",
+    "email": "sneha.patel@nexadelhisouth.com",
+    "role": "Sales Executive",
+    "active": true,
+    "engaged": false,
+    "availability": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_available": true
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_available": true
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_available": true
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_available": true
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_available": true
+      },
+      "Saturday": {
+        "start_time": "10:00",
+        "end_time": "20:00",
+        "is_available": true
+      },
+      "Sunday": {
+        "start_time": "10:00",
+        "end_time": "18:00",
+        "is_available": true
+      }
+    },
+    "channels": ["whatsapp_chat", "phone", "email", "web_chat"],
+    "dealership_id": "nexa-delhi-south",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "human_agent_id": "agent-003",
+    "agent_name": "Anjali Desai",
+    "phone_number": "+91-9876543205",
+    "email": "anjali.desai@nexamumbaiwest.com",
+    "role": "Relationship Manager",
+    "active": true,
+    "engaged": false,
+    "availability": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_available": true
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_available": true
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_available": true
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_available": true
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "18:00",
+        "is_available": true
+      },
+      "Saturday": {
+        "start_time": "10:00",
+        "end_time": "16:00",
+        "is_available": true
+      },
+      "Sunday": {
+        "start_time": "10:00",
+        "end_time": "14:00",
+        "is_available": false
+      }
+    },
+    "channels": ["whatsapp_chat", "phone", "email"],
+    "dealership_id": "nexa-mumbai-west",
+    "created": 1704067200,
+    "updated": 1704067200
+  }
+]
+

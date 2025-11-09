@@ -1,0 +1,39 @@
+[
+  {
+    "region_id": "north-india",
+    "region_name": "North India",
+    "country_name": "India",
+    "region_level_guidelines": "Focus on fuel efficiency and value for money. Emphasize family-oriented features.",
+    "region_level_guardrails": "Avoid aggressive sales tactics. Respect local customs and festivals.",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "region_id": "south-india",
+    "region_name": "South India",
+    "country_name": "India",
+    "region_level_guidelines": "Emphasize technology features and premium quality. Highlight safety ratings.",
+    "region_level_guardrails": "Maintain professional communication standards. Respect regional languages.",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "region_id": "west-india",
+    "region_name": "West India",
+    "country_name": "India",
+    "region_level_guidelines": "Focus on style and performance. Highlight urban driving capabilities.",
+    "region_level_guardrails": "Avoid making assumptions about customer preferences. Provide detailed information.",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "region_id": "east-india",
+    "region_name": "East India",
+    "country_name": "India",
+    "region_level_guidelines": "Emphasize durability and after-sales service. Highlight resale value.",
+    "region_level_guardrails": "Ensure clear communication. Provide local language support.",
+    "created": 1704067200,
+    "updated": 1704067200
+  }
+]
+

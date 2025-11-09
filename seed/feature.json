@@ -1,0 +1,73 @@
+[
+  {
+    "feature_id": "smartplay-pro-plus",
+    "brand_id": "nexa-north-india",
+    "brand_name": "NEXA",
+    "feature_name": "SmartPlay Pro+",
+    "feature_category": "Infotainment",
+    "feature_description": "8-inch touchscreen infotainment system with Apple CarPlay and Android Auto",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "feature_id": "cruise-control",
+    "brand_id": "nexa-north-india",
+    "brand_name": "NEXA",
+    "feature_name": "Cruise Control",
+    "feature_category": "Convenience",
+    "feature_description": "Adaptive cruise control for comfortable highway driving",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "feature_id": "dual-airbags",
+    "brand_id": "nexa-north-india",
+    "brand_name": "NEXA",
+    "feature_name": "Dual Airbags",
+    "feature_category": "Safety",
+    "feature_description": "Driver and passenger airbags for enhanced safety",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "feature_id": "abs-ebd",
+    "brand_id": "nexa-north-india",
+    "brand_name": "NEXA",
+    "feature_name": "ABS with EBD",
+    "feature_category": "Safety",
+    "feature_description": "Anti-lock Braking System with Electronic Brakeforce Distribution",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "feature_id": "reverse-parking-sensors",
+    "brand_id": "nexa-north-india",
+    "brand_name": "NEXA",
+    "feature_name": "Reverse Parking Sensors",
+    "feature_category": "Convenience",
+    "feature_description": "Rear parking sensors with audio alerts",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "feature_id": "hill-hold-control",
+    "brand_id": "nexa-north-india",
+    "brand_name": "NEXA",
+    "feature_name": "Hill Hold Control",
+    "feature_category": "Safety",
+    "feature_description": "Prevents vehicle rollback on inclines",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "feature_id": "suzuki-connect",
+    "brand_id": "nexa-north-india",
+    "brand_name": "NEXA",
+    "feature_name": "Suzuki Connect",
+    "feature_category": "Connectivity",
+    "feature_description": "Connected car technology with remote features",
+    "created": 1704067200,
+    "updated": 1704067200
+  }
+]
+
