@@ -29,32 +29,165 @@
       "refers": "parents.brand.brand_name"
     },
     {
-      "name": "model_name",
+      "name": "vehicle_model_name",
       "type": "text",
       "indexed": true
     },
     {
-      "name": "body_type", 
+      "name": "vehicle_model_aliases",
+      "type": "string_list",
+      "converter": {
+        "function": "ensure_in_list",
+        "args": [
+          "vehicle_model_name"
+        ]
+      }
+    },
+    {
+      "name": "vehicle_description",
       "type": "text"
+    },
+    {
+      "name": "vehicle_image",
+      "type": "text",
+      "ui_element": "image",
+      "constraint": {
+        "function": "url_validator"
+      },
+      "converter": {
+        "function": "url_converter"
+      }
+    },
+    {
+      "name": "vehicle_video",
+      "type": "text",
+      "ui_element": "image",
+      "constraint": {
+        "function": "url_validator"
+      },
+      "converter": {
+        "function": "url_converter"
+      }
+    },
+    {
+      "name": "vehicle_category",
+      "type": "text",
+      "options": [
+        "Passenger vehicles",
+        "Commercial Vehicles",
+        "Two Wheelers",
+        "Three Wheelers",
+        "Truck",
+        "Bus"
+      ],
+      "ui_element": "select"
+    },
+    {
+      "name": "vehicle_type",
+      "type": "text",
+      "options": [
+        "Hatchback",
+        "Sedan",
+        "SUV",
+        "MUV",
+        "Van",
+        "Minivan",
+        "Coupe",
+        "Convertible",
+        "Station Wagon",
+        "Pickup Truck",
+        "Sports Car",
+        "Luxury Sedan",
+        "Luxury SUV",
+        "Luxury MUV",
+        "Luxury Van",
+        "Luxury Minivan",
+        "Luxury Coupe",
+        "Luxury Convertible",
+        "Luxury Station Wagon",
+        "Luxury Pickup Truck",
+        "Electric Vehicle",
+        "Hybrid",
+        "Bus",
+        "Container Truck",
+        "Tractor",
+        "Trailer",
+        "Goods Vehicle",
+        "Auto-rickshaw",
+        "Tempo",
+        "Tempo Traveller",
+        "Motorcycle",
+        "Scooter",
+        "Sports Bike",
+        "Cruiser",
+        "Naked Bike",
+        "Dual-Sport",
+        "Enduro",
+        "Supermoto",
+        "Scrambler",
+        "Dirt Bike",
+        "Motocross",
+        "Other"
+      ],
+      "ui_element": "select"
+    },
+    {
+      "name": "vehicle_type_aliases",
+      "type": "string_list",
+      "converter": {
+        "function": "ensure_in_list",
+        "args": [
+          "vehicle_category",
+          "vehicle_type"
+        ]
+      }
     },
     {
       "name": "fuel_types",
       "type": "list",
-      "options":["Petrol", "Diesel", "CNG", "Electric", "Hybrid"]
+      "options": [
+        "Petrol",
+        "Diesel",
+        "CNG",
+        "Electric",
+        "Hybrid",
+        "LPG",
+        "Hydrogen"
+      ]
     },
     {
-        "name":"transmission_types",
-        "type":"list",
-        "options":["Automatic", "Manual"]
+      "name": "transmission_types",
+      "type": "list",
+      "options": [
+        "Automatic",
+        "Clutchless Manual",
+        "Manual",
+        "CVT",
+        "DCT",
+        "Other"
+      ]
     },
     {
-        "name":"year_launched",
-        "type":"number"
+      "name": "transmission_types_aliases",
+      "type": "string_list",
+      "converter": {
+        "function": "ensure_in_list",
+        "args": [
+          "transmission_types"
+        ]
+      }
+    },
+    {
+      "name": "year_launched",
+      "type": "number"
     },
     {
       "auto_updater": true,
       "default": {
-        "args": ["model_name","brand_name"],
+        "args": [
+          "model_name",
+          "brand_name"
+        ],
         "function": "name_to_id",
         "kwargs": {
           "attribute_join": " ",
@@ -67,5 +200,7 @@
       "id": true
     }
   ],
-  "parents":["brand"]
+  "parents": [
+    "brand"
+  ]
 }

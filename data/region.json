@@ -38,6 +38,10 @@
       "type": "text"
     },
     {
+      "name": "region_level_guardrails",
+      "type": "text"
+    },
+    {
         "name":"timezones",
         "type":"text",
         "options": "/options/model/timezone"
