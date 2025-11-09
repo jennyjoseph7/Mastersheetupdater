@@ -5,15 +5,18 @@
             "name": "campaign_id",
             "type": "text",
             "indexed": true,
-            "required": true,
-            "refers": "parents.campaign.campaign_id"
+            "required": true
         },
         {
             "name": "campaign_type",
             "type": "text",
             "required": true,
             "indexed": true,
-            "refers": "parents.campaign.campaign_type"
+            "options": [
+                "pre-sales",
+                "post-sales",
+                "dealership"
+            ]
         },
         {
             "name": "campaign_model",
@@ -42,11 +45,26 @@
         },
         {
             "name": "campaign_name",
-            "refers": "parents.campaign.campaign_name"
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "{campaign_model}",
+                    "{campaign_id}",
+                    "campaign_name"
+                ]
+            }
         },
         {
             "name": "campaign_objective",
-            "refers": "parents.campaign.campaign_objective"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "{campaign_model}",
+                    "{campaign_id}",
+                    "campaign_objective"
+                ]
+            }
         },
         {
             "name": "dealership_id",
@@ -85,16 +103,6 @@
                 "zoom_bot",
                 "ms_teams"
             ]
-        },
-        {
-            "name": "provider_name",
-            "type": "text",
-            "options": "/options/communication_credentials/provider_name?dealership_id={dealership_id}&channel={channel}"
-        },
-        {
-            "name": "provider_name",
-            "type": "text",
-            "options": "/options/communication_credentials/provider_name?dealership_id={dealership_id}"
         },
         {
             "name": "campaign_workflow_stage",
@@ -148,9 +156,18 @@
             }
         },
         {
-            "name": "channel_provider",
+            "name": "communication_credentials",
             "type": "text",
-            "refers": "parents.channel_provider.channel_provider_name"
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "communication_credential"
+                ],
+                "kwargs": {
+                    "channel": "{channel}",
+                    "dealership_id": "{dealership_id}"
+                }
+            }
         },
         {
             "name": "language",
@@ -178,8 +195,7 @@
         },
         {
             "name": "template_id",
-            "type": "text",
-            "required": true
+            "type": "text"
         },
         {
             "name": "template_type",

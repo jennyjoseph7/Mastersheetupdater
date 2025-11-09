@@ -257,6 +257,21 @@
             "type": "nested_object"
         },
         {
+            "name": "prioritization_score",
+            "type": "number"
+        },
+        {
+            "name": "prioritization_category",
+            "type": "text",
+            "options": [
+                "HOT",
+                "WARM",
+                "COOL",
+                "COLD",
+                "INACTIVE"
+            ]
+        },
+        {
             "name": "dealership_id",
             "type": "uid",
             "required": true
@@ -457,6 +472,42 @@
             "id": true
         },
         {
+            "name": "last_session_id",
+            "type": "uid"
+        },
+        {
+            "name": "last_session_status",
+            "type": "text",
+            "auto_updater": true,
+            "force_update": "last_session_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "session",
+                    "last_session_id",
+                    "status"
+                ]
+            }
+        },
+        {
+            "name": "last_session_channel",
+            "type": "text",
+            "options": [
+                "whatsapp",
+                "email",
+                "voice_phone",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "zoom_bot",
+                "ms_teams"
+            ],
+            "auto_updater": true,
+            "force_update": "last_session_id"
+        },
+        {
             "name": "follow_up_date",
             "type": "number"
         },
@@ -476,7 +527,8 @@
                 "converted",
                 "failed",
                 "error"
-            ]
+            ],
+            "default": "queued"
         },
         {
             "name": "disposition_detail",
@@ -491,14 +543,19 @@
                 "Message not delivered to maintained healty ecosystem management",
                 "Invalid / Doesn't exist",
                 "DND",
+                "Voicemail",
+                "Wrong contact number",
                 "Not reachable",
                 "Didnt pickup",
                 "Rejected",
+                "Language barrier",
+                "Is not decision maker",
                 "Will decide later, will purchase within 15 days",
                 "Will decide later, will purchase within 1 to 3 months",
                 "Will decide later, exploring options",
                 "No buying intent",
                 "Just Exploring",
+                "Will call showroom themselves",
                 "Purchased elsewhere",
                 "Converted",
                 "Enquired for Pricing",

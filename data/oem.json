@@ -71,9 +71,9 @@
         "args": ["oem_name"],
         "function": "name_to_id",
         "kwargs": {
-          "attribute_join": " ",
+          "attribute_join": "-",
           "is_unique": true,
-          "separator": " - "
+          "separator": "-"
         }
       },
       "name": "oem_id",

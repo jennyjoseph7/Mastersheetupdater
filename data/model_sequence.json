@@ -7,6 +7,9 @@
     "region",
     "session",
     "session_data_cache",
+    "message",
+    "message_event",
+    "contact_status",
     "brand",
     "vehicle_model",
     "model_year",
@@ -20,6 +23,7 @@
     "showroom",
     "workshop",
     "buyback_center",
+    "communication_credential",
     "dealership_campaign",
     "pre_sales_campaign",
     "post_sales_campaign",
@@ -28,7 +32,6 @@
     "dealership_lead",
     "pre_sales_lead",
     "post_sales_lead",
-    "message",
     "template",
     "showroom_visit",
     "workshop_visit",
@@ -36,9 +39,6 @@
     "feedback",
     "review",
     "paragraph",
-    "communication_credential",
     "billing",
-    "billing_report",
-    "contact_status",
-    "message_event"
+    "billing_report"
 ]
