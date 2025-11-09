@@ -64,7 +64,7 @@
     },
     {
         "name":"region_level_guardrails",
-        "refers":"parents.region.guardrails"
+        "refers":"parents.region.region_level_guardrails"
     },
     {
       "name": "parent_company",

@@ -1,0 +1,48 @@
+[
+  {
+    "message_event_id": "event-001",
+    "message_id": "message-001",
+    "event_type": "sent",
+    "event_timestamp": 1704067200,
+    "status": "delivered",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "message_event_id": "event-002",
+    "message_id": "message-001",
+    "event_type": "delivered",
+    "event_timestamp": 1704067210,
+    "status": "delivered",
+    "created": 1704067210,
+    "updated": 1704067210
+  },
+  {
+    "message_event_id": "event-003",
+    "message_id": "message-001",
+    "event_type": "read",
+    "event_timestamp": 1704067300,
+    "status": "read",
+    "created": 1704067300,
+    "updated": 1704067300
+  },
+  {
+    "message_event_id": "event-004",
+    "message_id": "message-002",
+    "event_type": "sent",
+    "event_timestamp": 1704067260,
+    "status": "delivered",
+    "created": 1704067260,
+    "updated": 1704067260
+  },
+  {
+    "message_event_id": "event-005",
+    "message_id": "message-002",
+    "event_type": "delivered",
+    "event_timestamp": 1704067270,
+    "status": "delivered",
+    "created": 1704067270,
+    "updated": 1704067270
+  }
+]
+

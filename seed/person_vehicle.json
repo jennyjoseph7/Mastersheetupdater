@@ -1,0 +1,48 @@
+[
+  {
+    "person_vehicle_id": "person-vehicle-001",
+    "user_id": "person-001",
+    "person_name": "Anita Menon",
+    "vehicle_id": "vehicle-001",
+    "vehicle_brand": "NEXA",
+    "vehicle_model": "Baleno",
+    "vehicle_variant": "Zeta AGS",
+    "reg_number": "DL-01-AB-1234",
+    "relationship_type": "Owner",
+    "is_primary_owner": true,
+    "ownership_start_date": 1701388800,
+    "created": 1701388800,
+    "updated": 1704067200
+  },
+  {
+    "person_vehicle_id": "person-vehicle-002",
+    "user_id": "person-002",
+    "person_name": "Rajesh Kumar",
+    "vehicle_id": "vehicle-002",
+    "vehicle_brand": "NEXA",
+    "vehicle_model": "Fronx",
+    "vehicle_variant": "Alpha Plus AGS",
+    "reg_number": "MH-01-CD-5678",
+    "relationship_type": "Owner",
+    "is_primary_owner": true,
+    "ownership_start_date": 1701475200,
+    "created": 1701475200,
+    "updated": 1704067200
+  },
+  {
+    "person_vehicle_id": "person-vehicle-003",
+    "user_id": "person-003",
+    "person_name": "Priya Sharma",
+    "vehicle_id": "vehicle-003",
+    "vehicle_brand": "NEXA",
+    "vehicle_model": "Baleno",
+    "vehicle_variant": "Alpha AGS",
+    "reg_number": "DL-02-EF-9012",
+    "relationship_type": "Owner",
+    "is_primary_owner": true,
+    "ownership_start_date": 1696118400,
+    "created": 1696118400,
+    "updated": 1704067200
+  }
+]
+

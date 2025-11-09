@@ -1,0 +1,33 @@
+[
+  {
+    "billing_id": "billing-001",
+    "dealership_id": "nexa-delhi-south",
+    "dealership_name": "NEXA Delhi South",
+    "billing_period": "2024-01",
+    "billing_date": 1704067200,
+    "total_messages_sent": 5000,
+    "total_messages_delivered": 4800,
+    "total_credits_used": 5000,
+    "total_amount": 50000,
+    "payment_status": "paid",
+    "invoice_number": "INV-2024-001",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "billing_id": "billing-002",
+    "dealership_id": "nexa-mumbai-west",
+    "dealership_name": "NEXA Mumbai West",
+    "billing_period": "2024-01",
+    "billing_date": 1704153600,
+    "total_messages_sent": 7500,
+    "total_messages_delivered": 7200,
+    "total_credits_used": 7500,
+    "total_amount": 75000,
+    "payment_status": "pending",
+    "invoice_number": "INV-2024-002",
+    "created": 1704153600,
+    "updated": 1704153600
+  }
+]
+

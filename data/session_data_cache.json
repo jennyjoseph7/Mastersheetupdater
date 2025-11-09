@@ -2,6 +2,7 @@
     "timezone": "Asia/Kolkata",
     "name": "session_data_cache",
     "model_type": "default",
+    "expand_attributes": true,
     "attributes": [
         {
             "name": "created",
@@ -30,7 +31,8 @@
             "name" : "session_id",
             "type" : "text",
             "required" : true,
-            "indexed" : true
+            "indexed" : true,
+            "id": true
         },
         {
             "name" : "history",

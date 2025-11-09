@@ -1,0 +1,42 @@
+[
+  {
+    "template_id": "template-001",
+    "template_name": "Test Drive Booking",
+    "template_type": "text",
+    "channel": "whatsapp",
+    "language": "english",
+    "template_text": "Hi {{person_name}}, we noticed your interest in {{model_name}}. Would you like to book a test drive?",
+    "template_variables": ["person_name", "model_name"],
+    "status": "approved",
+    "dealership_id": "nexa-delhi-south",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "template_id": "template-002",
+    "template_name": "Service Reminder",
+    "template_type": "text",
+    "channel": "whatsapp",
+    "language": "english",
+    "template_text": "Hi {{person_name}}, your {{vehicle_model}} ({{reg_number}}) is due for service. Book your appointment now!",
+    "template_variables": ["person_name", "vehicle_model", "reg_number"],
+    "status": "approved",
+    "dealership_id": "nexa-delhi-south",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "template_id": "template-003",
+    "template_name": "Price Enquiry Response",
+    "template_type": "text",
+    "channel": "whatsapp",
+    "language": "english",
+    "template_text": "Hi {{person_name}}, the on-road price for {{variant_name}} is ₹{{price}}. Would you like to know more details?",
+    "template_variables": ["person_name", "variant_name", "price"],
+    "status": "approved",
+    "dealership_id": "nexa-mumbai-west",
+    "created": 1704153600,
+    "updated": 1704153600
+  }
+]
+

@@ -22,47 +22,56 @@
         },
         {
             "name": "variant_id",
-            "refers": "parents.variant.variant_id"
+            "type": "uid",
+            "required": true
         },
         {
-            "name": "variant_name",
-            "refers": "parents.variant.variant_name"
+            "name": "vehicle_model_id",
+            "type": "uid",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant",
+                    "variant_id",
+                    "vehicle_model_id"
+                ]
+            }
         },
         {
-            "name": "oem_id",
-            "refers": "parents.variant.oem_id"
+            "name": "vehicle_model_year_id",
+            "type": "uid",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant",
+                    "variant_id",
+                    "vehicle_model_year_id"
+                ]
+            }
         },
         {
-            "name": "brand_id",
-            "refers": "parents.variant.brand_id"
+            "name": "vehicle_model_year",
+            "type": "uid",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant",
+                    "variant_id",
+                    "model_year"
+                ]
+            }
         },
         {
-            "name": "brand_name",
-            "refers": "parents.variant.brand_name"
-        },
-        {
-            "name": "model_id",
-            "refers": "parents.variant.model_id"
-        },
-        {
-            "name": "model_name",
-            "refers": "parents.variant.model_name"
-        },
-        {
-            "name": "variant_color_id",
-            "refers": "parents.variant_color.variant_color_id"
-        },
-        {
-            "name": "variant_color_name",
-            "refers": "parents.variant_color.variant_color_name"
-        },
-        {
-            "name": "model_year_id",
-            "refers": "parents.variant.model_year_id"
-        },
-        {
-            "name": "model_launch_year",
-            "refers": "parents.variant.model_year"
+            "name": "vehicle_model_launch_year",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant",
+                    "variant_id",
+                    "vehicle_model_launch_year"
+                ]
+            }
         },
         {
             "name": "reg_number",
@@ -73,6 +82,26 @@
             "name": "vin_number",
             "type": "text",
             "indexed": true
+        },
+        {
+            "name": "vehicle_category",
+            "type": "text",
+            "options": [
+                "Passenger vehicles",
+                "Commercial Vehicles",
+                "Two Wheelers",
+                "Three Wheelers",
+                "Truck"
+            ],
+            "ui_element": "select",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle_model",
+                    "vehicle_model_id",
+                    "vehicle_category"
+                ]
+            }
         },
         {
             "name": "vehicle_type",
@@ -469,9 +498,5 @@
             "type": "uid",
             "id": true
         }
-    ],
-    "parents": [
-        "variant",
-        "variant_color"
     ]
 }

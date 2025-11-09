@@ -1,0 +1,33 @@
+[
+  {
+    "session_id": "session-001",
+    "user_id": "person-001",
+    "person_name": "Anita Menon",
+    "phone_number": "9555666777",
+    "channel": "whatsapp",
+    "session_start": 1704067200,
+    "session_end": 1704067800,
+    "session_status": "completed",
+    "human_agent_id": "agent-001",
+    "agent_name": "Rahul Mehta",
+    "message_count": 5,
+    "created": 1704067200,
+    "updated": 1704067800
+  },
+  {
+    "session_id": "session-002",
+    "user_id": "person-002",
+    "person_name": "Rajesh Kumar",
+    "phone_number": "9876543210",
+    "channel": "whatsapp",
+    "session_start": 1704153600,
+    "session_end": null,
+    "session_status": "active",
+    "human_agent_id": "agent-003",
+    "agent_name": "Anjali Desai",
+    "message_count": 3,
+    "created": 1704153600,
+    "updated": 1704153600
+  }
+]
+

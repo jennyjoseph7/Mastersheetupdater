@@ -255,7 +255,7 @@
         },
         {
             "name" : "history_updated_time",
-            "type" : "type",
+            "type" : "number",
             "required" : false
         },
         {

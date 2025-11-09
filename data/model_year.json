@@ -21,31 +21,61 @@
       }
     },
     {
-      "name": "model_id",
-      "refers": "parents.model.model_id",
+      "name": "vehicle_model_id",
+      "refers": "parents.vehicle_model.model_id",
       "auto_updater": true
     },
     {
-      "name": "model_name",
-      "refers": "parents.model.model_name"
+      "name": "vehicle_model_name",
+      "refers": "parents.vehicle_model.model_name"
     },
     {
       "name": "brand_id",
       "auto_updater": true,
-      "refers": "parents.model.brand_id"
+      "refers": "parents.vehicle_model.brand_id"
     },
     {
       "name": "brand_name",
-      "refers": "parents.model.brand_name"
+      "refers": "parents.vehicle_model.brand_name"
     },
     {
       "name": "oem_id",
       "auto_updater": true,
-      "refers": "parents.model.oem_id"
+      "refers": "parents.vehicle_model.oem_id"
     },
     {
       "name": "oem_name",
-      "refers": "parents.model.oem_name"
+      "refers": "parents.vehicle_model.oem_name"
+    },
+    {
+      "name": "fuel_types",
+      "type": "list",
+      "options":["Petrol", "Diesel", "CNG", "Electric", "Hybrid", "LPG", "Hydrogen"],
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "vehicle_model",
+          "vehicle_model_id",
+          "fuel_types"
+        ]
+      }
+    },
+    {
+        "name":"transmission_types",
+        "type":"list",
+        "options":["Automatic", "Clutchless Manual", "Manual", "CVT", "DCT", "Other"],
+        "default": {
+          "function": "get_from_model",
+          "args": [
+            "vehicle_model",
+            "vehicle_model_id",
+            "transmission_types"
+          ]
+        }
+    },
+    {
+        "name":"year_launched",
+        "refers": "parents.vehicle_model.year_launched"
     },
     {
       "name": "year",
@@ -53,18 +83,8 @@
       "indexed": true
     },
     {
-      "name": "launch_date",
-      "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
-    },
-    {
       "name": "discontinuation_date",
-      "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+      "type": "number"
     },
     {
       "name": "year_label",
@@ -135,6 +155,6 @@
     }
   ],
   "parents": [
-    "model"
+    "vehicle_model"
   ]
 }

@@ -1,0 +1,51 @@
+[
+  {
+    "color_id": "premium-silver",
+    "color_name": "Premium Silver",
+    "color_code": "#C0C0C0",
+    "color_type": "Metallic",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "color_id": "phoenix-red",
+    "color_name": "Phoenix Red",
+    "color_code": "#DC143C",
+    "color_type": "Solid",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "color_id": "grandeur-grey",
+    "color_name": "Grandeur Grey",
+    "color_code": "#808080",
+    "color_type": "Metallic",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "color_id": "pearl-arctic-white",
+    "color_name": "Pearl Arctic White",
+    "color_code": "#F8F8FF",
+    "color_type": "Pearl",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "color_id": "splendid-silver",
+    "color_name": "Splendid Silver",
+    "color_code": "#E5E4E2",
+    "color_type": "Metallic",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "color_id": "magma-grey",
+    "color_name": "Magma Grey",
+    "color_code": "#4C4C4C",
+    "color_type": "Metallic",
+    "created": 1704067200,
+    "updated": 1704067200
+  }
+]
+
