@@ -108,7 +108,7 @@ def converse(*args, **kargs):
         ppresp["index"] = response_index
         response_index += 1
         yield from prune_response(ppresp, **pass_kwargs)
-    if not do_orchestrate and 
+    #if not do_orchestrate and request_data.get("orchestrate"):
     if do_orchestrate:
         for orch_res in run_orchestrator(*args, **pass_kwargs):
             orch_res["index"] = response_index
