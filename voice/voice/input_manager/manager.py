@@ -3,6 +3,10 @@ Input Manager
 Handles user audio input, manages AI agent states, and coordinates with voice agent
 """
 
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from utils.helpers import *
 import asyncio
 import uuid
 import time
@@ -19,38 +23,42 @@ class AgentState(Enum):
     IDLE = "idle"
     LISTENING = "listening"
     PROCESSING = "processing"
-    BUYING_TIME = "buying_time"
     INTERRUPTION = "interruption"
     HANDOVER = "handover"
+    REQUEST_FILLER = "request_filler" #buying time
 
+class OutputState(Enum):
+    END_CALL = "end_call"
+    COMPLETED = "completed"
+    RESPONDING = "responding"
+    AI_AGENT = "ai_agent"
+    HUMAN_AGENT = "human_agent"
+
+#
 
 @dataclass
 class UserMessage:
     message_id: str
     session_id: str
-    audio_data: bytes
-    transcript: str
+    audio_data: Optional[bytes] = None 
+    transcript: Optional[str] = None
     timestamp: float
     is_interruption: bool = False
-
+    type: Optional[AgentState] = None
 
 @dataclass
-class AgentResponse:
-    message_id: str
-    response_chunks: list
-    is_complete: bool = False
-    filler_mode: bool = False
-
+class AIAgentMessage:
+    pass
 
 class InputManager:
     """Manages incoming user audio stream and agent states"""
     
-    def __init__(self, session_id: str, input_queue: asyncio.Queue, output_queue: asyncio.Queue):
+    def __init__(self, session_id: str, input_queue: asyncio.Queue, output_queue = asyncio.Queue):
         self.session_id = session_id
         self.input_queue = input_queue
         self.output_queue = output_queue
-        
         self.state = AgentState.IDLE
+        
         self.current_message_id: Optional[str] = None
         self.active_generation = False
         self.last_activity_time = time.time()
@@ -61,44 +69,16 @@ class InputManager:
         
         self.running = True
         self.cancellation_event = asyncio.Event()
-        
-    def generate_message_id(self) -> str:
-        """Generate unique message ID for each user query"""
-        return f"msg_{uuid.uuid4().hex[:12]}"
     
-    async def simulate_audio_stream(self):
-        """
-        Simulate receiving audio stream from messaging server
-        In production: Replace with actual WebSocket/WebRTC stream handler
-        """
-        # Simulate periodic user inputs
-        test_inputs = [
-            ("Hello, I'm interested in buying a car", False),
-            ("What SUV models do you have?", False),
-            ("Wait, actually I want to know about sedans", True),  # Interruption
-            ("Can you schedule a test drive?", False),
-            ("I need to speak with a human agent", False),  # Handover trigger
-        ]
-        
-        for transcript, is_interruption in test_inputs:
-            await asyncio.sleep(3)  # Simulate time between user inputs
-            
-            if not self.running:
-                break
-                
-            # Simulate audio data
-            audio_data = transcript.encode('utf-8')
-            
-            yield audio_data, transcript, is_interruption
     
-    async def handle_user_input(self, audio_data: bytes, transcript: str, is_interruption: bool):
+    async def handle_user_input(self, audio_data: bytes = None, transcript: str = None, is_interruption: bool = False):
         """Process incoming user audio and transcript"""
         
         # Check for handover keywords
-        handover_keywords = ["human agent", "speak to someone", "real person", "representative"]
+        '''     handover_keywords = ["human agent", "speak to someone", "real person", "representative"]
         if any(keyword in transcript.lower() for keyword in handover_keywords):
             await self.trigger_handover()
-            return
+            return'''
         
         # Handle interruption
         if is_interruption and self.state == AgentState.PROCESSING:
@@ -107,7 +87,7 @@ class InputManager:
             return
         
         # Create new message
-        message_id = self.generate_message_id()
+        message_id = generate_uuid()
         self.current_message_id = message_id
         self.last_activity_time = time.time()
         
@@ -117,7 +97,8 @@ class InputManager:
             audio_data=audio_data,
             transcript=transcript,
             timestamp=time.time(),
-            is_interruption=is_interruption
+            is_interruption=is_interruption,
+            type = AgentState.PROCESSING
         )
         
         logger.info(f"New user input [{message_id}]: {transcript}")
@@ -141,36 +122,28 @@ class InputManager:
         self.active_generation = False
         
         # Create interruption message
-        new_message_id = self.generate_message_id()
+        new_message_id = generate_uuid()
         
+        
+        # Send cancellation signal to output queue
+        await self.output_queue.put(interruption_message)
+        
+        # Update current message and state
+        self.current_message_id = new_message_id
+        self.state = AgentState.INTERRUPTION
+    
+        # Send acknowledgment filler
         interruption_message = UserMessage(
             message_id=new_message_id,
             session_id=self.session_id,
             audio_data=audio_data,
             transcript=transcript,
             timestamp=time.time(),
-            is_interruption=True
+            is_interruption=True,
+            type = AgentState.REQUEST_FILLER
+
         )
-        
-        # Send cancellation signal to output queue
-        await self.output_queue.put({
-            "type": "cancel",
-            "message_id": self.current_message_id
-        })
-        
-        # Update current message and state
-        self.current_message_id = new_message_id
-        self.state = AgentState.INTERRUPTION
-        
-        # Push new message to queue
         await self.input_queue.put(interruption_message)
-        
-        # Send acknowledgment filler
-        await self.output_queue.put({
-            "type": "filler",
-            "message_id": new_message_id,
-            "text": "Let me help you with that instead."
-        })
         
         self.state = AgentState.PROCESSING
         self.active_generation = True
@@ -182,11 +155,11 @@ class InputManager:
         
         if self.active_generation and self.current_message_id == message_id:
             logger.info(f"Response taking longer, triggering buying time for {message_id}")
-            self.state = AgentState.BUYING_TIME
+            self.state = AgentState.REQUEST_FILLER
             
             # Trigger filler generation
             await self.output_queue.put({
-                "type": "request_filler",
+                "type": self.state ,
                 "message_id": message_id
             })
     
@@ -221,8 +194,8 @@ class InputManager:
                     
                     # Send goodbye message
                     await self.output_queue.put({
-                        "type": "end_call",
-                        "message": "I haven't heard from you. Feel free to call back anytime. Goodbye!"
+                        "type": AgentState.END_CALL,
+                        "message_id": self.current_message_id
                     })
                     
                     self.running = False

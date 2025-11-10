@@ -26,7 +26,9 @@ class CallStatus(Enum):
     CONNECTED = "connected"
     IN_PROGRESS = "in_progress"
     HANDOVER = "handover"
-    ENDED = "ended"
+    ENDED = "completed"
+    RINGING = "ringing"
+
 
 
 @dataclass
@@ -53,100 +55,7 @@ class VoiceAppCore:
         self.voice_provider_config = voice_provider_config
         self.messaging_server_config = messaging_server_config
         self.active_sessions: Dict[str, CallSession] = {}
-        
-    def generate_session_id(self) -> str:
-        """Generate unique session ID for call tracking"""
-        return f"session_{uuid.uuid4().hex}"
-    
-    def generate_prompt(self, job: Job) -> str:
-        """Generate dynamic prompt based on job type and data"""
-        
-        base_prompt = """You are a professional voice assistant for an automotive company.
-Be conversational, helpful, and natural in your responses."""
-        
-        prompts = {
-            JobType.PRE_SALES: f"""
-{base_prompt}
 
-Context: Pre-sales inquiry
-Customer: {job.customer_data.get('name', 'Customer')}
-Interest: {job.customer_data.get('vehicle_interest', 'General inquiry')}
-
-Your goal:
-- Understand customer requirements
-- Provide vehicle information
-- Schedule test drive if interested
-- Offer to connect with sales representative if needed
-
-Guidelines:
-- Be enthusiastic but not pushy
-- Ask clarifying questions
-- Provide accurate information
-- Handle objections professionally
-""",
-            
-            JobType.POST_SALES: f"""
-{base_prompt}
-
-Context: Post-sales support
-Customer: {job.customer_data.get('name', 'Customer')}
-Vehicle: {job.customer_data.get('vehicle', 'N/A')}
-Purchase Date: {job.customer_data.get('purchase_date', 'N/A')}
-
-Your goal:
-- Check customer satisfaction
-- Address concerns or issues
-- Schedule service if needed
-- Collect feedback
-
-Guidelines:
-- Be empathetic and solution-oriented
-- Take detailed notes of issues
-- Escalate to human agent if complex technical issues
-""",
-            
-            JobType.DEALER_CAMPAIGN: f"""
-{base_prompt}
-
-Context: Dealer campaign outreach
-Campaign: {job.campaign_data.get('campaign_name', 'General')}
-Customer: {job.customer_data.get('name', 'Customer')}
-Offer: {job.campaign_data.get('offer_details', 'Special promotion')}
-
-Your goal:
-- Introduce the campaign
-- Gauge customer interest
-- Schedule dealership visit
-- Capture intent data
-
-Guidelines:
-- Be brief and value-focused
-- Respect customer's time
-- Offer clear next steps
-""",
-            
-            JobType.INBOUND: f"""
-{base_prompt}
-
-Context: Inbound customer call
-Customer: {job.customer_data.get('name', 'Caller')}
-
-Your goal:
-- Understand reason for calling
-- Route to appropriate department if needed
-- Resolve simple queries
-- Provide excellent service
-
-Guidelines:
-- Be welcoming and attentive
-- Ask clarifying questions
-- Provide accurate information
-- Transfer to human agent when necessary
-"""
-        }
-        
-        return prompts.get(job.job_type, base_prompt)
-    
     async def create_call_with_provider(self, session_id: str, phone_number: str) -> str:
         """
         Create call with voice provider

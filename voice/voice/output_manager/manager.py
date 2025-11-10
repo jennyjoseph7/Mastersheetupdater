@@ -2,6 +2,8 @@
 Output Manager
 Sends AI or human agent's response stream back to voice provider
 """
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 import asyncio
 import logging
