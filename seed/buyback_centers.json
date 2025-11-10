@@ -1,0 +1,82 @@
+[
+  {
+    "dealership_id": "nexa-delhi-south",
+    "dealership_name": "NEXA Delhi South",
+    "contact_number": "+91-9876543501",
+    "email": "buyback@nexadelhisouth.com",
+    "address": "123, Auto Hub, Buyback Section, South Extension, South Delhi, Delhi - 110001",
+    "city": "Delhi",
+    "state": "Delhi",
+    "pincode": "110001",
+    "geolocation": {
+      "latitude": 28.5355,
+      "longitude": 77.2167
+    },
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "18:00"
+    },
+    "manager_name": "Amit Verma",
+    "created": 1704067200,
+    "updated": 1704067200,
+    "approval_date": null,
+    "center_code": null,
+    "centre_type": null,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "center_name": null,
+    "workshop_id": null,
+    "manager_contact": null,
+    "region_name": null,
+    "brand_name": null,
+    "days_open": {},
+    "status": null,
+    "parking_capacity": 0,
+    "facilities_available": null,
+    "display_vehicle_count": 0,
+    "completion_date": null,
+    "virtual_tour_url": null,
+    "inspection_date": null,
+    "center_id": null
+  },
+  {
+    "dealership_id": "nexa-mumbai-west",
+    "dealership_name": "NEXA Mumbai West",
+    "contact_number": "+91-9876543502",
+    "email": "buyback@nexamumbaiwest.com",
+    "address": "456, Auto Mall, Buyback Section, Andheri West, Mumbai - 400053",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "pincode": "400053",
+    "geolocation": {
+      "latitude": 19.1364,
+      "longitude": 72.8297
+    },
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "18:00"
+    },
+    "manager_name": "Vikram Rao",
+    "created": 1704067200,
+    "updated": 1704067200,
+    "approval_date": null,
+    "center_code": null,
+    "centre_type": null,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "center_name": null,
+    "workshop_id": null,
+    "manager_contact": null,
+    "region_name": null,
+    "brand_name": null,
+    "days_open": {},
+    "status": null,
+    "parking_capacity": 0,
+    "facilities_available": null,
+    "display_vehicle_count": 0,
+    "completion_date": null,
+    "virtual_tour_url": null,
+    "inspection_date": null,
+    "center_id": null
+  }
+]

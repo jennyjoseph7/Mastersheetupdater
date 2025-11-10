@@ -1,0 +1,82 @@
+[
+  {
+    "template_id": "template-001",
+    "template_name": "Test Drive Booking",
+    "template_type": "text",
+    "channel": "whatsapp",
+    "language": "english",
+    "template_variables": [
+      "person_name",
+      "model_name"
+    ],
+    "status": "approved",
+    "created": 1704067200,
+    "updated": 1704067200,
+    "template_media_id": null,
+    "template_media_type": null,
+    "template_media_url": null,
+    "template_message": null,
+    "dealer_name": null,
+    "region_name": null,
+    "communication_credentials_id": null,
+    "media_file_name": null,
+    "template_payload": {},
+    "sender": null,
+    "provider_name": null,
+    "template_buttons_payload": []
+  },
+  {
+    "template_id": "template-002",
+    "template_name": "Service Reminder",
+    "template_type": "text",
+    "channel": "whatsapp",
+    "language": "english",
+    "template_variables": [
+      "person_name",
+      "vehicle_model",
+      "reg_number"
+    ],
+    "status": "approved",
+    "created": 1704067200,
+    "updated": 1704067200,
+    "template_media_id": null,
+    "template_media_type": null,
+    "template_media_url": null,
+    "template_message": null,
+    "dealer_name": null,
+    "region_name": null,
+    "communication_credentials_id": null,
+    "media_file_name": null,
+    "template_payload": {},
+    "sender": null,
+    "provider_name": null,
+    "template_buttons_payload": []
+  },
+  {
+    "template_id": "template-003",
+    "template_name": "Price Enquiry Response",
+    "template_type": "text",
+    "channel": "whatsapp",
+    "language": "english",
+    "template_variables": [
+      "person_name",
+      "variant_name",
+      "price"
+    ],
+    "status": "approved",
+    "created": 1704153600,
+    "updated": 1704153600,
+    "template_media_id": null,
+    "template_media_type": null,
+    "template_media_url": null,
+    "template_message": null,
+    "dealer_name": null,
+    "region_name": null,
+    "communication_credentials_id": null,
+    "media_file_name": null,
+    "template_payload": {},
+    "sender": null,
+    "provider_name": null,
+    "template_buttons_payload": []
+  }
+]

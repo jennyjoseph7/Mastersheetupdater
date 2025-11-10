@@ -3,13 +3,14 @@
     "model_type": "default",
     "parents": [
         "dealership",
+        "showroom",
         "pre_sales_campaign"
     ],
     "attributes": [
         {
             "name": "user_id",
             "type": "uid",
-            "required": true
+            "required": false
         },
         {
             "name": "assigned_to",
@@ -25,9 +26,7 @@
                     "person_name"
                 ]
             },
-            "indexed": true,
-            "auto_updater": true,
-            "force_update": "user_id"
+            "indexed": true
         },
         {
             "name": "phone_number",
@@ -39,8 +38,6 @@
                     "person_number"
                 ]
             },
-            "auto_updater": true,
-            "force_update": "user_id",
             "indexed": true
         },
         {
@@ -53,8 +50,6 @@
                     "person_email"
                 ]
             },
-            "auto_updater": true,
-            "force_update": "user_id",
             "indexed": true
         },
         {
@@ -66,9 +61,7 @@
                     "user_id",
                     "person_city"
                 ]
-            },
-            "auto_updater": true,
-            "force_update": "user_id"
+            }
         },
         {
             "name": "area",
@@ -79,9 +72,7 @@
                     "user_id",
                     "person_area"
                 ]
-            },
-            "auto_updater": true,
-            "force_update": "user_id"
+            }
         },
         {
             "name": "pincode",
@@ -92,9 +83,7 @@
                     "user_id",
                     "person_pincode"
                 ]
-            },
-            "auto_updater": true,
-            "force_update": "user_id"
+            }
         },
         {
             "name": "preferred_contact_window",
@@ -105,9 +94,7 @@
                     "user_id",
                     "preferred_contact_window"
                 ]
-            },
-            "auto_updater": true,
-            "force_update": "user_id"
+            }
         },
         {
             "name": "preferred_contact_channel",
@@ -118,9 +105,7 @@
                     "user_id",
                     "preferred_contact_channel"
                 ]
-            },
-            "auto_updater": true,
-            "force_update": "user_id"
+            }
         },
         {
             "name": "previous_contact_channel",
@@ -273,6 +258,7 @@
         },
         {
             "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id",
             "type": "uid",
             "required": true
         },
@@ -281,17 +267,23 @@
             "refers": "parents.dealership.dealer_name"
         },
         {
-            "name": "dealer_location",
-            "refers": "parents.dealership.dealer_location"
+            "name": "showroom_id",
+            "refers": "parents.showroom.showroom_id",
+            "required": false
         },
         {
-            "name": "dealer_address",
-            "refers": "parents.dealership.dealer_address"
+            "name": "showroom_geolocation",
+            "refers": "parents.showroom.geolocation"
+        },
+        {
+            "name": "showroom_address",
+            "refers": "parents.showroom.address"
         },
         {
             "name": "campaign_id",
             "type": "uid",
-            "required": false
+            "required": false,
+            "refers": "parents.pre_sales_campaign.campaign_id"
         },
         {
             "name": "campaign_name",
@@ -299,7 +291,8 @@
         },
         {
             "name": "campaign_type",
-            "refers": "parents.pre_sales_campaign.campaign_type"
+            "refers": "parents.pre_sales_campaign.campaign_type",
+            "default": "pre-sales"
         },
         {
             "name": "lead_source",
@@ -456,14 +449,18 @@
             "default": {
                 "args": [
                     "user_id",
+                    "person_name",
+                    "phone_number",
+                    "email",
                     "dealership_id",
                     "campaign_id"
                 ],
                 "function": "name_to_id",
                 "kwargs": {
-                    "attribute_join": " ",
+                    "case": "lower",
+                    "attribute_join": "-",
                     "is_unique": true,
-                    "separator": " - ",
+                    "separator": "-",
                     "skip_empty": true
                 }
             },
@@ -505,7 +502,15 @@
                 "ms_teams"
             ],
             "auto_updater": true,
-            "force_update": "last_session_id"
+            "force_update": "last_session_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "session",
+                    "last_session_id",
+                    "channel"
+                ]
+            }
         },
         {
             "name": "follow_up_date",

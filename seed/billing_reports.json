@@ -1,0 +1,42 @@
+[
+  {
+    "dealership_id": "nexa-delhi-south",
+    "created": 1704067200,
+    "updated": 1704067200,
+    "total_tax": 0,
+    "total_amount": 0,
+    "total_credits_consumed": null,
+    "total_credits_remaining": 0,
+    "generate_invoice": null,
+    "end_date": 0,
+    "quick_select": null,
+    "dealer_name": null,
+    "total_gst": 0,
+    "total_billed_amount": 0,
+    "total_sgst": 0,
+    "currancy": null,
+    "start_date": 0,
+    "total_cgst": 0,
+    "total_vat": 0
+  },
+  {
+    "dealership_id": "nexa-mumbai-west",
+    "created": 1704153600,
+    "updated": 1704153600,
+    "total_tax": 0,
+    "total_amount": 0,
+    "total_credits_consumed": null,
+    "total_credits_remaining": 0,
+    "generate_invoice": null,
+    "end_date": 0,
+    "quick_select": null,
+    "dealer_name": null,
+    "total_gst": 0,
+    "total_billed_amount": 0,
+    "total_sgst": 0,
+    "currancy": null,
+    "start_date": 0,
+    "total_cgst": 0,
+    "total_vat": 0
+  }
+]

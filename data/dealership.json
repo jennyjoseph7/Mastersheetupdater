@@ -106,7 +106,7 @@
         },
         {
             "name": "languages",
-            "default": "english",
+            "default": ["english"],
             "type": "list",
             "option_others": true,
             "ui_element": "tags",

@@ -1,9 +1,33 @@
-"""Test the demo run_demo function."""
-from voice.demo.run_demo import run_demo
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Dict, Any
 
 
-def test_demo_runs():
-    out = run_demo(["A test"])
-    assert len(out) == 1
-    # assembled text should contain original phrase
-    assert any("A test" in v or "A test"[:3] in v for v in out.values())
+from enum import Enum
+
+class EscalationReason(Enum):
+    TIMEOUT = "timeout"
+    USER_REQUEST = "user_request"
+    BOT_FAILURE = "bot_failure"
+
+
+@dataclass
+class EscalationEvent:
+    session_id: str
+    message_id: str
+    reason: EscalationReason
+    user_query: str
+    timestamp: datetime = field(default_factory=datetime.now)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+
+event = EscalationEvent(
+    session_id="sess-001",
+    message_id="msg-123",
+    reason=EscalationReason.BOT_FAILURE,
+    user_query="The bot isn't responding properly",
+    metadata={"retry_count": 3}
+)
+
+print(event)

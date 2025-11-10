@@ -1,1 +1,1 @@
-ai-service @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/ai_service/ai_service-0.0.7-py3-none-any.whl
+db_routes @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/i2ce_routes/db_routes-0.0.1-py3-none-any.whl

@@ -23,27 +23,27 @@
     {
       "name": "oem_id",
       "refers": "parents.oem.oem_id",
-      "required": true
+      "required": false
     },
     {
       "name": "oem_name",
       "refers": "parents.oem.oem_name"
     },
     {
-        "name":"oem_brand_awareness",
-        "refers":"parents.oem.oem_brand_awareness"
+      "name": "oem_brand_awareness",
+      "refers": "parents.oem.oem_brand_awareness"
     },
     {
-        "name":"oem_wiki_description",
-        "refers": "parents.oem.oem_wiki_description"
+      "name": "oem_wiki_description",
+      "refers": "parents.oem.oem_wiki_description"
     },
     {
-        "name":"oem_vehicle_categories",
-        "refers":"parents.oem.oem_vehicle_categories"
+      "name": "oem_vehicle_categories",
+      "refers": "parents.oem.oem_vehicle_categories"
     },
     {
-        "name":"oem_country_of_origin",
-        "refers": "parents.oem.oem_country_of_origin"
+      "name": "oem_country_of_origin",
+      "refers": "parents.oem.oem_country_of_origin"
     },
     {
       "name": "region_id",
@@ -55,16 +55,16 @@
       "refers": "parents.region.region_name"
     },
     {
-        "name":"country_name",
-        "refers":"parents.region.country_name"
+      "name": "country_name",
+      "refers": "parents.region.country_name"
     },
     {
-        "name":"region_level_guidelines",
-        "refers":"parents.region.region_level_guidelines"
+      "name": "region_level_guidelines",
+      "refers": "parents.region.region_level_guidelines"
     },
     {
-        "name":"region_level_guardrails",
-        "refers":"parents.region.region_level_guardrails"
+      "name": "region_level_guardrails",
+      "refers": "parents.region.region_level_guardrails"
     },
     {
       "name": "parent_company",
@@ -92,7 +92,7 @@
       "constraint": {
         "function": "url_validator"
       },
-     "converter": {
+      "converter": {
         "function": "url_converter"
       },
       "ui_element": "image"
@@ -103,7 +103,7 @@
       "constraint": {
         "function": "url_validator"
       },
-     "converter": {
+      "converter": {
         "function": "url_converter"
       },
       "ui_element": "url"
@@ -111,12 +111,18 @@
     {
       "auto_updater": true,
       "default": {
-        "args": ["brand_name","oem_name","region_name"],
+        "args": [
+          "brand_name",
+          "oem_id",
+          "region_id"
+        ],
         "function": "name_to_id",
         "kwargs": {
-          "attribute_join": "_",
+          "attribute_join": "-",
           "is_unique": true,
-          "separator": " - "
+          "separator": "-",
+          "skip_empty": true,
+          "case": "lower"
         }
       },
       "name": "brand_id",
@@ -124,5 +130,8 @@
       "id": true
     }
   ],
-  "parents":["oem", "region"]
+  "parents": [
+    "oem",
+    "region"
+  ]
 }

@@ -1,0 +1,48 @@
+[
+  {
+    "brand_name": "Maruti Suzuki NEXA",
+    "oem_id": "maruti-suzuki",
+    "region_id": "north-india",
+    "country_name": "India",
+    "region_level_guidelines": "Focus on fuel efficiency and value for money. Emphasize family-oriented features.",
+    "region_level_guardrails": "Avoid aggressive sales tactics. Respect local customs and festivals.",
+    "parent_company": "Suzuki Motor Corporation",
+    "brand_level_guidelines": "Premium positioning. Focus on design, technology, and customer experience.",
+    "brand_level_guardrails": "Maintain premium brand image. No discounting without approval.",
+    "logo_url": "https://www.nexaexperience.com/logo.png",
+    "website": "https://www.nexaexperience.com",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "brand_name": "Maruti Suzuki Arena",
+    "oem_id": "maruti-suzuki",
+    "region_id": "north-india",
+    "country_name": "India",
+    "region_level_guidelines": "Focus on fuel efficiency and value for money. Emphasize family-oriented features.",
+    "region_level_guardrails": "Avoid aggressive sales tactics. Respect local customs and festivals.",
+    "parent_company": "Suzuki Motor Corporation",
+    "brand_level_guidelines": "Value-focused positioning. Emphasize reliability and affordability.",
+    "brand_level_guardrails": "Maintain competitive pricing. Focus on volume sales.",
+    "logo_url": "https://www.marutisuzukiarena.com/logo.png",
+    "website": "https://www.marutisuzukiarena.com",
+    "created": 1704067200,
+    "updated": 1704067200
+  },
+  {
+    "brand_name": "Hyundai",
+    "oem_id": "hyundai",
+    "region_id": "south-india",
+    "country_name": "India",
+    "region_level_guidelines": "Emphasize technology features and premium quality. Highlight safety ratings.",
+    "region_level_guardrails": "Maintain professional communication standards. Respect regional languages.",
+    "parent_company": "Hyundai Motor Group",
+    "brand_level_guidelines": "Technology and innovation focus. Premium features at competitive prices.",
+    "brand_level_guardrails": "Maintain quality standards. No compromise on safety features.",
+    "logo_url": "https://www.hyundai.com/logo.png",
+    "website": "https://www.hyundai.com",
+    "created": 1704067200,
+    "updated": 1704067200
+  }
+]
+
