@@ -17,18 +17,28 @@ mlogger = gryd.hp.get_logger(__name__)
 @gryd.is_task()
 def trigger_voice_call(user_data, *args, **kwargs):
     """
-    Trigger a call to user: 
-    It will create data for session and person and keep until call gets connected to user.
-    Data use to generate prompt : {
-      "user_name":"",
-      "<vehicle_specific>" : "<value>"
-      ......
+    Initiates a call to the user and prepares session-related data.
 
-      "campaign_id":"",
-      "campaign_workflow_id":""
+    This function creates and stores data for both the session and the user (person) 
+    until the call successfully connects. The stored data is later used to generate 
+    the dynamic prompt for the call.
 
-    }
+    The data structure typically includes fields such as:
+        {
+            "user_name": "<string>",
+            "<vehicle_specific>": "<value>",
+            "campaign_id": "<string>",
+            "campaign_workflow_id": "<string>"
+        }
 
+    The function ensures that the call session context is available to the voice agent 
+    or downstream system that uses the generated prompt.
+
+    Args:
+        ...: (Describe input parameters here)
+
+    Returns:
+        None or dict: (Describe return value if applicable)
     """
 
 
