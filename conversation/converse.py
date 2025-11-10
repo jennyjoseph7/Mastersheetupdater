@@ -1,22 +1,18 @@
 import os
 import sys
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-
-
-from gryd_worker import gryd
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+from config import AUTOCRM_CONVERSATION_SERVICE_NAME
+from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
 from prompt import yield_primary_prompt, run_prompt_sync
+json = hp.json
 
-
-import time
-import json
-
-
-gryd.SERVICE = os.environ.get("AUTOBOT_CONVERSATION_SERVICE_NAME","autocrm-conversation")
-
+gryd.SERVICE = AUTOCRM_CONVERSATION_SERVICE_NAME
 gryd.set_queue_manager()
-mlogger = gryd.hp.get_logger(__name__)
+mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
 def WARM_UP():
     mlogger.info("WARM_UP CALLED")
@@ -55,7 +51,7 @@ def converse(*args, **kargs):
         }
     }
     '''
-    conversation_process_start_time = time.time()
+    conversation_process_start_time = hp.time()
     logger = kargs.get("logger")
     logger.info("converse called with kwargs == {}".format(kargs))
     request_data = kargs
@@ -76,7 +72,7 @@ def converse(*args, **kargs):
         if not session_data:
             yield from yield_error("error","session_data fetching failed",*args, **pass_kwargs)
             # return
-    message_id = gryd.hp.make_uuid3(time.time(),session_id,request_data.get("user_id"),request_data.get("customer_response"))
+    message_id = gryd.hp.make_uuid3(hp.time(),session_id,request_data.get("user_id"),request_data.get("customer_response"))
     
     ###TODO Post incoming message object
     incoming_message_object = {}
@@ -119,7 +115,7 @@ def converse(*args, **kargs):
             response_index += 1
             yield from prune_response(orch_res,*args, **pass_kwargs)
 
-    conversation_process_end_time = time.time()
+    conversation_process_end_time = hp.time()
     
     ###TODO add in all needed data to be passed for this task
     post_messages_data(*args, **pass_kwargs) 
@@ -190,13 +186,13 @@ def add_to_session_cache(*args, **kwargs):
 def run_orchestrator(*args, **kwargs):
     logger = kwargs.get("logger",mlogger)
     logger.info("run_orchestrator called")
-    reply_to = str(time.time())
+    reply_to = str(hp.time())
     
 
 
-    yield {"placeholder":"agent 1 response","intent" : "agent_one","reply_to":reply_to, "message_id" : str(time.time()),"is_last":False,"index" : 1}
-    yield {"placeholder":"agent 2 response","intent" : "agent_two","reply_to":reply_to, "message_id" : str(time.time()),"is_last":False,"index" : 2}
-    yield {"placeholder":"agent 3 response","intent" : "agent_three","reply_to":reply_to, "message_id" : str(time.time()),"is_last":True,"index" : 3}
+    yield {"placeholder":"agent 1 response","intent" : "agent_one","reply_to":reply_to, "message_id" : str(hp.time()),"is_last":False,"index" : 1}
+    yield {"placeholder":"agent 2 response","intent" : "agent_two","reply_to":reply_to, "message_id" : str(hp.time()),"is_last":False,"index" : 2}
+    yield {"placeholder":"agent 3 response","intent" : "agent_three","reply_to":reply_to, "message_id" : str(hp.time()),"is_last":True,"index" : 3}
     return
 
 @gryd.is_a_task()
@@ -207,6 +203,13 @@ def prune_response( response, *args, **kargs):
     if request_data.get("channel") in ["whatsapp_chat"]:
         response_task_data = request_data.get("temporary_data",{}).get("channel_response_task",{})
         ret =  {"temporary_data": response_task_data.get("kwargs",{})}
+        response = {
+            "placeholder":resp_message,
+            "intent" : "agent_one",
+            "message_id" : str(hp.time()),
+            "is_last":False,
+            "index" : 1
+        }
         ret["response"] = response
         logger.info("sending response to task {}".format(ret))
         # x = gryd.yield_results({"task": response_task_data.get("task"),"service": response_task_data.get("service"),"kwargs" : ret})
