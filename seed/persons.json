@@ -10,10 +10,7 @@
     "city": "Chennai",
     "pincode": "600001",
     "address": "123, Main Street, T Nagar, Chennai - 600001",
-    "geolocation": {
-      "latitude": 13.0827,
-      "longitude": 80.2707
-    },
+    "geolocation": ["13.0827","80.2707"],
     "preferred_language": "English (India)",
     "known_languages": [
       "English (India)",
@@ -62,10 +59,7 @@
     "city": "Mumbai",
     "pincode": "400053",
     "address": "456, MG Road, Andheri West, Mumbai - 400053",
-    "geolocation": {
-      "latitude": 19.1364,
-      "longitude": 72.8297
-    },
+    "geolocation": ["19.1364","72.8297"],
     "preferred_language": "Hindi",
     "known_languages": [
       "Hindi",
@@ -114,10 +108,7 @@
     "city": "Delhi",
     "pincode": "110001",
     "address": "789, Defence Colony, South Extension, Delhi - 110001",
-    "geolocation": {
-      "latitude": 28.5355,
-      "longitude": 77.2167
-    },
+    "geolocation": ["28.5355","77.2167"],
     "preferred_language": "English (India)",
     "known_languages": [
       "English (India)",

@@ -7,7 +7,6 @@
             "name": "name",
             "title": "Name",
             "type": "text",
-            "required": true,
             "ui_element": "text"
         },
         {
@@ -60,6 +59,13 @@
             "id": true,
             "type": "uid",
             "auto_updater": true,
+            "constraint": {
+                "function": "raise_error_if_none_of",
+                "args": [
+                    "phone_number",
+                    "email"
+                ]
+            },
             "default": {
                 "function": "make_uuid3",
                 "args": [
@@ -244,8 +250,7 @@
             "title": "Timezone",
             "type": "text",
             "default": "Asia/Kolkata",
-            "ui_element": "select",
-            "options": "/unique/model/timezone"
+            "ui_element": "select"
         },
         {
             "name": "data_consent",

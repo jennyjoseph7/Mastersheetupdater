@@ -1,0 +1,16 @@
+[
+  {
+    "provider_name": "Airtel",
+    "provider_type": "whatsapp_chat",
+    "communication_provider_id":"airtel_whatsapp_chat",
+    "channel": "whatsapp_chat"
+  },
+  {
+    "provider_name": "Twilio",
+    "provider_type": "voice_phone",
+    "communication_provider_id":"twilio_voice_phone",
+    "channel": "voice_phone"
+ 
+  }
+]
+

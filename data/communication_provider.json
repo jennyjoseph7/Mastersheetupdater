@@ -27,6 +27,7 @@
       },
       {
         "name": "channel",
+        "required": true,
         "type": "text",
         "options": [
           "rcs",
@@ -47,12 +48,14 @@
       {
         "auto_updater": true,
         "default": {
-          "args": ["provider_name","channel"],
+          "args": ["provider_name", "channel"],
           "function": "name_to_id",
           "kwargs": {
+            "attribute_join": "-",
             "is_unique": true,
-            "separator": "_",
-            "skip_empty": true
+            "separator": "-",
+            "skip_empty": true,
+            "case": "lower"
           }
         },
         "name": "communication_provider_id",

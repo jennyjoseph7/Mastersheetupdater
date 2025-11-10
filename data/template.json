@@ -2,6 +2,9 @@
   "timezone": "Asia/Kolkata",
   "name": "template",
   "model_type": "default",
+  "parents": [
+    "communication_credential"
+  ],
   "attributes": [
     {
       "name": "created",
@@ -26,30 +29,30 @@
       "indexed": true
     },
     {
-      "name": "communication_credentials_id",
-      "refers": "parents.communication_credentials.communication_credentials_id",
+      "name": "communication_credential_id",
+      "refers": "parents.communication_credential.communication_credentials_id",
       "required": true
     },
     {
       "name": "provider_name",
-      "refers": "parents.communication_credentials.provider_name",
+      "refers": "parents.communication_credential.provider_name",
       "indexed": true
     },
     {
       "name": "channel",
-      "refers": "parents.communication_credentials.channel"
+      "refers": "parents.communication_credential.channel"
     },
     {
       "name": "sender",
-      "refers": "parents.communication_credentials.sender"
+      "refers": "parents.communication_credential.sender"
     },
     {
       "name": "region_name",
-      "refers": "parents.communication_credentials.region_name"
+      "refers": "parents.communication_credential.region_name"
     },
     {
       "name": "dealer_name",
-      "refers": "parents.communication_credentials.dealer_name"
+      "refers": "parents.communication_credential.dealer_name"
     },
     {
       "name": "template_name",

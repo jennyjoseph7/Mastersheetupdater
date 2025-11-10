@@ -24,23 +24,23 @@
             "name": "user_id",
             "type": "uid",
             "indexed": true,
-            "required" : true
+            "required": true
         },
         {
-            "name" : "phone_number",
+            "name": "phone_number",
             "type": "text",
             "constraint": {
-                "function": "phone_validator"  
+                "function": "phone_validator"
             },
-            "indexed" : true
+            "indexed": true
         },
         {
-            "name" : "email",
+            "name": "email",
             "type": "text",
             "constraint": {
                 "function": "email_validator"
             },
-            "indexed" : true
+            "indexed": true
         },
         {
             "name": "start_time",
@@ -51,15 +51,19 @@
             "type": "number"
         },
         {
-            "name" : "duration",
-            "default" : {
-                "function" : "time_diff",
-                "args" : ["end_time","start_time"],
+            "name": "duration",
+            "type": "number",
+            "default": {
+                "function": "time_diff",
+                "args": [
+                    "end_time",
+                    "start_time"
+                ],
                 "kwargs": {
                     "units": "seconds"
                 }
             },
-            "auto_updater" : true
+            "auto_updater": true
         },
         {
             "name": "channel",
@@ -81,18 +85,23 @@
             ]
         },
         {
-            "name" : "campaign_id",
-            "type" : "text",
-            "indexed" : true,
-            "default" : "inbound",
-            "required":true
+            "name": "campaign_id",
+            "type": "text",
+            "indexed": true,
+            "default": "inbound",
+            "required": true
         },
         {
-            "name" : "campaign_type",
-            "type" : "text",
-            "options" : ["inbound","pre_sales","post_sales","dealer"],
-            "default" : "inbound",
-            "required":true
+            "name": "campaign_type",
+            "type": "text",
+            "options": [
+                "inbound",
+                "pre_sales",
+                "post_sales",
+                "dealer"
+            ],
+            "default": "inbound",
+            "required": true
         },
         {
             "name": "campaign_model",
@@ -145,21 +154,21 @@
             }
         },
         {
-            "name" : "origin",
-            "type" : "text",
-            "required" : false
+            "name": "origin",
+            "type": "text",
+            "required": false
         },
         {
             "name": "referrer",
             "type": "text"
         },
         {
-            "name" : "id_salt",
-            "type" : "text",
-            "default" : {
-                "function" : "make_view_id",
-                "kwargs":{
-                    "make_unique":false
+            "name": "id_salt",
+            "type": "text",
+            "default": {
+                "function": "make_view_id",
+                "kwargs": {
+                    "make_unique": false
                 }
             }
         },
@@ -179,58 +188,62 @@
                 ]
             }
         },
-        { "name": "utm_source",
+        {
+            "name": "utm_source",
             "type": "text"
         },
-        { "name": "utm_medium",
+        {
+            "name": "utm_medium",
             "type": "text"
         },
-        { "name": "utm_campaign",
+        {
+            "name": "utm_campaign",
             "type": "text"
         },
         {
             "name": "utm_term",
             "type": "text"
         },
-        { "name": "utm_content",
+        {
+            "name": "utm_content",
             "type": "text"
         },
         {
-            "name" : "browser",
-            "type" : "text",
-            "required" : false
+            "name": "browser",
+            "type": "text",
+            "required": false
         },
         {
-            "name" : "os",
-            "type" : "text",
-            "required" : false
+            "name": "os",
+            "type": "text",
+            "required": false
         },
         {
-            "name" : "device_type",
-            "type" : "text",
-            "required" : false
+            "name": "device_type",
+            "type": "text",
+            "required": false
         },
         {
-            "name" : "last_response_time",
-            "type" : "number",
-            "required" : false
+            "name": "last_response_time",
+            "type": "number",
+            "required": false
         },
         {
-            "name" : "last_interaction_time",
-            "type" : "number",
-            "indexed":true,
-            "required" : false
-        },
-        {
-            "name" : "session_live",
-            "type" : "bool",
+            "name": "last_interaction_time",
+            "type": "number",
             "indexed": true,
-            "default" : true,
-            "required" : false
+            "required": false
         },
         {
-            "name" : "status",
-            "type" : "text",
+            "name": "session_live",
+            "type": "bool",
+            "indexed": true,
+            "default": true,
+            "required": false
+        },
+        {
+            "name": "status",
+            "type": "text",
             "options": [
                 "ongoing",
                 "completed",
@@ -249,23 +262,23 @@
                 "failed",
                 "pre-initiated"
             ],
-            "indexed" : true,
-            "option_others":true,
-            "default" : "pre-initiated"
+            "indexed": true,
+            "option_others": true,
+            "default": "pre-initiated"
         },
         {
-            "name" : "history_updated_time",
-            "type" : "number",
-            "required" : false
+            "name": "history_updated_time",
+            "type": "number",
+            "required": false
         },
         {
-            "name" : "history",
-            "type" : "list",
-            "required" : false
+            "name": "history",
+            "type": "list",
+            "required": false
         },
         {
-            "name" : "disposition",
-            "type" : "text",
+            "name": "disposition",
+            "type": "text",
             "options": [
                 "queued",
                 "attempted",
@@ -278,8 +291,8 @@
             ]
         },
         {
-            "name" : "disposition_detail",
-            "type" : "text",
+            "name": "disposition_detail",
+            "type": "text",
             "options": [
                 "Invalid no.",
                 "Not registered on Whatsapp",
@@ -294,45 +307,45 @@
                 "Didnt pickup",
                 "Rejected"
             ],
-            "option_others" : true
+            "option_others": true
         },
         {
-            "name" : "error_reason",
-            "type" : "text",
-            "required" : false
+            "name": "error_reason",
+            "type": "text",
+            "required": false
         },
         {
-            "name" : "failed_reason",
-            "type" : "text",
-            "required" : false
+            "name": "failed_reason",
+            "type": "text",
+            "required": false
         },
         {
-            "name" : "queries_per_session",
-            "type" : "number"
+            "name": "queries_per_session",
+            "type": "number"
         },
         {
-            "name" : "unknown_queries_per_session",
-            "type" : "number"
+            "name": "unknown_queries_per_session",
+            "type": "number"
         },
         {
-            "name" : "emotions",
-            "type" : "string_list"
+            "name": "emotions",
+            "type": "string_list"
         },
         {
-            "type" : "number",
-            "name" : "sentiment_score"
+            "type": "number",
+            "name": "sentiment_score"
         },
         {
-            "name" : "lead_id",
-            "type" : "text"
+            "name": "lead_id",
+            "type": "text"
         },
         {
-            "name" : "summary",
-            "type" : "text",
-            "required" : false
+            "name": "summary",
+            "type": "text",
+            "required": false
         },
         {
-            "name" : "audio_transcript",
+            "name": "audio_transcript",
             "type": "text",
             "constraint": {
                 "function": "url_validator"
@@ -342,15 +355,12 @@
             }
         },
         {
-            "name" : "escalations",
-            "type" : "number"
+            "name": "escalations",
+            "type": "number"
         },
         {
-            "name" : "human_agents",
-            "type" : "string_list"
+            "name": "human_agents",
+            "type": "string_list"
         }
-        
-
-        
     ]
 }

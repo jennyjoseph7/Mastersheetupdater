@@ -1,6 +1,28 @@
 [
     {
-        "dealer_group_name": "Test Dealer Group",
-        "year_established": 2020
+        "dealer_group_id": "nexa-dealer-group",
+        "dealer_group_name": "NEXA Dealer Group",
+        "dealer_group_description": "Premium dealership network for Maruti Suzuki NEXA brand",
+        "dealer_group_guidelines": "Maintain premium service standards. Focus on customer experience.",
+        "website": "https://www.nexaexperience.com",
+        "linkedin_url": "https://www.linkedin.com/company/nexa",
+        "year_established": 2015,
+        "primary_contact_name": "Rajesh Kumar",
+        "primary_contact_role": "Group Director",
+        "primary_contact_email": "rajesh.kumar@nexa.com",
+        "primary_contact_phone": "+91-9876543210"
+    },
+    {
+        "dealer_group_id": "arena-dealer-group",
+        "dealer_group_name": "Arena Dealer Group",
+        "dealer_group_description": "Mainstream dealership network for Maruti Suzuki Arena brand",
+        "dealer_group_guidelines": "Focus on value proposition. Maintain high customer satisfaction.",
+        "website": "https://www.marutisuzukiarena.com",
+        "linkedin_url": "https://www.linkedin.com/company/maruti-arena",
+        "year_established": 2010,
+        "primary_contact_name": "Priya Sharma",
+        "primary_contact_role": "Group Manager",
+        "primary_contact_email": "priya.sharma@arena.com",
+        "primary_contact_phone": "+91-9876543211"
     }
 ]
