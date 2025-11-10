@@ -216,8 +216,8 @@ def generate_whatsapp_template(user_data=None, logger=None, job=None):
 
         # Post to database only if enterprise_id exists
         try:
-            dim = gryd.base_model.Model('template', AUTOCRM_APP_ENTERPRISE_ID)
-            logger.info(f"Posting result to model 'template' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
+            dim = gryd.base_model.Model('templates', AUTOCRM_APP_ENTERPRISE_ID)
+            logger.info(f"Posting result to model 'templates' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
 
             dim.post(result)
 
