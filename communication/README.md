@@ -1,31 +1,3 @@
-<!-- webhook - webhook/whatsapp/<whatsapp_provider> (only one webhook for each whatsapp provider) - I will register the webhook this way 
-
-once we get any incoming message from webhook we need to 
-
-first convert to standard payload format.
-check for credits. 
-
-check if existing session exists - with contact number , if not then check contact status model , the last message sent to this person during the interval of 1 day (check the attribute) if it exists pick the campaign id - last campaign 
-
-Then send these 3 attributes in temp data to conversation.
-a) session_id,
-b) person_id (user's number),
-c) campaign_id (if its from campaign)
-
-
-inactive - 10 mins just update history calls agent etc. 
-close session after a day.
-
-
-audit logs for how much we are spending and reduce the credits based on the messages we get and send. 
-
-
-
-track initial process time, response time and sent timestamp , update in person session in message model how long it took for a message. 
- -->
-
-
-
 # WhatsApp Webhook & Conversation Processing System
 
 This document explains how we are registering WhatsApp webhook , how incoming messages are processed, how sessions are managed, and how credits, audit logs, and message performance tracking are handled.
@@ -51,20 +23,72 @@ Whenever a WhatsApp message is received from the provider, the system follows th
 ### ✅ Step 1: Convert Payload
 The raw provider-specific message is transformed into a **standard internal payload format** .
 
-### ✅ Step 2: Credit Check
-Before sending any response or continuing processing, validate that the system has **sufficient credits**.
-
-### ✅ Step 3: Check for Existing Session
-- Look up a session using the **contact number**.
-- If an active session exists → continue the conversation.
-
-If no session exists:
-1. Check the **ContactStatus** model  
-2. Identify the **last message sent within 1 day**  
-3. If found → extract its associated `campaign_id`  
+### ✅ Step 2: Session Management 
 
 
-### ✅ Step 4: Pass data to Conversation
+✅ 1. When the Message Is From a Campaign
+
+        Only campaign messages will contain:
+
+        campaign_id
+
+        campaign_type (pre-sales / post-sales)
+
+        dealership_id
+
+✅ a) Validate or Create Person
+
+    Look up the Person using the phone number.
+
+    If found → reuse.
+
+    If not → create a new Person.
+
+✅ b) Validate or Create Session
+
+    Look for an existing active session with:
+
+        user_id
+
+        conversation_id
+
+        session_live = True
+
+        status != "completed"
+
+        application = "whatsapp"
+
+    If such a session exists → reuse it.
+    If not → create a new session.
+
+✅ c) Get Lead Information & Update Session
+
+Since campaigns contain campaign_id and campaign_type:
+
+If campaign_type = pre_sales → call pre_sales model/API
+
+If campaign_type = post_sales → call post_sales model/API
+
+Use one or more filters:
+
+campaign_id
+
+dealership_id
+
+phone_number
+
+Extract lead_id and update the session with this lead_id.
+
+✅ d) Dealership Credential Check
+
+    If dealership_id = "dave" → skip credential validation.
+
+    For all other dealerships → verify credentials using the appropriate model.
+    - Look up a session using the **contact number**.
+    - If an active session exists → continue the conversation.
+
+
+### ✅ Step 3: Pass data to Conversation
 Send a temporary data to conversation :
 
 | Field        | Description                                      |
@@ -72,10 +96,9 @@ Send a temporary data to conversation :
 | `session_id` | Current/created session identifier               |
 | `person_id`  | User’s mobile number                             |
 | `campaign_id`| Campaign linked to user (if applicable)          |
+| `dealership_id`|  Dealership id (if applicable)        |
 
----
-
-## ✅ 3. Session Management
+## ✅ 4. Session Close
 
 Update history in person_session model every 10 mins.
 
@@ -88,32 +111,23 @@ If a session stays inactive for a full **day (24 hours)**:
 
 ---
 
-## ✅ 4. Credits & Audit Logging
-
-The system logs and deducts credits for:
-
-✅ Incoming messages  
-✅ Outgoing messages  
-✅ Session-linked communication  
-
----
-
 ## ✅ 5. Message Performance Tracking
 
-The system tracks detailed performance metrics for every message:
+The system captures detailed timestamps for every message travelling through the pipeline.  
+These timestamps help measure delivery speed, processing quality, and system performance.
 
-| Metric                      | Meaning                                  |
-|-----------------------------|-------------------------------------------|
-| **Processing time**         | Time from receiving to parsing            |
-| **Response generation time**| Time taken by conversation engine         |
-| **Message sent timestamp**  | Actual timestamp of outbound delivery     |
+| **Metric** | **Description** |
+|------------|------------------|
+| **user_sent_time** | Timestamp when the user actually sends the message from WhatsApp. |
+| **webhook_received_time** | Time when our server receives the webhook from the WhatsApp provider. |
+| **process_start_time** | Timestamp marking when internal processing begins (payload normalization, session lookup, etc.). |
+| **process_end_time** | Timestamp when internal processing finishes and the system is ready to generate a response. |
+| **response_sent_starttimestamp** | Timestamp recorded **just before calling the WhatsApp send API**. |
+| **response_sent_time** | Timestamp when the API call to send the message has completed (message handed off to WhatsApp provider). |
+| **response_delivered_time** | Timestamp when we receive the **delivery status webhook** indicating the message was delivered to the user’s device. |
 
 These values are stored in the **message model** under each person’s session.
 
 ---
 
-
-## Campaign 
-
-When a message is sent as part of a campaign, the system updates five tracking fields in the ContactStatus model. If the next incoming WhatsApp message is received from the same person_id (mobile number), the system identifies it as a campaign reply and automatically creates a new PersonSession for that user.
 
