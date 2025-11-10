@@ -232,6 +232,116 @@
             "name": "post_sales_lead_id",
             "type": "uid",
             "id": true
+        },
+        {
+            "name": "last_session_id",
+            "type": "uid"
+        },
+        {
+            "name": "last_session_status",
+            "type": "text",
+            "auto_updater": true,
+            "force_update": "last_session_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "session",
+                    "last_session_id",
+                    "status"
+                ]
+            }
+        },
+        {
+            "name": "last_session_channel",
+            "type": "text",
+            "options": [
+                "whatsapp",
+                "email",
+                "voice_phone",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "zoom_bot",
+                "ms_teams"
+            ],
+            "auto_updater": true,
+            "force_update": "last_session_id"
+        },
+        {
+            "name": "disposition",
+            "type": "text",
+            "options": [
+                "queued",
+                "attempted",
+                "reached",
+                "contacted",
+                "engaged",
+                "converted",
+                "failed",
+                "error"
+            ],
+            "default": "queued"
+        },
+        {
+            "name": "prioritization_score",
+            "type": "number"
+        },
+        {
+            "name": "prioritization_category",
+            "type": "text",
+            "options": [
+                "HOT",
+                "WARM",
+                "COOL",
+                "COLD",
+                "INACTIVE"
+            ]
+        },
+        {
+            "name": "disposition_detail",
+            "type": "text",
+            "options": [
+                "Invalid no.",
+                "Not registered on Whatsapp",
+                "User's no. is part of an experiment",
+                "Message undeliverable",
+                "Unable to send message",
+                "Unable to deliver message to deliver message/Unsubcribed",
+                "Message not delivered to maintained healty ecosystem management",
+                "Invalid / Doesn't exist",
+                "DND",
+                "Not reachable",
+                "Didnt pickup",
+                "Rejected",
+                "Vehicle is commercial or part of a fleet",
+                "Vehicle is not being run",
+                "Requires special spare parts",
+                "Others",
+                "Wrong contact number",
+                "Voicemail",
+                "Has sold/given away the car",
+                "Has moved to another location",
+                "Cannot make decision on servicing",
+                "Will call showroom themselves",
+                "Looking for a discount",
+                "Language barrier",
+                "Has serviced car in another dealership",
+                "Will decide tomorrow",
+                "Will decide within 1 to 3 days",
+                "Will decide within 4 to 7 days",
+                "Will decide within 8 to 14 days",
+                "Will decide within 15 to 30 days",
+                "Will decide within 31 to 60 days",
+                "Will decide within 61 to 90 days",
+                "Will decide after 90 days"
+            ],
+            "option_others" : true
+        },
+        {
+            "name": "follow_up_date",
+            "type": "number"
         }
     ]
 }

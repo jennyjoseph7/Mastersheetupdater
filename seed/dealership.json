@@ -1,5 +1,5 @@
 [
-{
+  {
     "dealership_id": "DaveAI",
     "dealer_name": "DaveAI",
     "dealer_group_id": "Dave-group",
@@ -14,7 +14,12 @@
     "region_name": "South India",
     "region_level_guidelines": "Bring cutting-edge technology to traditional automotive services.",
     "region_level_guardrails": "Balance innovation with reliability and safety.",
-    "channels": ["whatsapp_chat", "email", "web_chat", "voice_phone"],
+    "channels": [
+      "whatsapp_chat",
+      "email",
+      "web_chat",
+      "voice_phone"
+    ],
     "showroom_center_count": 2,
     "workshop_center_count": 1,
     "buyback_center_count": 1,
@@ -29,7 +34,26 @@
     "primary_contact_email": "ananth@iamdave.ai",
     "primary_contact_phone": "+91-9876543202",
     "secondary_contact_name": "Sriram",
-    "secondary_contact_role": "Sales Manager"
+    "secondary_contact_role": "Sales Manager",
+    "dealership_legal_name": null,
+    "certificate_of_incorporation": null,
+    "linkedin_url": null,
+    "languages": [],
+    "secondary_contact_phone": null,
+    "dealership_url": null,
+    "dealer_status": null,
+    "pan_card": null,
+    "dealership_guardrails": null,
+    "credits_balance": 0,
+    "gst_certificate": null,
+    "gstin": null,
+    "aliases": [],
+    "dealership_guidelines": null,
+    "secondary_contact_email": null,
+    "pan_card_link": null,
+    "dealership_description": null,
+    "created": 0,
+    "updated": 0
   },
   {
     "dealership_id": "nexa-delhi-south",
@@ -39,8 +63,12 @@
     "dealer_group_guidelines": "Maintain premium service standards. Focus on customer experience.",
     "dealer_group_description": "Premium dealership network for Maruti Suzuki NEXA brand",
     "dealership_type": "Single Brand",
-    "supported_brands": ["NEXA"],
-    "suppored_brand_names": ["NEXA"],
+    "supported_brands": [
+      "NEXA"
+    ],
+    "suppored_brand_names": [
+      "NEXA"
+    ],
     "supported_brands_guidelines": [
       {
         "brand_name": "NEXA",
@@ -52,7 +80,12 @@
     "region_name": "North India",
     "region_level_guidelines": "Focus on fuel efficiency and value for money. Emphasize family-oriented features.",
     "region_level_guardrails": "Avoid aggressive sales tactics. Respect local customs and festivals.",
-    "channels": ["whatsapp_chat", "email", "web_chat", "voice_phone"],
+    "channels": [
+      "whatsapp_chat",
+      "email",
+      "web_chat",
+      "voice_phone"
+    ],
     "showroom_center_count": 2,
     "workshop_center_count": 1,
     "buyback_center_count": 1,
@@ -79,9 +112,17 @@
     "dealership_url": "https://www.nexadelhisouth.com",
     "dealership_legal_name": "NEXA Delhi South Private Limited",
     "gstin": "07AABCU9603R1ZX",
-    "languages": ["english", "hindi"],
+    "languages": [
+      "english",
+      "hindi"
+    ],
     "created": 1704067200,
-    "updated": 1704067200
+    "updated": 1704067200,
+    "gst_certificate": null,
+    "aliases": [],
+    "pan_card": null,
+    "pan_card_link": null,
+    "certificate_of_incorporation": null
   },
   {
     "dealership_id": "nexa-mumbai-west",
@@ -91,8 +132,12 @@
     "dealer_group_guidelines": "Maintain premium service standards. Focus on customer experience.",
     "dealer_group_description": "Premium dealership network for Maruti Suzuki NEXA brand",
     "dealership_type": "Single Brand",
-    "supported_brands": ["NEXA"],
-    "suppored_brand_names": ["NEXA"],
+    "supported_brands": [
+      "NEXA"
+    ],
+    "suppored_brand_names": [
+      "NEXA"
+    ],
     "supported_brands_guidelines": [
       {
         "brand_name": "NEXA",
@@ -104,7 +149,13 @@
     "region_name": "West India",
     "region_level_guidelines": "Focus on style and performance. Highlight urban driving capabilities.",
     "region_level_guardrails": "Avoid making assumptions about customer preferences. Provide detailed information.",
-    "channels": ["whatsapp_chat", "email", "web_chat", "voice_phone", "fb_chat"],
+    "channels": [
+      "whatsapp_chat",
+      "email",
+      "web_chat",
+      "voice_phone",
+      "fb_chat"
+    ],
     "showroom_center_count": 3,
     "workshop_center_count": 2,
     "buyback_center_count": 1,
@@ -131,9 +182,17 @@
     "dealership_url": "https://www.nexamumbaiwest.com",
     "dealership_legal_name": "NEXA Mumbai West Private Limited",
     "gstin": "27AABCU9603R1ZX",
-    "languages": ["english", "hindi", "marathi"],
+    "languages": [
+      "english",
+      "hindi",
+      "marathi"
+    ],
     "created": 1704067200,
-    "updated": 1704067200
+    "updated": 1704067200,
+    "gst_certificate": null,
+    "aliases": [],
+    "pan_card": null,
+    "pan_card_link": null,
+    "certificate_of_incorporation": null
   }
 ]
-

@@ -1,6 +1,6 @@
 {
     "timezone": "Asia/Kolkata",
-    "name": "dealership",
+    "name": "contact_status",
     "model_type": "default",
     "attributes": [
         {
@@ -21,24 +21,24 @@
             }
         },
         {
-            "name" : "session_id",
-            "type" : "text" 
+            "name": "session_id",
+            "type": "text"
         },
         {
-            "name":"message_id",
-            "type":"text"
+            "name": "message_id",
+            "type": "text"
         },
         {
-            "name":"response_id",
-            "type":"text"
+            "name": "response_id",
+            "type": "text"
         },
         {
-            "name":"channel_provider",
-            "type":"text"
+            "name": "channel_provider",
+            "type": "text"
         },
         {
-            "name": "channels",
-            "type": "list",
+            "name": "channel",
+            "type": "text",
             "options": [
                 "rcs",
                 "email",
@@ -53,80 +53,93 @@
                 "whatsapp_voice_call",
                 "zoom_bot",
                 "ms_teams"
-            ],
-            "ui_element": "multiselect"
+            ]
         },
         {
-            "name":"phone_number",
-            "type":"text",
-            "default":{
-                "function":"get_from_model",
-                "args":[
+            "name": "phone_number",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
                     "session",
                     "session_id",
                     "phone_number"
                 ]
             },
-            "indexed":true
+            "indexed": true
         },
         {
-            "name":"email",
-            "type":"text",
-            "default":{
-                "function":"get_from_model",
-                "args":[
+            "name": "email",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
                     "session",
                     "session_id",
                     "email"
                 ]
             },
-            "indexed":true
+            "indexed": true
         },
         {
-            "name":"campaign_workflow_id",
-            "type":"text"
+            "name": "campaign_workflow_id",
+            "type": "text"
         },
-       {
-            "name" : "campaign_id",
-            "type" : "text",
-            "indexed" : true,
-            "default":{
-                "function":"get_from_model",
-                "args":[
-                    "campaign_workflow", 
-                    "campaign_workflow_id", 
+        {
+            "name": "campaign_id",
+            "type": "text",
+            "indexed": true,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_workflow",
+                    "campaign_workflow_id",
                     "campaign_id"
                 ]
             }
         },
         {
-            "name" : "campaign_type",
-            "type" : "text",
-            "indexed" : true,
-            "default":{
-                "function":"get_from_model",
-                "args":[
-                    "campaign_workflow", 
-                    "campaign_workflow_id", 
-                    "campaign_type"
-                ]}
-        },
-        {
-            "name":"campaign_end_date",
-            "type":"number",
-            "default":{
-                "function":"get_campaign_end_date",
-                "args":[
-                    "campaign",
-                    "campaign_id",
+            "name": "campaign_type",
+            "type": "text",
+            "indexed": true,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_workflow",
+                    "campaign_workflow_id",
                     "campaign_type"
                 ]
             }
         },
         {
-           "name":"provider_status",
-           "type":"text",
-           "options":[
+            "name": "campaign_model",
+            "type": "text",
+            "indexed": true,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_workflow",
+                    "campaign_workflow_id",
+                    "campaign_model"
+                ]
+            }
+        },
+        {
+            "name": "campaign_end_date",
+            "type": "number",
+            "default": {
+                "function": "get_campaign_end_date",
+                "args": [
+                    "{campaign_model}",
+                    "{campaign_id}",
+                    "end_date"
+                ]
+            }
+        },
+        {
+            "name": "provider_status",
+            "type": "text",
+            "options": [
                 "initiated",
                 "sent",
                 "read",
@@ -141,8 +154,23 @@
                 "answered",
                 "in-progress",
                 "completed"
-            ]
+            ],
+            "option_others": true,
+            "default": "initiated"
+        },
+        {
+            "name": "contact_status_id",
+            "type": "uid",
+            "indexed": true,
+            "id": true,
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "message_id",
+                    "response_id",
+                    "provider_status"
+                ]
+            }
         }
     ]
-   
 }

@@ -17,12 +17,24 @@
       "default": { "function": "now_ctime" }
     },
     {
+      "name": "model_year_id",
+      "refers": "parents.model_year.model_year_id"
+    },
+    {
+      "name": "vehicle_model_id",
+      "refers": "parents.model_year.vehicle_model_id"
+    },
+    {
+      "name": "vehicle_model_name",
+      "refers": "parents.model_year.vehicle_model_name"
+    },
+    {
       "name": "brand_id",
-      "refers": "parents.model.brand_id"
+      "refers": "parents.model_year.brand_id"
     },
     {
       "name": "brand_name",
-      "refers": "parents.model.brand_name"
+      "refers": "parents.model_year.brand_name"
     },
     {
       "name": "color_name",
@@ -112,17 +124,11 @@
     },
     {
       "name": "launch_date",
-      "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+      "type": "number"
     },
     {
       "name": "discontinuation_date",
-      "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+      "type": "number"
     },
     {
       "name": "compatible_variants",
@@ -136,20 +142,15 @@
       "type": "text"
     },
     {
-      "name": "color_status",
-      "type": "text",
-      "options": ["Active", "Inactive"],
-      "ui_element": "select"
-    },
-    {
       "auto_updater": true,
       "default": {
-        "args": ["brand_name", "color_name", "finish_type", "tone_type"],
+        "args": ["vehicle_model_name", "variant_name", "color_name", "finish_type", "tone_type"],
         "function": "name_to_id",
         "kwargs": {
-          "attribute_join": " ",
+          "case": "lower",
+          "attribute_join": "-",
           "is_unique": true,
-          "separator": " - "
+          "separator": "-"
         }
       },
       "name": "color_id",
@@ -157,5 +158,5 @@
       "id": true
     }
   ],
-  "parents": ["model"]
+  "parents": ["model_year"]
 }

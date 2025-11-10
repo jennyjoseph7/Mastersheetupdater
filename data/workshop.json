@@ -7,31 +7,39 @@
       "name": "created",
       "type": "number",
       "auto_updater": true,
-      "default": { "function": "now_ctime" }
+      "default": {
+        "function": "now_ctime"
+      }
     },
     {
       "name": "updated",
       "type": "number",
       "auto_updater": true,
       "force_update": true,
-      "default": { "function": "now_ctime" }
+      "default": {
+        "function": "now_ctime"
+      }
     },
     {
       "name": "dealership_id",
-      "refers": "parents.dealership.dealership_id"
+      "refers": "parents.dealership.dealership_id",
+      "indexed": true
     },
     {
-      "name": "dealership_name",
-      "refers": "parents.dealership.dealership_name"
+      "name": "dealer_name",
+      "refers": "parents.dealership.dealer_name"
     },
     {
-      "name": "brand_id",
-      "refers": "parents.dealership.brand_id",
-      "required": false
-    },
-    {
-      "name": "brand_name",
-      "refers": "parents.dealership.brand_name"
+      "name": "supported_brands",
+      "type": "list",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "dealership",
+          "dealership_id",
+          "supported_brands"
+        ]
+      }
     },
     {
       "name": "region_id",
@@ -93,11 +101,16 @@
     {
       "name": "operating_hours",
       "type": "nested_object",
-      "dict_keys": ["opening_time", "closing_time"]
+      "dict_keys": [
+        "opening_time",
+        "closing_time"
+      ]
     },
     {
       "name": "days_open",
-      "type": "multiselect",
+      "type": "string_list",
+      "ui_element": "multiselect",
+      "option_others": true,
       "options": [
         "Monday",
         "Tuesday",
@@ -122,7 +135,9 @@
     },
     {
       "name": "services_offered",
-      "type": "multiselect",
+      "type": "string_list",
+      "ui_element": "multiselect",
+      "option_others": true,
       "options": [
         "General Service",
         "Repair",
@@ -140,17 +155,38 @@
       ]
     },
     {
-      "name": "special_facilities",
-      "type": "multiselect",
+      "name": "facilities_available",
+      "type": "string_list",
+      "ui_element": "multiselect",
+      "option_others": true,
       "options": [
         "Customer Lounge",
         "Wi-Fi",
+        "Cafe / Refreshments",
+        "Insurance Desk",
+        "Accessories Section",
+        "EV Charging Point",
+        "Children Play Area",
+        "Parking Facility",
+        "Virtual Reality Experience",
+        "Online Booking Portal",
+        "Extended Working Hours",
+        "Personal Service Executive",
+        "Weekend Availability",
+        "Festive Offers",
+        "Loyalty Programs",
         "CCTV Waiting Area",
         "Quick Service Bay",
-        "EV Charging Point",
         "Wheel Alignment",
-        "Cafe/Refreshments",
-        "Child Play Zone"
+        "Car Washing and Cleaning",
+        "Shampoo and Polishing",
+        "Associated Showroom",
+        "Associated Car-Exchange Center",
+        "Credit Card Payment Facility",
+        "Debit Card Payment Facility",
+        "UPI Payment Facility",
+        "Cash Payment Facility",
+        "Cheque Payment Facility"
       ]
     },
     {
@@ -164,14 +200,17 @@
     {
       "name": "workshop_status",
       "type": "text",
-      "options": ["Active", "Inactive", "Under Renovation"],
+      "options": [
+        "Active",
+        "Inactive",
+        "Under Renovation"
+      ],
       "indexed": true
     },
-     {
+    {
       "name": "display_vehicle_count",
       "type": "number"
     },
-    
     {
       "name": "google_reviews_rating",
       "type": "text"
@@ -196,22 +235,17 @@
       "name": "workshop_rating",
       "type": "text"
     },
-    
     {
-        "name":"region_level_guidelines",
-        "refers":"parents.dealership.region_level_guidelines"
+      "name": "region_level_guidelines",
+      "refers": "parents.dealership.region_level_guidelines"
     },
     {
-        "name":"region_level_guardrails",
-        "refers":"parents.dealership.region_level_guardrails"
+      "name": "region_level_guardrails",
+      "refers": "parents.dealership.region_level_guardrails"
     },
     {
-      "name": "brand_level_guidelines",
-      "refers":"parents.dealership.brand_level_guidelines"
-    },
-    {
-      "name": "brand_level_guardrails",
-      "refers":"parents.dealership.brand_level_guardrails"
+      "name": "supported_brands_guidelines",
+      "refers": "parents.dealership.supported_brands_guidelines"
     },
     {
       "name": "workshop_level_guidelines",
@@ -221,20 +255,21 @@
       "name": "workshop_level_guardrails",
       "type": "text"
     },
-    
     {
       "auto_updater": true,
       "default": {
         "args": [
-          "dealership_name",
+          "dealer_name",
           "workshop_name",
           "city"
         ],
         "function": "name_to_id",
         "kwargs": {
-          "attribute_join": " ",
+          "attribute_join": "-",
           "is_unique": true,
-          "separator": " - "
+          "separator": " - ",
+          "skip_empty": true,
+          "case": "lower"
         }
       },
       "name": "workshop_id",

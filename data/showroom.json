@@ -23,16 +23,15 @@
     {
       "name": "dealership_id",
       "refers": "parents.dealership.dealership_id",
-      "auto_updater": true
+      "indexed": true
     },
     {
-      "name": "dealership_name",
-      "refers": "parents.dealership.dealership_name"
+      "name": "dealer_name",
+      "refers": "parents.dealership.dealer_name"
     },
-    
     {
-      "name": "region_name",
-      "refers": "parents.dealership.region_name"
+      "name": "region_id",
+      "refers": "parents.dealership.region_id"
     },
     {
       "name": "showroom_name",
@@ -41,9 +40,18 @@
     },
     {
       "name": "supported_brands",
-      "refers": "parents.dealership.supported_brands"
+      "type": "list",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "dealership",
+          "dealership_id",
+          "supported_brands"
+        ]
+      },
+      "auto_updater": true,
+      "force_update": "dealership_id"
     },
-    
     {
       "name": "showroom_type",
       "type": "text",
@@ -95,12 +103,15 @@
     {
       "name": "days_open",
       "type": "nested_object",
+      "option_others": true,
       "options": [
-        "Day",
-        "start_time",
-        "end_time",
-        "is_closed",
-        "special_notes"
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
       ]
     },
     {
@@ -121,7 +132,8 @@
     },
     {
       "name": "facilities_available",
-      "type": "multiselect",
+      "ui_element": "multiselect",
+      "type": "string_list",
       "options": [
         "Customer Lounge",
         "Wi-Fi",
@@ -187,12 +199,8 @@
         "refers":"parents.dealership.region_level_guardrails"
     },
     {
-      "name": "brand_level_guidelines",
-      "refers":"parents.dealership.brand_level_guidelines"
-    },
-    {
-      "name": "brand_level_guardrails",
-      "refers":"parents.dealership.brand_level_guardrails"
+      "name": "supported_brands_guidelines",
+      "refers":"parents.dealership.supported_brands_guidelines"
     },
     {
       "name": "showroom_level_guidelines",
@@ -204,17 +212,19 @@
     },
     
     {
-      "name": "status",
+      "name": "showroom_status",
+      "indexed": true,
       "type": "text",
-      "options": [
-        "Active",
-        "Inactive",
-        "Under Renovation",
-        "Coming Soon",
-        "Temporarily Closed",
-        "Permanently Closed",
-        "Seasonal Operation"
-      ]
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "dealership",
+          "dealership_id",
+          "dealer_status"
+        ]
+      },
+      "auto_updater": true,
+      "force_update": "dealership_id"
     },
     {
       "auto_updater": true,
@@ -226,7 +236,7 @@
         ],
         "function": "name_to_id",
         "kwargs": {
-          "attribute_join": " ",
+          "attribute_join": "-",
           "is_unique": true,
           "separator": " - "
         }

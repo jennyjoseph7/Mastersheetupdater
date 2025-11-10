@@ -8,23 +8,35 @@
     "person_name": "Anita Menon",
     "visit_date": 1704153600,
     "purpose_of_visit": "Test Drive",
-    "models_interested_in": ["Baleno"],
-    "variants_interested_in": ["Zeta AGS"],
+    "models_interested_in": [
+      "Baleno"
+    ],
+    "variants_interested_in": [
+      "Zeta AGS"
+    ],
     "test_drive_offered": true,
     "test_drive_done": true,
     "visit_helped_in_decision": true,
     "able_to_make_a_decision": false,
-    "rating": 4,
-    "rating_categories": {
-      "showroom_ambience": 4,
-      "staff_behavior": 5,
-      "vehicle_display": 4,
-      "test_drive_experience": 4
-    },
     "review_text": "Great experience at the showroom. Staff was helpful and test drive was smooth.",
-    "recommendation": "Yes",
     "created": 1704240000,
-    "updated": 1704240000
+    "updated": 1704240000,
+    "review_tags": [],
+    "competitor_brands_considered": [],
+    "rating_staff_behavior": 0,
+    "emotions": [],
+    "sentiment_score": 0,
+    "source_type": null,
+    "review_type": null,
+    "remarks": null,
+    "review_status": null,
+    "resolved_timestamp": 0,
+    "media_attachments": [],
+    "rating_showroom_experience": 0,
+    "rating_overall": 0,
+    "response_status": null,
+    "review_date": null,
+    "likely_to_purchase_models": []
   },
   {
     "review_id": "review-002",
@@ -35,23 +47,34 @@
     "person_name": "Rajesh Kumar",
     "visit_date": 1704240000,
     "purpose_of_visit": "Vehicle Inspection",
-    "models_interested_in": ["Fronx"],
-    "variants_interested_in": ["Alpha Plus AGS"],
+    "models_interested_in": [
+      "Fronx"
+    ],
+    "variants_interested_in": [
+      "Alpha Plus AGS"
+    ],
     "test_drive_offered": true,
     "test_drive_done": false,
     "visit_helped_in_decision": true,
     "able_to_make_a_decision": true,
-    "rating": 5,
-    "rating_categories": {
-      "showroom_ambience": 5,
-      "staff_behavior": 5,
-      "vehicle_display": 5,
-      "test_drive_experience": 0
-    },
     "review_text": "Excellent showroom with modern facilities. Very impressed with the Fronx model.",
-    "recommendation": "Yes",
     "created": 1704326400,
-    "updated": 1704326400
+    "updated": 1704326400,
+    "review_tags": [],
+    "competitor_brands_considered": [],
+    "rating_staff_behavior": 0,
+    "emotions": [],
+    "sentiment_score": 0,
+    "source_type": null,
+    "review_type": null,
+    "remarks": null,
+    "review_status": null,
+    "resolved_timestamp": 0,
+    "media_attachments": [],
+    "rating_showroom_experience": 0,
+    "rating_overall": 0,
+    "response_status": null,
+    "review_date": null,
+    "likely_to_purchase_models": []
   }
 ]
-

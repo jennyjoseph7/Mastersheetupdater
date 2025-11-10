@@ -14,7 +14,9 @@
     "template_id": "template-001",
     "template_type": "text",
     "template_text": "Hi {{person_name}}, we noticed your interest in Baleno. Would you like to book a test drive?",
-    "template_variables": ["person_name"],
+    "template_variables": [
+      "person_name"
+    ],
     "on_error_retries": 3,
     "on_error_delay": 10,
     "on_failed_retries": 3,
@@ -27,8 +29,27 @@
     "on_contacted_delay": 10,
     "on_engaged_retries": 1,
     "on_engaged_delay": 86400,
-    "created": 1704067200,
-    "updated": 1704067200
+    "template_media_type": null,
+    "channel_provider": null,
+    "template_payload": null,
+    "on_converted_trigger_id": null,
+    "on_error_trigger_id": null,
+    "on_reached_trigger_id": null,
+    "on_attempted_trigger": {},
+    "on_failed_trigger_id": null,
+    "media_file_name": null,
+    "on_failed_trigger": {},
+    "on_converted_trigger": {},
+    "template_media_id": null,
+    "template_media_url": null,
+    "on_attempted_trigger_id": null,
+    "on_reached_trigger": {},
+    "on_engaged_trigger": {},
+    "campaign_workflow_name": null,
+    "on_contacted_trigger_id": null,
+    "on_engaged_trigger_id": null,
+    "on_contacted_trigger": {},
+    "template_buttons_payload": []
   },
   {
     "campaign_workflow_id": "workflow-002",
@@ -45,7 +66,11 @@
     "template_id": "template-002",
     "template_type": "text",
     "template_text": "Hi {{person_name}}, your {{vehicle_model}} ({{reg_number}}) is due for service. Book your appointment now!",
-    "template_variables": ["person_name", "vehicle_model", "reg_number"],
+    "template_variables": [
+      "person_name",
+      "vehicle_model",
+      "reg_number"
+    ],
     "on_error_retries": 3,
     "on_error_delay": 10,
     "on_failed_retries": 3,
@@ -58,8 +83,26 @@
     "on_contacted_delay": 10,
     "on_engaged_retries": 1,
     "on_engaged_delay": 86400,
-    "created": 1704067200,
-    "updated": 1704067200
+    "template_media_type": null,
+    "channel_provider": null,
+    "template_payload": null,
+    "on_converted_trigger_id": null,
+    "on_error_trigger_id": null,
+    "on_reached_trigger_id": null,
+    "on_attempted_trigger": {},
+    "on_failed_trigger_id": null,
+    "media_file_name": null,
+    "on_failed_trigger": {},
+    "on_converted_trigger": {},
+    "template_media_id": null,
+    "template_media_url": null,
+    "on_attempted_trigger_id": null,
+    "on_reached_trigger": {},
+    "on_engaged_trigger": {},
+    "campaign_workflow_name": null,
+    "on_contacted_trigger_id": null,
+    "on_engaged_trigger_id": null,
+    "on_contacted_trigger": {},
+    "template_buttons_payload": []
   }
 ]
-

@@ -7,4 +7,8 @@ It supports, managing of leads, customers and automatically reaches out and trie
 
 
 
+### Steps To get the SignUp API KEY ---
 
+from gryd_worker import gryd_routes as rts
+
+rts.get_enterprise_object('autocrm')

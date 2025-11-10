@@ -19,13 +19,16 @@
     "customer_score": 85,
     "dealership_id": "nexa-delhi-south",
     "dealer_name": "NEXA Delhi South",
-    "campaign_id": "post-sales-campaign-001",
-    "campaign_name": "Service Reminder Campaign",
+    "campaign_id": "nexa-delhi-south-workshop-1-Scheduled Service Reminder-1704067200-post-sales-Scheduled Service Reminder",
+    "campaign_name": "Scheduled Service Reminder",
     "campaign_type": "post-sales",
     "workshop_id": "nexa-delhi-south-workshop-1",
     "workshop_name": "NEXA Delhi South - Service Center",
     "created": 1704067200,
-    "updated": 1704067200
+    "updated": 1704067200,
+    "dealer_address": null,
+    "workshop_address": null,
+    "dealer_location": null
   },
   {
     "post_sales_lead_id": "vehicle-002-nexa-mumbai-west-post-sales-campaign-002",
@@ -47,13 +50,15 @@
     "customer_score": 90,
     "dealership_id": "nexa-mumbai-west",
     "dealer_name": "NEXA Mumbai West",
-    "campaign_id": "post-sales-campaign-002",
-    "campaign_name": "Extended Warranty Campaign",
+    "campaign_id": "nexa-mumbai-west-workshop-1-Extended Warranty Promotion-1704153600-post-sales-Warranty Expiry Offer",
+    "campaign_name": "Extended Warranty Promotion",
     "campaign_type": "post-sales",
     "workshop_id": "nexa-mumbai-west-workshop-1",
     "workshop_name": "NEXA Mumbai West - Service Center",
     "created": 1704153600,
-    "updated": 1704153600
+    "updated": 1704153600,
+    "dealer_address": null,
+    "workshop_address": null,
+    "dealer_location": null
   }
 ]
-

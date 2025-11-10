@@ -6,6 +6,12 @@ from urllib.parse import urlparse
 import requests
 import json
 
+from gryd_worker import gryd, gryd_routes
+
+gryd.SERVICE = 'autocrm-agent'
+gryd.set_queue_manager()
+agent_app = gryd_routes.make_app('autocrm_agent_app')['app']
+
 class BaseAgent:
     def __init__(self, *args, **kwargs):
         self.args = args
