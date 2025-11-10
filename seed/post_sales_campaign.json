@@ -2,6 +2,7 @@
   {
     "workshop_id": "nexa-delhi-south-workshop-1",
     "dealership_name": "NEXA Delhi South",
+  "dealership_id": "nexa-delhi-south",
     "region_name": "North India",
     "workshop_code": "NDS-WS-001",
     "workshop_name": "NEXA Delhi South - Service Center",
@@ -55,6 +56,7 @@
   {
     "workshop_id": "nexa-mumbai-west-workshop-1",
     "dealership_name": "NEXA Mumbai West",
+    "dealership_id": "nexa-mumbai-west",
     "region_name": "West India",
     "workshop_code": "NMW-WS-001",
     "workshop_name": "NEXA Mumbai West - Service Center",
