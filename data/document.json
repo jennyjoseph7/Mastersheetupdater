@@ -43,9 +43,11 @@
                 ],
                 "function": "name_to_id",
                 "kwargs": {
-                    "attribute_join": "",
+                    "attribute_join": "-",
                     "is_unique": true,
-                    "separator": "_"
+                    "separator": "-",
+                    "case": "lower",
+                    "skip_empty": true
                 }
             },
             "id": true,

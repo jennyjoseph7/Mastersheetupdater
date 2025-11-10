@@ -22,8 +22,52 @@
         },
         {
             "name": "variant_id",
-            "type": "uid",
-            "required": true
+            "type": "uid"
+        },
+        {
+            "name": "variant_name",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant",
+                    "variant_id",
+                    "variant_name"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "variant_id"
+        },
+        {
+            "name": "variant_full_name",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant",
+                    "variant_id",
+                    "variant_full_name"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "variant_id"
+        },
+        {
+            "name": "variant_aliases",
+            "type": "string_list",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant",
+                    "variant_id",
+                    "variant_aliases"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "variant_id"
         },
         {
             "name": "vehicle_model_id",
@@ -35,31 +79,55 @@
                     "variant_id",
                     "vehicle_model_id"
                 ]
-            }
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "variant_id"
         },
         {
-            "name": "vehicle_model_year_id",
+            "name": "vehicle_model_name",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant",
+                    "variant_id",
+                    "vehicle_model_name"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "variant_id"
+        },
+        {
+            "name": "vehicle_brand_id",
             "type": "uid",
             "default": {
                 "function": "get_from_model",
                 "args": [
                     "variant",
                     "variant_id",
-                    "vehicle_model_year_id"
+                    "vehicle_brand_id"
                 ]
-            }
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "variant_id"
         },
         {
-            "name": "vehicle_model_year",
+            "name": "vehicle_brand_name",
             "type": "uid",
             "default": {
                 "function": "get_from_model",
                 "args": [
                     "variant",
                     "variant_id",
-                    "model_year"
+                    "brand_name"
                 ]
-            }
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "variant_id"
         },
         {
             "name": "vehicle_model_launch_year",
@@ -71,7 +139,9 @@
                     "variant_id",
                     "vehicle_model_launch_year"
                 ]
-            }
+            },
+            "auto_updater": true,
+            "force_update": "variant_id"
         },
         {
             "name": "reg_number",
@@ -86,19 +156,11 @@
         {
             "name": "vehicle_category",
             "type": "text",
-            "options": [
-                "Passenger vehicles",
-                "Commercial Vehicles",
-                "Two Wheelers",
-                "Three Wheelers",
-                "Truck"
-            ],
-            "ui_element": "select",
             "default": {
                 "function": "get_from_model",
                 "args": [
-                    "vehicle_model",
-                    "vehicle_model_id",
+                    "variant",
+                    "variant_id",
                     "vehicle_category"
                 ]
             }
@@ -106,38 +168,26 @@
         {
             "name": "vehicle_type",
             "type": "text",
-            "options": [
-                "Hatchback",
-                "Sedan",
-                "SUV",
-                "MUV",
-                "Coupe",
-                "Convertible",
-                "Station Wagon",
-                "Pickup Truck",
-                "Sports Car",
-                "Luxury Car",
-                "EV",
-                "Hybrid",
-                "Commercial Vehicle",
-                "Two-Wheeler",
-                "Three-Wheeler",
-                "Other"
-            ],
-            "ui_element": "select"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant",
+                    "variant_id",
+                    "vehicle_type"
+                ]
+            }
         },
         {
             "name": "transmission",
             "type": "text",
-            "options": [
-                "Manual",
-                "Automatic",
-                "AMT",
-                "CVT",
-                "DCT",
-                "Other"
-            ],
-            "ui_element": "select"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant",
+                    "variant_id",
+                    "transmission"
+                ]
+            }
         },
         {
             "name": "fuel_type",

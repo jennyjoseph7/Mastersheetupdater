@@ -34,6 +34,10 @@
       "refers": "parents.dealership.region_id"
     },
     {
+      "name": "region_name",
+      "refers": "parents.dealership.region_name"
+    },
+    {
       "name": "showroom_name",
       "type": "text",
       "indexed": true

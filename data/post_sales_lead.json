@@ -170,7 +170,8 @@
         {
             "name": "campaign_id",
             "type": "uid",
-            "required": false
+            "required": false,
+            "refers": "parents.post_sales_campaign.campaign_id"
         },
         {
             "name": "campaign_name",
@@ -266,6 +267,14 @@
                 "zoom_bot",
                 "ms_teams"
             ],
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "session",
+                    "last_session_id",
+                    "channel"
+                ]
+            },
             "auto_updater": true,
             "force_update": "last_session_id"
         },

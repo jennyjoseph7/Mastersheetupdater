@@ -8,7 +8,8 @@ import pandas as pd
 
 from urllib.parse import urlparse
 from gensim.models.fasttext import FastText
-from qdrant_client import QdrantClient, models
+
+
 from qdrant_client.models import (
     VectorParams,
     Distance,
@@ -62,7 +63,53 @@ model = FastText(
 # client = QdrantClient(host="localhost", port=6333)
 client = QdrantClient(url="http://216.48.189.12:6333")
 
-def upsert_dealership(brand_name,dealership_ids,collection="autobot_test_22"):
+def upsert_features(brand_name,dealership_ids,collection="autocrm_recommendation"):
+    def extract_selected_features(metadata: dict):
+        keys_needed = [
+            "comfort_and_convenience",
+            "engine_and_performance",
+            "interior_feature",
+            "exterior_feature",
+            "safety_feature",
+            "technology",
+            "engine"
+        ]
+
+        return {key: metadata.get(key) for key in keys_needed if key in metadata}
+
+
+    hits = client.search(
+        collection_name=collection,
+        query_vector=[0.1, 0.1, 0.1,0.1 , 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+        limit=5000
+    )
+    for hit in hits:
+        payL = hit.payload
+        metadata = {
+            "id": hit.id,
+            "model":payL.get("model_name",payL.get("product_name")),
+            "brand": payL.get("brand", payL.get("brand_name")),
+            "variant":payL.get("variant_name",""),
+            "metadata": payL,
+        }
+        metadata=extract_selected_features(metadata=payL)
+        syst,user=car_features_prompt(car_text=metadata)
+        messages=[
+            {"role": "system", "content": syst},
+            {"role": "user", "content": user}
+        ]
+        agent_to_get_features=ai_service.get_llm_response(messages=messages, model_identifier="gcp-gemini-2.5-flash-lite")
+
+        feature_keys=agent_to_get_features(metadata.get("metadata"))
+        client.set_payload(
+            collection_name=collection,
+            payload={"car_features": feature_keys},
+            points=metadata.get(id),
+        )
+
+
+
+def upsert_dealership(brand_name,dealership_ids,collection="autocrm_recommendation"):
 
     hits = client.search(
         collection_name=collection,
@@ -127,7 +174,7 @@ def get_vec(user_query):
         {"role": "system", "content": syst},
         {"role": "user", "content": user}
     ]
-    chain=ai_service.get_llm_response(messages=messages, model_identifier="azure-gpt-4o-mini")
+    chain=ai_service.get_llm_response(messages=messages, model_identifier="gcp-gemini-2.5-flash-lite")
     logger.info("generated json "+chain)
     result = extract_json_from_text(chain)
     
@@ -174,7 +221,7 @@ def merge_vectors(vectors):
 
 
 class MetadataRecommendation:
-    def __init__(self,collection="autobot_summary_test_collection_2",model_identifier="azure-gpt-4o-mini"):
+    def __init__(self,collection="autobot_summary_test_collection_2",model_identifier="gcp-gemini-2.5-flash-lite"):
         get_collection(collection)
         self.collection_name=collection
         self.model_identifier=model_identifier
@@ -200,7 +247,8 @@ class MetadataRecommendation:
         kd=[]
         for i in data:
             kd.extend(i.values())
-
+        logger.info(f"kd: {kd}")
+        kd=list(set(kd))
         system_prompt,user_prompt=  prompts_to_fix_llm(kd,user_input)
         messages=[
             {"role": "system", "content": system_prompt},
@@ -266,7 +314,7 @@ def extract_json_block(text: str):
 
 
 
-def get_traits(user_query,model_identifier="azure-gpt-4o-mini"):
+def get_traits(user_query,model_identifier="gcp-gemini-2.5-flash-lite"):
     system_prompt,user_prompt=  prompt_vector_gen(user_query)
     messages=[
         {"role": "system", "content": system_prompt},
@@ -277,7 +325,7 @@ def get_traits(user_query,model_identifier="azure-gpt-4o-mini"):
     return extract_json(output)
 
 
-def mergerFreeText(user_query,model_identifier="azure-gpt-4o-mini"):
+def mergerFreeText(user_query,model_identifier="gcp-gemini-2.5-flash-lite"):
     system_prompt,user_prompt=  mergerFreeTextPrompt(user_query)
     messages=[
         {"role": "system", "content": system_prompt},
@@ -286,8 +334,6 @@ def mergerFreeText(user_query,model_identifier="azure-gpt-4o-mini"):
     output=ai_service.get_llm_response(messages=messages, model_identifier=model_identifier)
     output=output.replace("statement","question")
     return extract_json_block(output)
-
-
 
 
 
@@ -387,18 +433,19 @@ def get_collection(collection):
         )
 
 class RecommendationWrapper:
-    def __init__(self,collection="autobot_test_22"):
+    def __init__(self,collection="autocrm_recommendation",dealership_id=None):
         self.count_res=0
         get_collection(collection)
         self.collection=collection
+        self.dealership_id=dealership_id
         self.history_filter=[]
 
     def recommend_models(self,CustomerAffinity, default_limit,collection_filter,filters=None,fix_filters=None, offset_value=None):
         metadata = {}
         filter_ = []
         results = []
-        
-        self.history_filter.append(filters)
+
+
         if fix_filters and filters is not None:
             rw=MetadataRecommendation(collection_filter)
 
@@ -458,6 +505,13 @@ class RecommendationWrapper:
                             match=models.MatchAny(any=match_any_key)
                         )
                     )
+                if self.dealership_id:
+                    filter_.append(
+                            FieldCondition(
+                                key="dealership_id",
+                                match=models.MatchAny(any=self.dealership_id)
+                            )
+                    )
         logger.info(f"filter >>> {filter_}")
         logger.info(f"input vectors >>> {CustomerAffinity}")
         logger.info(f"recommendation from collection >>> {self.collection}")
@@ -477,7 +531,9 @@ class RecommendationWrapper:
         )
 
         if hits:
-            logger.info(self.history_filter[0])
+            self.history_filter.append(filters)
+            logger.info(f"this is elon musk{self.history_filter}")
+            # logger.info(f"this is elon musk{self.history_filter}")
             if {"product_name", "model_name"} & self.history_filter[0].keys():
                 logger.info("it has model name or product name")
                 output = []
@@ -528,6 +584,7 @@ class RecommendationWrapper:
 
 
             return {"result":output,
+                    "history_filter":self.history_filter,
                     
                 "total_result":count_resp.count}
         else:
@@ -620,16 +677,24 @@ class RecommendationWrapper:
                     # "total_vehicles_found":rec.get("total_result"),
                 return {
                     "top_vehicles":rec.get("result"),
+                    "status":"success",
                     "total_vehicles_found":rec.get("total_result"),
-                    "match_refining_questions":metadata_
+                    "match_refining_questions":metadata_,
+                    "history_filter":rec.get("history_filter"),
+
                 }
             return {
                 "top_vehicles":rec.get("result"),
+                "status":"success",
                 "total_vehicles_found":rec.get("total_result"),
+                "history_filter":rec.get("history_filter"),
+
                 }
         return {
                 "top_vehicles":rec.get("result"),
+                "status":"success",
                 "total_vehicles_found":rec.get("total_result"),
+                "history_filter":rec.get("history_filter"),
         }
 
 
@@ -697,13 +762,13 @@ Extract intents → classify → output ONLY the JSON result.
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
     ]
-    chain=ai_service.get_llm_response(messages=messages, model_identifier="azure-gpt-4o-mini")
+    chain=ai_service.get_llm_response(messages=messages, model_identifier="gcp-gemini-2.5-flash-lite")
     return chain
 
 
 
 class RecommendationAgent(BaseAgent):
-    def __init__(self, source=None, model_identifier='azure-gpt-4o') -> None:
+    def __init__(self, dealership_id=None, model_identifier='azure-gpt-4o') -> None:
         """
         Initializes a RecommendationAgent object.
 
@@ -712,7 +777,7 @@ class RecommendationAgent(BaseAgent):
         model_identifier (str, optional): The identifier of the Large Language Model to use for generating code based on human instructions. Defaults to 'azure-gpt-4o'.
         """
         self.model_identifier : str = model_identifier
-        # self.data : Union[dict, list] = self._load_json(source=source)
+        self.dealership_id : str = dealership_id
     
 
     def _extract_pattern(self,data):
@@ -747,7 +812,7 @@ class RecommendationAgent(BaseAgent):
       limit=data.get("default_limit",20)
       offset=data.get("offset_value")
       max_n=data.get("Max number")
-      collection=data.get("collection","autobot_test_22")
+      collection=data.get("collection","autocrm_recommendation")
       collection_filter=data.get("collection_filter","autobot_summary_test_22")
       max_n=data.get('Max number',None)
       free_text=data.get('free_text',None)
@@ -756,7 +821,7 @@ class RecommendationAgent(BaseAgent):
 
 
 
-      rw=RecommendationWrapper(collection=collection)
+      rw=RecommendationWrapper(collection=collection,dealership_id=self.dealership_id)
       try:
           result=rw.run(Affinity=user_profile,filters=user_preference,free_text=free_text,collection_filter=collection_filter,max_n=max_n,offset_value=offset,default_limit=default_limit)
 
@@ -804,39 +869,13 @@ class RecommendationAgent(BaseAgent):
 
 if __name__ == "__main__":
 
-    filters = [
-        {"intent":"seating","question":"Got a budget in mind?","answer":["4 to 5 people"],"filter":True},
-            #    {"intent":"product_name","question":"Got a budget in mind?","answer":["Lauraa"],"filter":True}
-               ]
-    user_profile=[
-        {"question":"Got a budget in mind?","answer":["678894557"]},
-                  {"question":"my preferecne?","answer":["I am six fit tall"]}
-                  ]
-    user_preference=[
-        #{  "intent":"brand_name","answer":["mahindra"]},
-        {"intent":"price_range","question":"Got a budget in mind?","answer":["₹25 lakh – ₹50 lakh"]},
-
-                # {"intent":"price_range","answer":["₹25 lakh – ₹50 lakh"]}
-                ]
-    collection="autobot_test_22"
+    collection="autocrm_recommendation"
     collection_filter="autobot_summary_test_22"
     free_text="I want good confort, I am interested in scorpio"
-
-    # results = RecommendationWrapper(collection=collection)
-
     offset=20
-    limit=10
+    limit=10 
     max_n=10
-
-
-
-
-
-      
-
-    
     agent = RecommendationAgent()
-
     data= {
     "user_profile": [
       {
@@ -846,22 +885,24 @@ if __name__ == "__main__":
         ]
       }
     ],
-    "user_preference": [
-      {
-        "intent": "brand_name",
-        "answer": [
-          "Mahindra & Mahindra"
-        ]
-      },
-      {
-        "intent": "product_name",
-        "answer": [
-          "Bolero"
-        ]
-      }
-    ],
+    "user_preference": [],
+    # "user_preference": [
+    #   {
+    #     "intent": "brand_name",
+    #     "answer": [
+    #       "Mahindra"
+    #     ]
+    #   },
+    #   {
+    #     "intent": "product_name",
+    #     "answer": [
+    #       "Bolero"
+    #     ]
+    #   }
+    # ],
+    "free_text": "I want good confort, I am interested in scorpio",
     "Max number":   5,
-    "collection": "autobot_test_22",
+    "collection": "autocrm_recommendation",
     "default_limit": 5
     } 
 
@@ -870,8 +911,6 @@ if __name__ == "__main__":
     # print(res)
     with open("recommendation_output.json", "w") as f:
         f.write(da)
-
-
 
     # result=results.run(filters=user_preference,Affinity=user_profile,collection_filter=collection_filter,default_limit=limit,offset_value=offset)
     # print(result)

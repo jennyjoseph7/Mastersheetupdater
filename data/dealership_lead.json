@@ -42,7 +42,7 @@
         },
         {
             "name": "campaign_id",
-            "refers": "parents.dealership_campaign.dealership_campaign_id"
+            "refers": "parents.dealership_campaign.campaign_id"
         },
         {
             "name": "campaign_name",

@@ -104,7 +104,6 @@ def converse(*args, **kargs):
 
     if request_data.get("channel") in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"] and not request_data.get("orchestrate"):
         yield from yield_primary_prompt(*args, **pass_kwargs)
-    
     do_orchestrate = True
     for ppresp in execute_primary_prompt(*args, **pass_kwargs):
         if isinstance(ppresp,dict):
@@ -113,6 +112,7 @@ def converse(*args, **kargs):
         ppresp["index"] = response_index
         response_index += 1
         yield from prune_response(ppresp, **pass_kwargs)
+    if not do_orchestrate and 
     if do_orchestrate:
         for orch_res in run_orchestrator(*args, **pass_kwargs):
             orch_res["index"] = response_index
@@ -124,11 +124,20 @@ def converse(*args, **kargs):
     ###TODO add in all needed data to be passed for this task
     post_messages_data(*args, **pass_kwargs) 
     
+    logger.info("my messages == {}".format(pass_kwargs.get("responses")))
+    logger.info("conversation_process_end_time == {}".format(conversation_process_end_time))
+    logger.info("conversation_process_start_time == {}".format(conversation_process_start_time))
+    logger.info("conversation_process_time == {}".format(conversation_process_end_time-conversation_process_start_time))
+    
     return
+
 
 
 @gryd.is_a_task()
 def get_primary_prompt(*args, **kwargs):
+    '''
+    For voice_call channel, get campaign, person, lead data from kwargs and use that info to generate the primary prompt instead of using session etc.
+    '''
     logger = kwargs.get("logger",mlogger)
     logger.info("get_primary_prompt called")
 
@@ -161,6 +170,12 @@ def execute_primary_prompt(*args, **kwargs):
 
 @gryd.is_a_task()
 def session_close(*args, **kwargs):
+    '''
+    Called when session is over (1 day since last message/phone call cut). 
+    calls agents to analyse call history
+    deletes session_data_cache
+    sets disposition and disposition description
+    '''
     logger = kwargs.get("logger",mlogger)
     logger.info("session_close called")
     yield {"status" : "complete","session_id":kwargs.get("session_id")}
@@ -185,21 +200,13 @@ def run_orchestrator(*args, **kwargs):
     return
 
 @gryd.is_a_task()
-def prune_response( resp_message, *args, **kargs):
+def prune_response( response, *args, **kargs):
     logger = kargs.get("logger",mlogger)
     logger.info("prune_response called")
     request_data = kargs.get("request_data")
-    response = {}
     if request_data.get("channel") in ["whatsapp_chat"]:
         response_task_data = request_data.get("temporary_data",{}).get("channel_response_task",{})
         ret =  {"temporary_data": response_task_data.get("kwargs",{})}
-        response = {
-            "placeholder":resp_message,
-            "intent" : "agent_one",
-            "message_id" : str(time.time()),
-            "is_last":False,
-            "index" : 1
-        }
         ret["response"] = response
         logger.info("sending response to task {}".format(ret))
         # x = gryd.yield_results({"task": response_task_data.get("task"),"service": response_task_data.get("service"),"kwargs" : ret})
@@ -218,7 +225,7 @@ def prune_response( resp_message, *args, **kargs):
 
 
 @gryd.is_a_task(
-        # function_name = "test_agent", #custom name of function
+        # function_name = "update_person_vehicle", #custom name of function
         # job_param = "job_params", #provide a job param attr with this name
         # auth_param= "auth_params", #provide a auth param attr with this name
         # logger_param = "logger", #provide a logger attr with this name
@@ -227,25 +234,52 @@ def prune_response( resp_message, *args, **kargs):
         # input_generator = None, #function to generate input for testing #MANDATORY
         # result_verifier = None, #function to verify result should return True or False
         # sample_input = None, #Dict[str, Any]
-        is_agent = True, # True if agent. make sure you adhere to agent input and output 
+        # is_agent = True, # True if agent. make sure you adhere to agent input and output 
         # depends_on = None, #:Union[List[Tuple[str, str]], List[str], None] either pass list of service,task or just list of task
-        expected_input = {"fruit_one":"text","fruit_two" : "number"}, #:Union[Dict[str, str], None] 
-        optional_input = {"vegetable" : "text"}, #:Union[Dict[str, str], None] 
+        # expected_input = {"fruit_one":"text","fruit_two" : "number"}, #:Union[Dict[str, str], None] 
+        # optional_input = {"vegetable" : "text"}, #:Union[Dict[str, str], None] 
         # capability_function = None #:Union[Dict[str, str], None] Defaults to using Docstring
         )
-def test_agent(*args, **kwargs):
+def update_person_vehicle(*args, **kwargs):
     '''
-    This is my doc string
+    This task called to update the person or vehicle data based on lead model and conversation history from message model.
     '''
     logger = kwargs.get("logger",mlogger)
     logger.info("test_agent called")
     return
-
-def post_messages_data(*args, **kwargs):
+@gryd.is_a_task()
+def post_messages_data(*args, **pass_kwargs):
     '''
         Picks up all messages sent and posts it to message model
     '''
+    with get_pg_connector() as pg:
+        pg.update("message","message_id",message_id,{"reply_to":pass_kwargs.get("reply_to"),"message_id":message_id,"message":message.get("placeholder"),"session_id":pass_kwargs.get("session_id")})
+
+        for message in pass_kwargs.get("responses"):
+            message_id = str(gryd.hp.make_uuid3(time.time(),pass_kwargs.get("session_id"),message.get("intent"),message.get("placeholder")))
+            pg.update("message","message_id",message_id,{"reply_to":pass_kwargs.get("reply_to"),"message_id":message_id,"message":message.get("placeholder"),"session_id":pass_kwargs.get("session_id")})
     pass    
+
+@gryd.is_a_task()
+def update_lead_data(*args, **pass_kwargs):
+    '''
+    look at message history for a session and then check the person and existin lead data nad update the lead model attrs
+    '''
+    pass
+@gryd.is_a_task()
+def post_visit_data(*args, **pass_kwargs):
+    '''
+    agent to update the showroom/workshop visit model object based on messages for session
+    '''
+    pass
+
+@gryd.is_a_task()
+def set_feedback(*args, **pass_kwargs):
+    '''
+    agent to analyse the feedback/review and also post the data to the session model
+    '''
+    pass
+
 
 def yield_result(*args, **kwargs):
     pass

@@ -16,7 +16,6 @@
             "type": "number",
             "auto_updater": true,
             "placeholder": "Service Date",
-
             "force_update": true,
             "default": {
                 "function": "now_ctime"
@@ -34,28 +33,28 @@
             }
         },
         {
-            "name": "variant_id",
-            "refers": "parents.variant.variant_id"
+            "name": "vehicle_id",
+            "refers": "parents.vehicle.vehicle_id"
         },
         {
-            "name": "variant_name",
-            "refers": "parents.variant.variant_name"
+            "name": "vehicle_variant_name",
+            "refers": "parents.vehicle.variant_name"
         },
         {
-            "name": "model_id",
-            "refers": "parents.model.model_id"
+            "name": "vehicle_model_id",
+            "refers": "parents.vehicle.vehicle_model_id"
         },
         {
-            "name": "model_name",
-            "refers": "parents.model.model_name"
+            "name": "vehicle_model_name",
+            "refers": "parents.vehicle.vehicle_model_name"
         },
         {
-            "name": "brand_id",
-            "refers": "parents.brand.brand_id"
+            "name": "vehicle_brand_id",
+            "refers": "parents.vehicle.vehicle_brand_id"
         },
         {
-            "name": "brand_name",
-            "refers": "parents.brand.brand_name"
+            "name": "vehicle_brand_name",
+            "refers": "parents.vehicle.vehicle_brand_name"
         },
         {
             "name": "dealership_id",
@@ -128,12 +127,8 @@
         }
     ],
     "parents": [
-        "brand",
-        "model",
-        "workshop",
-        "variant",
-        "dealership",
-        "vehicle_model"
+        "vehicle",
+        "post_sales_lead"
     ]
 
 }

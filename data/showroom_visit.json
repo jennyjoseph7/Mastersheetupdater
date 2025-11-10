@@ -21,16 +21,16 @@
       }
     },
     {
+      "name": "showroom_id",
+      "refers": "parents.showroom.showroom_id"
+    },
+    {
       "name": "dealership_id",
       "refers": "parents.showroom.dealership_id"
     },
     {
-      "name": "dealership_name",
-      "refers": "parents.showroom.dealership_name"
-    },
-    {
-      "name": "showroom_id",
-      "refers": "parents.showroom.showroom_id"
+      "name": "dealer_name",
+      "refers": "parents.showroom.dealer_name"
     },
     {
       "name": "showroom_name",
@@ -45,12 +45,17 @@
       "refers": "parents.showroom.region_name"
     },
     {
+      "name": "pre_sales_lead_id",
+      "refers": "parents.pre_sales_lead.pre_sales_lead_id",
+      "required": true
+    },
+    {
       "name": "person_id",
-      "refers": "parents.person.user_id"
+      "refers": "parents.pre_sales_lead.user_id"
     },
     {
       "name": "person_name",
-      "refers": "parents.person.name"
+      "refers": "parents.pre_sales_lead.person_name"
     },
     {
       "name": "appointment_date",
@@ -84,20 +89,6 @@
         "Complaint / Feedback",
         "Other"
       ]
-    },
-    {
-      "name": "showroom_id",
-      "refers": "parents.showroom.showroom_id",
-      "auto_updater": true
-    },
-    {
-      "name": "pre_sales_lead_id",
-      "refers": "parents.pre_sales_leads.pre_sales_lead_id",
-      "auto_updater": true
-    },
-    {
-      "name": "variant_name",
-      "refers": "parents.pre_sales_leads.variant_name"
     },
     {
       "name": "models_interested_in",
@@ -134,16 +125,19 @@
       "auto_updater": true,
       "default": {
         "args": [
-          "dealership_name",
+          "dealer_name",
+          "showroom_name",
           "person_name",
           "visit_date",
           "purpose_of_visit"
         ],
         "function": "name_to_id",
         "kwargs": {
-          "attribute_join": " ",
+          "attribute_join": "-",
           "is_unique": true,
-          "separator": " - "
+          "separator": "-",
+          "skip_empty": true,
+          "case": "lower"
         }
       },
       "name": "showroom_visit_id",
@@ -152,7 +146,7 @@
     }
   ],
   "parents": [
-    "pre_sales_leads",
+    "pre_sales_lead",
     "showroom"
   ]
 }
