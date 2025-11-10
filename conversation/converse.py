@@ -59,7 +59,7 @@ def converse(*args, **kargs):
     logger = kargs.get("logger")
     logger.info("converse called with kwargs == {}".format(kargs))
     request_data = kargs
-
+    response_index = 1
     pass_kwargs = {"request_data":request_data}
 
     session_id = request_data.get("session_id")
@@ -110,9 +110,13 @@ def converse(*args, **kargs):
         if isinstance(ppresp,dict):
             if ppresp.get("intent","") != "filler":
                 do_orchestrate = False
+        ppresp["index"] = response_index
+        response_index += 1
         yield from prune_response(ppresp, **pass_kwargs)
     if do_orchestrate:
         for orch_res in run_orchestrator(*args, **pass_kwargs):
+            orch_res["index"] = response_index
+            response_index += 1
             yield from prune_response(orch_res,*args, **pass_kwargs)
 
     conversation_process_end_time = time.time()
@@ -172,6 +176,9 @@ def run_orchestrator(*args, **kwargs):
     logger = kwargs.get("logger",mlogger)
     logger.info("run_orchestrator called")
     reply_to = str(time.time())
+    
+
+
     yield {"placeholder":"agent 1 response","intent" : "agent_one","reply_to":reply_to, "message_id" : str(time.time()),"is_last":False,"index" : 1}
     yield {"placeholder":"agent 2 response","intent" : "agent_two","reply_to":reply_to, "message_id" : str(time.time()),"is_last":False,"index" : 2}
     yield {"placeholder":"agent 3 response","intent" : "agent_three","reply_to":reply_to, "message_id" : str(time.time()),"is_last":True,"index" : 3}
@@ -184,8 +191,8 @@ def prune_response( resp_message, *args, **kargs):
     request_data = kargs.get("request_data")
     response = {}
     if request_data.get("channel") in ["whatsapp_chat"]:
-        response_task_data = request_data.get("temporary_data").get("channel_response_task")
-        ret =  {"temporary_data": response_task_data.get("kwargs")}
+        response_task_data = request_data.get("temporary_data",{}).get("channel_response_task",{})
+        ret =  {"temporary_data": response_task_data.get("kwargs",{})}
         response = {
             "placeholder":resp_message,
             "intent" : "agent_one",
@@ -195,9 +202,14 @@ def prune_response( resp_message, *args, **kargs):
         }
         ret["response"] = response
         logger.info("sending response to task {}".format(ret))
-        x = gryd.yield_results({"task": response_task_data.get("task"),"service": response_task_data.get("service"),"kwargs" : ret})
-        for i in x:
-            pass
+        # x = gryd.yield_results({"task": response_task_data.get("task"),"service": response_task_data.get("service"),"kwargs" : ret})
+        if response_task_data.get("task") and response_task_data.get("service"):
+            yield {
+                    "_job":{
+                        "task":response_task_data.get("task"),
+                        "service" :  response_task_data.get("service"),
+                        "kwargs" : ret                    }
+                }
     kargs["responses"].append(response)
     yield response
     return
