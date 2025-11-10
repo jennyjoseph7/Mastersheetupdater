@@ -359,6 +359,11 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         final_data.pop("dealership_id", None)
         
         return final_data
+    
+    def _merge_json(self,json1, json2):
+        merged = json2.copy()       
+        merged.update(json1)        
+        return merged
 
     def _generate_missing_fields(self, final_data, fields, campaign_type):
         """Generate missing fields with retry logic."""
@@ -388,6 +393,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
             
             final_data = self._generate_missing_fields(final_data, fields, normalized_type)
             final_data = self._clean_and_validate_final_data(final_data, fields)
+            final_data = self._merge_json(self.source,final_data)
             
             self.logger.info(f"Campaign generation completed successfully")
             self.logger.info(f"Final result: {json.dumps(final_data, ensure_ascii=False, indent=2)}")
