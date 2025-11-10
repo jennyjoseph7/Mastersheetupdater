@@ -46,31 +46,74 @@ User Input:
 """
 
 
+# def prompts_to_fix_llm(data, user_input):
+#     system_prompt = (
+#         "You are a precise matching assistant. "
+#         "Your task is to find the single closest match in the given dataset to the user input. "
+#         "You must ALWAYS return exactly one key from the dataset — never combine or merge multiple entries. "
+#         "Return the key exactly as it appears in the dataset (preserve original case, spacing, punctuation, and symbols). "
+#         "Do NOT reformat, modify, or partially join dataset values. "
+#         "If no perfect match is found, return the single closest key only. "
+#         "Examples:\n"
+#         "- Dataset has ['Volvo-1', 'Toyota', 'Ford Focus'] and input is 'voluo' → Return 'Volvo-1'\n"
+#         "- Dataset has ['Mahindra & Mahindra', 'Scorpio', 'S7 120 2WD 7 STR'] and input is 'mahindra' → Return 'Mahindra & Mahindra'\n"
+#         "Never output multiple items or merge values together."
+#         "Never return key always return the corrected value"
+#     )
+
+#     user_prompt = f"""Dataset: {data}
+
+# User input: "{user_input}"
+
+# Return exactly one dataset key that best matches the intent. 
+# Do not merge or combine multiple dataset items. 
+# Return only one key, exactly as written in the dataset.
+# """
+#     return system_prompt, user_prompt
+
 def prompts_to_fix_llm(data, user_input):
+    # ✅ RULE 1: If user_input EXACTLY exists in the dataset → return it directly, no need to ask LLM
+    if user_input in data:
+        return None, user_input   # LLM not needed
+
+    # ✅ System prompt with your additional rules
     system_prompt = (
         "You are a precise matching assistant. "
         "Your task is to find the single closest match in the given dataset to the user input. "
-        "You must ALWAYS return exactly one key from the dataset — never combine or merge multiple entries. "
-        "Return the key exactly as it appears in the dataset (preserve original case, spacing, punctuation, and symbols). "
-        "Do NOT reformat, modify, or partially join dataset values. "
-        "If no perfect match is found, return the single closest key only. "
+        "You must ALWAYS return exactly one value from the dataset — never combine or merge multiple entries. "
+        "Return the value exactly as it appears in the dataset (preserve original case, spacing, punctuation, and symbols). "
+        "Do NOT reformat, modify, or partially join dataset values.\n\n"
+
+        "STRICT RULE:\n"
+        "If the user input contains a value that EXACTLY exists in the dataset, "
+        "then return that exact dataset value ONLY, even if there are other similar values.\n"
+        "Example: If dataset contains ['bolero', 'boleno'] and user input is 'bolero', "
+        "then return ONLY 'bolero'. Ignore all other similar items.\n\n"
+
+        "If no exact match is found, return the single closest match from the dataset.\n"
+        "If no model is found, then take exactly what the user typed as model; "
+        "otherwise, take the closest match from the list only.\n\n"
+
         "Examples:\n"
         "- Dataset has ['Volvo-1', 'Toyota', 'Ford Focus'] and input is 'voluo' → Return 'Volvo-1'\n"
-        "- Dataset has ['Mahindra & Mahindra', 'Scorpio', 'S7 120 2WD 7 STR'] and input is 'mahindra' → Return 'Mahindra & Mahindra'\n"
-        "Never output multiple items or merge values together."
-        "Never return key always return the corrected value"
+        "- Dataset has ['Mahindra & Mahindra', 'Scorpio', 'S7 120 2WD 7 STR'] and input is 'mahindra' → Return 'Mahindra & Mahindra'\n\n"
+
+        "Never return multiple items. Never merge values. "
+        "Never output 'key': Always return the corrected dataset value only."
+        "if not found then return user input"
     )
 
+    # ✅ User prompt
     user_prompt = f"""Dataset: {data}
 
 User input: "{user_input}"
 
-Return exactly one dataset key that best matches the intent. 
-Do not merge or combine multiple dataset items. 
-Return only one key, exactly as written in the dataset.
+Return exactly one dataset value that best matches the intent.
+Do not merge or combine multiple dataset items.
+Return only one value, exactly as written in the dataset.
 """
-    return system_prompt, user_prompt
 
+    return system_prompt, user_prompt
 
 
 def prompt_vector_gen(user_query: str):
@@ -443,3 +486,68 @@ Dont have empty list in output
     
     return messages
 
+
+def car_features_prompt(car_text: str):
+    system_message = """
+You are a precise feature-extraction assistant.
+
+Your job is to extract ONLY **real, concrete car features** from the user text.
+NOT categories or headings.
+
+❌ Do NOT return:
+- safety
+- airbags (as a category)
+- transmission
+- dimensions
+- engine
+- fuel type
+- comfort
+- exterior
+- interior
+- convenience
+- infotainment (category)
+- technology (category)
+
+✅ DO return specific features like:
+- ABS
+- ESC
+- 6 airbags
+- Power Windows
+- projector headlamps
+- auto climate control
+- LED DRLs
+- cruise control
+- wireless charging
+- Apple CarPlay
+- Android Auto
+- ventilated seats
+- sunroof / panoramic sunroof
+- rear camera / parking sensors
+- traction control
+- ISOFIX
+- touchscreen infotainment
+
+Rules:
+- Extract ONLY real features.
+- No duplicates.
+- Clean names only.
+- Final answer must be EXACTLY a Python list of feature strings.
+- No explanation, no extra text.
+    """
+
+    user_message = f"""
+Extract all real car features from the following text.
+Return ONLY a Python list of features.
+
+Example:
+Input:
+"Power Windows, dual airbags, ABS, rear camera available."
+
+Output:
+["Power Windows", "dual airbags", "ABS", "rear camera"]
+
+Now process this input:
+{car_text}
+"""
+
+    return system_message.strip(), user_message.strip()
