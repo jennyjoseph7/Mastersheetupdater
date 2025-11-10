@@ -11,8 +11,43 @@ except ImportError:
 
 class CampaignIdeaCreatorAgent(BaseAgent):
     """
-    Autobot Agent: Generates missing dealership campaign fields.
+    Autobot Agent: Generates ideas for campaign based on the type of campaign and objective of the campaign.
     Works with API-based args and kwargs (from Postman / external services).
+    Example input : 
+    {
+      campaign_type: "pre-sale"
+      campaign_objective: "Exchange / Loyalty Bonus Offer"
+      dealership_idea: {
+        languages: ["English"]
+        campaign_offer: "₹10,000 exchange bonus" }
+
+    }
+
+    Example Output : 
+    {
+        "campaign_type": "pre-sales",
+        "campaign_objective": "Exchange / Loyalty Bonus Offer",
+        "languages": [
+          "English"
+        ],
+        "campaign_offer": "Score a massive ₹10,000 exchange bonus on your next brand new ride!",
+        "campaign_name": "Upgrade & Drive: Loyalty Exchange Event",
+        "campaign_tagline": "Your Old Car Just Got You an Amazing Deal!",
+        "idea": "Target existing customers or prospects looking to upgrade by highlighting a significant monetary bonus for trading in their current vehicle.",
+        "campaign_description": "Time to trade up to that dream car! We're giving you an extra ₹10,000 bonus when you exchange your old vehicle with us. This is the best value you'll get for your current car. Don't miss out on maximizing your savings today.",
+        "campaign_tone": "Exciting and Value-Driven",
+        "urgency_hook": "The ₹10,000 bonus offer vanishes at the end of the month!",
+        "ctas": [
+          "Exchange Old Car",
+          "Book a Test Drive",
+          "Request a Call Back"
+        ],
+        "channels": [
+          "whatsapp_chat",
+          "email"
+        ]
+    }
+
     """
 
     # Constants
