@@ -22,7 +22,7 @@
         },
         {
             "name": "dealer_name",
-            "type": "name",
+            "type": "text",
             "indexed": true,
             "required": true
         },
@@ -30,47 +30,51 @@
             "name": "credits_balance",
             "type": "number",
             "units": "credits",
-            "default": 0 
+            "default": 0
         },
         {
-            "name" : "dealership_url",
-            "type" : "text",
+            "name": "dealership_url",
+            "type": "text",
             "constraint": {
                 "function": "url_validator"
             },
-                "converter": {
+            "converter": {
                 "function": "url_converter"
             }
         },
         {
-            "name" : "pan_card",
-            "type" : "file"
-            
+            "name": "pan_number",
+            "type": "text"
         },
         {
-            "name" : "pan_card_link",
-            "type" : "text",
+            "name": "pan_card_link",
+            "type": "text",
             "constraint": {
                 "function": "url_validator"
             },
-                "converter": {
+            "converter": {
                 "function": "url_converter"
             },
-            "ui_element" : "file"
-
+            "ui_element": "file"
         },
         {
-            "name" : "gstin",
-            "type" : "text"
+            "name": "gstin",
+            "type": "text"
         },
         {
-            "name" : "gst_certificate",
-            "type" : "file"
-
+            "name": "gst_certificate",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "file"
         },
         {
-            "name" : "dealership_legal_name",
-            "type" : "text",
+            "name": "dealership_legal_name",
+            "type": "text",
             "default": {
                 "function": "copy_attribute",
                 "args": [
@@ -79,8 +83,8 @@
             }
         },
         {
-            "name" : "certificate_of_incorporation",
-            "type" : "text",
+            "name": "certificate_of_incorporation",
+            "type": "text",
             "ui_element": "file",
             "constraint": {
                 "function": "url_validator"
@@ -91,36 +95,39 @@
         },
         {
             "name": "aliases",
-            "type":"string_list",
-            "converter" : {
-                "function" : "ensure_in_list",
-                "args" : ["dealership_legal_name","dealer_name"]
+            "type": "string_list",
+            "converter": {
+                "function": "ensure_in_list",
+                "args": [
+                    "dealership_legal_name",
+                    "dealer_name"
+                ]
             }
         },
-       {
-      "name": "languages",
-      "default": "english",
-      "type": "list",
-      "option_others": true,
-      "ui_element": "tags",
-      "options": [
-        "english",
-        "hindi",
-        "kannada",
-        "telugu",
-        "tamil",
-        "malayalam",
-        "odia",
-        "bengali",
-        "marathi",
-        "gujarati",
-        "bengali",
-        "assamese",
-        "punjabi",
-        "spanish",
-        "arabic"
-      ]
-    },
+        {
+            "name": "languages",
+            "default": "english",
+            "type": "list",
+            "option_others": true,
+            "ui_element": "tags",
+            "options": [
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujarati",
+                "bengali",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic"
+            ]
+        },
         {
             "name": "dealer_group_id",
             "refers": "parents.dealer_group.dealer_group_id",
@@ -421,7 +428,8 @@
                     "attribute_join": "-",
                     "is_unique": true,
                     "separator": "-",
-                    "skip_empty": true
+                    "skip_empty": true,
+                    "case": "lower"
                 }
             },
             "auto_updater": true

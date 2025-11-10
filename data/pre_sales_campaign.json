@@ -21,21 +21,67 @@
       }
     },
     {
+      "name": "showroom_id",
+      "refers": "parents.showroom.showroom_id",
+      "required": false
+    },
+    {
       "name": "dealership_id",
       "refers": "parents.dealership.dealership_id",
-      "required": true
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "showroom",
+          "showroom_id",
+          "dealership_id"
+        ]
+      },
+      "required": true,
+      "force_update": "showroom_id"
     },
     {
       "name": "dealer_name",
       "refers": "parents.dealership.dealer_name"
     },
     {
-      "name": "dealership_type",
-      "refers": "parents.dealership.dealership_type"
+      "name": "region_name",
+      "refers": "parents.dealership.region_name"
+    },
+    {
+      "name": "showroom_name",
+      "refers": "parents.showroom.showroom_name"
+    },
+    {
+      "name": "region_id",
+      "refers": "parents.dealership.region_id"
     },
     {
       "name": "region_name",
       "refers": "parents.dealership.region_name"
+    },
+    {
+      "name": "region_level_guidelines",
+      "refers": "parents.dealership.region_level_guidelines"
+    },
+    {
+      "name": "region_level_guardrails",
+      "refers": "parents.dealership.region_level_guardrails"
+    },
+    {
+      "name": "supported_brands",
+      "refers": "parents.dealership.supported_brands"
+    },
+    {
+      "name": "supported_brands_guidelines",
+      "refers": "parents.dealership.supported_brands_guidelines"
+    },
+    {
+      "name": "showroom_level_guidelines",
+      "refers": "parents.showroom.showroom_level_guidelines"
+    },
+    {
+      "name": "showroom_level_guardrails",
+      "refers": "parents.showroom.showroom_level_guardrails"
     },
     {
       "name": "campaign_name",
@@ -145,6 +191,16 @@
     {
       "name": "ctas",
       "title": "Call to Actions",
+      "options": [
+        "know-more",
+        "register-to-event",
+        "book-test-drive",
+        "book-showroom-visit",
+        "download-brochure",
+        "book-home-test-drive",
+        "request-callback"
+      ],
+      "option_others": true,
       "type": "string_list",
       "list_type": "text",
       "ui_element": "tags"
@@ -223,6 +279,7 @@
     }
   ],
   "parents": [
-    "dealership"
+    "dealership",
+    "showroom"
   ]
 }

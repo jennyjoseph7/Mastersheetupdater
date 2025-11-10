@@ -29,6 +29,70 @@
       "refers": "parents.brand.brand_name"
     },
     {
+      "name": "region_id",
+      "refers": "parents.brand.region_id"
+    },
+    {
+      "name": "region_name",
+      "refers": "parents.brand.region_name"
+    },
+    {
+      "name": "country_name",
+      "refers": "parents.brand.country_name"
+    },
+    {
+      "name": "region_level_guidelines",
+      "refers": "parents.brand.region_level_guidelines"
+    },
+    {
+      "name": "region_level_guardrails",
+      "refers": "parents.brand.region_level_guardrails"
+    },
+    {
+      "name": "brand_logo_url",
+      "refers": "parents.brand.logo_url"
+    },
+    {
+      "name": "brand_website",
+      "refers": "parents.brand.website"
+    },
+    {
+      "name": "parent_company",
+      "refers": "parents.brand.parent_company"
+    },
+    {
+      "name": "brand_level_guidelines",
+      "refers": "parents.brand.brand_level_guidelines"
+    },
+    {
+      "name": "brand_level_guardrails",
+      "refers": "parents.brand.brand_level_guardrails"
+    },
+    {
+      "name": "oem_id",
+      "refers": "parents.brand.oem_id"
+    },
+    {
+      "name": "oem_name",
+      "refers": "parents.brand.oem_id"
+    },
+    {
+      "name": "oem_brand_awareness",
+      "refers": "parents.brand.oem_brand_awareness"
+    },
+    {
+      "name": "oem_country_of_origin",
+      "refers": "parents.brand.oem_country_of_origin"
+    },
+    {
+      "name": "oem_brand_awareness",
+      "refers": "parents.brand.oem_brand_awareness"
+    },
+    {
+      "name": "oem_wiki_description",
+      "refers": "parents.brand.oem_wiki_description"
+    },
+    {
       "name": "vehicle_model_name",
       "type": "text",
       "indexed": true
@@ -143,7 +207,7 @@
       }
     },
     {
-      "name": "fuel_types",
+      "name": "engine_types",
       "type": "list",
       "options": [
         "Petrol",
@@ -190,9 +254,10 @@
         ],
         "function": "name_to_id",
         "kwargs": {
-          "attribute_join": " ",
+          "case": "lower",
+          "attribute_join": "-",
           "is_unique": true,
-          "separator": " - "
+          "separator": "-"
         }
       },
       "name": "vehicle_model_id",

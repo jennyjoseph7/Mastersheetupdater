@@ -1,55 +1,4 @@
-# import json
-# from qdrant_client import QdrantClient, models
-# from qdrant_client.models import VectorParams, Distance, Filter, FieldCondition, Range, PointStruct, MatchAny
-# import numpy as np
-# import pandas as pd
-# import uuid
-# from langchain_huggingface import HuggingFaceEmbeddings
-# from .src.recommendation_utils import *
-# import numpy as np
-# from ai_service import ai_service_app
-# from urllib.parse import urlparse
-# import requests
-# import os
-# import io
-# import re
-# from typing import Union, Dict, Any
-# try:
-#     from .base_agent import BaseAgent
-# except:
-#     from base_agent import BaseAgent
-
-# import json
-# import numpy as np
-
-# from .src.prompts import prompt_vector_gen, mergerFreeTextPrompt
-# from ai_service import ai_service
-# import logging
-# import time
-# import re
-# import json
-
-
-# from qdrant_client import QdrantClient, models
-# from qdrant_client.models import VectorParams, Distance, Filter, FieldCondition, Range, PointStruct, MatchAny
-# from gensim.models.fasttext import FastText
-# import numpy as np
-# import uuid
-# from ai_service import ai_service
-# from .prompts import prompts_to_fix_llm
-# import pandas as pd
-
-# from .prompts import index_prompt , car_traits_prompt
-# from .src.recommendation_utils import key_order, extract_json
-# # from .filter_logic import *
-# import re
-# import pandas as pd
-# import json
-# from ai_service import ai_service
-import os
-import io
 import re
-import uuid
 import time
 import json
 import logging
@@ -57,7 +6,6 @@ import requests
 import numpy as np
 import pandas as pd
 
-from typing import Union, Dict, Any
 from urllib.parse import urlparse
 from gensim.models.fasttext import FastText
 from qdrant_client import QdrantClient, models
@@ -70,7 +18,6 @@ from qdrant_client.models import (
     PointStruct,
     MatchAny,
 )
-from langchain_huggingface import HuggingFaceEmbeddings
 
 from ai_service import ai_service, ai_service_app
 
@@ -82,7 +29,7 @@ except ImportError:
 
 # Local imports
 from src.prompts import *
-# from .filter_logic import *
+
 
 def get_logger(name , log_level = 'info'):
     log_level = log_level.upper()
@@ -104,28 +51,6 @@ key_order = ['power', 'engine', 'torque', 'dimension',
 'fuel_efficiency', 'exterior_feature', 'interior_feature', 'engine_and_performance',
 'comfort_and_convenience','price']
 
-model_name = "BAAI/bge-small-en"
-model_kwargs = {'device': 'cpu'}
-encode_kwargs = {'normalize_embeddings': False}
-embeddings = HuggingFaceEmbeddings(
-    model_name=model_name,
-    model_kwargs=model_kwargs,
-    encode_kwargs=encode_kwargs
-)
-
-
-
-
-
-# client = QdrantClient(host="localhost", port=6333)
-client = QdrantClient(url="http://216.48.189.12:6333")
-
-
-
-
-
-
-
 model = FastText(
     sentences=["test"],
     vector_size=100, 
@@ -134,8 +59,40 @@ model = FastText(
     sg=1  
 )
 
-
 # client = QdrantClient(host="localhost", port=6333)
+client = QdrantClient(url="http://216.48.189.12:6333")
+
+def upsert_dealership(brand_name,dealership_ids,collection="autobot_test_22"):
+
+    hits = client.search(
+        collection_name=collection,
+        query_vector=[0.1, 0.1, 0.1,0.1 , 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+        query_filter=Filter(
+            must=[
+                FieldCondition(
+                    key="brand_name",
+                    match=models.MatchAny(any=[brand_name])
+                )
+            ]
+        ),
+        limit=5000
+
+    )
+
+    kd=[]
+    for i in hits:
+        kd.append(i.id)
+
+    client.set_payload(
+        collection_name=collection,
+        payload={
+            "operating_brands": dealership_ids,
+        },
+        points=kd,
+    )
+
+
+
 
 def extract_json_from_text(text: str):
     """
@@ -526,7 +483,7 @@ class RecommendationWrapper:
                 output = []
 
                 for hit in hits:
-                    logger.info(hit)
+                    # logger.info(hit)
                     logger.info("html>>>")
                     logger.info(type(hit))
                     logger.info("html>>>")
@@ -642,7 +599,8 @@ class RecommendationWrapper:
                 metadata_ = [
                     {
                         "question": i.get("question"),
-                        "options": i.get("options")
+                        "options": i.get("options"),
+                        "intent": i.get("intent"),
                     }
                     for i in metadata_qna
                     if not i.get("intent") in int_
@@ -655,9 +613,9 @@ class RecommendationWrapper:
                         "status":"failed",
                         "total_vehicles_found":0,}
                 # rec = [hit.dict() for hit in rec]  # Qdrant returns a list of models
-                logger.info("??")
-                logger.info(rec.get("result"))
-                logger.info("??")
+                # logger.info("??")
+                # logger.info(rec.get("result"))
+                # logger.info("??")
 
                     # "total_vehicles_found":rec.get("total_result"),
                 return {
@@ -690,7 +648,57 @@ class RecommendationWrapper:
 
 
 
+def build_intent_filter_prompts(brand_model_name: str, questions: list):
+    """
+    Create prompts that instruct the LLM to classify each question into an intent
+    and decide whether it should be asked or not, returning only:
+    {
+      "not_ask": [...],
+      "ask": [...]
+    }
+    """
 
+    system_prompt = f"""
+You are GPT-5.
+
+Your task:
+- Receive a brand/model name and a list of user-provided questions.
+- Map each question to a HIGH-LEVEL INTENT (examples: pricing, warranty, safety, compatibility, preferences).
+- DO NOT output questions.
+- DO NOT output reasoning.
+- DO NOT output explanations.
+- Only extract **intents**.
+- Then classify each intent as either "ask" or "not_ask".
+
+Final output MUST be ONLY valid JSON with EXACT structure:
+
+{{
+  "not_ask": ["<intent>", "<intent>", ...],
+  "ask": ["<intent>", "<intent>", ...]
+}}
+
+Rules:
+- "ask" = relevant for determining user's needs for {brand_model_name}
+- "not_ask" = irrelevant, redundant, or unnecessary
+- All intents must be lowercase, snake_case.
+- No trailing commas.
+- No free text outside JSON.
+"""
+
+    user_prompt = f"""
+Brand/Model: {brand_model_name}
+
+Questions (JSON list):
+{questions}
+
+Extract intents → classify → output ONLY the JSON result.
+"""
+    messages=[
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt}
+    ]
+    chain=ai_service.get_llm_response(messages=messages, model_identifier="azure-gpt-4o-mini")
+    return chain
 
 
 
@@ -728,9 +736,8 @@ class RecommendationAgent(BaseAgent):
           intent=filter.get("intent")
 
           if intent in fix_keys:
-            print("fixing the input intent")
+            logger.info("fixing the input intent")
             filter['intent']=[formater[intent]]
-      print(data)
       return data
 
     def _request_data(self, data:dict) -> list[dict]:
@@ -758,9 +765,25 @@ class RecommendationAgent(BaseAgent):
               return {"error": "error"}
       except Exception as e:
           return {"error": str(e)}
+        
+      path = "agents/src/recommendation_questions.json"
+      with open(path, "r") as f:    
+            list_questions0 = json.load(f) 
 
-      
       if result:
+          if result.get("match_refining_questions"):
+              
+              list_questions=[ i for i in result.get("match_refining_questions") if i.get("intent") in ["seating","vehicle_type","fuel_type","transmission","price_range"]]
+              brand_model = f"{result.get('top_vehicles')[0].get('brand')} {result.get('top_vehicles')[0].get('metadata').get('product_name')}"          
+              logger.info(f"brand_model {brand_model}")
+              asound=build_intent_filter_prompts(questions=list_questions,
+              brand_model_name=brand_model)
+              asound = json.loads(asound) if isinstance(asound, str) else asound
+              not_asked = asound.get("not_ask", [])
+              logger.info(f"not_asked {not_asked}")
+              result["match_refining_questions"] = [
+                    q for q in list_questions if q.get("intent") not in not_asked
+                ]
           return result
       else:
           return [] 
@@ -770,7 +793,7 @@ class RecommendationAgent(BaseAgent):
         data = self._extract_pattern(data)
         result = self._request_data(data)
         logger.info("result")
-        logger.info(result)
+        # logger.info(result)
 
         return result
 
@@ -837,13 +860,16 @@ if __name__ == "__main__":
         ]
       }
     ],
-    "Max number":   10,
-    "collection": "autobot_test_22"
+    "Max number":   5,
+    "collection": "autobot_test_22",
+    "default_limit": 5
     } 
 
     res=agent.main(data)
-    # da=(json.dumps(res, indent=4, default=str))
-    print(res)
+    da=(json.dumps(res, indent=4, default=str))
+    # print(res)
+    with open("recommendation_output.json", "w") as f:
+        f.write(da)
 
 
 

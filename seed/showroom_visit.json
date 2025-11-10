@@ -1,0 +1,76 @@
+[
+  {
+    "showroom_visit_id": "visit-001",
+    "showroom_id": "nexa-delhi-south-showroom-1",
+    "showroom_name": "NEXA Delhi South - Main Showroom",
+    "dealership_id": "nexa-delhi-south",
+    "dealership_name": "NEXA Delhi South",
+    "person_name": "Anita Menon",
+    "visit_date": 1704153600,
+    "purpose_of_visit": "Test Drive",
+    "models_interested_in": [
+      "Baleno"
+    ],
+    "variants_interested_in": [
+      "Zeta AGS"
+    ],
+    "test_drive_offered": true,
+    "test_drive_done": true,
+    "created": 1704153600,
+    "updated": 1704153600,
+    "rating_out_of_5": 0,
+    "visit_timestamp": 0,
+    "variant_name": null,
+    "tags": {},
+    "region_id": null,
+    "showroom_visit_status": null,
+    "appointment_time": null,
+    "executive_name": null,
+    "executive_contact": null,
+    "test_drive_vehicle_reg": null,
+    "customer_feedback": null,
+    "remarks": null,
+    "region_name": null,
+    "person_id": null,
+    "follow_up_date": 0,
+    "appointment_date": null,
+    "pre_sales_lead_id": null
+  },
+  {
+    "showroom_visit_id": "visit-002",
+    "showroom_id": "nexa-mumbai-west-showroom-1",
+    "showroom_name": "NEXA Mumbai West - Main Showroom",
+    "dealership_id": "nexa-mumbai-west",
+    "dealership_name": "NEXA Mumbai West",
+    "person_name": "Rajesh Kumar",
+    "visit_date": 1704240000,
+    "purpose_of_visit": "Vehicle Inspection",
+    "models_interested_in": [
+      "Fronx"
+    ],
+    "variants_interested_in": [
+      "Alpha Plus AGS"
+    ],
+    "test_drive_offered": true,
+    "test_drive_done": false,
+    "created": 1704240000,
+    "updated": 1704240000,
+    "rating_out_of_5": 0,
+    "visit_timestamp": 0,
+    "variant_name": null,
+    "tags": {},
+    "region_id": null,
+    "showroom_visit_status": null,
+    "appointment_time": null,
+    "executive_name": null,
+    "executive_contact": null,
+    "test_drive_vehicle_reg": null,
+    "customer_feedback": null,
+    "remarks": null,
+    "region_name": null,
+    "person_id": null,
+    "follow_up_date": 0,
+    "appointment_date": null,
+    "pre_sales_lead_id": null
+  }
+]

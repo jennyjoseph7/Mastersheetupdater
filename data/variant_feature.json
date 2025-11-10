@@ -21,6 +21,30 @@
       }
     },
     {
+      "name": "feature_id",
+      "refers": "parents.feature.feature_id"
+    },
+    {
+      "name": "feature_name",
+      "refers": "parents.feature.feature_name"
+    },
+    {
+      "name": "feature_category",
+      "refers": "parents.feature.feature_category"
+    },
+    {
+      "name": "value_type",
+      "refers": "parents.feature.value_type"
+    },
+    {
+      "name": "unit",
+      "refers": "parents.feature.unit"
+    },
+    {
+      "name": "feature_aliases",
+      "refers": "parents.feature.aliases"
+    },
+    {
       "name": "feature_type",
       "type": "text",
       "options": [
@@ -49,101 +73,176 @@
       "option_others": true
     },
     {
-      "name": "is_standard",
-      "refers": "parents.feature.is_standard"
-    },
-    {
-      "name": "is_engine_dependent",
-      "refers": "parents.feature.is_engine_dependent"
-    },
-    {
-      "name": "is_transmission_dependent",
-      "refers": "parents.feature.is_transmission_dependent"
-    },
-    {
-      "name": "is_drivetrain_dependent",
-      "refers": "parents.feature.is_drivetrain_dependent"
-    },
-    {
       "name": "variant_id",
       "refers": "parents.variant.variant_id"
     },
     {
-      "auto_updater": true,
       "name": "variant_name",
       "refers": "parents.variant.variant_name"
     },
     {
-      "name": "feature_id",
-      "refers": "parents.feature.feature_id"
+      "name": "model_year_id",
+      "refers": "parents.variant.model_year_id"
     },
     {
-      "auto_updater": true,
-      "name": "feature_name",
-      "refers": "parents.feature.feature_name"
+      "name": "vehicle_model_id",
+      "refers": "parents.variant.vehicle_model_id"
     },
     {
-      "auto_updater": true,
-      "name": "feature_category",
-      "refers": "parents.feature.feature_category"
+      "name": "vehicle_model_generic_name",
+      "refers": "parents.variant.vehicle_model_generic_name"
     },
     {
-      "name": "aliases",
-      "type": "string_list",
-      "converter": {
-        "function": "ensure_in_list",
-        "args": [
-          "feature_name"
-        ]
-      }
+      "name": "brand_id",
+      "refers": "parents.variant.brand_id"
     },
     {
-      "auto_updater": true,
-      "name": "feature_description",
-      "refers": "parents.feature.feature_description"
+      "name": "brand_name",
+      "refers": "parents.variant.brand_name"
     },
     {
-      "name": "additional_cost_unit",
-      "refers": "parents.feature.additional_cost_unit"
+      "name": "region_id",
+      "refers": "parents.variant.region_id"
     },
     {
-      "auto_updater": true,
+      "name": "region_name",
+      "refers": "parents.variant.region_name"
+    },
+    {
+      "name": "country_name",
+      "refers": "parents.variant.country_name"
+    },
+    {
+      "name": "region_level_guidelines",
+      "refers": "parents.variant.region_level_guidelines"
+    },
+    {
+      "name": "region_level_guardrails",
+      "refers": "parents.variant.region_level_guardrails"
+    },
+    {
+      "name": "brand_logo_url",
+      "refers": "parents.variant.brand_logo_url"
+    },
+    {
+      "name": "brand_website",
+      "refers": "parents.variant.brand_website"
+    },
+    {
+      "name": "parent_company",
+      "refers": "parents.variant.parent_company"
+    },
+    {
+      "name": "brand_level_guidelines",
+      "refers": "parents.variant.brand_level_guidelines"
+    },
+    {
+      "name": "brand_level_guardrails",
+      "refers": "parents.variant.brand_level_guardrails"
+    },
+    {
+      "name": "oem_id",
+      "refers": "parents.variant.oem_id"
+    },
+    {
+      "name": "oem_name",
+      "refers": "parents.variant.oem_id"
+    },
+    {
+      "name": "oem_brand_awareness",
+      "refers": "parents.variant.oem_brand_awareness"
+    },
+    {
+      "name": "oem_country_of_origin",
+      "refers": "parents.variant.oem_country_of_origin"
+    },
+    {
+      "name": "oem_brand_awareness",
+      "refers": "parents.variant.oem_brand_awareness"
+    },
+    {
+      "name": "oem_wiki_description",
+      "refers": "parents.variant.oem_wiki_description"
+    },
+    {
+      "name": "brochure_pdf",
+      "refers": "parents.variant.brochure_pdf"
+    },
+    {
+      "name": "brochure_download_link",
+      "refers": "parents.variant.brochure_download_link"
+    },
+    {
+      "name": "vehicle_model_name",
+      "refers": "parents.variant.vehicle_model_name"
+    },
+    {
+      "name": "vehicle_model_aliases",
+      "refers": "parents.variant.vehicle_model_aliases"
+    },
+    {
+        "name":"transmission_type",
+        "refers": "parents.variant.transmission_type"
+    },
+    {
+      "name": "variant_status",
+      "refers": "parents.variant.variant_status"
+    },
+    {
+      "name": "variant_full_name",
+      "refers": "parents.variant.variant_full_name"
+    },
+    {
+      "name": "variant_aliases",
+      "refers": "parents.variant.variant_aliases"
+    },
+    {
+      "name": "engine_type",
+      "refers": "parents.variant.engine_type"
+    },
+    {
+      "name": "transmission",
+      "refers": "parents.variant.transmission"
+    },
+    {
+      "name": "drivetrain",
+      "refers": "parents.variant.drivetrain"
+    },
+    {
+      "name": "ex_showroom_price",
+      "refers": "parents.variant.ex_showroom_price"
+    },
+    {
+      "name": "on_road_price",
+      "refers": "parents.variant.on_road_price"
+    },
+    {
+      "name": "price_units",
+      "refers": "parents.variant.price_units"
+    },
+    {
       "name": "feature_value",
-      "type": "text",
-      "title": "Feature Value"
+      "type": "multi"
     },
     {
-      "auto_updater": true,
-      "name": "feature_value_type",
-      "refer": "parents.feature.feature_value_type"
-    },
-    {
-      "name": "source_reference",
-      "type": "text",
-      "title": "Source Reference"
+      "name": "additional_cost",
+      "type": "number"
     },
     {
       "name": "source_reference",
-      "type": "text",
-      "title": "Source Reference"
+      "type": "text"
     },
     {
       "name": "source_path",
-      "type": "text",
-      "title": "Source Path"
+      "type": "text"
     },
     {
       "name": "source_date",
-      "type": "timestamp"
+      "type": "number"
     },
     {
       "name": "confidence_score",
       "type": "text"
-    },
-    {
-      "auto_updater": true,
-      "type": "text",
-      "name": "unit_of_measure"
     },
     {
       "name": "package_name",
@@ -151,24 +250,8 @@
       "title": "Package name"
     },
     {
-      "name": "launch_date",
-      "type": "number",
-      "default": {
-        "function": "now_ctime"
-      },
-      "auto_updater": true
-    },
-    {
-      "name": "discontinuation_date",
-      "type": "number"
-    },
-    {
       "name": "remarks",
       "type": "text"
-    },
-    {
-      "name": "status",
-      "refers": "parents.variant.variant_status"
     },
     {
       "name": "showcase_image",
@@ -181,18 +264,22 @@
       }
     },
     {
+      "name": "showcase_video",
+      "type": "text",
+      "constraint": {
+        "function": "url_validator"
+      },
+      "converter": {
+        "function": "url_converter"
+      }
+    },
+    {
       "name": "images",
-      "type": "list",
-      "title": "Feature Images"
+      "refers": "parents.feature.images"
     },
     {
       "name": "videos",
-      "type": "list",
-      "title": "Feature Videos"
-    },
-    {
-      "name": "additional_cost",
-      "type": "number"
+      "refers": "parents.feature.videos"
     },
     {
       "auto_updater": true,
@@ -203,9 +290,11 @@
         ],
         "function": "name_to_id",
         "kwargs": {
-          "attribute_join": " ",
+          "case": "lower",
+          "skip_empty": true,
+          "attribute_join": "-",
           "is_unique": true,
-          "separator": " - "
+          "separator": "-"
         }
       },
       "name": "variant_feature_id",
