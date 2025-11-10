@@ -2,14 +2,12 @@ import re
 import time
 import json
 import logging
-import requests
 import numpy as np
-import pandas as pd
-
 from urllib.parse import urlparse
 from gensim.models.fasttext import FastText
-
-
+import ast
+from ai_service import ai_service, ai_service_app
+from qdrant_client import models
 from qdrant_client.models import (
     VectorParams,
     Distance,
@@ -20,15 +18,10 @@ from qdrant_client.models import (
     MatchAny,
 )
 
-from ai_service import ai_service, ai_service_app
-
-# Try/except import for flexible module context
 try:
     from .base_agent import BaseAgent
 except ImportError:
     from base_agent import BaseAgent
-
-# Local imports
 from src.prompts import *
 
 
@@ -63,7 +56,10 @@ model = FastText(
 # client = QdrantClient(host="localhost", port=6333)
 client = QdrantClient(url="http://216.48.189.12:6333")
 
-def upsert_features(brand_name,dealership_ids,collection="autocrm_recommendation"):
+def upsert_features(collection="autocrm_recommendation"):
+    '''
+    this function will upsert features in qdrant
+    '''
     def extract_selected_features(metadata: dict):
         keys_needed = [
             "comfort_and_convenience",
@@ -78,11 +74,15 @@ def upsert_features(brand_name,dealership_ids,collection="autocrm_recommendation
         return {key: metadata.get(key) for key in keys_needed if key in metadata}
 
 
+
     hits = client.search(
         collection_name=collection,
-        query_vector=[0.1, 0.1, 0.1,0.1 , 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+        query_vector=[0.1, 0.1, 0.1,0.1,0.1,0.1,0.1 , 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
         limit=5000
     )
+
+
+
     for hit in hits:
         payL = hit.payload
         metadata = {
@@ -92,25 +92,38 @@ def upsert_features(brand_name,dealership_ids,collection="autocrm_recommendation
             "variant":payL.get("variant_name",""),
             "metadata": payL,
         }
-        metadata=extract_selected_features(metadata=payL)
-        syst,user=car_features_prompt(car_text=metadata)
+
+
+
+        metadata_=extract_selected_features(metadata=metadata.get("metadata"))
+
+
+        syst,user=car_features_prompt(car_text=metadata_)
         messages=[
             {"role": "system", "content": syst},
             {"role": "user", "content": user}
         ]
-        agent_to_get_features=ai_service.get_llm_response(messages=messages, model_identifier="gcp-gemini-2.5-flash-lite")
+        agent_to_get_features=ai_service_app.get_llm_response(messages=messages, model_identifier="gcp-gemini-2.5-flash-lite")
 
-        feature_keys=agent_to_get_features(metadata.get("metadata"))
+        lagent_to_get_featuresst = ast.literal_eval(agent_to_get_features)
+
+        feature_keys=lagent_to_get_featuresst
+
         client.set_payload(
             collection_name=collection,
             payload={"car_features": feature_keys},
-            points=metadata.get(id),
+            points=[metadata.get("id")]
         )
 
 
 
-def upsert_dealership(brand_name,dealership_ids,collection="autocrm_recommendation"):
 
+
+
+
+def upsert_dealership(brand_name,dealership_ids,collection="autocrm_recommendation"):
+    '''
+    this will update the dealerships for a particular brand in qdrant'''
     hits = client.search(
         collection_name=collection,
         query_vector=[0.1, 0.1, 0.1,0.1 , 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],

@@ -15,18 +15,36 @@ mlogger = gryd.hp.get_logger(__name__)
 @gryd.is_task()
 def post_contact_status(data, *args, **kwargs):
     """
-    Post contact status: Has to post when campaign trigger happen. 
-    For each lead provider status should be posted as new object keeping same message id.
-    {
-        "message_id":"msh123abcd",
-        "channel_provider": <twilio>
-        "channel":"voice_phone",
-        "phone_number":"8850988794",
-        "response_id":"sid12323123",
-        "campaign_id" : "campaign_pre_sales_123",
-        "provider_status": "initiated"
-    }
-    
+    Posts contact status updates when a campaign trigger occurs.
+
+    For each lead, this function posts a new status object while keeping the 
+    same `message_id` across updates. The function yields a structured dictionary 
+    representing the current contact status, which can be sent to downstream 
+    systems or stored for tracking.
+
+    Example yielded data:
+        {
+            "message_id": "msh123abcd",
+            "channel_provider": "twilio",
+            "channel": "voice_phone",
+            "phone_number": "8850988794",
+            "response_id": "sid12323123",
+            "campaign_id": "campaign_pre_sales_123",
+            "provider_status": "initiated"
+        }
+
+    Typical provider statuses may include:
+        - "initiated"
+        - "queued"
+        - "in-progress"
+        - "completed"
+        - "failed"
+
+    Args:
+        ...: (Describe any parameters here, such as campaign data or status input.)
+
+    Yields:
+        dict: A dictionary containing the contact status details for each lead.
     """
 
 
