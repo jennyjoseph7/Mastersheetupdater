@@ -2,7 +2,7 @@ from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as
 from gryd_worker.gryd_routes import payload_decorator
 from models import model as base_model
 from ai_service import ai_service_app
-from communication.connectors.gryd_connector_whatsapp import process_forwarded_webhook
+# from communication.connectors.connector_whatsapp import process_forwarded_webhook
 #from voice import process_webhook
 import os
 from flask import request
@@ -53,14 +53,9 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>", methods = ["GET","POST"])
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>/<conversation_id>", methods = ["GET","POST"])
 def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID, conversation_id = None):
-    payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
-
-    language = payload.get("language", "english")
-
-    logger.info(f"Webhook received for channel={channel}, provider={channel_provider}, enterprise={enterprise_id}, conversation={conversation_id}, language={language}")
-    logger.info(f"Payload: {payload}")
     if channel in ["whatsapp", "whatsapp_chat", "whatsapp_voice_note", "whatsapp_voice_call"]:
-        process_forwarded_webhook(channel, channel_provider, enterprise_id, conversation_id, payload,language="english")
+        # .... do the stuff ....
+        pass
     elif channel == "email":
         #.... do the stuff .... 
         pass
