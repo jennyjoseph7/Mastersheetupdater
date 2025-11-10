@@ -57,53 +57,63 @@ def converse(*args, **kwargs):
     '''
     logger = kwargs.get("logger")
     logger.info("converse called with kwargs == {}".format(kwargs))
+    request_data = kwargs
+    session_id = request_data.get("session_id")
+    if not session_id:
+        yield from yield_error("error","session_id is required",*args, **kwargs)
+        return
+    channel = request_data.get("channel")
+    if not channel:
+        yield from yield_error("error","channel is required",*args, **kwargs)
+        return
+    with get_pg_connector() as pg:
+        session_data = pg.get("sessions","session_id",session_id)
+        if not session_data:
+            yield from yield_error("error","session_data fetching failed",*args, **kwargs)
+            return
     
-    awaited_tasks= [
-            {
-                "task":"test_agent",
-                "service" : gryd.SERVICE,
-                "kwargs" : {
-                    "attr1" : "value1",
-                    "attr2" : "value2"
-                }
-            }
-        ]
-    loopers = gryd.yield_results(awaited_tasks, timeout=30)
-    for result in loopers:
-        logger.info(result)
-        
+    
+    with get_pg_connector() as pg:
+        session_data_cache = pg.get("session_data_cache","session_data_cache_id",session_id)
+        if not session_data_cache:
+            session_data_cache = pg.update("session_data_cache","session_data_cache_id",None,{"session_id":session_id})
+            if not session_data_cache:
+                yield {"status" : "error","message" : "session_data_cache fetching/creation failed"}
+                return
+    execute_primary_prompt(*args, **kwargs)
+    if not session_data_cache:
+        yield {"status" : "error","message" : "session_data_cache fetching/creation failed"}
+    
+    
+    yield from yield_primary_prompt(*args, **kwargs)
+
     yield from prune_response(*args, **kwargs)
     return
 
-@gryd.is_a_task(
-        # function_name = "test_agent", #custom name of function
-        # job_param = "job_params", #provide a job param attr with this name
-        # auth_param= "auth_params", #provide a auth param attr with this name
-        # logger_param = "logger", #provide a logger attr with this name
-        # service = "autocrm-conversation", #set name of service under which you want to create the task
-        # is_special_task = False, #IGNORE for result queue etc
-        # input_generator = None, #function to generate input for testing #MANDATORY
-        # result_verifier = None, #function to verify result should return True or False
-        # sample_input = None, #Dict[str, Any]
-        is_agent = True, # True if agent. make sure you adhere to agent input and output 
-        # depends_on = None, #:Union[List[Tuple[str, str]], List[str], None] either pass list of service,task or just list of task
-        expected_input = {"fruit_one":"text","fruit_two" : "number"}, #:Union[Dict[str, str], None] 
-        optional_input = {"vegetable" : "text"}, #:Union[Dict[str, str], None] 
-        # capability_function = None #:Union[Dict[str, str], None] Defaults to using Docstring
-        )
-def test_agent(*args, **kwargs):
-    '''
-    This is my doc string
-    '''
-    logger = kwargs.get("logger",mlogger)
-    logger.info("test_agent called")
-    return
 
 @gryd.is_a_task()
 def get_primary_prompt(*args, **kwargs):
     logger = kwargs.get("logger",mlogger)
     logger.info("get_primary_prompt called")
+
     yield from yield_primary_prompt(*args, **kwargs)
+@gryd.is_a_task()
+def execute_primary_prompt(*args, **kwargs):
+    logger = kwargs.get("logger",mlogger)
+    logger.info("get_primary_prompt called")
+    request_data = kwargs.get("request_data")
+    prompt = ""
+    for i in yield_primary_prompt(*args, **kwargs):
+        if isinstance(i,dict):
+            if "prompt" in i:
+                prompt = i.get("prompt")
+    if not prompt:
+        
+        return
+    logger.info("prompt == {}".format(prompt))
+    yield {"prompt":prompt}     
+    
+
     
 
 @gryd.is_a_task()
@@ -148,6 +158,46 @@ def prune_response( *args, **kwargs):
             pass
     yield ret
     return
+
+
+
+
+@gryd.is_a_task(
+        # function_name = "test_agent", #custom name of function
+        # job_param = "job_params", #provide a job param attr with this name
+        # auth_param= "auth_params", #provide a auth param attr with this name
+        # logger_param = "logger", #provide a logger attr with this name
+        # service = "autocrm-conversation", #set name of service under which you want to create the task
+        # is_special_task = False, #IGNORE for result queue etc
+        # input_generator = None, #function to generate input for testing #MANDATORY
+        # result_verifier = None, #function to verify result should return True or False
+        # sample_input = None, #Dict[str, Any]
+        is_agent = True, # True if agent. make sure you adhere to agent input and output 
+        # depends_on = None, #:Union[List[Tuple[str, str]], List[str], None] either pass list of service,task or just list of task
+        expected_input = {"fruit_one":"text","fruit_two" : "number"}, #:Union[Dict[str, str], None] 
+        optional_input = {"vegetable" : "text"}, #:Union[Dict[str, str], None] 
+        # capability_function = None #:Union[Dict[str, str], None] Defaults to using Docstring
+        )
+def test_agent(*args, **kwargs):
+    '''
+    This is my doc string
+    '''
+    logger = kwargs.get("logger",mlogger)
+    logger.info("test_agent called")
+    return
+
+def yield_result(*args, **kwargs):
+    pass
+
+def yield_error(error_type, error_description, *args, **kwargs):
+    yield {"status" : "error","error_type":error_type, "error_description":error_description,"session_id":kwargs.get("request_data").get("session_id"),"message_id" : kwargs.get("reply_to")}
+
+
+def yield_error(status_id, status_description, *args, **kwargs):
+    yield {"status" : status_id,"message":status_description,"session_id":kwargs.get("request_data").get("session_id"),"message_id" : kwargs.get("reply_to")}
+
+
+
 
 
 if __name__ == "__main__":
