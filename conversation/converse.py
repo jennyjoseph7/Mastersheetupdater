@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 from gryd_worker import gryd
 from autocrm_db_helper import get_pg_connector
-from prompt import yield_primary_prompt
+from prompt import yield_primary_prompt, run_prompt_sync
 
 
 import time
@@ -37,7 +37,7 @@ def WARM_UP():
         optional_input = None, #:Union[Dict[str, str], None] 
         capability_function = None #:Union[Dict[str, str], None] Defaults to using Docstring
         )
-def converse(*args, **kwargs):
+def converse(*args, **kargs):
     '''
     Converse task to setup what to reply and call task avaibale in temporary data depending on channel.
     sample kwargs :- 
@@ -55,39 +55,71 @@ def converse(*args, **kwargs):
         }
     }
     '''
-    logger = kwargs.get("logger")
-    logger.info("converse called with kwargs == {}".format(kwargs))
-    request_data = kwargs
+    conversation_process_start_time = time.time()
+    logger = kargs.get("logger")
+    logger.info("converse called with kwargs == {}".format(kargs))
+    request_data = kargs
+
+    pass_kwargs = {"request_data":request_data}
+
     session_id = request_data.get("session_id")
+
     if not session_id:
-        yield from yield_error("error","session_id is required",*args, **kwargs)
+        yield from yield_error("error","session_id is required",*args, **pass_kwargs)
         return
     channel = request_data.get("channel")
     if not channel:
-        yield from yield_error("error","channel is required",*args, **kwargs)
+        yield from yield_error("error","channel is required",*args, **pass_kwargs)
         return
     with get_pg_connector() as pg:
-        session_data = pg.get("sessions","session_id",session_id)
+        session_data = pg.get("session","session_id",session_id)
         if not session_data:
-            yield from yield_error("error","session_data fetching failed",*args, **kwargs)
-            return
+            yield from yield_error("error","session_data fetching failed",*args, **pass_kwargs)
+            # return
+    message_id = gryd.hp.make_uuid3(time.time(),session_id,request_data.get("user_id"),request_data.get("customer_response"))
     
+    ###TODO Post incoming message object
+    incoming_message_object = {}
+
     
+
     with get_pg_connector() as pg:
         session_data_cache = pg.get("session_data_cache","session_data_cache_id",session_id)
         if not session_data_cache:
             session_data_cache = pg.update("session_data_cache","session_data_cache_id",None,{"session_id":session_id})
             if not session_data_cache:
                 yield {"status" : "error","message" : "session_data_cache fetching/creation failed"}
-                return
-    execute_primary_prompt(*args, **kwargs)
+                # return
     if not session_data_cache:
         yield {"status" : "error","message" : "session_data_cache fetching/creation failed"}
     
-    
-    yield from yield_primary_prompt(*args, **kwargs)
+    pass_kwargs["reply_to"] = message_id
+    pass_kwargs["incoming_message_id"] = incoming_message_object
+    pass_kwargs["session_id"] = session_id  
+    pass_kwargs["reply_to_id"] = message_id
+    pass_kwargs["session_data"] = session_data
+    pass_kwargs["channel"] = channel
+    pass_kwargs["session_data_cache"] = session_data_cache
+    pass_kwargs["responses"] = []
 
-    yield from prune_response(*args, **kwargs)
+    if request_data.get("channel") in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"] and not request_data.get("orchestrate"):
+        yield from yield_primary_prompt(*args, **pass_kwargs)
+    
+    do_orchestrate = True
+    for ppresp in execute_primary_prompt(*args, **pass_kwargs):
+        if isinstance(ppresp,dict):
+            if ppresp.get("intent","") != "filler":
+                do_orchestrate = False
+        yield from prune_response(ppresp, **pass_kwargs)
+    if do_orchestrate:
+        for orch_res in run_orchestrator(*args, **pass_kwargs):
+            yield from prune_response(orch_res,*args, **pass_kwargs)
+
+    conversation_process_end_time = time.time()
+    
+    ###TODO add in all needed data to be passed for this task
+    post_messages_data(*args, **pass_kwargs) 
+    
     return
 
 
@@ -100,7 +132,7 @@ def get_primary_prompt(*args, **kwargs):
 @gryd.is_a_task()
 def execute_primary_prompt(*args, **kwargs):
     logger = kwargs.get("logger",mlogger)
-    logger.info("get_primary_prompt called")
+    logger.info("execute_primary_prompt called")
     request_data = kwargs.get("request_data")
     prompt = ""
     for i in yield_primary_prompt(*args, **kwargs):
@@ -108,10 +140,17 @@ def execute_primary_prompt(*args, **kwargs):
             if "prompt" in i:
                 prompt = i.get("prompt")
     if not prompt:
-        
+        yield from yield_error("error","primary prompt not generated required",*args, **kwargs)
         return
     logger.info("prompt == {}".format(prompt))
-    yield {"prompt":prompt}     
+    
+    response = run_prompt_sync(user_query=kwargs.get("request_data").get("customer_response"),system_prompt=prompt,**kwargs)
+
+    yield {"intent" : "llm_response","placeholder":response}
+
+
+
+      
     
 
     
@@ -126,7 +165,7 @@ def session_close(*args, **kwargs):
 def add_to_session_cache(*args, **kwargs):
     logger = kwargs.get("logger",mlogger)
     logger.info("add_to_session_cache called")
-    yield {"status" : "complete","session_id":kwargs.get("session_id")}
+    yield from yield_status("success","added_to_session_cache",*args, **kwargs)
 
 @gryd.is_a_task()
 def run_orchestrator(*args, **kwargs):
@@ -139,24 +178,28 @@ def run_orchestrator(*args, **kwargs):
     return
 
 @gryd.is_a_task()
-def prune_response( *args, **kwargs):
-    logger = kwargs.get("logger",mlogger)
+def prune_response( resp_message, *args, **kargs):
+    logger = kargs.get("logger",mlogger)
     logger.info("prune_response called")
-    if kwargs.get("channel") in ["whatsapp_chat"]:
-        response_task_data = kwargs.get("temporary_data").get("channel_response_task")
+    request_data = kargs.get("request_data")
+    response = {}
+    if request_data.get("channel") in ["whatsapp_chat"]:
+        response_task_data = request_data.get("temporary_data").get("channel_response_task")
         ret =  {"temporary_data": response_task_data.get("kwargs")}
-        ret["response"] = {
-            "placeholder":"agent 1 response",
+        response = {
+            "placeholder":resp_message,
             "intent" : "agent_one",
             "message_id" : str(time.time()),
             "is_last":False,
             "index" : 1
         }
+        ret["response"] = response
         logger.info("sending response to task {}".format(ret))
         x = gryd.yield_results({"task": response_task_data.get("task"),"service": response_task_data.get("service"),"kwargs" : ret})
         for i in x:
             pass
-    yield ret
+    kargs["responses"].append(response)
+    yield response
     return
 
 
@@ -186,6 +229,12 @@ def test_agent(*args, **kwargs):
     logger.info("test_agent called")
     return
 
+def post_messages_data(*args, **kwargs):
+    '''
+        Picks up all messages sent and posts it to message model
+    '''
+    pass    
+
 def yield_result(*args, **kwargs):
     pass
 
@@ -193,24 +242,9 @@ def yield_error(error_type, error_description, *args, **kwargs):
     yield {"status" : "error","error_type":error_type, "error_description":error_description,"session_id":kwargs.get("request_data").get("session_id"),"message_id" : kwargs.get("reply_to")}
 
 
-def yield_error(status_id, status_description, *args, **kwargs):
+def yield_status(status_id, status_description, *args, **kwargs):
     yield {"status" : status_id,"message":status_description,"session_id":kwargs.get("request_data").get("session_id"),"message_id" : kwargs.get("reply_to")}
 
 
 
 
-
-if __name__ == "__main__":
-    awaited_tasks= [
-            {
-                "task":"converse",
-                "service" : gryd.SERVICE,
-                "kwargs" : {
-                    "attr1" : "value1",
-                    "attr2" : "value2"
-                }
-            }
-        ]
-    loopers = gryd.yield_results(awaited_tasks, timeout=30)
-    for result in loopers:
-        mlogger.info(result)

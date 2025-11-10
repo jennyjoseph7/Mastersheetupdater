@@ -10,8 +10,8 @@ class AutoCRMPGConnector(db.GrydPGConnector):
     
     def update(self, table_name, id_attr, id, data, additional = "", additional_values = None):
         super().update(table_name, id, data, id_attr, additional, additional_values) 
-    def get(self, table_name, id_attr, id, data, additional = "", additional_values = None):
-        super().get(table_name, id, data, id_attr, additional, additional_values) 
+    def get(self, table_name, id_attr, id):
+        super().get(table_name, id, id_attr) 
     def list(self, table_name, where):
         where  = "WHERE dict @> '{}'".format(json.dumps(where))
         super().list(table_name, where)
