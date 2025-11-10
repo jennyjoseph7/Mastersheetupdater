@@ -8,6 +8,9 @@ node_modules/
 dist/
 autobot_voice.egg-info
 
+#test files
+test_*
+
 # Compiled Java class files
 *.class
 
