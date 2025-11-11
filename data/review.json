@@ -21,32 +21,85 @@
             }
         },
         {
-            "name": "showroom_name",
-            "refers": "parents.showroom.showroom_name"
+            "name": "showroom_visit_id",
+            "refers": "parents.showroom_visit.showroom_visit_id"
         },
         {
-            "name": "dealership_id",
-            "refers": "parents.dealership.dealership_id"
+            "name": "pre_sales_lead_id",
+            "refers": "parents.showroom_visit.pre_sales_lead_id"
         },
         {
-            "name": "dealership_name",
-            "refers": "parents.dealership.dealership_name"
-        },
-        {
-            "name": "person_id",
-            "refers": "parents.person.user_id"
+            "name": "user_id",
+            "refers": "parents.showroom_visit.user_id"
         },
         {
             "name": "person_name",
-            "refers": "parents.person.name"
+            "refers": "parents.showroom_visit.person_name"
+        },
+        {
+            "name": "phone_number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "last_contacted_phone_number"
+                ]
+            },
+            "indexed": true
+        },
+        {
+            "name": "email",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "last_contacted_email"
+                ]
+            },
+            "indexed": true
+        },
+        {
+            "name": "whatsapp_number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "last_contacted_whatsapp_number"
+                ]
+            },
+            "indexed": true
+        },
+        {
+            "name": "dealership_id",
+            "refers": "parents.showroom_visit.dealership_id"
+        },
+        {
+            "name": "dealership_name",
+            "refers": "parents.showroom_visit.dealer_name",
+            "indexed": true
         },
         {
             "name": "visit_date",
             "refers": "parents.showroom_visit.visit_date"
         },
         {
+            "name": "overall_rating",
+            "type": "number"
+        },
+        {
+            "name": "description_of_showroom_experience",
+            "type": "text"
+        },
+        {
             "name": "purpose_of_visit",
             "refers": "parents.showroom_visit.purpose_of_visit"
+        },
+        {
+            "name": "showroom_name",
+            "refers": "parents.showroom_visit.showroom_name"
         },
         {
             "name": "models_interested_in",
@@ -57,64 +110,62 @@
             "refers": "parents.showroom_visit.variants_interested_in"
         },
         {
-            "name": "test_drive_offered",
-            "type": "boolean",
-            "default": false
+            "name": "models_test_driven",
+            "type": "string_list",
+            "list_type": "text",
+            "ui_element": "multiselect"
         },
         {
-            "name": "test_drive_done",
-            "type": "boolean",
-            "default": false
+            "name": "services_received",
+            "type": "string_list",
+            "list_type": "text",
+            "ui_element": "multiselect",
+            "option_others": true,
+            "options": [
+                "Car Consultation",
+                "Test Drive",
+                "Vehicle Booking Assistance",
+                "Finance Consultation",
+                "Insurance Consultation",
+                "Accessories Consultation",
+                "Exchange Offer Discussion",
+                "Registration Assistance",
+                "Complaint / Feedback Resolution",
+                "Customer Lounge",
+                "Wi-Fi",
+                "Cafe / Refreshments",
+                "EV Charging",
+                "Children Play Area",
+                "Parking Facility",
+                "Virtual Reality Experience",
+                "Home Test Drive",
+                "Extended Working Hours",
+                "Weekend Service",
+                "Festive Offers",
+                "Other"
+            ]
         },
         {
             "name": "visit_helped_in_decision",
-            "type": "boolean",
+            "type": "bool",
             "default": false
         },
         {
             "name": "able_to_make_a_decision",
-            "type": "boolean",
+            "type": "bool",
             "default": false
         },
         {
             "name": "competitor_brands_considered",
-            "type": "list",
-            "list_type": "text"
+            "type": "string_list",
+            "list_type": "text",
+            "ui_element": "multiselect"
         },
         {
             "name": "likely_to_purchase_models",
-            "type": "list",
-            "list_type": "text"
-        },
-        {
-            "name": "source_type",
-            "type": "text",
-            "options": [
-                "Google",
-                "Facebook",
-                "Instagram",
-                "WhatsApp",
-                "SMS",
-                "In-person",
-                "Phone Call",
-                "Email",
-                "Other"
-            ],
-            "ui_element": "select"
-        },
-        {
-            "name": "review_type",
-            "type": "text",
-            "options": [
-                "Showroom Experience",
-                "Service Experience",
-                "Sales Experience",
-                "Product Feedback",
-                "Website/App Experience",
-                "Delivery Experience",
-                "Support/Communication"
-            ],
-            "ui_element": "select"
+            "type": "string_list",
+            "list_type": "text",
+            "ui_element": "multiselect"
         },
         {
             "name": "rating_overall",
@@ -147,7 +198,17 @@
             "ui_element": "rating"
         },
         {
-            "name": "review_text",
+            "name": "rating_home_test_drive_experience",
+            "type": "number",
+            "title": "Home Test Drive Experience Rating (1-5)",
+            "constraint": {
+                "min": 1,
+                "max": 5
+            },
+            "ui_element": "rating"
+        },
+        {
+            "name": "car_review_text",
             "type": "text",
             "title": "Review Comments",
             "ui_element": "textarea"
@@ -191,6 +252,18 @@
         {
             "name": "sentiment_score",
             "type": "number"
+        },
+        {
+            "name": "propensity_scores",
+            "type": "nested_object",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "pre_sales_lead",
+                    "pre_sales_lead_id",
+                    "propensity_scores"
+                ]
+            }
         },
         {
             "name": "response_status",
@@ -258,8 +331,6 @@
         }
     ],
     "parents": [
-        "dealership",
-        "person",
         "showroom_visit"
     ]
 }

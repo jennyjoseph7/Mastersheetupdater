@@ -1,6 +1,6 @@
 {
     "timezone": "Asia/Kolkata",
-    "name": "dealership",
+    "name": "billing_report",
     "model_type": "default",
     "attributes": [
         {
@@ -21,9 +21,9 @@
             }
         },
         {
-            "name":"quick_select",
-            "type":"text",
-            "options":[
+            "name": "quick_select",
+            "type": "text",
+            "options": [
                 "month",
                 "week",
                 "two_months",
@@ -33,37 +33,36 @@
             ]
         },
         {
-            "name":"start_date",
-            "type":"text"
+            "name": "start_date",
+            "type": "text"
         },
         {
-            "name":"end_date",
-            "type":"text"
+            "name": "end_date",
+            "type": "text"
         },
         {
-            "name":"start_date",
-            "type":"number"
+            "name": "start_timestamp",
+            "type": "number"
         },
         {
-            "name":"end_date",
-            "type":"number"
+            "name": "end_timestamp",
+            "type": "number"
         },
-
         {
-            "name":"dealership_id",
-            "refers":"parents.dealership.dealership_id",
-            "required":true
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id",
+            "required": true
         },
         {
             "name": "dealer_name",
-            "refers": "parents.dealership.dealership_name"
+            "refers": "parents.dealership.dealer_name"
         },
         {
-            "name":"total_billed_amount",
-            "type":"number",
-            "default":{
-                "function":"calulate_total_billing",
-                "args":[
+            "name": "total_billed_amount",
+            "type": "number",
+            "default": {
+                "function": "calulate_total_billing",
+                "args": [
                     "billing",
                     "total_amount",
                     "sum"
@@ -95,12 +94,11 @@
             }
         },
         {
-            "name": "total_credits_consumed",
-            "refers":"parents.dealership.credits_balance"
-            
+            "name": "total_credits_remaining",
+            "refers": "parents.dealership.credits_balance"
         },
         {
-            "name": "total_credits_remaining",
+            "name": "total_credits_consumed",
             "type": "number",
             "default": {
                 "function": "calulate_total_billing",
@@ -112,16 +110,20 @@
             }
         },
         {
-            "name": "currancy",
-            "type": "string",
-            "default": {
-                "function": "calulate_total_billing",
-                "args": [
-                    "billing",
-                    "currency",
-                    "first"
-                ]
-            }
+            "name": "currency",
+            "type": "text",
+            "options": [
+                "INR",
+                "USD",
+                "EUR",
+                "GBP",
+                "AED",
+                "SAR",
+                "JPY",
+                "other"
+            ],
+            "default": "INR",
+            "option_others": true
         },
         {
             "name": "total_gst",
@@ -171,17 +173,33 @@
                 ]
             }
         },
-
         {
-            "name":"generate_invoice",
-            "type":"text",
-            "default":{
-                "function":"generate_billing_invoice",
-                "args":["billing"]
+            "name": "invoice_url",
+            "type": "text",
+            "default": {
+                "function": "generate_billing_invoice",
+                "args": [
+                    "billing"
+                ]
             }
+        },
+        {
+            "name": "billing_report_id",
+            "type": "uid",
+            "id": true,
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "dealership_id",
+                    "start_timestamp",
+                    "end_timestamp",
+                    "created"
+                ]
+            },
+            "auto_updater": true
         }
-   
     ],
-
-    "parents": ["dealership" ]
+    "parents": [
+        "dealership"
+    ]
 }

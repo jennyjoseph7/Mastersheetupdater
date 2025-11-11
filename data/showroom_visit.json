@@ -50,8 +50,44 @@
       "required": true
     },
     {
-      "name": "person_id",
+      "name": "user_id",
       "refers": "parents.pre_sales_lead.user_id"
+    },
+    {
+      "name": "phone_number",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "person",
+          "user_id",
+          "last_contacted_phone_number"
+        ]
+      },
+      "indexed": true
+    },
+    {
+      "name": "email",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "person",
+          "user_id",
+          "last_contacted_email"
+        ]
+      },
+      "indexed": true
+    },
+    {
+      "name": "whatsapp_number",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "person",
+          "user_id",
+          "last_contacted_whatsapp_number"
+        ]
+      },
+      "indexed": true
     },
     {
       "name": "person_name",
@@ -72,6 +108,11 @@
     {
       "name": "visit_timestamp",
       "type": "number"
+    },
+    {
+      "name": "home_test_drive",
+      "type": "bool",
+      "default": false
     },
     {
       "name": "purpose_of_visit",

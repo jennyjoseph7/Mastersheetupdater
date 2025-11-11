@@ -22,7 +22,7 @@
         },
         {
             "name" : "agent_name",
-            "type" : "name",
+            "type" : "text",
             "required": true,
             "indexed" : true
         },
@@ -37,10 +37,50 @@
         {
             "name" : "email",
             "type" : "text",
+            "required": true,
+            "default": "noreply@setemailofuser.com",
             "constraint": {
                 "function": "email_validator"
             },
             "indexed": true
+        },
+        {
+            "name": "password",
+            "type": "password",
+            "required": true,
+            "default": {
+                "function": "make_view_id",
+                "args": [
+                    8
+                ],
+                "kwargs": {
+                    "make_unique": false
+                }
+            },
+            "constraint": {
+                "function": "password_validator",
+                "args": [
+                    8
+                ],
+                "kwargs": {
+                    "check_digit": true,
+                    "check_case": true
+                }
+            }
+        },
+        {
+            "name": "password_expiry",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": "password",
+            "required": true,
+            "default": {
+                "function": "add_time",
+                "args": [
+                    "updated",
+                    2592000
+                ]
+            }
         },
         {
             "name" : "role",
@@ -58,12 +98,12 @@
         },
         {
             "name" : "active",
-            "type" : "boolean",
+            "type" : "bool",
             "default": true
         },
         {
             "name" : "engaged",
-            "type" : "boolean",
+            "type" : "bool",
             "default" : false
         },
         {
