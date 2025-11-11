@@ -1,110 +1,148 @@
 import json
 import os
-from ai_service import ai_service_app
 import re
+from datetime import datetime
+from ai_service import ai_service_app
+
 try:
     from .base_agent import BaseAgent, gryd
 except ImportError:
-    from base_agent import BaseAgent, gryd
+    from base_agent import BaseAgent, gryd 
 
 
-
-class TemplateCreatorAgent(BaseAgent):
+class WhatsappTemplateCreatorAgent(BaseAgent):
     """
-    Generates WhatsApp template_name, template_message and buttons
-    using structured CRM + prompt metadata.
+    This agent creates templates for whatsapp business. The input will be like : {
+      campaign_type: "pre-sale"
+      campaign_objective: "Exchange / Loyalty Bonus Offer"
+      dealership_idea: {
+        languages: ["English"]
+        campaign_offer: "₹10,000 exchange bonus" }
+
+    }  
+
+    and output will be like :
+    {
+    "template_name": "Autobot_PreSale_Upgrade_Offer_v1",
+    "template_message": "Hello {{person_name}}! Thinking about upgrading your {{current_car_model}} ({{current_car_age}} old)? We have an exclusive offer on the {{interested_model}} valid until {{offer_validity}}. Visit us at {{nearest_dealership}} to explore details: {{offer_details}}!",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Exchange Old Car"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Test Drive"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_button_payloads": [
+        "autobot_presale_upgrade_offer_v1-exchange_old_car",
+        "autobot_presale_upgrade_offer_v1-book_a_test_drive",
+        "autobot_presale_upgrade_offer_v1-request_a_call_back"
+    ]
+}
+
     """
 
-    def __init__(self, source=None):
-        super().__init__(source=source)
-        self.source = source or {}
+    def __init__(self, source, **kwargs):
+        super().__init__(**kwargs)
+
+        print(f"Kwargs are {kwargs}")
+        
+        # Validate source
+        if not source or not isinstance(source, dict):
+            raise ValueError("source must be a non-empty dictionary")
+        
+        self.source = source
+        print(source)
+        self.campaign_type = source.get("campaign_type","")
+        self.campaign_objective = self._validate_campaign_objective(source.get("campaign_objective"))
+        self.input_data = source.get("data",{})
+        self.dealership_id = source.get("dealership_id", "")
+        self.languages = self._validate_languages(source.get("languages", ["english"]))
+        self.cta_buttons = source.get("cta_buttons", ["Get a Call Back"])
+        self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
+
         self.model_identifier = "gcp-gemini-2.5-flash-lite"
 
-    def run(self):
-        ai_prompt = self._build_prompt(self.source)
-        ai_response = ai_service_app.get_llm_response(
-                messages=ai_prompt,
-                model_identifier=self.model_identifier
-            )
+    def _validate_campaign_objective(self, objective):
+        """Validate campaign objective."""
+        if not objective:
+            raise ValueError("campaign_objective is required in source data")
+        return objective
 
-        parsed = self._parse_ai_response(ai_response)
-        final = self._assemble_output(self.source, parsed)
-        return final
+    def _validate_languages(self, languages):
+        """Ensure languages is always a list."""
+        if isinstance(languages, str):
+            return [languages]
+        elif isinstance(languages, list):
+            return languages
+        else:
+            return ["english"]
 
-    def _build_prompt(self, data : dict):
+    def _build_prompt(self):
         """
         Constructs the AI prompt based on the pre-defined schema.
-
+        Follows the same pattern as CampaignIdeaCreatorAgent.
         """
-        language = data.get("languages",["English"])[0]
+        language = self.languages[0]
 
-        master_prompt = f"""
-          "prompt_name": "Autobot WhatsApp Template Generator v2",
-          "version": "2.0",
-          "author": "DaveAI Prompt Engineering Team", 
-          "description": "Schema-driven WhatsApp template generation prompt for automotive BDC automation. Uses CRM attributes to generate contextual WhatsApp message templates without explicit journey state.",
-          "role": "You are an automotive sales and BDC communication specialist. You craft personalized WhatsApp message templates for car dealerships using structured CRM data.",
-          "objective": This is the campaign objective and the template should be according to this : {json.dumps(data.get("campaign_objective",""))},
-          "language" : These are the languages, default is english but if there are more languages then you'll be generating the template in the language : {language}
-          "input data": These are the variables {json.dumps(data.get("data",{}))}" This data contains the attributes and the description of the attribute, You'll be using it to write the body message.",
-          "campaign_type" : {json.dumps(data.get("campaign_type",""))}
-          "generation_rules": [
-            "Interpret the context using lead_source, campaign_type, objective, and previous_interaction_details.",
-            "Determine tone and message goal from sentiment_score, user_remark, and emotions.",
-            "Use 2-4 attributes for personalization; do not overpopulate." The ,
-            "Craft the message to be under 400 characters, formatted for WhatsApp readability.",
-            "Avoid yes/no questions and hyperlinks.",
-            "Always end with a motivating close and include 2-3 CTAs from the approved list."
-          ],
-          "cta_library": [
-            "Download Brochure",
-            "Compare Variants",
-            "Compare with Other Brands",
-            "Book a Test Drive",
-            "Book a Showroom Visit",
-            "Locate a Showroom",
-            "Request a Call Back",
-            "Confirm Booking",
-            "Exchange Old Car"
-          ] 
-          - If there might some previously generated cta buttons. 
-          -  You'll get those previously generated cta buttons here in this list : {json.dumps(data.get("cta_buttons",[]))} Just directly put these in the "suggested_ctas" without changeing anything. They maynot be in the cta_library, don't worry for that. Just put them directly.
-          - If cta buttons are/is already there in the input, Do not generate/add a new one. Only return those.
-          - If the list is empty then you'll retuen 2-3 relevant ctas in "suggested_ctas" according to the relevancy of the overall template but "Request a Call Back" will be always there in the list.
-        """
+        system_prompt = f"""
+        You are an intelligent WhatsApp Template Generator Autobot for automotive dealership campaigns.
 
+        Important rules (follow exactly):
+        1. OUTPUT: Return a single valid JSON object and nothing else (no prose, no code fences).
+        2. KEYS: The JSON object MUST contain exactly these keys (no others):
+           - template_name: string, It should be relevant to the type and objective.
+           - template_text: string , This is the main message, use the attributes of data to create the template and the message will be as the objective and type of the campaign 
+           - attributes_used: array of strings
+           - suggested_ctas: array of strings
 
-        user_prompt = """
-        You are a WhatsApp template generator agent. Check the system_prompt for your task. Its just a template
+        3. TYPES & CONSTRAINTS:
+           - The language you'll be using to generate template_text must be colloquial {language}
+           - template_name: descriptive name related to campaign (use underscores, no spaces)
+           - template_text: personalized message using 2-4 attributes with {{placeholders}}, under 400 characters
+           - attributes_used: array of attribute names actually used in template_text
+           - suggested_ctas: array of 2-3 CTA buttons
 
-        Example I am giving you: Do not generate the same one
-        example input  : data = {
-                "person_name": "string",
-                "model_preference" : "string",
-                "dealer_name":"string",
-                "brand_perception": "string"...
-        } you'll get many more attributes and description, Just use the relevant ones to generate the template. 
-         
-        "output_format": {
-            "template_name": "string",
-            "template_text": "string",
-            "attributes_used": ["string"],
-            "suggested_ctas": ["string"],
-          } Do not change the attribute names.
+        4. CTA HANDLING:
+           - If existing CTA buttons are provided: {self.cta_buttons}
+           - If no CTA buttons provided, generate 2-3 relevant CTAs including "Request a Call Back"
+           - CTA library: ["Download Brochure", "Compare Variants", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Confirm Booking", "Exchange Old Car"]
 
-        "example_output": {
-            "template_name": "Autogenerated WhatsApp Template",
-            "template_text": "Hi {{person_name}}, thanks for exploring the {{model_preference}}! Our team at {{dealer_name}} has curated variant and offer details to help you choose the right fit. Let’s take the next step together.",
-            "attributes_used": ["person_name", "model_preference", "dealer_name"],
-            "suggested_ctas": ["Book a Test Drive", "Compare Variants", "Schedule a Call Back"]
-          } This example_output is just an example, don't generate the exact one, Just consider this as an example only. The inputs are there in the system prompt as "input_schema/CRM Data/ input data" and other things are also there for your reference. Take and create a new one according to the data. Never return everything inside just template_message, Use the example_output properly. template_name will be related to campaign objective and campaign type.
+        5. CONTEXT:
+           - Campaign Objective: {self.campaign_objective}
+           - Campaign Type: {self.campaign_type}
+           - Available Data: 
 
+        6. PRESERVATION: Use the existing CTA buttons if provided, otherwise generate relevant ones.
+        7. NO NULLS/EMPTY: Never output null, empty string, or empty list for any field.
+        8. FORMAT: Keep template_text conversational and WhatsApp-friendly.
+
+        If you understand, respond with the single JSON object that follows these rules.
         """
 
+        user_prompt = f"""
+        Generate a WhatsApp message template using the provided campaign context and data.
 
-        return [{"role": "system", "content": master_prompt},
-                {"role": "user", "content": user_prompt}]
+        Campaign Objective: {self.campaign_objective}
+        Campaign Type: {self.campaign_type}
+        Available Customer Data: {self.input_data}
+        Preferred CTA Buttons: {self.cta_buttons}
 
+        Create an engaging, personalized template that uses relevant customer attributes.
+        Return ONLY the JSON object with the required fields.
+        """
+
+        return [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+    
     def _parse_ai_response(self, text):
         try:
             # Try to parse directly first
@@ -133,34 +171,18 @@ class TemplateCreatorAgent(BaseAgent):
                     "suggested_ctas": ["Request a Call Back"]
                 }
 
-
-    def _assemble_output(self, source, generated):
+    def _assemble_output(self, generated):
         buttons = []
-        template_button_payloads = []
+        template_button_payloads=[]
+        template_name = generated.get("template_name", "").lower().strip().replace(" ", "_").replace("-", "_")
 
-        template_name = (
-            generated.get("template_name", "").lower().strip().replace(" ", "_").replace("-", "_")
-        )
+        for cta in generated.get("suggested_ctas", []):
+            buttons.append({"type": "QUICK_REPLY", "text": cta})
+            slug = (
+            cta.lower().strip().replace(" ", "_").replace("-", "_"))
 
-        suggested_ctas = generated.get("suggested_ctas", [])
+            template_button_payloads.append(f"{template_name}-{slug}")
 
-        # Override buttons if source has custom CTA list
-        if "cta_buttons" in source and isinstance(source["cta_buttons"], list):
-            buttons = [
-                {"type": "QUICK_REPLY", "text": cta}
-                for cta in source["cta_buttons"]
-            ]
-            for cta in source["cta_buttons"]:
-                slug = cta.lower().strip().replace(" ", "_").replace("-", "_")
-                template_button_payloads.append(f"{template_name}-{slug}")
-        else:
-            buttons = [
-                {"type": "QUICK_REPLY", "text": cta}
-                for cta in suggested_ctas
-            ]
-            for cta in suggested_ctas:
-                slug = cta.lower().strip().replace(" ", "_").replace("-", "_")
-                template_button_payloads.append(f"{template_name}-{slug}")
 
         return {
             "template_name": generated.get("template_name"),
@@ -168,66 +190,102 @@ class TemplateCreatorAgent(BaseAgent):
             "buttons": buttons,
             "template_button_payloads": template_button_payloads
         }
+    
+
+    def run(self):
+        """Executes template generation and returns final result."""
+        try:
+            self.logger.info("Starting WhatsApp template generation...")
+            self.logger.info(f"Source data: {json.dumps(self.source, indent=2)}")
+
+            # Generate template data
+            generated_data = ai_service_app.get_llm_response(
+                messages= self._build_prompt(),
+                model_identifier=self.model_identifier
+            )
+
+            generated_data = self._parse_ai_response(generated_data)
+            
+            # Assemble final output
+            final_output = self._assemble_output(generated_data)
+            
+            self.logger.info("Template generation completed successfully")
+            self.logger.info(f"Generated template: {final_output['template_name']}")
+            
+            return final_output
+            
+        except Exception as e:
+            self.logger.error(f"Template generation failed: {str(e)}")
+            raise
+
 
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 
-# @gryd.is_a_task('generate_whatsapp_template',logger_param='logger',job_param='job')
-# def generate_whatsapp_template(user_data=None, logger=None, job=None):
-#     """
-#     Gryd task wrapper for template generation.
-#     Matches the structure of your existing worker patterns.
-#     """
-
-#     logger = logger or gryd.hp.get_logger(__name__)
-#     logger.info("Generating WhatsApp template using CRM data...")
-
-#     user_data = user_data or {}
-
-#     # Instantiate agent
-#     agent = TemplateCreatorAgent(source=user_data)
-
-#     # Generate output
-#     result = agent.run()
-
-#     logger.info(f"Template generation completed: {result}")
-
-#     # posting logic, if needed later
-#     dim = gryd.base_model.Model('template', AUTOCRM_APP_ENTERPRISE_ID)
-#     dim.post(result)
-
-#     return result
-
 @gryd.is_a_task('generate_whatsapp_template', logger_param='logger', job_param='job')
-def generate_whatsapp_template(user_data=None, logger=None, job=None):
+def generate_whatsapp_template(*args, logger=None, job=None, **kwargs):
     logger = logger or gryd.hp.get_logger(__name__)
     logger.info("Creating WhatsApp template using CRM data...")
 
     try:
-        user_data = user_data or {}
-        logger.info(f"Incoming CRM data: {user_data}")
-        
-        # Instantiate TemplateCreatorAgent
-        agent = TemplateCreatorAgent(source=user_data)
+        user_data = kwargs or {}
+
+        if not isinstance(user_data, dict):
+            logger.error("Invalid user_data type. Expected dict.")
+            raise ValueError("user_data must be a dictionary")
+
+        logger.info(f"Incoming template data: {user_data}")
+
+        agent = WhatsappTemplateCreatorAgent(source=user_data, logger=logger)
         logger.info("Running template generation agent...")
 
         result = agent.run()
-
-        logger.info(f"Template generated successfully: {result}")
-
-        # Post to database only if enterprise_id exists
-        try:
-            dim = gryd.base_model.Model('templates', AUTOCRM_APP_ENTERPRISE_ID)
-            logger.info(f"Posting result to model 'templates' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
-
-            dim.post(result)
-
-            logger.info("Post completed successfully!")
-        except Exception as db_error:
-            logger.info(f"Failed posting to Gryd model: {db_error}")
+        logger.info("Template generated successfully")
 
         return result
 
     except Exception as e:
-        logger.info(f"WhatsApp template generation failed: {str(e)}")
+        logger.error(f"WhatsApp template generation failed: {str(e)}")
         raise
+
+
+# @gryd.is_a_task('generate_whatsapp_template', logger_param='logger', job_param='job')
+# def generate_whatsapp_template(*args,user_data=None, logger=None, job=None,**kwargs):
+#     """
+#     Gryd task wrapper for template generation.
+#     Matches the structure of CampaignIdeaCreatorAgent.
+#     """
+#     logger = logger or gryd.hp.get_logger(__name__)
+#     logger.info("Creating WhatsApp template using CRM data...")
+
+#     try:
+#         user_data = user_data or {}
+        
+#         # Validate input structure
+#         if not isinstance(user_data, dict):
+#             logger.error("Invalid user_data type. Expected dict.")
+#             raise ValueError("user_data must be a dictionary")
+
+#         logger.info(f"Incoming template data: {user_data}")
+        
+#         # Instantiate TemplateCreatorAgent with proper structure
+#         agent = WhatsappTemplateCreatorAgent(source=user_data, logger=logger)
+#         logger.info("Running template generation agent...")
+
+#         result = agent.run()
+#         logger.info("Template generated successfully")
+
+#         # Post to database
+#         #try:
+#             #dim = gryd.base_model.Model('templates', AUTOCRM_APP_ENTERPRISE_ID)
+#             #logger.info(f"Posting result to model 'templates' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
+#             #dim.post(result)
+#             #logger.info("Post completed successfully!")
+#         #except Exception as db_error:
+#             #logger.error(f"Failed posting to Gryd model: {db_error}")
+
+#         return result
+
+#     except Exception as e:
+#         logger.error(f"WhatsApp template generation failed: {str(e)}")
+#         raise
 
