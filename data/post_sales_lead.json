@@ -168,6 +168,33 @@
             "force_update": "dealership_id"
         },
         {
+            "name": "region_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "region_id"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "dealership_id"
+        },
+        {
+            "name": "region_name",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "region",
+                    "region_id",
+                    "region_name"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "dealership_id",
+            "indexed": true
+        },
+        {
             "name": "campaign_id",
             "type": "uid",
             "required": false,

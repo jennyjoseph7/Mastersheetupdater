@@ -63,7 +63,7 @@
         },
         {
             "name": "billing_address",
-            "refers": "parents.dealership.dealership_address"
+            "refers": "parents.dealership.billing_address"
         },
         {
             "name": "billing_contact_name",
