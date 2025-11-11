@@ -3,7 +3,7 @@ from gryd_worker.gryd_routes import payload_decorator
 from models import model as base_model
 from ai_service import ai_service_app
 # from communication.connectors.connector_whatsapp import process_forwarded_webhook
-# from db_routes import db_routes
+from db_routes import db_routes
 #from voice import process_webhook
 import os
 from flask import request
@@ -86,6 +86,6 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
 
 if __name__ == "__main__":
     app.register_blueprint(ai_service_app.ai_service_routes)
-    # app.register_blueprint(db_routes)
+    app.register_blueprint(db_routes)
     app.run(debug=True, host=app_dict['host'], port=app_dict['port'])
 

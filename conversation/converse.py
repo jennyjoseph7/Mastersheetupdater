@@ -250,11 +250,12 @@ def post_messages_data(*args, **pass_kwargs):
         Picks up all messages sent and posts it to message model
     '''
     with get_pg_connector() as pg:
-        pg.update("message","message_id",message_id,{"reply_to":pass_kwargs.get("reply_to"),"message_id":message_id,"message":message.get("placeholder"),"session_id":pass_kwargs.get("session_id")})
-
+        first_message = pg.update("message","message_id",message_id,{"reply_to":pass_kwargs.get("reply_to"),"message_id":message_id,"message":message.get("placeholder"),"session_id":pass_kwargs.get("session_id")})
+        mlogger.info("first_message {}".format(first_message))
         for message in pass_kwargs.get("responses"):
-            message_id = str(gryd.hp.make_uuid3(time.time(),pass_kwargs.get("session_id"),message.get("intent"),message.get("placeholder")))
-            pg.update("message","message_id",message_id,{"reply_to":pass_kwargs.get("reply_to"),"message_id":message_id,"message":message.get("placeholder"),"session_id":pass_kwargs.get("session_id")})
+            message_id = str(gryd.hp.make_uuid3(hp.time(),pass_kwargs.get("session_id"),message.get("intent"),message.get("placeholder")))
+            respper = pg.update("message","message_id",message_id,{"reply_to":pass_kwargs.get("reply_to"),"message_id":message_id,"message":message.get("placeholder"),"session_id":pass_kwargs.get("session_id")})
+            mlogger.info("respper {}".format(respper))
     pass    
 
 @gryd.is_a_task()
