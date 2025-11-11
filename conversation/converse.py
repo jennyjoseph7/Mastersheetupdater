@@ -203,13 +203,7 @@ def prune_response( response, *args, **kargs):
     if request_data.get("channel") in ["whatsapp_chat"]:
         response_task_data = request_data.get("temporary_data",{}).get("channel_response_task",{})
         ret =  {"temporary_data": response_task_data.get("kwargs",{})}
-        response = {
-            "placeholder":resp_message,
-            "intent" : "agent_one",
-            "message_id" : str(hp.time()),
-            "is_last":False,
-            "index" : 1
-        }
+        
         ret["response"] = response
         logger.info("sending response to task {}".format(ret))
         # x = gryd.yield_results({"task": response_task_data.get("task"),"service": response_task_data.get("service"),"kwargs" : ret})

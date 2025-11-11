@@ -9,7 +9,7 @@ class AutoCRMPGConnector(db.GrydPGConnector):
         super().__init__(enterprise_id, *args, **kwargs)
     
     def update(self, table_name, id_attr, id, data, additional = "", additional_values = None):
-        super().update(table_name, id, data, id_attr, additional, additional_values) 
+        return super().update(table_name, id, data, id_attr, additional, additional_values) 
     def get(self, table_name, id_attr, id):
 
         if table_name == "pre_sales_campaign":
@@ -185,7 +185,7 @@ class AutoCRMPGConnector(db.GrydPGConnector):
     "cost_per_lead": 0
   }
             }
-        super().get(table_name, id, id_attr) 
+        return super().get(table_name, id, id_attr) 
     def list(self, table_name, where):
         where  = "WHERE dict @> '{}'".format(json.dumps(where))
-        super().list(table_name, where)
+        return super().list(table_name, where)
