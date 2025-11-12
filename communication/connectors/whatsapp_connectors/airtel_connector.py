@@ -1,6 +1,6 @@
 from connectors.whatsapp_connectors.source_connectors import *
 # from captcha.image import ImageCaptcha
-from PIL import Image
+# from PIL import Image
 class AirtelWebhookConverter(BaseWebhookConverter):
     logger.info("AirtelWebhookConverter initialized")
     def __init__(self,whatsapp_provider,*args,**kwargs)-> None:
