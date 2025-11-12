@@ -71,9 +71,12 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>", methods = ["GET","POST"])
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>/<conversation_id>", methods = ["GET","POST"])
 def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID, conversation_id = None):
+    payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
+    language = payload.get("language", "english")
+    logger.info(f"Webhook received for channel={channel}, provider={channel_provider}, enterprise={enterprise_id}, conversation={conversation_id}, language={language}")
     if channel in ["whatsapp", "whatsapp_chat", "whatsapp_voice_note", "whatsapp_voice_call"]:
-        # .... do the stuff ....
-        pass
+        arg_d=(channel, conversation_id)
+        gryd.create_async_task("process_forwarded_webhook", "autocrm-communication",args=arg_d , kwargs=payload)
     elif channel == "email":
         #.... do the stuff .... 
         pass

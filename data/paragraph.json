@@ -45,44 +45,30 @@
             "refers":"parents.document.document"
         },
         {
-            "required":false,
-            "auto_updater":true,
             "name":"document_tags",
             "refers":"parents.document.document_tags"
         },
         {
-            "required":false,
-            "auto_updater":true,
             "name":"brand_affiliations",
             "refers":"parents.document.brand_affiliations"
         },
         {
-            "required":false,
-            "auto_updater":true,
             "name":"oem_affiliations",
             "refers":"parents.document.oem_affiliations"
         },
         {
-            "required":false,
-            "auto_updater":true,
             "name":"dealership_affiliations",
             "refers":"parents.document.dealership_affiliations"
         },
         {
-            "required":false,
-            "auto_updater":true,
             "name":"vehicle_affiliations",
             "refers":"parents.document.vehicle_affiliations"
         },
         {
-            "required":false,
-            "auto_updater":true,
             "name":"model_year_affiliations",
             "refers":"parents.document.model_year_affiliations"
         },
         {
-            "required":false,
-            "auto_updater":true,
             "name":"variant_affiliations",
             "refers":"parents.document.variant_affiliations"
         },

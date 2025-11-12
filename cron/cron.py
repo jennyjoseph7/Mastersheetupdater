@@ -55,7 +55,12 @@ def create_campaign_ideas_for_dealerships(
             logger.info(f"Creating campaign ideas for dealership: {dealership['dealership_id']} with campaign_type: {campaign_type}")
             for campaign_objective in campaign_objectives[campaign_type]:
                 logger.info(f"Creating campaign idea for dealership: {dealership['dealership_id']} with campaign_type: {campaign_type} and campaign_objective: {campaign_objective}")
-                dealership_idea = create_campaign_idea(dealership_id=dealership['dealership_id'], campaign_type=campaign_type, campaign_objective=campaign_objective, logger=logger, job=job)
+                languages = dealership.get('languages', ['English'])
+                dealership_id = dealership['dealership_id']
+                kwargs = {'dealership_id': dealership_id, 'languages': languages}
+                dealership_idea = gryd.await_result(
+                    'generate_campaign_idea',AUTOCRM_AGENT_SERVICE_NAME, args=[campaign_type, campaign_objective], kwargs=kwargs, gryd_logger=logger, job_param=job
+                )
                 if dealership_idea:
                     created_idea_count += 1
                 created_idea_count += 1
@@ -63,28 +68,19 @@ def create_campaign_ideas_for_dealerships(
         "created_idea_count": created_idea_count,
     }
 
-
-@gryd.is_a_task(logger_param='logger', job_param='job')
-def create_campaign_idea(dealership_id:str, campaign_type:str, campaign_objective:str, languages:Union[List[str], None]=None, logger=None, job=None, *args, **kwargs) -> Dict[str, Any]:
-    """
-    This task creates a campaign idea for a dealership.
-    Args:
-        dealership_id (str): The id of the dealership.
-        campaign_type (str): The type of campaign to create. Must be one of the campaign_types in the campaign_objectives dict.
-        campaign_objective (str): The objective of the campaign to create. Must be one of the campaign_objectives in the campaign_objectives dict.
-        languages (list): The languages to create the campaign idea in. If not provided, will use the default languages for the dealership.
-        return (dict): The dealership idea created.
-        logger (Logger): The logger to use.
-        job (Job): The job to use.
-        *args: The arguments to pass to the task.
-        **kwargs: The keyword arguments to pass to the task.
-    """
+@gryd.is_a_task('create_campaign_templates', logger_param='logger', job_param='job')
+def create_campaign_templates(logger=None, job=None):
     logger = logger or mlogger
-    dealership_idea_model = gryd.base_model.Model('dealership_idea', AUTOCRM_APP_ENTERPRISE_ID)
-    kwargs.update({'dealership_id': dealership_id, 'languages': languages})
-    logger.info(f"Creating campaign idea for dealership: {dealership_id} with campaign_type: {campaign_type} and campaign_objective: {campaign_objective} and languages: {languages}")
-    dealership_idea = gryd.await_result(
-        'generate_campaign_idea',AUTOCRM_AGENT_SERVICE_NAME, args=[campaign_type, campaign_objective], kwargs=kwargs, gryd_logger=logger, job_param=job
-    )
-    logger.info(f"Campaign idea created for dealership: {dealership_id} with campaign_type: {campaign_type} and campaign_objective: {campaign_objective} and languages: {languages}")
-    return dealership_idea_model.post(dealership_idea)
+    communication_provider_model = gryd.base_model.Model('communication_provider', AUTOCRM_APP_ENTERPRISE_ID)
+    communication_providers = communication_provider_model.yield_list()
+    for communication_provider in communication_providers:
+        logger.info(f"Creating campaign templates for communication provider: {communication_provider['communication_provider_id']}")
+        communication_credential_model = gryd.base_model.Model('communication_credential', AUTOCRM_APP_ENTERPRISE_ID)
+        communication_credentials = communication_credential_model.yield_list(communication_provider_id=communication_provider['communication_provider_id'])
+        for communication_credential in communication_credentials:
+            communication_credential_id = communication_credential['communication_credential_id']
+            communication_credential_name = communication_credential['communication_credential_name']
+            communication_credential_channel = communication_credential['communication_credential_channel']
+            communication_credential_sender = communication_credential['communication_credential_sender']
+            communication_credential_region_name = communication_credential['communication_credential_region_name']
+            communication_credential_dealer_name = communication_credential['communication_credential_dealer_name']

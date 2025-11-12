@@ -131,3 +131,74 @@ These values are stored in the **message model** under each person’s session.
 ---
 
 
+--------------------------------------------------------
+
+# Application Structure and Workflow
+
+## 1. `communication_worker.py`
+- Entry point for starting the communication worker.
+- Loads communication configurations.
+- Initializes the worker environment.
+
+## 2. `communication_server.py`
+- Runs the communication server.
+
+## 3. `communication_configs.py`
+- Initializes the Gryd service.
+- Imports `grydConfig` and `i2ceHeaders` from `AppConfig`.
+- Loads all configurations and environment variables.
+
+> **Note:** After loading all modules, `base_connector_communication.py` is imported. Previously loaded tasks are reused instead of reloading.
+
+## 4. `base_connector_communication.py`
+- Main orchestration module for all communication channels.
+- Manages multiple communication mediums, currently focusing on WhatsApp.
+
+### WhatsApp
+- Handles incoming messages via:
+  - Webhook
+  - Converse
+- Supports multiple WhatsApp providers:
+  1. Airtel
+  2. Meta
+  3. RML
+  4. GupShup
+  5. Concord (specific projects)
+
+> **Note:** The system can also support other channels like Email through additional connectors.
+
+## 5. `connector_whatsapp.py`
+- Contains all Gryd-specific tasks related to WhatsApp communication.
+- Acts as a bridge between the orchestration layer and provider-specific implementations.
+
+## 6. `Whatsapp_connectors/`
+- Contains provider-specific WhatsApp implementations.
+- Example: Airtel connector for handling sending, receiving, and webhooks.
+- Makes it easy to add new WhatsApp providers without modifying core modules.
+
+## 7. Source Connectors
+- Handles extraction of user data from external sources.
+Currently implemented: Airtel.
+
+> **Summary Workflow:**
+> 1. Worker starts via `communication_worker.py` → loads configs → initializes environment.
+> 2. Server runs via `communication_server.py` → handles requests/webhooks.
+> 3. Messages are routed through `base_connector_communication.py` → WhatsApp messages are processed via `connector_whatsapp.py` → provider-specific logic in `Whatsapp_connectors`.
+> 4. Source Connectors extract user data and trigger communications through the orchestration layer.
+
+
+
+--------------------------------------------------------
+
+To run give the steps for both communication repo and autobot_agents/communication repo---
+
+
+
+
+-------------------------------------------------------
+
+update_model_record - function in dbConnector 
+copy of communication repo is added to personal folder (nov 11)
+
+
+check what is static folder.
