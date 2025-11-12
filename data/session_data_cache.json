@@ -35,8 +35,8 @@
             "id": true
         },
         {
-            "name" : "history",
-            "type" : "object_list"
+            "name" : "data",
+            "type" : "nested_object"
         }
     ]
 }
