@@ -100,11 +100,7 @@
     },
     {
       "name": "operating_hours",
-      "type": "nested_object",
-      "dict_keys": [
-        "opening_time",
-        "closing_time"
-      ]
+      "type": "nested_object"
     },
     {
       "name": "days_open",

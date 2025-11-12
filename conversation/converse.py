@@ -106,6 +106,7 @@ def converse(*args, **kargs):
 
     if request_data.get("channel") in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"] and not request_data.get("orchestrate"):
         yield from yield_primary_prompt(*args, **pass_kwargs)
+        return
     do_orchestrate = True
     for ppresp in execute_primary_prompt(*args, **pass_kwargs):
         if isinstance(ppresp,dict):
