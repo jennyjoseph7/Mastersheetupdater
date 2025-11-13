@@ -1,3 +1,4 @@
+from calendar import c
 import os
 import sys
 from os.path import dirname, abspath, join as joinpath
@@ -70,17 +71,69 @@ def create_campaign_ideas_for_dealerships(
 
 @gryd.is_a_task('create_campaign_templates', logger_param='logger', job_param='job')
 def create_campaign_templates(logger=None, job=None):
+    """
+    This task creates campaign templates for all communication providers.
+    Args:
+        logger (Logger): The logger to use.
+        job (Job): The job to use.
+    Returns:
+        dict: The number of campaign templates created.
+    """
     logger = logger or mlogger
-    communication_provider_model = gryd.base_model.Model('communication_provider', AUTOCRM_APP_ENTERPRISE_ID)
-    communication_providers = communication_provider_model.yield_list()
-    for communication_provider in communication_providers:
-        logger.info(f"Creating campaign templates for communication provider: {communication_provider['communication_provider_id']}")
-        communication_credential_model = gryd.base_model.Model('communication_credential', AUTOCRM_APP_ENTERPRISE_ID)
-        communication_credentials = communication_credential_model.yield_list(communication_provider_id=communication_provider['communication_provider_id'])
-        for communication_credential in communication_credentials:
-            communication_credential_id = communication_credential['communication_credential_id']
-            communication_credential_name = communication_credential['communication_credential_name']
-            communication_credential_channel = communication_credential['communication_credential_channel']
-            communication_credential_sender = communication_credential['communication_credential_sender']
-            communication_credential_region_name = communication_credential['communication_credential_region_name']
-            communication_credential_dealer_name = communication_credential['communication_credential_dealer_name']
+    communication_credentials_model = gryd.base_model.Model('communication_credential', AUTOCRM_APP_ENTERPRISE_ID)
+    dealership_model = gryd.base_model.Model('dealership', AUTOCRM_APP_ENTERPRISE_ID)
+    # For all dealerships registered on whatsapp or whatsapp_chat, create campaign templates for them.
+    for communication_credential in communication_credentials_model.yield_list(channel in ["whatsapp_chat", "whatsapp"]):
+        dealership_id = communication_credential['dealership_id']
+        dealer_name = communication_credential['dealer_name']
+        communication_provider_id = communication_credential['communication_provider_id']
+        provider_name = communication_credential['provider_name']
+        channel = communication_credential['channel']
+        post_sales_campaign_model = gryd.base_model.Model('post_sales_campaign', AUTOCRM_APP_ENTERPRISE_ID)
+        pre_sales_campaign_model = gryd.base_model.Model('pre_sales_campaign', AUTOCRM_APP_ENTERPRISE_ID)
+        default_campaign_objectives = {
+            'post-sales': post_sales_campaign_model._model_ref.attributes['campaign_objective'].options,
+            'pre-sales': pre_sales_campaign_model._model_ref.attributes['campaign_objective'].options
+        }
+        logger.info(f"Creating campaign templates for dealer {dealer_name} for provider {provider_name} on channel {channel}")
+        for campaign_type in ["pre-sales", "post-sales"]:
+            campaign_objectives = default_campaign_objectives[campaign_type]
+            for campaign_objective in campaign_objectives:
+                logger.info(f"Creating campaign template for dealer {dealer_name} for provider {provider_name} on channel {channel} for campaign type {campaign_type} and campaign objective {campaign_objective}")
+                dealership = dealership_model.get(dealership_id)
+                languages = dealership.get('languages', ['English'])
+                kwargs = {'dealership_id': dealership_id, 'languages': languages}
+                default_attributes = {
+                    "pre-sales": {
+                        "campaign_type": campaign_type,
+                        "campaign_objective": campaign_objective,
+                        "dealership_id": dealership_id,
+                        "languages": languages,
+                    },
+                    "post-sales": {
+                        "campaign_type": campaign_type,
+                        "campaign_objective": campaign_objective,
+                        "dealership_id": dealership_id,
+                        "languages": languages
+                    }
+                },
+                template_required_attributes = {
+                    "pre-sales": ["dealer_name", "showroom_full_name", "person_name", "vehicle_category"],
+                    "post-sales": ["dealer_name", "workshop_full_name", "reg_number", "vehicle_model", "vehicle_category"]
+                }
+                template_optional_attributes = {
+                    "pre-sales": [
+                        'last_session_channel', 'last_session_status', "last_session_timestamp", 
+                        "brand_preference", "model_preference", "variant_preference", "color_preference", 
+                        "engine_type_preference", "transmission_preference", "range_preference", "feature_preferences"
+                    ],
+                    "post-sales": ["vehicle_variant", "vehicle_color", "campaign_offer", "vehicle_type", "campaign_offer", "last_session_channel", "last_session_status", "las_session_timestamp"]
+                }
+                campaign_template = gryd.await_result(
+                    'generate_whatsapp_template',AUTOCRM_AGENT_SERVICE_NAME, args=[campaign_type, campaign_objective], kwargs=kwargs, gryd_logger=logger, job_param=job
+                )
+                if campaign_template:
+                    created_template_count += 1
+    return {
+        "created_template_count": created_template_count,
+    }

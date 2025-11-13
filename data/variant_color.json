@@ -169,6 +169,10 @@
       "refers": "parents.color.color_id"
     },
     {
+      "name": "color_name",
+      "refers": "parents.color.color_name"
+    },
+    {
       "name": "finish_type",
       "refers": "parents.color.finish_type"
     },

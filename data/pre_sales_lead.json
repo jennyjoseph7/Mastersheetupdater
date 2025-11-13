@@ -13,6 +13,19 @@
             "required": false
         },
         {
+            "name": "vehicle_category",
+            "required": true,
+            "options": [
+                "Passenger vehicles",
+                "Commercial Vehicles",
+                "Two Wheelers",
+                "Three Wheelers",
+                "Truck",
+                "Bus"
+            ],
+            "default": "Passenger vehicles"
+        },
+        {
             "name": "assigned_to",
             "type": "nested_object"
         },
@@ -86,6 +99,10 @@
             }
         },
         {
+            "name": "geolocation",
+            "type": "geolocation"
+        },
+        {
             "name": "preferred_contact_window",
             "default": {
                 "function": "get_from_model",
@@ -130,17 +147,17 @@
             "list_type": "text"
         },
         {
+            "name": "model_preference",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
             "name": "variant_preference",
             "type": "list",
             "list_type": "text"
         },
         {
             "name": "color_preference",
-            "type": "list",
-            "list_type": "text"
-        },
-        {
-            "name": "model_preference",
             "type": "list",
             "list_type": "text"
         },
@@ -161,6 +178,18 @@
         },
         {
             "name": "feature_preferences",
+            "type": "string_list",
+            "list_type": "text",
+            "ui_element": "tags"
+        },
+        {
+            "name": "competitor_brands",
+            "type": "string_list",
+            "list_type": "text",
+            "ui_element": "tags"
+        },
+        {
+            "name": "competitor_models",
             "type": "string_list",
             "list_type": "text",
             "ui_element": "tags"
@@ -211,12 +240,22 @@
         {
             "name": "brand_perception",
             "type": "text",
+            "option_others": true,
             "options": [
                 "reliable",
                 "luxury",
                 "comfort",
                 "stylish",
-                "innovative"
+                "innovative",
+                "environmentally friendly",
+                "performance oriented",
+                "safety focused",
+                "technology driven",
+                "value for money",
+                "brand loyal",
+                "price sensitive",
+                "quality conscious",
+                "others"
             ]
         },
         {
@@ -240,6 +279,16 @@
         {
             "name": "propensity_scores",
             "type": "nested_object"
+        },
+        {
+            "name": "purchase_life_cycle",
+            "type": "text",
+            "options": [
+                "awareness",
+                "interest",
+                "consideration",
+                "decision"
+            ]
         },
         {
             "name": "prioritization_score",

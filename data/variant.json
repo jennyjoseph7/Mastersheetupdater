@@ -141,6 +141,14 @@
         "ui_element": "select"
     },
     {
+      "name": "vehicle_category",
+      "refers": "parents.model_year.vehicle_category"
+    },
+    {
+      "name": "vehicle_type",
+      "refers": "parents.model_year.vehicle_type"
+    },
+    {
       "name": "year_launched",
       "refers": "parents.model_year.year_launched"
     },

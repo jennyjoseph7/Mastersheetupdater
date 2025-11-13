@@ -144,6 +144,17 @@
             "force_update": "variant_id"
         },
         {
+            "name": "vehicle_color",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant_color",
+                    "variant_color_id",
+                    "vehicle_color"
+                ]
+            }
+        },
+        {
             "name": "reg_number",
             "type": "text",
             "indexed": true
@@ -242,7 +253,7 @@
             }
         },
         {
-            "name": "delivery_date",
+            "name": "original_delivery_date",
             "type": "number",
             "default": {
                 "function": "now_ctime"
