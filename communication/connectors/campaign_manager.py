@@ -274,7 +274,8 @@ class BaseCampaignCreater:
             logger.info(f"once the campaign is triggered I am creating a session---")
             b=BaseWebhookConverter()
             # d=b.check_whatsapp_session_status(**{"user_id":mobile_number,"call_type":"outbound","conversation_id":campaign_details.get("conversation_id"),"enterprise_id":enterprise_id,"campaign_id":campaign_details.get("campaign_id")})
-            d=b.get_or_create_session({"user_id":mobile_number,"call_type":"outbound","conversation_id":campaign_details.get("conversation_id"),"enterprise_id":enterprise_id,"campaign_id":campaign_details.get("campaign_id")})
+            # d=b.get_or_create_session({"user_id":mobile_number,"call_type":"outbound","conversation_id":campaign_details.get("conversation_id"),"enterprise_id":enterprise_id,"campaign_id":campaign_details.get("campaign_id")})
+            d = b.handle_incoming_message(mobile_number)
             logger.info(f"DATA from check_whatsapp_session_status from campaign-----{d}")
             
             session_id=d.get("session_id")
@@ -291,7 +292,7 @@ class BaseCampaignCreater:
                 }
                 logger.info(f"Calling patch person session to update status and dispositon ..")
                 # BaseWebhookConverter().patch_person_session_status(**d)
-                b.update_message_detail()
+                # b.update_message_detail()
     
                 # create a history object by passing the campaign message
                 # if engID:

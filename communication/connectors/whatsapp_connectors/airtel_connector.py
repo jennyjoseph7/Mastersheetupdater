@@ -473,7 +473,7 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
         nested_placeholder = (
             data
                 .get("response", {})
-                .get("placeholder", {})
+                # .get("placeholder", {})
                 .get("placeholder")
         )
 
