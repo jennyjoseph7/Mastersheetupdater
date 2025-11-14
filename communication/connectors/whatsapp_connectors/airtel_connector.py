@@ -124,7 +124,7 @@ class AirtelWebhookConverter(BaseWebhookConverter):
         text, option_id, media_url, media_mime = None, None, None, None
         if message_type == "text":
             text = message.get("text", {}).get("body")
-            logger.info(f"TEST message_text--{text}")
+            # logger.info(f"TEST message_text--{text}")
             
 
         elif message_type == "button":
@@ -464,7 +464,7 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
         start_time = time.time()
         kwargs.update({"processing_start_time":start_time})
 
-        logger.info(f"TEST manage_airtel_api --{json.dumps(kwargs,indent=4)}")
+        # logger.info(f"TEST manage_airtel_api --{json.dumps(kwargs,indent=4)}")
         self.res = {}
 
         data = kwargs.pop("data", {})

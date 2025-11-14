@@ -664,6 +664,7 @@ class BaseWebhookConverter:
             if value in (None, "", [], {}, "null"):
                 continue
             self.default_message_dict[key] = value
+    
     # @timelogger()
     def audio_to_text_converter(self,audio_url,headers=None,recognizer="openai-whisper-online",sample_rate=16000,language="english"):
 
@@ -870,7 +871,7 @@ class BaseWebhookConverter:
         }
         
         webhook_received_time = float(message_dict.get("webhook_received_time",0))
-        logger.info(f"TEST webhook_received_time----{webhook_received_time}")
+        # logger.info(f"TEST webhook_received_time----{webhook_received_time}")
 
         format_box_log({
             "Webbhook Provider": message_dict.get("whatsapp_provider"),
@@ -1058,7 +1059,7 @@ class BaseWebhookConverter:
             "status~": "completed"
         }
         filters = {k: v for k, v in filters.items() if v is not None}
-        logger.info(f"TEST filters for sessions--{filters}")
+        # logger.info(f"TEST filters for sessions--{filters}")
         with get_pg_connector() as pg:
             # sessions = get_objects_by_filter("session", filters)
             sessions= list(pg.list(
@@ -1146,7 +1147,7 @@ class BaseWebhookConverter:
                     payload["dealership_id"] = dealership_id #check with soham
                 session = self.get_or_create_session(payload)
                 
-            logger.info(f"TEST SESSION Data ----- {session}")
+            # logger.info(f"TEST SESSION Data ----- {session}")
             return {
                 **session,
                 "dealership_id":dealership_id
@@ -1168,11 +1169,11 @@ class BaseWebhookConverter:
         Returns:
             dict: Response message indicating the status of the webhook processing.
         """
-        logger.info("TEST process webhook before payload converter----")
+        # logger.info("TEST process webhook before payload converter----")
         self.payload_converter(*args, **kwargs)
         # self.payload_converter(*args, **kwargs["messages"][0])
         
-        logger.info("TEST process webhook after payload converter-")
+        # logger.info("TEST process webhook after payload converter-")
 
         # Schedule campaign status update asynchronously
         # update_campaign_status_params.apply_async(*[kwargs.get("whatsapp_provider"),kwargs.get("enterprise_id")],**kwargs)
