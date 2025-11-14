@@ -6,7 +6,9 @@ import numpy as np
 from urllib.parse import urlparse
 from gensim.models.fasttext import FastText
 import ast
-from ai_service import ai_service, ai_service_app
+from qdrant_client import QdrantClient, models
+import itertools
+from ai_service import ai_service, ai_service_app # type: ignore
 from qdrant_client import models
 from qdrant_client.models import (
     VectorParams,
@@ -56,100 +58,21 @@ model = FastText(
 # client = QdrantClient(host="localhost", port=6333)
 client = QdrantClient(url="http://216.48.189.12:6333")
 
-def upsert_features(collection="autocrm_recommendation"):
-    '''
-    this function will upsert features in qdrant
-    '''
-    def extract_selected_features(metadata: dict):
-        keys_needed = [
-            "comfort_and_convenience",
-            "engine_and_performance",
-            "interior_feature",
-            "exterior_feature",
-            "safety_feature",
-            "technology",
-            "engine"
-        ]
-
-        return {key: metadata.get(key) for key in keys_needed if key in metadata}
 
 
 
-    hits = client.search(
-        collection_name=collection,
-        query_vector=[0.1, 0.1, 0.1,0.1,0.1,0.1,0.1 , 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-        limit=5000
-    )
+def generate_case_permutations(text):
+    tokens = re.findall(r"[A-Za-z]+|[^A-Za-z]+", text)
 
+    variations = []
+    for t in tokens:
+        if t.isalpha():
+            variations.append([t.lower(), t.capitalize()])
+        else:
+            variations.append([t])
 
-
-    for hit in hits:
-        payL = hit.payload
-        metadata = {
-            "id": hit.id,
-            "model":payL.get("model_name",payL.get("product_name")),
-            "brand": payL.get("brand", payL.get("brand_name")),
-            "variant":payL.get("variant_name",""),
-            "metadata": payL,
-        }
-
-
-
-        metadata_=extract_selected_features(metadata=metadata.get("metadata"))
-
-
-        syst,user=car_features_prompt(car_text=metadata_)
-        messages=[
-            {"role": "system", "content": syst},
-            {"role": "user", "content": user}
-        ]
-        agent_to_get_features=ai_service_app.get_llm_response(messages=messages, model_identifier="gcp-gemini-2.5-flash-lite")
-
-        lagent_to_get_featuresst = ast.literal_eval(agent_to_get_features)
-
-        feature_keys=lagent_to_get_featuresst
-
-        client.set_payload(
-            collection_name=collection,
-            payload={"car_features": feature_keys},
-            points=[metadata.get("id")]
-        )
-
-
-
-
-
-
-
-def upsert_dealership(brand_name,dealership_ids,collection="autocrm_recommendation"):
-    '''
-    this will update the dealerships for a particular brand in qdrant'''
-    hits = client.search(
-        collection_name=collection,
-        query_vector=[0.1, 0.1, 0.1,0.1 , 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-        query_filter=Filter(
-            must=[
-                FieldCondition(
-                    key="brand_name",
-                    match=models.MatchAny(any=[brand_name])
-                )
-            ]
-        ),
-        limit=5000
-
-    )
-
-    kd=[]
-    for i in hits:
-        kd.append(i.id)
-
-    client.set_payload(
-        collection_name=collection,
-        payload={
-            "operating_brands": dealership_ids,
-        },
-        points=kd,
-    )
+    output = ["".join(p) for p in itertools.product(*variations)]
+    return list(set(output))
 
 
 
@@ -181,7 +104,7 @@ def extract_json_from_text(text: str):
     except Exception as e:
         logger.exception(f"Unexpected error while extracting JSON: {e}")
         return None
-def get_vec(user_query):
+def get_vec_from_llm(user_query):
     syst,user = car_traits_prompt(user_query)
     messages=[
         {"role": "system", "content": syst},
@@ -198,7 +121,7 @@ def get_vec(user_query):
 def get_vector(raw_dict):
     if any(col in raw_dict for col in key_order):
         try:
-            vec = get_vec(str(raw_dict))
+            vec = get_vec_from_llm(str(raw_dict))
             raw_dict['vector'] = vec
         except Exception as e:
             logger.info("kind of errror"+e)
@@ -214,45 +137,30 @@ def get_collection(collection):
             collection_name=collection,
             vectors_config=VectorParams(size=100, distance=Distance.COSINE),
         )
-import numpy as np
-
-def normalize(v):
-    norm = np.linalg.norm(v)
-    return v / norm if norm != 0 else v
-
-def merge_vectors(vectors):
-    # Normalize each vector
-    normalized = [normalize(v) for v in vectors]
-    # Average
-    merged = np.mean(normalized, axis=0)
-    # Normalize final
-    return normalize(merged)
-
-
-
-
-
 
 class MetadataRecommendation:
     def __init__(self,collection="autobot_summary_test_collection_2",model_identifier="gcp-gemini-2.5-flash-lite"):
+        """
+        Initializes a MetadataRecommendation object.
+
+        Parameters:
+        - collection (str): Qdrant collection name (default: autobot_summary_test_collection_2)
+        - model_identifier (str): LLM model identifier (default: gcp-gemini-2.5-flash-lite)
+
+        Returns:
+        - None
+        """
         get_collection(collection)
         self.collection_name=collection
         self.model_identifier=model_identifier
 
-
-
     def recommend_models(self,inp,default_limit=20):
-
-
         vec=model.wv[inp].tolist()
 
         hits = client.search(
             collection_name=self.collection_name,
             query_vector=vec,
-            limit=default_limit,
-
-        )
-
+            limit=default_limit)
         return [i.payload for i in hits ]
     def fix_by_llm(self, user_input):
         data=self.recommend_models(user_input)
@@ -270,10 +178,6 @@ class MetadataRecommendation:
         
         return output
 
- 
-
-
-
 def extract_json(text: str):
     match = re.search(r"\{.*?\}", text, flags=re.DOTALL)
     if not match:
@@ -288,17 +192,7 @@ def extract_json(text: str):
 
 
 def extract_json_block(text: str):
-    """
-    Extracts structured JSON-like content from text.
 
-    Expected format:
-    {
-      "user_profile": [...],
-      "user_preference": [...]
-    }
-
-    Returns parsed dict or None if not found.
-    """
     try:
         # Try to find JSON-like block in text
         match = re.search(r"\{[\s\S]*\}", text)
@@ -326,8 +220,20 @@ def extract_json_block(text: str):
 
 
 
-
 def get_traits(user_query,model_identifier="gcp-gemini-2.5-flash-lite"):
+
+    """
+    Get car traits from user query using LLM.
+
+    Args:
+        user_query (str): User's input text.
+        model_identifier (str, optional): Model identifier to use for LLM. Defaults to "gcp-gemini-2.5-flash-lite".
+
+    Returns:
+        dict: JSON object containing user's trait scores.
+    """
+
+    
     system_prompt,user_prompt=  prompt_vector_gen(user_query)
     messages=[
         {"role": "system", "content": system_prompt},
@@ -337,20 +243,99 @@ def get_traits(user_query,model_identifier="gcp-gemini-2.5-flash-lite"):
     
     return extract_json(output)
 
+def generate_markdown_clean(data):
+
+    """
+    Generate clean markdown documentation for the car preference configuration.
+
+    Parameters:
+        data (dict): Dictionary containing the car preference configuration data.
+
+    Returns:
+        str: Markdown string containing the documentation.
+
+    The function takes the input data and generates a markdown string that can be used to document the car preference configuration.
+    It iterates through the input data and generates a markdown string with the following format:
+    # Car Preference Configuration Documentation
+
+    ## Section 1
+    ### Key 1
+    - Includes:
+        - Item 1
+        - Item 2
+    ### Key 2
+    - Range: Key 2
+
+    ## Section 2
+    ### Key 1
+    - Includes:
+        - Item 1
+        - Item 2
+    ### Key 2
+    - Range: Key 2
+
+    The function then returns the markdown string as a str object.
+    """
+
+    
+    md = "# Car Preference Configuration Documentation\n\n"
+    for section, content in data.items():
+        md += f"## {section.replace('_', ' ').title()}\n\n"
+        
+        if isinstance(content, dict):
+            for k, v in content.items():
+                md += f"### {k}\n"                
+                if isinstance(v, list):
+                    md += "- Includes:\n"
+                    for item in v:
+                        md += f"  - {item}\n"
+                elif isinstance(v, dict):
+                    md += f"- Range: {k}\n"   # Just show the label, not the rules
+                md += "\n"
+        md += "\n"
+    return str(md)
 
 def mergerFreeText(user_query,model_identifier="gcp-gemini-2.5-flash-lite"):
-    system_prompt,user_prompt=  mergerFreeTextPrompt(user_query)
+    """
+    This function takes a user query and generates a markdown string that can be used to document the car preference configuration.
+    It calls the mergerFreeTextPrompt function to generate the system and user prompts, and then calls the ai_service.get_llm_response function to generate the output.
+    The output is then processed to replace the "statement" key with "question", and the processed output is returned as a str object.
+    
+    Parameters:
+        user_query (str): The user query to be processed.
+        model_identifier (str): The identifier for the model to be used for processing the query. Defaults to "gcp-gemini-2.5-flash-lite".
+    
+    Returns:
+        str: The processed output as a markdown string.
+    """
+    
+    filter_data_=generate_markdown_clean(filter_json)
+    system_prompt,user_prompt=  mergerFreeTextPrompt(user_text=user_query,formal_filters=filter_data_)
+    
     messages=[
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}]
 
     output=ai_service.get_llm_response(messages=messages, model_identifier=model_identifier)
     output=output.replace("statement","question")
+    logger.info(f"output{output}")
     return extract_json_block(output)
 
 
 
 def merge_traits(lists):
+
+    """
+    Merge the given list of traits into a single vector.
+
+    Parameters:
+        lists (list): List of lists, where each sublist contains trait values.
+
+    Returns:
+        np.ndarray: The merged trait vector.
+    """
+
+    
     logger.info(f"input traits {lists}")
     mean_elementwise = [sum(values) / len(values) for values in zip(*lists)]
 
@@ -366,24 +351,42 @@ def merge_traits(lists):
 
 
 
-def filter_data(filters, affinity,freeText=None):
+def filter_data(filters=None, affinity=None,negative_filters=None):
+    """
+    Filter data based on the given filters and affinity.
+
+    Parameters:
+        filters (list): List of filter data, where each item is a dictionary containing 'intent' and 'answer' keys.
+        affinity (list): List of affinity data, where each item is a dictionary containing 'answer' key.
+        negative_filters (list): List of negative filter data, where each item is a dictionary containing 'intent' and 'answer' keys.
+
+    Returns:
+        tuple: A tuple containing the filtered data and the merged trait vector.
+    """
+    
     filter = {}
     vectors = []    
+    if negative_filters:
+        for data in negative_filters:
+            if data['intent'] in filter_json.keys():
+                logger.info(f"from filter .json{data}")
+                d=filter_json[data['intent']]
+
+                filter[data['intent']] = d[data['answer'][0]]
+            else:
+                filter[data['intent']] = data['answer']
+        return filter
     if filters:
         for data in filters:
             if data['intent'] in filter_json.keys():
                 logger.info(f"from filter .json{data}")
                 # if data["intent"]=="price_range":
                 #     filter[data['intent']] = data['answer'][0]
-                
                 d=filter_json[data['intent']]
 
                 filter[data['intent']] = d[data['answer'][0]]
             else:
                 filter[data['intent']] = data['answer']
-
-                # dict_scores = get_traits(f"question: {str(data['question'])} \n chosen answer: {str(data['answer'])}")   
-                # vectors.append([dict_scores[k] for k in key_order])
     else:
         filter = {}
             
@@ -395,49 +398,14 @@ def filter_data(filters, affinity,freeText=None):
     else:
         vectors.append([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
-    if freeText:
-        pass
+
 
     return filter, merge_traits(vectors)
 
 
 
 
-def filter_data2(metadata):
-    filter = {}
-    vectors = []    
-
-    for data in metadata:
-        if data.get("filter"):
-
-            if data['intent'] in filter_json.keys():
-                logger.info(f"from filter .json{data}")
-
-                if data["intent"]=="price_range":
-                    filter[data['intent']] = data['answer'][0]
-                else:
-                    d=filter_json[data['intent']]
-
-                    filter[data['intent']] = d[data['answer'][0]]
-            else:
-                filter[data['intent']] = data['answer']
-
-            dict_scores = get_traits(f"question: {str(data['question'])} \n chosen answer: {str(data['answer'])}")   
-            vectors.append([dict_scores[k] for k in key_order])
-            
-        else:
-            logger.info(f"Not from filter .json{data}")
-            dict_score=get_traits(str(data['answer']))
-            vectors.append([dict_score[k] for k in key_order])
-
-    return filter, merge_traits(vectors)
-
-
-
-
-
-
-def get_collection(collection):
+def get_collection_recommendation(collection):
 
     if not client.collection_exists(collection):
         client.create_collection(
@@ -445,33 +413,50 @@ def get_collection(collection):
             vectors_config=VectorParams(size=16, distance=Distance.DOT),
         )
 
+def get_fixed_filter(fix_filters):
+
+    """
+    This function takes in a dictionary of fixed filters and returns a new dictionary with the values fixed using the LLM model.
+    
+    Parameters:
+        fix_filters (dict): A dictionary of fixed filters where the keys are the filter names and the values are lists of values to be fixed.
+    
+    Returns:
+        dict: A dictionary with the fixed filters.
+    """
+
+    
+    rw=MetadataRecommendation(collection_filter)
+
+    logger.info(f"fix filter collection>>>{(collection_filter)}")
+    for key,value in fix_filters.items():
+        logger.info(f"key>> {key}")
+        if key in ["model_name","product_name","brand_name","vehicke_type","vehicle_type","variant_name"]:
+                da=rw.fix_by_llm(f"key is {key} and value is {value[0]}")
+                logger.info("fixed value>>>"+da)   
+                fix_filters[key]=[da]
+    return fix_filters
+
+
 class RecommendationWrapper:
     def __init__(self,collection="autocrm_recommendation",dealership_id=None):
         self.count_res=0
-        get_collection(collection)
+        get_collection_recommendation(collection)
         self.collection=collection
         self.dealership_id=dealership_id
         self.history_filter=[]
 
-    def recommend_models(self,CustomerAffinity, default_limit,collection_filter,filters=None,fix_filters=None, offset_value=None):
+    def recommend_models(self,CustomerAffinity, default_limit,collection_filter,filters=None,fix_filters=None, offset_value=None,negative_filters=None,negative_fix_filters=None):
+      
         metadata = {}
         filter_ = []
-        results = []
-
+        negative_filter_ = []
+        logger.info(f"negative_filters__>>{negative_filters}")
+        logger.info(f"filters__>>{filters}")
 
         if fix_filters and filters is not None:
-            rw=MetadataRecommendation(collection_filter)
-
-            logger.info(f"fix filter collection>>>{(collection_filter)}")
-            for key,value in fix_filters.items():
-                logger.info(f"key>> {key}")
-                if key in ["model_name","product_name","brand_name","vehicke_type","vehicle_type","variant_name"]:
-                        da=rw.fix_by_llm(f"key is {key} and value is {value[0]}")
-                        logger.info("fixed value>>>"+da)   
-                        fix_filters[key]=[da]
-
-            filters=fix_filters
-        logger.info(f"???{filters}")
+            filters=get_fixed_filter(fix_filters)
+        logger.info(f"?{filters}")
 
         if filters is not None:
             for key, value in filters.items():
@@ -506,12 +491,22 @@ class RecommendationWrapper:
                 else:
                     match_any_key = []
                     for i in value:
-                        if isinstance(i, str):
-                            match_any_key.append(i) # lower.key was there
-                        else:
-                            logger.info(f"this is ien{i}")
-                            match_any_key.append(i)
+                        ii=[]
 
+                        if isinstance(i, str):
+                            logger.info(f"here{i}")
+                            iss = generate_case_permutations(i)
+                            logger.info(f"here00{iss}")
+
+                            match_any_key.extend(iss) 
+                        else:
+
+                            for ia in generate_case_permutations(i):
+                                ii.append(ia)
+                            logger.info(f"this is ien{ii}")
+                            
+                            match_any_key.append(i)
+                    logger.info(f"this is ielo {match_any_key}")
                     filter_.append(
                         FieldCondition(
                             key=key.replace(" ", "_").lower(),
@@ -525,21 +520,39 @@ class RecommendationWrapper:
                                 match=models.MatchAny(any=self.dealership_id)
                             )
                     )
+        if negative_filters:
+            negative_filters=(get_fixed_filter(negative_filters))
+
+            for key, value in negative_filters.items():
+                va=[]
+                logger.info(f"Negative value>>> {value}")
+                # for v in value:
+                #     va.extend(generate_case_permutations(v))
+
+                # logger.info(f"negative value >>> {va}")
+                negative_filter_.append(
+                        FieldCondition(
+                            key=key.replace(" ", "_").lower(),
+                            match=models.MatchAny(any=value)
+                        )
+                    )
         logger.info(f"filter >>> {filter_}")
         logger.info(f"input vectors >>> {CustomerAffinity}")
+        logger.info(f"positive filter >>> {filter_}")
+        logger.info(f"negative filter >>> {negative_filter_}")
         logger.info(f"recommendation from collection >>> {self.collection}")
         hits = client.search(
             collection_name=self.collection,
             query_vector=CustomerAffinity,
-            query_filter=Filter(must=filter_) if filters else None,
+            query_filter=Filter(must=filter_ if filters else None,must_not=negative_filter_ if negative_filters else None),
             limit=default_limit,
             offset=offset_value
         )
-        logger.info(f"hits >>> {hits}")
-
+        logger.info(f"hits >>> {(hits)}")
         count_resp = client.count(
             collection_name=self.collection,
-            count_filter=Filter(must=filter_) if filters else None,
+            count_filter=Filter(must=filter_ if filters else None,must_not=negative_filter_ if negative_filters else None),
+
             exact=True
         )
 
@@ -605,7 +618,7 @@ class RecommendationWrapper:
                 return []
             self.count_res+=1
             logger.info("fixing filters")
-            return self.recommend_models(CustomerAffinity=CustomerAffinity, default_limit=default_limit,filters=filters,collection_filter=collection_filter, fix_filters=filters,offset_value=offset_value)
+            return self.recommend_models(CustomerAffinity=CustomerAffinity, default_limit=default_limit,filters=filters,collection_filter=collection_filter, fix_filters=filters,offset_value=offset_value,negative_filters=negative_filters)
 
 
         # return {"result":results,
@@ -616,32 +629,151 @@ class RecommendationWrapper:
         CustomerAffinity = CustomerAffinity / np.linalg.norm(CustomerAffinity)
         return CustomerAffinity
 
-    def recommend(self,Affinity,filters,collection_filter="autobot_summary_test_collection_2",default_limit=None,offset_value=None):
 
-        filters_applied,trait_affinities = filter_data(filters,Affinity)
+
+    def upsert_dealership(self,brand_name,dealership_ids,collection="autocrm_recommendation"):
+        '''
+        this will update the dealerships for a particular brand in qdrant'''
+        hits = client.search(
+            collection_name=self.collection,
+            query_vector=[0.1, 0.1, 0.1,0.1 , 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+            query_filter=Filter(
+                must=[
+                    FieldCondition(
+                        key="brand_name",
+                        match=models.MatchAny(any=[brand_name])
+                    )
+                ]
+            ),
+            limit=5000
+
+        )
+        kd=[]
+        for i in hits:
+            kd.append(i.id)
+
+        client.set_payload(
+            collection_name=collection,
+            payload={
+                "operating_brands": dealership_ids,
+            },
+            points=kd,
+        )
+
+
+
+    def upsert_features(self,collection="autocrm_recommendation"):
+        '''
+        this function will upsert features in qdrant
+        '''
+        def extract_selected_features(metadata: dict):
+            keys_needed = [
+                "comfort_and_convenience",
+                "engine_and_performance",
+                "interior_feature",
+                "exterior_feature",
+                "safety_feature",
+                "technology",
+                "engine"
+            ]
+
+            return {key: metadata.get(key) for key in keys_needed if key in metadata}
+
+        hits = client.search(
+            collection_name=self.collection,
+            query_vector=[0.1, 0.1, 0.1,0.1,0.1,0.1,0.1 , 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+            limit=5000
+        )
+
+        for hit in hits:
+            payL = hit.payload
+            metadata = {
+                "id": hit.id,
+                "model":payL.get("model_name",payL.get("product_name")),
+                "brand": payL.get("brand", payL.get("brand_name")),
+                "variant":payL.get("variant_name",""),
+                "metadata": payL,
+            }
+
+            metadata_=extract_selected_features(metadata=metadata.get("metadata"))
+            syst,user=car_features_prompt(car_text=metadata_)
+            messages=[
+                {"role": "system", "content": syst},
+                {"role": "user", "content": user}
+            ]
+            agent_to_get_features=ai_service_app.get_llm_response(messages=messages, model_identifier="gcp-gemini-2.5-flash-lite")
+
+            lagent_to_get_featuresst = ast.literal_eval(agent_to_get_features)
+
+            feature_keys=lagent_to_get_featuresst
+
+            client.set_payload(
+                collection_name=collection,
+                payload={"car_features": feature_keys},
+                points=[metadata.get("id")]
+            )
+
+
+    def recommend(self,Affinity,filters,collection_filter="autobot_summary_test_collection_2",default_limit=None,offset_value=None,negative_filters=None):
+        logger.info(f"filter applied {filters}")
+
+        filters_applied,trait_affinities = filter_data(filters=filters,affinity=Affinity)
+        if negative_filters:
+            logger.info(f"oy {negative_filters}")
+
+            negative_filter = filter_data(negative_filters=negative_filters)
+        else:
+            negative_filter = None
         logger.info(f"filter applied {filters_applied}")
         logger.info(f"trait_affinities {trait_affinities}")
+        logger.info(f"oy {negative_filter}")
+
         return self.recommend_models(
             CustomerAffinity=trait_affinities,
             default_limit=default_limit,
             filters=filters_applied,
             collection_filter=collection_filter,
-            offset_value=offset_value
+            offset_value=offset_value,
+            negative_filters=negative_filter
         )
-    
+
     def run(self,Affinity,filters,free_text=None ,collection_filter="autobot_summary_test_collection_2",default_limit=None,max_n=None,offset_value=None):
-
         if free_text:
-            json_data=mergerFreeText(free_text)
-            new_filters=json_data.get("user_preference")
-            new_Affinity=json_data.get("user_profile")
 
-            Affinity=Affinity+new_Affinity
+            json_data = mergerFreeText(free_text)
+            new_filters = json_data.get("user_preference", [])
+            new_affinity = json_data.get("user_profile", [])
+            negative_filters = json_data.get("negative_filters", [])
+
+            logger.info(f"negative_filters {negative_filters}")
+
+            def normalize_transmission(filter_list):
+                transmission_map = {
+                    "manual": "Prefer manual",
+                    "automatic": "Prefer automatic",
+                    "both": "I’m open to both automatic and manual",
+                    "hybrid": "Prefer hybrid"
+                }
+                for f in filter_list:
+                    intent = f.get("intent")
+                    logger.info(f">>>>>>>>>>>>>>>>{f}")
+                    if intent=="transmission_type":
+                        f["answer"] = [transmission_map.get(f.get("answer")[0], "Other")]
+                return filter_list
+
+            if new_filters or  negative_filters:
+                normalize_transmission(new_filters)
+                normalize_transmission(negative_filters)
+
+            Affinity=Affinity+new_affinity
             filters=filters+new_filters
+            negative_filters+=negative_filters
+            logger.info(f"Affinity {Affinity}")
+            logger.info(f"filters {filters}")
+            logger.info(f"negative_filters {negative_filters}")
 
-        rec=self.recommend(Affinity,filters,collection_filter=collection_filter,default_limit=default_limit,offset_value=offset_value)
-        recs=type(rec)
-        logger.info(f">>{recs}")
+        rec=self.recommend(Affinity,filters,collection_filter=collection_filter,default_limit=default_limit,offset_value=offset_value,negative_filters=negative_filters)
+
         kd = []
         int_ = []
         if not rec:
@@ -682,12 +814,7 @@ class RecommendationWrapper:
                         "top_vehicles":[],
                         "status":"failed",
                         "total_vehicles_found":0,}
-                # rec = [hit.dict() for hit in rec]  # Qdrant returns a list of models
-                # logger.info("??")
-                # logger.info(rec.get("result"))
-                # logger.info("??")
 
-                    # "total_vehicles_found":rec.get("total_result"),
                 return {
                     "top_vehicles":rec.get("result"),
                     "status":"success",
@@ -713,71 +840,26 @@ class RecommendationWrapper:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-def build_intent_filter_prompts(brand_model_name: str, questions: list):
+def  build_intent_filter_agent(questions,brand_model_name):
+    
     """
-    Create prompts that instruct the LLM to classify each question into an intent
-    and decide whether it should be asked or not, returning only:
-    {
-      "not_ask": [...],
-      "ask": [...]
-    }
+    Builds an agent that filters user questions into intents.
+
+    Args:
+        questions (list): A list of user questions.
+        brand_model_name (str): The brand and model name of the car.
+
+    Returns:
+        dict: The output from the GCP Gemini 2.5 Flash Lite model.
     """
 
-    system_prompt = f"""
-You are GPT-5.
-
-Your task:
-- Receive a brand/model name and a list of user-provided questions.
-- Map each question to a HIGH-LEVEL INTENT (examples: pricing, warranty, safety, compatibility, preferences).
-- DO NOT output questions.
-- DO NOT output reasoning.
-- DO NOT output explanations.
-- Only extract **intents**.
-- Then classify each intent as either "ask" or "not_ask".
-
-Final output MUST be ONLY valid JSON with EXACT structure:
-
-{{
-  "not_ask": ["<intent>", "<intent>", ...],
-  "ask": ["<intent>", "<intent>", ...]
-}}
-
-Rules:
-- "ask" = relevant for determining user's needs for {brand_model_name}
-- "not_ask" = irrelevant, redundant, or unnecessary
-- All intents must be lowercase, snake_case.
-- No trailing commas.
-- No free text outside JSON.
-"""
-
-    user_prompt = f"""
-Brand/Model: {brand_model_name}
-
-Questions (JSON list):
-{questions}
-
-Extract intents → classify → output ONLY the JSON result.
-"""
-    messages=[
+    system_prompt,user_prompt=  build_intent_filter_prompts(brand_model_name=brand_model_name,questions=questions)
+    messages=[    
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
     ]
     chain=ai_service.get_llm_response(messages=messages, model_identifier="gcp-gemini-2.5-flash-lite")
     return chain
-
 
 
 class RecommendationAgent(BaseAgent):
@@ -854,7 +936,7 @@ class RecommendationAgent(BaseAgent):
               list_questions=[ i for i in result.get("match_refining_questions") if i.get("intent") in ["seating","vehicle_type","fuel_type","transmission","price_range"]]
               brand_model = f"{result.get('top_vehicles')[0].get('brand')} {result.get('top_vehicles')[0].get('metadata').get('product_name')}"          
               logger.info(f"brand_model {brand_model}")
-              asound=build_intent_filter_prompts(questions=list_questions,
+              asound=build_intent_filter_agent(questions=list_questions,
               brand_model_name=brand_model)
               asound = json.loads(asound) if isinstance(asound, str) else asound
               not_asked = asound.get("not_ask", [])
@@ -898,6 +980,7 @@ if __name__ == "__main__":
         ]
       }
     ],
+    # "user_profile": [],
     "user_preference": [],
     # "user_preference": [
     #   {
@@ -913,13 +996,17 @@ if __name__ == "__main__":
     #     ]
     #   }
     # ],
-    "free_text": "I want good confort, I am interested in scorpio",
+    "free_text": "I am interested in mahindra and I am short heighted, dont show me the manual transmission?.",
     "Max number":   5,
     "collection": "autocrm_recommendation",
     "default_limit": 5
     } 
-
+    import time
+    t1=time.time()
     res=agent.main(data)
+    logger.info(f"{time.time()-t1:.6f}")
+
+
     da=(json.dumps(res, indent=4, default=str))
     # print(res)
     with open("recommendation_output.json", "w") as f:
