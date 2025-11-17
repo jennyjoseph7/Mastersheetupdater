@@ -144,6 +144,17 @@
             "force_update": "variant_id"
         },
         {
+            "name": "vehicle_color",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant_color",
+                    "variant_color_id",
+                    "vehicle_color"
+                ]
+            }
+        },
+        {
             "name": "reg_number",
             "type": "text",
             "indexed": true
@@ -228,6 +239,10 @@
             "type": "text"
         },
         {
+            "name": "accessories",
+            "type": "text"
+        },
+        {
             "name": "purchase_date",
             "type": "number",
             "default": {
@@ -242,10 +257,18 @@
             }
         },
         {
-            "name": "delivery_date",
+            "name": "original_delivery_date",
             "type": "number",
             "default": {
                 "function": "now_ctime"
+            }
+        },
+        {
+            "name": "vehicle_age_months",
+            "type": "number",
+            "default": {
+                "function": "time_diff",
+                "args":["created","purchase_date", "months"]
             }
         },
         {
@@ -256,11 +279,54 @@
             }
         },
         {
+            "name": "last_service_type",
+            "type": "text"
+        },
+        {
+            "name": "service_history",
+            "type": "text"
+        },
+        {
+            "name": "service_advisor",
+            "type": "text"
+        },
+        {
+            "name": "service_plan_type",
+            "type": "text"
+        },
+        {
+            "name": "service_plan_expiry_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "avg_service_cost",
+            "type": "number"
+        },
+        {
+            "name": "service_frequency",
+            "type": "number"
+        },
+        {
             "name": "next_service_due",
             "type": "number",
             "default": {
                 "function": "now_ctime"
             }
+        },
+        {
+            "name": "service_feedback",
+            "type": "text"
+        },
+        {
+            "name": "feedback_rating",
+            "type": "text"
+        },
+        {
+            "name": "feedback_sentiment_score",
+            "type": "text"
         },
         {
             "name": "warranty_expiry_date",
@@ -270,15 +336,8 @@
             }
         },
         {
-            "name": "insurance_expiry_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
-        },
-        {
-            "name": "loan_end_date",
-            "type": "number",
+            "name": "extended_warranty_purchased",
+            "type": "bool",
             "default": {
                 "function": "now_ctime"
             }
@@ -324,31 +383,44 @@
         },
         {
             "name": "battery_warranty",
+            "type": "number"
+        },
+        {
+            "name": "battery_change_date",
+            "type": "number"
+        },
+        {
+            "name": "battery_service_date",
+            "type": "number"
+        },
+        {
+            "name": "oil_change_date",
             "type": "number",
             "default": {
                 "function": "now_ctime"
             }
         },
         {
-            "name": "oil_change",
+            "name": "brake_pad_change_date",
             "type": "number",
             "default": {
                 "function": "now_ctime"
             }
         },
         {
-            "name": "brake_pad_change",
+            "name": "tyre_change_date",
             "type": "number",
             "default": {
                 "function": "now_ctime"
             }
         },
         {
-            "name": "tyre_change",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "name": "tyre_change_details",
+            "type": "text"
+        },
+        {
+            "name": "tyre_health",
+            "type": "text"
         },
         {
             "name": "wheel_alignment",
@@ -360,35 +432,56 @@
             ]
         },
         {
-            "name": "suspension_check",
+            "name": "suspension_check_date",
             "type": "number",
             "default": {
                 "function": "now_ctime"
             }
         },
         {
-            "name": "coolant_radiator_service",
+            "name": "coolant_radiator_service_date",
             "type": "number",
             "default": {
                 "function": "now_ctime"
             }
         },
         {
-            "name": "ac_vent_cleaning",
+            "name": "ac_vent_cleaning_date",
             "type": "number",
             "default": {
                 "function": "now_ctime"
             }
         },
         {
-            "name": "underbody_coating",
+            "name": "underbody_coating_date",
             "type": "number",
             "default": {
                 "function": "now_ctime"
             }
         },
         {
-            "name": "car_wash",
+            "name": "car_wash_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "brake_oil_change_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "oil_filter_replacement_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "polishing_and_waxing_date",
             "type": "number",
             "default": {
                 "function": "now_ctime"
@@ -409,8 +502,19 @@
                 "Owned",
                 "Leased",
                 "Financed",
-                "Fleet"
-            ]
+                "Fleet",
+                "Corporate"            ]
+        },
+        {
+            "name": "finance_loan_status",
+            "type": "text"
+        },
+        {
+            "name": "loan_end_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
         },
         {
             "name": "loan_provider",

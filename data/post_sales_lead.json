@@ -70,6 +70,99 @@
             "force_update": "vehicle_id"
         },
         {
+            "name": "variant_color_id",
+            "options": "/options/variant_color/color_name?variant_id={variant_id}",
+            "ui_element": "select"
+        },
+        {
+            "name": "vehicle_color",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant_color",
+                    "variant_color_id",
+                    "color_name"
+                ]
+            }
+        },
+        {
+            "name": "vehicle_category",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "vehicle_category"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "vehicle_id"
+        },
+        {
+            "name": "vehicle_type",
+            "type":"text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "vehicle_type"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "vehicle_id"
+        },
+        {
+            "name": "fuel_type",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "fuel_type"
+                ]
+            }
+        },
+        {
+            "name": "transmission",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "transmission"
+                ]
+            }
+        },
+        {
+            "name": "engine_capacity",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "engine_capacity"
+                ]
+            }
+        },
+        {
+            "name": "drivetrain",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "drivetrain"
+                ]
+            }
+        },
+        {
             "name": "reg_number",
             "type": "text",
             "default": {
@@ -89,7 +182,555 @@
                 "args": [
                     "vehicle",
                     "vehicle_id",
-                    "reg_number"
+                    "vin_number"
+                ]
+            }
+        },
+        {
+            "name": "odometer_reading",
+            "type": "number",
+            "units": "km",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "odometer_reading"
+                ]
+            }
+        },
+        {
+            "name": "odometer_reading_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "odometer_reading_date"
+                ]
+            }
+        },
+        {
+            "name": "avg_monthly_mileage",
+            "type": "number",
+            "units": "km",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "avg_monthly_mileage"
+                ]
+            }
+        },
+        {
+            "name": "vehicle_usage_category",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "vehicle_usage_category"
+                ]
+            }
+        },
+        {
+            "name": "battery_health",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "battery_health"
+                ]
+            }
+        },
+        {
+            "name": "battery_warranty",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "battery_warranty"
+                ]
+            }
+        },
+        {
+            "name": "battery_change_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "battery_change_date"
+                ]
+            }
+        },
+        {
+            "name": "battery_service_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "battery_service_date"
+                ]
+            }
+        },
+        {
+            "name": "oil_change_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "oil_change_date"
+                ]
+            }
+        },
+        {
+            "name": "brake_pad_change_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "brake_pad_change_date"
+                ]
+            }
+        },
+        {
+            "name": "tyre_change_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "tyre_change_date"
+                ]
+            }
+        },
+                {
+            "name": "tyre_change_details",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "tyre_change_details"
+                ]
+            }
+        },
+                {
+            "name": "tyre_health",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "tyre_health"
+                ]
+            }
+        },
+        {
+            "name": "wheel_alignment",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "wheel_alignment"
+                ]
+            }
+        },
+        {
+            "name": "suspension_check_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "suspension_check_date"
+                ]
+            }
+        },
+        {
+            "name": "coolant_radiator_service_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "coolant_radiator_service_date"
+                ]
+            }
+        },
+        {
+            "name": "ac_vent_cleaning_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "ac_vent_cleaning_date"
+                ]
+            }
+        },
+        {
+            "name": "underbody_coating_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "underbody_coating_date"
+                ]
+            }
+        },
+        {
+            "name": "car_wash_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "car_wash_date"
+                ]
+            }
+        },
+        {
+            "name": "brake_oil_change_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "brake_oil_change_date"
+                ]
+            }
+        },
+        {
+            "name": "oil_filter_replacement_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "oil_filter_replacement_date"
+                ]
+            }
+        },
+        {
+            "name": "polishing_and_waxing_date",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "polishing_and_waxing_date"
+                ]
+            }
+        },
+        {
+            "name": "repair_notes",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "repair_notes"
+                ]
+            }
+        },
+        {
+            "name": "vehicle_persona_summary",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "vehicle_persona_summary"
+                ]
+            }
+        },
+        {
+            "name": "last_service_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "last_service_date"
+                ]
+            }
+        },
+        {
+            "name": "last_service_type",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "last_service_type"
+                ]
+            }
+        },
+        {
+            "name": "service_history",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "service_history"
+                ]
+            }
+        },
+        {
+            "name": "service_advisor",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "service_advisor"
+                ]
+            }
+        },
+             {
+            "name": "service_plan_type",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "service_plan_type"
+                ]
+            }
+        },
+        {
+            "name": "service_plan_expiry_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "service_plan_expiry_date"
+                ]
+            }
+        },
+        {
+            "name": "avg_service_cost",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "avg_service_cost"
+                ]
+            }
+        },
+        {
+            "name": "service_frequency",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "service_frequency"
+                ]
+            }
+        },
+        {
+            "name": "next_service_due",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "next_service_due"
+                ]
+            }
+        },
+        {
+            "name": "service_feedback",
+            "type": "text",
+             "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "service_feedback"
+                ]
+            }
+        },
+        {
+            "name": "feedback_rating",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "feedback_rating"
+                ]
+            }
+        },
+        {
+            "name": "feedback_sentiment_score",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "feedback_sentiment_score"
+                ]
+            }
+        },
+        {
+            "name": "warranty_expiry_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "warranty_expiry_date"
+                ]
+            }
+        },
+        {
+            "name": "extended_warranty_purchased",
+            "type": "bool",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "extended_warranty_purchased"
+                ]
+            }
+        },
+        {
+            "name": "finance_loan_status",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "finance_loan_status"
+                ]
+            }
+        },
+        {
+            "name": "loan_end_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "loan_end_date"
+                ]
+            }
+        },
+        {
+            "name": "insurance",
+            "type": "nested_object",
+            "dict_keys": [
+                "policy_number",
+                "provider",
+                "expiry_date",
+                "insured_value"
+            ],
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "insurance"
+                ]
+            }
+        },
+        {
+            "name": "accessories",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "accessories"
+                ]
+            }
+        },
+        {
+            "name": "ownership_status",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "ownership_status"
+                ]
+            }
+        },
+        {
+            "name": "purchase_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "purchase_date"
+                ]
+            }
+        },
+        {
+            "name": "vehicle_age_months",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "vehicle_age_months"
                 ]
             }
         },
@@ -128,6 +769,7 @@
         },
         {
             "name": "dealer_name",
+            "type": "text",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -141,34 +783,8 @@
             "force_update": "dealership_id"
         },
         {
-            "name": "dealer_location",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "dealership",
-                    "dealership_id",
-                    "dealer_location"
-                ]
-            },
-            "indexed": true,
-            "auto_updater": true,
-            "force_update": "dealership_id"
-        },
-        {
-            "name": "dealer_address",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "dealership",
-                    "dealership_id",
-                    "dealer_address"
-                ]
-            },
-            "auto_updater": true,
-            "force_update": "dealership_id"
-        },
-        {
             "name": "region_id",
+            "type": "uid",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -182,6 +798,7 @@
         },
         {
             "name": "region_name",
+            "type": "text",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -209,6 +826,30 @@
             "refers": "parents.post_sales_campaign.campaign_type"
         },
         {
+            "name": "campaign_offer",
+            "refers": "parents.post_sales_campaign.campaign_offer"
+        },
+        {
+            "name": "campaign_description",
+            "refers": "parents.post_sales_campaign.campaign_description"
+        },
+        {
+            "name": "campaign_sub_type",
+            "refers": "parents.post_sales_campaign.campaign_sub_type"
+        },
+        {
+            "name": "campaign_objective_type",
+            "refers": "parents.post_sales_campaign.campaign_objective_type"
+        },
+        {
+            "name": "urgency_hook",
+            "refers": "parents.post_sales_campaign.urgency_hook"
+        },
+        {
+            "name": "ctas",
+            "refers": "parents.post_sales_campaign.ctas"
+        },
+        {
             "name": "workshop_id",
             "type": "uid",
             "required": false
@@ -228,6 +869,20 @@
             "force_update": "workshop_id"
         },
         {
+            "name": "workshop_full_name",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "workshop_full_name"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id",
+            "indexed": true
+        },
+        {
             "name": "workshop_address",
             "type": "text",
             "default": {
@@ -242,19 +897,89 @@
             "force_update": "workshop_id"
         },
         {
+            "name": "workshop_geolocation",
+            "type": "geolocation",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "geolocation"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "workshop_operating_hours",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "operating_hours"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "workshop_facilities_available",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "facilities_available"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "service_due_timetamp",
+            "type": "number"
+        },
+        {
+            "name": "service_due_date",
+            "type": "text"
+        },
+        {
+            "name": "lead_tags",
+            "type": "string_list",
+            "ui_element": "multiselect",
+            "list_adder": {
+                "function": "list_adder"
+            }
+        },
+        {
+            "name": "appointment_date",
+            "type": "text"
+        },
+        {
+            "name": "appointment_time",
+            "type": "text"
+        },
+        {
+            "name": "purpose_of_visit",
+            "type": "string_list"
+        },
+        {
             "auto_updater": true,
             "default": {
                 "args": [
-                    "vehicle_reg_number",
-                    "dealership_name",
+                    "reg_number",
+                    "dealer_name",
+                    "workshop_name",
                     "campaign_name"
                 ],
                 "function": "name_to_id",
                 "kwargs": {
                     "attribute_join": " ",
                     "is_unique": true,
-                    "separator": " - ",
-                    "skip_empty": true
+                    "separator": "-",
+                    "skip_empty": true,
+                    "case": "lower"
                 }
             },
             "name": "post_sales_lead_id",
@@ -276,6 +1001,20 @@
                     "session",
                     "last_session_id",
                     "status"
+                ]
+            }
+        },
+        {
+            "name": "last_interaction_date",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": "last_session_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "session",
+                    "last_session_id",
+                    "updated"
                 ]
             }
         },
@@ -347,6 +1086,8 @@
                 "Unable to deliver message to deliver message/Unsubcribed",
                 "Message not delivered to maintained healty ecosystem management",
                 "Invalid / Doesn't exist",
+                "Spam",
+                "Bounced",
                 "DND",
                 "Not reachable",
                 "Didnt pickup",

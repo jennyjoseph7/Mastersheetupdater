@@ -13,6 +13,19 @@
             "required": false
         },
         {
+            "name": "vehicle_category",
+            "required": true,
+            "options": [
+                "Passenger vehicles",
+                "Commercial Vehicles",
+                "Two Wheelers",
+                "Three Wheelers",
+                "Truck",
+                "Bus"
+            ],
+            "default": "Passenger vehicles"
+        },
+        {
             "name": "assigned_to",
             "type": "nested_object"
         },
@@ -86,6 +99,10 @@
             }
         },
         {
+            "name": "geolocation",
+            "type": "geolocation"
+        },
+        {
             "name": "preferred_contact_window",
             "default": {
                 "function": "get_from_model",
@@ -104,6 +121,17 @@
                     "person",
                     "user_id",
                     "preferred_contact_channel"
+                ]
+            }
+        },
+        {
+            "name": "preferred_language",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "preferred_language"
                 ]
             }
         },
@@ -130,17 +158,17 @@
             "list_type": "text"
         },
         {
+            "name": "model_preference",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
             "name": "variant_preference",
             "type": "list",
             "list_type": "text"
         },
         {
             "name": "color_preference",
-            "type": "list",
-            "list_type": "text"
-        },
-        {
-            "name": "model_preference",
             "type": "list",
             "list_type": "text"
         },
@@ -174,6 +202,23 @@
             "name": "segment_preference",
             "type": "list",
             "list_type": "text"
+        },
+        {
+            "name": "fuel_type_preference",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "competitor_brands",
+            "type": "string_list",
+            "list_type": "text",
+            "ui_element": "tags"
+        },
+        {
+            "name": "competitor_models",
+            "type": "string_list",
+            "list_type": "text",
+            "ui_element": "tags"
         },
         {
             "name": "usage_pattern",
@@ -211,12 +256,22 @@
         {
             "name": "brand_perception",
             "type": "text",
+            "option_others": true,
             "options": [
                 "reliable",
                 "luxury",
                 "comfort",
                 "stylish",
-                "innovative"
+                "innovative",
+                "environmentally friendly",
+                "performance oriented",
+                "safety focused",
+                "technology driven",
+                "value for money",
+                "brand loyal",
+                "price sensitive",
+                "quality conscious",
+                "others"
             ]
         },
         {
@@ -230,6 +285,14 @@
             ]
         },
         {
+            "name": "offers_percentage",
+            "type": "text"
+        },
+        {
+            "name": "offers_type",
+            "type": "text"
+        },
+        {
             "name": "emotions",
             "type": "string_list"
         },
@@ -240,6 +303,16 @@
         {
             "name": "propensity_scores",
             "type": "nested_object"
+        },
+        {
+            "name": "purchase_life_cycle",
+            "type": "text",
+            "options": [
+                "awareness",
+                "interest",
+                "consideration",
+                "decision"
+            ]
         },
         {
             "name": "prioritization_score",
@@ -255,6 +328,14 @@
                 "COLD",
                 "INACTIVE"
             ]
+        },
+        {
+            "name": "reason_for_inactiveness",
+            "type": "text"
+        },
+        {
+            "name": "objection_reason",
+            "type": "text"
         },
         {
             "name": "dealership_id",
@@ -335,6 +416,15 @@
             "required": true
         },
         {
+            "name": "intent_type",
+            "type": "text",
+            "options": [
+                "Low",
+                "Medium",
+                "High"
+            ]
+        },
+        {
             "name": "finance_required",
             "type": "bool",
             "default": "false"
@@ -392,8 +482,28 @@
             "type": "text"
         },
         {
-            "name": "old_car_details",
-            "type": "nested_object"
+            "name": "existing_vehicle_brand",
+            "type": "text"
+        },
+        {
+            "name": "existing_vehicle_model",
+            "type": "text"
+        },
+        {
+            "name": "existing_vehicle_age_years",
+            "type": "text"
+        },
+        {
+            "name": "existing_odometer_reading",
+            "type": "text"
+        },
+        {
+            "name": "existing_vehicle_condition",
+            "type": "text"
+        },
+        {
+            "name": "existing_vehicle_ownership_remarks",
+            "type": "text"
         },
         {
             "name": "previous_interaction_ids",
@@ -445,6 +555,14 @@
             }
         },
         {
+            "name": "appointment_date",
+            "type": "text"
+        },
+        {
+            "name": "appointment_time",
+            "type": "text"
+        },
+        {
             "auto_updater": true,
             "default": {
                 "args": [
@@ -487,6 +605,20 @@
             }
         },
         {
+            "name": "last_interaction_date",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": "last_session_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "session",
+                    "last_session_id",
+                    "updated"
+                ]
+            }
+        },
+        {
             "name": "last_session_channel",
             "type": "text",
             "options": [
@@ -514,6 +646,10 @@
         },
         {
             "name": "follow_up_date",
+            "type": "number"
+        },
+        {
+            "name": "follow_up_count",
             "type": "number"
         },
         {
