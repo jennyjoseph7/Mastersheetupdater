@@ -5,6 +5,7 @@ from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as
 from gryd_worker.gryd_routes import payload_decorator
 from models import model as base_model
 from ai_service import ai_service_app
+from voice import *
 
 gryd.SERVICE = os.environ.get("AUTOBOT_CONVERSATION_SERVICE_NAME","autocrm-voice")
 

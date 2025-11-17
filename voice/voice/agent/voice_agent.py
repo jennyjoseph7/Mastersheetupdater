@@ -2,13 +2,14 @@
 Voice Agent
 AI-driven conversational engine for real-time understanding and response generation
 """
-
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import asyncio
-import logging
 import random
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 
+import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
