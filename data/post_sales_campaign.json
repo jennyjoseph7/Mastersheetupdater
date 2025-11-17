@@ -56,6 +56,34 @@
       "refers": "parents.workshop.workshop_name"
     },
     {
+      "name": "workshop_full_name",
+      "refers": "parents.workshop.workshop_full_name"
+    },
+    {
+      "name": "workshop_address",
+      "refers": "parents.workshop.workshop_address"
+    },
+    {
+      "name": "workshop_contact_number",
+      "refers": "parents.workshop.workshop_contact_number"
+    },
+    {
+      "name": "workshop_email",
+      "refers": "parents.workshop.workshop_email"
+    },
+    {
+      "name": "workshop_geolocation",
+      "refers": "parents.workshop.workshop_geolocation"
+    },
+    {
+      "name": "workshop_operating_hours",
+      "refers": "parents.workshop.workshop_operating_hours"
+    },
+    {
+      "name": "workshop_facilities_available",
+      "refers": "parents.workshop.workshop_facilities_available"
+    },
+    {
       "name": "region_id",
       "refers": "parents.dealership.region_id"
     },
@@ -101,13 +129,27 @@
     },
     {
       "name": "campaign_user_source",
-      "type": "nested_object",
-      "required": true
+      "type": "text",
+      "required": true,
+      "option_others": true,
+      "options": [
+        "auto_generated",
+        "file",
+        "crm"
+      ]
+    },
+    {
+      "name": "campaign_objective_id",
+      "type": "uid",
+      "option_others": true,
+      "options": "/options/campaign_objective/campaign_objective_name",
+      "required": false
     },
     {
       "name": "campaign_objective",
       "type": "list",
       "options": [
+        "Product Launch / Reveal",
         "Post-Purchase Call",
         "Welcome Email / WhatsApp",
         "First-Service Reminder",
@@ -127,17 +169,43 @@
         "Recall Follow-Up Call / WhatsApp",
         "Recall Completion Confirmation"
       ],
-      "option_others": true
+      "option_others": true,
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "campaign_objective_name"
+        ]
+      }
     },
     {
       "name": "campaign_sub_type",
       "type": "list",
       "options": [
         "workshop awareness",
+        "event",
+        "new product lauch",
         "offers",
         "new accessories",
-        "new procedures"
-      ]
+        "new procedures",
+        "customer retention",
+        "service reminder",
+        "upsell/cross-sell",
+        "feedback",
+        "reminder",
+        "product recall",
+        "software update",
+        "other"
+      ],
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "campaign_sub_type"
+        ]
+      }
     },
     {
       "name": "campaign_objective_type",
@@ -146,15 +214,151 @@
         "lead volume",
         "budget based",
         "roi target"
-      ]
+      ],
+      "default": "lead_volume"
     },
     {
-      "name": "campaign_offer",
-      "type": "text"
+      "name": "campaign_objective_description",
+      "type": "text",
+      "title": "Campaign Objective Description"
     },
     {
       "name": "campaign_description",
-      "type": "text"
+      "type": "text",
+      "title": "Campaign Description"
+    },
+    {
+      "name": "campaign_tagline",
+      "type": "text",
+      "title": "Campaign Tagline"
+    },
+    {
+      "name": "campaign_offer",
+      "type": "text",
+      "title": "Campaign Offer Description"
+    },
+    {
+      "name": "offer_applicability",
+      "type": "text",
+      "title": "Offer Applicability Details"
+    },
+    {
+      "name": "conversation_tone",
+      "type": "text",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "conversation_tone"
+        ]
+      }
+    },
+    {
+      "name": "urgency_hook",
+      "type": "list",
+      "list_type": "text",
+      "title": "Urgency Hooks",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "urgency_hook"
+        ]
+      }
+    },
+    {
+      "name": "custom_attributes",
+      "type": "object_list",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "custom_attributes"
+        ]
+      }
+    },
+    {
+      "name": "guardrails_guidelines",
+      "type": "text",
+      "title": "Campaign Guardrails and Guidelines",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "guardrails_guidelines"
+        ]
+      }
+    },
+    {
+      "name": "why_user_should_avail_this",
+      "type": "text",
+      "title": "Why User Should Avail This",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "why_user_should_avail_this"
+        ]
+      }
+    },
+    {
+      "name": "reasons_users_may_not_be_interested",
+      "type": "text",
+      "title": "Reasons Users May Not Be Interested",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "reasons_users_may_not_be_interested"
+        ]
+      }
+    },
+    {
+      "name": "reasons_for_non_applicability",
+      "type": "text",
+      "title": "Reasons for Non-Applicability",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "reasons_for_non_applicability"
+        ]
+      }
+    },
+    {
+      "name": "other_important_information",
+      "type": "text",
+      "title": "Other Important Information",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "other_important_information"
+        ]
+      }
+    },
+    {
+      "name": "target_audience_tags",
+      "type": "string_list",
+      "list_type": "text",
+      "title": "Target Audience Tags",
+      "ui_element": "tags",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "target_audience_tags"
+        ]
+      }
     },
     {
       "name": "start_date",
@@ -209,10 +413,6 @@
       ]
     },
     {
-      "name": "urgency_hook",
-      "type": "text"
-    },
-    {
       "name": "ctas",
       "title": "Call to Actions",
       "type": "string_list",
@@ -226,7 +426,15 @@
         "order-extended-warranty",
         "order-care-package"
       ],
-      "option_others": true
+      "option_others": true,
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "ctas"
+        ]
+      }
     },
     {
       "name": "number_targeted",

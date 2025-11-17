@@ -127,7 +127,12 @@ def create_campaign_templates(logger=None, job=None):
                         "brand_preference", "model_preference", "variant_preference", "color_preference", 
                         "engine_type_preference", "transmission_preference", "range_preference", "feature_preferences"
                     ],
-                    "post-sales": ["vehicle_variant", "vehicle_color", "campaign_offer", "vehicle_type", "campaign_offer", "last_session_channel", "last_session_status", "las_session_timestamp"]
+                    "post-sales": [
+                        "vehicle_variant", "vehicle_color", "vehicle_type", 
+                        "campaign_offer", 
+                        "last_session_channel", "last_session_status", "last_session_timestamp"
+                    ]
+
                 }
                 campaign_template = gryd.await_result(
                     'generate_whatsapp_template',AUTOCRM_AGENT_SERVICE_NAME, args=[campaign_type, campaign_objective], kwargs=kwargs, gryd_logger=logger, job_param=job
