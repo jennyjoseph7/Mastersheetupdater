@@ -1,0 +1,179 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "campaign_objective",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "campaign_type",
+      "type": "text",
+      "options": [
+        "pre-sales",
+        "post-sales",
+        "dealership"
+      ],
+      "ui_element": "select",
+      "indexed": true
+    },
+    {
+      "name": "campaign_sub_type",
+      "type": "text",
+      "options": [
+        "brand awareness",
+        "product awareness",
+        "event",
+        "lead generation",
+        "lead qualification",
+        "lead nurturing",
+        "lead conversion",
+        "workshop awareness",
+        "offers",
+        "new accessories",
+        "new procedures",
+        "customer retention",
+        "service reminder",
+        "upsell/cross-sell",
+        "review",
+        "feedback",
+        "reminder",
+        "product recall",
+        "software update",
+        "other"
+      ],
+      "ui_element": "select",
+      "indexed": true
+    },
+    {
+      "name": "campaign_objective_name",
+      "type": "text",
+      "title": "Campaign Objective Name",
+      "required": true
+    },
+    {
+      "name": "campaign_objective_description",
+      "type": "text",
+      "title": "Objective Description",
+      "required": true
+    },
+    {
+      "name": "conversation_tone",
+      "type": "text",
+      "options": [
+        "Friendly",
+        "Professional",
+        "Polite",
+        "Urgent",
+        "Persuasive",
+        "Empathetic"
+      ],
+      "default": "Friendly",
+      "ui_element": "select"
+    },
+    {
+      "name": "custom_attributes",
+      "type": "object_list",
+      "list_type": "nested_object",
+      "dict_keys": [
+        "attribute_name",
+        "attribute_value",
+        "attribute_type",
+        "attribute_description"
+      ]
+    },
+    {
+      "name": "guardrails_guidelines",
+      "type": "text",
+      "title": "Campaign Guardrails and Guidelines"
+    },
+    {
+      "name": "why_user_should_avail_this",
+      "type": "text",
+      "title": "Why User Should Avail This"
+    },
+    {
+      "name": "reasons_users_may_not_be_interested",
+      "type": "text",
+      "title": "Reasons Users May Not Be Interested"
+    },
+    {
+      "name": "reasons_for_non_applicability",
+      "type": "text",
+      "title": "Reasons for Non-Applicability"
+    },
+    {
+      "name": "other_important_information",
+      "type": "text",
+      "title": "Other Important Information"
+    },
+    {
+      "name": "target_audience_tags",
+      "type": "string_list",
+      "list_type": "text",
+      "title": "Target Audience Tags",
+      "ui_element": "tags"
+    },
+    {
+      "name": "is_custom",
+      "type": "bool",
+      "default": false,
+      "indexed": true
+    },
+    {
+      "name": "icon",
+      "type": "text",
+      "title": "Icon URL or Code",
+      "ui_element": "icon_picker"
+    },
+    {
+      "name": "dealership_id",
+      "refers": "parents.dealership.dealership_id",
+      "indexed": true,
+      "required": false
+    },
+    {
+      "name": "dealer_name",
+      "refers": "parents.dealership.dealer_name",
+      "indexed": true
+    },
+    {
+      "name": "campaign_objective_id",
+      "type": "uid",
+      "id": true,
+      "auto_updater": true,
+      "default": {
+        "function": "name_to_id",
+        "args": [
+          "campaign_type",
+          "campaign_objective_name",
+          "dealership_id"
+        ],
+        "kwargs": {
+          "attribute_join": "-",
+          "is_unique": true,
+          "separator": "-",
+          "skip_empty": true,
+          "case": "lower"
+        }
+      }
+    }
+  ],
+  "parents": [
+    "dealership"
+  ]
+}

@@ -10,8 +10,6 @@
         ],
         "region_id": "south-india",
         "region_name": "South India",
-        "region_level_guidelines": "Bring cutting-edge technology to traditional automotive services.",
-        "region_level_guardrails": "Balance innovation with reliability and safety.",
         "channels": [
             "whatsapp_chat",
             "email",
@@ -76,8 +74,6 @@
         ],
         "region_id": "north-india",
         "region_name": "North India",
-        "region_level_guidelines": "Focus on fuel efficiency and value for money. Emphasize family-oriented features.",
-        "region_level_guardrails": "Avoid aggressive sales tactics. Respect local customs and festivals.",
         "channels": [
             "whatsapp_chat",
             "email",
@@ -145,8 +141,6 @@
         ],
         "region_id": "west-india",
         "region_name": "West India",
-        "region_level_guidelines": "Focus on style and performance. Highlight urban driving capabilities.",
-        "region_level_guardrails": "Avoid making assumptions about customer preferences. Provide detailed information.",
         "channels": [
             "whatsapp_chat",
             "email",

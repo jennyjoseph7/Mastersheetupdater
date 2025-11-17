@@ -664,6 +664,7 @@ class BaseWebhookConverter:
             if value in (None, "", [], {}, "null"):
                 continue
             self.default_message_dict[key] = value
+    
     # @timelogger()
     def audio_to_text_converter(self,audio_url,headers=None,recognizer="openai-whisper-online",sample_rate=16000,language="english"):
 
@@ -870,7 +871,7 @@ class BaseWebhookConverter:
         }
         
         webhook_received_time = float(message_dict.get("webhook_received_time",0))
-        logger.info(f"TEST webhook_received_time----{webhook_received_time}")
+        # logger.info(f"TEST webhook_received_time----{webhook_received_time}")
 
         format_box_log({
             "Webbhook Provider": message_dict.get("whatsapp_provider"),
@@ -1044,6 +1045,37 @@ class BaseWebhookConverter:
         uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
 
         return uid.hex[:16]   # 16 characters
+    
+    # ( dict->>'model_ids' IS NULL  AND  CAST (dict->>'session_live' AS bool) = True  AND  LOWER(CAST(dict->>'status' AS text)) <> LOWER(completed)  AND  LOWER(CAST(dict->>'channel' AS text)) = LOWER(whatsapp_chat)  AND  LOWER(CAST(dict->>'user_id' AS text)) = LOWER(696bf125225b3cf3) ) LIMIT 50 OFFSET 0
+
+    def apply_filters(self, session_id, user_id, channel, session_live, status):
+        conditions = [] 
+        params = ()
+        if session_id:
+            conditions.append("dict->>'session_id' = %s")
+            params += (session_id,)          
+        if user_id:
+            conditions.append("dict->>'user_id' = %s")
+            params += (user_id,)
+        if channel:
+            conditions.append("dict->>'channel' = %s")
+            params += (channel,)
+        if session_live:
+            conditions.append("CAST (dict->>'session_live' AS bool) = %s")
+            params += (session_live,)
+        if status:
+            if status.endswith('~'):
+                conditions.append("dict->>'status' <> %s")
+                status = status[:-1]
+                # first_part += "AND LOWER(CAST(dict->>'status' AS text)) <> LOWER(%s)"
+                params += (status,)
+            else:
+                conditions.append("dict->>'session_live' = %s")
+                params += (session_live,)
+
+        condition = "Where " + " AND ".join(conditions)
+        return condition, params
+    
     def get_or_create_session(self,data):
         """
         Find active session or create new one.
@@ -1055,16 +1087,20 @@ class BaseWebhookConverter:
             "user_id":data.get("user_id"),
             "channel": "whatsapp_chat",
             "session_live": True,
-            "status~": "completed"
+            "status": "completed~"
         }
-        filters = {k: v for k, v in filters.items() if v is not None}
-        logger.info(f"TEST filters for sessions--{filters}")
+        # filters = {k: v for k, v in filters.items() if v is not None}
+        condition, param = self.apply_filters(**filters)
+        
+        # logger.info(f"TEST filters for sessions--{filters}")
         with get_pg_connector() as pg:
-            # sessions = get_objects_by_filter("session", filters)
-            sessions= list(pg.list(
-                "session", 
-                filters
-            ))
+            # sessions= list(pg.list(
+            #         "session", 
+            #         filters
+            #     ))
+            
+            sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
+            # logger.info(f'TEST sessions found for {sessions}')
             if sessions:
                 logger.info(f"Found session for user_id: {data.get('user_id')}")
                 return sessions[0]
@@ -1146,7 +1182,7 @@ class BaseWebhookConverter:
                     payload["dealership_id"] = dealership_id #check with soham
                 session = self.get_or_create_session(payload)
                 
-            logger.info(f"TEST SESSION Data ----- {session}")
+            # logger.info(f"TEST SESSION Data ----- {session}")
             return {
                 **session,
                 "dealership_id":dealership_id
@@ -1168,11 +1204,11 @@ class BaseWebhookConverter:
         Returns:
             dict: Response message indicating the status of the webhook processing.
         """
-        logger.info("TEST process webhook before payload converter----")
+        # logger.info("TEST process webhook before payload converter----")
         self.payload_converter(*args, **kwargs)
         # self.payload_converter(*args, **kwargs["messages"][0])
         
-        logger.info("TEST process webhook after payload converter-")
+        # logger.info("TEST process webhook after payload converter-")
 
         # Schedule campaign status update asynchronously
         # update_campaign_status_params.apply_async(*[kwargs.get("whatsapp_provider"),kwargs.get("enterprise_id")],**kwargs)

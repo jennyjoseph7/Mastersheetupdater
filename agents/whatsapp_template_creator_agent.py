@@ -172,24 +172,24 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
                 }
 
     def _assemble_output(self, generated):
-        buttons = []
-        template_button_payloads=[]
-        template_name = generated.get("template_name", "").lower().strip().replace(" ", "_").replace("-", "_")
+            buttons = []
+            template_button_payloads=[]
+            template_name = generated.get("template_name", "").lower().strip().replace(" ", "_").replace("-", "_")
 
-        for cta in generated.get("suggested_ctas", []):
-            buttons.append({"type": "QUICK_REPLY", "text": cta})
-            slug = (
-            cta.lower().strip().replace(" ", "_").replace("-", "_"))
+            for cta in generated.get("suggested_ctas", []):
+                buttons.append({"type": "QUICK_REPLY", "text": cta})
+                slug = (
+                cta.lower().strip().replace(" ", "_").replace("-", "_"))
 
-            template_button_payloads.append(f"{template_name}-{slug}")
+                template_button_payloads.append(f"{template_name}-{slug}")
 
 
-        return {
-            "template_name": generated.get("template_name"),
-            "template_message": generated.get("template_text"),
-            "buttons": buttons,
-            "template_button_payloads": template_button_payloads
-        }
+            return {
+                "template_name": generated.get("template_name"),
+                "template_message": generated.get("template_text"),
+                "buttons": buttons,
+                "template_button_payloads": template_button_payloads
+            }
     
 
     def run(self):

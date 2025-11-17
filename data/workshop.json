@@ -55,9 +55,23 @@
       "indexed": true
     },
     {
-      "name": "workshop_code",
+      "name": "workshop_full_name",
       "type": "text",
-      "indexed": true
+      "indexed": true,
+      "default": {
+        "function": "name_to_id",
+        "args": [
+          "dealer_name",
+          "workshop_name"
+        ],
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " ",
+          "case": "title",
+          "skip_empty": true
+        }
+      }
     },
     {
       "name": "workshop_type",

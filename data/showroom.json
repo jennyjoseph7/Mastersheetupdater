@@ -43,6 +43,25 @@
       "indexed": true
     },
     {
+      "name": "showroom_full_name",
+      "type": "text",
+      "indexed": true,
+      "default": {
+        "function": "name_to_id",
+        "args": [
+          "dealer_name",
+          "showroom_name"
+        ],
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " ",
+          "case": "title",
+          "skip_empty": true
+        }
+      }
+    },
+    {
       "name": "supported_brands",
       "type": "list",
       "default": {

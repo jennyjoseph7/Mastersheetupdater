@@ -1,9 +1,6 @@
 {
     "name": "post_sales_lead",
     "model_type": "default",
-    "parents": [
-        "post_sales_campaign"
-    ],
     "attributes": [
         {
             "name": "created",
@@ -70,6 +67,50 @@
             "force_update": "vehicle_id"
         },
         {
+            "name": "variant_color_id",
+            "options": "/options/variant_color/color_name?variant_id={variant_id}",
+            "ui_element": "select"
+        },
+        {
+            "name": "vehicle_color",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "variant_color",
+                    "variant_color_id",
+                    "color_name"
+                ]
+            }
+        },
+        {
+            "name": "vehicle_category",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "vehicle_category"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "vehicle_id"
+        },
+        {
+            "name": "vehicle_type",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "vehicle_type"
+                ]
+            },
+            "indexed": true,
+            "auto_updater": true,
+            "force_update": "vehicle_id"
+        },
+        {
             "name": "reg_number",
             "type": "text",
             "default": {
@@ -89,7 +130,7 @@
                 "args": [
                     "vehicle",
                     "vehicle_id",
-                    "reg_number"
+                    "vin_number"
                 ]
             }
         },
@@ -198,15 +239,210 @@
             "name": "campaign_id",
             "type": "uid",
             "required": false,
-            "refers": "parents.post_sales_campaign.campaign_id"
+            "option_others": true,
+            "options": "/options/post_sales_campaign/campaign_name"
         },
         {
             "name": "campaign_name",
-            "refers": "parents.post_sales_campaign.campaign_name"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_name"
+                ]
+            }
         },
         {
             "name": "campaign_type",
-            "refers": "parents.post_sales_campaign.campaign_type"
+            "type": "text",
+            "default": "post-sales"
+        },
+        {
+            "name": "campaign_objective_id",
+            "type": "uid",
+            "required": true,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_objective_id"
+                ]
+            }
+        },
+        {
+            "name": "campaign_offer",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_offer"
+                ]
+            }
+        },
+        {
+            "name": "campaign_description",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_description"
+                ]
+            }
+        },
+        {
+            "name": "campaign_sub_type",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_sub_type"
+                ]
+            }
+        },
+        {
+            "name": "campaign_objective_description",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_objective_description"
+                ]
+            }
+        },
+        {
+            "name": "urgency_hook",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "urgency_hook"
+                ]
+            }
+        },
+        {
+            "name": "offer_applicability",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "offer_applicability"
+                ]
+            }
+        },
+        {
+            "name": "conversation_tone",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "conversation_tone"
+                ]
+            }
+        },
+        {
+            "name": "custom_attributes",
+            "type": "object_list",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "custom_attributes"
+                ]
+            }
+        },
+        {
+            "name": "campaign_guardrails_guidelines",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_guardrails_guidelines"
+                ]
+            }
+        },        {
+            "name": "why_user_should_avail_this",
+            "type": "text",
+            "title": "Why User Should Avail This",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_why_user_should_avail_this"
+                ]
+            }
+        },
+        {
+            "name": "reasons_users_may_not_be_interested",
+            "type": "text",
+            "title": "Reasons Users May Not Be Interested",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "reasons_users_may_not_be_interested"
+                ]
+            }
+        },
+        {
+            "name": "reasons_for_non_applicability",
+            "type": "text",
+            "title": "Reasons for Non-Applicability",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_id",
+                    "campaign_reasons_for_non_applicability"
+                ]
+            }
+        },
+        {
+            "name": "other_important_information",
+            "type": "text",
+            "title": "Other Important Information",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "other_important_information"
+                ]
+            }
+        },
+        {
+            "name": "ctas",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "ctas"
+                ]
+            }
+        },
+        {
+            "name": "lead_tags",
+            "options": "/options/post_sales_campaign/applicable_tags",
+            "ui_element": "multiselect",
+            "list_adder": {
+                "function": "list_adder"
+            },
+            "option_others": true
         },
         {
             "name": "workshop_id",
@@ -228,6 +464,20 @@
             "force_update": "workshop_id"
         },
         {
+            "name": "workshop_full_name",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "workshop_full_name"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id",
+            "indexed": true
+        },
+        {
             "name": "workshop_address",
             "type": "text",
             "default": {
@@ -242,19 +492,69 @@
             "force_update": "workshop_id"
         },
         {
+            "name": "workshop_geolocation",
+            "type": "geolocation",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "geolocation"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "workshop_operating_hours",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "operating_hours"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "workshop_facilities_available",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "facilities_available"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "service_due_timetamp",
+            "type": "number"
+        },
+        {
+            "name": "service_due_date",
+            "type": "text"
+        },
+        {
             "auto_updater": true,
             "default": {
                 "args": [
-                    "vehicle_reg_number",
-                    "dealership_name",
+                    "reg_number",
+                    "dealer_name",
+                    "workshop_name",
                     "campaign_name"
                 ],
                 "function": "name_to_id",
                 "kwargs": {
-                    "attribute_join": " ",
+                    "attribute_join": "-",
                     "is_unique": true,
-                    "separator": " - ",
-                    "skip_empty": true
+                    "separator": "-",
+                    "skip_empty": true,
+                    "case": "lower"
                 }
             },
             "name": "post_sales_lead_id",
@@ -371,12 +671,32 @@
                 "Will decide within 15 to 30 days",
                 "Will decide within 31 to 60 days",
                 "Will decide within 61 to 90 days",
-                "Will decide after 90 days"
+                "Will decide after 90 days",
+                "Converted",
+                "Bounced",
+                "Unsubscribed",
+                "Spam"
             ],
-            "option_others" : true
+            "option_others": true
         },
         {
             "name": "follow_up_date",
+            "type": "number"
+        },
+        {
+            "name": "lead_summary",
+            "type": "text"
+        },
+        {
+            "name": "scheduled_date",
+            "type": "text"
+        },
+        {
+            "name": "scheduled_time",
+            "type": "text"
+        },
+        {
+            "name": "scheduled_timestamp",
             "type": "number"
         }
     ]
