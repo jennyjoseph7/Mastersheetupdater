@@ -268,7 +268,11 @@
             "type": "number",
             "default": {
                 "function": "time_diff",
-                "args":["created","purchase_date", "months"]
+                "args": [
+                    "created",
+                    "purchase_date",
+                    "months"
+                ]
             }
         },
         {
@@ -302,19 +306,8 @@
             }
         },
         {
-            "name": "avg_service_cost",
-            "type": "number"
-        },
-        {
-            "name": "service_frequency",
-            "type": "number"
-        },
-        {
             "name": "next_service_due",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "service_feedback",
@@ -337,10 +330,19 @@
         },
         {
             "name": "extended_warranty_purchased",
-            "type": "bool",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "bool"
+        },
+        {
+            "name": "avg_service_cost",
+            "type": "number"
+        },
+        {
+            "name": "service_frequency",
+            "type": "number"
+        },
+        {
+            "name": "loan_end_date",
+            "type": "number"
         },
         {
             "name": "odometer_reading",
@@ -382,7 +384,7 @@
             ]
         },
         {
-            "name": "battery_warranty",
+            "name": "battery_warranty_expiry_date",
             "type": "number"
         },
         {
@@ -395,10 +397,7 @@
         },
         {
             "name": "oil_change_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "brake_pad_change_date",
@@ -488,6 +487,48 @@
             }
         },
         {
+            "name": "ac_vent_cleaning_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "underbody_coating_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "car_wash_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "brake_oil_change_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "oil_filter_replacement_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "polishing_and_waxing_date",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
             "name": "repair_notes",
             "type": "text"
         },
@@ -503,18 +544,12 @@
                 "Leased",
                 "Financed",
                 "Fleet",
-                "Corporate"            ]
+                "Corporate"
+            ]
         },
         {
             "name": "finance_loan_status",
             "type": "text"
-        },
-        {
-            "name": "loan_end_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
         },
         {
             "name": "loan_provider",
@@ -606,6 +641,12 @@
         {
             "name": "rc_scanned_copy",
             "type": "text",
+            "converter": {
+                "function": "url_converter"
+            },
+            "constraint": {
+                "function": "url_validator"
+            },
             "ui_element": "file"
         },
         {

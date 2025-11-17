@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from connectors.user_source_connectors.source_connector import *
 logger=hp.get_logger(__name__)
+import time
 
 # ---------------- FILE SOURCE ----------------
 class FileCampaignSource(CampaignSourceBase):
@@ -68,7 +69,7 @@ class FileCampaignSource(CampaignSourceBase):
                 retry_count += 1
                 wait_time = 2 ** retry_count if self.retry_policy.get("backoff") == "exponential" else 2
                 logger.warning(f"[Campaign:{self.campaign_id}] File read retry {retry_count}/{max_retries} after error: {e}. Waiting {wait_time}s")
-                hp.sleep(wait_time)
+                time.sleep(wait_time)
 
         if not users:
             logger.info(f"[Campaign:{self.campaign_id}] File exhausted or empty batch. No more users.")

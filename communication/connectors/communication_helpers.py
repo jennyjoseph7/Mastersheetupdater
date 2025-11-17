@@ -99,7 +99,7 @@ def get_all_objects(model_name):
             model_name
         ]
     }
-    logger.info(f"TEST in get_all_objects func- payload-{payload}- GRYD_BASE_URL-{GRYD_BASE_URL}-GRYD_HEADERS-{GRYD_HEADERS}")
+    # logger.info(f"TEST in get_all_objects func- payload-{payload}- GRYD_BASE_URL-{GRYD_BASE_URL}-GRYD_HEADERS-{GRYD_HEADERS}")
     
     r=requests.post(f'{GRYD_BASE_URL}/gryd/api/db/get_api_functions',
                 headers=GRYD_HEADERS,
@@ -109,10 +109,10 @@ def get_all_objects(model_name):
         data = r.get("data")
 
         if not data:
-            logger.info("TEST get_all_objects --- [] (empty result)")
+            # logger.info("TEST get_all_objects --- [] (empty result)")
             return None 
 
-        logger.info(f"TEST get_all_objects --- {data}")
+        # logger.info(f"TEST get_all_objects --- {data}")
         return data[0]
     
     except Exception:
@@ -135,10 +135,10 @@ def get_objects_by_filter(model_name, filter):
         data = r.get("data")
 
         if not data:
-            logger.info("TEST get_objects_by_filter --- [] (empty result)")
+            # logger.info("TEST get_objects_by_filter --- [] (empty result)")
             return None 
 
-        logger.info(f"TEST get_objects_by_filter --- {data}")
+        # logger.info(f"TEST get_objects_by_filter --- {data}")
         return data[0]
 
     except Exception as e:
@@ -163,10 +163,10 @@ def post_data(model_name,data):
         data = r.get("data")
 
         if not data:
-            logger.info("TEST post_data --- [] (empty result)")
+            # logger.info("TEST post_data --- [] (empty result)")
             return None 
 
-        logger.info(f"TEST post_data --- {data}")
+        # logger.info(f"TEST post_data --- {data}")
         return data[0]
 
     except Exception as e:
@@ -589,7 +589,8 @@ class AuthManager:
                 t0 = time.time()
                 
                 with get_pg_connector() as pg:
-                    creds = pg.list("communication_credential", {"sender": num})
+                    creds = list(pg.list("communication_credential", {"sender": num}))
+                    creds = creds[0]
                     if creds:
                         logger.info(
                             f"[HEADERS] Found credentials via PG for {num} and creds: {creds}"

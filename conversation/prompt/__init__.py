@@ -267,9 +267,9 @@ Bold front grille with chrome accents
 End Of Document Data
 """
 def setup_primary_prompt(*args, **kwargs):
-    session_data_cache = kwargs.get("session_data_cache")
-    campaign_data = session_data_cache.get("campaign_data")
-    user_data = session_data_cache.get("user_data")
+    session_data_cache_data = kwargs.get("session_data_cache",{}).get("data",{})
+    campaign_data = session_data_cache_data.get("campaign_data")
+    user_data = session_data_cache_data.get("user_data")
     campaign_type = campaign_data.get("campaign_type")
     campaign_name = campaign_data.get("campaign_name")
     campaign_objective = campaign_data.get("campaign_objective")
@@ -352,7 +352,7 @@ def setup_primary_prompt(*args, **kwargs):
         user_data = json.dumps(user_data),
         campaign_data = json.dumps(campaign_data),
         data = get_document_data(),
-        history = json.dumps(session_data_cache.get("data",{}).get("history"))
+        history = json.dumps(session_data_cache_data.get("data",{}).get("messages",[]))
     )
     return primary_prompt
     pass

@@ -57,6 +57,14 @@
       "refers": "parents.vehicle_model.region_level_guardrails"
     },
     {
+      "name": "vehicle_category",
+      "refers": "parents.vehicle_model.vehicle_category"
+    },
+    {
+      "name": "vehicle_type",
+      "refers": "parents.vehicle_model.vehicle_type"
+    },
+    {
       "name": "brand_logo_url",
       "refers": "parents.vehicle_model.brand_logo_url"
     },

@@ -9,7 +9,7 @@ from connectors.communication_helpers import *
 logger=hp.get_logger(__name__,level=hp.logging.DEBUG)
 
 for _, module_name, _ in pkgutil.iter_modules(__path__):
-    logger.info(f"TEST connector module: {module_name}")
+    # logger.info(f"TEST connector module: {module_name}")
     if module_name not in ["source_connector"]:
         importlib.import_module(f"{__name__}.{module_name}")
         logger.info(f"✅ Auto-imported connector module: {module_name}")

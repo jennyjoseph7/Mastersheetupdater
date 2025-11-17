@@ -71,8 +71,11 @@ def converse(*args, **kargs):
         session_data = pg.get("session","session_id",session_id)
         if not session_data:
             yield from yield_error("error","session_data fetching failed",*args, **pass_kwargs)
-            # return
-    message_id = gryd.hp.make_uuid3(hp.time(),session_id,request_data.get("user_id"),request_data.get("customer_response"))
+            return
+        if not session_data.get("campaign_id"):
+            yield from yield_error("error","campaign_id is required",*args, **pass_kwargs)
+            return
+    message_id = str(gryd.hp.make_uuid3(hp.time(),session_id,request_data.get("user_id"),request_data.get("customer_response")))
     
     ###TODO Post incoming message object
     incoming_message_object = {}
@@ -80,12 +83,15 @@ def converse(*args, **kargs):
     
 
     with get_pg_connector() as pg:
-        session_data_cache = pg.get("session_data_cache","session_data_cache_id",session_id)
-        if not session_data_cache:
-            session_data_cache = pg.update("session_data_cache","session_data_cache_id",None,{"session_id":session_id})
+        session_data_cache = pg.get("session_data_cache","session_id",session_id)
+        if not session_data_cache or not session_data_cache.get("data",{}).get("campaign_data") or not session_data_cache.get("data",{}).get("user_data"):
+            campaign_model_name = "pre_sales_campaign" if session_data.get("campaign_type") == "pre_sales" else "post_sales_campaign"
+            campaign_data = pg.get("pre_sales_campaign","campaign_id",session_data.get("campaign_id")) or {}
+            user_data = pg.get("person","user_id",session_data.get("user_id")) or {}
+            session_data_cache = pg.update("session_data_cache","session_id",session_id,{"session_id":session_id,"data":{"campaign_data":campaign_data,"user_data":user_data}})
             if not session_data_cache:
                 yield {"status" : "error","message" : "session_data_cache fetching/creation failed"}
-                # return
+                return
     if not session_data_cache:
         yield {"status" : "error","message" : "session_data_cache fetching/creation failed"}
     
@@ -100,6 +106,7 @@ def converse(*args, **kargs):
 
     if request_data.get("channel") in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"] and not request_data.get("orchestrate"):
         yield from yield_primary_prompt(*args, **pass_kwargs)
+        return
     do_orchestrate = True
     for ppresp in execute_primary_prompt(*args, **pass_kwargs):
         if isinstance(ppresp,dict):
@@ -250,14 +257,20 @@ def post_messages_data(*args, **pass_kwargs):
         Picks up all messages sent and posts it to message model
     '''
     with get_pg_connector() as pg:
-        first_message = pg.update("message","message_id",message_id,{"reply_to":pass_kwargs.get("reply_to"),"message_id":message_id,"message":message.get("placeholder"),"session_id":pass_kwargs.get("session_id")})
+        new_messages = []
+        first_message = pg.update("message","message_id",pass_kwargs.get("reply_to"),{"reply_to":"","message_id":pass_kwargs.get("reply_to"),"message":pass_kwargs.get("request_data",{}).get("customer_response",""),"session_id":pass_kwargs.get("session_id"),"index" : 0})
+        new_messages.append(first_message)
         mlogger.info("first_message {}".format(first_message))
         for message in pass_kwargs.get("responses"):
             message_id = str(gryd.hp.make_uuid3(hp.time(),pass_kwargs.get("session_id"),message.get("intent"),message.get("placeholder")))
-            respper = pg.update("message","message_id",message_id,{"reply_to":pass_kwargs.get("reply_to"),"message_id":message_id,"message":message.get("placeholder"),"session_id":pass_kwargs.get("session_id")})
+            respper = pg.update("message","message_id",message_id,{"reply_to":pass_kwargs.get("reply_to"),"message_id":message_id,"message":message.get("placeholder"),"session_id":pass_kwargs.get("session_id"),"intent" : message.get("intent","unknown_intent"),"index" : message.get("index",0)})
+            new_messages.append(respper)
             mlogger.info("respper {}".format(respper))
-    pass    
-
+        session_data_cache_data = pass_kwargs.get("session_data_cache").get("data",{})
+        current_cache_messages = session_data_cache_data.get("messages",[])
+        current_cache_messages.extend(new_messages)
+        session_data_cache_data["messages"] = current_cache_messages
+        pg.update("session_data_cache","session_id",pass_kwargs.get("session_id"),{"data":session_data_cache_data})
 @gryd.is_a_task()
 def update_lead_data(*args, **pass_kwargs):
     '''

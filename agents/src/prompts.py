@@ -244,98 +244,241 @@ def car_traits_prompt(user_query: str):
     return system_prompt, user_prompt
 
 
-
-def mergerFreeTextPrompt(user_text: str):
+def mergerFreeTextPrompt(user_text, formal_filters):
     system_prompt = """
-    You are a precise and intelligent assistant that extracts structured information from unstructured user text related to car buying preferences and user background.
+You are a precise and intelligent assistant that extracts structured information from unstructured user text related to car buying preferences and user background.
 
-    ## 🎯 OBJECTIVE:
-    You must analyze the user's sentence and extract:
-    1. **user_profile** → general, lifestyle, background, or behavioral information.
-    2. **user_preference** → structured filters directly related to car attributes.
+## 🎯 OBJECTIVE:
+You must analyze the user's sentence and extract:
+1. **user_profile** → general, lifestyle, background, or behavioral information.
+2. **user_preference** → structured filters directly related to car attributes.
+3. **negative_filters** → anything the user explicitly DOES NOT want.
 
-    ## ⚙️ CLASSIFICATION RULE:
-    Only the following intents are valid for **user_preference**:
-    ["brand_name", "product_name","brand_name", "model_name", "variant_name", "transmission", "seating", "price_range", "budget", "fuel_type", "vehicle_type", "color"]
+## ⚠️ NEGATIVE FILTER RULE:
+A negative filter is detected when the user expresses rejection, exclusion, or avoidance.
+Examples:
+- "I don't want a car with manual transmission"
+- "Don't show me SUVs"
+- "Exclude Zeta Plus 7Str variant"
+- "Avoid diesel cars"
 
-    ➤ Anything outside this list (e.g., "comfort", "safety", "health", "family", "student", "back pain", "long drive", etc.) should go under **user_profile**.
+Each negative filter must contain:
+{
+  "intent": "<matching attribute intent>",
+  "statement": "<original statement>",
+  "answer": ["<extracted value>"]
+}
 
-    ## 🧠 DEFINITIONS:
-    - **user_preference** = Filters that can be used in search or recommendation systems.
-      Examples:
-        - "I like Mahindra" → brand_name
-        - "7 seater" → seating
-        - "petrol" → fuel_type
-        - "SUV" → vehicle_type
-        - "black" → color
-        - "Z2 Diesel MT 7 STR (ESP)" → variant_name
-        - "Mahindra" → brand_name
-        - "manual transmission" → transmission
-        - "5 seater" → seating
-        - "Scorpio" → product_name
-        - "under 10 lakh" → price_range
-    
-    - **user_profile** = Contextual or personal insights about the user.
-      Examples:
-        - "I’m a student"
-        - "I have back pain so I need comfortable seats"
-        - "My family goes on long trips often"
-        - "I’ll exchange my old car to finance it"
-    
-    ## 🧩 RESPONSE FORMAT:
-    Always return in **strict JSON format only**, with this structure:
-    {
-      "user_profile": [
-          {"intent": "...","statement": "...", "answer": ["..."]}
-      ],
-      "user_preference": [
-          {"intent": "...", "statement": "...", "answer": ["..."]}
-      ]
-    }
+Valid intents for negative_filters follow the SAME list used for user_preference.
 
-    - If no data is found, return an empty array for that section.
-    - Each entry in both sections must include `"statement"` → the original or rephrased user statement or intent behind the extracted data.
-    - Avoid any explanation outside of JSON.
-    - All intent names in user_preference must be lowercase.
+## ⚙️ VALID USER_PREFERENCE INTENTS:
+["brand_name", "product_name", "brand_name", "model_name", "variant_name",
+ "transmission_type", "seating", "price_range", "budget", "fuel_type",
+ "vehicle_type", "color"]
 
-    ## 💬 EXAMPLE:
+➤ Anything outside this list goes into **user_profile** unless it is negative.
 
-    User text:
-    "I want good comfort, and I’m interested in Mahindra."
+## 🧠 DEFINITIONS:
+- **user_preference** = filters used for positive or neutral search criteria.
+- **negative_filters** = what the user wants to avoid.
+- **user_profile** = context about lifestyle, behavior, non-technical preferences.
 
-    Expected output:
-    {
-      "user_profile": [
-        {
-        "intent": "comfort",
-          "statement": "I am looking for good comfort",
-          "answer": ["good comfort"]
-        }
-      ],
-      "user_preference": [
-        {
-          "intent": "brand_name",
-          "statement": "I am interested in Mahindra",
-          "answer": ["mahindra"]
-        }
-      ]
-    }
+Take reference from this list:
+""".rstrip()
 
-    ## 🔒 Validation Rules:
-    - If an extracted intent is not in the preference list above, it must go to `user_profile`.
-    - Always infer meaningful "question" values that represent what the user expressed.
-    - Never leave both arrays empty — at least one must contain structured information if something relevant is found.
-    """
+    # safely append filters, no f-string issues
+    system_prompt += "\n" + str(formal_filters) + """
+
+## 🧩 RESPONSE FORMAT (MANDATORY):
+Return STRICT JSON:
+{
+  "user_profile": [
+      {"intent": "...","statement": "...", "answer": ["..."]}
+  ],
+  "user_preference": [
+      {"intent": "...", "statement": "...", "answer": ["..."]}
+  ],
+  "negative_filters": [
+      {"intent": "...", "statement": "...", "answer": ["..."]}
+  ]
+}
+
+Rules:
+- Return empty arrays when no data is found.
+- Every entry must have intent, statement, answer[].
+- All intent names must be lowercase.
+- Answer values should be clean and normalized to lowercase.
+- No text outside JSON.
+
+## 🔒 EXTRA VALIDATION:
+
+- If the statement contains negative expressions like:
+  ["don't want", "avoid", "exclude", "don't show", "no", "without"]
+  → classify it under negative_filters.
+- For transmission_type, only return from the below list(case sensitive):
+  ["automatic and manual", "manual", "automatic", "hybrid", "other"]
+-Use the same cases were there in provided list for transmission_type
+"""
 
     user_prompt = f"""
-    Extract 'user_profile' and 'user_preference' data according to the above rules from this text:
+Extract 'user_profile', 'user_preference', and 'negative_filters' based on the above rules from:
 
-    "{user_text}"
-    """
+"{user_text}"
+"""
 
     return system_prompt, user_prompt
 
 
+# def mergerFreeTextPrompt(user_text, formal_filters):
+    system_prompt = """
+You are a precise and intelligent assistant that extracts structured information from unstructured user text related to car buying preferences and user background.
+
+Your job is not only to extract values — you must also generate **all possible matching keyword variations** for each extracted answer, based on the attribute type.
+
+# 🔥 NEW RULE: EXPAND ANSWERS INTO ALL POSSIBLE MATCHING KEYWORDS
+
+When you extract an intent → answer[], you must automatically generate a list of all possible keyword variations relevant to that attribute.
+
+### Examples:
+
+### BRAND NAME (brand_name)
+Input: "mahindra"
+Output:
+[
+  "mahindra",
+  "mahindra and mahindra",
+  "mahindra & mahindra",
+  "mahindra & mahindra",
+  "mahindra cars"
+]
+
+### TRANSMISSION TYPE (transmission_type)
+Input: "manual"
+Output:
+[
+  "manual",
+  "manual transmission",
+  "manual type",
+  "prefer manual",
+  "manual gear"
+]
+
+### VEHICLE TYPE (vehicle_type)
+Input: "suv"
+Output:
+[
+  "suv",
+  "sports utility vehicle",
+  "compact suv",
+  "full-size suv"
+]
+
+### MODEL NAME (model_name)
+Input: "scorpio"
+Output:
+[
+  "scorpio",
+  "scorpio car",
+  "mahindra scorpio"
+]
+
+### COLOR
+Input: "red"
+Output:
+[
+  "red",
+  "red color",
+  "reddish"
+]
+
+You must intelligently generate keyword variations that a user may use while describing the same attribute.  
+ONLY generate relevant variations — do NOT generate unrelated words.
+
+---------------------------------------------------------------------
+
+## 🎯 OBJECTIVE:
+Analyze the user’s sentence and extract:
+1. **user_profile** → lifestyle, behavioral, or background details.
+2. **user_preference** → structured filters for car attributes.
+3. **negative_filters** → things the user does NOT want.
+
+## ⚠️ NEGATIVE FILTER RULE:
+If the user expresses avoidance like:
+- "I don't want..."
+- "avoid..."
+- "exclude..."
+- "no ..."
+- "don't show..."
+→ classify as negative_filters.
+
+Each negative filter returned must be:
+
+{
+  "intent": "<intent name>",
+  "statement": "<exact original text>",
+  "answer": ["value1", "keyword variation 2", ...]
+}
+
+---------------------------------------------------------------------
+
+## ✔ VALID INTENTS:
+["brand_name", "product_name", "brand_name", "model_name", "variant_name",
+ "transmission_type", "seating", "price_range", "budget", "fuel_type",
+ "vehicle_type", "color"]
+
+Anything else → user_profile (unless negative).
+
+---------------------------------------------------------------------
+
+## 🔒 STRICT VALIDATION RULES:
+- All JSON keys MUST be lowercase.
+- All answer[] values MUST be lowercase.
+- All arrays MUST be present even if empty.
+- No explanation text outside JSON.
+- Transmission_type MUST match one of:
+  ["automatic and manual", "manual", "automatic", "hybrid", "other"]
+  (use same case as provided)
+
+---------------------------------------------------------------------
+
+Reference filters:
+""".rstrip()
+
+    system_prompt += "\n" + str(formal_filters) + """
+
+---------------------------------------------------------------------
+
+## 🧩 FINAL RESPONSE FORMAT (MANDATORY JSON):
+{
+  "user_profile": [
+      {"intent": "...", "statement": "...", "answer": ["...", "..."]}
+  ],
+  "user_preference": [
+      {"intent": "...", "statement": "...", "answer": ["...", "..."]}
+  ],
+  "negative_filters": [
+      {"intent": "...", "statement": "...", "answer": ["...", "..."]}
+  ]
+}
+
+---------------------------------------------------------------------
+
+## 🚨 IMPORTANT:
+- Expand answers into keyword variations ALWAYS.
+- Use intelligent synonyms and variations based on attribute type.
+- Keep everything normalized to lowercase.
+
+"""
+
+    user_prompt = f"""
+Extract 'user_profile', 'user_preference', and 'negative_filters' from:
+
+"{user_text}"
+
+Remember: **expand each answer into all possible matching keywords.**
+"""
+
+    return system_prompt, user_prompt
 
 def comparison_prompt(user_choice, compared_car_list):
     """
@@ -551,3 +694,56 @@ Now process this input:
 """
 
     return system_message.strip(), user_message.strip()
+
+
+
+
+
+
+
+def build_intent_filter_prompts(brand_model_name: str, questions: list):
+    """
+    Create prompts that instruct the LLM to classify each question into an intent
+    and decide whether it should be asked or not, returning only:
+    {
+      "not_ask": [...],
+      "ask": [...]
+    }
+    """
+
+    system_prompt = f"""
+You are GPT-5.
+
+Your task:
+- Receive a brand/model name and a list of user-provided questions.
+- Map each question to a HIGH-LEVEL INTENT (examples: pricing, warranty, safety, compatibility, preferences).
+- DO NOT output questions.
+- DO NOT output reasoning.
+- DO NOT output explanations.
+- Only extract **intents**.
+- Then classify each intent as either "ask" or "not_ask".
+
+Final output MUST be ONLY valid JSON with EXACT structure:
+
+{{
+  "not_ask": ["<intent>", "<intent>", ...],
+  "ask": ["<intent>", "<intent>", ...]
+}}
+
+Rules:
+- "ask" = relevant for determining user's needs for {brand_model_name}
+- "not_ask" = irrelevant, redundant, or unnecessary
+- All intents must be lowercase, snake_case.
+- No trailing commas.
+- No free text outside JSON.
+"""
+
+    user_prompt = f"""
+Brand/Model: {brand_model_name}
+
+Questions (JSON list):
+{questions}
+
+Extract intents → classify → output ONLY the JSON result.
+"""
+    return system_prompt.strip(), user_prompt.strip()

@@ -664,6 +664,7 @@ class BaseWebhookConverter:
             if value in (None, "", [], {}, "null"):
                 continue
             self.default_message_dict[key] = value
+    
     # @timelogger()
     def audio_to_text_converter(self,audio_url,headers=None,recognizer="openai-whisper-online",sample_rate=16000,language="english"):
 
@@ -870,7 +871,7 @@ class BaseWebhookConverter:
         }
         
         webhook_received_time = float(message_dict.get("webhook_received_time",0))
-        logger.info(f"TEST webhook_received_time----{webhook_received_time}")
+        # logger.info(f"TEST webhook_received_time----{webhook_received_time}")
 
         format_box_log({
             "Webbhook Provider": message_dict.get("whatsapp_provider"),
@@ -913,14 +914,13 @@ class BaseWebhookConverter:
 
         converse_kwargs = {
             "customer_response" : message_text,
-            "session_id":"MTc2MTg4ODc1Ny40OTkxODg1MDk4ODc5NHdoYXRzYXBw",
             "channel":"whatsapp_chat",
             "temporary_data": {"channel_response_task":{"service":"autocrm-communication","task":"receive_converse_response","kwargs":temporary_data}},
             "response_length":"agent",
             "communication_data":{
-                "whatsapp_message_id":"",
-                "user_sent_time":"1762690270.0140536",
-                "webhook_received_time":"1762690267.8040817"
+                "whatsapp_message_id":message_dict.get("message_id"),
+                "user_sent_time":temporary_data.get("message_sent_at"),
+                "webhook_received_time":webhook_received_time
             }
         }
         if message_dict.get("go_to") or   message_dict.get("intent"):
@@ -939,18 +939,19 @@ class BaseWebhookConverter:
         }
 
         kwargs["temporary_data"] = temporary_data
-        
-        logger.info(f"checking the sessionId ----")
-        converse_kwargs.update({
-            "call_type": "inbound"
-        })
-        
         logger.info("Calling session logic...")
         # call person_session logic here...
         d=self.handle_incoming_message(mobile_number)
         logger.info(f"Session logic result: {d}")
+        converse_kwargs.update({
+            "session_id":d.get("session_id",None),
+            "campaign_id":d.get("campaign_id",None),
+            "campaign_type":d.get("campaign_type",None),
+            "dealershp_id":d.get("dealershp_id",None)
+        })
+        # Remove all None values
+        converse_kwargs = {k: v for k, v in converse_kwargs.items() if v is not None}
         logger.info(f"Sending Converse with payload: {safe_orjson_dumps(converse_kwargs)} for service name : {CONVERS_SERVICE_NAME}")
-
         res = gryd.create_async_task(
             CONVERS_TASK_NAME,
             CONVERS_SERVICE_NAME,
@@ -1021,27 +1022,60 @@ class BaseWebhookConverter:
                 "person", 
                 {"phone_number":phone_number}
             ))
-            logger.info(f"Found person for phone_number: list--{person_list}")
             if person_list:
-                logger.info(f"Found person for phone_number: {phone_number}")
+                logger.info(f"Person already exists for phone_number: {phone_number}")
                 return person_list[0]  
             
             # Create new person
             user_id_attr=self.generate_uid(phone_number)
             logger.info(f"user_id_attr: {user_id_attr}")
             d= pg.update("person","user_id",user_id_attr,{"phone_number": phone_number})
-            logger.info(f"Person with phone_number: {phone_number}. Doesnt exist. Created a new one.")
+            logger.info(f"Person with phone_number: {phone_number}. Doesnt exist. Created a new one. data: {d}")
             return d
 
 
 
 
-    def generate_uid(data):
-        data_str = json.dumps(data, sort_keys=True)
-        
-        uid = hashlib.sha256(data_str.encode()).hexdigest()
-        
-        return uid[:16]
+    def generate_uid(self,data):
+        if isinstance(data, (dict, list)):
+            data_str = json.dumps(data, sort_keys=True)
+        else:
+            data_str = str(data)
+
+        uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
+
+        return uid.hex[:16]   # 16 characters
+    
+    # ( dict->>'model_ids' IS NULL  AND  CAST (dict->>'session_live' AS bool) = True  AND  LOWER(CAST(dict->>'status' AS text)) <> LOWER(completed)  AND  LOWER(CAST(dict->>'channel' AS text)) = LOWER(whatsapp_chat)  AND  LOWER(CAST(dict->>'user_id' AS text)) = LOWER(696bf125225b3cf3) ) LIMIT 50 OFFSET 0
+
+    def apply_filters(self, session_id, user_id, channel, session_live, status):
+        conditions = [] 
+        params = ()
+        if session_id:
+            conditions.append("dict->>'session_id' = %s")
+            params += (session_id,)          
+        if user_id:
+            conditions.append("dict->>'user_id' = %s")
+            params += (user_id,)
+        if channel:
+            conditions.append("dict->>'channel' = %s")
+            params += (channel,)
+        if session_live:
+            conditions.append("CAST (dict->>'session_live' AS bool) = %s")
+            params += (session_live,)
+        if status:
+            if status.endswith('~'):
+                conditions.append("dict->>'status' <> %s")
+                status = status[:-1]
+                # first_part += "AND LOWER(CAST(dict->>'status' AS text)) <> LOWER(%s)"
+                params += (status,)
+            else:
+                conditions.append("dict->>'session_live' = %s")
+                params += (session_live,)
+
+        condition = "Where " + " AND ".join(conditions)
+        return condition, params
+    
     def get_or_create_session(self,data):
         """
         Find active session or create new one.
@@ -1053,19 +1087,23 @@ class BaseWebhookConverter:
             "user_id":data.get("user_id"),
             "channel": "whatsapp_chat",
             "session_live": True,
-            "status~": "completed"
+            "status": "completed~"
         }
-        filters = {k: v for k, v in filters.items() if v is not None}
-
+        # filters = {k: v for k, v in filters.items() if v is not None}
+        condition, param = self.apply_filters(**filters)
+        
+        # logger.info(f"TEST filters for sessions--{filters}")
         with get_pg_connector() as pg:
-            # sessions = get_objects_by_filter("session", filters)
-            sessions= pg.list(
-                "session", 
-                filters
-            )
+            # sessions= list(pg.list(
+            #         "session", 
+            #         filters
+            #     ))
+            
+            sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
+            # logger.info(f'TEST sessions found for {sessions}')
             if sessions:
                 logger.info(f"Found session for user_id: {data.get('user_id')}")
-                return sessions
+                return sessions[0]
 
             # Create new session
             new_session = {
@@ -1075,10 +1113,11 @@ class BaseWebhookConverter:
                 "status": "pre-initiated",
                 "campaign_type": "inbound"
             }
-            
-            s= pg.update("session","session_id",None,new_session)
+            session_id=self.generate_uid(data)
+            logger.info(f"GENERATED session_id--{session_id}")
+            s= pg.update("session","session_id",session_id,new_session)
             # s = post_data("session", new_session)
-            logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session.")
+            logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. s -- {s}")
             return s
 
     def handle_incoming_message(self,phone_number):
@@ -1095,10 +1134,12 @@ class BaseWebhookConverter:
             contact = list(pg.list(
                 "contact_status", 
                 {"phone_number":phone_number}
-            ))[0]
+            ))
             # contact = get_objects_by_filter("contact_status", {"phone_number": phone_number})
             logger.info(f"GET the contact_status for this phone_number: {phone_number}")
             if contact:
+                logger.info(f"contact status: {contact} ,contact[0]: {contact[0]}")
+                
                 campaign_id = contact.get("campaign_id", None)
                 campaign_type= contact.get("campaign_type", None)
                 campaign_model=contact.get("campaign_model", None)
@@ -1117,6 +1158,7 @@ class BaseWebhookConverter:
             if campaign_id:
                 # campaign → lookup campaign details based on campaign_id
                 campaign_details = get_objects_by_filter("campaign_detail", {"campaign_id": campaign_id})
+                
                 # pre_sales_campaign_details=pg.list(
                 #     "pre_sales_campaign", 
                 #     {"campaign_id": campaign_id}
@@ -1124,22 +1166,23 @@ class BaseWebhookConverter:
                 # if pre_sales_campaign_details:
                     
                 if campaign_details:
-                    dealership_id = campaign_details.get("dealership_id")
+                    dealership_id = campaign_details.get("dealership_id",None)
                     payload["dealership_id"] = dealership_id
                 session = self.get_or_create_session(payload)
             else:
-                creds=pg.list(
+                creds=list(pg.list(
                     "communication_credential", 
                     {"sender": phone_number}
-                )
+                ))
                 # non-campaign → lookup credentials based on sender (phone_number)
                 # creds = get_objects_by_filter("communication_credential", {"sender": phone_number})
+                
                 if creds:
-                    dealership_id = creds.get("dealership_id")
+                    dealership_id = creds.get("dealership_id", None)
                     payload["dealership_id"] = dealership_id #check with soham
                 session = self.get_or_create_session(payload)
                 
-            logger.info(f"TEST SESSION Data ----- {session}")
+            # logger.info(f"TEST SESSION Data ----- {session}")
             return {
                 **session,
                 "dealership_id":dealership_id
@@ -1161,11 +1204,11 @@ class BaseWebhookConverter:
         Returns:
             dict: Response message indicating the status of the webhook processing.
         """
-        logger.info("TEST process webhook before payload converter----")
+        # logger.info("TEST process webhook before payload converter----")
         self.payload_converter(*args, **kwargs)
         # self.payload_converter(*args, **kwargs["messages"][0])
         
-        logger.info("TEST process webhook after payload converter-")
+        # logger.info("TEST process webhook after payload converter-")
 
         # Schedule campaign status update asynchronously
         # update_campaign_status_params.apply_async(*[kwargs.get("whatsapp_provider"),kwargs.get("enterprise_id")],**kwargs)
