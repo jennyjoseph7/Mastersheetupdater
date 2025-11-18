@@ -13,16 +13,12 @@
             "required": true
         },
         {
-            "name": "dealer_name",
-            "refers": "parents.dealership.dealer_name"
+            "name": "region_id",
+            "refers": "parents.dealership.region_id"
         },
         {
             "name": "region_name",
             "refers": "parents.dealership.region_name"
-        },
-        {
-            "name": "region_id",
-            "refers": "parents.dealership.region_id"
         },
         {
             "name": "region_level_guidelines",
@@ -33,16 +29,25 @@
             "refers": "parents.dealership.region_level_guardrails"
         },
         {
-            "name": "supported_brands",
-            "refers": "parents.dealership.supported_brands"
+            "name": "dealer_group_id",
+            "refers": "parents.dealership.dealer_group_id",
+            "required": false
         },
         {
-            "name": "suppored_brand_names",
-            "refers": "parents.dealership.suppored_brand_names"
+            "name": "dealer_group_name",
+            "refers": "parents.dealership.dealer_group_name"
         },
         {
-            "name": "supported_brands_guidelines",
-            "refers": "parents.dealership.supported_brands_guidelines"
+            "name": "dealer_group_guidelines",
+            "refers": "parents.dealership.dealer_group_guidelines"
+        },
+        {
+            "name": "dealer_group_description",
+            "refers": "parents.dealership.dealer_group_description"
+        },
+        {
+            "name": "dealer_name",
+            "refers": "parents.dealership.dealer_name"
         },
         {
             "name": "dealership_guidelines",
@@ -57,16 +62,16 @@
             "refers": "parents.dealership.dealership_description"
         },
         {
-            "name": "dealer_group_name",
-            "refers": "parents.dealership.dealer_group_name"
+            "name": "supported_brands",
+            "refers": "parents.dealership.supported_brands"
         },
         {
-            "name": "dealer_group_guidelines",
-            "refers": "parents.dealership.dealer_group_guidelines"
+            "name": "supported_brand_names",
+            "refers": "parents.dealership.supported_brand_names"
         },
         {
-            "name": "dealer_group_description",
-            "refers": "parents.dealership.dealer_group_description"
+            "name": "supported_brands_guidelines",
+            "refers": "parents.dealership.supported_brands_guidelines"
         },
         {
             "name": "vehicle_category",
@@ -125,13 +130,13 @@
             }
         },
         {
-            "name": "campaign_objective_name",
+            "name": "campaign_description",
             "default": {
                 "function": "get_from_model",
                 "args": [
                     "pre_sales_campaign",
                     "campaign_id",
-                    "campaign_objective_name"
+                    "campaign_description"
                 ]
             }
         },
@@ -148,6 +153,17 @@
             }
         },
         {
+            "name": "campaign_objective_name",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "pre_sales_campaign",
+                    "campaign_id",
+                    "campaign_objective_name"
+                ]
+            }
+        },
+        {
             "name": "campaign_objective_description",
             "default": {
                 "function": "get_from_model",
@@ -159,13 +175,13 @@
             }
         },
         {
-            "name": "campaign_description",
+            "name": "campaign_objective_type",
             "default": {
                 "function": "get_from_model",
                 "args": [
                     "pre_sales_campaign",
                     "campaign_id",
-                    "campaign_description"
+                    "campaign_objective_type"
                 ]
             }
         },
@@ -197,6 +213,53 @@
                     "campaign_objective",
                     "campaign_objective_id",
                     "campaign_custom_attributes"
+                ]
+            }
+        },
+        {
+            "name": "campaign_guardrails_guidelines",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "pre_sales_campaign",
+                    "campaign_id",
+                    "campaign_guardrails_guidelines"
+                ]
+            }
+        },
+        {
+            "name": "campaign_offer",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "pre_sales_campaign",
+                    "campaign_id",
+                    "campaign_offer"
+                ]
+            }
+        },
+        {
+            "name": "offer_applicability",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "pre_sales_campaign",
+                    "campaign_id",
+                    "offer_applicability"
+                ]
+            }
+        },
+        {
+            "name": "urgency_hook",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "pre_sales_campaign",
+                    "campaign_id",
+                    "urgency_hook"
                 ]
             }
         },
@@ -250,227 +313,13 @@
             }
         },
         {
-            "name": "campaign_guardrails_guidelines",
-            "type": "text",
+            "name": "ctas",
             "default": {
                 "function": "get_from_model",
                 "args": [
                     "pre_sales_campaign",
                     "campaign_id",
-                    "campaign_guardrails_guidelines"
-                ]
-            }
-        },
-        {
-            "name": "campaign_offer",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "pre_sales_campaign",
-                    "campaign_id",
-                    "campaign_offer"
-                ]
-            }
-        },
-        {
-            "name": "offer_applicability",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "pre_sales_campaign",
-                    "campaign_id",
-                    "offer_applicability"
-                ]
-            }
-        },
-        {
-            "name": "showroom_id",
-            "type": "uid",
-            "required": false
-        },
-        {
-            "name": "showroom_name",
-            "type": "text",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "showroom_name"
-                ]
-            }
-        },
-        {
-            "name": "showroom_address",
-            "type": "text",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "address"
-                ]
-            }
-        },
-        {
-            "name": "showroom_type",
-            "type": "text",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "showroom_type"
-                ]
-            }
-        },
-        {
-            "name": "showroom_contact_number",
-            "type": "text",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "contact_number"
-                ]
-            }
-        },
-        {
-            "name": "showroom_email",
-            "type": "text",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "email"
-                ]
-            }
-        },
-        {
-            "name": "showroom_city",
-            "type": "text",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "city"
-                ]
-            }
-        },
-        {
-            "name": "showroom_state",
-            "type": "text",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "state"
-                ]
-            }
-        },
-        {
-            "name": "showroom_pincode",
-            "type": "text",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "pincode"
-                ]
-            }
-        },
-        {
-            "name": "showroom_geolocation",
-            "type": "geolocation",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "geolocation"
-                ]
-            }
-        },
-        {
-            "name": "showroom_operating_hours",
-            "type": "nested_object",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "operating_hours"
-                ]
-            }
-        },
-        {
-            "name": "showroom_days_open",
-            "type": "nested_object",
-            "option_others": true,
-            "options": [
-                "Sunday",
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday"
-            ]
-        },
-        {
-            "name": "showroom_facilities_available",
-            "ui_element": "multiselect",
-            "type": "string_list",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "facilities_available"
-                ]
-            }
-        },
-        {
-            "name": "showroom_level_guidelines",
-            "type": "text",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "showroom_level_guidelines"
-                ]
-            }
-        },
-        {
-            "name": "showroom_level_guardrails",
-            "type": "text",
-            "force_update": "showroom_id",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "showroom",
-                    "showroom_id",
-                    "showroom_level_guardrails"
+                    "ctas"
                 ]
             }
         },
@@ -490,7 +339,7 @@
                 "args": [
                     "person",
                     "user_id",
-                    "person_name"
+                    "name"
                 ]
             },
             "indexed": true
@@ -576,13 +425,13 @@
             }
         },
         {
-            "name": "preferred_contact_channel",
+            "name": "preferred_communication_channel",
             "default": {
                 "function": "get_from_model",
                 "args": [
                     "person",
                     "user_id",
-                    "preferred_contact_channel"
+                    "preferred_communication_channel"
                 ]
             }
         },
@@ -841,21 +690,6 @@
             "required": true
         },
         {
-            "name": "created",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
-        },
-        {
-            "auto_updater": true,
-            "name": "updated",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
-        },
-        {
             "name": "engangement_events",
             "type": "string_list",
             "list_type": "text",
@@ -924,6 +758,195 @@
             },
             "auto_updater": true,
             "force_update": "previous_interaction_ids"
+        },
+        {
+            "name": "showroom_id",
+            "type": "uid",
+            "required": false
+        },
+        {
+            "name": "showroom_name",
+            "type": "text",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "showroom_name"
+                ]
+            }
+        },
+        {
+            "name": "showroom_address",
+            "type": "text",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "address"
+                ]
+            }
+        },
+        {
+            "name": "showroom_type",
+            "type": "text",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "showroom_type"
+                ]
+            }
+        },
+        {
+            "name": "showroom_contact_number",
+            "type": "text",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "contact_number"
+                ]
+            }
+        },
+        {
+            "name": "showroom_email",
+            "type": "text",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "email"
+                ]
+            }
+        },
+        {
+            "name": "showroom_city",
+            "type": "text",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "city"
+                ]
+            }
+        },
+        {
+            "name": "showroom_state",
+            "type": "text",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "state"
+                ]
+            }
+        },
+        {
+            "name": "showroom_pincode",
+            "type": "text",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "pincode"
+                ]
+            }
+        },
+        {
+            "name": "showroom_geolocation",
+            "type": "geolocation",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "geolocation"
+                ]
+            }
+        },
+        {
+            "name": "showroom_operating_hours",
+            "type": "nested_object",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "operating_hours"
+                ]
+            }
+        },
+        {
+            "name": "showroom_days_open",
+            "type": "nested_object",
+            "option_others": true,
+            "options": [
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday"
+            ]
+        },
+        {
+            "name": "showroom_facilities_available",
+            "ui_element": "multiselect",
+            "type": "string_list",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "facilities_available"
+                ]
+            }
+        },
+        {
+            "name": "showroom_level_guidelines",
+            "type": "text",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "showroom_level_guidelines"
+                ]
+            }
+        },
+        {
+            "name": "showroom_level_guardrails",
+            "type": "text",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "showroom_level_guardrails"
+                ]
+            }
         },
         {
             "name": "appointment_date",
@@ -1081,6 +1104,21 @@
                 "Others"
             ],
             "option_others": true
+        },
+        {
+            "name": "created",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "auto_updater": true,
+            "name": "updated",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
         }
     ]
 }

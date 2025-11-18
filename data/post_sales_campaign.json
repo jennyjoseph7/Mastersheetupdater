@@ -44,44 +44,16 @@
       "refers": "parents.dealership.dealer_name"
     },
     {
-      "name": "region_name",
-      "refers": "parents.dealership.region_name"
+      "name": "dealership_guidelines",
+      "refers": "parents.dealership.dealership_guidelines"
     },
     {
-      "name": "workshop_code",
-      "refers": "parents.workshop.workshop_code"
+      "name": "dealership_guardrails",
+      "refers": "parents.dealership.dealership_guardrails"
     },
     {
-      "name": "workshop_name",
-      "refers": "parents.workshop.workshop_name"
-    },
-    {
-      "name": "workshop_full_name",
-      "refers": "parents.workshop.workshop_full_name"
-    },
-    {
-      "name": "workshop_address",
-      "refers": "parents.workshop.workshop_address"
-    },
-    {
-      "name": "workshop_contact_number",
-      "refers": "parents.workshop.workshop_contact_number"
-    },
-    {
-      "name": "workshop_email",
-      "refers": "parents.workshop.workshop_email"
-    },
-    {
-      "name": "workshop_geolocation",
-      "refers": "parents.workshop.workshop_geolocation"
-    },
-    {
-      "name": "workshop_operating_hours",
-      "refers": "parents.workshop.workshop_operating_hours"
-    },
-    {
-      "name": "workshop_facilities_available",
-      "refers": "parents.workshop.workshop_facilities_available"
+      "name": "dealership_description",
+      "refers": "parents.dealership.dealership_description"
     },
     {
       "name": "region_id",
@@ -98,6 +70,42 @@
     {
       "name": "region_level_guardrails",
       "refers": "parents.dealership.region_level_guardrails"
+    },
+    {
+      "name": "workshop_name",
+      "refers": "parents.workshop.workshop_name"
+    },
+    {
+      "name": "workshop_full_name",
+      "refers": "parents.workshop.workshop_full_name"
+    },
+    {
+      "name": "workshop_address",
+      "refers": "parents.workshop.address"
+    },
+    {
+      "name": "workshop_pincode",
+      "refers": "parents.workshop.pincode"
+    },
+    {
+      "name": "workshop_contact_number",
+      "refers": "parents.workshop.contact_number"
+    },
+    {
+      "name": "workshop_email",
+      "refers": "parents.workshop.email"
+    },
+    {
+      "name": "workshop_geolocation",
+      "refers": "parents.workshop.geolocation"
+    },
+    {
+      "name": "workshop_operating_hours",
+      "refers": "parents.workshop.operating_hours"
+    },
+    {
+      "name": "workshop_facilities_available",
+      "refers": "parents.workshop.facilities_available"
     },
     {
       "name": "supported_brands",
@@ -146,7 +154,7 @@
       "required": false
     },
     {
-      "name": "campaign_objective",
+      "name": "campaign_objective_name",
       "type": "list",
       "options": [
         "Product Launch / Reveal",
@@ -180,6 +188,21 @@
       }
     },
     {
+      "name": "campaign_objective_type",
+      "type": "list",
+      "options": [
+        "lead volume",
+        "budget based",
+        "roi target"
+      ],
+      "default": "lead_volume"
+    },
+    {
+      "name": "campaign_objective_description",
+      "type": "text",
+      "title": "Campaign Objective Description"
+    },
+    {
       "name": "campaign_sub_type",
       "type": "list",
       "options": [
@@ -208,19 +231,41 @@
       }
     },
     {
-      "name": "campaign_objective_type",
-      "type": "list",
-      "options": [
-        "lead volume",
-        "budget based",
-        "roi target"
-      ],
-      "default": "lead_volume"
+      "name": "conversation_tone",
+      "type": "text",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "conversation_tone"
+        ]
+      }
     },
     {
-      "name": "campaign_objective_description",
+      "name": "custom_attributes",
+      "type": "object_list",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "custom_attributes"
+        ]
+      }
+    },
+    {
+      "name": "campaign_guardrails_guidelines",
       "type": "text",
-      "title": "Campaign Objective Description"
+      "title": "Campaign Guardrails and Guidelines",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "guardrails_guidelines"
+        ]
+      }
     },
     {
       "name": "campaign_description",
@@ -242,18 +287,7 @@
       "type": "text",
       "title": "Offer Applicability Details"
     },
-    {
-      "name": "conversation_tone",
-      "type": "text",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "conversation_tone"
-        ]
-      }
-    },
+    
     {
       "name": "urgency_hook",
       "type": "list",
@@ -265,31 +299,6 @@
           "campaign_objective",
           "campaign_objective_id",
           "urgency_hook"
-        ]
-      }
-    },
-    {
-      "name": "custom_attributes",
-      "type": "object_list",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "custom_attributes"
-        ]
-      }
-    },
-    {
-      "name": "guardrails_guidelines",
-      "type": "text",
-      "title": "Campaign Guardrails and Guidelines",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "guardrails_guidelines"
         ]
       }
     },

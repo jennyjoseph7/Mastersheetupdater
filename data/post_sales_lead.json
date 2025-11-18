@@ -3,21 +3,302 @@
     "model_type": "default",
     "attributes": [
         {
-            "name": "created",
-            "type": "number",
-            "auto_updater": true,
+            "name": "dealership_id",
+            "type": "uid",
+            "required": true
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.dealership.region_id"
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.dealership.region_name"
+        },
+        {
+            "name": "region_level_guidelines",
+            "refers": "parents.dealership.region_level_guidelines"
+        },
+        {
+            "name": "region_level_guardrails",
+            "refers": "parents.dealership.region_level_guardrails"
+        },
+        {
+            "name": "dealer_group_id",
+            "refers": "parents.dealership.dealer_group_id",
+            "required": false
+        },
+        {
+            "name": "dealer_group_name",
+            "refers": "parents.dealership.dealer_group_name"
+        },
+        {
+            "name": "dealer_group_guidelines",
+            "refers": "parents.dealership.dealer_group_guidelines"
+        },
+        {
+            "name": "dealer_group_description",
+            "refers": "parents.dealership.dealer_group_description"
+        },
+        {
+            "name": "dealer_name",
+            "refers": "parents.dealership.dealer_name"
+        },
+        {
+            "name": "dealership_guidelines",
+            "refers": "parents.dealership.dealership_guidelines"
+        },
+        {
+            "name": "dealership_guardrails",
+            "refers": "parents.dealership.dealership_guardrails"
+        },
+        {
+            "name": "dealership_description",
+            "refers": "parents.dealership.dealership_description"
+        },
+        {
+            "name": "supported_brands",
+            "refers": "parents.dealership.supported_brands"
+        },
+        {
+            "name": "supported_brand_names",
+            "refers": "parents.dealership.supported_brand_names"
+        },
+        {
+            "name": "supported_brands_guidelines",
+            "refers": "parents.dealership.supported_brands_guidelines"
+        },
+        {
+            "name": "campaign_id",
+            "type": "uid",
+            "required": false,
+            "option_others": true,
+            "options": "/options/post_sales_campaign/campaign_name"
+        },
+        {
+            "name": "campaign_name",
             "default": {
-                "function": "now_ctime"
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_name"
+                ]
             }
         },
         {
-            "name": "updated",
-            "type": "number",
-            "auto_updater": true,
-            "force_update": true,
+            "name": "campaign_type",
+            "type": "text",
+            "default": "post-sales"
+        },
+        {
+            "name": "campaign_sub_type",
             "default": {
-                "function": "now_ctime"
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_sub_type"
+                ]
             }
+        },
+        {
+            "name": "campaign_description",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_description"
+                ]
+            }
+        },
+        {
+            "name": "campaign_objective_id",
+            "type": "uid",
+            "required": true,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_objective_id"
+                ]
+            }
+        },
+        {
+            "name": "campaign_objective_name",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_objective_name"
+                ]
+            }
+        },
+        {
+            "name": "campaign_objective_description",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_objective_description"
+                ]
+            }
+        },
+        {
+            "name": "campaign_objective_type",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_objective_type"
+                ]
+            }
+        },
+        {
+            "name": "conversation_tone",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "conversation_tone"
+                ]
+            }
+        },
+        {
+            "name": "custom_attributes",
+            "type": "object_list",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "custom_attributes"
+                ]
+            }
+        },
+        {
+            "name": "campaign_guardrails_guidelines",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_guardrails_guidelines"
+                ]
+            }
+        },
+        {
+            "name": "campaign_offer",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_offer"
+                ]
+            }
+        },
+        {
+            "name": "offer_applicability",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "offer_applicability"
+                ]
+            }
+        },
+        {
+            "name": "urgency_hook",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "urgency_hook"
+                ]
+            }
+        },
+        {
+            "name": "why_user_should_avail_this",
+            "type": "text",
+            "title": "Why User Should Avail This",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "campaign_why_user_should_avail_this"
+                ]
+            }
+        },
+        {
+            "name": "reasons_users_may_not_be_interested",
+            "type": "text",
+            "title": "Reasons Users May Not Be Interested",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "reasons_users_may_not_be_interested"
+                ]
+            }
+        },
+        {
+            "name": "reasons_for_non_applicability",
+            "type": "text",
+            "title": "Reasons for Non-Applicability",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_id",
+                    "campaign_reasons_for_non_applicability"
+                ]
+            }
+        },
+        {
+            "name": "other_important_information",
+            "type": "text",
+            "title": "Other Important Information",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "other_important_information"
+                ]
+            }
+        },
+        {
+            "name": "ctas",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_sales_campaign",
+                    "campaign_id",
+                    "ctas"
+                ]
+            }
+        },
+        {
+            "name": "lead_tags",
+            "options": "/options/post_sales_campaign/applicable_tags",
+            "ui_element": "multiselect",
+            "list_adder": {
+                "function": "list_adder"
+            },
+            "option_others": true
         },
         {
             "name": "vehicle_id",
@@ -111,18 +392,6 @@
             "force_update": "vehicle_id"
         },
         {
-            "name": "engine_type",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "engine_type"
-                ]
-            }
-        },
-        {
             "name": "transmission",
             "type": "text",
             "default": {
@@ -131,6 +400,18 @@
                     "vehicle",
                     "vehicle_id",
                     "transmission"
+                ]
+            }
+        },
+        {
+            "name": "engine_type",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "engine_type"
                 ]
             }
         },
@@ -183,6 +464,234 @@
             }
         },
         {
+            "name": "accessories",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "accessories"
+                ]
+            }
+        },
+        {
+            "name": "purchase_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "purchase_date"
+                ]
+            }
+        },
+        {
+            "name": "original_delivery_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "original_delivery_date"
+                ]
+            }
+        },
+        {
+            "name": "vehicle_age_months",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "vehicle_age_months"
+                ]
+            }
+        },
+        {
+            "name": "vehicle_usage_category",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "vehicle_usage_category"
+                ]
+            }
+        },
+        {
+            "name": "last_service_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "last_service_date"
+                ]
+            }
+        },
+        {
+            "name": "last_service_type",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "last_service_type"
+                ]
+            }
+        },
+        {
+            "name": "service_history",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "service_history"
+                ]
+            }
+        },
+        {
+            "name": "service_advisor",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "service_advisor"
+                ]
+            }
+        },
+        {
+            "name": "service_plan_type",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "service_plan_type"
+                ]
+            }
+        },
+        {
+            "name": "service_plan_expiry_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "service_plan_expiry_date"
+                ]
+            }
+        },
+        {
+            "name": "next_service_due",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "next_service_due"
+                ]
+            }
+        },
+        {
+            "name": "warranty_expiry_date",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "warranty_expiry_date"
+                ]
+            }
+        },
+        {
+            "name": "extended_warranty_purchased",
+            "type": "bool",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "extended_warranty_purchased"
+                ]
+            }
+        },
+        {
+            "name": "avg_service_cost",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "avg_service_cost"
+                ]
+            }
+        },
+        {
+            "name": "service_frequency",
+            "type": "number",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "service_frequency"
+                ]
+            }
+        },
+        {
+            "name": "service_feedback",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "service_feedback"
+                ]
+            }
+        },
+        {
+            "name": "feedback_rating",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "feedback_rating"
+                ]
+            }
+        },
+        {
+            "name": "feedback_sentiment_score",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle",
+                    "vehicle_id",
+                    "feedback_sentiment_score"
+                ]
+            }
+        },
+        {
             "name": "odometer_reading",
             "type": "number",
             "units": "km",
@@ -221,18 +730,6 @@
             }
         },
         {
-            "name": "vehicle_usage_category",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "vehicle_usage_category"
-                ]
-            }
-        },
-        {
             "name": "battery_health",
             "type": "text",
             "default": {
@@ -245,14 +742,14 @@
             }
         },
         {
-            "name": "battery_warranty",
+            "name": "battery_warranty_expiry_date",
             "type": "number",
             "default": {
                 "function": "get_from_model",
                 "args": [
                     "vehicle",
                     "vehicle_id",
-                    "battery_warranty"
+                    "battery_warranty_expiry_date"
                 ]
             }
         },
@@ -316,7 +813,7 @@
                 ]
             }
         },
-                {
+        {
             "name": "tyre_change_details",
             "type": "number",
             "default": {
@@ -328,7 +825,7 @@
                 ]
             }
         },
-                {
+        {
             "name": "tyre_health",
             "type": "number",
             "default": {
@@ -473,174 +970,6 @@
             }
         },
         {
-            "name": "last_service_date",
-            "type": "number",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "last_service_date"
-                ]
-            }
-        },
-        {
-            "name": "last_service_type",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "last_service_type"
-                ]
-            }
-        },
-        {
-            "name": "service_history",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "service_history"
-                ]
-            }
-        },
-        {
-            "name": "service_advisor",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "service_advisor"
-                ]
-            }
-        },
-             {
-            "name": "service_plan_type",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "service_plan_type"
-                ]
-            }
-        },
-        {
-            "name": "service_plan_expiry_date",
-            "type": "number",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "service_plan_expiry_date"
-                ]
-            }
-        },
-        {
-            "name": "avg_service_cost",
-            "type": "number",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "avg_service_cost"
-                ]
-            }
-        },
-        {
-            "name": "service_frequency",
-            "type": "number",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "service_frequency"
-                ]
-            }
-        },
-        {
-            "name": "next_service_due",
-            "type": "number",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "next_service_due"
-                ]
-            }
-        },
-        {
-            "name": "service_feedback",
-            "type": "text",
-             "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "service_feedback"
-                ]
-            }
-        },
-        {
-            "name": "feedback_rating",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "feedback_rating"
-                ]
-            }
-        },
-        {
-            "name": "feedback_sentiment_score",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "feedback_sentiment_score"
-                ]
-            }
-        },
-        {
-            "name": "warranty_expiry_date",
-            "type": "number",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "warranty_expiry_date"
-                ]
-            }
-        },
-        {
-            "name": "extended_warranty_purchased",
-            "type": "bool",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "extended_warranty_purchased"
-                ]
-            }
-        },
-        {
             "name": "finance_loan_status",
             "type": "text",
             "default": {
@@ -683,18 +1012,6 @@
             }
         },
         {
-            "name": "accessories",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "accessories"
-                ]
-            }
-        },
-        {
             "name": "ownership_status",
             "type": "text",
             "default": {
@@ -703,30 +1020,6 @@
                     "vehicle",
                     "vehicle_id",
                     "ownership_status"
-                ]
-            }
-        },
-        {
-            "name": "purchase_date",
-            "type": "number",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "purchase_date"
-                ]
-            }
-        },
-        {
-            "name": "vehicle_age_months",
-            "type": "number",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "vehicle",
-                    "vehicle_id",
-                    "vehicle_age_months"
                 ]
             }
         },
@@ -757,288 +1050,6 @@
         {
             "type": "number",
             "name": "customer_score"
-        },
-        {
-            "name": "dealership_id",
-            "type": "uid",
-            "required": true
-        },
-        {
-            "name": "dealer_name",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "dealership",
-                    "dealership_id",
-                    "dealer_name"
-                ]
-            },
-            "indexed": true,
-            "auto_updater": true,
-            "force_update": "dealership_id"
-        },
-        {
-            "name": "region_id",
-            "type": "uid",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "dealership",
-                    "dealership_id",
-                    "region_id"
-                ]
-            },
-            "auto_updater": true,
-            "force_update": "dealership_id"
-        },
-        {
-            "name": "region_name",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "region",
-                    "region_id",
-                    "region_name"
-                ]
-            },
-            "auto_updater": true,
-            "force_update": "dealership_id",
-            "indexed": true
-        },
-        {
-            "name": "campaign_id",
-            "type": "uid",
-            "required": false,
-            "option_others": true,
-            "options": "/options/post_sales_campaign/campaign_name"
-        },
-        {
-            "name": "campaign_name",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "campaign_name"
-                ]
-            }
-        },
-        {
-            "name": "campaign_type",
-            "type": "text",
-            "default": "post-sales"
-        },
-        {
-            "name": "campaign_objective_id",
-            "type": "uid",
-            "required": true,
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "campaign_objective_id"
-                ]
-            }
-        },
-        {
-            "name": "campaign_offer",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "campaign_offer"
-                ]
-            }
-        },
-        {
-            "name": "campaign_description",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "campaign_description"
-                ]
-            }
-        },
-        {
-            "name": "campaign_sub_type",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "campaign_sub_type"
-                ]
-            }
-        },
-        {
-            "name": "campaign_objective_description",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "campaign_objective_description"
-                ]
-            }
-        },
-        {
-            "name": "urgency_hook",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "urgency_hook"
-                ]
-            }
-        },
-        {
-            "name": "offer_applicability",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "offer_applicability"
-                ]
-            }
-        },
-        {
-            "name": "conversation_tone",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "conversation_tone"
-                ]
-            }
-        },
-        {
-            "name": "custom_attributes",
-            "type": "object_list",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "campaign_objective",
-                    "campaign_objective_id",
-                    "custom_attributes"
-                ]
-            }
-        },
-        {
-            "name": "campaign_guardrails_guidelines",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "campaign_guardrails_guidelines"
-                ]
-            }
-        },        {
-            "name": "why_user_should_avail_this",
-            "type": "text",
-            "title": "Why User Should Avail This",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "campaign_why_user_should_avail_this"
-                ]
-            }
-        },
-        {
-            "name": "reasons_users_may_not_be_interested",
-            "type": "text",
-            "title": "Reasons Users May Not Be Interested",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "reasons_users_may_not_be_interested"
-                ]
-            }
-        },
-        {
-            "name": "reasons_for_non_applicability",
-            "type": "text",
-            "title": "Reasons for Non-Applicability",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "campaign_objective",
-                    "campaign_id",
-                    "campaign_reasons_for_non_applicability"
-                ]
-            }
-        },
-        {
-            "name": "other_important_information",
-            "type": "text",
-            "title": "Other Important Information",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "other_important_information"
-                ]
-            }
-        },
-        {
-            "name": "ctas",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "ctas"
-                ]
-            }
-        },
-        {
-            "name": "lead_tags",
-            "options": "/options/post_sales_campaign/applicable_tags",
-            "ui_element": "multiselect",
-            "list_adder": {
-                "function": "list_adder"
-            },
-            "option_others": true
-        },
-        {
-            "name": "campaign_offer",
-            "refers": "parents.post_sales_campaign.campaign_offer"
-        },
-        {
-            "name": "campaign_description",
-            "refers": "parents.post_sales_campaign.campaign_description"
-        },
-        {
-            "name": "campaign_sub_type",
-            "refers": "parents.post_sales_campaign.campaign_sub_type"
-        },
-        {
-            "name": "campaign_objective_type",
-            "refers": "parents.post_sales_campaign.campaign_objective_type"
-        },
-        {
-            "name": "urgency_hook",
-            "refers": "parents.post_sales_campaign.urgency_hook"
-        },
-        {
-            "name": "ctas",
-            "refers": "parents.post_sales_campaign.ctas"
         },
         {
             "name": "workshop_id",
@@ -1074,6 +1085,48 @@
             "indexed": true
         },
         {
+            "name": "workshop_type",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "workshop_type"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "workshop_contact_number",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "contact_number"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "workshop_email",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "email"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
             "name": "workshop_address",
             "type": "text",
             "default": {
@@ -1082,6 +1135,48 @@
                     "workshop",
                     "workshop_id",
                     "address"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "workshop_city",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "city"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "workshop_state",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "state"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "workshop_pincode",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "pincode"
                 ]
             },
             "auto_updater": true,
@@ -1115,6 +1210,21 @@
             "force_update": "workshop_id"
         },
         {
+            "name": "workshop_days_open",
+            "type": "string_list",
+            "ui_element": "multiselect",
+            "option_others": true,
+            "options": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ]
+        },
+        {
             "name": "workshop_facilities_available",
             "default": {
                 "function": "get_from_model",
@@ -1128,20 +1238,49 @@
             "force_update": "workshop_id"
         },
         {
+            "name": "workshop_services_offered",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "services_offered"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "workshop_level_guidelines",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "workshop_level_guidelines"
+                ]
+            }
+        },
+        {
+            "name": "workshop_level_guardrails",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "workshop_level_guardrails"
+                ]
+            }
+        },
+        {
             "name": "service_due_timetamp",
             "type": "number"
         },
         {
             "name": "service_due_date",
             "type": "text"
-        },
-        {
-            "name": "lead_tags",
-            "type": "string_list",
-            "ui_element": "multiselect",
-            "list_adder": {
-                "function": "list_adder"
-            }
         },
         {
             "name": "appointment_date",
@@ -1330,6 +1469,23 @@
         {
             "name": "scheduled_timestamp",
             "type": "number"
+        },
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
         }
     ]
 }
