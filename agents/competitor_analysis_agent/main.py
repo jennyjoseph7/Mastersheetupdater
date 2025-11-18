@@ -230,7 +230,7 @@ class CompetitorAnalysis(BaseAgent):
         # Fallback to dynamic fetch
         if not user_choice:
             car_list = car_models(model=self.validate_model(user_model), top_n=self.top_n)
-            user_choice = car_list[0] if car_list else {}
+            user_choice = car_list if car_list else {}
 
         user_brand = user_choice[0].get("brand_name", "None")
         logger.info(f"User brand: {user_brand}")
