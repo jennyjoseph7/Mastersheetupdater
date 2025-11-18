@@ -201,7 +201,7 @@
             }
         },
         {
-            "name": "fuel_type",
+            "name": "engine_type",
             "type": "text",
             "options": [
                 "Petrol",
@@ -351,10 +351,7 @@
         },
         {
             "name": "odometer_reading_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "avg_monthly_mileage",
@@ -456,59 +453,27 @@
         },
         {
             "name": "underbody_coating_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "car_wash_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "brake_oil_change_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "oil_filter_replacement_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "polishing_and_waxing_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "ac_vent_cleaning_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
-        },
-        {
-            "name": "underbody_coating",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
-        },
-        {
-            "name": "car_wash",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "repair_notes",
