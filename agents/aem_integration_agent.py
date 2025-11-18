@@ -301,7 +301,7 @@ class AEMIntegrationAgent(BaseAgent):
                 "book_test_drive": True
             },
             "9999e1234-abcd-56ef-9012-3456fc3ac01":{
-                "model": "Citroën C5 Aircross",
+                "model": "C5 Aircross",
                 "url": "https://www.citroen.in/c5-aircross",
                 "date": "2025-11-17",
                 "time": "19:00 +530",
