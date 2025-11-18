@@ -299,7 +299,65 @@ class AEMIntegrationAgent(BaseAgent):
                 "finance_and_offer": True,
                 "locate_dealer": True,
                 "book_test_drive": True
-            }
+            },
+            "9999e1234-abcd-56ef-9012-3456fc3ac01":{
+                "model": "Citroën C5 Aircross",
+                "url": "https://www.citroen.in/c5-aircross",
+                "date": "2025-11-17",
+                "time": "19:00 +530",
+                "hd_view": "on",
+                "exterior": True,
+                "interior": True,
+                "performance": True,
+                "technology": True,
+                "safety": True,
+                "configure": True,
+                "citroen_connect": True,
+                "colours": ["Pearl White","Cumulus Grey","Platinum Grey","Perla Nera Black","Eclipse Blue","Pearl White with Black Roof","Cumulus Grey with Black Roof"],
+                "final_colour": ["Pearl White with Black Roof"],
+                "exterior_views": 6,
+                "interior_views": ["Advanced Comfort Seats with High-Density Foam","Progressive Hydraulic Cushions Suspension","Best-in-Class Rear Seat Modularity (Sliding / Reclining)","Panoramic Sunroof","12.3-inch Digital Instrument Cluster","10-inch Touchscreen with Wireless Connectivity"],
+                "performance_views": ["2.0L Diesel Engine (177 PS, 400 Nm, 8AT)","Multi-Drive Modes (Eco, Normal, Sport)","18-inch Alloy Wheels for Enhanced Ride Comfort"],
+                "safety_views": ["6 Airbags Standard","ABS with EBD and ESP","Blind Spot Monitoring","Front & Rear Park Assist with 180° Camera","Advanced Driver Attention Alert"],
+                "variants_and_pricing": True,
+                "build_your_own": True,
+                "transmission_types": ["automatic"],
+                "powertrains": ["diesel"],
+                "compared_cars": ["Hyundai Tucson","Jeep Compass","Volkswagen Tiguan","Skoda Kodiaq"],
+                "finance_and_offer": True,
+                "locate_dealer": True,
+                "book_test_drive": True
+                },
+            "789e1234-abcd-56ef-9012-3456789c3ac01": {
+                "model": "C3 Aircross",
+                "url": "https://www.citroen.in/c3-aircross",
+                "date": "2025-11-17",
+                "time": "19:20 +530",
+                "hd_view": "on",
+                "exterior": True,
+                "interior": True,
+                "performance": True,
+                "technology": True,
+                "safety": True,
+                "configure": True,
+                "citroen_connect": False,
+                "colours": ["Polar White","Cosmo Blue","Platinum Grey","Steel Grey","Zesty Orange","Polar White with Zesty Orange Roof","Cosmo Blue with Platinum Grey Roof"],
+                "final_colour": ["Polar White with Zesty Orange Roof"],
+                "exterior_views": 6,
+                "interior_views": ["Dual-Tone Premium Dashboard","3rd Row Modular Seating","Large Panoramic Windows","Best-in-Segment 511L Boot Space","Ambient Lighting","Rear AC Vents"],
+                "performance_views": ["1.2L PureTech Turbo Engine (110 PS, 190 Nm)","1.2L PureTech Turbo Engine (110 PS, 205 Nm AT)","Fuel Efficiency 18.5–19.3 kmpl","0–100 kmph in 10.2 sec"],
+                "safety_views": ["High Strength Body Structure","6 Airbags Standard","ESP with Hill Hold Assist","Tyre Pressure Monitoring System (TPMS)","Rear Parking Camera & Sensors"],
+                "variants_and_pricing": True,
+                "build_your_own": True,
+                "transmission_types": ["manual", "automatic"],
+                "powertrains": ["petrol"],
+                "compared_cars": ["Honda Elevate","MG Astor","Nissan Kicks","Kia Seltos","Toyota Urban Cruiser Hyryder"],
+                "finance_and_offer": True,
+                "locate_dealer": True,
+                "book_test_drive": True
+}
+
+            
         }
         return mock_interactions.get(uuid, {})
 
