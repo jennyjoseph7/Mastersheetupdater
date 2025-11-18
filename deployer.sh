@@ -30,7 +30,7 @@ export AWS_ACCESS_KEY_ID=
 export AWS_SECRET_ACCESS_KEY=
 export AWS_DEFAULT_REGION=
 
-# AWS RDS Postgres Credentials:
+# RDS Postgres Credentials:
 export POSTGRES_URL=
 export RDS_SECRET=
 export CLOUD_DATABASE=
@@ -38,53 +38,122 @@ export CLOUD_DATABASE=
 # Gryd Worker Env: (This environment should be set in Gryd worker as well)
 export ENVIRONMENT="test"
 
-echo "======================================="
-echo "      Restarting GRYD Worker"
-echo "======================================="
+kill_worker() {
+    echo "---- Checking GRYD Worker ----"
+    WORKER_PID=$(ps -eaf | grep '[t]asks' | awk '{print $2}')
+    if [ -n "$WORKER_PID" ]; then
+        echo "Found GRYD worker (PID: $WORKER_PID). Killing..."
+        kill -9 "$WORKER_PID"
+    else
+        echo "No GRYD worker running."
+    fi
+}
 
-# Find running GRYD worker (tasks.py)
-WORKER_PID=$(ps -eaf | grep '[t]asks' | awk '{print $2}')
+start_worker() {
+    echo "---- Starting GRYD Worker ----"
+    touch out.log
+    nohup worker -m tasks.py -n 8 >> out.log 2>&1 &
+    echo "GRYD worker started."
+}
 
-if [ -n "$WORKER_PID" ]; then
-    echo "Found existing gryd worker (PID: $WORKER_PID). Killing..."
-    kill -9 "$WORKER_PID"
-else
-    echo "No existing worker found."
+kill_streamlit() {
+    echo "---- Checking Streamlit ----"
+    APP_PID=$(ps -eaf | grep '[s]treamlit' | awk '{print $2}')
+    if [ -n "$APP_PID" ]; then
+        echo "Found Streamlit (PID: $APP_PID). Killing..."
+        kill -9 "$APP_PID"
+    else
+        echo "No Streamlit app running."
+    fi
+}
+
+start_streamlit() {
+    echo "---- Starting Streamlit Dashboard ----"
+    touch dashboard.log
+    nohup streamlit run dashboard.py \
+        --server.enableCORS false \
+        --server.enableXsrfProtection false \
+        --server.port 8501 \
+        --server.address 0.0.0.0 >> dashboard.log 2>&1 &
+    echo "Streamlit dashboard started."
+}
+
+
+if [[ "$1" == "only_kill" ]]; then
+    echo "======================================="
+    echo "       ONLY KILLING PROCESSES"
+    echo "======================================="
+
+    kill_worker
+    kill_streamlit
+
+    echo "======================================="
+    echo "   Processes killed. No restart done."
+    echo "======================================="
+    exit 0
 fi
 
-# Start new GRYD worker
-echo "Starting new gryd worker..."
-touch out.log
-nohup worker -m tasks.py -n 8 >> out.log 2>&1 &
-echo "GRYD worker started."
-
-echo
-
 echo "======================================="
-echo "     Restarting Streamlit Dashboard"
+echo "   Restarting GRYD Worker & Streamlit"
 echo "======================================="
 
-# Find running Streamlit process
-APP_PID=$(ps -eaf | grep '[s]treamlit' | awk '{print $2}')
+kill_worker
+start_worker
 
-if [ -n "$APP_PID" ]; then
-    echo "Found existing Streamlit app (PID: $APP_PID). Killing..."
-    kill -9 "$APP_PID"
-else
-    echo "No existing Streamlit app found."
-fi
+kill_streamlit
+start_streamlit
 
-# Start Streamlit dashboard
-echo "Starting new Streamlit dashboard..."
-touch dashboard.log
-nohup streamlit run dashboard.py \
-    --server.enableCORS false \
-    --server.enableXsrfProtection false \
-    --server.port 8501 \
-    --server.address 0.0.0.0 >> dashboard.log 2>&1 &
-echo "Streamlit dashboard started."
-
-echo
 echo "======================================="
-echo "          All services started"
+echo "        All services restarted"
 echo "======================================="
+
+# echo "======================================="
+# echo "      Restarting GRYD Worker"
+# echo "======================================="
+
+# # Find running GRYD worker (tasks.py)
+# WORKER_PID=$(ps -eaf | grep '[t]asks' | awk '{print $2}')
+
+# if [ -n "$WORKER_PID" ]; then
+#     echo "Found existing gryd worker (PID: $WORKER_PID). Killing..."
+#     kill -9 "$WORKER_PID"
+# else
+#     echo "No existing worker found."
+# fi
+
+# # Start new GRYD worker
+# echo "Starting new gryd worker..."
+# touch out.log
+# nohup worker -m tasks.py -n 8 >> out.log 2>&1 &
+# echo "GRYD worker started."
+
+# echo
+
+# echo "======================================="
+# echo "     Restarting Streamlit Dashboard"
+# echo "======================================="
+
+# # Find running Streamlit process
+# APP_PID=$(ps -eaf | grep '[s]treamlit' | awk '{print $2}')
+
+# if [ -n "$APP_PID" ]; then
+#     echo "Found existing Streamlit app (PID: $APP_PID). Killing..."
+#     kill -9 "$APP_PID"
+# else
+#     echo "No existing Streamlit app found."
+# fi
+
+# # Start Streamlit dashboard
+# echo "Starting new Streamlit dashboard..."
+# touch dashboard.log
+# nohup streamlit run dashboard.py \
+#     --server.enableCORS false \
+#     --server.enableXsrfProtection false \
+#     --server.port 8501 \
+#     --server.address 0.0.0.0 >> dashboard.log 2>&1 &
+# echo "Streamlit dashboard started."
+
+# echo
+# echo "======================================="
+# echo "          All services started"
+# echo "======================================="
