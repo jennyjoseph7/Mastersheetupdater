@@ -39,8 +39,9 @@
       "required": true,
       "force_update": "showroom_id"
     },
+    
     {
-      "name": "dealer_name",
+      "name": "dealership_name",
       "refers": "parents.dealership.dealer_name"
     },
     {
