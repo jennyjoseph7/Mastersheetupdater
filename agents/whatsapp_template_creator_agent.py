@@ -9,6 +9,9 @@ try:
 except ImportError:
     from base_agent import BaseAgent, gryd 
 
+from autocrm_db_helper.PGConnector import AutoCRMPGConnector
+pg = AutoCRMPGConnector(enterprise_id="autocrm")
+import random
 
 class WhatsappTemplateCreatorAgent(BaseAgent):
     """
@@ -65,6 +68,7 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         self.dealership_id = source.get("dealership_id", "")
         self.languages = self._validate_languages(source.get("languages", ["english"]))
         self.cta_buttons = source.get("cta_buttons", ["Get a Call Back"])
+        self.ai_generation = source.get("ai_generation",True)
         self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
 
         self.model_identifier = "gcp-gemini-2.5-flash-lite"
@@ -191,32 +195,55 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
                 "template_button_payloads": template_button_payloads
             }
     
+    def pick_from_model(self):
+        records = list(pg.list(
+        table_name= "dealership_idea",
+        where= {
+            "campaign_objective" : self.campaign_objective,
+            "campaign_type": self.campaign_type
+        
+        }
+        ))
+
+        if not records:
+            return []
+
+        # Randomly pick 5 without duplicates
+        sample_size = min(5, len(records))
+        picked = random.sample(records, sample_size)
+
+        return picked
+    
 
     def run(self):
         """Executes template generation and returns final result."""
-        try:
-            self.logger.info("Starting WhatsApp template generation...")
-            self.logger.info(f"Source data: {json.dumps(self.source, indent=2)}")
+        if self.ai_generation is True:
+            try:
+                self.logger.info("Starting WhatsApp template generation...")
+                self.logger.info(f"Source data: {json.dumps(self.source, indent=2)}")
 
-            # Generate template data
-            generated_data = ai_service_app.get_llm_response(
-                messages= self._build_prompt(),
-                model_identifier=self.model_identifier
-            )
+                # Generate template data
+                generated_data = ai_service_app.get_llm_response(
+                    messages= self._build_prompt(),
+                    model_identifier=self.model_identifier
+                )
 
-            generated_data = self._parse_ai_response(generated_data)
-            
-            # Assemble final output
-            final_output = self._assemble_output(generated_data)
-            
-            self.logger.info("Template generation completed successfully")
-            self.logger.info(f"Generated template: {final_output['template_name']}")
-            
+                generated_data = self._parse_ai_response(generated_data)
+
+                # Assemble final output
+                final_output = self._assemble_output(generated_data)
+
+                self.logger.info("Template generation completed successfully")
+                self.logger.info(f"Generated template: {final_output['template_name']}")
+
+                return final_output
+
+            except Exception as e:
+                self.logger.error(f"Template generation failed: {str(e)}")
+                raise
+        else:
+            final_output = self.pick_from_model()
             return final_output
-            
-        except Exception as e:
-            self.logger.error(f"Template generation failed: {str(e)}")
-            raise
 
 
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
@@ -240,6 +267,14 @@ def generate_whatsapp_template(*args, logger=None, job=None, **kwargs):
 
         result = agent.run()
         logger.info("Template generated successfully")
+
+        try:
+            dim = gryd.base_model.Model('templates', AUTOCRM_APP_ENTERPRISE_ID)
+            logger.info(f"Posting result to model 'templates' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
+            dim.post(result)
+            logger.info("Post completed successfully!")
+        except Exception as db_error:
+            logger.error(f"Failed posting to Gryd model: {db_error}")
 
         return result
 
