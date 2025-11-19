@@ -81,8 +81,7 @@
                 "args": [
                     "dealership",
                     "dealership_id",
-                    "vehicle_category",
-                    "Passenger vehicles"
+                    "vehicle_category"
                 ]
             },
             "option_others": true,
