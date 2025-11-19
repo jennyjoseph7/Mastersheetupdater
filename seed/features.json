@@ -2310,5 +2310,22 @@
     "unit": null,
     "additional_cost_unit": [],
     "is_engine_dependent": false
+  },
+  {
+    "feature_id": "suzuki-connect",
+    "feature_name": "Suzuki Connect",
+    "feature_category": "infotainment_and_connectivity",
+    "value_type": "boolean",
+    "created": 1762703863,
+    "updated": 1762703863,
+    "feature_description": "Suzuki Connect - Connected car technology and telematics system",
+    "replacement": [],
+    "is_drivetrain_dependent": false,
+    "is_standard": false,
+    "is_transmission_dependent": false,
+    "likely_to_recommend": false,
+    "unit": null,
+    "additional_cost_unit": [],
+    "is_engine_dependent": false
   }
 ]

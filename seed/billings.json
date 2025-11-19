@@ -1,7 +1,7 @@
 [
   {
     "billing_id": "billing-001",
-    "dealership_id": "nexa-delhi-south",
+    "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
     "total_amount": 50000,
     "created": 1704067200,
     "updated": 1704067200,
@@ -43,7 +43,7 @@
   },
   {
     "billing_id": "billing-002",
-    "dealership_id": "nexa-mumbai-west",
+    "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
     "total_amount": 75000,
     "created": 1704153600,
     "updated": 1704153600,

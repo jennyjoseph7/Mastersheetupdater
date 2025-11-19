@@ -8,44 +8,24 @@
     "city": "Chennai",
     "area": "South Extension",
     "pincode": "600001",
-    "preferred_contact_window": {
-      "start_time": "18:00",
-      "end_time": "20:00"
-    },
+    "preferred_contact_window": "18:00-20:00",
     "preferred_contact_channel": "WhatsApp",
     "previous_contact_channel": "WhatsApp",
     "budget_range": "10-12 Lakhs",
-    "brand_preference": [
-      "NEXA"
-    ],
-    "model_preference": [
-      "Baleno"
-    ],
-    "variant_preference": [
-      "Zeta AGS"
-    ],
-    "color_preference": [
-      "Premium Silver",
-      "Phoenix Red"
-    ],
-    "engine_type_preference": [
-      "Petrol"
-    ],
-    "transmission_preference": [
-      "AMT"
-    ],
-    "feature_preferences": [
-      "SmartPlay Pro+",
-      "Cruise Control",
-      "Dual Airbags"
-    ],
+    "brand_preference": ["NEXA"],
+    "model_preference": ["Baleno"],
+    "variant_preference": ["Zeta AGS"],
+    "color_preference": ["Premium Silver", "Phoenix Red"],
+    "engine_type_preference": ["Petrol"],
+    "transmission_preference": ["AMT"],
+    "feature_preferences": ["SmartPlay Pro+", "Cruise Control", "Dual Airbags"],
     "usage_type": "personal",
     "lifestyle_type": "family oriented",
     "brand_perception": "reliable",
     "payment_preference": "emi",
-    "dealership_id": "nexa-delhi-south",
+    "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
     "dealer_name": "NEXA Delhi South",
-    "campaign_id": "nexa-delhi-south-Baleno Test Drive Campaign-1704067200-pre-sales-Test Drive Reminder / Showroom Visit Reminder / Follow-Up",
+    "campaign_id": "b5a6885f-5238-3457-b916-81b75e7742a5",
     "campaign_name": "Baleno Test Drive Campaign",
     "campaign_type": "pre-sales",
     "lead_source": "Dealership Website",
@@ -63,7 +43,7 @@
     "seating_capacity_preference": null,
     "finance_remark": null,
     "emotions": [],
-    "previous_interaction_ids": [],
+    "previous_interaction_ids": ["none"],
     "dealer_location": null,
     "dealer_address": null,
     "user_remark": null,
@@ -80,7 +60,8 @@
     "preference_remark": null,
     "lead_summary": null,
     "follow_up_date": 0,
-    "previous_interaction_details": []
+    "previous_interaction_details": [["no previous interactions"]],
+"vehicle_category":"Passenger vehicles"
   },
   {
     "pre_sales_lead_id": "person-002-nexa-mumbai-west-pre-sales-campaign-002",
@@ -91,42 +72,24 @@
     "city": "Mumbai",
     "area": "Andheri",
     "pincode": "400053",
-    "preferred_contact_window": {
-      "start_time": "10:00",
-      "end_time": "18:00"
-    },
+    "preferred_contact_window": "10:00-18:00",
     "preferred_contact_channel": "Phone",
     "previous_contact_channel": "Phone",
     "budget_range": "12-15 Lakhs",
-    "brand_preference": [
-      "NEXA"
-    ],
-    "model_preference": [
-      "Fronx"
-    ],
-    "variant_preference": [
-      "Alpha Plus AGS"
-    ],
-    "color_preference": [
-      "Magma Grey"
-    ],
-    "engine_type_preference": [
-      "Petrol"
-    ],
-    "transmission_preference": [
-      "AMT"
-    ],
-    "feature_preferences": [
-      "SmartPlay Pro+",
-      "Suzuki Connect"
-    ],
+    "brand_preference": ["NEXA"],
+    "model_preference": ["Fronx"],
+    "variant_preference": ["Alpha Plus AGS"],
+    "color_preference": ["Magma Grey"],
+    "engine_type_preference": ["Petrol"],
+    "transmission_preference": ["AMT"],
+    "feature_preferences": ["SmartPlay Pro+", "Suzuki Connect"],
     "usage_type": "personal",
     "lifestyle_type": "young urban professional",
     "brand_perception": "stylish",
     "payment_preference": "loan",
-    "dealership_id": "nexa-mumbai-west",
+    "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
     "dealer_name": "NEXA Mumbai West",
-    "campaign_id": "nexa-mumbai-west-Fronx Launch Campaign-1704153600-pre-sales-Product Launch / Reveal",
+    "campaign_id": "63d8d5e1-640b-363f-bbe4-e298772149c8",
     "campaign_name": "Fronx Launch Campaign",
     "campaign_type": "pre-sales",
     "lead_source": "Walk-in",
@@ -144,7 +107,7 @@
     "seating_capacity_preference": null,
     "finance_remark": null,
     "emotions": [],
-    "previous_interaction_ids": [],
+    "previous_interaction_ids": ["none"],
     "dealer_location": null,
     "dealer_address": null,
     "user_remark": null,
@@ -161,6 +124,7 @@
     "preference_remark": null,
     "lead_summary": null,
     "follow_up_date": 0,
-    "previous_interaction_details": []
+    "previous_interaction_details": [["no previous interactions"]],
+    "vehicle_category":"Passenger vehicles"
   }
 ]

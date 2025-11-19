@@ -1,13 +1,10 @@
 [
   {
-    "variant_id": "nexa-baleno-2024-zeta-ags-petrol",
-    "model_id": "nexa-baleno-2024",
-    "model_name": "Baleno",
-    "brand_id": "nexa-north-india",
-    "brand_name": "NEXA",
+    "model_year_id": "none-none-2024",
     "variant_name": "Zeta AGS",
     "engine_type": "Petrol",
     "transmission": "AMT",
+    "transmission_type": "Automatic",
     "drivetrain": "FWD",
     "engine_capacity_cc": 1197,
     "power_bhp": 88.5,
@@ -16,7 +13,7 @@
     "seating_capacity": 5,
     "fuel_tank_capacity_litres": 37,
     "boot_space_litres": 318,
-    "price_ex_showroom": 996460,
+    "ex_showroom_price": 996460,
     "on_road_price": 1120000,
     "safety_rating": 4,
     "variant_status": "Available",
@@ -24,14 +21,11 @@
     "updated": 1704067200
   },
   {
-    "variant_id": "nexa-baleno-2024-alpha-ags-petrol",
-    "model_id": "nexa-baleno-2024",
-    "model_name": "Baleno",
-    "brand_id": "nexa-north-india",
-    "brand_name": "NEXA",
+    "model_year_id": "none-none-2024",
     "variant_name": "Alpha AGS",
     "engine_type": "Petrol",
     "transmission": "AMT",
+    "transmission_type": "Automatic",
     "drivetrain": "FWD",
     "engine_capacity_cc": 1197,
     "power_bhp": 88.5,
@@ -40,7 +34,7 @@
     "seating_capacity": 5,
     "fuel_tank_capacity_litres": 37,
     "boot_space_litres": 318,
-    "price_ex_showroom": 1096000,
+    "ex_showroom_price": 1096000,
     "on_road_price": 1220000,
     "safety_rating": 4,
     "variant_status": "Available",
@@ -48,14 +42,11 @@
     "updated": 1704067200
   },
   {
-    "variant_id": "nexa-fronx-2024-alpha-plus-ags-petrol",
-    "model_id": "nexa-fronx-2024",
-    "model_name": "Fronx",
-    "brand_id": "nexa-north-india",
-    "brand_name": "NEXA",
+    "model_year_id": "none-none-2024",
     "variant_name": "Alpha Plus AGS",
     "engine_type": "Petrol",
     "transmission": "AMT",
+    "transmission_type": "Automatic",
     "drivetrain": "FWD",
     "engine_capacity_cc": 1197,
     "power_bhp": 88.5,
@@ -64,7 +55,7 @@
     "seating_capacity": 5,
     "fuel_tank_capacity_litres": 37,
     "boot_space_litres": 308,
-    "price_ex_showroom": 1120000,
+    "ex_showroom_price": 1120000,
     "on_road_price": 1250000,
     "safety_rating": 4,
     "variant_status": "Available",
@@ -72,4 +63,3 @@
     "updated": 1704067200
   }
 ]
-

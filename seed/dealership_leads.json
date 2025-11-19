@@ -1,7 +1,7 @@
 [
   {
     "dealership_lead_id": "dealership-lead-001",
-    "dealership_id": "nexa-delhi-south",
+    "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
     "lead_source": "Website",
     "created": 1704067200,
     "updated": 1704067200,
@@ -22,8 +22,8 @@
   },
   {
     "dealership_lead_id": "dealership-lead-002",
-    "dealership_id": "nexa-mumbai-west",
-    "lead_source": "Walk-in",
+    "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
+    "lead_source": "Campaign",
     "created": 1704153600,
     "updated": 1704153600,
     "campaign_id": null,

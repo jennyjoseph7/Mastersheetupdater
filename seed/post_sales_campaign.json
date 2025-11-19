@@ -2,8 +2,8 @@
   {
     "workshop_id": "nexa-delhi-south-workshop-1",
     "dealership_name": "NEXA Delhi South",
-  "dealership_id": "nexa-delhi-south",
-    "region_name": "North India",
+    "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
+    "region_name": "north-india",
     "workshop_code": "NDS-WS-001",
     "workshop_name": "NEXA Delhi South - Service Center",
     "campaign_name": "Scheduled Service Reminder",
@@ -22,21 +22,10 @@
     "campaign_description": "Remind customers about their upcoming scheduled service appointments",
     "start_date": 1704067200,
     "end_date": 1735689600,
-    "channels": [
-      "whatsapp_chat",
-      "email",
-      "voice_phone"
-    ],
-    "languages": [
-      "english",
-      "hindi"
-    ],
+    "channels": ["whatsapp_chat", "email", "voice_phone"],
+    "languages": ["english", "hindi"],
     "urgency_hook": "Your vehicle service is due in 30 days. Book now to avoid last-minute rush!",
-    "ctas": [
-      "Book Service",
-      "Schedule Appointment",
-      "Call Now"
-    ],
+    "ctas": ["Book Service", "Schedule Appointment", "Call Now"],
     "number_targeted": 500,
     "number_reached": 450,
     "number_contacted": 380,
@@ -56,8 +45,8 @@
   {
     "workshop_id": "nexa-mumbai-west-workshop-1",
     "dealership_name": "NEXA Mumbai West",
-    "dealership_id": "nexa-mumbai-west",
-    "region_name": "West India",
+    "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
+    "region_name": "west-india",
     "workshop_code": "NMW-WS-001",
     "workshop_name": "NEXA Mumbai West - Service Center",
     "campaign_name": "Extended Warranty Promotion",
@@ -76,23 +65,10 @@
     "campaign_description": "Promote extended warranty packages to customers whose vehicles are nearing warranty expiry",
     "start_date": 1704153600,
     "end_date": 1735776000,
-    "channels": [
-      "whatsapp_chat",
-      "email",
-      "web_chat",
-      "voice_phone"
-    ],
-    "languages": [
-      "english",
-      "hindi",
-      "marathi"
-    ],
+    "channels": ["whatsapp_chat", "email", "web_chat", "voice_phone"],
+    "languages": ["english", "hindi", "marathi"],
     "urgency_hook": "Your warranty expires soon! Secure extended protection at special rates.",
-    "ctas": [
-      "Buy Extended Warranty",
-      "Know More",
-      "Contact Advisor"
-    ],
+    "ctas": ["Buy Extended Warranty", "Know More", "Contact Advisor"],
     "number_targeted": 300,
     "number_reached": 280,
     "number_contacted": 240,

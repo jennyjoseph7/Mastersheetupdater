@@ -1,6 +1,6 @@
 [
   {
-    "dealership_id": "nexa-delhi-south",
+    "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
     "status": "approved",
     "created": 1704067200,
     "updated": 1704067200,
@@ -13,7 +13,7 @@
     "campaign_type": [],
     "campaign_offer": null,
     "notes": null,
-    "attachments": [],
+    "attachments": null,
     "idea": null,
     "campaign_description": null,
     "campaign_objective_type": [],
@@ -21,8 +21,8 @@
     "dealership_idea_id": null
   },
   {
-    "dealership_id": "nexa-mumbai-west",
-    "status": "under_review",
+    "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
+    "status": "reviewing",
     "created": 1704153600,
     "updated": 1704153600,
     "urgency_hook": [],
@@ -34,7 +34,7 @@
     "campaign_type": [],
     "campaign_offer": null,
     "notes": null,
-    "attachments": [],
+    "attachments": null,
     "idea": null,
     "campaign_description": null,
     "campaign_objective_type": [],

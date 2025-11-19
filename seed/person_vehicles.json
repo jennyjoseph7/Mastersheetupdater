@@ -1,0 +1,23 @@
+[
+  {
+    "person_id": "person-001",
+    "vehicle_id": "none - none - maj3m2f1234567890",
+    "relationship_type": "Owner",
+    "created": 1701388800,
+    "updated": 1704067200
+  },
+  {
+    "person_id": "person-002",
+    "vehicle_id": "none - none - maj3m2f9876543210",
+    "relationship_type": "Owner",
+    "created": 1701475200,
+    "updated": 1704067200
+  },
+  {
+    "person_id": "person-003",
+    "vehicle_id": "none - none - maj3m2f5555555555",
+    "relationship_type": "Owner",
+    "created": 1696118400,
+    "updated": 1704067200
+  }
+]

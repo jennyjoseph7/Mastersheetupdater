@@ -2,7 +2,7 @@
   {
     "feedback_id": "feedback-001",
     "service_visit_id": "service-visit-001",
-    "dealership_id": "nexa-delhi-south",
+    "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
     "dealership_name": "NEXA Delhi South",
     "person_name": "Anita Menon",
     "service_date": 1704326400,
@@ -59,7 +59,7 @@
   {
     "feedback_id": "feedback-002",
     "service_visit_id": "service-visit-002",
-    "dealership_id": "nexa-mumbai-west",
+    "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
     "dealership_name": "NEXA Mumbai West",
     "person_name": "Rajesh Kumar",
     "service_date": 1704412800,

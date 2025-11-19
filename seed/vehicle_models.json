@@ -1,120 +1,82 @@
 [
-    {
-        "brand_id": "maruti-suzuki-nexa-maruti-suzuki-north-india",
-        "brand_name": "Maruti Suzuki NEXA",
-        "region_id": "north-india",
-        "region_name": "North India",
-        "country_name": "India",
-        "model_name": "Baleno",
-        "body_type": "Hatchback",
-        "fuel_types": [
-            "Petrol",
-            "CNG"
-        ],
-        "transmission_types": [
-            "Manual",
-            "Automatic"
-        ],
-        "year_launched": 2015,
-        "created": 1704067200,
-        "updated": 1704067200,
-        "vehicle_image": null,
-        "vehicle_video": null,
-        "vehicle_model_aliases": [],
-        "vehicle_category": null,
-        "transmission_types_aliases": [],
-        "vehicle_type": null,
-        "vehicle_model_name": null,
-        "vehicle_description": null,
-        "vehicle_type_aliases": []
-    },
-    {
-        "brand_id": "maruti-suzuki-nexa-maruti-suzuki-north-india",
-        "brand_name": "Maruti Suzuki NEXA",
-        "model_name": "Fronx",
-        "region_id": "north-india",
-        "region_name": "North India",
-        "country_name": "India",
-        "body_type": "SUV",
-        "fuel_types": [
-            "Petrol"
-        ],
-        "transmission_types": [
-            "Manual",
-            "Automatic"
-        ],
-        "year_launched": 2023,
-        "created": 1704067200,
-        "updated": 1704067200,
-        "vehicle_image": null,
-        "vehicle_video": null,
-        "vehicle_model_aliases": [],
-        "vehicle_category": null,
-        "transmission_types_aliases": [],
-        "vehicle_type": null,
-        "vehicle_model_name": null,
-        "vehicle_description": null,
-        "vehicle_type_aliases": []
-    },
-    {
-        "brand_id": "maruti-suzuki-nexa-maruti-suzuki-north-india",
-        "brand_name": "Maruti Suzuki NEXA",
-        "region_id": "north-india",
-        "region_name": "North India",
-        "country_name": "India",
-        "model_name": "Grand Vitara",
-        "body_type": "SUV",
-        "fuel_types": [
-            "Petrol",
-            "Hybrid"
-        ],
-        "transmission_types": [
-            "Manual",
-            "Automatic"
-        ],
-        "year_launched": 2022
-    },
-    {
-        "brand_id": "maruti-suzuki-nexa-maruti-suzuki-north-india",
-        "brand_name": "Maruti Suzuki NEXA",
-        "model_name": "Invicto",
-        "body_type": "MPV",
-        "fuel_types": [
-            "Hybrid"
-        ],
-        "transmission_types": [
-            "Automatic"
-        ],
-        "year_launched": 2023
-    },
-    {
-        "brand_id": "maruti-suzuki-arena-maruti-suzuki-north-india",
-        "brand_name": "Maruti Suzuki Arena",
-        "model_name": "Swift",
-        "body_type": "Hatchback",
-        "fuel_types": [
-            "Petrol",
-            "CNG"
-        ],
-        "transmission_types": [
-            "Manual",
-            "Automatic"
-        ],
-        "year_launched": 2005
-    },
-    {
-        "brand_id": "hyundai-hyundai-south-india",
-        "brand_name": "Hyundai",
-        "model_name": "Verna",
-        "body_type": "Sedan",
-        "fuel_types": [
-            "Petrol",
-            "Diesel"
-        ],
-        "transmission_types": [
-            "Manual",
-            "Automatic"
-        ],
-        "year_launched": 2006
-    }
+  {
+    "brand_id": "maruti-suzuki-nexa-maruti-suzuki-north-india",
+    "brand_name": "Maruti Suzuki NEXA",
+    "model_name": "Baleno",
+    "vehicle_model_name": "Baleno",
+    "body_type": "Hatchback",
+    "fuel_types": ["Petrol", "CNG"],
+    "transmission_types": ["Manual", "Automatic"],
+    "year_launched": 2015,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "vehicle_image": null,
+    "vehicle_video": null,
+    "vehicle_model_aliases": [],
+    "vehicle_category": null,
+    "transmission_types_aliases": [],
+    "vehicle_type": null,
+    "vehicle_description": null,
+    "vehicle_type_aliases": []
+  },
+  {
+    "brand_id": "maruti-suzuki-nexa-maruti-suzuki-north-india",
+    "brand_name": "Maruti Suzuki NEXA",
+    "model_name": "Fronx",
+    "vehicle_model_name": "Fronx",
+    "body_type": "SUV",
+    "fuel_types": ["Petrol"],
+    "transmission_types": ["Manual", "Automatic"],
+    "year_launched": 2023,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "vehicle_image": null,
+    "vehicle_video": null,
+    "vehicle_model_aliases": [],
+    "vehicle_category": null,
+    "transmission_types_aliases": [],
+    "vehicle_type": null,
+    "vehicle_description": null,
+    "vehicle_type_aliases": []
+  },
+  {
+    "brand_id": "maruti-suzuki-nexa-maruti-suzuki-north-india",
+    "brand_name": "Maruti Suzuki NEXA",
+    "model_name": "Grand Vitara",
+    "vehicle_model_name": "Grand Vitara",
+    "body_type": "SUV",
+    "fuel_types": ["Petrol", "Hybrid"],
+    "transmission_types": ["Manual", "Automatic"],
+    "year_launched": 2022
+  },
+  {
+    "brand_id": "maruti-suzuki-nexa-maruti-suzuki-north-india",
+    "brand_name": "Maruti Suzuki NEXA",
+    "model_name": "Invicto",
+    "vehicle_model_name": "Invicto",
+    "body_type": "MPV",
+    "fuel_types": ["Hybrid"],
+    "transmission_types": ["Automatic"],
+    "year_launched": 2023
+  },
+  {
+    "brand_id": "maruti-suzuki-arena-maruti-suzuki-north-india",
+    "brand_name": "Maruti Suzuki Arena",
+    "model_name": "Swift",
+    "vehicle_model_name": "Swift",
+    "body_type": "Hatchback",
+    "fuel_types": ["Petrol", "CNG"],
+    "transmission_types": ["Manual", "Automatic"],
+    "year_launched": 2005
+  },
+  {
+    "brand_id": "hyundai-hyundai-south-india",
+    "brand_name": "Hyundai",
+    "model_name": "Verna",
+    "vehicle_model_name": "Verna",
+    "body_type": "Sedan",
+    "fuel_types": ["Petrol", "Diesel"],
+    "transmission_types": ["Manual", "Automatic"],
+    "year_launched": 2006
+  }
 ]

@@ -2,7 +2,7 @@
   {
     "review_id": "review-001",
     "showroom_name": "NEXA Delhi South - Main Showroom",
-    "dealership_id": "nexa-delhi-south",
+    "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
     "dealership_name": "NEXA Delhi South",
     "person_id": "person-001",
     "person_name": "Anita Menon",
@@ -41,7 +41,7 @@
   {
     "review_id": "review-002",
     "showroom_name": "NEXA Mumbai West - Main Showroom",
-    "dealership_id": "nexa-mumbai-west",
+    "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
     "dealership_name": "NEXA Mumbai West",
     "person_id": "person-002",
     "person_name": "Rajesh Kumar",

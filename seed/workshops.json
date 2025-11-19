@@ -1,9 +1,6 @@
 [
   {
-    "workshop_id": "nexa-delhi-south-workshop-1",
     "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
-    "dealership_name": "NEXA Delhi South",
-    "region_name": "North India",
     "workshop_name": "NEXA Delhi South - Service Center",
     "workshop_type": "Main Workshop",
     "contact_number": "+91-9876543401",
@@ -12,14 +9,40 @@
     "city": "Delhi",
     "state": "Delhi",
     "pincode": "110001",
-    "geolocation": [
-      "28.5355",
-      "77.2167"
-    ],
+    "geolocation": [28.5355, 77.2167],
     "operating_hours": {
       "opening_time": "08:00",
       "closing_time": "18:00"
     },
-    "manager_name": "Rajesh Kumar"
+    "manager_name": "Rajesh Kumar",
+    "created": 1704067200,
+    "updated": 1704067200,
+    "total_service_bays": 0,
+    "total_technicians": 0,
+    "display_vehicle_count": 0,
+    "daily_service_capacity": 0
+  },
+  {
+    "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
+    "workshop_name": "NEXA Mumbai West - Service Center",
+    "workshop_type": "Express Service Center",
+    "contact_number": "+91-9876543402",
+    "email": "workshop@nexamumbaiwest.com",
+    "address": "456, Auto Mall, Service Bay, Andheri West, Mumbai - 400053",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "pincode": "400053",
+    "geolocation": [19.1364, 72.8297],
+    "operating_hours": {
+      "opening_time": "08:00",
+      "closing_time": "18:00"
+    },
+    "manager_name": "Suresh Iyer",
+    "created": 1704067200,
+    "updated": 1704067200,
+    "total_service_bays": 0,
+    "total_technicians": 0,
+    "display_vehicle_count": 0,
+    "daily_service_capacity": 0
   }
 ]

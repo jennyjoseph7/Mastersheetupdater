@@ -1,9 +1,6 @@
 [
   {
-    "dealership_id": "nexa-delhi-south",
-    "dealer_name": "NEXA Delhi South",
-    "dealership_type": "Single Brand",
-    "region_name": "North India",
+    "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
     "campaign_name": "Baleno Test Drive Campaign",
     "campaign_type": "pre-sales",
     "campaign_user_source": {
@@ -14,29 +11,14 @@
         "customer_status": "active"
       }
     },
-    "campaign_objective": "Test Drive Reminder / Showroom Visit Reminder / Follow-Up",
-    "campaign_objective_type": "lead volume",
-    "campaign_sub_type": "lead generation",
     "campaign_offer": "Free test drive with home pickup and drop service",
     "campaign_description": "Generate test drive bookings for Baleno by targeting interested customers",
     "start_date": 1704067200,
     "end_date": 1735689600,
-    "channels": [
-      "whatsapp_chat",
-      "email",
-      "web_chat",
-      "voice_phone"
-    ],
-    "languages": [
-      "english",
-      "hindi"
-    ],
+    "channels": ["whatsapp_chat", "email", "web_chat", "voice_phone"],
+    "languages": ["english", "hindi"],
     "urgency_hook": "Limited slots available! Book your test drive today and experience the premium Baleno.",
-    "ctas": [
-      "Book Test Drive",
-      "Schedule Visit",
-      "Know More"
-    ],
+    "ctas": ["Book Test Drive", "Schedule Visit", "Know More"],
     "number_targeted": 1000,
     "number_reached": 900,
     "number_contacted": 750,
@@ -49,15 +31,11 @@
     "remarks": "Focus on customers who have shown interest in Baleno in the past 30 days",
     "created": 1704067200,
     "updated": 1704067200,
-    "campaign_id": null,
     "conversion_rate_percent": 0,
     "cost_per_lead": 0
   },
   {
-    "dealership_id": "nexa-mumbai-west",
-    "dealer_name": "NEXA Mumbai West",
-    "dealership_type": "Single Brand",
-    "region_name": "West India",
+    "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
     "campaign_name": "Fronx Launch Campaign",
     "campaign_type": "pre-sales",
     "campaign_user_source": {
@@ -67,9 +45,6 @@
         "interest_level": "medium_to_high"
       }
     },
-    "campaign_objective": "Product Launch / Reveal",
-    "campaign_objective_type": "budget based",
-    "campaign_sub_type": "product awareness",
     "campaign_offer": "Early bird offer: Special pricing and accessories package for first 100 bookings",
     "campaign_description": "Create awareness and generate leads for the newly launched Fronx",
     "start_date": 1704153600,
@@ -81,17 +56,9 @@
       "fb_chat",
       "voice_phone"
     ],
-    "languages": [
-      "english",
-      "hindi",
-      "marathi"
-    ],
+    "languages": ["english", "hindi", "marathi"],
     "urgency_hook": "Be among the first to own the all-new Fronx! Limited launch offer available.",
-    "ctas": [
-      "Book Now",
-      "Know More",
-      "Schedule Test Drive"
-    ],
+    "ctas": ["Book Now", "Know More", "Schedule Test Drive"],
     "number_targeted": 2000,
     "number_reached": 1800,
     "number_contacted": 1500,
@@ -104,7 +71,6 @@
     "remarks": "Leverage launch excitement to drive high engagement and conversions",
     "created": 1704153600,
     "updated": 1704153600,
-    "campaign_id": null,
     "conversion_rate_percent": 0,
     "cost_per_lead": 0
   }
