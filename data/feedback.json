@@ -193,6 +193,18 @@
             "type": "number"
         },
         {
+            "name": "service_feedback",
+            "type": "text"
+        },
+        {
+            "name": "summary_for_workshop",
+            "type": "text"
+        },
+        {
+            "name": "service_advisor",
+            "type": "text"
+        },
+        {
             "name": "did_they_overcharge",
             "type": "bool"
         },

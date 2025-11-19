@@ -2,12 +2,23 @@ import json
 import os
 from datetime import datetime
 from ai_service import ai_service_app
+import random
 
 try:
     from .base_agent import BaseAgent, gryd
 except ImportError:
     from base_agent import BaseAgent, gryd 
 
+import sys
+
+# /autobot_agents/agents → go one level up → /autobot_agents
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+
+
+from autocrm_db_helper.PGConnector import AutoCRMPGConnector
+
+pg = AutoCRMPGConnector(enterprise_id="autocrm")
 
 class CampaignIdeaCreatorAgent(BaseAgent):
     """
@@ -65,7 +76,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
     
     POST_SALE_FIELDS = [
         "campaign_type", "campaign_name", "campaign_objective", "idea",
-        "campaign_tagline", "campaign_offer", "campaign_description", 
+        "campaign_tagline", "campaign_offer", "campaign_description",
         "campaign_tone", "urgency_hook", "ctas", "channels", "init_conversation", "email_subject", "email_body"
     ]
     
@@ -83,17 +94,19 @@ class CampaignIdeaCreatorAgent(BaseAgent):
             raise ValueError("source must be a non-empty dictionary")
         
         self.source = source
-        self.campaign_type = self._validate_campaign_type(source.get("campaign_type"))
-        self.campaign_objective = self._validate_campaign_objective(source.get("campaign_objective"))
+        self.campaign_type = self.validate_campaign_type(source.get("campaign_type"))
+        self.campaign_objective = self.validate_campaign_objective(source.get("campaign_objective"))
         
         self.dealership_id = source.get("dealership_id", "")
-        self.languages = self._validate_languages(source.get("languages", ["English"]))
+        self.languages = self.validate_languages(source.get("languages", ["English"]))
         self.campaign_offer = source.get("campaign_offer", "No Offer")
+        self.custom_objectives = source.get("custom_objectives",{})
+        self.ai_generation = source.get("ai_generation",True)
         self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
 
         self.model_identifier = "gcp-gemini-2.5-flash-lite"
 
-    def _validate_campaign_type(self, campaign_type):
+    def validate_campaign_type(self, campaign_type):
         """Validate campaign type with proper error message."""
         if not campaign_type:
             raise ValueError("campaign_type is required in source data")
@@ -105,13 +118,13 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         
         return campaign_type
 
-    def _validate_campaign_objective(self, objective):
+    def validate_campaign_objective(self, objective):
         """Validate campaign objective."""
         if not objective:
             raise ValueError("campaign_objective is required in source data")
         return objective
 
-    def _validate_languages(self, languages):
+    def validate_languages(self, languages):
         """Ensure languages is always a list."""
         if isinstance(languages, str):
             return [languages]
@@ -120,7 +133,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         else:
             return ["English"]
 
-    def _get_campaign_type_details(self):
+    def get_campaign_type_details(self):
         """Get fields and normalized type based on campaign type."""
         campaign_type_lower = self.campaign_type.lower()
         
@@ -131,13 +144,13 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         else:
             raise ValueError(f"Unsupported campaign type: {self.campaign_type}")
 
-    def _is_no_offer(self, offer):
+    def is_no_offer(self, offer):
         """Check if the offer should be considered as no offer."""
         if not offer or not isinstance(offer, str):
             return True
         return offer.lower() in self.NO_OFFER_VALUES
 
-    def _get_presale_prompt(self, existing_data: dict, pre_sale_fields):
+    def get_presale_prompt(self, existing_data: dict, pre_sale_fields):
         """Builds LLM prompts for pre-sales campaigns with strict field enforcement."""
 
         language = existing_data.get("languages",["English"])[0]
@@ -194,6 +207,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         - Ensure 'channels' contains 1-2 allowed channel values relevant for pre-sales outreach.
         - Focus on attracting new customers and driving vehicle purchases.
         - Do NOT output anything beyond the allowed keys.
+        - Check custom objectives for extra info {self.custom_objectives}, Utilize this to generate email, idea and other all. Do not add any emoji to email even if it is there in custom_objectives.
 
         Return the single JSON object now.
         """
@@ -203,7 +217,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
             {"role": "user", "content": user_prompt}
         ]
 
-    def _get_postsale_prompt(self, existing_data: dict, post_sale_fields):
+    def get_postsale_prompt(self, existing_data: dict, post_sale_fields):
 
         language = existing_data.get("languages",["English"])[0]
 
@@ -261,9 +275,9 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         campaign_type_lower = self.campaign_type.lower()
         
         if campaign_type_lower in self.PRE_SALE_KEYWORDS:
-            return self._get_presale_prompt(existing_data, fields)
+            return self.get_presale_prompt(existing_data, fields)
         elif campaign_type_lower in self.POST_SALE_KEYWORDS:
-            return self._get_postsale_prompt(existing_data, fields)
+            return self.get_postsale_prompt(existing_data, fields)
         else:
             raise ValueError(f"Unsupported campaign type: {self.campaign_type}")
 
@@ -283,7 +297,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
 
         return cleaned_data
 
-    def _regenerate_missing_fields(self, existing_data: dict, missing_fields: list, all_fields: list, campaign_type: str) -> str:
+    def regenerate_missing_fields(self, existing_data: dict, missing_fields: list, all_fields: list, campaign_type: str) -> str:
         """Regenerate specific missing fields using LLM."""
         language = existing_data.get("languages", ["English"])[0]
 
@@ -326,14 +340,14 @@ class CampaignIdeaCreatorAgent(BaseAgent):
             model_identifier=self.model_identifier
         )
 
-    def _get_missing_fields(self, data, fields):
+    def get_missing_fields(self, data, fields):
         """Get list of missing or empty fields."""
         return [
             key for key in fields 
             if key != "dealership_id" and (key not in data or not data.get(key))
         ]
 
-    def _attempt_field_generation(self, final_data, missing_fields, all_fields, campaign_type, attempt):
+    def attempt_field_generation(self, final_data, missing_fields, all_fields, campaign_type, attempt):
         """Single attempt to generate missing fields."""
         try:
             if attempt == 1:
@@ -357,7 +371,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         
         return final_data
 
-    def _apply_fallbacks(self, final_data, missing_fields):
+    def apply_fallbacks(self, final_data, missing_fields):
         """Apply fallbacks ONLY for ctas and channels, skip others."""
         for field in missing_fields:
             if field == "ctas":
@@ -373,10 +387,10 @@ class CampaignIdeaCreatorAgent(BaseAgent):
                     final_data[field] = None
         return final_data
 
-    def _clean_and_validate_final_data(self, final_data, fields):
+    def clean_and_validate_final_data(self, final_data, fields):
         """Clean and validate the final campaign data."""
         # Remove offer if not applicable
-        if self._is_no_offer(final_data.get("campaign_offer")):
+        if self.is_no_offer(final_data.get("campaign_offer")):
             final_data.pop("campaign_offer", None)
         
         # Validate channels
@@ -398,49 +412,72 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         
         return final_data
     
-    def _merge_json(self,json1, json2):
+    def merge_json(self,json1, json2):
         merged = json2.copy()       
         merged.update(json1)        
         return merged
 
-    def _generate_missing_fields(self, final_data, fields, campaign_type):
+    def generate_missing_fields(self, final_data, fields, campaign_type):
         """Generate missing fields with retry logic."""
         for attempt in range(1, self.MAX_ATTEMPTS + 1):
-            missing_fields = self._get_missing_fields(final_data, fields)
+            missing_fields = self.get_missing_fields(final_data, fields)
             
             if not missing_fields:
                 self.logger.info("All fields generated successfully!")
                 break
                 
             self.logger.info(f"Attempt {attempt}: Generating {len(missing_fields)} missing fields")
-            final_data = self._attempt_field_generation(final_data, missing_fields, fields, campaign_type, attempt)
+            final_data = self.attempt_field_generation(final_data, missing_fields, fields, campaign_type, attempt)
         
         # Apply fallbacks for any remaining missing fields
-        remaining_missing = self._get_missing_fields(final_data, fields)
+        remaining_missing = self.get_missing_fields(final_data, fields)
         if remaining_missing:
             self.logger.warning(f"Applying fallbacks for remaining fields: {remaining_missing}")
-            final_data = self._apply_fallbacks(final_data, remaining_missing)
+            final_data = self.apply_fallbacks(final_data, remaining_missing)
         
         return final_data
+    
+    def pick_from_model(self):
+        records = list(pg.list(
+        table_name= "dealership_idea",
+        where= {
+            "campaign_objective" : self.campaign_objective,
+            "campaign_type": self.campaign_type
+        
+        }
+        ))
+
+        if not records:
+            return []
+
+        # Randomly pick 5 without duplicates
+        sample_size = min(5, len(records))
+        picked = random.sample(records, sample_size)
+
+        return picked
 
     def run(self):
         """Executes generation and handles merging + optional posting."""
-        try:
-            fields, normalized_type = self._get_campaign_type_details()
-            final_data = self.source.copy()
-            
-            final_data = self._generate_missing_fields(final_data, fields, normalized_type)
-            final_data = self._clean_and_validate_final_data(final_data, fields)
-            final_data = self._merge_json(self.source,final_data)
-            
-            self.logger.info(f"Campaign generation completed successfully")
-            self.logger.info(f"Final result: {json.dumps(final_data, ensure_ascii=False, indent=2)}")
-            
+        if self.ai_generation is True:
+            try:
+                fields, normalized_type = self.get_campaign_type_details()
+                final_data = self.source.copy()
+
+                final_data = self.generate_missing_fields(final_data, fields, normalized_type)
+                final_data = self.clean_and_validate_final_data(final_data, fields)
+                final_data = self.merge_json(self.source,final_data)
+
+                self.logger.info(f"Campaign generation completed successfully")
+                self.logger.info(f"Final result: {json.dumps(final_data, ensure_ascii=False, indent=2)}")
+
+                return final_data
+
+            except Exception as e:
+                self.logger.error(f"Campaign generation failed: {str(e)}")
+                raise
+        else:
+            final_data = self.pick_from_model()
             return final_data
-            
-        except Exception as e:
-            self.logger.error(f"Campaign generation failed: {str(e)}")
-            raise
 
 
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
