@@ -9,7 +9,6 @@
         {
             "name": "dealership_id",
             "refers": "parents.dealership.dealership_id",
-            "type": "uid",
             "required": true
         },
         {
