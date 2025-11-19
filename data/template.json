@@ -55,11 +55,6 @@
       "refers": "parents.communication_credential.dealer_name"
     },
     {
-      "name": "template_name",
-      "type": "text",
-      "indexed": true
-    },
-    {
       "name": "template_type",
       "type": "text",
       "required": true
