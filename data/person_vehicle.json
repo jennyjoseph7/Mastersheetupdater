@@ -9,18 +9,17 @@
     "attributes": [
         {
             "name": "person_id",
-            "type": "parents.person.user_id",
+            "refers": "parents.person.user_id",
             "indexed": true,
             "required": true
         },
         {
             "name": "person_name",
-            "type": "parents.person.name",
+            "refers": "parents.person.name",
             "indexed": true
         },
         {
             "name": "vehicle_id",
-            "type": "text",
             "refers": "parents.vehicle.vehicle_id",
             "indexed": true,
             "required": true
