@@ -96,8 +96,8 @@
             "type": "text",
             "options": [
                 "inbound",
-                "pre_sales",
-                "post_sales",
+                "pre-sales",
+                "post-sales",
                 "dealer"
             ],
             "default": "inbound",

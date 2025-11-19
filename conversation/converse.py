@@ -52,7 +52,7 @@ def converse(*args, **kargs):
     }
     '''
     conversation_process_start_time = hp.time()
-    logger = kargs.get("logger")
+    logger = kargs.get("logger",mlogger)
     logger.info("converse called with kwargs == {}".format(kargs))
     request_data = kargs
     response_index = 1
@@ -69,6 +69,7 @@ def converse(*args, **kargs):
         return
     with get_pg_connector() as pg:
         session_data = pg.get("session","session_id",session_id)
+        logger.info("got session data == {}".format(session_data))
         if not session_data:
             yield from yield_error("error","session_data fetching failed",*args, **pass_kwargs)
             return
@@ -82,18 +83,7 @@ def converse(*args, **kargs):
 
     
 
-    with get_pg_connector() as pg:
-        session_data_cache = pg.get("session_data_cache","session_id",session_id)
-        if not session_data_cache or not session_data_cache.get("data",{}).get("campaign_data") or not session_data_cache.get("data",{}).get("user_data"):
-            campaign_model_name = "pre_sales_campaign" if session_data.get("campaign_type") == "pre_sales" else "post_sales_campaign"
-            campaign_data = pg.get("pre_sales_campaign","campaign_id",session_data.get("campaign_id")) or {}
-            user_data = pg.get("person","user_id",session_data.get("user_id")) or {}
-            session_data_cache = pg.update("session_data_cache","session_id",session_id,{"session_id":session_id,"data":{"campaign_data":campaign_data,"user_data":user_data}})
-            if not session_data_cache:
-                yield {"status" : "error","message" : "session_data_cache fetching/creation failed"}
-                return
-    if not session_data_cache:
-        yield {"status" : "error","message" : "session_data_cache fetching/creation failed"}
+    
     
     pass_kwargs["reply_to"] = message_id
     pass_kwargs["incoming_message_id"] = incoming_message_object
@@ -101,7 +91,7 @@ def converse(*args, **kargs):
     pass_kwargs["reply_to_id"] = message_id
     pass_kwargs["session_data"] = session_data
     pass_kwargs["channel"] = channel
-    pass_kwargs["session_data_cache"] = session_data_cache
+    pass_kwargs["session_data_cache"] = setup_session_data_cache(*args, **pass_kwargs)
     pass_kwargs["responses"] = []
 
     if request_data.get("channel") in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"] and not request_data.get("orchestrate"):
@@ -134,6 +124,24 @@ def converse(*args, **kargs):
     
     return
 
+def setup_session_data_cache(*args, **kwargs):
+    logger = kwargs.get("logger",mlogger)
+    logger.info("setup_session_cache_data called with data \n {} \n\n ---------------".format(kwargs))
+    cache_data = kwargs.get("session_data_cache",{})
+    if cache_data:
+        return cache_data
+    session_id = kwargs.get("session_id")
+    session_data = kwargs.get("session_data")
+    with get_pg_connector() as pg:
+        session_data_cache = pg.get("session_data_cache","session_id",session_id)
+        if not session_data_cache or not session_data_cache.get("data",{}).get("campaign_data") or not session_data_cache.get("data",{}).get("user_data"):
+            campaign_model_name = session_data.get("campaign_model")
+            lead_model_name = session_data.get("lead_model")
+            campaign_data = pg.get(campaign_model_name,"campaign_id",session_data.get("campaign_id")) or {}
+            lead_data = pg.get(session_data.get("lead_model"),"{}_id".format(lead_model_name),session_data.get("lead_id")) or {}
+            session_data_cache = pg.update("session_data_cache","session_id",session_id,{"session_id":session_id,"data":{"campaign_data":campaign_data,"user_data":lead_data,"dealership_data":{}}})
+            
+    return session_data_cache or {}
 
 
 @gryd.is_a_task()
@@ -143,7 +151,7 @@ def get_primary_prompt(*args, **kwargs):
     '''
     logger = kwargs.get("logger",mlogger)
     logger.info("get_primary_prompt called")
-
+    kwargs["session_data_cache"] = setup_session_data_cache(*args, **kwargs)
     yield from yield_primary_prompt(*args, **kwargs)
 @gryd.is_a_task()
 def execute_primary_prompt(*args, **kwargs):
@@ -181,13 +189,47 @@ def session_close(*args, **kwargs):
     '''
     logger = kwargs.get("logger",mlogger)
     logger.info("session_close called")
+
+    ##TODO call all closing tasks for getting stats etc.
+    awaited_tasks = []
+    awaited_tasks.append({
+        "task": "update_lead_data",
+        "kwargs": kwargs
+    })
+    awaited_tasks.append({
+        "task": "update_person_data",
+        "kwargs": kwargs
+    })
+    task_result_generator = gryd.yield_results(awaited_tasks)
+
+    for task_result in task_result_generator:
+        logger.info(f"Task '{task_result[1]}' status: {task_result[3]} \n") 
+    with get_pg_connector() as pg:
+        if kwargs.get("history"):
+            ##TODO post history into message model
+            pass
+
+        if kwargs.get("session_data_cache"):
+            pass
+        pg.delete("session_data_cache","session_id",kwargs.get("session_id"))
+
     yield {"status" : "complete","session_id":kwargs.get("session_id")}
 
 @gryd.is_a_task()
 def add_to_session_cache(*args, **kwargs):
     logger = kwargs.get("logger",mlogger)
     logger.info("add_to_session_cache called")
+    new_session_data = kwargs.get("session_data_cache_data")
+    if not new_session_data:
+        yield from yield_error("error","session_data_cache_data not found",*args, **kwargs)
+        return
+    session_id = kwargs.get("session_id")
+    with get_pg_connector() as pg:
+        session_data_old = pg.get("session_data_cache","session_id",session_id)
+        session_data_cache_updated = pg.update("session_data_cache","session_id",session_id,{"session_id":session_id,"data":session_data_old.get("data",{}).update(new_session_data)})
     yield from yield_status("success","added_to_session_cache",*args, **kwargs)
+    yield {"session_data_cache":session_data_cache_updated}
+    return
 
 @gryd.is_a_task()
 def run_orchestrator(*args, **kwargs):
@@ -282,6 +324,13 @@ def post_visit_data(*args, **pass_kwargs):
     '''
     agent to update the showroom/workshop visit model object based on messages for session
     '''
+
+    visit_campaign_id = pass_kwargs.get("campaign_id")
+    if not visit_campaign_id:
+        yield from yield_error("error","campaign_id not found",*args, **pass_kwargs)
+    with get_pg_connector() as pg:
+        messages = list(pg.list("message","message_id",None,{"session_id":pass_kwargs.get("session_id")}))
+        
     pass
 
 @gryd.is_a_task()
@@ -289,6 +338,11 @@ def set_feedback(*args, **pass_kwargs):
     '''
     agent to analyse the feedback/review and also post the data to the session model
     '''
+    if not pass_kwargs.get("session_id"):
+        yield from yield_error("error","session_id not found",*args, **pass_kwargs)
+        return
+    
+    
     pass
 
 
@@ -296,6 +350,7 @@ def yield_result(*args, **kwargs):
     pass
 
 def yield_error(error_type, error_description, *args, **kwargs):
+    mlogger.info("ERROR!!!!!!!!!!!!!{}".format(error_description))
     yield {"status" : "error","error_type":error_type, "error_description":error_description,"session_id":kwargs.get("request_data").get("session_id"),"message_id" : kwargs.get("reply_to")}
 
 

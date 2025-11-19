@@ -266,7 +266,94 @@ Bold front grille with chrome accents
 
 End Of Document Data
 """
+
+def get_who_are_you(*args, **kwargs):
+    return "You are a digital sales assistant bot."   
+
+def get_who_you_represent(*args, **kwargs):
+    session_data = kwargs.get("session_data",{})
+    campaign_data = kwargs.get("campaign_data",{})
+    dealership_name = "Autobot"
+    if not campaign_data and session_data.get("campaign_id","inbound") and session_data.get("campaign_id","inbound") != "inbound" and session_data.get("campaign_model","inbound"):
+        with get_pg_connector() as pg:
+            campaign_data = pg.get(session_data.get("campaign_model","inbound"),f"{session_data.get('campaign_model')}_id",session_data.get("campaign_id","inbound")) 
+    if not campaign_data:
+        return "You represent Autobot and all dealers listed with the platform."
+    dealership_name = campaign_data.get("dealer_name")
+    dealer_type = ""
+    shop_details = ""
+    if campaign_data.get("campaign_type") == "pre-sales":
+        dealer_type = "showroom"
+        shop_details = campaign_data.get("showroom_name","")
+    if campaign_data.get("campaign_type") == "post-sales":
+        dealer_type = "workshop"
+        shop_details = campaign_data.get("workshop_name","")
+    
+    dealer_details = "They have a {dealer_type} called {shop_details}.".format(dealer_type=dealer_type,shop_details=shop_details) if shop_details else "They have a {dealer_type}".format(dealer_type=dealer_type)
+    return "You represent {dealership_name}.{dealer_details}".format(dealership_name=dealership_name,dealer_details=dealer_details)   
+
+def get_user_info(*args, **kwargs):
+    user_data = kwargs.get("user_data")
+
+    return "The following is all the information we currently have about the customer: \n{}\n\n".format(user_data)
+
+def get_purpose_and_steps(*args, **kwargs):
+    session_data_cache_data = kwargs.get("session_data_cache",{})
+    campaign_data = session_data_cache_data.get("campaign_data",{})
+    user_data = session_data_cache_data.get("user_data")
+    campaign_type = campaign_data.get("campaign_type","inbound")
+
+    purpose_dict = {
+        "test_drive" : ["- Full Name \n- Interested Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time "],
+        "service" : ["- Full Name \n- Car Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time \n- Service Type"]
+        }
+
+    ###TODO create a way to detect the flow to push
+    flow = "service" if campaign_type == "post-sales" else "either test drive at the showroom or at home"
+
+    if flow == "service":
+        steps = ["- Full Name \n- Car Model \n- Date & Time \n- Service Type"]
+    else:
+        steps = ["- Full Name \n- Interested Model\n- Date & Time "]
+    if campaign_type == "inbound":
+        return "Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy."
+    return f"The overall purpose of your conversation with the user is to help them book {flow}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n.You should help answer any and all questions that the customer asks about cars that are related to the dealer. You should always try to move the user to your original purpose but do not be pushy."
+
+def get_example_states_and_solutions(*args, **kwargs):
+    examples = [
+        "If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose.",
+        ""
+    ]
+    return ", ".join(examples)
+
+
+def get_rules(*args, **kwargs):
+    return "Always be polite, be helpful, if the customer is rude, avoid confrontation, do not be pushy."
+
+def get_tone_and_style(*args, **kwargs):
+    return "be descriptive in your explanations, give examples and explanations when asking the user to select any options. try to acheive your goal but dont force the customer."
+
+def get_output_format(*args, **kwargs):
+    return "" if "voice" in kwargs.get("request_data",{}).get("response_channel","text") else "text"
+
+
 def setup_primary_prompt(*args, **kwargs):
+    '''
+    Prompt sections -
+    - Who are you
+    - Who/what do you represent
+    - Who is the customer
+    - What is your purpose (flow and steps)
+    - Possible states of the conversation and how to handle
+    - Rules
+    - Tone and style
+    - Documents
+    - output format
+
+    '''
+    
+    
+    
     session_data_cache_data = kwargs.get("session_data_cache",{}).get("data",{})
     campaign_data = session_data_cache_data.get("campaign_data")
     user_data = session_data_cache_data.get("user_data")
@@ -276,8 +363,14 @@ def setup_primary_prompt(*args, **kwargs):
     dealer_name = campaign_data.get("workshop_name")
     dealer_description = "{dealer_name} is a dealer who sells cars from their showrooms".format(dealer_name=dealer_name) if campaign_type == "pre-sales" else "{dealer_name} has a service center.".format(dealer_name=dealer_name)
     dealership_id = campaign_data.get("workshop_id")
-    dealership_showroom_list = []
     showroom_workshop_desc = ""
+    if not campaign_data:
+        campaign_name = "inbound"
+        campaign_objective = "inbound"
+        campaign_type = "inbound"
+        campaign_data = {"campaign_name":campaign_name,"campaign_objective":campaign_objective,"campaign_type":campaign_type}
+
+    
     with get_pg_connector() as pg:
         model_fetch = "showroom" if campaign_type == "pre-sales" else "workshop"
         showroom = pg.get(model_fetch,f"{model_fetch}_id",dealership_id)
@@ -286,73 +379,76 @@ def setup_primary_prompt(*args, **kwargs):
 
 
 
-    purpose_dict = {
-        "test_drive" : ["- Full Name \n- Interested Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time "],
-        "showroom_visit" : ["- Full Name \n- Interested Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time "],
-        "service_booking" : ["- Full Name \n- Car Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time \n- Service Type"],
-        "recommend_car" : ["- Full Name \n- Interested Features \n- Family Requirements\n- Driving scenarios"]
-    }
+    
 
-    ###TODO create a way to detect the flow to push
-    flow = "test_drive" if campaign_type == "pre-sales" else "service"
 
-    flow_steps = purpose_dict.get(flow,["Ask user to provide their name and we will call them back for further details."])
-    
-    
-    primary_prompt = """
+    purpose_and_steps = get_purpose_and_steps(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    doc_data = get_document_data(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    who_are_you =  get_who_are_you(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    who_you_represent = get_who_you_represent(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    who_is_the_customer = get_user_info(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    possible_states_and_solutions = get_example_states_and_solutions(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    rules = get_rules(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    tone_and_style = get_tone_and_style(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    output_format = get_output_format(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
 
-    You are a sales agent for {dealer_name}. {dealer_description}. Your job is to respond to customer inquiries and provide information about {dealer_name} and {campaign_name} campaign.
-    The dealer has launched a sales campaign with the objective of {campaign_objective}.
-    
-    
-    You should push the user towards the objective of {flow}.
-    
-    Steps to complete flow -
-    {flow_steps}
 
+    primary_prompt = f"""
+    Who you are -
+    {who_are_you}
+    Who you represent -
+    {who_you_represent}
+    Who is the customer -
+    {who_is_the_customer}
+    The purpose of this conversation -
+    {purpose_and_steps}
+    Possible states of the conversation and how to handle -
+    {possible_states_and_solutions}
+    Rules -
+    {rules}
+    Tone and style -
+    {tone_and_style}
+    Dealer description -
     {showroom_workshop_desc}
-
-
-    Rules - 
-    1. You should only respond to customer queries related to {dealer_name} or you should only respond to customer queries related to {campaign_name} campaign.
-    2. Do not discuss any competitors
-    3. Be helpful to the customer.
-    4. If data is not available in the data section below, tell the user you are are fetching the relevent information and figuring out the answer. Do not actually give an answer.
-    5. Do no make up facts that are not available in this prompt.
-    6. For all responses push the user towards doing {flow}.
-    7. Give the user enough information about the steps of the flow for them to provide the required information.
-
-    Tone and Personality - 
-    1. Friendly
-    2. Professional
-    3. Polite
-    4. Helpful
-    5. Understanding
-
-    Information about the User - 
-    {user_data}
-
-    Information about the Campaign - 
-    {campaign_data}
-
-    Data - 
-    {data}
-
-    Previous history of conversations - 
-    {history}
-
-    """.format(
-        dealer_name = dealer_name,
-        dealer_description = dealer_description,
-        campaign_name = campaign_name,
-        campaign_objective = campaign_objective,
-        flow = flow,
-        flow_steps = "\n".join(flow_steps),
-        showroom_workshop_desc = showroom_workshop_desc,
-        user_data = json.dumps(user_data),
-        campaign_data = json.dumps(campaign_data),
-        data = get_document_data(),
-        history = json.dumps(session_data_cache_data.get("data",{}).get("messages",[]))
-    )
+    Documents Data -
+    {doc_data}
+    Output Format -
+    {output_format}
+    """
     return primary_prompt
-    pass
+
+
+def check_if_visited(*args, **kwargs):
+    messages = kwargs.get("messages")
+    session_id = kwargs.get("session_id")
+    if not messages and not session_id:
+        return
+    with get_pg_connector() as pg:
+        session = pg.get("session","session_id",session_id)
+        if not session:
+            return
+        
+        campaign_model = session.get("campaign_model")
+        campaign_id = session.get("campaign_id")
+        campaign_data = pg.get(campaign_model,f"{campaign_model}_id",campaign_id)
+
+        showroom_workshop = "showroom" if session.get("campaign_type") == "pre_sales" else "workshop"
+        prompt = """
+        You are a helpful agent that detects if a customer has visited the {showroom_workshop}.
+        The customer was expected to visit my {showroom_workshop}.
+
+        The following is the transcript of my discussion with the user.
+
+        Your only task is to detect if the user said anything that implies they already visited the {showroom_workshop}.
+
+        {messages}
+
+        Your response should be only 'yes' or 'no'.
+        """.format(
+            showroom_workshop = showroom_workshop,
+            messages = json.dumps(messages)
+        )
+        
+        xx = run_prompt_sync(user_query="",system_prompt=prompt,history=[], messages=[], **kwargs)
+        mlogger.info("xx == {}".format(xx))
+        pass
