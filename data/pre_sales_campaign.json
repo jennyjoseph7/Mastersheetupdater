@@ -36,8 +36,7 @@
           "dealership_id"
         ]
       },
-      "required": true,
-      "force_update": "showroom_id"
+      "required": true
     },
     
     {
