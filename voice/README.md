@@ -102,3 +102,116 @@ The AI-driven conversational engine responsible for real-time understanding and 
 | Human Agent        | Receives stream during live handover                     |
 
 ---
+
+## 📞 Twilio Integration (NEW)
+
+Complete Twilio integration is now available for production-ready IVR calls!
+
+### Quick Start
+
+1. **Install dependencies** (already in requirements.txt):
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Configure environment**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your Twilio credentials
+   ```
+
+3. **Test setup**:
+   ```bash
+   python test_twilio_setup.py
+   ```
+
+4. **Run examples**:
+   ```bash
+   python examples/twilio_quickstart.py
+   ```
+
+5. **Start webhook server**:
+   ```bash
+   python examples/twilio_quickstart.py server
+   ```
+
+### Key Features
+
+- ✅ **Outbound & Inbound Calls** - Make and receive calls via Twilio
+- ✅ **Media Streams** - Real-time bidirectional audio (8kHz mulaw)
+- ✅ **TwiML Generation** - Automatic call flow management
+- ✅ **Speech Recognition** - Built-in speech-to-text via Twilio
+- ✅ **Call Management** - Status tracking, recording, metrics
+- ✅ **WebSocket Integration** - Seamless audio streaming
+- ✅ **Session Orchestration** - Automatic Voice Agent coordination
+
+### Documentation
+
+- **[TWILIO_SETUP.md](TWILIO_SETUP.md)** - Complete setup guide with examples
+- **[TWILIO_IMPLEMENTATION_SUMMARY.md](TWILIO_IMPLEMENTATION_SUMMARY.md)** - Implementation details
+- **[examples/twilio_quickstart.py](examples/twilio_quickstart.py)** - Quick start examples
+
+### Architecture
+
+```
+Twilio Call → Media Stream WebSocket → TwilioMediaStreamHandler
+                                              ↓
+                                         STT Service
+                                              ↓
+                                    Input Manager → Voice Agent
+                                                         ↓
+                                                   Output Manager
+                                                         ↓
+                                                    TTS Service
+                                                         ↓
+                               Media Stream WebSocket → Twilio → Caller
+```
+
+### Components
+
+1. **TwilioProvider** ([voice/providers/twilio_provider.py](voice/providers/twilio_provider.py))
+   - Call creation and management
+   - TwiML generation
+   - Media Stream handling
+   - Recording and metrics
+
+2. **TwilioWebhookServer** ([voice/providers/twilio_webhooks.py](voice/providers/twilio_webhooks.py))
+   - FastAPI webhook endpoints
+   - Call routing
+   - Status callbacks
+   - WebSocket media streams
+
+3. **TwilioIVROrchestrator** ([voice/providers/twilio_integration.py](voice/providers/twilio_integration.py))
+   - Complete session management
+   - Voice Agent integration
+   - Input/Output Manager coordination
+   - Audio processing pipeline
+
+### Usage Example
+
+```python
+from voice.providers.twilio_integration import TwilioIVROrchestrator, TwilioConfig
+
+# Configure
+config = TwilioConfig(
+    account_sid=os.getenv("TWILIO_ACCOUNT_SID"),
+    auth_token=os.getenv("TWILIO_AUTH_TOKEN"),
+    phone_number=os.getenv("TWILIO_PHONE_NUMBER"),
+    websocket_url="wss://your-domain.com/media-stream"
+)
+
+# Create orchestrator
+orchestrator = TwilioIVROrchestrator(
+    twilio_config=config,
+    system_prompt="You are a helpful assistant..."
+)
+
+# Make outbound call
+call = orchestrator.make_outbound_call(to_number="+1234567890")
+```
+
+### Get Started
+
+See [TWILIO_SETUP.md](TWILIO_SETUP.md) for detailed setup instructions and troubleshooting.
+
+---

@@ -155,6 +155,16 @@
             }
         },
         {
+            "name": "reg_number",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "vin_number",
+            "type": "text",
+            "indexed": true
+        },
+        {
             "name": "vehicle_category",
             "type": "text",
             "default": {
@@ -221,16 +231,6 @@
             "ui_element": "select"
         },
         {
-            "name": "reg_number",
-            "type": "text",
-            "indexed": true
-        },
-        {
-            "name": "vin_number",
-            "type": "text",
-            "indexed": true
-        },
-        {
             "name": "engine_number",
             "type": "text"
         },
@@ -276,18 +276,6 @@
             }
         },
         {
-            "name": "vehicle_usage_category",
-            "type": "text",
-            "options": [
-                "Personal",
-                "Fleet",
-                "Commercial",
-                "Rental",
-                "Demo"
-            ],
-            "ui_element": "select"
-        },
-        {
             "name": "last_service_date",
             "type": "number",
             "default": {
@@ -322,6 +310,18 @@
             "type": "number"
         },
         {
+            "name": "service_feedback",
+            "type": "text"
+        },
+        {
+            "name": "feedback_rating",
+            "type": "text"
+        },
+        {
+            "name": "feedback_sentiment_score",
+            "type": "text"
+        },
+        {
             "name": "warranty_expiry_date",
             "type": "number",
             "default": {
@@ -341,16 +341,8 @@
             "type": "number"
         },
         {
-            "name": "service_feedback",
-            "type": "text"
-        },
-        {
-            "name": "feedback_rating",
-            "type": "text"
-        },
-        {
-            "name": "feedback_sentiment_score",
-            "type": "text"
+            "name": "loan_end_date",
+            "type": "number"
         },
         {
             "name": "odometer_reading",
@@ -359,15 +351,24 @@
         },
         {
             "name": "odometer_reading_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "avg_monthly_mileage",
             "type": "number",
             "units": "km"
+        },
+        {
+            "name": "vehicle_usage_category",
+            "type": "text",
+            "options": [
+                "Personal",
+                "Fleet",
+                "Commercial",
+                "Rental",
+                "Demo"
+            ],
+            "ui_element": "select"
         },
         {
             "name": "battery_health",
@@ -393,7 +394,10 @@
         },
         {
             "name": "oil_change_date",
-            "type": "number"
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            }
         },
         {
             "name": "brake_pad_change_date",
@@ -449,40 +453,28 @@
         },
         {
             "name": "underbody_coating_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "car_wash_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "brake_oil_change_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "oil_filter_replacement_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
         {
             "name": "polishing_and_waxing_date",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            }
+            "type": "number"
         },
-        
+        {
+            "name": "ac_vent_cleaning_date",
+            "type": "number"
+        },
         {
             "name": "repair_notes",
             "type": "text"
@@ -505,10 +497,6 @@
         {
             "name": "finance_loan_status",
             "type": "text"
-        },
-        {
-            "name": "loan_end_date",
-            "type": "number"
         },
         {
             "name": "loan_provider",
