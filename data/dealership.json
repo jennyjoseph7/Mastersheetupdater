@@ -27,12 +27,6 @@
             "required": true
         },
         {
-            "name": "credits_balance",
-            "type": "number",
-            "units": "credits",
-            "default": 0
-        },
-        {
             "name": "dealership_url",
             "type": "text",
             "constraint": {
@@ -41,6 +35,12 @@
             "converter": {
                 "function": "url_converter"
             }
+        },
+        {
+            "name": "credits_balance",
+            "type": "number",
+            "units": "credits",
+            "default": 0
         },
         {
             "name": "pan_number",
@@ -73,16 +73,6 @@
             "ui_element": "file"
         },
         {
-            "name": "dealership_legal_name",
-            "type": "text",
-            "default": {
-                "function": "copy_attribute",
-                "args": [
-                    "dealer_name"
-                ]
-            }
-        },
-        {
             "name": "certificate_of_incorporation",
             "type": "text",
             "ui_element": "file",
@@ -91,6 +81,16 @@
             },
             "converter": {
                 "function": "url_converter"
+            }
+        },
+        {
+            "name": "dealership_legal_name",
+            "type": "text",
+            "default": {
+                "function": "copy_attribute",
+                "args": [
+                    "dealer_name"
+                ]
             }
         },
         {
@@ -106,7 +106,9 @@
         },
         {
             "name": "languages",
-            "default": ["english"],
+            "default": [
+                "english"
+            ],
             "type": "list",
             "option_others": true,
             "ui_element": "tags",
@@ -129,23 +131,6 @@
             ]
         },
         {
-            "name": "dealer_group_id",
-            "refers": "parents.dealer_group.dealer_group_id",
-            "required": false
-        },
-        {
-            "name": "dealer_group_name",
-            "refers": "parents.dealer_group.dealer_group_name"
-        },
-        {
-            "name": "dealer_group_guidelines",
-            "refers": "parents.dealer_group.dealer_group_guidelines"
-        },
-        {
-            "name": "dealer_group_description",
-            "refers": "parents.dealer_group.dealer_group_description"
-        },
-        {
             "default": "Single Brand",
             "name": "dealership_type",
             "type": "text",
@@ -161,7 +146,7 @@
             "required": false
         },
         {
-            "name": "suppored_brand_names",
+            "name": "supported_brand_names",
             "type": "list",
             "default": {
                 "function": "get_from_model_map",
@@ -196,6 +181,19 @@
             }
         },
         {
+            "name": "vehicle_category",
+            "type": "text",
+            "option_others": true,
+            "options": [
+                "Passenger vehicles",
+                "Commercial Vehicles",
+                "Two Wheelers",
+                "Three Wheelers",
+                "Truck",
+                "Bus"
+            ]
+        },
+        {
             "name": "channels",
             "type": "list",
             "options": [
@@ -214,6 +212,35 @@
                 "ms_teams"
             ],
             "ui_element": "multiselect"
+        },
+        {
+            "name": "dealership_guidelines",
+            "type": "text"
+        },
+        {
+            "name": "dealership_guardrails",
+            "type": "text"
+        },
+        {
+            "name": "dealership_description",
+            "type": "text"
+        },
+        {
+            "name": "dealer_group_id",
+            "refers": "parents.dealer_group.dealer_group_id",
+            "required": false
+        },
+        {
+            "name": "dealer_group_name",
+            "refers": "parents.dealer_group.dealer_group_name"
+        },
+        {
+            "name": "dealer_group_guidelines",
+            "refers": "parents.dealer_group.dealer_group_guidelines"
+        },
+        {
+            "name": "dealer_group_description",
+            "refers": "parents.dealer_group.dealer_group_description"
         },
         {
             "name": "region_id",
@@ -389,18 +416,6 @@
             "constraint": {
                 "function": "phone_validator"
             }
-        },
-        {
-            "name": "dealership_guidelines",
-            "type": "text"
-        },
-        {
-            "name": "dealership_guardrails",
-            "type": "text"
-        },
-        {
-            "name": "dealership_description",
-            "type": "text"
         },
         {
             "name": "dealer_status",

@@ -45,8 +45,32 @@
       "refers": "parents.dealership.dealer_name"
     },
     {
+      "name": "dealership_guidelines",
+      "refers": "parents.dealership.dealership_guidelines"
+    },
+    {
+      "name": "dealership_guardrails",
+      "refers": "parents.dealership.dealership_guardrails"
+    },
+    {
+      "name": "dealership_description",
+      "refers": "parents.dealership.dealership_description"
+    },
+    {
+      "name": "region_id",
+      "refers": "parents.dealership.region_id"
+    },
+    {
       "name": "region_name",
       "refers": "parents.dealership.region_name"
+    },
+    {
+      "name": "region_level_guidelines",
+      "refers": "parents.dealership.region_level_guidelines"
+    },
+    {
+      "name": "region_level_guardrails",
+      "refers": "parents.dealership.region_level_guardrails"
     },
     {
       "name": "showroom_name",
@@ -78,20 +102,12 @@
       "indexed": true
     },
     {
-      "name": "region_id",
-      "refers": "parents.dealership.region_id"
+      "name": "showroom_level_guidelines",
+      "refers": "parents.showroom.showroom_level_guidelines"
     },
     {
-      "name": "region_name",
-      "refers": "parents.dealership.region_name"
-    },
-    {
-      "name": "region_level_guidelines",
-      "refers": "parents.dealership.region_level_guidelines"
-    },
-    {
-      "name": "region_level_guardrails",
-      "refers": "parents.dealership.region_level_guardrails"
+      "name": "showroom_level_guardrails",
+      "refers": "parents.showroom.showroom_level_guardrails"
     },
     {
       "name": "supported_brands",
@@ -100,14 +116,6 @@
     {
       "name": "supported_brands_guidelines",
       "refers": "parents.dealership.supported_brands_guidelines"
-    },
-    {
-      "name": "showroom_level_guidelines",
-      "refers": "parents.showroom.showroom_level_guidelines"
-    },
-    {
-      "name": "showroom_level_guardrails",
-      "refers": "parents.showroom.showroom_level_guardrails"
     },
     {
       "name": "campaign_name",
@@ -133,12 +141,21 @@
     {
       "name": "campaign_objective_name",
       "type": "text",
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "campaign_objective_name"
-        ]
+      "function": "get_from_model",
+      "args": [
+        "campaign_objective",
+        "campaign_objective_id",
+        "campaign_objective_name"
+      ]
+    },
+    {
+      "name": "campaign_objective_type",
+      "type": "list",
+      "options": [
+        "lead volume",
+        "budget based",
+        "roi target"
+      ]
     },
     {
       "name": "campaign_objective_description",
@@ -154,34 +171,6 @@
       }
     },
     {
-      "name": "conversation_tone",
-      "type": "text",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "conversation_tone"
-        ]
-      }
-    },
-    {
-      "name": "campaign_objective_type",
-      "type": "list",
-      "options": ["lead volume", "budget based", "roi target"]
-    },
-    {
-      "name": "campaign_custom_attributes",
-      "type": "object_list",
-      "list_type": "nested_object",
-      "dict_keys": [
-        "attribute_name",
-        "attribute_value",
-        "attribute_type",
-        "attribute_description"
-      ]
-    },
-    {
       "name": "campaign_sub_type",
       "default": {
         "function": "get_from_model",
@@ -195,6 +184,29 @@
       "option_others": true
     },
     {
+      "name": "conversation_tone",
+      "type": "text",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "conversation_tone"
+        ]
+      }
+    },
+    {
+      "name": "campaign_custom_attributes",
+      "type": "object_list",
+      "list_type": "nested_object",
+      "dict_keys": [
+        "attribute_name",
+        "attribute_value",
+        "attribute_type",
+        "attribute_description"
+      ]
+    },
+    {
       "name": "campaign_guardrails_guidelines",
       "type": "text",
       "title": "Campaign Guardrails and Guidelines",
@@ -206,6 +218,29 @@
           "guardrails_guidelines"
         ]
       }
+    },
+    {
+      "name": "campaign_description",
+      "type": "text"
+    },
+    {
+      "name": "campaign_tagline",
+      "type": "text",
+      "title": "Campaign Tagline"
+    },
+    {
+      "name": "campaign_offer",
+      "type": "text",
+      "title": "Campaign Offer"
+    },
+    {
+      "name": "offer_applicability",
+      "type": "text",
+      "title": "Offer Applicability"
+    },
+    {
+      "name": "urgency_hook",
+      "type": "text"
     },
     {
       "name": "why_user_should_avail_this",
@@ -257,10 +292,6 @@
       }
     },
     {
-      "name": "campaign_description",
-      "type": "text"
-    },
-    {
       "name": "start_date",
       "type": "number"
     },
@@ -271,6 +302,29 @@
     {
       "name": "channels",
       "refers": "parents.dealership.channels"
+    },
+    {
+      "name": "vehicle_category",
+      "type": "text",
+      "required": true,
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "dealership",
+          "dealership_id",
+          "vehicle_category",
+          "Passenger vehicles"
+        ]
+      },
+      "option_others": true,
+      "options": [
+        "Passenger vehicles",
+        "Commercial Vehicles",
+        "Two Wheelers",
+        "Three Wheelers",
+        "Truck",
+        "Bus"
+      ]
     },
     {
       "name": "languages",
@@ -297,10 +351,6 @@
       ]
     },
     {
-      "name": "urgency_hook",
-      "type": "text"
-    },
-    {
       "name": "ctas",
       "title": "Call to Actions",
       "options": [
@@ -317,16 +367,6 @@
       "type": "string_list",
       "list_type": "text",
       "ui_element": "tags"
-    },
-    {
-      "name": "campaign_offer",
-      "type": "text",
-      "title": "Campaign Offer"
-    },
-    {
-      "name": "offer_applicability",
-      "type": "text",
-      "title": "Offer Applicability"
     },
     {
       "name": "number_targeted",
@@ -361,7 +401,10 @@
       "type": "number",
       "default": {
         "function": "divide_attributes",
-        "args": ["number_converted", "number_contacted"]
+        "args": [
+          "number_converted",
+          "number_contacted"
+        ]
       }
     },
     {
@@ -369,13 +412,22 @@
       "type": "number",
       "default": {
         "function": "divide_attributes",
-        "args": ["actual_spent", "number_converted"]
+        "args": [
+          "actual_spent",
+          "number_converted"
+        ]
       }
     },
     {
       "name": "campaign_status",
       "type": "text",
-      "options": ["Planned", "Active", "Completed", "On Hold", "Cancelled"]
+      "options": [
+        "Planned",
+        "Active",
+        "Completed",
+        "On Hold",
+        "Cancelled"
+      ]
     },
     {
       "name": "responsible_person",

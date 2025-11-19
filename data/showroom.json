@@ -38,6 +38,14 @@
       "refers": "parents.dealership.region_name"
     },
     {
+      "name": "region_level_guidelines",
+      "refers": "parents.dealership.region_level_guidelines"
+    },
+    {
+      "name": "region_level_guardrails",
+      "refers": "parents.dealership.region_level_guardrails"
+    },
+    {
       "name": "showroom_name",
       "type": "text",
       "indexed": true
@@ -62,6 +70,18 @@
       }
     },
     {
+      "name": "showroom_type",
+      "type": "text",
+      "options": [
+        "Main Showroom",
+        "City Outlet",
+        "Express Outlet",
+        "Experience Center",
+        "Mall Kiosk",
+        "Virtual Showroom"
+      ]
+    },
+    {
       "name": "supported_brands",
       "type": "list",
       "default": {
@@ -76,16 +96,16 @@
       "force_update": "dealership_id"
     },
     {
-      "name": "showroom_type",
-      "type": "text",
-      "options": [
-        "Main Showroom",
-        "City Outlet",
-        "Express Outlet",
-        "Experience Center",
-        "Mall Kiosk",
-        "Virtual Showroom"
-      ]
+      "name": "supported_brands_guidelines",
+      "refers": "parents.dealership.supported_brands_guidelines"
+    },
+    {
+      "name": "showroom_level_guidelines",
+      "type": "text"
+    },
+    {
+      "name": "showroom_level_guardrails",
+      "type": "text"
     },
     {
       "name": "contact_number",
@@ -187,7 +207,6 @@
       "name": "display_vehicle_count",
       "type": "number"
     },
-    
     {
       "name": "google_reviews_rating",
       "type": "text"
@@ -212,28 +231,6 @@
       "name": "showroom_rating",
       "type": "text"
     },
-    
-    {
-        "name":"region_level_guidelines",
-        "refers":"parents.dealership.region_level_guidelines"
-    },
-    {
-        "name":"region_level_guardrails",
-        "refers":"parents.dealership.region_level_guardrails"
-    },
-    {
-      "name": "supported_brands_guidelines",
-      "refers":"parents.dealership.supported_brands_guidelines"
-    },
-    {
-      "name": "showroom_level_guidelines",
-      "type": "text"
-    },
-    {
-      "name": "showroom_level_guardrails",
-      "type": "text"
-    },
-    
     {
       "name": "showroom_status",
       "indexed": true,
