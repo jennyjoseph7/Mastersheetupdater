@@ -319,7 +319,8 @@
                     "campaign_id",
                     "ctas"
                 ]
-            }
+            },
+            "type":"string_list"
         },
         {
             "name": "assigned_to",
