@@ -273,13 +273,15 @@ def get_who_are_you(*args, **kwargs):
 def get_who_you_represent(*args, **kwargs):
     session_data = kwargs.get("session_data",{})
     campaign_data = kwargs.get("campaign_data",{})
+
     dealership_name = "Autobot"
-    if not campaign_data and session_data.get("campaign_id","inbound") and session_data.get("campaign_id","inbound") != "inbound" and session_data.get("campaign_model","inbound"):
+    if not campaign_data and session_data.get("campaign_id","inbound") and session_data.get("campaign_id","inbound") != "inbound" and session_data.get("campaign_model"):
         with get_pg_connector() as pg:
-            campaign_data = pg.get(session_data.get("campaign_model","inbound"),f"{session_data.get('campaign_model')}_id",session_data.get("campaign_id","inbound")) 
+            campaign_data = pg.get(session_data.get("campaign_model"),f"{session_data.get('campaign_model')}_id",session_data.get("campaign_id")) 
     if not campaign_data:
         return "You represent Autobot and all dealers listed with the platform."
     dealership_name = campaign_data.get("dealer_name")
+    region = campaign_data.get("region_name")
     dealer_type = ""
     shop_details = ""
     if campaign_data.get("campaign_type") == "pre-sales":
@@ -289,7 +291,7 @@ def get_who_you_represent(*args, **kwargs):
         dealer_type = "workshop"
         shop_details = campaign_data.get("workshop_name","")
     
-    dealer_details = "They have a {dealer_type} called {shop_details}.".format(dealer_type=dealer_type,shop_details=shop_details) if shop_details else "They have a {dealer_type}".format(dealer_type=dealer_type)
+    dealer_details = "They have a {dealer_type} called {shop_details}. They support the brands as follows - {supported_brands}".format(dealer_type=dealer_type,shop_details=shop_details,supported_brands=campaign_data.get("supported_brands",[])) if shop_details else "They have a {dealer_type}. They support the following brands - {supported_brands}.".format(dealer_type=dealer_type,supported_brands=campaign_data.get("supported_brands",[]))
     return "You represent {dealership_name}.{dealer_details}".format(dealership_name=dealership_name,dealer_details=dealer_details)   
 
 def get_user_info(*args, **kwargs):
@@ -310,14 +312,15 @@ def get_purpose_and_steps(*args, **kwargs):
 
     ###TODO create a way to detect the flow to push
     flow = "service" if campaign_type == "post-sales" else "either test drive at the showroom or at home"
-
+    urgency_hooks = campaign_data.get("urgency_hook",[])
+    offer = campaign_data.get("campaign_offerf","No Offer")
     if flow == "service":
         steps = ["- Full Name \n- Car Model \n- Date & Time \n- Service Type"]
     else:
         steps = ["- Full Name \n- Interested Model\n- Date & Time "]
     if campaign_type == "inbound":
         return "Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy."
-    return f"The overall purpose of your conversation with the user is to help them book {flow}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n.You should help answer any and all questions that the customer asks about cars that are related to the dealer. You should always try to move the user to your original purpose but do not be pushy."
+    return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n.You should help answer any and all questions that the customer asks about cars that are related to the dealer. You should always try to move the user to your original purpose but do not be pushy."
 
 def get_example_states_and_solutions(*args, **kwargs):
     examples = [
@@ -328,7 +331,21 @@ def get_example_states_and_solutions(*args, **kwargs):
 
 
 def get_rules(*args, **kwargs):
-    return "Always be polite, be helpful, if the customer is rude, avoid confrontation, do not be pushy."
+    session_data_cache_data = kwargs.get("session_data_cache",{})
+    campaign_data = session_data_cache_data.get("campaign_data",{})
+    mlogger.info("campaign_data == {}".format(session_data_cache_data))
+    rules = "Always be polite, be helpful, if the customer is rude, avoid confrontation, do not be pushy."
+    if campaign_data.get("dealership_guardrails"):
+        rules = campaign_data.get("dealership_guardrails")
+    if campaign_data.get("dealership_guidelines"):
+        rules = "{}\n{}".format(rules,campaign_data.get("dealership_guidelines"))
+    if campaign_data.get("region_level_guardrails"):
+        rules = "{}\n{}".format(rules,campaign_data.get("region_level_guardrails"))
+    if campaign_data.get("region_level_guidelines"):
+        rules = "{}\n{}".format(rules,campaign_data.get("region_level_guidelines"))
+    if campaign_data.get("supported_brands_guidelines"):
+        rules = "{}\nThese are some brands the dealer supports and specific guidelines for them.\n{}".format(rules,campaign_data.get("supported_brands_guidelines"))
+    return rules
 
 def get_tone_and_style(*args, **kwargs):
     return "be descriptive in your explanations, give examples and explanations when asking the user to select any options. try to acheive your goal but dont force the customer."
@@ -353,16 +370,16 @@ def setup_primary_prompt(*args, **kwargs):
     '''
     
     
-    
+    mlogger.info("session_data_cache_data == {}".format(kwargs.get("session_data_cache",{}).get("data",{}).get("campaign_data").keys()))
     session_data_cache_data = kwargs.get("session_data_cache",{}).get("data",{})
     campaign_data = session_data_cache_data.get("campaign_data")
     user_data = session_data_cache_data.get("user_data")
     campaign_type = campaign_data.get("campaign_type")
     campaign_name = campaign_data.get("campaign_name")
     campaign_objective = campaign_data.get("campaign_objective")
-    dealer_name = campaign_data.get("workshop_name")
+    dealer_name = campaign_data.get("workshop_name",campaign_data.get("dealer_name"))
     dealer_description = "{dealer_name} is a dealer who sells cars from their showrooms".format(dealer_name=dealer_name) if campaign_type == "pre-sales" else "{dealer_name} has a service center.".format(dealer_name=dealer_name)
-    dealership_id = campaign_data.get("workshop_id")
+    shop_id = campaign_data.get("workshop_id")
     showroom_workshop_desc = ""
     if not campaign_data:
         campaign_name = "inbound"
@@ -373,24 +390,26 @@ def setup_primary_prompt(*args, **kwargs):
     
     with get_pg_connector() as pg:
         model_fetch = "showroom" if campaign_type == "pre-sales" else "workshop"
-        showroom = pg.get(model_fetch,f"{model_fetch}_id",dealership_id)
+        showroom = pg.get(model_fetch,f"{model_fetch}_id",shop_id)
     if showroom:
         showroom_workshop_desc = "The following are the {showroom_workshop} of {dealer_name} :{showrooms}".format(showroom_workshop=model_fetch,dealer_name=dealer_name,showrooms = json.dumps(showroom))
+    else:
+        showroom_workshop_desc = campaign_data.get("dealership_description",campaign_data.get("dealer_name"))
 
 
+    mlogger.info("session_data_cache_data == {}\n\n".format(session_data_cache_data))
+    mlogger.info("campaign_data == {}\n\n".format(campaign_data))
+    mlogger.info("user_data == {}\n\n".format(user_data))
 
-    
-
-
-    purpose_and_steps = get_purpose_and_steps(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    doc_data = get_document_data(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    who_are_you =  get_who_are_you(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    who_you_represent = get_who_you_represent(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    who_is_the_customer = get_user_info(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    possible_states_and_solutions = get_example_states_and_solutions(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    rules = get_rules(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    tone_and_style = get_tone_and_style(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    output_format = get_output_format(*args,**{"session_data_cache_data":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    purpose_and_steps = get_purpose_and_steps(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    doc_data = get_document_data(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    who_are_you =  get_who_are_you(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    who_you_represent = get_who_you_represent(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    who_is_the_customer = get_user_info(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    possible_states_and_solutions = get_example_states_and_solutions(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    rules = get_rules(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    tone_and_style = get_tone_and_style(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    output_format = get_output_format(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
 
 
     primary_prompt = f"""

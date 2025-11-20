@@ -138,8 +138,10 @@ def setup_session_data_cache(*args, **kwargs):
             campaign_model_name = session_data.get("campaign_model")
             lead_model_name = session_data.get("lead_model")
             campaign_data = pg.get(campaign_model_name,"campaign_id",session_data.get("campaign_id")) or {}
+            dealership_id = campaign_data.get("dealership_id")
+            dealership_data = pg.get("dealership","dealership_id",dealership_id)
             lead_data = pg.get(session_data.get("lead_model"),"{}_id".format(lead_model_name),session_data.get("lead_id")) or {}
-            session_data_cache = pg.update("session_data_cache","session_id",session_id,{"session_id":session_id,"data":{"campaign_data":campaign_data,"user_data":lead_data,"dealership_data":{}}})
+            session_data_cache = pg.update("session_data_cache","session_id",session_id,{"session_id":session_id,"data":{"campaign_data":campaign_data,"user_data":lead_data,"dealership_data":dealership_data}})
             
     return session_data_cache or {}
 
@@ -244,7 +246,6 @@ def run_orchestrator(*args, **kwargs):
     yield {"placeholder":"agent 3 response","intent" : "agent_three","reply_to":reply_to, "message_id" : str(hp.time()),"is_last":True,"index" : 3}
     return
 
-@gryd.is_a_task()
 def prune_response( response, *args, **kargs):
     logger = kargs.get("logger",mlogger)
     logger.info("prune_response called")
