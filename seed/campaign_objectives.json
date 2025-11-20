@@ -1,0 +1,134 @@
+[
+  {
+    "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
+    "campaign_type": "post-sales",
+    "campaign_sub_type": "service reminder",
+    "campaign_objective_name": "Scheduled Service Reminder",
+    "campaign_objective_description": "Remind customers about their upcoming scheduled service appointments to ensure vehicle maintenance and customer satisfaction",
+    "conversation_tone": "Professional",
+    "why_user_should_avail_this": "Regular service ensures optimal vehicle performance, safety, and maintains warranty coverage",
+    "reasons_users_may_not_be_interested": "Vehicle recently serviced elsewhere, financial constraints, inconvenient timing",
+    "reasons_for_non_applicability": "Vehicle already serviced, outside service area, warranty expired",
+    "other_important_information": "Service appointments can be scheduled at your convenience. Early booking may qualify for discounts.",
+    "target_audience_tags": [
+      "service-due",
+      "regular-customer",
+      "warranty-active"
+    ],
+    "custom_attributes": [
+      {
+        "attribute_name": "reminder_window_days",
+        "attribute_value": "30",
+        "attribute_type": "number",
+        "attribute_description": "Days before due date when reminders are sent"
+      },
+      {
+        "attribute_name": "service_type",
+        "attribute_value": "Periodic Maintenance",
+        "attribute_type": "text",
+        "attribute_description": "Type of service being promoted"
+      }
+    ],
+    "icon": "mdi-calendar-clock",
+    "is_custom": false
+  },
+  {
+    "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
+    "campaign_type": "post-sales",
+    "campaign_sub_type": "offers",
+    "campaign_objective_name": "Warranty Expiry Offer",
+    "campaign_objective_description": "Promote extended warranty packages to customers whose vehicles are nearing warranty expiry",
+    "conversation_tone": "Urgent",
+    "why_user_should_avail_this": "Extended warranty provides peace of mind and protects against unexpected repair costs at discounted rates",
+    "reasons_users_may_not_be_interested": "Vehicle in excellent condition, plans to sell soon, budget constraints",
+    "reasons_for_non_applicability": "Warranty already expired, vehicle sold, not eligible for extension",
+    "other_important_information": "Special discount available for early renewal. Coverage includes comprehensive protection for major components.",
+    "target_audience_tags": [
+      "warranty-expiring",
+      "high-mileage",
+      "long-term-owner"
+    ],
+    "custom_attributes": [
+      {
+        "attribute_name": "discount_percent",
+        "attribute_value": "15",
+        "attribute_type": "number",
+        "attribute_description": "Discount available on warranty extension"
+      },
+      {
+        "attribute_name": "coverage_duration_years",
+        "attribute_value": "2",
+        "attribute_type": "number",
+        "attribute_description": "Additional years of coverage offered"
+      }
+    ],
+    "icon": "mdi-shield-check",
+    "is_custom": false
+  },
+  {
+    "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
+    "campaign_type": "pre-sales",
+    "campaign_sub_type": "lead generation",
+    "campaign_objective_name": "Test Drive Booking",
+    "campaign_objective_description": "Generate test drive bookings by encouraging potential customers to experience the vehicle firsthand",
+    "conversation_tone": "Friendly",
+    "why_user_should_avail_this": "Experience the premium features and performance of NEXA vehicles with no obligation",
+    "reasons_users_may_not_be_interested": "Not ready to purchase, already test driven, preference for other models",
+    "reasons_for_non_applicability": "Already purchased, outside service area, not eligible for test drive",
+    "other_important_information": "Test drives are free and include home pickup/drop service. No pressure sales approach.",
+    "target_audience_tags": [
+      "test-drive-interested",
+      "high-intent",
+      "new-buyer"
+    ],
+    "custom_attributes": [
+      {
+        "attribute_name": "available_slots_per_day",
+        "attribute_value": "25",
+        "attribute_type": "number",
+        "attribute_description": "Number of test drive slots allocated daily"
+      },
+      {
+        "attribute_name": "pickup_drop_service",
+        "attribute_value": "true",
+        "attribute_type": "bool",
+        "attribute_description": "Indicates if home pickup/drop is available"
+      }
+    ],
+    "icon": "mdi-steering",
+    "is_custom": false
+  },
+  {
+    "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
+    "campaign_type": "pre-sales",
+    "campaign_sub_type": "product awareness",
+    "campaign_objective_name": "Product Launch",
+    "campaign_objective_description": "Create awareness and generate excitement for newly launched vehicles with special launch offers",
+    "conversation_tone": "Persuasive",
+    "why_user_should_avail_this": "Be among the first to own the latest model with exclusive launch offers and benefits",
+    "reasons_users_may_not_be_interested": "Prefer established models, waiting for reviews, budget constraints",
+    "reasons_for_non_applicability": "Already purchased, not available in region, not eligible for offers",
+    "other_important_information": "Launch offers are limited and available for early bookings. Includes special pricing and accessories package.",
+    "target_audience_tags": [
+      "early-adopter",
+      "launch-interested",
+      "premium-seeker"
+    ],
+    "custom_attributes": [
+      {
+        "attribute_name": "launch_offer_type",
+        "attribute_value": "Accessory Bundle",
+        "attribute_type": "text",
+        "attribute_description": "Primary benefit offered during launch"
+      },
+      {
+        "attribute_name": "early_booking_limit",
+        "attribute_value": "100",
+        "attribute_type": "number",
+        "attribute_description": "Number of customers eligible for launch offer"
+      }
+    ],
+    "icon": "mdi-firework",
+    "is_custom": false
+  }
+]

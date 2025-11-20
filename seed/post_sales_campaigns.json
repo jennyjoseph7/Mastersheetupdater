@@ -5,7 +5,7 @@
     "campaign_name": "Scheduled Service Reminder",
     "campaign_type": "post-sales",
     "campaign_user_source": "auto_generated",
-    "campaign_objective": ["Scheduled Service Reminder"],
+    "campaign_objective": ["Service reminder"],
     "campaign_sub_type": ["workshop awareness"],
     "campaign_objective_type": ["lead volume"],
     "campaign_offer": "10% discount on service charges for bookings made within 7 days",
@@ -39,7 +39,9 @@
     "campaign_name": "Extended Warranty Promotion",
     "campaign_type": "post-sales",
     "campaign_user_source": "file",
-    "campaign_objective": ["Warranty Expiry Offer"],
+    "campaign_objective": [
+      "Re-activation of inactive customer","Service reminder"
+    ],
     "campaign_sub_type": ["offers"],
     "campaign_objective_type": ["roi target"],
     "campaign_offer": "Extended warranty at 15% discount for vehicles with warranty expiring in next 90 days",

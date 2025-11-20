@@ -84,7 +84,7 @@
     "secondary_contact_role": "Sales Manager",
     "secondary_contact_email": "sneha.patel@nexadelhisouth.com",
     "secondary_contact_phone": "+91-9876543203",
-    "dealership_guidelines": "Provide exceptional customer service. Maintain premium brand standards.",
+    "dealership_guidelines": "Provide exceptional customer service. Maintain premium brand standards. Follow the proceeding data for service package details-\nService Interval\n\nService Package Name\n\nValid From (Date of Sale)\n\nValid Until\n\nCustomer Cost\n\nKey Conditions\n\nFirst Service\n\nFree Service 1\n\nDay 1\n\n1 Month OR 1,000 km\n\nFREE\n\nWhichever comes first\n\nSecond Service\n\nFree Service 2\n\nDay 1\n\n6 Months OR 5,000 km\n\nFREE\n\nWhichever comes first\n\nThird Service\n\nFree Service 3\n\nDay 1\n\n1 Year OR 10,000 km\n\nPARTIALLY FREE\n\nFree labour only; pay for parts/oil\n\nSecond Year\n\nPMS20\n\n1 Year + 1 Day\n\n2 Years\n\nPAID\n\nFull paid service\n\nThird Year\n\nPMS30\n\n2 Years + 1 Day\n\n3 Years\n\nPAID\n\nFull paid service\n\nFourth Year\n\nPMS40\n\n3 Years + 1 Day\n\n4 Years\n\nPAID\n\nFull paid service\n\nFifth Year\n\nPMS50\n\n4 Years + 1 Day\n\n5 Years\n\nPAID\n\nFull paid service\n",
     "dealership_guardrails": "No unauthorized discounts. All communications must be professional.",
     "dealership_description": "Premium NEXA dealership serving South Delhi",
     "dealer_status": "active",
