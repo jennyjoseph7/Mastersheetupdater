@@ -226,7 +226,7 @@
         "budget based",
         "roi target"
       ],
-      "default": "lead_volume"
+      "default": ["lead_volume"]
     },
     {
       "name": "campaign_objective_description",

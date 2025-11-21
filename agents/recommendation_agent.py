@@ -47,17 +47,20 @@ key_order = ['power', 'engine', 'torque', 'dimension',
 'fuel_efficiency', 'exterior_feature', 'interior_feature', 'engine_and_performance',
 'comfort_and_convenience','price']
 
-model = FastText(
-    sentences=["test"],
-    vector_size=100, 
-    window=3,
-    min_count=1,
-    sg=1  
-)
+
+
+model=FastText(
+        sentences=["test"],
+        vector_size=100,
+        window=3,
+        min_count=1,
+        sg=1,
+    )
+
+
 
 # client = QdrantClient(host="localhost", port=6333)
 client = QdrantClient(url="http://216.48.189.12:6333")
-
 
 
 
@@ -76,34 +79,6 @@ def generate_case_permutations(text):
 
 
 
-
-def extract_json_from_text(text: str):
-    """
-    Extracts the first JSON object found in the text using regex.
-    Returns a Python dict if successful, otherwise None.
-    """
-    try:
-        pattern = r"\{[\s\S]*?\}"
-        match = re.search(pattern, text)
-        
-        if match:
-            json_str = match.group(0)
-            logger.info("JSON string found, attempting to parse...")
-            
-            try:
-                data = json.loads(json_str)
-                logger.info("JSON successfully parsed.")
-                return data
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to decode JSON: {e}")
-                return None
-        else:
-            logger.warning("No JSON object found in the text.")
-            return None
-
-    except Exception as e:
-        logger.exception(f"Unexpected error while extracting JSON: {e}")
-        return None
 def get_vec_from_llm(user_query):
     syst,user = car_traits_prompt(user_query)
     messages=[
@@ -112,7 +87,7 @@ def get_vec_from_llm(user_query):
     ]
     chain=ai_service.get_llm_response(messages=messages, model_identifier="gcp-gemini-2.5-flash-lite")
     logger.info("generated json "+chain)
-    result = extract_json_from_text(chain)
+    result = parse_json().extract_json_from_text(chain)
     
     return [result[k] for k in key_order]
 
@@ -154,7 +129,7 @@ class MetadataRecommendation:
         self.collection_name=collection
         self.model_identifier=model_identifier
 
-    def recommend_models(self,inp,default_limit=20):
+    def recommend_models(self,inp,default_limit=30):
         vec=model.wv[inp].tolist()
 
         hits = client.search(
@@ -164,12 +139,12 @@ class MetadataRecommendation:
         return [i.payload for i in hits ]
     def fix_by_llm(self, user_input):
         data=self.recommend_models(user_input)
-        logger.info(f"filter_data: {data}")
         kd=[]
         for i in data:
             kd.extend(i.values())
-        logger.info(f"kd: {kd}")
         kd=list(set(kd))
+        logger.info(f"filter_data: {kd}")
+
         system_prompt,user_prompt=  prompts_to_fix_llm(kd,user_input)
         messages=[
             {"role": "system", "content": system_prompt},
@@ -178,45 +153,74 @@ class MetadataRecommendation:
         
         return output
 
-def extract_json(text: str):
-    match = re.search(r"\{.*?\}", text, flags=re.DOTALL)
-    if not match:
-        return None
-    candidate = match.group(0)
 
-    try:
-        return json.loads(candidate)
-    except json.JSONDecodeError:
-        return None
+class parse_json:
+    def extract_json_from_text(self,text: str):
+        """
+        Extracts the first JSON object found in the text using regex.
+        Returns a Python dict if successful, otherwise None.
+        """
+        try:
+            pattern = r"\{[\s\S]*?\}"
+            match = re.search(pattern, text)
+            
+            if match:
+                json_str = match.group(0)
+                logger.info("JSON string found, attempting to parse...")
+                
+                try:
+                    data = json.loads(json_str)
+                    logger.info("JSON successfully parsed.")
+                    return data
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to decode JSON: {e}")
+                    return None
+            else:
+                logger.warning("No JSON object found in the text.")
+                return None
 
-
-
-def extract_json_block(text: str):
-
-    try:
-        # Try to find JSON-like block in text
-        match = re.search(r"\{[\s\S]*\}", text)
+        except Exception as e:
+            logger.exception(f"Unexpected error while extracting JSON: {e}")
+            return None
+    def extract_json(self, text: str):
+        match = re.search(r"\{.*?\}", text, flags=re.DOTALL)
         if not match:
             return None
-        
-        json_str = match.group(0)
-        data = json.loads(json_str)
-        return data
-    except json.JSONDecodeError:
-        # Try to fix common issues and reattempt parsing
+        candidate = match.group(0)
+
         try:
-            fixed = (
-                text.replace("“", "\"")
-                    .replace("”", "\"")
-                    .replace("‘", "'")
-                    .replace("’", "'")
-            )
-            match = re.search(r"\{[\s\S]*\}", fixed)
-            if match:
-                return json.loads(match.group(0))
-        except Exception:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
             return None
-    return None
+
+
+
+    def extract_json_block(self,text: str):
+
+        try:
+            # Try to find JSON-like block in text
+            match = re.search(r"\{[\s\S]*\}", text)
+            if not match:
+                return None
+            
+            json_str = match.group(0)
+            data = json.loads(json_str)
+            return data
+        except json.JSONDecodeError:
+            # Try to fix common issues and reattempt parsing
+            try:
+                fixed = (
+                    text.replace("“", "\"")
+                        .replace("”", "\"")
+                        .replace("‘", "'")
+                        .replace("’", "'")
+                )
+                match = re.search(r"\{[\s\S]*\}", fixed)
+                if match:
+                    return json.loads(match.group(0))
+            except Exception:
+                return None
+        return None
 
 
 
@@ -241,7 +245,7 @@ def get_traits(user_query,model_identifier="gcp-gemini-2.5-flash-lite"):
 
     output=ai_service.get_llm_response(messages=messages, model_identifier=model_identifier)
     
-    return extract_json(output)
+    return parse_json().extract_json(output)
 
 def generate_markdown_clean(data):
 
@@ -318,13 +322,12 @@ def mergerFreeText(user_query,model_identifier="gcp-gemini-2.5-flash-lite"):
 
     output=ai_service.get_llm_response(messages=messages, model_identifier=model_identifier)
     output=output.replace("statement","question")
-    logger.info(f"output{output}")
-    return extract_json_block(output)
+    logger.info(f"free text output>>{output}")
+    return parse_json().extract_json_block(output)
 
 
 
 def merge_traits(lists):
-
     """
     Merge the given list of traits into a single vector.
 
@@ -334,18 +337,17 @@ def merge_traits(lists):
     Returns:
         np.ndarray: The merged trait vector.
     """
-
-    
     logger.info(f"input traits {lists}")
     mean_elementwise = [sum(values) / len(values) for values in zip(*lists)]
 
     CustomerAffinity = np.array(mean_elementwise)
-    logger.info(f"CustomerAffinity (before norm): {CustomerAffinity}")
+    logger.info(f"CustomerAffinity (before norm): {list(CustomerAffinity)}")
     
     norm = np.linalg.norm(CustomerAffinity)
     if norm == 0:
         return np.zeros_like(CustomerAffinity)  # or return CustomerAffinity as-is
     CustomerAffinity = CustomerAffinity / norm
+    logger.info(f"this is CustomerAffinity after norm>>>{list(CustomerAffinity)}")
     return CustomerAffinity
 
 
@@ -383,24 +385,29 @@ def filter_data(filters=None, affinity=None,negative_filters=None):
                 # if data["intent"]=="price_range":
                 #     filter[data['intent']] = data['answer'][0]
                 d=filter_json[data['intent']]
+                ddd=d[data['answer'][0]]
+                logger.info(f"will be passed>>{ddd}")
 
-                filter[data['intent']] = d[data['answer'][0]]
+                filter[data['intent']] = ddd
             else:
                 filter[data['intent']] = data['answer']
     else:
         filter = {}
             
     if affinity:
+            iintent=[]
             for data in affinity:
                 logger.info(f"Not from filter .json{data}")
                 dict_score=get_traits(str(data['answer']))
+                iintent.append(data.get("intent"))
                 vectors.append([dict_score[k] for k in key_order])
     else:
+
         vectors.append([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
 
 
-    return filter, merge_traits(vectors)
+    return filter,( merge_traits(vectors),iintent)
 
 
 
@@ -425,38 +432,67 @@ def get_fixed_filter(fix_filters):
         dict: A dictionary with the fixed filters.
     """
 
-    
+    logger.info("here")
     rw=MetadataRecommendation(collection_filter)
 
     logger.info(f"fix filter collection>>>{(collection_filter)}")
     for key,value in fix_filters.items():
-        logger.info(f"key>> {key}")
         if key in ["model_name","product_name","brand_name","vehicke_type","vehicle_type","variant_name"]:
+                logger.info(f"key>> {key}")
+                logger.info(f"value>> {value}")
                 da=rw.fix_by_llm(f"key is {key} and value is {value[0]}")
                 logger.info("fixed value>>>"+da)   
                 fix_filters[key]=[da]
     return fix_filters
 
 
+
+
 class RecommendationWrapper:
-    def __init__(self,collection="autocrm_recommendation",dealership_id=None):
+    def __init__(self,collection="autocrm_recommendation",dealership_id=None,history=None):
         self.count_res=0
         get_collection_recommendation(collection)
         self.collection=collection
+        self.history=history
         self.dealership_id=dealership_id
-        self.history_filter=[]
+        if history is None or not history:
+            self.history={
+                "affinity":[],
+                "positive_filters":[],
+                "negative_filters":[],
+                "intent":[],
+            }
 
-    def recommend_models(self,CustomerAffinity, default_limit,collection_filter,filters=None,fix_filters=None, offset_value=None,negative_filters=None,negative_fix_filters=None):
-      
+    def recommend_models(self,CustomerAffinity, default_limit,collection_filter,filters=None,fix_filters=None, offset_value=None,negative_filters=None):
+
         metadata = {}
         filter_ = []
         negative_filter_ = []
-        logger.info(f"negative_filters__>>{negative_filters}")
-        logger.info(f"filters__>>{filters}")
-
         if fix_filters and filters is not None:
+            logger.info(f"fix_filters>>>ppppp{fix_filters}")
             filters=get_fixed_filter(fix_filters)
-        logger.info(f"?{filters}")
+        else:
+
+            if self.history :
+                self.history["intent"].extend(CustomerAffinity[1])
+
+                poss=self.history.get("positive_filters")
+                for pos in poss:
+                    for i, j in pos.items():
+                        filters[i] = j
+                
+                negg=self.history.get("negative_filters")
+                for neg in negg:
+                    for i, j in neg.items():
+                        negative_filters[i] = j
+
+                aff=self.history.get("affinity")
+                if aff:
+
+                    logger.info(f"CustomerAffinity>>>{CustomerAffinity}")
+                    aff.append(CustomerAffinity[0].tolist())
+                    CustomerAffinity=merge_traits(aff)
+                    self.history["affinity"]=CustomerAffinity.tolist()
 
         if filters is not None:
             for key, value in filters.items():
@@ -483,7 +519,7 @@ class RecommendationWrapper:
                         FieldCondition(
                             key="price",
                             range=Range(
-                                lte=value.get("lte", 500000),
+                                lte=value.get("lte"),
                                 gte=value.get("gte")
                             )
                         )
@@ -494,19 +530,17 @@ class RecommendationWrapper:
                         ii=[]
 
                         if isinstance(i, str):
-                            logger.info(f"here{i}")
+                            logger.info(f"before permutation {i}")
                             iss = generate_case_permutations(i)
-                            logger.info(f"here00{iss}")
+                            logger.info(f"after permutation {iss}")
 
                             match_any_key.extend(iss) 
                         else:
 
                             for ia in generate_case_permutations(i):
                                 ii.append(ia)
-                            logger.info(f"this is ien{ii}")
                             
                             match_any_key.append(i)
-                    logger.info(f"this is ielo {match_any_key}")
                     filter_.append(
                         FieldCondition(
                             key=key.replace(" ", "_").lower(),
@@ -518,29 +552,33 @@ class RecommendationWrapper:
                             FieldCondition(
                                 key="dealership_id",
                                 match=models.MatchAny(any=self.dealership_id)
-                            )
-                    )
+                            ))
+                    
+
+
+
         if negative_filters:
             negative_filters=(get_fixed_filter(negative_filters))
 
             for key, value in negative_filters.items():
-                va=[]
-                logger.info(f"Negative value>>> {value}")
-                # for v in value:
-                #     va.extend(generate_case_permutations(v))
 
-                # logger.info(f"negative value >>> {va}")
+                logger.info(f"Negative value>>> {value}")
                 negative_filter_.append(
                         FieldCondition(
                             key=key.replace(" ", "_").lower(),
                             match=models.MatchAny(any=value)
                         )
                     )
-        logger.info(f"filter >>> {filter_}")
-        logger.info(f"input vectors >>> {CustomerAffinity}")
+                
+
+        logger.info(f"to be passed in search")
+        logger.info(f"input vectors >>> {list(CustomerAffinity)}")
         logger.info(f"positive filter >>> {filter_}")
         logger.info(f"negative filter >>> {negative_filter_}")
         logger.info(f"recommendation from collection >>> {self.collection}")
+        
+        
+            
         hits = client.search(
             collection_name=self.collection,
             query_vector=CustomerAffinity,
@@ -549,6 +587,7 @@ class RecommendationWrapper:
             offset=offset_value
         )
         logger.info(f"hits >>> {(hits)}")
+
         count_resp = client.count(
             collection_name=self.collection,
             count_filter=Filter(must=filter_ if filters else None,must_not=negative_filter_ if negative_filters else None),
@@ -557,28 +596,27 @@ class RecommendationWrapper:
         )
 
         if hits:
-            self.history_filter.append(filters)
-            logger.info(f"this is elon musk{self.history_filter}")
-            # logger.info(f"this is elon musk{self.history_filter}")
-            if {"product_name", "model_name"} & self.history_filter[0].keys():
+
+            if filters:
+
+                self.history["positive_filters"]=[filters]
+
+                self.history["intent"].extend(filters.keys())
+
+            if negative_filters:
+
+                self.history["negative_filters"]=[negative_filters]
+
+            if any(key in pf for pf in self.history["positive_filters"] for key in ("product_name", "model_name")):
                 logger.info("it has model name or product name")
-                output = []
-
-                for hit in hits:
-                    # logger.info(hit)
-                    logger.info("html>>>")
-                    logger.info(type(hit))
-                    logger.info("html>>>")
-
-                    payL = hit.payload
-
-                    metadata = {
+                output = [
+                    {
                         "id": hit.id,
-                        "brand": payL.get("brand", payL.get("brand_name")),
+                        "brand": (payL := hit.payload).get("brand", payL.get("brand_name")),
                         "metadata": payL,
                     }
-                    logger.info("metadata")
-                    output.append(metadata)
+                    for hit in hits
+                ]
 
             else:
                 top_variants = {}
@@ -610,7 +648,7 @@ class RecommendationWrapper:
 
 
             return {"result":output,
-                    "history_filter":self.history_filter,
+                    "recommendation_history":self.history,
                     
                 "total_result":count_resp.count}
         else:
@@ -715,18 +753,12 @@ class RecommendationWrapper:
 
 
     def recommend(self,Affinity,filters,collection_filter="autobot_summary_test_collection_2",default_limit=None,offset_value=None,negative_filters=None):
-        logger.info(f"filter applied {filters}")
 
         filters_applied,trait_affinities = filter_data(filters=filters,affinity=Affinity)
         if negative_filters:
-            logger.info(f"oy {negative_filters}")
-
             negative_filter = filter_data(negative_filters=negative_filters)
         else:
             negative_filter = None
-        logger.info(f"filter applied {filters_applied}")
-        logger.info(f"trait_affinities {trait_affinities}")
-        logger.info(f"oy {negative_filter}")
 
         return self.recommend_models(
             CustomerAffinity=trait_affinities,
@@ -738,6 +770,10 @@ class RecommendationWrapper:
         )
 
     def run(self,Affinity,filters,free_text=None ,collection_filter="autobot_summary_test_collection_2",default_limit=None,max_n=None,offset_value=None):
+        path = "agents/src/recommendation_questions.json"
+        with open(path, "r") as f:
+            metadata_qna = json.load(f)
+        
         if free_text:
 
             json_data = mergerFreeText(free_text)
@@ -745,33 +781,52 @@ class RecommendationWrapper:
             new_affinity = json_data.get("user_profile", [])
             negative_filters = json_data.get("negative_filters", [])
 
-            logger.info(f"negative_filters {negative_filters}")
+            # def normalize_transmission(filter_list):
+            #     transmission_map = {
+            #         "manual": "Prefer manual",
+            #         "automatic": "Prefer automatic",
+            #         "both": "I’m open to both automatic and manual",
+            #         "hybrid": "Prefer hybrid"
+            #     }
+            #     for f in filter_list:
+            #         intent = f.get("intent")
+            #         logger.info(f">>>>>>>>>>>>>>>>{f}")
+            #         if intent=="transmission_type":
+            #             f["answer"] = [transmission_map.get(f.get("answer")[0], "Other")]
+            #     return filter_list
 
-            def normalize_transmission(filter_list):
-                transmission_map = {
-                    "manual": "Prefer manual",
-                    "automatic": "Prefer automatic",
-                    "both": "I’m open to both automatic and manual",
-                    "hybrid": "Prefer hybrid"
-                }
-                for f in filter_list:
-                    intent = f.get("intent")
-                    logger.info(f">>>>>>>>>>>>>>>>{f}")
-                    if intent=="transmission_type":
-                        f["answer"] = [transmission_map.get(f.get("answer")[0], "Other")]
-                return filter_list
-
-            if new_filters or  negative_filters:
-                normalize_transmission(new_filters)
-                normalize_transmission(negative_filters)
+            # if new_filters or  negative_filters:
+            #     normalize_transmission(new_filters)
+            #     normalize_transmission(negative_filters)
 
             Affinity=Affinity+new_affinity
             filters=filters+new_filters
             negative_filters+=negative_filters
             logger.info(f"Affinity {Affinity}")
-            logger.info(f"filters {filters}")
+            logger.info(f"positive filters {filters}")
             logger.info(f"negative_filters {negative_filters}")
+        if not Affinity and not filters and not negative_filters:
 
+            metadata_ = [
+                {
+                    "question": i.get("question"),
+                    "options": i.get("options"),
+                    "intent": i.get("intent"),
+                }
+                for i in metadata_qna
+
+            ]
+            import random
+
+            random.shuffle(metadata_)
+
+
+            return {
+                "match_refining_questions":[metadata_[0]],
+                "top_vehicles":[],
+                "status":"passed",
+                "total_vehicles_found":0,}
+        
         rec=self.recommend(Affinity,filters,collection_filter=collection_filter,default_limit=default_limit,offset_value=offset_value,negative_filters=negative_filters)
 
         kd = []
@@ -783,10 +838,6 @@ class RecommendationWrapper:
                 "total_vehicles_found":0,}
         if max_n:
             if max_n<50:
-                
-                path = "agents/src/recommendation_questions.json"
-                with open(path, "r") as f:
-                    metadata_qna = json.load(f)
 
                 for i, j in zip(Affinity, filters):
                     kd.append(i.get("question"))
@@ -820,21 +871,21 @@ class RecommendationWrapper:
                     "status":"success",
                     "total_vehicles_found":rec.get("total_result"),
                     "match_refining_questions":metadata_,
-                    "history_filter":rec.get("history_filter"),
+                    "recommendation_history":rec.get("recommendation_history"),
 
                 }
             return {
                 "top_vehicles":rec.get("result"),
                 "status":"success",
                 "total_vehicles_found":rec.get("total_result"),
-                "history_filter":rec.get("history_filter"),
+                "recommendation_history":rec.get("recommendation_history"),
 
                 }
         return {
                 "top_vehicles":rec.get("result"),
                 "status":"success",
                 "total_vehicles_found":rec.get("total_result"),
-                "history_filter":rec.get("history_filter"),
+                "recommendation_history":rec.get("recommendation_history"),
         }
 
 
@@ -876,10 +927,34 @@ class RecommendationAgent(BaseAgent):
     
 
     def _extract_pattern(self,data):
-              
+        history=data.get("recommendation_history")
+        user_message=data.get("user_message")
+        if user_message:
+            question=data.get("question")
+            if not data.get("free_text"):
+                data['free_text']=user_message  if not question else question+" "+user_message
+            intent = data.get("intent")
+            if intent in ["free_text","error"]:
+                return
+        if history:
+            if history.get(""):
+                pass
 
 
-      formater={
+            # asked_intent=[] 
+            # history=data.get("history")
+            # if history:
+            #     data["history_intent"] = []
+            #     for key in history:
+            #         intent = key.get("intent")
+            #         if intent in ["free_text","error"]:
+            #             continue
+            #         asked_intent.append(intent)
+            #     logger.info(data)
+            #     data['history_intent'].extend(asked_intent)
+
+            
+        formater={
         "brand_preference": "brand_name",
         "variant_preference": "variant_name",
         "color_preference": "available_colours",
@@ -891,14 +966,13 @@ class RecommendationAgent(BaseAgent):
         "seating_capacity_preference": "seating",
         "segment_preference": "vehicle_type"
         }
-      fix_keys=[j for j in formater.keys()]
-      for filter in data['user_preference']:
-          intent=filter.get("intent")
-
-          if intent in fix_keys:
-            logger.info("fixing the input intent")
+        fix_keys=[j for j in formater.keys()]
+        for filter in data['user_preference']:
+            intent=filter.get("intent")
+            if intent in fix_keys:
+                logger.info("fixing the input intent")
             filter['intent']=[formater[intent]]
-      return data
+        return data
 
     def _request_data(self, data:dict) -> list[dict]:
 
@@ -913,37 +987,50 @@ class RecommendationAgent(BaseAgent):
       free_text=data.get('free_text',None)
       offset=int(data.get('offset',0))
       default_limit=int(data.get('default_limit',20))
-
-
-
-      rw=RecommendationWrapper(collection=collection,dealership_id=self.dealership_id)
+      history=data.get("recommendation_history")
+      rw=RecommendationWrapper(collection=collection,dealership_id=self.dealership_id,history=history)
       try:
           result=rw.run(Affinity=user_profile,filters=user_preference,free_text=free_text,collection_filter=collection_filter,max_n=max_n,offset_value=offset,default_limit=default_limit)
-
-          logger.info("result")
           if "error" in result:
               return {"error": "error"}
       except Exception as e:
           return {"error": str(e)}
         
-      path = "agents/src/recommendation_questions.json"
-      with open(path, "r") as f:    
-            list_questions0 = json.load(f) 
 
+    #   path = "agents/src/recommendation_questions.json"
+    #   with open(path, "r") as f:
+    #         list_questions0 = json.load(f)
+
+      
       if result:
           if result.get("match_refining_questions"):
               
+              logger.info(f"match_refining_questions {result.get('match_refining_questions')}")
               list_questions=[ i for i in result.get("match_refining_questions") if i.get("intent") in ["seating","vehicle_type","fuel_type","transmission","price_range"]]
-              brand_model = f"{result.get('top_vehicles')[0].get('brand')} {result.get('top_vehicles')[0].get('metadata').get('product_name')}"          
+              brand_model = (f"{result.get('top_vehicles')[0].get('brand')} {result.get('top_vehicles')[0].get('metadata', {}).get('product_name')}" 
+                        if result.get("top_vehicles") else None)
               logger.info(f"brand_model {brand_model}")
+              if not brand_model:
+                  return result
               asound=build_intent_filter_agent(questions=list_questions,
               brand_model_name=brand_model)
               asound = json.loads(asound) if isinstance(asound, str) else asound
               not_asked = asound.get("not_ask", [])
               logger.info(f"not_asked {not_asked}")
-              result["match_refining_questions"] = [
-                    q for q in list_questions if q.get("intent") not in not_asked
+
+              mrq=[
+                    q for q in result.get("match_refining_questions") if q.get("intent") not in not_asked
                 ]
+              if history:
+                  mrq_=[i for i in mrq if i.get("intent") not in history.get("intent")][0]
+              else:
+                  mrq_=mrq[0]
+              question=mrq_.get("question")
+              options=mrq_.get("options")
+              temp=template_prompt(question,options)
+
+              result["match_refining_questions"] = mrq_
+              result["Answer Validation Prompt"]=temp
           return result
       else:
           return [] 
@@ -954,11 +1041,8 @@ class RecommendationAgent(BaseAgent):
         result = self._request_data(data)
         logger.info("result")
         # logger.info(result)
-
+        # result['identifier']=template_prompt()
         return result
-
-
-
 
 
 
@@ -972,15 +1056,15 @@ if __name__ == "__main__":
     max_n=10
     agent = RecommendationAgent()
     data= {
-    "user_profile": [
-      {
-        "question": "Got a budget in mind?",
-        "answer": [
-          678894557
-        ]
-      }
-    ],
-    # "user_profile": [],
+    # "user_profile": [
+    #   {
+    #     "question": "Got a budget in mind?",
+    #     "answer": [
+    #       678894557
+    #     ]
+    #   }
+    # ],
+    "user_profile": [],
     "user_preference": [],
     # "user_preference": [
     #   {
@@ -996,11 +1080,47 @@ if __name__ == "__main__":
     #     ]
     #   }
     # ],
-    "free_text": "I am interested in mahindra and I am short heighted, dont show me the manual transmission?.",
+    "free_text": "i am short heighted suggest me a car for my budget  20 lakhs ",
     "Max number":   5,
     "collection": "autocrm_recommendation",
-    "default_limit": 5
+    "question": "What’s your preference when it comes to transmission?",
+    "intent": "transmission_type",
+    # "user_message": "Automatic",
+    "default_limit": 5,
+    "recommendation_history":  {
+        "affinity": [
+[0.0,
+0.0,
+0.0,
+-0.7378647873726218,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+-0.5270462766947299,
+0.0,
+0.0,
+-0.42163702135578396,
+0.0]
+        ],
+        "positive_filters": [
+        ],
+        "negative_filters": [],
+        "intent": [
+            "height",
+            "price_range",
+            "purchase_reason"
+        ]
+    },
     } 
+
+
+
+
+
     import time
     t1=time.time()
     res=agent.main(data)
