@@ -1,6 +1,9 @@
 import sys
 from os.path import dirname, abspath, join as joinpath
+import os
+sys.path.append(dirname(dirname(dirname(dirname(__file__)))))
 
+import config as env
 import asyncio
 import threading
 import traceback
@@ -9,7 +12,8 @@ from google.genai import types
 from gryd_worker import gryd_helpers as hp
 from typing import Dict, Any, Optional, Union
 
-logger = hp.get_logger(__name__)
+import utils
+logger = utils.get_logger(__name__)
 
 # Default Agent configs
 SEND_SAMPLE_RATE = 16000
@@ -83,7 +87,9 @@ class GEMINIAPI:
         self.voice_id: str = voice_params.get("voice_id", "Aoede")
         self.prompt = prompt
 
-        self.client = genai.Client()
+        self.client = genai.Client(
+            api_key = env.GOOGLE_API_KEY
+        )
         self.model_name: str = voice_params.get("model_name", "gemini-live-2.5-flash-preview")
         self.response_channel: str = voice_params.get("response_channel", voice_params.get("response", "AUDIO"),).strip().upper()
 
@@ -109,7 +115,7 @@ class GEMINIAPI:
         logger.info(f"Configured voice agent model={model_name}, response_channel={response_channel}, voice_id={voice_id}")
         return self.client.aio.live.connect(model=model_name, config=config_params)
 
-    def create_session(self, session_id: str, model_name:Union[str, None] = None, response_channel:Union[str,None]= None, voice_id:Union[str, None]=None, prompt: Union[str,None]=None) -> None:
+    async def create_session(self, session_id: str, model_name:Union[str, None] = None, response_channel:Union[str,None]= None, voice_id:Union[str, None]=None, prompt: Union[str,None]=None) -> None:
         if SessionRegistry.get_session(session_id):
             raise VoiceAgentError(f"session {session_id} already exists")
 
@@ -265,8 +271,8 @@ class GEMINIAPI:
                         while True:
                             try:
                                 # Enforce "real-time" input: fail if we don't get audio within process_timeout
-                                data = await asyncio.wait_for(input_queue.get(), timeout=self.process_timeout)
-                            except asyncio.TimeoutError:
+                                data = input_queue.get()
+                            except Exception as e:
                                 msg = "Audio needs to be sent in real time."
                                 logger.info(f"[{session_id}] sender timed out while waiting for audio chunk {self.process_timeout}")
                                 raise VoiceAgentError(msg)
@@ -361,7 +367,7 @@ class GEMINIAPI:
                                                 }
                                             }
                                         }
-                                        await output_queue.put(payload)
+                                        output_queue.put(payload)
                                 
                                 if (hasattr(server_content, "interrupted") and server_content.interrupted):
                                     logger.info(f'[{session_id}] Interruption detected.')
@@ -377,8 +383,8 @@ class GEMINIAPI:
 
                                 if server_content.generation_complete:
                                     # logger.info(f"[{session_id}] Agent finished generation.")
-                                    logger.info(f"[{session_id}] Final Input Transcription: {"".join(input_transcript).strip()}")
-                                    logger.info(f"[{session_id}] Final Output Transcription: {"".join(output_transcript).strip()}")
+                                    logger.info(f"[{session_id}] Final Input Transcription: {''.join(input_transcript).strip()}")
+                                    logger.info(f"[{session_id}] Final Output Transcription: {''.join(output_transcript).strip()}")
                                     
                             except asyncio.CancelledError:
                                 logger.info(f"[{session_id}] receiver processing cancelled.")
@@ -422,9 +428,9 @@ class GEMINIAPI:
                 if worker_error:
                     err_msg = str(worker_error)
                     logger.info(f"[{session_id}] sending error to output_queue: {err_msg}")
-                    await self.output_queue.put({"error": err_msg})
+                    self.output_queue.put({"error": err_msg})
                 else:
-                    await self.output_queue.put(None)
+                    self.output_queue.put(None)
             except Exception:
                 logger.warning(f"[{session_id}] failed to put final message into output_queue from session_worker")
 

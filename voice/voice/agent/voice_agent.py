@@ -7,10 +7,11 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import asyncio
 import typing
 from gryd_worker import gryd_helpers as hp
-from gemini import GEMINIAPI
+from .gemini import GEMINIAPI
+from multiprocessing import Queue
 import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+import utils
+logger = utils.get_logger(__name__)
 
 AVAILABLE_AGENT_TYPE = {
     'gemini': GEMINIAPI
@@ -20,7 +21,7 @@ class VoiceAgentError(hp.GrydError):
     pass
 
 class TestVoiceAgent:
-    def __init__(self, session_id:str, output_queue: asyncio.Queue, system_prompt:str, timeout:int, input_queue:asyncio.Queue=asyncio.Queue(), agent_type:str = 'gemini', **agent_param):
+    def __init__(self, session_id:str, input_queue:Queue, output_queue: Queue , system_prompt:str, timeout:int, agent_type:str = 'gemini', **agent_param):
         client_class = AVAILABLE_AGENT_TYPE.get(agent_type)
         if not client_class:
             raise  VoiceAgentError(f'No Agent available of type: {agent_type}')
@@ -48,7 +49,7 @@ class TestVoiceAgent:
         self.create_session()
         
     def create_session(self) -> None:
-        self.client.create_session(self.session_id)
+        asyncio.run(self.client.create_session(self.session_id))
         logger.info(f"Started agent session {self.session_id} for agent_type={self.agent_type}")
 
     def push_audio(self, message_id:str, sequence_number, audio_byte:typing.Union[bytes, None]=None):
