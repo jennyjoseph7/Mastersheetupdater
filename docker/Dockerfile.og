@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -yy
-RUN apt install software-properties-common zip unzip python3-pip redis-tools libpq-dev curl -yy
+RUN apt install software-properties-common zip unzip python3-pip redis-tools libpq-dev curl jq -yy
 RUN apt-get install ffmpeg -yy
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 
