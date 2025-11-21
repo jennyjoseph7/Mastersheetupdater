@@ -10,10 +10,14 @@ export SHUTDOWN_TIME=${SHUTDOWN_TIME:-55}
 export PROCESS_SEARCH_STRING=${PROCESS_SEARCH_STRING:-$WORKER_ENTRYPOINT}
 export LOGDIR=${LOGDIR:-./logs}
 
+if [ ! -d $LOGDIR ];then
+	mkdir -p $LOGDIR
+fi
+
 export SETUP_WEBAPP=${WEBAPP:-True}
 export SETUP_WORKERS=${SETUP_WORKERS:-True}
 export RUN_IN_BG=True
-export DEV_CONTAINER=${DEV_CONTAINER:-False}
+export DEV_CONTAINER=${DEV_CONTAINER:-True}
 
 process_config=`cat start_worker_config.json`
 
