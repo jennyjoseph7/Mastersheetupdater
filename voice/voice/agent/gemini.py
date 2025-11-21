@@ -280,9 +280,28 @@ class GEMINIAPI:
                             if data is None:
                                 # logger.info(f'[{session_id}] Closing request acknowlegded')
                                 break
-
-                            seq_key = next(iter(data.keys()))
-                            audio_bytes = data[seq_key]
+                            logger.info(f'Received data in input_queue of type {type(data)}')
+                            # {
+                            #     'message_id': self.message_id,
+                            #     'session_id': self.session_id,
+                            #     'audio_data': self.audio_data,
+                            #     'transcript': self.transcript,
+                            #     'timestamp': self.timestamp,
+                            #     'is_interruption': self.is_interruption,
+                            #     'state': self.state,
+                            #     'tag': self.tag
+                            # }
+                            
+                            message_id = data.get('message_id')
+                            recieved_session_id = data.get('session_id')
+                            audio_bytes = data.get('audio_data')
+                            
+                            if session_id!=recieved_session_id:
+                                raise VoiceAgentError(f'mismatch session id is provided: {recieved_session_id}')
+                            
+                            seq_key = f'{message_id}----{hp.time()}'
+                            # seq_key = next(iter(data.keys()))
+                            # audio_bytes = data[seq_key]
 
                             await sent_keys_q.put(seq_key)
                             session["last_seq_key"] = seq_key
@@ -350,17 +369,17 @@ class GEMINIAPI:
                                             try:
                                                 resolved_seq_key = sent_keys_q.get_nowait()
                                             except asyncio.QueueEmpty:
-                                                resolved_seq_key = (session.get("last_seq_key") or "unknown----0")
+                                                resolved_seq_key = (session.get("last_seq_key") or f"unknown----{hp.time()}")
 
                                         try:
-                                            message_id, sequence_number, start_time = resolved_seq_key.split("----", 2)
+                                            message_id, start_time = resolved_seq_key.split("----", 1)
                                         except Exception:
-                                            message_id, sequence_number, start_time = resolved_seq_key, "0", hp.time()
+                                            message_id, start_time = resolved_seq_key, hp.time()
 
                                         payload = {
                                             session_id: {
                                                 message_id: {
-                                                    "sequence_number": sequence_number,
+                                                    # "sequence_number": sequence_number,
                                                     "agent_response": inline_data,
                                                     "agent_recieved": float(start_time),
                                                     "agent_responded": hp.time()
