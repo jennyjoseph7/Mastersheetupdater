@@ -27,40 +27,40 @@
     "more than 5 (big family or group)": ["6", "7", "8", "9", "10"]
   },
   "vehicle_type": {
-    "Hatchback": [
+    "hashback": [
       "hatchback",
       "hatchback sedan",
       "hatchback crossover",
       "microcar",
       "compact ev car"
     ],
-    "Sedan": [
+    "sedan": [
       "sedan",
       "electric sedan",
       "luxury cars"
     ],
-    "SUV": [
+    "suv": [
       "suv",
       "mid-size suv",
       "suv coupe",
       "compact crossover",
       "crossover"
     ],
-    "MUV / MPV": [
+    "muv/mpv": [
       "mpv",
       "muv",
       "passenger van"
     ],
-    "Electric Vehicle (EV)": [
+    "ev": [
       "electric sedan",
       "electric vehicle",
       "electric car",
       "compact ev car"
     ],
-    "Pickup Truck": [
+    "pickup truck": [
       "pickup truck"
     ],
-    "Other": [
+    "other": [
       "sports car",
       "sportback",
       "sports coupe",
@@ -77,49 +77,49 @@
     ]
   },
   "fuel_type":{
-    "Petrol": [
+    "petrol": [
       "petrol",
       "lpg"
     ],
-    "CNG":[
+    "cng":[
       "cng"
     ],
-    "Diesel": [
+    "diesel": [
       "diesel"
     ],
-    "Strong Hybrid": [
+    "strong hybrid": [
       "hybrid",
       "hybrid (electric + petrol)",
       "mild hybrid(electric + petrol)"
     ],
-    "Electric (EV)": [
+    "ev": [
       "electric"
     ]
     },  
   "transmission_type": {
-    "I’m open to both automatic and manual":[
-            "manual",
+    "automatic and manual":[
+      "manual",
       "clutchless manual",
       "automatic",
       "automatic dual-clutch",
       "tiptronic"
 
     ],
-    "Prefer manual": [
+    "manual": [
       "manual",
       "clutchless manual"
     ],
-    "Prefer automatic": [
+    "automatic": [
       "automatic",
       "automatic dual-clutch",
       "tiptronic"
     ],
-    "Prefer hybrid": [
+    "hybrid": [
       "manual automatic",
       "manual cvt",
       "amt"
     ],
-    "Other": [
+    "other": [
       "cvt",
       "dct",
       "dual-clutch",
