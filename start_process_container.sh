@@ -1,5 +1,6 @@
 #!/bin/bash
 
+DEV_CONTAINER=${DEV_CONTAINER:-True}
 if [ -e config.sh ];then
 	echo "Found config file. Sourcing it."
 	source config.sh 
@@ -17,7 +18,7 @@ function gen_aws_creds_file() {
 }
 
 function main() {
-	if [ "$CONTAINER" == "True" ];then
+	if [ "$DEV_CONTAINER" == "True" ];then
 		gen_aws_creds_file
 	fi
 	source ./start_worker.sh
