@@ -9,6 +9,7 @@ export PARALLEL_THREADS=${PARALLEL_THREADS:-10}
 export SHUTDOWN_TIME=${SHUTDOWN_TIME:-55}
 export PROCESS_SEARCH_STRING=${PROCESS_SEARCH_STRING:-$WORKER_ENTRYPOINT}
 export LOGDIR=${LOGDIR:-./logs}
+export RDS_SECRET=${RDS_SECRET:-0}
 
 if [ ! -d $LOGDIR ];then
 	mkdir -p $LOGDIR
@@ -116,7 +117,8 @@ function start_workers() {
 			WEBAPP_APP_NAME=$(jq -r '.name' <<< "$webapp_config")
 
 			#nohup waitress-serve --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log &
-			nohup python app.py 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log & 
+
+			export RDS_SECRET=${RDS_SECRET} && nohup python app.py 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log & 
 	    		app_pid=$!
 			echo $app_pid > app.pid
 		fi
