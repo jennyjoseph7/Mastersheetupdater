@@ -148,7 +148,7 @@ function start_workers() {
 
 			while [[ -n `jobs -l | grep $app_pid` ]]; do
 				if [ "$TAIL_LOGS" == "True" ];then
-					tail -qf --follow=name --retry ./logs/*.log 
+					tail -f --follow=name --retry ./logs/*.log 
 				else
 			       		sleep 600
 				fi
