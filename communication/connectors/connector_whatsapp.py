@@ -18,7 +18,7 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from connectors.base_connector_communication import *
 logger= get_logger(__name__)
 logger.info("Intializing Test Whatsapp Connectors")
-
+from connectors.campaign_manager import BaseCustomCampaignManager,BaseWebhookConverter
 
 ALLOWED_PROVIDERS= str(os.environ.get("ALLOWED_PROVIDERS","airtel,rml,meta,concord,gupshup"))
 
@@ -226,102 +226,61 @@ def send_message_whatsapp(*args,**kwargs):
     res = provider_init.send_message_whatsapp(*args,**kwargs)
     return res
 
-@gryd.is_a_task(function_name="update_campaign_status_params")
-def update_campaign_status_params(*args,**kwargs):
-    """
-    Processes campaign status updates for a given WhatsApp provider and enterprise ID.
-
-    This function retrieves the appropriate webhook converter for the specified provider
-    and executes relevant campaign status update methods if they exist.
-
-    Args:
-        *args: Positional arguments containing:
-            - whatsapp_provider (str): The WhatsApp provider name.
-            - enterprise_id (str): The enterprise ID.
-        **kwargs: Additional keyword arguments, including:
-            - args (tuple): A tuple of arguments.
-            - kwargs (dict): A dictionary of keyword arguments.
-
-    Returns:
-        dict: 
-            - {"info": "Campaign Message status Processed"} if processing succeeds.
-            - {"error": "Error While processing campaign status"} if an exception occurs.
-
-    Logs:
-        - Logs errors if the provider or enterprise ID is missing.
-        - Logs when the function receives the campaign status update request.
-
-    Raises:
-        - Logs and handles any exceptions that occur during execution.
-    """
-    start_time=time.time()
-    logger.info(f"Received  update_camapign_status for with args: {args}  {len(args)}")
-    whatsapp_provider,enterprise_id=args[0],args[1]
-    if not (whatsapp_provider and enterprise_id):
-        logger.error(f"Provider {whatsapp_provider} or enterprise_id : {enterprise_id} is missing.")
-        return
-    if not kwargs.get("enterprise_id"):
-        kwargs.update({"enterprise_id":enterprise_id})
-    try:
-        if whatsapp_provider.lower() in WhatsappReceiverConnector._registry:
-            provider_instance= BaseCampaingStatusUpdator()
-            if hasattr(provider_instance,"update_message_status_for_campaign"):
-                provider_instance.update_message_status_for_campaign(whatsapp_provider,enterprise_id,*args,**kwargs)
-            if hasattr(provider_instance,"check_for_campaign_context"):
-                provider_instance.check_for_campaign_context(*args,**kwargs)
-            logger.info(f"@@@ Time Take to Update Campaing Status ::: {time.time()-start_time}")
-            return {"info": "Campaing Message status Processed"}
-    except Exception as e:
-        hp.print_error()
-        return {"error":"Error While processing camapign status"}
-
-
 @gryd.is_a_task(function_name="post_contact_status")
-def post_contact_status(data, *args, **kwargs):
+def post_contact_status(*args, **data):
     """
-    Posts contact status updates when a campaign trigger occurs.
-
-    For each lead, this function posts a new status object while keeping the 
-    same `message_id` across updates. The function yields a structured dictionary 
-    representing the current contact status, which can be sent to downstream 
-    systems or stored for tracking.
-
-    Example yielded data:
-        {
-            "message_id": "msh123abcd",
-            "channel_provider": "twilio",
-            "channel": "voice_phone",
-            "phone_number": "8850988794",
-            "response_id": "sid12323123",
-            "campaign_id": "campaign_pre_sales_123",
-            "provider_status": "initiated"
-        }
-
-    Typical provider statuses may include:
-        - "initiated"
-        - "queued"
-        - "in-progress"
-        - "completed"
-        - "failed"
-
-    Args:
-        ...: (Describe any parameters here, such as campaign data or status input.)
-
-    Yields:
-        dict: A dictionary containing the contact status details for each lead.
+    1) First call → args empty → create new contact_status
+    2) Second call → args contains message_id → update existing contact_status
     """
 
+    message_id = args[0] if args else None
+    logger.info(f"[post_contact_status] message_id={message_id}")
+    with get_pg_connector() as pg:
 
-    yield  {
-        "message_id":"msh123abcd",
-        "channel_provider": "twilio",
-        "channel":"voice_phone",
-        "phone_number":"8850988794",
-        "response_id":"sid12323123",
-        "campaign_id" : "campaign_pre_sales_123",
-        "provider_status": "initiated"
-    }
-    
+        if not message_id:
+            # logger.info("[post_contact_status] No message_id → creating new record")
+
+            payload = {
+                **data,
+                "created": time.time(),
+                "updated": time.time()
+            }
+
+            # Generate primary key
+            contact_status_id = BaseWebhookConverter().generate_uid(payload)
+
+            pg.update("contact_status", "contact_status_id", contact_status_id, payload)
+
+            logger.info(
+                f"[post_contact_status] contact status {data.get('message_status')} "
+                f"campaign_id={data.get('campaign_id')} | phone={data.get('phone_number')}"
+            )
+
+            return 
+
+
+        records = list(pg.list("contact_status", {"message_id": message_id}))
+        existing = records[0] if records else None
+
+        if not existing:
+            logger.warning(f"[post_contact_status] No existing record found for {message_id}. Nothing to update.")
+            return
+
+        existing["provider_status"] = (data.get("message_status") or "").upper()
+        existing["updated"] = time.time()
+        existing["created"] = time.time()
+        payload = existing
+        # logger.info(f"[post_contact_status] payload when message_id is present={payload}")
+        contact_status_id = BaseWebhookConverter().generate_uid(payload)
+
+        pg.update("contact_status", "contact_status_id", contact_status_id, payload)
+
+        logger.info(
+            f"[post_contact_status] contact status={data.get('message_status')} "
+            f"campaign_id={existing.get('campaign_id')} | phone={existing.get('phone_number')}"
+        )
+
+    return
 
 @gryd.is_a_task(function_name="send_text_template_for_approval")
 def send_text_template_for_approval(data, *args, **kwargs):
@@ -371,8 +330,6 @@ def send_text_template_for_approval(data, *args, **kwargs):
         "template_id": "template_id_123",
     }
 
-
-# the below function is writtern in connectors.source_connectors (function name handle_incoming_message)
 @gryd.is_a_task()    
 def check_or_create_session(self, phone_number): 
     """
@@ -407,6 +364,197 @@ def check_or_create_session(self, phone_number):
         "dealership_id": "dealership_id_123"
     }
 
+@gryd.is_a_task(function_name="trigger_campaign")
+def trigger_campaign(campaign_type, campaign_id):
+    logger.info("------ Triggering Campaign ------")
+
+    # 1. Fetch campaign details
+    with get_pg_connector() as pg:
+        if campaign_type == "pre_sales":
+            
+            campaign_details = list(pg.list("pre_sales_campaign", {"campaign_id": campaign_id}))
+            lead_table = "pre_sales_lead"
+        else:
+            campaign_details = list(pg.list("post_sales_campaign", {"campaign_id": campaign_id}))
+            lead_table = "post_sales_lead"
+
+    if not campaign_details:
+        raise ValueError("Invalid campaign_id")
+
+    campaign_details = campaign_details[0]
+    logger.info(f"CAMPAIGN DETAILS---{json.dumps(campaign_details,indent=4)}")
+
+    
+    # Default channel from campaign_details
+    campaign_channel_list = campaign_details.get("channels") or ["voice"]
+    default_channel = campaign_channel_list[0]
+
+    # 2. Fetch leads
+    with get_pg_connector() as pg:
+        leads = list(pg.list(lead_table, {"campaign_id": campaign_id}))
+
+    logger.info(f"Total leads: {len(leads)}")
+
+    # 3. Process each lead individually
+    for lead in leads:
+
+        channel = lead.get("preferred_contact_channel") or default_channel
+        #TODO:check this.
+        # map_channel_to_provider = {"voice": "voicebot", "whatsapp": "whatsapp_chat"}
+        # channel = map_channel_to_provider[channel]
+        
+        logger.info(f"------ Triggering Campaign Channel------{channel}")
+        res=gryd.create_async_task(
+            "process_single_lead",
+            GRYD_COMMUNICATION_CAMPAIGN_SERVICE,
+            args=[channel, lead, campaign_details],
+            kwargs={}
+        )
+
+
+
+@gryd.is_a_task(function_name="process_single_lead")
+def process_single_lead(channel, lead, campaign_details):
+    """
+    Trigger campaign for a single lead.
+    Channel is already decided outside this function.
+    """
+
+    logger.info(f"In process_single_lead task---------")
+    # Determine lead id field
+    lead_id_field = (
+        "pre_sales_lead_id"
+        if campaign_details.get("campaign_type") == "pre-sales"
+        else "post_sales_lead_id"
+    )
+    lead_id = lead.get(lead_id_field)
+    if not lead_id:
+        return None
+
+    # Template fetch
+    # template_data = get_template_from_lead(lead_id)
+    # template_data=gryd.create_async_task(
+    #     "get_template_from_lead",
+    #     GRYD_COMMUNICATION_CAMPAIGN_SERVICE,
+    #     args=[lead_id],
+    #     kwargs={}
+    #     )
+    
+    
+    # template_data=yield_gryd_task_results("get_template_from_lead",GRYD_COMMUNICATION_CAMPAIGN_SERVICE,{"lead_id":lead_id})
+    
+    template_data = get_template_from_lead(lead_id)
+    logger.info(f"TEMPATES DATA---{template_data}")
+    # Build user entry
+    campaign_user = {
+        "lead_id": lead_id,
+        "mobile_number": lead.get("phone_number"),
+        "customer_name": lead.get("person_name"),
+        "model": (lead.get("model_preference") or [None])[0],
+        "contact_channel": channel,                     # already computed
+        "template_id": template_data.get("template_id"),
+        "template_details": template_data.get("template_details"),
+    }
+
+    # Final payload (ONE user)
+    final_payload = {
+        **campaign_details,
+        **template_data,
+        # "channel": channel,
+        "enterprise_id": campaign_details.get("enterprise_id"),
+        "campaign_id": campaign_details.get("campaign_id"),
+        "campaign_user_source": {
+            "source_type": "default",
+            "campaign_users": [campaign_user],
+            "field_mapping": {
+                "lead_id": "lead_id",
+                "mobile_number": "mobile_number",
+                "customer_name": "customer_name",
+                "template_id": "template_id",
+                "template_details": "template_details",
+                "contact_channel": "contact_channel",
+            },
+            "config": {
+                "batch_size": 100,        # your default — change if needed
+                "_skip_sent_message": True
+            }
+        }
+    }
+
+    run_async = campaign_details.get("run_async", True)
+    is_testing = campaign_details.get("_is_testing", False)
+    b = BaseCustomCampaignManager()
+    
+    # Sync mode
+    if not run_async:
+        logger.info(f"herre-{final_payload}")
+        b.run_custom_campaign(
+            _is_testing=is_testing,
+            **final_payload
+        )
+        yield {"campaign_response": final_payload}
+    
+
+    logger.info(f"campaign_detailsssssss-----{campaign_details}")
+    # Async mode — separate queue task
+    task = gryd.create_async_task(
+        "async_run_custom_campaign",
+        GRYD_COMMUNICATION_CAMPAIGN_SERVICE,
+        args=[],
+        kwargs={"_is_testing": is_testing, **final_payload},
+        enterprise_id=campaign_details.get("enterprise_id","autobotcrm")
+    )
+
+    yield {
+        "task_response": task,
+        "campaign_response": final_payload
+    }
+
+
+
+# @gryd.is_a_task(function_name="get_template_from_lead")
+def get_template_from_lead(*args,**kwargs):
+    """
+    Get template information from the lead.
+
+    Returns a dictionary containing the template information.
+    """
+    logger.info("Inside get_template_from_lead---")
+    
+    lead_id=kwargs.get("lead_id")
+    
+    logger.info(f"LEAD_ID---{lead_id}")
+    
+    # if not lead_id:
+    #     return { "error":"No lead_id present.. "}
+        
+    return {
+        "template_id": "01k8x5qma8r5rqvax694a6eabf",
+        "template_name": "Service Reminder",
+        "template_type": "text",
+        "channel": "whatsapp_chat",
+        "language": "english",
+        "template_variables": [
+            "customer_name",
+            "model"
+        ],
+        "status": "approved",
+        "template_media_id": None,
+        "template_media_type": None,
+        "template_media_url": None,
+        "template_message": None,
+        "dealer_name": None,
+        "region_name": None,
+        "communication_credentials_id": None,
+        "media_file_name": None,
+        "template_payload": {}, #for media
+        "sender": "917795030574",
+        "provider_name": "airtel",
+        "template_buttons_payload": [
+            "book-service-reminder-yes",
+            "book-service-reminder-No"
+        ]
+    }
 
 
 if __name__=="__main__":
@@ -448,42 +596,30 @@ if __name__=="__main__":
     data={
     "messages": [
         {
-  "to": "917795030574",
-  "businessId": "soco_addtwo",
-  "from": "919113687241",
-  "sessionId": "9da2b3855f104d169f677e7dcbea58c2",
-  "profile": {
-    "name": "Praveen A"
-  },
-  "message": {
-    "text": {
-      "body": "Hiii"
-    },
-    "timestamp": 1762666888537,
-    "type": "text"
-  },
-  "webhook_received_time": 1762666888.645379,
-  "ent_id": "autobot",
-  "conversation_id": "msil_auto_demo",
-  "whatsapp_provider": "airtel",
-  "language": "english",
-  "enterprise_id": "autobot"
-}
-
+        "to": "917795030574",
+        "businessId": "soco_addtwo",
+        "from": "919113687241",
+        "sessionId": "9da2b3855f104d169f677e7dcbea58c2",
+        "profile": {
+            "name": "Praveen A"
+        },
+        "message": {
+            "text": {
+            "body": "Hiii"
+            },
+            "timestamp": 1762666888537,
+            "type": "text"
+        },
+        "webhook_received_time": 1762666888.645379,
+        "ent_id": "autobot",
+        "conversation_id": "msil_auto_demo",
+        "whatsapp_provider": "airtel",
+        "language": "english",
+        "enterprise_id": "autobot"
+        }
     ]}
     process_webhook("airtel","autobot","msil_auto_demo","english",**data)
-
-
-    # gryd.create_async_task(
-    #         "converse",
-    #         "autocrm-conversation",
-    #         kwargs={
-    #             "channel":"whatsapp"
-    #         }
-    #     )
     
-    
-   
     pass
 
 

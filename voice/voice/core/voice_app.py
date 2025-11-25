@@ -1,14 +1,13 @@
-"""
-Voice App Core - Main Orchestrator
-Manages job intake, prompt generation, and coordinates all managers
-"""
+
 import sys, os, json
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from agent import voice_agent
 from manager.manager import *
 from clients import messaging_client as ws
-from utils import helpers as hp, streaming as sh
+from utils import *
+from providers import provider_base as voice_provider
+
 import asyncio
 import uuid
 from multiprocessing import Process, Queue
@@ -18,10 +17,8 @@ import time
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
-import logging
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+import utils
+logger = utils.get_logger(__name__)
 
 
 
@@ -44,18 +41,23 @@ def user_session(system_prompt:str, init_config: dict = None,  **user_data):
         tag = "output_client"
     )
 
+    provider = voice_provider.get_provider(user_data.get('provider', 'twilio'))
+
     IM = InputManager(
         session_id,
         input_client,
         input_queue,
-        output_queue
+        output_queue,
+        provider
     )
 
     OM = OutputManager(
        session_id, 
        output_client,
-       output_queue
+       output_queue,
+       provider
     )
+
 
 
     ##TODO: logic to terminate other process when one is completed/failed/disconected
@@ -64,16 +66,36 @@ def user_session(system_prompt:str, init_config: dict = None,  **user_data):
 
     om = OM.get_process()
     om.start()
-    # Keep the session running until interrupted
+    VB = voice_agent.TestVoiceAgent(
+
+    session_id,
+    input_queue,
+    output_queue,
+    "You are a helful assistant.",
+    10)
+
+
     try:
-        while im.is_alive() or om.is_alive():
-            time.sleep(2)
-            ##logic for generting, sending, recieving responses.
+        while True:
+            if not im.is_alive or not om.is_alive:
+                break
+            time.sleep(0.1)
     except Exception as e:
-        logger.info("Session cancelled, cleaning up...")
+        import traceback
+        traceback.print_exc()
+        logger.info(f"Session cancelled, cleaning up... {e}")
+    except KeyboardInterrupt:
+        logger.info("\nShutting down gracefully...")
+        logger.info("Cleanup complete")
     finally:
         # Cleanup
         logger.info('cleaning up')
+
+        #thread cleanup for input manager
+        if IM.active_threads:
+            for thread in IM.active_threads:
+                if thread.is_alive():
+                    thread.kill()
         input_client.disconnect()
         output_client.disconnect()
         im.terminate()
@@ -84,14 +106,6 @@ def user_session(system_prompt:str, init_config: dict = None,  **user_data):
             logger.warning("Process didn't terminate, forcing...")
             im.kill()
             om.kill()
-
-
-
-
-
-
-
-
 
 
 

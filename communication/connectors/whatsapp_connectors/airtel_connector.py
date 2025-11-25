@@ -194,7 +194,6 @@ class AirtelWebhookConverter(BaseWebhookConverter):
         Updates:
             self.default_message_dict: Stores structured message data.
         """
-
         try:
             # Extract required parameters
             message = kwargs.get("message", {})

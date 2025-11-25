@@ -12,8 +12,18 @@ from google.genai import types
 from gryd_worker import gryd_helpers as hp
 from typing import Dict, Any, Optional, Union
 
-import utils
-logger = utils.get_logger(__name__)
+# import utils
+logger = hp.get_logger(__name__)
+import pyaudio
+
+pya = pyaudio.PyAudio()
+
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+SEND_SAMPLE_RATE = 16000
+RECEIVE_SAMPLE_RATE = 24000
+CHUNK_SIZE = 1024
+
 
 # Default Agent configs
 SEND_SAMPLE_RATE = 16000
@@ -152,48 +162,72 @@ class GEMINIAPI:
         session_task = loop.create_task(self.session_worker(session_id))
         session["task"] = session_task
         SessionRegistry.update_session(session_id, session, force_update=True)
-        # logger.info(f"Started worker for session {session_id}")
+        logger.info(f"Started worker for session {session_id}")
 
-    # def push_audio(self, session_id: str, media_params: dict) -> None:
-    #     session = SessionRegistry.get_session(session_id)
-    #     if not session:
-    #         raise VoiceAgentError(f"Session {session_id} not found")
+    async def listen_audio(self):
+        logger.info(f'Listening to the audio')
+        mic_info = pya.get_default_input_device_info()
+        self.audio_stream = await asyncio.to_thread(
+            pya.open,
+            format=FORMAT,
+            channels=CHANNELS,
+            rate=SEND_SAMPLE_RATE,
+            input=True,
+            input_device_index=mic_info["index"],
+            frames_per_buffer=CHUNK_SIZE,
+        )
+        if __debug__:
+            kwargs = {"exception_on_overflow": False}
+        else:
+            kwargs = {}
+        count = 0
+        while True:
+            data = await asyncio.to_thread(self.audio_stream.read, CHUNK_SIZE, **kwargs)
+            await self.input_queue.put({count: data})
+            count = count+1
 
-    #     message_id = media_params.get("message_id")
-    #     if not message_id or not str(message_id).strip():
-    #         raise VoiceAgentError("message_id is required")
-
-    #     payload = media_params.get("payload") or {}
-    #     audio_bytes = payload.get("audio_byte")
-    #     sequence_number = payload.get("sequence", 0)
-
-    #     if audio_bytes is None:
-    #         raise VoiceAgentError("No audio_byte provided")
-
-    #     try:
-    #         sequence_number = int(sequence_number)
-    #     except Exception:
-    #         logger.warning("[%s] Invalid sequence; using 0.", session_id)
-    #         sequence_number = 0
-
-    #     seq_key = f"{message_id}---{sequence_number}"
-    #     session["message_sequence_id"] = seq_key
-
-    #     input_queue = session["input_queue"]
-    #     loop = session.get("loop")
-    #     if loop is None:
-    #         raise VoiceAgentError(
-    #             "Session loop not available; recreate the session inside an event loop."
-    #         )
-
-    #     def _put() -> None:
-    #         try:
-    #             input_queue.put_nowait({seq_key: audio_bytes})
-    #         except Exception:
-    #             logger.warning("[%s] Failed to put audio into input_queue", session_id)
-
-    #     loop.call_soon_threadsafe(_put)
-
+    async def listen_audio(self):
+        logger.info(f'Listening to the audio')
+        mic_info = pya.get_default_input_device_info()
+        self.audio_stream = await asyncio.to_thread(
+            pya.open,
+            format=FORMAT,
+            channels=CHANNELS,
+            rate=SEND_SAMPLE_RATE,
+            input=True,
+            input_device_index=mic_info["index"],
+            frames_per_buffer=CHUNK_SIZE,
+        )
+        if __debug__:
+            kwargs = {"exception_on_overflow": False}
+        else:
+            kwargs = {}
+        count = 0
+        while True:
+            data = await asyncio.to_thread(self.audio_stream.read, CHUNK_SIZE, **kwargs)
+            await self.input_queue.put({count: data})
+            count = count+1
+            
+    async def play_audio(self):
+        stream = await asyncio.to_thread(
+            pya.open,
+            format=FORMAT,
+            channels=CHANNELS,
+            rate=RECEIVE_SAMPLE_RATE,
+            output=True,
+        )
+        import wave
+        
+        wave_open = wave.open('shivam_recorder.wav', 'wb')
+        wave_open.setframerate(24000)
+        wave_open.setnchannels(2)
+        wave_open.setsampwidth(2)
+        # session = SessionRegistry.get_session(self.session_id)
+        while True:
+            bytestream = await self.output_queue.get()
+            # wave_open.writeframes(bytestream)
+            await asyncio.to_thread(stream.write, bytestream)
+    
     def end_session(self, session_id: str) -> None:
         session = SessionRegistry.get_session(session_id)
         if not session:
@@ -218,9 +252,7 @@ class GEMINIAPI:
 
         input_queue = session["input_queue"]
         output_queue = session["output_queue"]
-        loop = session.get("loop")
-
-        async def _clear():
+        def _clear():
             try:
                 while not input_queue.empty():
                     input_queue.get_nowait()
@@ -234,13 +266,13 @@ class GEMINIAPI:
                 pass
             logger.info(f"[{session_id}] queues cleared")
 
-        if loop and loop.is_running():
-            asyncio.run_coroutine_threadsafe(_clear(), loop)
-        else:
-            logger.warning(f"[{session_id}] no active loop to clear queues")
+        _clear() #clear queue
+        
         
     async def session_worker(self, session_id: str) -> None:
         session = SessionRegistry.get_session(session_id)
+        self.provider_metadata = {} #to maintain stream id etc.
+
         if not session:
             logger.error(f"Session not found for session {session_id}")
             raise VoiceAgentError(f'Session need to be started.')
@@ -257,8 +289,6 @@ class GEMINIAPI:
         except Exception:
             logger.warning(f"[{session_id}] could not get running loop for worker")
 
-        sender_task = None
-        receiver_task = None
         worker_error: Optional[BaseException] = None
 
         try:
@@ -269,33 +299,20 @@ class GEMINIAPI:
                     logger.info(f"[{session_id}] sender started")
                     try:
                         while True:
-                            try:
-                                # Enforce "real-time" input: fail if we don't get audio within process_timeout
-                                data = input_queue.get()
-                            except Exception as e:
-                                msg = "Audio needs to be sent in real time."
-                                logger.info(f"[{session_id}] sender timed out while waiting for audio chunk {self.process_timeout}")
-                                raise VoiceAgentError(msg)
+                            data = await asyncio.to_thread(input_queue.get)
 
                             if data is None:
                                 # logger.info(f'[{session_id}] Closing request acknowlegded')
                                 break
-                            logger.info(f'Received data in input_queue of type {type(data)}')
-                            # {
-                            #     'message_id': self.message_id,
-                            #     'session_id': self.session_id,
-                            #     'audio_data': self.audio_data,
-                            #     'transcript': self.transcript,
-                            #     'timestamp': self.timestamp,
-                            #     'is_interruption': self.is_interruption,
-                            #     'state': self.state,
-                            #     'tag': self.tag
-                            # }
+                            logger.info(f'Received data in input_queue of type {data}')
                             
                             message_id = data.get('message_id')
                             recieved_session_id = data.get('session_id')
                             audio_bytes = data.get('audio_data')
-                            
+                            self.provider_metadata = data.get('metadata',{})
+                            message_type = data.get('message_type', 'start_stream')
+                            ##message type to add some more logic - inital config when stream_start etc.
+
                             if session_id!=recieved_session_id:
                                 raise VoiceAgentError(f'mismatch session id is provided: {recieved_session_id}')
                             
@@ -343,8 +360,10 @@ class GEMINIAPI:
                                 continue
                             except StopAsyncIteration:
                                 logger.info(f"[{session_id}] Agent Finished Executing.")
+                                agen = async_session.receive().__aiter__()
+                                continue
                                 # traceback.print_exc()
-                                break
+                                # break
                             except asyncio.CancelledError as e:
                                 traceback.print_exc()
                                 logger.info(f"[{session_id}] receiver cancelled (normal shutdown).")
@@ -358,7 +377,27 @@ class GEMINIAPI:
                                 server_content = getattr(response, "server_content", None)
                                 if server_content is None:
                                     continue
+                                
+                                if server_content.interrupted:
+                                    logger.info(f'[{session_id}] Interruption detected.')
+                                    self.interrupt(session_id)
+                                    payload = {
+                                            {
+                                                "session_id": session_id,
+                                                "message_id": message_id,
+                                                "audio_data": inline_data,
+                                                "message_type":"clear_buffer",
+                                                "metadata": self.provider_metadata
+                                                # "sequence_number": sequence_number,
+                                                # "agent_recieved": float(start_time),
+                                                # "agent_responded": hp.time()
+                                                
+                                            }
+                                        }
+                                    output_queue.put(payload)
+                                    continue
 
+                                    
                                 resolved_seq_key = None
                                 model_turn = server_content.model_turn
                                 if model_turn and model_turn.parts:
@@ -377,20 +416,20 @@ class GEMINIAPI:
                                             message_id, start_time = resolved_seq_key, hp.time()
 
                                         payload = {
-                                            session_id: {
-                                                message_id: {
-                                                    # "sequence_number": sequence_number,
-                                                    "agent_response": inline_data,
-                                                    "agent_recieved": float(start_time),
-                                                    "agent_responded": hp.time()
-                                                }
+                                            {
+                                                "session_id": session_id,
+                                                "message_id": message_id,
+                                                "audio_data": inline_data,
+                                                "message_type":"audio_output",
+                                                "metadata": self.provider_metadata
+                                                # "sequence_number": sequence_number,
+                                                # "agent_recieved": float(start_time),
+                                                # "agent_responded": hp.time()
+                                                
                                             }
                                         }
+                                        logger.info(f'Puting payload to output queue: {payload}')
                                         output_queue.put(payload)
-                                
-                                if (hasattr(server_content, "interrupted") and server_content.interrupted):
-                                    logger.info(f'[{session_id}] Interruption detected.')
-                                    self.interrupt(session_id)
                                     
                                 if server_content.output_transcription:
                                     output_transcript.append(server_content.output_transcription.text)
@@ -464,3 +503,14 @@ class GEMINIAPI:
 
             SessionRegistry.remove_session(session_id)
             # logger.info("Worker for session %s has exited and cleaned up", session_id)
+
+
+
+if __name__ == "__main__":
+    
+    
+    va = GEMINIAPI()
+    output_queue = asyncio.Queue()  
+    session_id = 'shivam_test'
+
+        

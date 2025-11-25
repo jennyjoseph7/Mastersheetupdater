@@ -202,3 +202,9 @@ copy of communication repo is added to personal folder (nov 11)
 
 
 check what is static folder.
+
+
+----------------------------------------
+
+when campaign save the first 3 status in contact status model . 
+
