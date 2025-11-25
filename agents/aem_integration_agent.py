@@ -454,7 +454,83 @@ class AEMIntegrationAgent(BaseAgent):
             "locate_dealer": True,
             "book_test_drive": True
             },
-        "789e1d23s4-abcd-56ef-9012-3805878dcd9acd09":
+        "789e1d23s4-abcd-56ef-9012-3805878dcd9acd09":{
+            "model": "Jeep Wrangler",
+            "url": "https://www.jeep-india.com/wrangler-jl.html",
+            "date": "2025-07-24",
+            "time": "16:30 +530",
+            "hd_view": "off",
+            "exterior": True,
+            "interior": True,
+            "performance": True,
+            "technology": True,
+            "safety": True,
+            "configure": False,
+            "suzuki_connect": False,
+
+            "colours": [
+                "Bright White",
+                "Black",
+                "Firecracker Red",
+                "Granite Crystal",
+                "Hydro Blue"
+            ],
+            "final_colour": [
+                "Bright White"
+            ],
+
+            "exterior_views": 5,
+            "interior_views": 4,
+
+            "performance_views": [
+                "2.0L Turbo Petrol Engine",
+                "4x4 Off-Road Capability",
+                "Command-Trac 4WD System",
+                "Rubicon Off-Road Package"
+            ],
+
+            "technology_views": [
+                "UConnect Touchscreen",
+                "Apple CarPlay & Android Auto",
+                "Premium Alpine Music System",
+                "Digital Instrument Cluster"
+            ],
+
+            "safety_views": [
+                "Dual Front Airbags",
+                "Electronic Stability Control",
+                "Hill Start Assist",
+                "Rear Parking Camera & Sensors"
+            ],
+
+            "variants": [
+                "Wrangler Unlimited",
+                "Wrangler Rubicon"
+            ],
+
+            "brochure_download": True,
+            "variants_and_pricing": True,
+            "build_your_own": False,
+
+            "transmission_types": [
+                "Automatic"
+            ],
+
+            "powertrains": [
+                "Petrol"
+            ],
+
+            "compared_cars": [
+                "Land Rover Defender",
+                "Toyota Fortuner",
+                "Ford Bronco (Global)"
+            ],
+
+            "finance_and_offer": True,
+            "locate_dealer": True,
+            "book_test_drive": True
+        }
+
 
             
         }
