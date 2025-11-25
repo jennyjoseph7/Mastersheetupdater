@@ -121,7 +121,9 @@ GRYD_COMMUNICATION_WEBHOOK_ASYNC=cfg.gryd_communication_webhook_async
 
 INBOUND = "INBOUND"
 IGNORED_STATUSES = {"ACK"}
-TRACKABLE_STATUSES = {"READ", "RECEIVED", "SENT", "DELIVERED", "INITIATED","FAILED"}
+# TRACKABLE_STATUSES = {"READ", "RECEIVED", "SENT", "DELIVERED", "INITIATED","FAILED"}
+TRACKABLE_STATUSES = {"READ", "RECEIVED", "SENT", "DELIVERED","FAILED"}
+
 MODEL_ID_DETAIL={
     "gryd_campaign_user_detail":"campaign_user_id",
     "gryd_campaign_user_detail_archive":"campaign_user_archive_id",

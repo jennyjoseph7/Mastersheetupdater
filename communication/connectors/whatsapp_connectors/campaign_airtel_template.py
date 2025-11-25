@@ -5,10 +5,10 @@ from connectors.whatsapp_connectors.source_connectors import *
 class AirtelCampaignManager:
     def __init__(self,*args,**kwargs):
         self.template_func_dict = {
-            "text_template": self._create_text_template,
-            "media_template": self._create_media_template,
-            "carousel_template": self._create_carousel_template,
-            "carousal_template": self._create_carousel_template
+            "text": self._create_text_template,
+            "media": self._create_media_template,
+            "carousel": self._create_carousel_template,
+            "carousal": self._create_carousel_template
         }
 
         self.MEDIA_MAPPER={
@@ -50,10 +50,12 @@ class AirtelCampaignManager:
         variable_params = message_data.get("template_variables", [])
         payload = message_data.get("template_buttons_payload", [])
 
+        logger.info(f"TEST message_data ----{message_data}, variable_params ----{variable_params}")
         # Resolve variables from params_data
         variables = [params_data.get(param, '') for param in variable_params]
         variables = [] if all(item in ("", None) for item in variables) else variables
 
+        logger.info(f"TEST variables ----{variables}")
         return {
             "airtel_function_sequence": ["template"],
             "type": response_type,

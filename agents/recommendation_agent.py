@@ -4,7 +4,6 @@ import json
 import logging
 import numpy as np
 from urllib.parse import urlparse
-from gensim.models.fasttext import FastText
 import ast
 from qdrant_client import QdrantClient, models
 import itertools
@@ -47,15 +46,6 @@ key_order = ['power', 'engine', 'torque', 'dimension',
 'fuel_efficiency', 'exterior_feature', 'interior_feature', 'engine_and_performance',
 'comfort_and_convenience','price']
 
-
-
-model=FastText(
-        sentences=["test"],
-        vector_size=100,
-        window=3,
-        min_count=1,
-        sg=1,
-    )
 
 
 
@@ -130,6 +120,16 @@ class MetadataRecommendation:
         self.model_identifier=model_identifier
 
     def recommend_models(self,inp,default_limit=30):
+        from gensim.models.fasttext import FastText
+        model=FastText(
+                sentences=["test"],
+                vector_size=100,
+                window=3,
+                min_count=1,
+                sg=1,
+            )
+
+
         vec=model.wv[inp].tolist()
 
         hits = client.search(
@@ -367,6 +367,7 @@ def filter_data(filters=None, affinity=None,negative_filters=None):
     """
     
     filter = {}
+    iintent=[]
     vectors = []    
     if negative_filters:
         for data in negative_filters:
@@ -395,7 +396,7 @@ def filter_data(filters=None, affinity=None,negative_filters=None):
         filter = {}
             
     if affinity:
-            iintent=[]
+            
             for data in affinity:
                 logger.info(f"Not from filter .json{data}")
                 dict_score=get_traits(str(data['answer']))
@@ -420,7 +421,7 @@ def get_collection_recommendation(collection):
             vectors_config=VectorParams(size=16, distance=Distance.DOT),
         )
 
-def get_fixed_filter(fix_filters):
+def get_fixed_filter(fix_filters,collection_filter):
 
     """
     This function takes in a dictionary of fixed filters and returns a new dictionary with the values fixed using the LLM model.
@@ -470,7 +471,7 @@ class RecommendationWrapper:
         negative_filter_ = []
         if fix_filters and filters is not None:
             logger.info(f"fix_filters>>>ppppp{fix_filters}")
-            filters=get_fixed_filter(fix_filters)
+            filters=get_fixed_filter(fix_filters,collection_filter)
         else:
 
             if self.history :
@@ -558,7 +559,7 @@ class RecommendationWrapper:
 
 
         if negative_filters:
-            negative_filters=(get_fixed_filter(negative_filters))
+            negative_filters=(get_fixed_filter(negative_filters,collection_filter))
 
             for key, value in negative_filters.items():
 
@@ -928,12 +929,13 @@ class RecommendationAgent(BaseAgent):
 
     def _extract_pattern(self,data):
         history=data.get("recommendation_history")
-        user_message=data.get("user_message")
-        if user_message:
-            question=data.get("question")
-            if not data.get("free_text"):
-                data['free_text']=user_message  if not question else question+" "+user_message
-            intent = data.get("intent")
+        user_interaction=data.get("user_interaction")
+        if user_interaction:
+            user_message=user_interaction.get("user_message")
+            question=user_interaction.get("question")
+            if not user_interaction.get("free_text"):
+                user_interaction['free_text']=user_message  if not question else question+" "+user_message
+            intent = user_interaction.get("intent")
             if intent in ["free_text","error"]:
                 return
         if history:
@@ -984,7 +986,8 @@ class RecommendationAgent(BaseAgent):
       collection=data.get("collection","autocrm_recommendation")
       collection_filter=data.get("collection_filter","autobot_summary_test_22")
       max_n=data.get('Max number',None)
-      free_text=data.get('free_text',None)
+      user_interaction=data.get("user_interaction",None)
+      free_text=user_interaction.get('free_text',None)
       offset=int(data.get('offset',0))
       default_limit=int(data.get('default_limit',20))
       history=data.get("recommendation_history")
@@ -1080,31 +1083,31 @@ if __name__ == "__main__":
     #     ]
     #   }
     # ],
-    "free_text": "i am short heighted suggest me a car for my budget  20 lakhs ",
+    # "free_text": "i am short heighted suggest me a car for my budget  20 lakhs ",
     "Max number":   5,
     "collection": "autocrm_recommendation",
-    "question": "What’s your preference when it comes to transmission?",
-    "intent": "transmission_type",
-    # "user_message": "Automatic",
+    # "question": "What’s your preference when it comes to transmission?",
+    # "intent": "transmission_type",
+    "user_interaction": {"user_message": "i dont want Automatic transmission and I am short heighted"},
     "default_limit": 5,
     "recommendation_history":  {
         "affinity": [
-[0.0,
-0.0,
-0.0,
--0.7378647873726218,
-0.0,
-0.0,
-0.0,
-0.0,
-0.0,
-0.0,
-0.0,
--0.5270462766947299,
-0.0,
-0.0,
--0.42163702135578396,
-0.0]
+            [0.0,
+            0.0,
+            0.0,
+            -0.7378647873726218,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            -0.5270462766947299,
+            0.0,
+            0.0,
+            -0.42163702135578396,
+            0.0]
         ],
         "positive_filters": [
         ],

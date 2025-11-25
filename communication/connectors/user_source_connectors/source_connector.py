@@ -44,16 +44,17 @@ class CampaignSourceBase:
             separator="-",
         )
 
+        logger.info("TEST CampaignSourceBase")
         # Load model reference
-        try:
-            self.status_model = reload_model_ref(self.MODEL_NAME, enterprise_id)
-        except ConnectionError as ce:
-            logger.error(f"[Campaign:{self.campaign_id}] Unable to connect to DB: {ce}")
-            raise RuntimeError(f"Unable to connect DB: {ce}")
+        # try:
+        #     # self.status_model = reload_model_ref(self.MODEL_NAME, enterprise_id)
+        # except ConnectionError as ce:
+        #     logger.error(f"[Campaign:{self.campaign_id}] Unable to connect to DB: {ce}")
+        #     raise RuntimeError(f"Unable to connect DB: {ce}")
 
-        # Initialize or fetch campaign status
-        self.status = self._get_or_create_status()
-        logger.info(f"[Campaign:{self.campaign_id}] Loaded campaign status: {self.status}")
+        # # Initialize or fetch campaign status
+        # self.status = self._get_or_create_status()
+        # logger.info(f"[Campaign:{self.campaign_id}] Loaded campaign status: {self.status}")
 
     def _get_or_create_status(self) -> Dict[str, Any]:
         """Retrieve existing campaign status or create a new one if missing."""

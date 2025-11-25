@@ -1,0 +1,16 @@
+{
+	"webapp" : {
+		"port" : 5000,
+		"url_scheme" : "http",
+		"api_threads" : 2,
+		"name" : "app"
+	},
+	"workers" : [
+		{
+			"name" : "whatsapp_template_creator",
+			"entry_point" : "whatsapp_template_creator_agent.py",
+			"parallel_threads" : 2,
+			"shutdown_time" : 60
+		}
+	]
+}
