@@ -355,7 +355,55 @@ class AEMIntegrationAgent(BaseAgent):
                 "finance_and_offer": True,
                 "locate_dealer": True,
                 "book_test_drive": True
-}
+                },
+            "789e7890-abcd-56ef-9982-3456789c3ac01":{
+                "model": "Toyota Camry",
+                "url": "https://www.toyotabharat.com/showroom/camry/",
+                "date": "2025-07-24",
+                "time": "16:30 +530",
+                "hd_view": "off",
+                "exterior": True,
+                "interior": True,
+                "performance": True,
+                "technology": True,
+                "safety": True,
+                "configure": True,
+                "toyota_connect": False,
+                "colours": [
+                    "Platinum White Pearl",
+                    "Attitude Black"
+                ],
+                "final_colour": [
+                    "Platinum White Pearl"
+                ],
+                "exterior_views": 4,
+                "technology_views": [
+                    "Hybrid System Display",
+                    "Wireless Apple CarPlay",
+                    "Premium JBL Audio"
+                ],
+                "safety_views": [
+                    "Toyota Safety Sense",
+                    "Blind Spot Monitor"
+                ],
+                "variants": [],
+                "brochure_download": True,
+                "variants_and_pricing": True,
+                "build_your_own": False,
+                "transmission_types": [
+                    "automatic"
+                ],
+                "powertrains": [
+                    "strong_hybrid"
+                ],
+                "compared_cars": [
+                    "Honda Accord",
+                    "Skoda Superb"
+                ],
+                "finance_and_offer": False,
+                "locate_dealer": False,
+                "book_test_drive": True
+            }
 
             
         }
