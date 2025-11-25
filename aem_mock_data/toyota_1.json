@@ -1,0 +1,21 @@
+{
+    "uuid": "789e7890-abcd-56ef-9982-3456789c3ac01",
+    "name": "Nithin",
+    "phone": "8328611989",
+    "email": "nithin@iamdave.ai",
+    "city": "Delhi",
+    "pincode": "110001",
+    "device": "smartphone",
+    "os": "iOS",
+    "interested_models": ["Toyota Camry"],
+    "preferred_contact_time": "Afternoon",
+    "lead_status": "Interested",
+    "source": "online_ad",
+    "utm": {
+        "source": "instagram",
+        "medium": "paid_social",
+        "campaign": "Toyota Camry",
+        "term": "premium sedan",
+        "content": "carousel_ad_variant_1"
+    }
+}

@@ -403,7 +403,58 @@ class AEMIntegrationAgent(BaseAgent):
                 "finance_and_offer": False,
                 "locate_dealer": False,
                 "book_test_drive": True
-            }
+            },
+        "789e1234-abcd-56ef-9012-30056789c9ac09":{
+            "model": "Hyundai Exter",
+            "url": "https://www.hyundai.com/in/en/find-a-car/exter/highlights",
+            "date": "2025-07-24",
+            "time": "16:30 +530",
+            "hd_view": "off",
+            "exterior": True,
+            "interior": True,
+            "performance": False,
+            "technology": True,
+            "safety": True,
+            "configure": False,
+            "suzuki_connect": False,
+            "colours": [
+                "Atlas White",
+                "Ranger Khaki"
+            ],
+            "final_colour": [
+                "Atlas White"
+            ],
+            "exterior_views": 3,
+            "technology_views": [
+                "Voice Enabled Smart Controls",
+                "Dashcam with Dual Camera",
+                "Wireless Charging"
+            ],
+            "safety_views": [
+                "6 Airbags",
+                "Electronic Stability Control"
+            ],
+            "variants": [],
+            "brochure_download": False,
+            "variants_and_pricing": True,
+            "build_your_own": False,
+            "transmission_types": [
+                "manual",
+                "AMT"
+            ],
+            "powertrains": [
+                "petrol",
+                "CNG"
+            ],
+            "compared_cars": [
+                "Tata Punch",
+                "Maruti Ignis"
+            ],
+            "finance_and_offer": False,
+            "locate_dealer": True,
+            "book_test_drive": True
+            },
+        "789e1d23s4-abcd-56ef-9012-3805878dcd9acd09":
 
             
         }
