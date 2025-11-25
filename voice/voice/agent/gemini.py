@@ -158,6 +158,12 @@ class GEMINIAPI:
         session["loop"] = loop
 
         SessionRegistry.set_session(session_id, session)
+        
+
+        send, recieve = await self.session_worker(session_id)
+
+        results = asyncio.gather(send(), recieve())
+        await results
 
         session_task = loop.create_task(self.session_worker(session_id))
         session["task"] = session_task
@@ -283,7 +289,8 @@ class GEMINIAPI:
 
         sent_keys_q: asyncio.Queue = session.setdefault("sent_keys", asyncio.Queue())
         session.setdefault("last_seq_key", None)
-
+        
+        logger.info(f'inside session worker')
         try:
             loop = asyncio.get_running_loop()
         except Exception:
@@ -292,23 +299,32 @@ class GEMINIAPI:
         worker_error: Optional[BaseException] = None
 
         try:
+            logger.info('before creating client session')
             async with client_connection as async_session:
+                logger.info('client session started...')
                 session["async_session"] = async_session
 
                 async def sender() -> None:
                     logger.info(f"[{session_id}] sender started")
                     try:
                         while True:
-                            data = await asyncio.to_thread(input_queue.get)
+                            try:
+                                data = input_queue.get(timeout = 1)
+                            except Exception as e:
+                                logger.info(f'{e}')
+                                continue
+                            
 
                             if data is None:
                                 # logger.info(f'[{session_id}] Closing request acknowlegded')
-                                break
+                                continue
                             logger.info(f'Received data in input_queue of type {data}')
                             
                             message_id = data.get('message_id')
                             recieved_session_id = data.get('session_id')
                             audio_bytes = data.get('audio_data')
+                            if not audio_bytes:
+                                continue
                             self.provider_metadata = data.get('metadata',{})
                             message_type = data.get('message_type', 'start_stream')
                             ##message type to add some more logic - inital config when stream_start etc.
@@ -456,11 +472,13 @@ class GEMINIAPI:
                         # logger.info(f'[{session_id}] reciever finished the task')
                         pass
                     
-                    
-                sender_task = asyncio.create_task(sender())
-                receiver_task = asyncio.create_task(receiver())
 
-                done, pending = await asyncio.wait({sender_task, receiver_task}, return_when=asyncio.FIRST_EXCEPTION)
+                # sender_task = asyncio.create_task(sender())
+                # receiver_task = asyncio.create_task(receiver())
+                
+                return sender, receiver
+
+                #done, pending = await asyncio.wait({sender_task, receiver_task}, return_when=asyncio.FIRST_EXCEPTION)
 
                 for t in done:
                     exc = t.exception()

@@ -21,7 +21,7 @@ import utils
 logger = utils.get_logger(__name__)
 
 
-
+Queue()
 
 def user_session(system_prompt:str, init_config: dict = None,  **user_data):
 
@@ -67,7 +67,6 @@ def user_session(system_prompt:str, init_config: dict = None,  **user_data):
     om = OM.get_process()
     om.start()
     VB = voice_agent.TestVoiceAgent(
-
     session_id,
     input_queue,
     output_queue,

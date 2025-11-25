@@ -119,6 +119,7 @@ class InputManager:
             logger.info('Seems like message from output manager, ignoring...')
                 
         in_payload = self.provider.receive_message(raw_data)
+        logger.info(f'recieved data in input queue: {in_payload}')
         if in_payload.get('message_type','') == 'stream_start':
             session_id = in_payload.get('metadata',{}).get('custom_params', {}).get('session_id')
             if  session_id !=  self.session_id:
@@ -291,6 +292,7 @@ class OutputManager:
             message =self.provider.send_message(message)
             message['tag'] = 'output_manager'
             logger.info(f'recieved message from output queue: {message}')
+            #message_id
             self.client.send_message(message)
             time.sleep(0.1)
 

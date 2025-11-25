@@ -1,8 +1,11 @@
+
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from typing import Optional, Dict, Any
 from abc import ABC, abstractmethod
-import logging
+import utils
 
-logger = logging.getLogger(__name__)
+logger =  utils.get_logger(__name__)
 
 
 class ProviderBase(ABC):
@@ -46,7 +49,7 @@ class ProviderBase(ABC):
         Public method to receive and convert incoming message.
         Used by InputManager.
         """
-        logger.debug(f"[{self.provider_name}] Receiving message: {raw_message.get('type', 'unknown')}")
+        logger.info(f"[{self.provider_name}] Receiving message: {raw_message.get('type', 'unknown')}")
         return self.parse_incoming(raw_message)
 
     def send_message(self, generic_message: dict) -> Dict[str, Any]:
@@ -54,7 +57,7 @@ class ProviderBase(ABC):
         Public method to convert and send outgoing message.
         Used by OutputManager.
         """
-        logger.debug(f"[{self.provider_name}] Sending message type: {generic_message.get('message_type')}")
+        logger.info(f"[{self.provider_name}] Sending message type: {generic_message.get('message_type')}")
         return self.format_outgoing(generic_message)
 
 
