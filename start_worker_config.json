@@ -5,10 +5,18 @@
 		"api_threads" : 2,
 		"name" : "app"
 	},
-	"workers" : [
+	"agents" : [
 		{
 			"name" : "whatsapp_template_creator",
 			"entry_point" : "whatsapp_template_creator_agent.py",
+			"parallel_threads" : 2,
+			"shutdown_time" : 60
+		}
+	],
+	"workers" : [
+		{
+			"name" : "communication",
+			"entry_point" : "communication_worker.py",
 			"parallel_threads" : 2,
 			"shutdown_time" : 60
 		}
