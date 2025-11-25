@@ -10,7 +10,7 @@ export SHUTDOWN_TIME=${SHUTDOWN_TIME:-55}
 export PROCESS_SEARCH_STRING=${PROCESS_SEARCH_STRING:-$WORKER_ENTRYPOINT}
 export LOGDIR=${LOGDIR:-./logs}
 export RDS_SECRET=${RDS_SECRET:-0}
-
+export TAIL_LOGS=${TAIL_LOGS:-True}
 if [ ! -d $LOGDIR ];then
 	mkdir -p $LOGDIR
 fi
@@ -116,9 +116,9 @@ function start_workers() {
 			WEBAPP_API_THREADS=$(jq -r '.api_threads' <<< "$webapp_config")
 			WEBAPP_APP_NAME=$(jq -r '.name' <<< "$webapp_config")
 
-			#nohup waitress-serve --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log &
+			nohup waitress-serve --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log &
 
-			export RDS_SECRET=${RDS_SECRET} && nohup python app.py 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log & 
+			#export RDS_SECRET=${RDS_SECRET} && nohup python app.py 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log & 
 	    		app_pid=$!
 			echo $app_pid > app.pid
 		fi
@@ -131,7 +131,14 @@ function start_workers() {
 		if [ "$DEV_CONTAINER" == "True" ];then
 			echo "Running dev container."
 			echo "Done with deploy" >&2
-			while [[ -n `jobs -l | grep $app_pid` ]]; do sleep 600; done
+
+			while [[ -n `jobs -l | grep $app_pid` ]]; do
+				if [ "$TAIL_LOGS" == "True" ];then
+					tail -qf --follow=name --retry ./logs/*.log 
+				else
+			       		sleep 600
+				fi
+			done
 		fi
 	fi
 }
