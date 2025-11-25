@@ -82,7 +82,8 @@ function stop_workers() {
 
 function start_worker_in_bg() {
 	worker_path=worker
-	jq -c '.workers[]' start_worker_config.json | while IFS= read -r wmap;do
+	echo "Starting up Agents."
+	jq -c '.agents[]' start_worker_config.json | while IFS= read -r wmap;do
 		echo "$wmap"
 		WORKER_NAME=$(jq -r '.name' <<< "$wmap")
 		WORKER_ENTRYPOINT=$(jq -r '.entry_point' <<< "$wmap")
@@ -92,6 +93,19 @@ function start_worker_in_bg() {
 		echo "Setting up $WORKER_NAME in BG. Logs are written to ${LOGDIR}/${WORKER_NAME}_stderr.log and ${LOGDIR}/${WORKER_NAME}_stdout.log"
 	
 		nohup $worker_path -m agents/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_NAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_stderr.log &
+	done
+
+	echo "Starting up workers."
+	jq -c '.workers[]' start_worker_config.json | while IFS= read -r wmap;do
+		echo "$wmap"
+		WORKER_NAME=$(jq -r '.name' <<< "$wmap")
+		WORKER_ENTRYPOINT=$(jq -r '.entry_point' <<< "$wmap")
+		WORKER_PARALLEL_THREADS=$(jq -r '.parallel_threads' <<< "$wmap")
+		WORKER_SHUTDOWN_TIME=$(jq -r '.shutdown_time' <<< "$wmap")
+
+		echo "Setting up $WORKER_NAME - '$WORKER_ENTRYPOINT' in BG. Logs are written to ${LOGDIR}/${WORKER_NAME}_stderr.log and ${LOGDIR}/${WORKER_NAME}_stdout.log"
+	
+		nohup $worker_path -m $WORKER_NAME/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_NAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_stderr.log &
 	done
 	
 
