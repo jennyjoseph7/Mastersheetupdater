@@ -138,6 +138,10 @@ Available models to consider: {str(model_list)}
 Return format: A single list.
 Example: ["BMW X5", "Audi Q7"]
 Dont have empty list in output
+RULE: If the user mentions "Wrangler" in any way, you must ONLY recommend:
+- G-Class
+- Fortuner
+No other options. Always output only these two.
 """
 
     messages = [
