@@ -366,9 +366,22 @@ def check_or_create_session(self, phone_number):
 
 @gryd.is_a_task(function_name="trigger_campaign")
 def trigger_campaign(campaign_type, campaign_id):
+    """
+    Trigger a campaign for a given campaign type and campaign id.
+
+    Parameters:
+        campaign_type (str): The type of campaign (pre-sales or post-sales).
+        campaign_id (str): The id of the campaign to trigger.
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If the campaign_id is invalid.
+    """
     logger.info("------ Triggering Campaign ------")
 
-    # 1. Fetch campaign details
+    # campaign details
     with get_pg_connector() as pg:
         if campaign_type == "pre_sales":
             
@@ -384,34 +397,22 @@ def trigger_campaign(campaign_type, campaign_id):
     campaign_details = campaign_details[0]
     logger.info(f"CAMPAIGN DETAILS---{json.dumps(campaign_details,indent=4)}")
 
-    
-    # Default channel from campaign_details
-    campaign_channel_list = campaign_details.get("channels") or ["voice"]
-    default_channel = campaign_channel_list[0]
-
-    # 2. Fetch leads
+    # leads
     with get_pg_connector() as pg:
         leads = list(pg.list(lead_table, {"campaign_id": campaign_id}))
 
     logger.info(f"Total leads: {len(leads)}")
 
-    # 3. Process each lead individually
+    # Process each lead individually
     for lead in leads:
 
-        channel = lead.get("preferred_contact_channel") or default_channel
-        #TODO:check this.
-        # map_channel_to_provider = {"voice": "voicebot", "whatsapp": "whatsapp_chat"}
-        # channel = map_channel_to_provider[channel]
-        
-        logger.info(f"------ Triggering Campaign Channel------{channel}")
+        logger.info(f"Queueing task for single lead...")
         res=gryd.create_async_task(
             "process_single_lead",
             GRYD_COMMUNICATION_CAMPAIGN_SERVICE,
-            args=[channel, lead, campaign_details],
+            args=[None, lead, campaign_details],
             kwargs={}
         )
-
-
 
 @gryd.is_a_task(function_name="process_single_lead")
 def process_single_lead(channel, lead, campaign_details):
@@ -421,7 +422,10 @@ def process_single_lead(channel, lead, campaign_details):
     """
 
     logger.info(f"In process_single_lead task---------")
-    # Determine lead id field
+    
+    if not channel:
+        channel = get_channel(lead, campaign_details)
+        
     lead_id_field = (
         "pre_sales_lead_id"
         if campaign_details.get("campaign_type") == "pre-sales"
@@ -432,7 +436,7 @@ def process_single_lead(channel, lead, campaign_details):
         return None
 
     # Template fetch
-    # template_data = get_template_from_lead(lead_id)
+    
     # template_data=gryd.create_async_task(
     #     "get_template_from_lead",
     #     GRYD_COMMUNICATION_CAMPAIGN_SERVICE,
@@ -440,23 +444,21 @@ def process_single_lead(channel, lead, campaign_details):
     #     kwargs={}
     #     )
     
-    
     # template_data=yield_gryd_task_results("get_template_from_lead",GRYD_COMMUNICATION_CAMPAIGN_SERVICE,{"lead_id":lead_id})
     
-    template_data = get_template_from_lead(lead_id)
+    template_data = get_template_from_lead(lead_id) #temporary
     logger.info(f"TEMPATES DATA---{template_data}")
-    # Build user entry
     campaign_user = {
         "lead_id": lead_id,
         "mobile_number": lead.get("phone_number"),
         "customer_name": lead.get("person_name"),
         "model": (lead.get("model_preference") or [None])[0],
-        "contact_channel": channel,                     # already computed
+        "contact_channel": channel,                   
         "template_id": template_data.get("template_id"),
         "template_details": template_data.get("template_details"),
     }
 
-    # Final payload (ONE user)
+    # Final payload (for one user)
     final_payload = {
         **campaign_details,
         **template_data,
@@ -475,7 +477,7 @@ def process_single_lead(channel, lead, campaign_details):
                 "contact_channel": "contact_channel",
             },
             "config": {
-                "batch_size": 100,        # your default — change if needed
+                "batch_size": 100,        # default
                 "_skip_sent_message": True
             }
         }
@@ -511,6 +513,35 @@ def process_single_lead(channel, lead, campaign_details):
     }
 
 
+def get_channel(lead, campaign_details):
+    """
+    Get the contact channel for a lead.
+
+    First, check if the lead has a preferred contact channel.
+    If not, check if the campaign has specified channels.
+    If yes, use the first channel in the list.
+    If none of the above, fallback to "voice".
+
+    :param lead: The lead object
+    :param campaign_details: The campaign details object
+    :return: The contact channel for the lead
+    """
+    
+    
+    #TODO:check this.
+        # map_channel_to_provider = {"voice": "voicebot", "whatsapp": "whatsapp_chat"}
+        # channel = map_channel_to_provider[channel]
+        
+    preferred = lead.get("preferred_contact_channel")
+    if preferred:
+        return preferred
+
+    # check for Campaign channels and use the first channel.
+    channels = campaign_details.get("channels") or ["voice"]
+    if len(channels) > 0:
+        return channels[0]
+
+    return "voice"  #fallback
 
 # @gryd.is_a_task(function_name="get_template_from_lead")
 def get_template_from_lead(*args,**kwargs):
@@ -558,67 +589,33 @@ def get_template_from_lead(*args,**kwargs):
 
 
 if __name__=="__main__":
+    # for airtel 
     # data={
     # "messages": [
     #     {
-    #     "id": "0046d404-b561-11f0-a380-0a58a9feac02",
+    #     "to": "917795030574",
+    #     "businessId": "soco_addtwo",
     #     "from": "919113687241",
-    #     "type": "text",
-    #     "timestamp": "1761808865",
-    #     "text": {
-    #         "body": "what can you do?"
-    #     },
-    #     "message_id": "wamid.HBgMOTE5MTEzNjg3MjQxFQIAEhggQUM3RDhBRTYzRDI1ODkzNjY5NDhFOEE2MTRBN0RFRkQA"
-    #     }
-    # ],
-    # "contacts": [
-    #     {
+    #     "sessionId": "9da2b3855f104d169f677e7dcbea58c2",
     #     "profile": {
     #         "name": "Praveen A"
     #     },
-    #     "wa_id": "919113687241"
+    #     "message": {
+    #         "text": {
+    #         "body": "Hiii"
+    #         },
+    #         "timestamp": 1762666888537,
+    #         "type": "text"
+    #     },
+    #     "webhook_received_time": 1762666888.645379,
+    #     "ent_id": "autobot",
+    #     "conversation_id": "msil_auto_demo",
+    #     "whatsapp_provider": "airtel",
+    #     "language": "english",
+    #     "enterprise_id": "autobot"
     #     }
-    # ],
-    # "brand_msisdn": "918951708731",
-    # "request_id": "0046d404-b561-11f0-a380-0a58a9feac02",
-    # "webhook_received_time": 1761808866.994164,
-    # "enterprise_id": "no_code_low_code",
-    # "ent_id": "no_code_low_code",
-    # "conversation_id": "indiaautobot",
-    # "whatsapp_provider": "rml",
-    # "language": "english"
-    # }
-    
-    # process_webhook("rml","no_code_low_code","indiaautobot","english",**data)
-    
-    
-    # for airtel 
-    data={
-    "messages": [
-        {
-        "to": "917795030574",
-        "businessId": "soco_addtwo",
-        "from": "919113687241",
-        "sessionId": "9da2b3855f104d169f677e7dcbea58c2",
-        "profile": {
-            "name": "Praveen A"
-        },
-        "message": {
-            "text": {
-            "body": "Hiii"
-            },
-            "timestamp": 1762666888537,
-            "type": "text"
-        },
-        "webhook_received_time": 1762666888.645379,
-        "ent_id": "autobot",
-        "conversation_id": "msil_auto_demo",
-        "whatsapp_provider": "airtel",
-        "language": "english",
-        "enterprise_id": "autobot"
-        }
-    ]}
-    process_webhook("airtel","autobot","msil_auto_demo","english",**data)
+    # ]}
+    # process_webhook("airtel","autobot","msil_auto_demo","english",**data)
     
     pass
 
