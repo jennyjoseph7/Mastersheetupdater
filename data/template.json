@@ -137,22 +137,6 @@
       "option_others": true
     },
     {
-      "name": "disposition_tags",
-      "type": "string_list",
-      "ui_element": "multiselect",
-      "options": [
-        "queued",
-        "attempted",
-        "reached",
-        "contacted",
-        "engaged",
-        "converted",
-        "failed",
-        "error"
-      ],
-      "option_others": true
-    },
-    {
       "name": "disposition_detail_tags",
       "type": "string_list",
       "ui_element": "multiselect",
