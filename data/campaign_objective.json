@@ -129,6 +129,31 @@
       "ui_element": "tags"
     },
     {
+      "name": "ctas",
+      "type": "string_list",
+      "list_type": "text",
+      "title": "Call to Actions",
+      "ui_element": "tags",
+      "options": [
+        "know-more",
+        "register-to-event",
+        "book-test-drive",
+        "book-showroom-visit",
+        "download-brochure",
+        "book-home-test-drive",
+        "get-onroad-price",
+        "request-callback",
+        "confirm-booking",
+        "book-service",
+        "order-accessory",
+        "renew-insurance",
+        "order-spare-part",
+        "order-extended-warranty",
+        "order-care-package"
+      ],
+      "option_others": true
+    },
+    {
       "name": "is_custom",
       "type": "bool",
       "default": false,

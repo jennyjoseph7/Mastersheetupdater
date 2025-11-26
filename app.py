@@ -87,8 +87,8 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
         return gryd_routes.jsonify({"status": "error", "message": "Invalid channel"}), 400, {"Access-Control-Allow-Origin": "*"}
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
 
+app.register_blueprint(ai_service_app.ai_service_routes)
+app.register_blueprint(db_routes)
 if __name__ == "__main__":
-    app.register_blueprint(ai_service_app.ai_service_routes)
-    app.register_blueprint(db_routes)
     app.run(debug=True, host=app_dict['host'], port=app_dict['port'])
 

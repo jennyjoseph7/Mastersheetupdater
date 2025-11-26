@@ -1,21 +1,18 @@
-"""Simple synchronous messaging client to bridge audio streams with messaging server."""
 
 import os
 import json
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import time
 import threading
 from typing import Optional, Callable, Dict, Any
 from enum import Enum
 from dataclasses import dataclass
 from websocket import WebSocketApp
+import utils
 import logging
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-
+logger = utils.get_logger(__name__)
 
 AUTOCRM_MESSEGING_SERVER_URL = os.environ.get(
     "AUTOCRM_MESSEGING_SERVER_URL",
@@ -74,9 +71,7 @@ class ConnectionMetrics:
 
 class MessagingClient:
     """
-    Simple synchronous WebSocket client for bidirectional communication.
-
-    Handles:
+    simple synchronous WebSocket client can be connected by multiple users
     - Receiving messages from server via WebSocket
     - Sending messages back to server
     - Connection management with automatic reconnection
@@ -93,8 +88,7 @@ class MessagingClient:
         tag: str = "client"
     ):
         """
-        Initialize messaging client
-
+        initialize client
         Args:
             session_id: Unique session identifier
             base_url: WebSocket server base URL (optional)
@@ -162,13 +156,24 @@ class MessagingClient:
 
     def _on_ws_message(self, ws, raw_message):
         """WebSocket message callback"""
+        """
+        {'event': 'media', 
+        'sequenceNumber': '225',
+          'media': {'track': 'inbound',
+            'chunk': '224', 
+            'timestamp': '4564', 
+            'payload': '/v7+/v7+/v7+/n5+fn5+/v7+/v7+/v7+/v7+/v7+/v7+/n5+fn5+fn5+fn5+fn5+/v7+/v7+/v7+/v5+fv7+/v7+/v5+fv7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v5+fv7+/n5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn7+fn5+fn7+fn5+fn5+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/g=='}, 'streamSid': 'MZ44d8de029e58b61e30fde3f36cac928f'}
+
+        """
         try:
             message = json.loads(raw_message)
             message_type = message.get("event", "unknown")
             message_size = len(raw_message.encode('utf-8'))
 
             self.metrics.record_received(message_size)
-            logger.info(f"[{self.tag}] Received message: {message_type} ({message_size} bytes)")
+            #logger.info(f"[{self.tag}] Received message: {message_type} ({message_size} bytes)")
+
+            # logger.info(f"Recieved message: {message}")
 
             # Call user-defined callback if provided
             if self.on_message_callback:
@@ -209,7 +214,6 @@ class MessagingClient:
                 on_error=self._on_ws_error,
                 on_close=self._on_ws_close
             )
-
             return True
 
         except Exception as e:
@@ -354,3 +358,11 @@ def test_messaging_client():
 
 if __name__ == "__main__":
     test_messaging_client()
+
+
+## add role to identify whether its voice agent or human agent
+
+## if twilio ignores the additional keys we are good, so we can say which is agent and which is human
+
+
+## input and output managers will connected to both twilio and human agent room (differnt session)
