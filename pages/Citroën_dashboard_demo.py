@@ -14,10 +14,10 @@ environment = os.getenv("ENVIRONMENT", "-local")
 if not environment.startswith("-"):
     environment = f"-{environment}"
 gryd.ENVIRONMENT = environment
-st.set_page_config(page_title="AutoBot Agents", layout="wide")
-st.markdown("## 🤖 **AutoBot Agents**")
+st.set_page_config(page_title="Citroën Agentic Demo", layout="wide")
+st.markdown("## 🤖 **Citroën Agentic Demo**")
 st.sidebar.image(
-    "https://www.iamdave.ai/wp-content/uploads/2025/09/DaveAI_Logo.svg",
+    "https://image.similarpng.com/file/similarpng/very-thumbnail/2020/06/Logo-citroen-vector-transparent-PNG.png",
     width=200
 )
 
@@ -34,9 +34,6 @@ if uploaded_file:
 else:
     st.sidebar.warning("⚠️ Please upload a valid JSON file.")
     run_agent = False
-
-if st.button("Go to Orchestrator"):
-    st.switch_page("pages/orchestrator_dashboard.py")
 
 tabs = [
     "Customer Data Platform (CDP)", 
