@@ -880,6 +880,52 @@ def call_analytics_agent(*args, **kwargs):
             "task": function_name,
             "error": str(e).strip()
         }
+    
+@gryd.is_a_task()
+def segment_classifier_agent(*args, **kwargs):
+    try:
+        from agents.segment_classifier_agent import SegmentClassifierAgent
+        source = kwargs["source"]
+        brand_url = kwargs.get("brand_url", None)
+        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+        segment_classifier_agent = SegmentClassifierAgent(source=source, model_identifier=model_identifier)
+        output = segment_classifier_agent.run(brand_url=brand_url)
+        return {
+            "task": inspect.currentframe().f_code.co_name, 
+            **output
+        }
+    except Exception as e:
+        logger.error(f"Segment Classifier Agent Error: {e}")
+        traceback.print_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip()
+        }
+
+@gryd.is_a_task()
+def conversation_agent(*args, **kwargs):   
+    try:
+        from agents.conversation_agent import ConversationAgent
+        source = kwargs["source"]
+        segment_classifier_result = kwargs["segment_classifier_result"]
+        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+        history = kwargs.get("history", [])
+
+        logger.info(f"History: {json.dumps(history, indent=4)}")
+
+        conversation_agent = ConversationAgent(source=source, segment_classifier_result=segment_classifier_result, model_identifier=model_identifier)
+        output = conversation_agent.chat(user_message=kwargs.get("user_message", None), history=history)
+        return {
+            "task": inspect.currentframe().f_code.co_name, 
+            **output
+        }
+    except Exception as e:
+        logger.error(f"Conversation Agent Error: {e}")
+        traceback.print_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip()
+        }
 
 # ------------------ Global Agents Finish ------------------
 
