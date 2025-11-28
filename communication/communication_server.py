@@ -5,25 +5,20 @@ from flask import Blueprint,Response, jsonify,request,session,flash,redirect,url
 from flask_orjson import OrjsonProvider
 from os.path import exists as ispath, dirname, join as joinpath, abspath, split as pathsplit, splitext, sep as dirsep, isfile
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, encrypt as enc
-
-# import communication_routes #this
-
 from AppConfig.gryd_config import *
 # from AppConfig.i2ceHeaders import *
 from connectors.communication_configs import *
 
 from connectors.gryd_communication import *
 from connectors.connector_whatsapp import *
-# import communication.communication_routes
 # from captcha.image import ImageCaptcha
 from autocrm_db_helper import get_pg_connector
-
-GRYD_COMMUNICATION_SERVICE=os.environ.get("GRYD_COMMUNICATION_SERVICE","autocrm-communication")
+from config import AUTOCRM_COMMUNICATION_SERVICE_NAME
 GRYD_COMMUNICATION_BROKER=os.environ.get("GRYD_COMMUNICATION_BROKER","sqs")
-gryd.SERVICE = GRYD_COMMUNICATION_SERVICE
+gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.BASE_PATH = abspath(dirname(__file__))
 gryd.set_queue_manager()
-QUEUE_MANAGER = gryd.get_queue_manager(GRYD_COMMUNICATION_SERVICE)
+QUEUE_MANAGER = gryd.get_queue_manager(AUTOCRM_COMMUNICATION_SERVICE_NAME)
 gryd_routes.gryd = gryd
 # gryd.load_service_models()
 logger = hp.get_logger(__name__)
@@ -41,8 +36,6 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True if 'localhost' in SERVER_NAME else Fa
 app.secret_key = 'zasxcdfvbghnmjk,aqwsderfgtyhjuiklop;zaqwsxcderfvbgtyhnmjuik,.lop;/'
 port = int(os.environ.get('SERVER_PORT') or 5031)
 app.register_blueprint(gryd_routes.gryd_routes)
-# app.register_blueprint(communication_routes.comm_route,url_prefix='/')
-
 
 def WARM_UP():
     logger.info("WARM_UP CALLED")

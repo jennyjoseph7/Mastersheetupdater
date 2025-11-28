@@ -12,11 +12,30 @@ CHANNEL_ALIASES = {
 }
 
 
-
-
-
 @gryd.is_a_task(function_name="communication_hook")
 def communication_hook(channel, event_name, enterprise_id, recipient=None, reason=None, communication_id=None, **data):
+    """
+    This function is a hook to all communication mediums. It takes in a channel,
+    event name, enterprise id, recipient, reason, and communication id. It returns
+    a response in the form of a communication object.
+
+    Args:
+        channel (str): the channel of the communication (e.g. email, sms)
+        event_name (str): the event name of the communication (e.g. welcome, abandoned_cart)
+        enterprise_id (str): the id of the enterprise
+        recipient (str): the recipient of the communication (e.g. customer, lead)
+        reason (str): the reason for the communication (e.g. order confirmation, password reset)
+        communication_id (str): the id of the communication (if it exists)
+
+    Returns:
+        dict: a communication object with the following keys:
+            communication_id (str): the id of the communication
+            event (str): the event name of the communication
+            channel (str): the channel of the communication
+            reason (str): the reason for the communication
+            data (dict): the data of the communication
+            recipient (str): the recipient of the communication
+    """
     logger.info(f"[HOOK] channel={channel}, event_name={event_name}, enterprise_id={enterprise_id}")
     
     com_obj = {}

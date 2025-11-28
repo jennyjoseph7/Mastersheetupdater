@@ -3,4 +3,4 @@ from os.path import exists as ispath, dirname, basename, join as joinpath, abspa
 import sys
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from connectors.communication_helpers import *
-logger.info(f"{gryd.__CUSTOM_MODULE__} Module Initialized Sucessfully")
+# logger.info(f"{gryd.__CUSTOM_MODULE__} Module Initialized Sucessfully")

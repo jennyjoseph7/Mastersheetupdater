@@ -1422,6 +1422,7 @@ class WhatsappCampaignTemplate:
 
     @classmethod
     def register(cls, source_type: str, source_class: type):
+        logger.info(f"TEST class registry {source_type} -> {source_class}")
         cls._registry[source_type.lower()] = source_class
         # logger.info(f"✅ {cls._class_name} Registered source: {source_type} -> {source_class.__name__}")
     @classmethod
@@ -1433,6 +1434,7 @@ class WhatsappCampaignTemplate:
 
         logger.info(f"Loading campaign src_type: {src_type}")
         source_class = cls._registry.get(src_type)
+        logger.info(f"source_class: {source_class}")
         if not source_class:
             raise ValueError(f"Unsupported source type: {src_type}")
         

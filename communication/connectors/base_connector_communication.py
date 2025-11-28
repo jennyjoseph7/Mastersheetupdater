@@ -1,11 +1,9 @@
 from connectors.communication_helpers import *
-# ------------------------------------------
-# 🔥 This triggers auto-registration for all the connectors
-import connectors.user_source_connectors 
+# This triggers auto-registration for all the connectors
+# import connectors.user_source_connectors 
 # import communication.mail_connectors
-import connectors.whatsapp_connectors
-# import communication.sms_connectors
-#--------------------------------------------
+# import connectors.whatsapp_connectors
+
 from connectors.user_source_connectors.source_connector import CampaignSourceFactory
 from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector, WhatsappReceiverConnector, BaseCampaingStatusUpdator,WhatsappCampaignTemplate
 # from communication.mail_connectors.source_connector import MailSourceFactory

@@ -3,8 +3,8 @@ import sys, os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if not BASE_DIR in sys.path:
     sys.path.append(BASE_DIR)
-from connectors.communication_helpers import *
-from connectors.communication_configs import GRYD_COMMUNICATION_CAMPAIGN_SERVICE
+from communication.connectors.communication_helpers import *
+from config import AUTOCRM_CAMPAIGN_SERVICE_NAME
 I2CE_BASE_URL = os.environ.get("I2CE_BASE_URL", "https://test.iamdave.ai")
 I2CE_HEADERS = {
     "X-I2CE-API-KEY": os.environ.get("I2CE_API_KEY", "9c0e4530-67ee-31cd-934b-89faj9sjd9g"),
@@ -12,7 +12,6 @@ I2CE_HEADERS = {
     "X-I2CE-ENTERPRISE-ID": os.environ.get("I2CE_ENTERPRISE_ID", "autobot"),
     "Content-Type": "application/json"
 }
-
 
 DISPOSITION_MAP = {
     "sent": "attempted",
@@ -104,7 +103,7 @@ def run_workflow(
             user_detail = hp.make_single(user_details, force = True)
         user_detail['name'] = user_detail.get('person_name', user_detail.get('name', 'Customer'))
         user_detail['model'] = user_detail.get('model', 'Maruti Suzuki car')
-        gryd.create_async_task('RunCampaignOrCreater', GRYD_COMMUNICATION_CAMPAIGN_SERVICE,
+        gryd.create_async_task('RunCampaignOrCreater', AUTOCRM_CAMPAIGN_SERVICE_NAME,
             args = [{
                 "enterprise_id": enterprise_id,
                 'campaign_id': campaign_id,
@@ -156,7 +155,7 @@ def run_workflow(
             user_detail = hp.make_single(user_details, force = True)
         gryd.create_async_task(
             'RunCampaignOrCreater',
-            GRYD_COMMUNICATION_CAMPAIGN_SERVICE,
+            AUTOCRM_CAMPAIGN_SERVICE_NAME,
             args=[{
                 "enterprise_id": enterprise_id,
                 'campaign_id': next_flow_dict.get('campaign_id', campaign_id),
@@ -374,3 +373,4 @@ def determine_campaign_next_action(enterprise_id: str, campaign_id: str, channel
         return
     logger.info(f"No more retries allowed for campaign_id={campaign_id}, channel={channel}, user_id={user_id}, session_id={session_id}, doing nothing.")
     return
+
