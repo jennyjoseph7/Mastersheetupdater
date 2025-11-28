@@ -72,6 +72,10 @@
       "type": "list"
     },
     {
+      "name": "buttons",
+      "type": "list"
+    },
+    {
       "name": "template_media_id",
       "type": "text"
     },
