@@ -1,73 +1,50 @@
 [
+  
+
   {
-    "template_id": "template-001",
-    "template_name": "Test Drive Booking",
+    "template_name": "warranty_expiry_alert_offer",
+    "template_message": "Hey there! Your {'vehicle_model'}'s warranty is expiring on {'warranty_expiry_date'}. Don't miss out on our special {'campaign_offer'}. Contact {'dealer_name'} today!",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Schedule a Call Back"
+        }
+    ],
+    "template_buttons_payload": [
+        "warranty_expiry_alert_offer-schedule_a_call_back"
+    ],
+    "template_variables": [
+        "dealer_name",
+        "campaign_offer",
+        "warranty_expiry_date",
+        "vehicle_model"
+    ],
+    "template_id" : "01kaxa87v6q0sb6b87gt6wc6nx",
+    "status": "approved",
+    
     "template_type": "text",
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "template_variables": ["person_name", "model_name"],
-    "status": ["approved"],
-    "created": 1704067200,
-    "updated": 1704067200,
-    "template_media_id": null,
-    "template_media_type": null,
-    "template_media_url": null,
-    "template_message": null,
-    "dealer_name": null,
-    "region_name": null,
-    "communication_credential_id": "airtel-917795030574",
-    "media_file_name": null,
-    "template_payload": {},
-    "sender": null,
-    "provider_name": null,
-    "template_buttons_payload": []
-  },
-  {
-    "template_id": "template-002",
-    "template_name": "Service Reminder",
-    "template_type": "text",
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "template_variables": ["person_name", "vehicle_model", "reg_number"],
-    "status": ["approved"],
-    "created": 1704067200,
-    "updated": 1704067200,
-    "template_media_id": null,
-    "template_media_type": null,
-    "template_media_url": null,
-    "template_message": null,
-    "dealer_name": null,
-    "region_name": null,
-    "communication_credential_id": "airtel-917795030574",
-    "media_file_name": null,
-    "template_payload": {},
-    "sender": null,
-    "provider_name": null,
-    "template_buttons_payload": []
-  },
-  {
-    "template_id": "template-003",
-    "template_name": "Price Enquiry Response",
-    "template_type": "text",
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "template_variables": ["person_name", "variant_name", "price"],
-    "status": ["approved"],
-    "created": 1704153600,
-    "updated": 1704153600,
-    "template_media_id": null,
-    "template_media_type": null,
-    "template_media_url": null,
-    "template_message": null,
-    "dealer_name": null,
-    "region_name": null,
-    "communication_credential_id": "airtel-917795030574",
-    "media_file_name": null,
-    "template_payload": {},
-    "sender": null,
-    "provider_name": null,
-    "template_buttons_payload": []
-  },{
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+
+    "campaign_objective" : ["Increase Insurance & Warranty Renewals","Warranty Expiry Offer"]
+},
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{
     "template_name": "Autobot_Service_Reminder_Message",
     "template_message": "Hello, this is a reminder that your {{vehicle_model}} is due for service on {{service_due_date}} at {{workshop_name}}. Regular service keeps your vehicle running smoothly and ensures safety. Would you like to book a service slot?",
     "buttons": [
@@ -80,17 +57,27 @@
             "text":"Request a Call Back"
         }
     ],
-    "template_button_payloads": [
+    "template_buttons_payload": [
         "autobot_service_reminder_message-book_a_service",
         "autobot_service_reminder_message-request_a_call_back"
     ],
-    "attributes_used": [
+    "template_variables": [
         "vehicle_model",
         "service_due_date",
         "workshop_name"
     ],
-    "template_id" : "01kazdn1a2w0d797m937k7jwxs"
-},{
+    "template_id" : "01kazdn1a2w0d797m937k7jwxs",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+
+    "campaign_objective" : ["repeat service booking","service booking reminder","service booking"]
+},
+
+
+{
     "template_name": "Autobot_Service_Discount_Enquiry",
     "template_message": "Hello, we noticed you were exploring service options for your {{vehicle_model}}. While discounts vary by workshop, we can help you check the best available offer at {{workshop_name}}. Your service is due on {{service_due_date}}. Would you any need assistance?",
     "buttons": [
@@ -103,11 +90,11 @@
             "text": "Request a Call Back"
         }
     ],
-    "template_button_payloads": [
+    "template_buttons_payload": [
         "autobot_service_discount_enquiry-check_offers",
         "autobot_service_discount_enquiry-request_a_call_back"
     ],
-    "attributes_used": [
+    "template_variables": [
         "vehicle_model",
         "workshop_name",
         "service_due_date"
@@ -120,8 +107,17 @@
         "service-due",
         "retention"
     ],
-    "template_id": "01kazax15650cy6d1ycw10qj1v"
-},{
+    "template_id": "01kazax15650cy6d1ycw10qj1v",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+
+    "campaign_objective" : ["Service Discount", "Service Booking" ]
+},
+
+{
     "template_name": "Autobot_Service_FollowUp_Tomorrow",
     "template_message": "Hi, as discussed earlier, your service for {{vehicle_model}} at {{workshop_name}} is due soon. You mentioned you will decide by tomorrow. Let us know if you need help with booking.",
     "buttons": [
@@ -134,11 +130,11 @@
             "text": "Request a Call Back"
         }
     ],
-    "template_button_payloads": [
+    "template_buttons_payload": [
         "autobot_service_followup_decide_tomorrow-book_a_service",
         "autobot_service_followup_decide_tomorrow-request_a_call_back"
     ],
-    "attributes_used": [
+    "template_variables": [
         "vehicle_model",
         "workshop_name"
     ],
@@ -149,8 +145,17 @@
     "lead_tags": [
         "service-due"
     ],
-    "template_id": "01kazb2xesq96z1zh9tx94f39z"
-},{
+    "template_id": "01kazb2xesq96z1zh9tx94f39z",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+
+    "campaign_objective" : ["Scheduled Service Reminder","Service Followup","Service Reminder", "repeat service booking"]
+},
+
+{
     "template_name": "Autobot_Service_FollowUp_4to7Days",
     "template_message": "Hello, this is a reminder that service for your {{vehicle_model}} is due soon. You had planned to decide within 4 to 7 days. We can share available slots at {{workshop_name}} whenever you are ready.",
     "buttons": [
@@ -163,11 +168,11 @@
             "text": "Request a Call Back"
         }
     ],
-    "template_button_payloads": [
+    "template_buttons_payload": [
         "autobot_service_followup_4to7days-book_a_service",
         "autobot_service_followup_4to7days-request_a_call_back"
     ],
-    "attributes_used": [
+    "template_variables": [
         "vehicle_model",
         "workshop_name"
     ],
@@ -178,8 +183,17 @@
     "lead_tags": [
         "service-due"
     ],
-    "template_id": "01kazbac2yr4yz4gcs0dt1nyh8"
-},{
+    "template_id": "01kazbac2yr4yz4gcs0dt1nyh8",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+
+    "campaign_objective" : ["Scheduled Service Reminder", "Service Followup","Service Reminder", "repeat service booking"]
+},
+
+{
     "template_name": "Autobot_Service_FollowUp_8to14Days",
     "template_message": "Hey, your service for {{vehicle_model}} is due on {{service_due_date}}. You mentioned you will decide within 8 to 14 days. Please let us know whenever you need assistance with the booking.",
     "buttons": [
@@ -192,11 +206,11 @@
             "text": "Request a Call Back"
         }
     ],
-    "template_button_payloads": [
+    "template_buttons_payload": [
         "autobot_service_followup_8to14days-book_a_service",
         "autobot_service_followup_8to14days-request_a_call_back"
     ],
-    "attributes_used": [
+    "template_variables": [
         "vehicle_model",
         "service_due_date"
     ],
@@ -207,8 +221,18 @@
     "lead_tags": [
         "service-due"
     ],
-    "template_id": "01kazbg0459bx91tgdvtge6rsq"
-},{
+    "template_id": "01kazbg0459bx91tgdvtge6rsq",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+
+    "campaign_objective" : ["Scheduled Service Reminder", "Service Followup","Service Reminder", "repeat service booking"]
+},
+
+
+{
     "template_name": "Autobot_Service_FollowUp_15to30Days",
     "template_message": "Hi, we hope your {{vehicle_model}} is running well. Your next service is due on {{service_due_date}}. You mentioned you will decide within 15 to 30 days. We are here if you need any assistance. Please complete your vehicle service timely.",
     "buttons": [
@@ -221,11 +245,11 @@
             "text": "Request a Call Back"
         }
     ],
-    "template_button_payloads": [
+    "template_buttons_payload": [
         "autobot_service_followup_15to30days-book_a_service",
         "autobot_service_followup_15to30days-request_a_call_back"
     ],
-    "attributes_used": [
+    "template_variables": [
         "vehicle_model",
         "service_due_date"
     ],
@@ -236,8 +260,60 @@
     "audience_tags": [
         "service-due"
     ],
-    "template_id": "01kazbk48j4cw885nfjt37258m"
-},{
+    "template_id": "01kazbk48j4cw885nfjt37258m",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+
+    "campaign_objective" : ["Scheduled Service Reminder", "Service Followup","Service Reminder", "repeat service booking"]
+},
+
+
+
+{
+    "template_name": "Autobot_Service_FollowUp_31to60Days",
+    "template_message": "Hello, your {{vehicle_model}} was due for service on {{service_due_date}}. Since you plan to decide within 31 to 60 days, we can help find a suitable slot at {{workshop_name}} whenever you are ready.",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Service"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_buttons_payload": [
+        "autobot_service_followup_31to60days-book_a_service",
+        "autobot_service_followup_31to60days-request_a_call_back"
+    ],
+    "template_variables": [
+        "service_due_date",
+        "vehicle_model",
+        "workshop_name"
+    ],
+    "disposition_tags": [
+        "reached",
+        "will-decide-31-60-days"
+    ],
+    "lead_tags": [
+        "service_due"
+    ],
+    "template_id": "01kazn1mjjm7w21q4k4m2aht9b",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+
+    "campaign_objective" : ["Scheduled Service Reminder", "Service Followup", "Service Reminder", "repeat service booking"]
+},
+
+
+
+{
     "template_name": "Autobot_Service_FollowUp_61to90Days",
     "template_message": "Hello, your {{vehicle_model}} service due was on {{service_due_date}}. Since you plan to decide within 61 to 90 days. Please ensure timely service of your vehicle for a good health and long run. Click on book a service to book your service slot.",
     "buttons": [
@@ -250,11 +326,11 @@
             "text": "Request a Call Back"
         }
     ],
-    "template_button_payloads": [
+    "template_buttons_payload": [
         "autobot_service_followup_61to90days-book_a_service",
         "autobot_service_followup_61to90days-request_a_call_back"
     ],
-    "attributes_used": [
+    "template_variables": [
         "service_due_date",
         "vehicle_model"
     ],
@@ -265,8 +341,20 @@
     "lead_tags": [
         "service_due"
     ],
-    "template_id": "01kazbvsp8kbncswa2w30ymqf7"
-},{
+    "template_id": "01kazbvsp8kbncswa2w30ymqf7",
+    "status": "approved",
+    
+    "communication_credentials_id": "airtel-917795030574",
+    "template_type": "text",
+    "campaign_type" : "post-sales",
+
+    "campaign_objective" : ["Scheduled Service Reminder", "Service Followup", "Service Reminder", "repeat service booking"]
+},
+
+
+
+
+{
     "template_name": "Autobot_Service_FollowUp_After90Days",
     "template_message": "Hi, your {{vehicle_model}} service due was on {{service_due_date}}. Since you will decide after 90 days regarding the service of your {{vehicle_model}}, we want to remind you that please complete your vehicle service timely to ensure good health of your vehicle for a long run.",
     "buttons": [
@@ -279,11 +367,11 @@
             "text": "Request a Call Back"
         }
     ],
-    "template_button_payloads": [
+    "template_buttons_payload": [
         "autobot_service_followup_after90days-book_a_service",
         "autobot_service_followup_after90days-request_a_call_back"
     ],
-    "attributes_used": [
+    "template_variables": [
         "service_due_date",
         "vehicle_model"
     ],
@@ -294,8 +382,20 @@
     "lead_tags": [
         "service_due"
     ],
-    "template_id": "01kazbz6c24fktnmvz7gnc5b2w"
-},{
+    "template_id": "01kazbz6c24fktnmvz7gnc5b2w",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+
+    "campaign_objective" : ["Scheduled Service Reminder", "Service Followup", "Service Reminder", "repeat service booking"]
+},
+
+
+
+
+{
     "template_name": "Autobot_Service_SelfCall_Reminder",
     "template_message": "Hello, noted that you will call {{workshop_name}} directly for the service of your {{vehicle_model}}. But we noticed that the call is not completed yet. If you need any assistance or want us to schedule it for you, feel free to reply here.",
     "buttons": [
@@ -308,11 +408,11 @@
             "text": "Request a Call Back"
         }
     ],
-    "template_button_payloads": [
+    "template_buttons_payload": [
         "autobot_service_selfcall_reminder-request_a_call_back",
         "autobot_service_selfcall_reminder-schedule_a_call"
     ],
-    "attributes_used": [
+    "template_variables": [
         "vehicle_model",
         "workshop_name"
     ],
@@ -323,14 +423,95 @@
     "lead_tags": [
         "service_due"
     ],
-    "template_id": "01kazc203gj2wqw1hxgdcfs831"
-},{
+    "template_id": "01kazc203gj2wqw1hxgdcfs831",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+
+    "campaign_objective" : ["Scheduled Service Reminder","Service Self Call Reminder", "Service Followup", "Service Reminder", "repeat service booking"]
+},
+
+
+{
     "template_name": "Autobot_Service_LowUsage_VehicleNotRun",
-    "template_message": "Hi, we understand your {{vehicle_model}} is not being run often. Even with low usage, periodic service is important for vehicle health, fluid condition, and safety checks. Would you like to have a no-obligation inspection at {{workshop_name}}?",
+    "template_message": "Hello, we noticed your {{vehicle_model}} has been used less recently. If you would like, we can assist with a routine check or service at {{workshop_name}}. Please select an option below.",
     "buttons": [
         {
             "type": "QUICK_REPLY",
-            "text": "Book Inspection"
+            "text": "Book a Service"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_buttons_payload": [
+        "autobot_service_lowusage_vehicle_not_run-book_a_service",
+        "autobot_service_lowusage_vehicle_not_run-request_a_call_back"
+    ],
+    "template_variables": [
+        "vehicle_model",
+        "workshop_name"
+    ],
+    "disposition_tags": [
+        "vehicle-not-run"
+    ],
+    "lead_tags": [
+        "inactive-user"
+    ],
+    "template_id": "01kazkyh3p7jzedtw6sqqbqbat",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+
+    "campaign_objective" : ["Improve Customer Retention After Service","Cold List Activation"]
+},
+
+
+{
+    "template_name": "Autobot_Regular_Service_Reminder",
+    "template_message": "Hello, this is a reminder that your {{vehicle_model}} is due for regular service on {{service_due_date}} at {{workshop_name}}. Timely service ensures smooth performance and safety. Would you like to book a slot?",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Service"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_buttons_payload": [
+        "autobot_regular_service_reminder-book_a_service",
+        "autobot_regular_service_reminder-request_a_call_back"
+    ],
+    "template_variables": [
+        "vehicle_model",
+        "service_due_date",
+        "workshop_name"
+    ],
+    "template_id" : "01kazg6x56t2na5b25f2qpdbhv",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+    "campaign_objective" : ["repeat service booking","Service Booking", "Scheduled Service Reminder","Service Reminder"]
+},
+
+
+
+{
+    "template_name": "Autobot_Inactive_Customer_Reactivation",
+    "template_message": "Hi, we noticed that your {{vehicle_model}} has not visited {{workshop_name}} for servicing for a long time. We would be happy to assist with a routine checkup or service whenever convenient. Would you like us to share available service slots?",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "View Available Slots"
         },
         {
             "type": "QUICK_REPLY",
@@ -341,22 +522,121 @@
             "text": "Request a Call Back"
         }
     ],
-    "template_button_payloads": [
-        "autobot_service_lowusage_vehicle_not_run-book_inspection",
-        "autobot_service_lowusage_vehicle_not_run-book_a_service",
-        "autobot_service_lowusage_vehicle_not_run-request_a_call_back"
+    "template_buttons_payload": [
+        "autobot_inactive_customer_reactivation-view_available_slots",
+        "autobot_inactive_customer_reactivation-request_a_call_back"
     ],
-    "attributes_used": [
+    "template_variables": [
         "vehicle_model",
         "workshop_name"
     ],
-    "disposition_tags": [
-        "vehicle-not-run"
+    "template_id": "01kazjr9gz98qgndg65p9k7myk",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+    "campaign_objective" : ["Cold List Activation","Inactive Customer Retention"]
+},
+
+
+
+
+
+
+{
+    "template_name": "Autobot_First_Service_Reminder",
+    "template_message": "Hello, this is a reminder that your {{vehicle_model}} is due for its first service around {{service_due_date}}. You may schedule a convenient slot at {{workshop_name}}.",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Service"
+        }
     ],
-    "lead_tags": [
-        "low-mileage",
-        "inactive-user"
+    "template_buttons_payload": [
+        "autobot_first_service_reminder-request_a_call_back",
+        "autobot_first_service_reminder-book_a_service"
     ],
-    "template_id": "01kazczxjgnx4m7c4bsw5cwjwc"
+    "template_variables": [
+        "workshop_name",
+        "vehicle_model",
+        "service_due_date"
+    ],
+    "template id" : "01kaznjb9rgt2tjwvdvnzeb04x",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+    "campaign_objective" : ["First-Service Reminder"]
+},
+
+
+{
+    "template_name": "Autobot_first_service_reminder_post_sales",
+    "template_message": "Hello, this is a reminder that your {{vehicle_model}} is due for its first service around {{service_due_date}}. You may schedule a convenient slot at {{workshop_name}}. Click below to schedule a service",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Service"
+        }
+    ],
+    "template_buttons_payload": [
+        "autobot_first_service_reminder_post_sales-request_a_call_back",
+        "autobot_first_service_reminder_post_sales-book_a_service"
+    ],
+    "template_variables": [
+        "workshop_name",
+        "vehicle_model",
+        "service_due_date"
+    ],
+    "template id" : "01kbc3m6bh29v8yp4x6e1s7gz2",
+    "status": "approved",
+    
+    "template_type": "text",
+    "communication_credentials_id": "airtel-917795030574",
+    "campaign_type" : "post-sales",
+    "campaign_objective" : ["First-Service Reminder"]
 }
+
+,
+{
+  "template_name": "Autobot_Free_Service_Reminder_Regnum",
+  "template_message": "Hello, your vehicle with registration number {{reg_number}} has a pending free service. You may get it done at {{workshop_name}} of {{dealer_name}} at your convenience.",
+  "buttons": [
+    {
+      "type": "QUICK_REPLY",
+      "text": "Book Service"
+    },
+    {
+      "type": "QUICK_REPLY",
+      "text": "Request Call Back"
+    }
+  ],
+  "template_buttons_payload": [
+    "autobot_free_service_regnum-book_a_service",
+    "autobot_free_service_regnum-request_a_callback"
+  ],
+  "template_variables": [
+    "reg_number",
+    "workshop_name",
+    "dealer_name"
+  ],
+  "template_type": "text",
+  "communication_credentials_id": "airtel-917795030574",
+  "campaign_type" : "post-sales",
+  "campaign_objective" : ["First Service Reminder","Free Service Reminder"],
+  "status": "approved",
+  "template_id": "01kb52hzx170wqea4zfwptq1eb"
+}
+
+
 ]
