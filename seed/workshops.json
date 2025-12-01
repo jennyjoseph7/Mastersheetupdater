@@ -44,5 +44,28 @@
     "total_technicians": 0,
     "display_vehicle_count": 0,
     "daily_service_capacity": 0
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "workshop_name": "Ambal Auto - Service Center",
+    "workshop_type": "Main Workshop",
+    "contact_number": "+91-9876543501",
+    "email": "workshop@ambalauto.com",
+    "address": "Ambal Auto, Iyer Hospital Premises, Trichy Rd, Coimbatore, Tamil Nadu 641005",
+    "city": "Coimbatore",
+    "state": "Tamil Nadu",
+    "pincode": "641005",
+    "geolocation": [11.0168, 76.9558],
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "18:00"
+    },
+    "manager_name": "Ramesh Kumar",
+    "created": 1704067200,
+    "updated": 1704067200,
+    "total_service_bays": 5,
+    "total_technicians": 8,
+    "display_vehicle_count": 0,
+    "daily_service_capacity": 20
   }
 ]
