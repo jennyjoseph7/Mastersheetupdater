@@ -18,8 +18,8 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from connectors.base_connector_communication import *
 logger= get_logger(__name__)
 logger.info("Intializing Test Whatsapp Connectors")
-from connectors.campaign_manager import BaseCustomCampaignManager,BaseWebhookConverter
-
+# from campaign.campaign_manager import BaseCustomCampaignManager
+from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 ALLOWED_PROVIDERS= str(os.environ.get("ALLOWED_PROVIDERS","airtel,rml,meta,concord,gupshup"))
 
 CACHE_FILE = "static/uploads/custom_whatsapp_webhook.json"
@@ -282,54 +282,6 @@ def post_contact_status(*args, **data):
 
     return
 
-@gryd.is_a_task(function_name="send_text_template_for_approval")
-def send_text_template_for_approval(data, *args, **kwargs):
-    """
-    Send a WhatsApp template to the Airtel API for approval.
-
-    This function prepares and forwards the template payload to Airtel's 
-    template approval API. On success, Airtel returns a template ID that 
-    can later be used to check the template's approval status.
-
-    Expected Input for text template (example):
-    {
-        "templateName": "SaleCarousel",
-        "wabaId": "113485138500957",
-        "customerId": "SOCIOGRAPH_uu76NiJRbNmsq5zPgu5V",
-        "category": "MARKETING",
-        "subAccountId": "965a92cd-ac2e-4674-87ab-99fc174e071f",
-        "templateContent": {
-            "language": "en",
-            "body": "This is just for testing for autobot demo",
-            "buttons": [
-                {
-                    "type": "QUICK_REPLY",
-                    "buttonText": "Button1"
-                },
-                {
-                    "type": "QUICK_REPLY",
-                    "buttonText": "Button2"
-                },
-                {
-                    "type": "CALL_TO_ACTION",
-                    "buttonText": "Website",
-                    "subType": "URL",
-                    "url": "https://www.google.com"
-                }
-            ]
-        }
-    }
-
-    Returns:
-        dict: Response from Airtel containing the `template_id`.
-              This ID can be used to track approval status.
-
-    """
-    
-    yield {
-        "template_id": "template_id_123",
-    }
-
 @gryd.is_a_task()    
 def check_or_create_session(self, phone_number): 
     """
@@ -364,261 +316,34 @@ def check_or_create_session(self, phone_number):
         "dealership_id": "dealership_id_123"
     }
 
-@gryd.is_a_task(function_name="trigger_campaign")
-def trigger_campaign(campaign_type, campaign_id):
-    logger.info("------ Triggering Campaign ------")
-
-    # 1. Fetch campaign details
-    with get_pg_connector() as pg:
-        if campaign_type == "pre_sales":
-            
-            campaign_details = list(pg.list("pre_sales_campaign", {"campaign_id": campaign_id}))
-            lead_table = "pre_sales_lead"
-        else:
-            campaign_details = list(pg.list("post_sales_campaign", {"campaign_id": campaign_id}))
-            lead_table = "post_sales_lead"
-
-    if not campaign_details:
-        raise ValueError("Invalid campaign_id")
-
-    campaign_details = campaign_details[0]
-    logger.info(f"CAMPAIGN DETAILS---{json.dumps(campaign_details,indent=4)}")
-
-    
-    # Default channel from campaign_details
-    campaign_channel_list = campaign_details.get("channels") or ["voice"]
-    default_channel = campaign_channel_list[0]
-
-    # 2. Fetch leads
-    with get_pg_connector() as pg:
-        leads = list(pg.list(lead_table, {"campaign_id": campaign_id}))
-
-    logger.info(f"Total leads: {len(leads)}")
-
-    # 3. Process each lead individually
-    for lead in leads:
-
-        channel = lead.get("preferred_contact_channel") or default_channel
-        #TODO:check this.
-        # map_channel_to_provider = {"voice": "voicebot", "whatsapp": "whatsapp_chat"}
-        # channel = map_channel_to_provider[channel]
-        
-        logger.info(f"------ Triggering Campaign Channel------{channel}")
-        res=gryd.create_async_task(
-            "process_single_lead",
-            GRYD_COMMUNICATION_CAMPAIGN_SERVICE,
-            args=[channel, lead, campaign_details],
-            kwargs={}
-        )
-
-
-
-@gryd.is_a_task(function_name="process_single_lead")
-def process_single_lead(channel, lead, campaign_details):
-    """
-    Trigger campaign for a single lead.
-    Channel is already decided outside this function.
-    """
-
-    logger.info(f"In process_single_lead task---------")
-    # Determine lead id field
-    lead_id_field = (
-        "pre_sales_lead_id"
-        if campaign_details.get("campaign_type") == "pre-sales"
-        else "post_sales_lead_id"
-    )
-    lead_id = lead.get(lead_id_field)
-    if not lead_id:
-        return None
-
-    # Template fetch
-    # template_data = get_template_from_lead(lead_id)
-    # template_data=gryd.create_async_task(
-    #     "get_template_from_lead",
-    #     GRYD_COMMUNICATION_CAMPAIGN_SERVICE,
-    #     args=[lead_id],
-    #     kwargs={}
-    #     )
-    
-    
-    # template_data=yield_gryd_task_results("get_template_from_lead",GRYD_COMMUNICATION_CAMPAIGN_SERVICE,{"lead_id":lead_id})
-    
-    template_data = get_template_from_lead(lead_id)
-    logger.info(f"TEMPATES DATA---{template_data}")
-    # Build user entry
-    campaign_user = {
-        "lead_id": lead_id,
-        "mobile_number": lead.get("phone_number"),
-        "customer_name": lead.get("person_name"),
-        "model": (lead.get("model_preference") or [None])[0],
-        "contact_channel": channel,                     # already computed
-        "template_id": template_data.get("template_id"),
-        "template_details": template_data.get("template_details"),
-    }
-
-    # Final payload (ONE user)
-    final_payload = {
-        **campaign_details,
-        **template_data,
-        # "channel": channel,
-        "enterprise_id": campaign_details.get("enterprise_id"),
-        "campaign_id": campaign_details.get("campaign_id"),
-        "campaign_user_source": {
-            "source_type": "default",
-            "campaign_users": [campaign_user],
-            "field_mapping": {
-                "lead_id": "lead_id",
-                "mobile_number": "mobile_number",
-                "customer_name": "customer_name",
-                "template_id": "template_id",
-                "template_details": "template_details",
-                "contact_channel": "contact_channel",
-            },
-            "config": {
-                "batch_size": 100,        # your default — change if needed
-                "_skip_sent_message": True
-            }
-        }
-    }
-
-    run_async = campaign_details.get("run_async", True)
-    is_testing = campaign_details.get("_is_testing", False)
-    b = BaseCustomCampaignManager()
-    
-    # Sync mode
-    if not run_async:
-        logger.info(f"herre-{final_payload}")
-        b.run_custom_campaign(
-            _is_testing=is_testing,
-            **final_payload
-        )
-        yield {"campaign_response": final_payload}
-    
-
-    logger.info(f"campaign_detailsssssss-----{campaign_details}")
-    # Async mode — separate queue task
-    task = gryd.create_async_task(
-        "async_run_custom_campaign",
-        GRYD_COMMUNICATION_CAMPAIGN_SERVICE,
-        args=[],
-        kwargs={"_is_testing": is_testing, **final_payload},
-        enterprise_id=campaign_details.get("enterprise_id","autobotcrm")
-    )
-
-    yield {
-        "task_response": task,
-        "campaign_response": final_payload
-    }
-
-
-
-# @gryd.is_a_task(function_name="get_template_from_lead")
-def get_template_from_lead(*args,**kwargs):
-    """
-    Get template information from the lead.
-
-    Returns a dictionary containing the template information.
-    """
-    logger.info("Inside get_template_from_lead---")
-    
-    lead_id=kwargs.get("lead_id")
-    
-    logger.info(f"LEAD_ID---{lead_id}")
-    
-    # if not lead_id:
-    #     return { "error":"No lead_id present.. "}
-        
-    return {
-        "template_id": "01k8x5qma8r5rqvax694a6eabf",
-        "template_name": "Service Reminder",
-        "template_type": "text",
-        "channel": "whatsapp_chat",
-        "language": "english",
-        "template_variables": [
-            "customer_name",
-            "model"
-        ],
-        "status": "approved",
-        "template_media_id": None,
-        "template_media_type": None,
-        "template_media_url": None,
-        "template_message": None,
-        "dealer_name": None,
-        "region_name": None,
-        "communication_credentials_id": None,
-        "media_file_name": None,
-        "template_payload": {}, #for media
-        "sender": "917795030574",
-        "provider_name": "airtel",
-        "template_buttons_payload": [
-            "book-service-reminder-yes",
-            "book-service-reminder-No"
-        ]
-    }
-
-
 if __name__=="__main__":
+    # for airtel 
     # data={
     # "messages": [
     #     {
-    #     "id": "0046d404-b561-11f0-a380-0a58a9feac02",
+    #     "to": "917795030574",
+    #     "businessId": "soco_addtwo",
     #     "from": "919113687241",
-    #     "type": "text",
-    #     "timestamp": "1761808865",
-    #     "text": {
-    #         "body": "what can you do?"
-    #     },
-    #     "message_id": "wamid.HBgMOTE5MTEzNjg3MjQxFQIAEhggQUM3RDhBRTYzRDI1ODkzNjY5NDhFOEE2MTRBN0RFRkQA"
-    #     }
-    # ],
-    # "contacts": [
-    #     {
+    #     "sessionId": "9da2b3855f104d169f677e7dcbea58c2",
     #     "profile": {
     #         "name": "Praveen A"
     #     },
-    #     "wa_id": "919113687241"
+    #     "message": {
+    #         "text": {
+    #         "body": "Hiii"
+    #         },
+    #         "timestamp": 1762666888537,
+    #         "type": "text"
+    #     },
+    #     "webhook_received_time": 1762666888.645379,
+    #     "ent_id": "autobot",
+    #     "conversation_id": "msil_auto_demo",
+    #     "whatsapp_provider": "airtel",
+    #     "language": "english",
+    #     "enterprise_id": "autobot"
     #     }
-    # ],
-    # "brand_msisdn": "918951708731",
-    # "request_id": "0046d404-b561-11f0-a380-0a58a9feac02",
-    # "webhook_received_time": 1761808866.994164,
-    # "enterprise_id": "no_code_low_code",
-    # "ent_id": "no_code_low_code",
-    # "conversation_id": "indiaautobot",
-    # "whatsapp_provider": "rml",
-    # "language": "english"
-    # }
-    
-    # process_webhook("rml","no_code_low_code","indiaautobot","english",**data)
-    
-    
-    # for airtel 
-    data={
-    "messages": [
-        {
-        "to": "917795030574",
-        "businessId": "soco_addtwo",
-        "from": "919113687241",
-        "sessionId": "9da2b3855f104d169f677e7dcbea58c2",
-        "profile": {
-            "name": "Praveen A"
-        },
-        "message": {
-            "text": {
-            "body": "Hiii"
-            },
-            "timestamp": 1762666888537,
-            "type": "text"
-        },
-        "webhook_received_time": 1762666888.645379,
-        "ent_id": "autobot",
-        "conversation_id": "msil_auto_demo",
-        "whatsapp_provider": "airtel",
-        "language": "english",
-        "enterprise_id": "autobot"
-        }
-    ]}
-    process_webhook("airtel","autobot","msil_auto_demo","english",**data)
+    # ]}
+    # process_webhook("airtel","autobot","msil_auto_demo","english",**data)
     
     pass
 

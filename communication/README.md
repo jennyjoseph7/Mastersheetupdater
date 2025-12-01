@@ -190,21 +190,11 @@ Currently implemented: Airtel.
 
 --------------------------------------------------------
 
-To run give the steps for both communication repo and autobot_agents/communication repo---
+# To start the worker - 
+
+go to your environment variable 
+run setup.sh
+worker -m campaign/campaign_worker.py
 
 
-
-
--------------------------------------------------------
-
-update_model_record - function in dbConnector 
-copy of communication repo is added to personal folder (nov 11)
-
-
-check what is static folder.
-
-
-----------------------------------------
-
-when campaign save the first 3 status in contact status model . 
 

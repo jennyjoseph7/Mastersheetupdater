@@ -72,6 +72,10 @@
       "type": "list"
     },
     {
+      "name": "buttons",
+      "type": "list"
+    },
+    {
       "name": "template_media_id",
       "type": "text"
     },
@@ -114,6 +118,124 @@
         "arabic"
       ],
       "ui_element": "select"
+    },
+    {
+      "name": "lead_tags",
+      "type": "string_list",
+      "ui_element": "multiselect"
+    },
+    {
+      "name": "campaign_type",
+      "type": "list",
+      "options": [
+        "pre-sales",
+        "post-sales",
+        "dealership"
+      ],
+      "required" :true
+    },
+    {
+      "name": "campaign_objective",
+      "type": "list",
+      "options": [
+        "Product Launch / Reveal",
+        "Event Promotion",
+        "Cold List Activation",
+        "Event/Expo Data Activation",
+        "Dormant CRM Reactivation",
+        "Interest Confirmation & Qualification",
+        "Profile Completion Campaign",
+        "Dealer / OEM Offer Promotion",
+        "Exchange / Loyalty Bonus Offer",
+        "EMI / Finance Scheme Push",
+        "Year-End / Stock Clearance",
+        "New Variant / Feature Highlight",
+        "Price Drop / Offer Re-Nudge",
+        "Comparison / Decision Aid Campaign",
+        "Test Drive Reminder / Showroom Visit Reminder / Follow-Up",
+        "Accessory Promotion / Suggestion",
+        "Insurance / Finance / RSA Add-On",
+        "Upgrade Offer for Existing Owner",
+        "Custom Campaign",
+        "Post-Purchase Call",
+        "Welcome Email / WhatsApp",
+        "First-Service Reminder",
+        "Scheduled Service Reminder",
+        "Missed Service Follow-Up",
+        "Seasonal Check-Up / Awareness",
+        "AMC Renewal",
+        "Warranty Expiry Offer",
+        "Referral Program / Loyalty",
+        "Birthday / Anniversary Offer",
+        "Exclusive Member Event",
+        "Post-Service Feedback (CSI / NPS)",
+        "Customer Education / How-To",
+        "Recall / Recall Follow-Up / Completion Confirmation"
+      ],
+      "option_others": true,
+      "required" : true
+    },
+    {
+      "name": "disposition_tags",
+      "type": "string_list",
+      "ui_element": "multiselect",
+      "options": [
+        "queued",
+        "attempted",
+        "reached",
+        "contacted",
+        "engaged",
+        "converted",
+        "failed",
+        "error"
+      ],
+      "option_others": true
+    },
+    {
+      "name": "disposition_detail_tags",
+      "type": "string_list",
+      "ui_element": "multiselect",
+      "options": [
+        "Vehicle is commercial or part of a fleet",
+        "Vehicle is not being run",
+        "Requires special spare parts",
+        "Voicemail",
+        "Has sold/given away the car",
+        "Has moved to another location",
+        "Cannot make decision on servicing",
+        "Will call showroom themselves",
+        "Looking for a discount",
+        "Language barrier",
+        "Has serviced car in another dealership",
+        "Will call workshop themselves",
+        "Will decide tomorrow",
+        "Will decide within 1 to 3 days",
+        "Will decide within 4 to 7 days",
+        "Will decide within 8 to 14 days",
+        "Will decide within 15 to 30 days",
+        "Will decide within 31 to 60 days",
+        "Will decide within 61 to 90 days",
+        "Will decide after 90 days",
+        "Is not decision maker",
+        "Will decide later, will purchase within 15 days",
+        "Will decide later, will purchase within 1 to 3 months",
+        "Will decide later, exploring options",
+        "No buying intent",
+        "Just Exploring",
+        "Will call showroom themselves",
+        "Purchased elsewhere",
+        "Converted",
+        "Enquired for Pricing",
+        "Enquired for Specifications",
+        "Enquired for Test Drive",
+        "Enquired for Showroom Visit",
+        "Enquired for Brochure",
+        "Enquired for Dealership Details",
+        "Enquired for Others",
+        "Comparing with another brand",
+        "Converted"
+      ],
+      "option_others": true
     },
     {
       "name": "status",

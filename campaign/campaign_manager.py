@@ -1,18 +1,18 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import asyncio
 from copy import deepcopy as copy
 import math
 import os
-from typing import Dict, Any, List, Tuple, Optional, Generator
 from os.path import exists as ispath, dirname, basename, join as joinpath, abspath, split as pathsplit, splitext, sep as dirsep, isfile
 import sys
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
-from connectors.communication_helpers import _wait_for_next_minute,yield_gryd_task_results
-from connectors.base_connector_communication import *
-from connectors.whatsapp_connectors.source_connectors import *
+from communication.connectors.communication_helpers import _wait_for_next_minute,yield_gryd_task_results
+from communication.connectors.base_connector_communication import *
+from config import AUTOCRM_CAMPAIGN_SERVICE_NAME
+gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
+gryd.set_queue_manager()
+QUEUE_MANAGER = gryd.get_queue_manager(AUTOCRM_CAMPAIGN_SERVICE_NAME)
 logger=hp.get_logger(__name__)
-
 def clean_phone_number(phone_number: str) -> str:
     """
     Clean phone number:
@@ -352,7 +352,7 @@ class BaseCustomCampaignManager:
                         count,)
                 else:
                     logger.info(f"[{count}] Dispatching async WhatsApp message for phone_number:{campaign_data.get('mobile_number')}, campaign_id:{campaign_data.get('campaign_id')}, lead_id:{campaign_users.get('lead_id')}")
-                    gryd.create_async_task("async_send_campaign_message",GRYD_COMMUNICATION_CAMPAIGN_SERVICE,args=[
+                    gryd.create_async_task("async_send_campaign_message",AUTOCRM_CAMPAIGN_SERVICE_NAME,args=[
                         user.get("mobile_number"),
                         user.get("lead_id"),
                         campaign_data,

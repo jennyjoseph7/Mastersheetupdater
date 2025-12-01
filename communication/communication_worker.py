@@ -4,28 +4,27 @@ import importlib
 import pkgutil
 import helpers as hp
 import json
-import os
 from gryd_worker import gryd
-import campaign_workflow
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from campaign.campaign_workflow import determine_campaign_next_action
 from typing import Union
 
-from os.path import (
-    exists as ispath,
-    dirname,
-    abspath,
-    basename,
-    join as joinpath,
-    split as pathsplit,
-    splitext,
-    sep as dirsep,
-    isfile
-)
+from os.path import exists as ispath, dirname, basename, join as joinpath, abspath, split as pathsplit, splitext, sep as dirsep, isfile
 import sys
 # --- Set import path for internal modules ---
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
 from connectors.communication_configs import *
-
+from config import AUTOCRM_COMMUNICATION_SERVICE_NAME
+gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
+# config={
+#     "broker_type": GRYD_COMMUNICATION_BROKER,
+#     "timeout":GRYD_COMMUNICATION_TIMEOUT,
+#     "wait_time_to_shutdown":GRYD_COMMUNICATION_SHUTDOWN_TIMEOUT
+#     }
+gryd.set_queue_manager()
+QUEUE_MANAGER = gryd.get_queue_manager(AUTOCRM_COMMUNICATION_SERVICE_NAME)
 logger=hp.get_logger(__name__)
 
 def import_modules(module_name):
@@ -70,7 +69,9 @@ def determine_campaign_next_action(enterprise_id: str, campaign_id: str, channel
         None.
         Triggers the next action for a campaign.
     """
-    return campaign_workflow.determine_campaign_next_action(enterprise_id, campaign_id, channel, user_id, session_id, disposition, i2ce_headers)
+    return determine_campaign_next_action(enterprise_id, campaign_id, channel, user_id, session_id, disposition, i2ce_headers)
+
+
 
 
 
