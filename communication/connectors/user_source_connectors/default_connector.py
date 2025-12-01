@@ -28,11 +28,11 @@ class DefaultCampaignSource(CampaignSourceBase):
 
     def fetch_next_batch(self, batch_size: int = None, *args, **kwargs):
         batch_size = batch_size or self.default_batch_size
-
+        logger.info(f"fetch_next_batch---{batch_size}")
         # Check rate limits
-        limit_block = self._check_rate_limits()
-        if limit_block:
-            return limit_block
+        # limit_block = self._check_rate_limits()
+        # if limit_block:
+        #     return limit_block
 
         # Determine the next batch
         start = self._current_index
@@ -56,24 +56,25 @@ class DefaultCampaignSource(CampaignSourceBase):
             batch = mapped_batch
 
         # Update counters & status
-        self._update_rate_counters(len(batch))
-        try:
-            last_page = int(self.status.get("last_page", 0)) + 1
-            self.status_model.patch(
-                self.status_id,
-                {"last_page": last_page, "model_filters": self.default_filters}
-            )
-        except KeyError:
-            self.status_model.post({
-                "campaign_id": self.campaign_id,
-                "campaign_detail_id": self.campaign_detail_id,
-                "campaign_status": "started",
-                "last_page": 1,
-                "model_filters": self.default_filters,
-                "campaign_status_check_id": self.status_id
-            })
+        # self._update_rate_counters(len(batch))
+        # try:
+        #     # last_page = int(self.status.get("last_page", 0)) + 1
+        #     # self.status_model.patch(
+        #     #     self.status_id,
+        #     #     {"last_page": last_page, "model_filters": self.default_filters}
+        #     # )
+        # except KeyError:
+        #     self.status_model.post({
+        #         "campaign_id": self.campaign_id,
+        #         "campaign_detail_id": self.campaign_detail_id,
+        #         "campaign_status": "started",
+        #         "last_page": 1,
+        #         "model_filters": self.default_filters,
+        #         "campaign_status_check_id": self.status_id
+        #     })
 
-        self.status = self.status_model.get(self.status_id)
+        # self.status = self.status_model.get(self.status_id)
+        logger.info(f"TEST fetch_next_batch---{batch}")
         return batch
 
 

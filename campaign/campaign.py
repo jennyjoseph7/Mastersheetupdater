@@ -1,18 +1,15 @@
-from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
-import sys, os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if not BASE_DIR in sys.path:
+import sys
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(abspath(__file__)))
+if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
-from connectors.communication_helpers import *
-from connectors.communication_configs import GRYD_COMMUNICATION_CAMPAIGN_SERVICE
-I2CE_BASE_URL = os.environ.get("I2CE_BASE_URL", "https://test.iamdave.ai")
-I2CE_HEADERS = {
-    "X-I2CE-API-KEY": os.environ.get("I2CE_API_KEY", "9c0e4530-67ee-31cd-934b-89faj9sjd9g"),
-    "X-I2CE-USER-ID": os.environ.get("I2CE_USER_ID", "ananth+autobot@i2ce.in"),
-    "X-I2CE-ENTERPRISE-ID": os.environ.get("I2CE_ENTERPRISE_ID", "autobot"),
-    "Content-Type": "application/json"
-}
+from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CAMPAIGN_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
+from autocrm_db_helper import get_pg_connector
+from typing import List, Union, Dict, Any
 
+gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
+gryd.set_queue_manager()
+mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
 DISPOSITION_MAP = {
     "sent": "attempted",
@@ -61,135 +58,106 @@ DISPOSITION_MAP = {
     "no-answer": "failed",
 }
 
-logger = hp.get_logger(__name__)
+DISPOSITION_DETAIL_MAP = {
 
-def get_i2ce_response(url: str, headers: dict, params: dict):
-    response = requests.get(url, headers=headers, params=params)
-    response.raise_for_status()
-    try:
-        return response.json()
-    except ValueError as e:
-        logger.error(f"Error getting json compatible i2ce response: {e}: {response.text}")
-        hp.print_error(e)
-        raise(e)
+}
 
+CHANNEL_IDENTIFIER_MAP = {
+    "whatsapp": "phone_number",
+    "voice": "phone_number",
+    "voicebot": "phone_number",
+    "email": "email",
+    "sms": "phone_number"
+}
+
+mlogger = gryd.hp.get_logger(gryd.SERVICE)
+
+
+@gryd.is_a_task(function_name="run_workflow", job_param='job', auth_param='auth', logger_param='logger')
 def run_workflow(
-        enterprise_id: str, 
         campaign_id: str, 
+        campaign_type: str,
         channel: str, 
-        user_id: str, 
-        session_id: str, 
+        channel_identifier: str,
         next_flow_dict: dict, 
+        lead_id: Union[str, None] = None,
+        user_id: Union[str, None] = None, 
+        session_id: Union[str, None] = None, 
         delay:int = 0, 
-        user_detail: Union[dict, None] = None, 
-        campaign_detail: Union[dict, None] = None, 
-        i2ce_headers: Union[dict, None] = None
+        enterprise_id: Union[str, None] = None, 
+        logger=None, job=None, auth=None, *args, **kwargs
     ):
-    logger.info(f"Running workflow for campaign_id={campaign_id}, channel={channel}, user_id={user_id}, session_id={session_id}")
+    enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
+    logger = logger or mlogger
+    campaign_type = campaign_type.lower()
+    channel = channel.lower()
+    campaign_model = None
+    lead_model = None
+    user_model = None
+    user_id_attr = None
+    if campaign_type == "pre-sales":
+        campaign_model = "pre_sales_campaign"
+        lead_model = "pre_sales_lead"
+        user_model = "person"
+        user_id_attr = "user_id"
+    elif campaign_type == "post-sales":
+        campaign_model = "post_sales_campaign"
+        lead_model = "post_sales_lead"
+        user_model = "vehicle"
+        user_id_attr = "vehicle_id"
+    elif campaign_type == "dealership":
+        campaign_model = "dealership_campaign"
+        lead_model = "dealership_lead"
+        user_model = "dealership"
+        user_id_attr = "dealership_id"
+    else:
+        raise ValueError(f"Invalid campaign type: {campaign_type}")
+    channel_identifier_name = CHANNEL_IDENTIFIER_MAP.get(channel)
+    if not channel_identifier_name:
+        msg = f"Invalid channel: {channel} for campaign_id={campaign_id}, campaign_type={campaign_type}, enterprise_id={enterprise_id}, doing nothing."
+        logger.error(msg)
+        raise ValueError(msg)
+    logger.info(f"Running next workflow for {channel_identifier_name}={channel_identifier} for campaign_id={campaign_id}, campaign_type={campaign_type}, enterprise_id={enterprise_id}")
     logger.info(f"next_flow_dict={hp.json.dumps(next_flow_dict, hp.json.OPT_INDENT_2)}, delay={delay}")
-    logger.info(f"campaign_detail={hp.json.dumps(campaign_detail, hp.json.OPT_INDENT_2)}, user_detail={hp.json.dumps(user_detail, hp.json.OPT_INDENT_2)}")
-    if channel.upper() == "WHATSAPP":
-        if not campaign_detail:
-            campaign_detail_model = gryd.load_gryd_model('gryd_campaign_detail', enterprise_id)
-            campaign_detail = campaign_detail_model.list(_page_size=1, _as_option=True, campaign_id=campaign_id, source = channel.lower())
-            if not campaign_detail:
-                logger.info(f"No campaign detail found for campaign_id={campaign_id}, channel={channel}, doing nothing.")
-                return
-            campaign_detail = hp.make_single(campaign_detail, force = True)
-        if not user_detail:
-            user_details = get_user_details(enterprise_id, campaign_id, channel, user_id)
-            if not user_details:
-                logger.info(f"No user details found for campaign_id={campaign_id}, channel={channel}, user_id={user_id}, doing nothing.")
-                return
-            user_detail = hp.make_single(user_details, force = True)
-        user_detail['name'] = user_detail.get('person_name', user_detail.get('name', 'Customer'))
-        user_detail['model'] = user_detail.get('model', 'Maruti Suzuki car')
-        gryd.create_async_task('RunCampaignOrCreater', GRYD_COMMUNICATION_CAMPAIGN_SERVICE,
-            args = [{
-                "enterprise_id": enterprise_id,
-                'campaign_id': campaign_id,
-                'campaign_detail_id': session_id,
-                'channel': "whatsapp",
-                'channel_provider': 'airtel',
-                "channel_number": '917795030574',
-                "conversation_id": campaign_detail.get('conversation_id'),
-                "campaign_name": campaign_detail.get('campaign_name'),
-                "campaign_start_date": campaign_detail.get('start_date'),
-                "campaign_end_date": campaign_detail.get('end_date'),
-                "_force_campaign_update": True,
-                "_reset_campaign_status": True,
-                "run_async": False,
-                "max_per_day": 20000,
-                'template_type': next_flow_dict.get('template_type', campaign_detail.get('template_type', 'text_template')),            
-                'template_id': next_flow_dict.get('template_id', campaign_detail.get('template_id')),
-                'template_name': next_flow_dict.get('template_name', campaign_detail.get('template_name')),
-                'language': next_flow_dict.get('language', campaign_detail.get('language', 'ENGLISH')),
-                'template_headers': next_flow_dict.get('template_headers', campaign_detail.get('template_headers', {})),
-                'template_parameters': next_flow_dict.get('template_parameters', campaign_detail.get('template_parameters', {})),
-                'template_message_text': next_flow_dict.get('template_message_text', campaign_detail.get('message_text')),
-                'template_variables': next_flow_dict.get('template_variables', campaign_detail.get('template_variables', [])),
-                'template_buttons_payload': next_flow_dict.get('template_buttons_payload', campaign_detail.get('template_buttons_payload', [])),
-                'delay': delay or 0,
-                "campaign_user_source": {
-                    "source_type": "default",
-                    "is_internal": True,
-                    "connection": {
-                        "endpoint": "",
-                        "headers": {}
-                    },
-                    "field_mapping": {
-                        "mobile_number": "Phone Number",
-                        "name": "Name",
-                        "last_service_date": "Last Service Date"
-                    },
-                    "campaign_users": [user_detail],
-                    "_skip_sent_message": False
-                } 
-            }]
-        )
-    if channel.upper() in ["VOICE", "VOICEBOT"]:
-        if not user_detail:
-            user_details = get_user_details(enterprise_id, campaign_id, "VOICE", user_id)
-            if not user_details:
-                logger.info(f"No user details found for campaign_id={campaign_id}, channel={channel}, user_id={user_id}, doing nothing.")
-                return
-            user_detail = hp.make_single(user_details, force = True)
-        gryd.create_async_task(
-            'RunCampaignOrCreater',
-            GRYD_COMMUNICATION_CAMPAIGN_SERVICE,
-            args=[{
-                "enterprise_id": enterprise_id,
-                'campaign_id': next_flow_dict.get('campaign_id', campaign_id),
-                'channel': "voicebot",
-                "channel_provider": next_flow_dict.get('channel_provider', campaign_detail.get('channel_provider', 'twilio')),
-                "conversation_id": next_flow_dict.get('conversation_id', campaign_detail.get('conversation_id', '')),
-                "campaign_name": next_flow_dict.get('campaign_name', campaign_detail.get('campaign_name', '')),
-                "campaign_start_date": next_flow_dict.get('start_date', campaign_detail.get('start_date', '')),
-                "campaign_end_date": next_flow_dict.get('end_date', campaign_detail.get('end_date', '')),
-                "campaign_created_by": next_flow_dict.get('campaign_created_by', campaign_detail.get('campaign_created_by', 'Auto')),
-                "channel_credential": next_flow_dict.get('channel_credential', campaign_detail.get('channel_credential', {})),
-                '_force_campaign_update': True,
-                '_reset_campaign_status': True,
-                'run_async': False,
-                'delay': delay or 0,
-                'campaign_user_source': {
-                    'source_type': 'default',
-                    'is_internal': True,
-                    "connection": {
-                        "endpoint": "",
-                        "headers": {}
-                    },
-                    "field_mapping": {
-                        "mobile_number": "Phone Number",
-                        "name": "Name",
-                        "last_service_date": "Last Service Date"
-                    },
-                    'campaign_users': [user_detail],
-                    "_skip_sent_message": False
-                }
-            }]
-        )
-
+    lead_model = gryd.load_gryd_model(lead_model, enterprise_id)
+    session_model = gryd.load_gryd_model('session', enterprise_id)
+    user_model = gryd.load_gryd_model(user_model, enterprise_id)
+    campaign = campaign_model.get(campaign_id)
+    if not campaign:
+        msg = f"No campaign found for campaign_id={campaign_id}, campaign_type={campaign_type}, enterprise_id={enterprise_id}, doing nothing."
+        logger.error(msg)
+        raise ValueError(msg)
+    if lead_id:
+    if not user_id and session_id:
+        last_session = session_model.get(session_id)
+        user_id = last_session.get('user_id')
+    if not user_id and last_session:
+        user_id = last_session.get('user_id')
+    if not user_id and lead:
+        user_id = lead.get('user_id')
+    if not session_id:
+        last_session = session_model.list(_page_size=1, _as_option=True, campaign_id=campaign_id, channel=channel, **{channel_identifier_name: channel_identifier}, _sort_by="updated", _sort_reverse=True)
+    else:
+        last_session = session_model.get(session_id)
+    if not user_id and last_session:
+        user_id = last_session.get('user_id')
+    if user_id:
+        user = user_model.get(user_id)
+    elif last_session:
+        user
+        user = None
+    if lead_id:
+        lead = lead_model.get(lead_id)
+    kwargs = {
+        "enterprise_id": enterprise_id,
+        'campaign_id': campaign_id,
+        'campaign_type': campaign_type,
+        'channel': channel,
+        'lead': lead,
+    }
+    kwargs[channel_identifier_name] = channel_identifier
+    kwargs[f'{campaign_type.replace("-", "_")}_id'] = lead_id
+    gryd.create_async_task('RunCampaignOrCreater', AUTOCRM_CAMPAIGN_SERVICE_NAME, kwargs=kwargs)
 
 def get_user_details(enterprise_id: str, campaign_id: str, channel: str, user_id: str, i2ce_headers: Union[dict, None] = None, **kwargs):
     i2ce_headers = i2ce_headers or I2CE_HEADERS

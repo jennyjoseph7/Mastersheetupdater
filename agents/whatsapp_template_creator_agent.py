@@ -1,7 +1,6 @@
 import json
-import os
+import os, sys
 import re
-from datetime import datetime
 from ai_service import ai_service_app
 
 try:
@@ -9,8 +8,14 @@ try:
 except ImportError:
     from base_agent import BaseAgent, gryd 
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
+
+from agents.data_attributes_retriever_agent import data_attribute_retriever
+
 import random
 
 class WhatsappTemplateCreatorAgent(BaseAgent):
@@ -63,6 +68,7 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         self.source = source
         print(source)
         self.campaign_type = source.get("campaign_type","")
+        self.campaign_id = source.get("campaign_id","")
         self.campaign_objective = self._validate_campaign_objective(source.get("campaign_objective"))
         self.input_data = source.get("data",{})
         self.dealership_id = source.get("dealership_id", "")
@@ -87,6 +93,18 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
             return languages
         else:
             return ["english"]
+        
+    def _extract_attributes(self,json_path):
+        with open(json_path, "r") as f:
+            data = json.load(f)
+
+        names = [data.get("name")]
+
+        for attr in data.get("attributes", []):
+            if "name" in attr:
+                names.append(attr["name"])
+
+        return names
 
     def _build_prompt(self):
         """
@@ -109,7 +127,7 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         3. TYPES & CONSTRAINTS:
            - The language you'll be using to generate template_text must be colloquial {language}
            - template_name: descriptive name related to campaign (use underscores, no spaces)
-           - template_text: personalized message using 2-4 attributes with {{placeholders}}, under 400 characters
+           - template_text: personalized message using the attributes with {{placeholders}}, under 400 characters. Must be inside double curly brackets or curly brackets inside a curly brackets and inside the attribute name.
            - attributes_used: array of attribute names actually used in template_text
            - suggested_ctas: array of 2-3 CTA buttons
 
@@ -135,7 +153,7 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
 
         Campaign Objective: {self.campaign_objective}
         Campaign Type: {self.campaign_type}
-        Available Customer Data: {self.input_data}
+        Available Customer Data: {self.input_data}, Make sure you use all these key attributes. and attribute names will be inside double curly brackets like this '{{"attribute_name"}}'
         Preferred CTA Buttons: {self.cta_buttons}
 
         Create an engaging, personalized template that uses relevant customer attributes.
@@ -196,12 +214,11 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
             }
     
     def pick_from_model(self):
+
         records = list(pg.list(
-        table_name= "dealership_idea",
+        table_name= "template",
         where= {
-            "campaign_objective" : self.campaign_objective,
-            "campaign_type": self.campaign_type
-        
+            #filtering conditions will be added later
         }
         ))
 
@@ -214,9 +231,38 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
 
         return picked
     
+    def fix_template_message_braces(self,template_json: dict) -> dict:
+        """
+        Ensures that only the template_message field has {{placeholders}}
+        by converting {var} → {{var}} without affecting existing {{var}}.
+        """
+        if "template_message" not in template_json:
+            return template_json  # nothing to fix
+
+        message = template_json["template_message"]
+
+        # Regex: replace {var} only when it's not already {{var}}
+        pattern = r'(?<!{){([^{}]+)}(?!})'
+        fixed_message = re.sub(pattern, r'{{\1}}', message)
+
+        template_json["template_message"] = fixed_message
+        return template_json
+    
 
     def run(self):
         """Executes template generation and returns final result."""
+        if self.campaign_type in ["pre-sale","Pre-sale","pre_sale","Pre_Sale","pre sale","Pre Sale"]:
+            model_attributes = self._extract_attributes("data/pre_sales_lead.json")
+        elif self.campaign_type in ["Post-Sale","post-sale","Post_Sale","post_sale","Post-Sales","post-sales","Post_Sales","post_sales","post sale","Post Sale","post sales","Post Sales"]:
+            model_attributes = self._extract_attributes("data/post_sales_lead.json")
+
+        self.input_data = {
+            key: value
+            for key, value in self.input_data.items()
+            if key in model_attributes
+        }
+        attributes_used = [key for key in self.input_data]
+
         if self.ai_generation is True:
             try:
                 self.logger.info("Starting WhatsApp template generation...")
@@ -232,6 +278,10 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
 
                 # Assemble final output
                 final_output = self._assemble_output(generated_data)
+
+                final_output["attributes_used"] = attributes_used
+
+                final_output = self.fix_template_message_braces(final_output)
 
                 self.logger.info("Template generation completed successfully")
                 self.logger.info(f"Generated template: {final_output['template_name']}")
@@ -253,14 +303,23 @@ def generate_whatsapp_template(*args, logger=None, job=None, **kwargs):
     logger = logger or gryd.hp.get_logger(__name__)
     logger.info("Creating WhatsApp template using CRM data...")
 
+    
+
     try:
-        user_data = kwargs or {}
+        #user_data = kwargs or {}
+        if "user_data" in kwargs and isinstance(kwargs["user_data"], dict):
+            user_data = kwargs["user_data"]
+
 
         if not isinstance(user_data, dict):
             logger.error("Invalid user_data type. Expected dict.")
             raise ValueError("user_data must be a dictionary")
 
         logger.info(f"Incoming template data: {user_data}")
+        campaign_id = user_data.get("campaign_id","")
+        campaign_type = user_data.get("campaign_type","")
+
+        attribute_agent = data_attribute_retriever(campaign_id = campaign_id, campaign_type = campaign_type)
 
         agent = WhatsappTemplateCreatorAgent(source=user_data, logger=logger)
         logger.info("Running template generation agent...")
@@ -268,13 +327,13 @@ def generate_whatsapp_template(*args, logger=None, job=None, **kwargs):
         result = agent.run()
         logger.info("Template generated successfully")
 
-        try:
-            dim = gryd.base_model.Model('templates', AUTOCRM_APP_ENTERPRISE_ID)
-            logger.info(f"Posting result to model 'templates' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
-            dim.post(result)
-            logger.info("Post completed successfully!")
-        except Exception as db_error:
-            logger.error(f"Failed posting to Gryd model: {db_error}")
+        # try:
+        #     dim = gryd.base_model.Model('template', AUTOCRM_APP_ENTERPRISE_ID)
+        #     logger.info(f"Posting result to model 'templates' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
+        #     dim.post(result)
+        #     logger.info("Post completed successfully!")
+        # except Exception as db_error:
+        #     logger.error(f"Failed posting to Gryd model: {db_error}")
 
         return result
 

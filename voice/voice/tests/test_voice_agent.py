@@ -325,8 +325,8 @@ class GEMINI_API():
                                         await output_queue.put(inline_data)
                                 if server_content.generation_complete:
                                     logger.info(f'Agent Finished the Genertion.') 
-                                    logger.info(f'Final Input Transcription: {''.join(output_transcript).strip()}')
-                                    logger.info(f'Final Output Transcription: {''.join(input_transcript).strip()}')
+                                    logger.info(f'Final Input Transcription: {"".join(output_transcript).strip()}')
+                                    logger.info(f'Final Output Transcription: {"".join(input_transcript).strip()}')
                                     
                                     input_transcript = []
                                     output_transcript = []

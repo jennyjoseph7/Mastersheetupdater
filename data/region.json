@@ -46,6 +46,11 @@
       "type": "text"
     },
     {
+      "name": "date_format",
+      "type": "text",
+      "default": "%d-%m-%Y"
+    },
+    {
       "name": "region_guardrails",
       "type": "text"
     },

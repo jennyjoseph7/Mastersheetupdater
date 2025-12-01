@@ -1,7 +1,4 @@
-"""
-Input Manager with Multi-Process Queue Implementation
-Handles user audio input in a separate process to avoid asyncio single-thread limitations
-"""
+
 
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -16,9 +13,8 @@ from multiprocessing import Process, Queue
 import threading
 import queue
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+import utils
+logger = utils.get_logger(__name__)
 
 class InputState(Enum):
     IDLE = "idle"
@@ -33,47 +29,55 @@ class InputState(Enum):
 class OutputState(Enum):
     END_CALL = "end_call"
     COMPLETED = "completed"
-    RESPONDING = "responding"
-    AI_AGENT = "ai_agent"
-    HUMAN_AGENT = "human_agent"
+    AI_AGENT_RESPONSE = "ai_agent_responding"
+    HUMAN_AGENT_RESPONSE = "human_agent_responding"
+    CLEAR_BUFFER = 'clear_buffer'
     TAG = "output_manager"
+
+class MessageTimeLifecyle(Enum):
+    USER_INPUT_SENT  = "user_sent"
+    INPUT_SOCKET_RECIEVED = "socket_recieved"
+    INPUT_MANAGER_RECIEVED = "input_manager_recieved"
+    AGENT_RECIEVED = "agent_recieved"
+    AGENT_RESPONDED = "agent_responded"
+    OUTPUT_MANAGER_RECIEVED  = "output_manager_recieved"
+    OUTPUT_SOCKET_SENT   = "output_socket_recieved"
+    
 
 
 @dataclass
 class Message:
     message_id: str
     session_id: str
-    audio_data: Union[bytes, dict[str, any]] = None
-    transcript: Optional[str] = None
-    timestamp: float = 0.0
-    is_interruption: bool = False
     state: Union[InputState, OutputState] = None
     tag: Literal["input_manager", "output_manager"] = "input_manager"
+    message_type: Literal['stream_start', 'audio_input', 'audio_output', 'clear_buffer'] = 'stream_start'
+    metadata: dict = None
+    audio_data: Union[bytes, dict[str, any]] = None
+
 
     def to_dict(self):
         return {
             'message_id': self.message_id,
             'session_id': self.session_id,
-            'audio_data': self.audio_data,
-            'transcript': self.transcript,
-            'timestamp': self.timestamp,
-            'is_interruption': self.is_interruption,
             'state': self.state,
-            'tag': self.tag
-        }
+            'tag': self.tag,
+            'message_type': self.message_type,
+            'metadata': self.metadata,
+            'audio_data': self.audio_data
 
-    @classmethod
-    def from_dict(cls, data):
-        return cls(**data)
+        }
 
 
 class InputManager:
     """Manages incoming user audio stream in a separate process"""
 
-    def __init__(self, session_id: str, client, input_queue: Queue, output_queue: Queue):
+    def __init__(self, session_id: str, client, input_queue: Queue, output_queue: Queue, provider):
         self.session_id = session_id
         self.input_queue = input_queue  # multiprocessing.Queue - sends to voice agent
         self.output_queue = output_queue  # multiprocessing.Queue - receives from voice agent
+        self.provider = provider # to keep input and output consistent
+
         self.state = InputState.IDLE
 
         self.current_message_id: Optional[str] = None
@@ -83,11 +87,17 @@ class InputManager:
         #websocket connected client
         self.client = client
 
+        #identify message
+        self.tag = 'input_manager'
+
         # Configuration
         self.idle_timeout = 10.0
         self.interruption_threshold = 0.5
 
         self.running = True
+
+        #active thread list
+        self.active_threads = []
 
     def process_user_input(self, raw_data: dict[str, any], message_id:str, state: InputState | OutputState, is_interruption: bool = False):
         """Process incoming user audio and transcript (blocking)"""
@@ -98,21 +108,34 @@ class InputManager:
         #     self.handle_interruption(raw_data)
         #     return
 
-        # Create new message
+        # Start new message
         self.current_message_id = message_id
         self.last_activity_time = time.time()
 
+        if not raw_data:
+            return
+        
+        if raw_data.get('tag') and raw_data.get('tag') != self.tag:
+            logger.info('Seems like message from output manager, ignoring...')
+                
+        in_payload = self.provider.receive_message(raw_data)
+        logger.info(f'recieved data in input queue: {in_payload}')
+        if in_payload.get('message_type','') == 'stream_start':
+            session_id = in_payload.get('metadata',{}).get('custom_params', {}).get('session_id')
+            if  session_id !=  self.session_id:
+                logger.info(f'looks like getting stream for different session id, current session_id {self.session_id} but recieved is {session_id}')
+                return
+        
         message = Message(
             message_id=message_id,
             session_id=self.session_id,
-            audio_data=raw_data,
-            transcript= None,
-            timestamp=time.time(),
-            is_interruption=is_interruption,
-            state=state
-        )
+            audio_data = in_payload.get('audio_data', None),
+            message_type = in_payload['message_type'],
+            metadata = in_payload.get('metadata', {}),
+            state=state        
+            )
 
-        logger.info(f"New user input [{message_id}]: {message.to_dict()}")
+        logger.info(f"user input [{message_id}]: {message.to_dict()}")
 
         # Update state
         self.state = state
@@ -122,9 +145,11 @@ class InputManager:
         self.input_queue.put(message.to_dict())
 
         # Monitor response latency (simple blocking approach) --> using threading
-        latency_task = threading.Thread(target=self.check_response_latency, args = (message_id, ), daemon=True)
-        latency_task.start()
-        #self.check_response_latency(message_id) - blocking the process
+        response_latencylatency_task = threading.Thread(target=self.check_response_latency, args = (message_id, ), daemon=True)
+        response_latencylatency_task.start()
+
+        #so that if running later we can disconnect
+        self.active_threads.append(response_latencylatency_task) 
 
     def handle_interruption(self, audio_data: bytes, transcript: str):
         """Handle user interruption during active response"""
@@ -151,8 +176,7 @@ class InputManager:
             audio_data=audio_data,
             transcript=transcript,
             timestamp=time.time(),
-            is_interruption=True,
-            type=InputState.REQUEST_FILLER.value
+            state=InputState.REQUEST_FILLER.value
         )
         self.input_queue.put(interruption_message.to_dict())
 
@@ -223,7 +247,7 @@ class InputManager:
         message_id = generate_uuid()
         state = InputState.PROCESSING
 
-        self.client.on_message_callback = lambda x: self.process_user_input(x, message_id, state, False)
+        self.client.on_message_callback = lambda x: self.process_user_input(x, message_id, state)
 
         # Start the MessagingClient in a separate thread
         self.client.run()
@@ -243,32 +267,15 @@ class InputManager:
 class OutputManager:
     """Manages outgoing voice responses in a separate process"""
 
-    def __init__(self, session_id: str, client, output_queue: Queue):
+    def __init__(self, session_id: str, client, output_queue: Queue, provider):
         self.session_id = session_id
         self.output_queue = output_queue  # multiprocessing.Queue - receives from voice agent
+        self.provider  = provider #to maintain consistent output
         self.running = True
 
         #websocket connected client
         self.client = client
 
-    def process_output(self, message):
-        """Process outgoing message"""
-        msg_type = message.get('type', 'unknown')
-
-        if msg_type == 'cancel':
-            logger.info(f"[OUTPUT] Cancelling message {message.get('message_id')}")
-        elif msg_type == 'request_filler':
-            logger.info(f"[OUTPUT] Playing filler for {message.get('message_id')}")
-        elif msg_type == 'handover':
-            logger.info(f"[OUTPUT] Handover: {message.get('message')}")
-            self.running = False
-        elif msg_type == 'end_call':
-            logger.info(f"[OUTPUT] End call: {message.get('message')}")
-            self.running = False
-        elif msg_type == 'response':
-            logger.info(f"[OUTPUT] Playing response: {message.get('text', '')[:50]}...")
-        else:
-            logger.info(f"[OUTPUT] Received: {message}")
 
     def run(self):
         """Main run loop for Output Manager (blocking, runs in separate process)"""
@@ -279,6 +286,14 @@ class OutputManager:
         # Keep the process alive while running
         logger.info(f"Input Manager entering main loop for session {self.session_id}")
         while self.running:
+            message = self.output_queue.get()
+            if not message:
+                continue
+            message =self.provider.send_message(message)
+            message['tag'] = 'output_manager'
+            logger.info(f'recieved message from output queue: {message}')
+            #message_id
+            self.client.send_message(message)
             time.sleep(0.1)
 
     def get_process(self):
@@ -288,64 +303,6 @@ class OutputManager:
 
 
 
-# Test the multi-process setup
-def test_multiprocess_managers():
-    """Test input and output managers in separate processes"""
-    session_id = "test_session_001"
-
-    # Create multiprocessing queues
-    input_queue = Queue()  # Input -> Voice Agent
-    output_queue = Queue()  # Voice Agent -> Output
-
-    # Start input manager process
-    input_process = Process(
-        target=start_input_manager,
-        args=(session_id, input_queue, output_queue)
-    )
-
-    # Start output manager process
-    output_process = Process(
-        target=start_output_manager,
-        args=(session_id, output_queue)
-    )
-
-    input_process.start()
-    output_process.start()
-
-    # Main process monitors the input queue (simulating voice agent)
-    logger.info(f"Main process {os.getpid()} monitoring queues...")
-
-    try:
-        while input_process.is_alive() or output_process.is_alive():
-            try:
-                # Check input queue
-                msg = input_queue.get(timeout=1)
-                logger.info(f"[MAIN/VOICE AGENT] Received from input: {msg.get('transcript', msg)}")
-
-                # Simulate processing and send response
-                time.sleep(0.5)
-                output_queue.put({
-                    'type': 'response',
-                    'message_id': msg.get('message_id'),
-                    'text': f"AI response to: {msg.get('transcript', 'unknown')}"
-                })
-            except queue.Empty:
-                continue
-
-    except KeyboardInterrupt:
-        logger.info("Shutting down...")
-
-    finally:
-        input_process.join(timeout=5)
-        output_process.join(timeout=5)
-
-        if input_process.is_alive():
-            input_process.terminate()
-        if output_process.is_alive():
-            output_process.terminate()
-
-        logger.info("All processes stopped")
-
 
 if __name__ == "__main__":
-    test_multiprocess_managers()
+    pass

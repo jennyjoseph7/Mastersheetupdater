@@ -44,50 +44,41 @@ class CampaignSourceBase:
             separator="-",
         )
 
-        # Load model reference
-        try:
-            self.status_model = reload_model_ref(self.MODEL_NAME, enterprise_id)
-        except ConnectionError as ce:
-            logger.error(f"[Campaign:{self.campaign_id}] Unable to connect to DB: {ce}")
-            raise RuntimeError(f"Unable to connect DB: {ce}")
+        logger.info("TEST CampaignSourceBase")
+        
+    # def _get_or_create_status(self) -> Dict[str, Any]:
+    #     """Retrieve existing campaign status or create a new one if missing."""
+    #     try:
+    #         status = self.status_model.get(self.status_id)
+    #         logger.info(f"[Campaign:{self.campaign_id}] Existing status found: {status}")
+    #         return status
+    #     except Exception:
+    #         logger.warning(f"[Campaign:{self.campaign_id}] Status not found. Creating new entry.")
 
-        # Initialize or fetch campaign status
-        self.status = self._get_or_create_status()
-        logger.info(f"[Campaign:{self.campaign_id}] Loaded campaign status: {self.status}")
+    #     payload = {
+    #         "campaign_status_check_id": self.status_id,
+    #         "campaign_id": self.campaign_id,
+    #         "campaign_detail_id": self.campaign_detail_id,
+    #         "max_per_day": self.campaign_details_data.get("max_per_day") or DEFAULT_MAX_PER_DAY,
+    #         "campaign_user_source": self.campaign_details_data.get("campaign_user_source") or {},
+    #         "channel": self.campaign_details_data.get("channel"),
+    #         "channel_provider": self.campaign_details_data.get("channel_provider"),
+    #     }
 
-    def _get_or_create_status(self) -> Dict[str, Any]:
-        """Retrieve existing campaign status or create a new one if missing."""
-        try:
-            status = self.status_model.get(self.status_id)
-            logger.info(f"[Campaign:{self.campaign_id}] Existing status found: {status}")
-            return status
-        except Exception:
-            logger.warning(f"[Campaign:{self.campaign_id}] Status not found. Creating new entry.")
+    #     logger.info(f"[Campaign:{self.campaign_id}] Creating campaign status:\n{json.dumps(payload, indent=2)}")
 
-        payload = {
-            "campaign_status_check_id": self.status_id,
-            "campaign_id": self.campaign_id,
-            "campaign_detail_id": self.campaign_detail_id,
-            "max_per_day": self.campaign_details_data.get("max_per_day") or DEFAULT_MAX_PER_DAY,
-            "campaign_user_source": self.campaign_details_data.get("campaign_user_source") or {},
-            "channel": self.campaign_details_data.get("channel"),
-            "channel_provider": self.campaign_details_data.get("channel_provider"),
-        }
+    #     try:
+    #         response = self.status_model.post(payload)
+    #         logger.info(f"[Campaign:{self.campaign_id}] Campaign status created successfully: {response}")
+    #         return response
+    #     except Exception as e:
+    #         logger.error(f"[Campaign:{self.campaign_id}] Failed to create campaign status.", exc_info=True)
+    #         hp.print_error()
+    #         raise
 
-        logger.info(f"[Campaign:{self.campaign_id}] Creating campaign status:\n{json.dumps(payload, indent=2)}")
-
-        try:
-            response = self.status_model.post(payload)
-            logger.info(f"[Campaign:{self.campaign_id}] Campaign status created successfully: {response}")
-            return response
-        except Exception as e:
-            logger.error(f"[Campaign:{self.campaign_id}] Failed to create campaign status.", exc_info=True)
-            hp.print_error()
-            raise
-
-    def get_status(self) -> Dict[str, Any]:
-        """Return the current campaign status data."""
-        return self.status
+    # def get_status(self) -> Dict[str, Any]:
+    #     """Return the current campaign status data."""
+    #     return self.status
     
     # ---------------- RATE LIMIT HELPERS ----------------
     def _check_rate_limits(self):

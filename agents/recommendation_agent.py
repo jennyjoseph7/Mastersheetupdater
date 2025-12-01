@@ -50,7 +50,7 @@ key_order = ['power', 'engine', 'torque', 'dimension',
 
 
 # client = QdrantClient(host="localhost", port=6333)
-client = QdrantClient(url="http://216.48.189.12:6333")
+client = QdrantClient(url="http://216.48.189.12:6333",    check_compatibility=False)
 
 
 
@@ -337,17 +337,17 @@ def merge_traits(lists):
     Returns:
         np.ndarray: The merged trait vector.
     """
-    logger.info(f"input traits {lists}")
+    # logger.info(f"input traits {lists}")
     mean_elementwise = [sum(values) / len(values) for values in zip(*lists)]
 
     CustomerAffinity = np.array(mean_elementwise)
-    logger.info(f"CustomerAffinity (before norm): {list(CustomerAffinity)}")
+    # logger.info(f"CustomerAffinity (before norm): {list(CustomerAffinity)}")
     
     norm = np.linalg.norm(CustomerAffinity)
     if norm == 0:
         return np.zeros_like(CustomerAffinity)  # or return CustomerAffinity as-is
     CustomerAffinity = CustomerAffinity / norm
-    logger.info(f"this is CustomerAffinity after norm>>>{list(CustomerAffinity)}")
+    # logger.info(f"this is CustomerAffinity after norm>>>{list(CustomerAffinity)}")
     return CustomerAffinity
 
 
@@ -587,14 +587,14 @@ class RecommendationWrapper:
             limit=default_limit,
             offset=offset_value
         )
-        logger.info(f"hits >>> {(hits)}")
+        logger.info(f"hits >>> {str(hits)[:500]}")
 
-        count_resp = client.count(
-            collection_name=self.collection,
-            count_filter=Filter(must=filter_ if filters else None,must_not=negative_filter_ if negative_filters else None),
+        # count_resp = client.count(
+        #     collection_name=self.collection,
+        #     count_filter=Filter(must=filter_ if filters else None,must_not=negative_filter_ if negative_filters else None),
 
-            exact=True
-        )
+        #     exact=True
+        # )
 
         if hits:
 
@@ -651,7 +651,7 @@ class RecommendationWrapper:
             return {"result":output,
                     "recommendation_history":self.history,
                     
-                "total_result":count_resp.count}
+                "total_result":len(output)}
         else:
             if self.count_res>1:
                 return []
@@ -938,24 +938,7 @@ class RecommendationAgent(BaseAgent):
             intent = user_interaction.get("intent")
             if intent in ["free_text","error"]:
                 return
-        if history:
-            if history.get(""):
-                pass
 
-
-            # asked_intent=[] 
-            # history=data.get("history")
-            # if history:
-            #     data["history_intent"] = []
-            #     for key in history:
-            #         intent = key.get("intent")
-            #         if intent in ["free_text","error"]:
-            #             continue
-            #         asked_intent.append(intent)
-            #     logger.info(data)
-            #     data['history_intent'].extend(asked_intent)
-
-            
         formater={
         "brand_preference": "brand_name",
         "variant_preference": "variant_name",
@@ -975,6 +958,41 @@ class RecommendationAgent(BaseAgent):
                 logger.info("fixing the input intent")
             filter['intent']=[formater[intent]]
         return data
+    
+
+    def medium_refiner(self,data,intent_="voice_bot"):
+        logger.info(f"medium refiner {intent_}")
+        if intent_=="voice_bot":
+            for i in data:
+                system, user=build_summary_prompt(i.get("metadata"))
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user}
+                ]
+                chain=ai_service.get_llm_response(messages=messages, model_identifier="gcp-gemini-2.5-flash-lite")
+                i['summary']=chain
+                i.pop("score")
+                i.pop("metadata")
+
+
+            return data
+        elif intent_ in ["webchat_bot","whatsapp_bot"]:
+            nothing=""
+            for i in data:
+                system, user=whatsapp_summary_prompt(i)
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user}
+                ]
+                chain=ai_service.get_llm_response(messages=messages, model_identifier="gcp-gemini-2.5-flash-lite")
+
+                if nothing=="":
+                    nothing=chain+"\n"
+                else:
+                    nothing=nothing+"\n"+" | "+" \n\n"+chain
+            return nothing
+        else:
+            return
 
     def _request_data(self, data:dict) -> list[dict]:
 
@@ -1000,11 +1018,7 @@ class RecommendationAgent(BaseAgent):
           return {"error": str(e)}
         
 
-    #   path = "agents/src/recommendation_questions.json"
-    #   with open(path, "r") as f:
-    #         list_questions0 = json.load(f)
 
-      
       if result:
           if result.get("match_refining_questions"):
               
@@ -1033,7 +1047,9 @@ class RecommendationAgent(BaseAgent):
               temp=template_prompt(question,options)
 
               result["match_refining_questions"] = mrq_
-              result["Answer Validation Prompt"]=temp
+              result["answer_validation_prompt"]=[temp]
+
+          result["top_vehicles"]=self.medium_refiner(result.get("top_vehicles",[]))
           return result
       else:
           return [] 
@@ -1088,7 +1104,7 @@ if __name__ == "__main__":
     "collection": "autocrm_recommendation",
     # "question": "What’s your preference when it comes to transmission?",
     # "intent": "transmission_type",
-    "user_interaction": {"user_message": "i dont want Automatic transmission and I am short heighted"},
+    "user_interaction": {"user_message": "recommend me a car"},
     "default_limit": 5,
     "recommendation_history":  {
         "affinity": [

@@ -18,8 +18,8 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from connectors.base_connector_communication import *
 logger= get_logger(__name__)
 logger.info("Intializing Test Whatsapp Connectors")
-
-
+# from campaign.campaign_manager import BaseCustomCampaignManager
+from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 ALLOWED_PROVIDERS= str(os.environ.get("ALLOWED_PROVIDERS","airtel,rml,meta,concord,gupshup"))
 
 CACHE_FILE = "static/uploads/custom_whatsapp_webhook.json"
@@ -226,153 +226,62 @@ def send_message_whatsapp(*args,**kwargs):
     res = provider_init.send_message_whatsapp(*args,**kwargs)
     return res
 
-@gryd.is_a_task(function_name="update_campaign_status_params")
-def update_campaign_status_params(*args,**kwargs):
-    """
-    Processes campaign status updates for a given WhatsApp provider and enterprise ID.
-
-    This function retrieves the appropriate webhook converter for the specified provider
-    and executes relevant campaign status update methods if they exist.
-
-    Args:
-        *args: Positional arguments containing:
-            - whatsapp_provider (str): The WhatsApp provider name.
-            - enterprise_id (str): The enterprise ID.
-        **kwargs: Additional keyword arguments, including:
-            - args (tuple): A tuple of arguments.
-            - kwargs (dict): A dictionary of keyword arguments.
-
-    Returns:
-        dict: 
-            - {"info": "Campaign Message status Processed"} if processing succeeds.
-            - {"error": "Error While processing campaign status"} if an exception occurs.
-
-    Logs:
-        - Logs errors if the provider or enterprise ID is missing.
-        - Logs when the function receives the campaign status update request.
-
-    Raises:
-        - Logs and handles any exceptions that occur during execution.
-    """
-    start_time=time.time()
-    logger.info(f"Received  update_camapign_status for with args: {args}  {len(args)}")
-    whatsapp_provider,enterprise_id=args[0],args[1]
-    if not (whatsapp_provider and enterprise_id):
-        logger.error(f"Provider {whatsapp_provider} or enterprise_id : {enterprise_id} is missing.")
-        return
-    if not kwargs.get("enterprise_id"):
-        kwargs.update({"enterprise_id":enterprise_id})
-    try:
-        if whatsapp_provider.lower() in WhatsappReceiverConnector._registry:
-            provider_instance= BaseCampaingStatusUpdator()
-            if hasattr(provider_instance,"update_message_status_for_campaign"):
-                provider_instance.update_message_status_for_campaign(whatsapp_provider,enterprise_id,*args,**kwargs)
-            if hasattr(provider_instance,"check_for_campaign_context"):
-                provider_instance.check_for_campaign_context(*args,**kwargs)
-            logger.info(f"@@@ Time Take to Update Campaing Status ::: {time.time()-start_time}")
-            return {"info": "Campaing Message status Processed"}
-    except Exception as e:
-        hp.print_error()
-        return {"error":"Error While processing camapign status"}
-
-
 @gryd.is_a_task(function_name="post_contact_status")
-def post_contact_status(data, *args, **kwargs):
+def post_contact_status(*args, **data):
     """
-    Posts contact status updates when a campaign trigger occurs.
-
-    For each lead, this function posts a new status object while keeping the 
-    same `message_id` across updates. The function yields a structured dictionary 
-    representing the current contact status, which can be sent to downstream 
-    systems or stored for tracking.
-
-    Example yielded data:
-        {
-            "message_id": "msh123abcd",
-            "channel_provider": "twilio",
-            "channel": "voice_phone",
-            "phone_number": "8850988794",
-            "response_id": "sid12323123",
-            "campaign_id": "campaign_pre_sales_123",
-            "provider_status": "initiated"
-        }
-
-    Typical provider statuses may include:
-        - "initiated"
-        - "queued"
-        - "in-progress"
-        - "completed"
-        - "failed"
-
-    Args:
-        ...: (Describe any parameters here, such as campaign data or status input.)
-
-    Yields:
-        dict: A dictionary containing the contact status details for each lead.
+    1) First call → args empty → create new contact_status
+    2) Second call → args contains message_id → update existing contact_status
     """
 
+    message_id = args[0] if args else None
+    logger.info(f"[post_contact_status] message_id={message_id}")
+    with get_pg_connector() as pg:
 
-    yield  {
-        "message_id":"msh123abcd",
-        "channel_provider": "twilio",
-        "channel":"voice_phone",
-        "phone_number":"8850988794",
-        "response_id":"sid12323123",
-        "campaign_id" : "campaign_pre_sales_123",
-        "provider_status": "initiated"
-    }
-    
+        if not message_id:
+            # logger.info("[post_contact_status] No message_id → creating new record")
 
-@gryd.is_a_task(function_name="send_text_template_for_approval")
-def send_text_template_for_approval(data, *args, **kwargs):
-    """
-    Send a WhatsApp template to the Airtel API for approval.
+            payload = {
+                **data,
+                "created": time.time(),
+                "updated": time.time()
+            }
 
-    This function prepares and forwards the template payload to Airtel's 
-    template approval API. On success, Airtel returns a template ID that 
-    can later be used to check the template's approval status.
+            # Generate primary key
+            contact_status_id = BaseWebhookConverter().generate_uid(payload)
 
-    Expected Input for text template (example):
-    {
-        "templateName": "SaleCarousel",
-        "wabaId": "113485138500957",
-        "customerId": "SOCIOGRAPH_uu76NiJRbNmsq5zPgu5V",
-        "category": "MARKETING",
-        "subAccountId": "965a92cd-ac2e-4674-87ab-99fc174e071f",
-        "templateContent": {
-            "language": "en",
-            "body": "This is just for testing for autobot demo",
-            "buttons": [
-                {
-                    "type": "QUICK_REPLY",
-                    "buttonText": "Button1"
-                },
-                {
-                    "type": "QUICK_REPLY",
-                    "buttonText": "Button2"
-                },
-                {
-                    "type": "CALL_TO_ACTION",
-                    "buttonText": "Website",
-                    "subType": "URL",
-                    "url": "https://www.google.com"
-                }
-            ]
-        }
-    }
+            pg.update("contact_status", "contact_status_id", contact_status_id, payload)
 
-    Returns:
-        dict: Response from Airtel containing the `template_id`.
-              This ID can be used to track approval status.
+            logger.info(
+                f"[post_contact_status] contact status {data.get('message_status')} "
+                f"campaign_id={data.get('campaign_id')} | phone={data.get('phone_number')}"
+            )
 
-    """
-    
-    yield {
-        "template_id": "template_id_123",
-    }
+            return 
 
 
-# the below function is writtern in connectors.source_connectors (function name handle_incoming_message)
+        records = list(pg.list("contact_status", {"message_id": message_id}))
+        existing = records[0] if records else None
+
+        if not existing:
+            logger.warning(f"[post_contact_status] No existing record found for {message_id}. Nothing to update.")
+            return
+
+        existing["provider_status"] = (data.get("message_status") or "").upper()
+        existing["updated"] = time.time()
+        existing["created"] = time.time()
+        payload = existing
+        # logger.info(f"[post_contact_status] payload when message_id is present={payload}")
+        contact_status_id = BaseWebhookConverter().generate_uid(payload)
+
+        pg.update("contact_status", "contact_status_id", contact_status_id, payload)
+
+        logger.info(
+            f"[post_contact_status] contact status={data.get('message_status')} "
+            f"campaign_id={existing.get('campaign_id')} | phone={existing.get('phone_number')}"
+        )
+
+    return
+
 @gryd.is_a_task()    
 def check_or_create_session(self, phone_number): 
     """
@@ -407,83 +316,35 @@ def check_or_create_session(self, phone_number):
         "dealership_id": "dealership_id_123"
     }
 
-
-
 if __name__=="__main__":
+    # for airtel 
     # data={
     # "messages": [
     #     {
-    #     "id": "0046d404-b561-11f0-a380-0a58a9feac02",
+    #     "to": "917795030574",
+    #     "businessId": "soco_addtwo",
     #     "from": "919113687241",
-    #     "type": "text",
-    #     "timestamp": "1761808865",
-    #     "text": {
-    #         "body": "what can you do?"
-    #     },
-    #     "message_id": "wamid.HBgMOTE5MTEzNjg3MjQxFQIAEhggQUM3RDhBRTYzRDI1ODkzNjY5NDhFOEE2MTRBN0RFRkQA"
-    #     }
-    # ],
-    # "contacts": [
-    #     {
+    #     "sessionId": "9da2b3855f104d169f677e7dcbea58c2",
     #     "profile": {
     #         "name": "Praveen A"
     #     },
-    #     "wa_id": "919113687241"
+    #     "message": {
+    #         "text": {
+    #         "body": "Hiii"
+    #         },
+    #         "timestamp": 1762666888537,
+    #         "type": "text"
+    #     },
+    #     "webhook_received_time": 1762666888.645379,
+    #     "ent_id": "autobot",
+    #     "conversation_id": "msil_auto_demo",
+    #     "whatsapp_provider": "airtel",
+    #     "language": "english",
+    #     "enterprise_id": "autobot"
     #     }
-    # ],
-    # "brand_msisdn": "918951708731",
-    # "request_id": "0046d404-b561-11f0-a380-0a58a9feac02",
-    # "webhook_received_time": 1761808866.994164,
-    # "enterprise_id": "no_code_low_code",
-    # "ent_id": "no_code_low_code",
-    # "conversation_id": "indiaautobot",
-    # "whatsapp_provider": "rml",
-    # "language": "english"
-    # }
+    # ]}
+    # process_webhook("airtel","autobot","msil_auto_demo","english",**data)
     
-    # process_webhook("rml","no_code_low_code","indiaautobot","english",**data)
-    
-    
-    # for airtel 
-    data={
-    "messages": [
-        {
-  "to": "917795030574",
-  "businessId": "soco_addtwo",
-  "from": "919113687241",
-  "sessionId": "9da2b3855f104d169f677e7dcbea58c2",
-  "profile": {
-    "name": "Praveen A"
-  },
-  "message": {
-    "text": {
-      "body": "Hiii"
-    },
-    "timestamp": 1762666888537,
-    "type": "text"
-  },
-  "webhook_received_time": 1762666888.645379,
-  "ent_id": "autobot",
-  "conversation_id": "msil_auto_demo",
-  "whatsapp_provider": "airtel",
-  "language": "english",
-  "enterprise_id": "autobot"
-}
-
-    ]}
-    process_webhook("airtel","autobot","msil_auto_demo","english",**data)
-
-
-    # gryd.create_async_task(
-    #         "converse",
-    #         "autocrm-conversation",
-    #         kwargs={
-    #             "channel":"whatsapp"
-    #         }
-    #     )
-    
-    
-   
     pass
 
 

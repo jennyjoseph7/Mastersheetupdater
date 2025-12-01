@@ -21,40 +21,6 @@ class BaseCampaingStatusUpdator:
     def __init__(self):
         pass
 
-    def update_message_status_for_campaign(self, provider: str, *args, **kwargs):
-        """
-        Updates the message status for a campaign via webhook data.
-        Handles Airtel and RML providers with normalized flow.
-        """
-
-        logger.info(f"[update_message_status_for_campaign] Provider={provider}, Payload={kwargs}")
-
-        enterprise_id = kwargs.get("enterprise_id")
-
-        # Normalize webhook data depending on provider
-        if provider.lower() == "airtel":
-            logger.info("Parsing Airtel status payload...")
-            message_dict, message_id = self._parse_airtel_payload(kwargs)
-        elif provider.lower() == "rml":
-            logger.info("Parsing RML status payload...")
-            message_dict, message_id = self._parse_rml_payload(kwargs)
-        else:
-            logger.warning(f"[update_message_status_for_campaign] Unsupported provider: {provider}")
-            return
-
-        if not message_id:
-            logger.info("[update_message_status_for_campaign] No valid message_id found. Skipping update.")
-            return
-
-        try:
-            logger.info(f"[update_message_status_for_campaign] Updating records for message_id={message_id}, enterprise_id={enterprise_id}")
-            # self._update_message_records(enterprise_id, message_id, message_dict)
-        except Exception:
-            logger.error(
-                f"[update_message_status_for_campaign] Error updating campaign status for message_id={message_id}, enterprise_id={enterprise_id}",
-                exc_info=True
-            )
-
     # ------------------- PARSERS -------------------
 
     def _parse_airtel_payload(self, data: dict):
@@ -125,300 +91,6 @@ class BaseCampaingStatusUpdator:
 
         logger.info(f"[_parse_rml_payload] Parsed: message_id={message_id}, message_dict={message_dict}")
         return message_dict, message_id
-
-    # ------------------- DB UPDATE -------------------
-
-    # def _update_message_records(self, enterprise_id: str, message_id: str, message_dict: dict):
-    #     """Update campaign_user_detail and archive with normalized data.
-
-    #     Update campaign message records (live or archive) with normalized status data.
-
-    #     This method ensures message delivery/engagement status is persisted consistently.
-    #     It first attempts to locate the record in the live `campaign_user_detail` table. 
-    #     If no live record is found, it falls back to the archive `campaign_user_detail_archive` table.
-        
-    #     Flow:
-    #         1. Query the live campaign_user_detail table by message_id.
-    #         2. If found, update the live record.
-    #         3. If not found, query the archive table.
-    #         4. If archive record is found, update it.
-    #         5. Logs all outcomes for observability.
-    #     Notes:
-    #         - This method is intentionally idempotent. 
-    #         - If no record exists in either live or archive, no exception is raised; only warnings are logged.
-    #         - To extend behavior (e.g., for additional archival layers), add another fallback connector.
-        
-        
-    #     """
-    #     logger.info(f"[_update_message_records] Updating records for message_id={message_id}, enterprise_id={enterprise_id}")
-
-    #     limit, offset = 1, 0
-    #     def db_conn():
-
-    #         connector = CommonServiceConnector(
-    #         enterprise_id=enterprise_id,
-    #         model_name=M_GRYD_CAMPAIGN_USER_DETAIL,
-    #         id_attr=MODEL_ID_DETAIL.get(M_GRYD_CAMPAIGN_USER_DETAIL)
-    #         )
-    #         archive_connector = CommonServiceConnector(
-    #             enterprise_id=enterprise_id,
-    #             model_name=M_GRYD_CAMPAIGN_USER_DETAIL_ARCHIVE,
-    #             id_attr=MODEL_ID_DETAIL.get(M_GRYD_CAMPAIGN_USER_DETAIL_ARCHIVE)
-    #         )
-    #         return connector,archive_connector
-    #     DB_CONN=False
-    #     try:
-    #         for i in range(MAX_MODEL_CONN_RETRY):
-    #             try:
-    #                 connector,archive_connector = db_conn()
-    #                 DB_CONN=True
-    #                 break
-    #             except Exception as e:
-    #                 logger.error(f"Error While connecting to DB :: {e}")
-    #     finally:
-    #         if not DB_CONN:
-    #             # store all logs if db failuer
-    #             logger.info("ERROR  DB CONNECTION ERROR")
-    #             pass
-
-    #     # Live record lookup
-    #     resp = list(
-    #         connector.list(
-    #             M_GRYD_CAMPAIGN_USER_DETAIL,
-    #             where="WHERE dict->>'message_id' = %s LIMIT %s OFFSET %s",
-    #             values=(message_id, limit, offset)
-    #         )
-    #     )
-    #     logger.info(f"[_update_message_records] Live records found: {resp}")
-    #     if not resp:
-    #         logger.warning(f"[_update_message_records] No campaign_user_detail found for message_id: {message_id}")
-    #         # Archive record lookup
-    #         archive_resp = list(
-    #             archive_connector.list(
-    #                 M_GRYD_CAMPAIGN_USER_DETAIL_ARCHIVE,
-    #                 where="WHERE dict->>'message_id' = %s LIMIT %s OFFSET %s",
-    #                 values=(message_id, limit, offset)
-    #             )
-    #         )
-    #         logger.info(f"[_update_message_records] Archive records found: {archive_resp}")
-
-    #         if archive_resp:
-    #             archive_record = archive_resp[0]
-    #             archive_connector.update_record(
-    #                 table_name=M_GRYD_CAMPAIGN_USER_DETAIL_ARCHIVE,
-    #                 record_id=archive_record.get("campaign_user_archive_id"),
-    #                 data=message_dict,
-    #                 id_attr=MODEL_ID_DETAIL.get(M_GRYD_CAMPAIGN_USER_DETAIL_ARCHIVE)
-    #             )
-    #             logger.info(f"[_update_message_records] Updated archive record for message_id {message_id}")
-
-    #         return
-
-    #     record = resp[0]
-    #     patch_res = connector.update_record(
-    #         table_name=M_GRYD_CAMPAIGN_USER_DETAIL,
-    #         record_id=record.get("campaign_user_id"),
-    #         data=message_dict,
-    #         id_attr=MODEL_ID_DETAIL.get(M_GRYD_CAMPAIGN_USER_DETAIL)
-    #     )
-        
-    #     if patch_res:
-    #         logger.info(f"[_update_message_records] Successfully updated campaign message {message_id}: {message_dict}")
-    #         logger.info(f"TEST UPDATE MESSAGE STATUS -- {patch_res}")
-    #         d={
-    #             "session_id":patch_res.get('session_id'),
-    #             "message_status":patch_res.get('message_status'),
-    #             "enterprise_id":enterprise_id,
-    #             "campaign_user_id":patch_res.get('campaign_user_id')
-    #         }
-    #         logger.info(f"Calling patch person session to update status and dispositon ..")
-    #         # BaseWebhookConverter().patch_person_session_status(**d)
-    #         #_retry_campaing_failed_users(record.get("campaign_user_id"))
-    #     else:
-    #         logger.warning(f"[_update_message_records] Failed to update campaign message {message_id}")
-
-    # ------------------- CONTEXT HANDLER -------------------
-    def check_campaign_detail_contex_payload(
-        self,
-        enterprise_id,
-        model_name,
-        campaign_user_id,
-        patch_res,
-        value,
-        key_type,
-        id_attr="",
-        **kwargs
-    ):
-        """
-        Updates the campaign user details with the given button or reply text
-        only for 'RECEIVED' status and logs the interaction.
-        """
-        try:
-            logger.info(
-                f"[check_campaign_detail_contex_payload] Updating interaction "
-                f"for campaign_user_id={campaign_user_id}, key_type={key_type}, value={value}"
-            )
-
-            # TODO: Need to save the campaign details . Check this..
-            # Mark campaign user as interacted
-            # updated_data = update_model_record(
-            #     enterprise_id,
-            #     model_name,
-            #     campaign_user_id,
-            #     {"user_interacted_template": True},
-            #     id_attr=id_attr
-            # )
-
-            # Build interaction record
-            # post_campaign_interaction = {
-            #     "created": hp.now(tz=DB_TIMEZONE),
-            #     "updated": hp.now(tz=DB_TIMEZONE),
-            #     "interaction_time": hp.now(tz=DB_TIMEZONE),
-            #     "context_type": key_type,
-            #     "campaign_name": patch_res.get("campaign_name"),
-            #     "campaign_id": patch_res.get("campaign_id"),
-            #     "cta_name": value if key_type == "button" else None,
-            #     "template_reply": value if key_type == "text_reply" else None,
-            #     "mobile_number": patch_res.get("mobile_number"),
-            #     "campaign_user_id": campaign_user_id,
-            #     "button_payload":kwargs.get("button_payload"),
-            # }
-
-            # Generate unique interaction id
-            # campaign_user_interaction_id = val.name_to_id_func(
-            #     {},
-            #     post_campaign_interaction,
-            #     "campaign_user_interaction_id",
-            #     "created",
-            #     "campaign_id",
-            #     "campaign_user_id",
-            #     attribute_join=" ",
-            #     is_unique=True,
-            #     separator=" - ",
-            # )
-            # post_campaign_interaction["campaign_user_interaction_id"] = campaign_user_interaction_id
-            # # TODO: update the status in person_session -  "interacted"
-            # # Save user interaction
-            # res = update_model_record(
-            #     enterprise_id,
-            #     M_GRYD_CAMPAIGN_USER_INTERACTION,
-            #     campaign_user_interaction_id,
-            #     post_campaign_interaction,
-            #     id_attr="campaign_user_interaction_id"
-            # )
-
-            # logger.info(
-            #     f"[check_campaign_detail_contex_payload] Successfully stored user interaction "
-            #     f"{key_type} for {campaign_user_id}: {res}"
-            # )
-
-            # return {"updated_data": updated_data, "interaction": res}
-            return None
-
-        except Exception as e:
-            logger.error(
-                f"[check_campaign_detail_contex_payload] Error updating {key_type} data: {e}",
-                exc_info=True
-            )
-            return patch_res
-        
-    def _process_campaign_context_payload(self, enterprise_id, model_name, record_id, record, button_text, reply_text, id_attr=None,button_payload=None):
-        if button_text:
-            logger.info(f"[check_for_campaign_context] Button text detected: {button_text}")
-            self.check_campaign_detail_contex_payload(
-                enterprise_id, model_name,
-                record_id, record,
-                button_text, "button",
-                id_attr=id_attr,
-                button_payload=button_payload,
-            )
-            # TODO: update the status in person_session -  "interacted".check with ananth what shd be the dispositon.
-
-        if reply_text:
-            logger.info(f"[check_for_campaign_context] Reply text detected: {reply_text}")
-            self.check_campaign_detail_contex_payload(
-                enterprise_id, model_name,
-                record_id, record,
-                reply_text, "text_reply",
-                id_attr=id_attr
-            )
-
-
-
-    def check_for_campaign_context(self, provider: str, *args, **kwargs):
-        """
-        Checks and updates campaign user context based on interaction payloads.
-
-        This method processes user interactions (button clicks or text replies) 
-        coming from messaging providers (RML, Airtel, etc.) and maps them to 
-        campaign user records in either the active or archive campaign tables.
-
-        Steps performed:
-            1. Logs the incoming payload and validates the provider.
-            2. Parses the provider-specific payload to extract:
-                - message_id (unique campaign message reference)
-                - button_text (if user clicked on a template button)
-                - reply_text (if user typed a response)
-            3. Ensures `enterprise_id` and `message_id` are present.
-            4. Attempts to fetch campaign user details:
-                - First checks active campaign_user_detail table.
-                - If not found, checks the campaign_user_detail_archive table.
-            5. If a campaign record is found:
-                - Updates the campaign context with button_text or reply_text 
-                using `check_campaign_detail_contex_payload`.
-        """
-        try:
-            logger.info(f"[check_for_campaign_context] Provider={provider}, Payload={kwargs}")
-            button_payload=None
-            # Parse message depending on provider
-            if provider.lower() == "rml":
-                logger.info("[check_for_campaign_context] Parsing RML context payload...")
-                message_id, button_text, reply_text, button_payload = self._parse_rml_context(kwargs)
-            elif provider.lower() == "airtel":
-                logger.info("[check_for_campaign_context] Parsing Airtel context payload...")
-                message_id, button_text, reply_text = self._parse_airtel_context(kwargs)
-            else:
-                logger.warning(f"[check_for_campaign_context] Unsupported provider: {provider}")
-                return
-
-            enterprise_id = kwargs.get("enterprise_id")
-            if not enterprise_id:
-                raise Exception("⚠️ Enterprise Id not found in check_for_campaign_context ⚠️")
-
-            if not message_id:
-                logger.info("[check_for_campaign_context] No valid message_id found, exiting.")
-                return
-
-            logger.info(f"[check_for_campaign_context] Processing campaign context for message_id={message_id}, enterprise_id={enterprise_id}")
-
-
-            ###-----------------------We need to check this-------------------
-            # Try fetching from active table
-            # res = fetch_single_like_data(enterprise_id, M_GRYD_CAMPAIGN_USER_DETAIL, "message_id", message_id)
-        
-            # if not res:
-            #     # Handle archive record
-            #     logger.info(f"[check_for_campaign_context] No campaign user details found for message_id: {message_id}")
-            #     # Try fetching from archive
-            #     archive_res = fetch_single_like_data(enterprise_id, M_GRYD_CAMPAIGN_USER_DETAIL_ARCHIVE, "message_id", message_id)
-            #     if archive_res:
-            #         logger.info(f"[check_for_campaign_context] Campaign user archive details found: {archive_res}")
-            #         campaign_user_archive_id = archive_res.get("campaign_user_archive_id")
-            #         self._process_campaign_context_payload(enterprise_id, M_GRYD_CAMPAIGN_USER_DETAIL_ARCHIVE, campaign_user_archive_id, archive_res, button_text, reply_text, id_attr="campaign_user_archive_id",button_payload=button_payload)
-            #     return
-
-
-             
-            # Handle active record
-            # logger.info(f"[check_for_campaign_context] Campaign user details found: {res}")
-            # campaign_user_id = res.get("campaign_user_id")
-
-            # self._process_campaign_context_payload(enterprise_id, M_GRYD_CAMPAIGN_USER_DETAIL, campaign_user_id, res, button_text, reply_text, id_attr="campaign_user_id",button_payload=button_payload)
-
-        except Exception as e:
-            hp.print_error()
-            logger.error(f"[check_for_campaign_context] Error: {e}", exc_info=True)
-
 
     # ------------------- PROVIDER PARSERS -------------------
     def _parse_rml_context(self, data: dict):
@@ -797,20 +469,30 @@ class BaseWebhookConverter:
             return {"error": str(e)}
 
     def process_status_check(self,*args,**kwargs):
-        """
-        Check if the `default_message_dict` contains the 'status' key. 
-        """
         
+        """
+        Process message status webhook payload and triggers a contact status update asynchronously.
+
+        Args:
+            *args: Additional positional arguments.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            dict: Response message indicating the status of the webhook processing.
+        """
         if not (message_dict := self.default_message_dict):
             return None
         
+        # logger.info(f"TEST status Message Dict: {message_dict}")
         if message_dict.get("message_status",'').upper() in TRACKABLE_STATUSES:
-            logger.info(f"Received {message_dict.get('message_status')} status webhook for {message_dict.get('enterprise_id')} enterprise  : {message_dict.get('conversation_id')}")
-            try:
-                self.update_message_detail(*args,**kwargs)
-                return {"info":f"Received {message_dict.get('message_status')} status webhook"}
-            except Exception as e:
-                hp.print_error()
+            logger.info(f"Received {message_dict.get('message_status')} status webhook for {message_dict.get('enterprise_id')} enterprise  and mobile number: {message_dict.get('recipientAddress')}")
+            
+            gryd.create_async_task(
+                'post_contact_status',
+                GRYD_COMMUNICATION_STATUS_SERVICE,
+                args=(message_dict.get('message_id'),),
+                kwargs=message_dict)
+            
         #Still any othere status hook there we will return  
         if message_dict.get("message_status"): return {"info":f"Received {message_dict.get('message_status')} status webhook"}
 
@@ -896,22 +578,10 @@ class BaseWebhookConverter:
 
         logger.info(f"message_media_url (after processing): {message_media_url} | type: {type(message_media_url)}")
 
-        # Build conversation payload old format 
-        # converse_kwargs = {
-        #     "user_id": f"{mobile_number}",
-        #     "customer_response": message_text,
-        #     "media_message": message_media_url,
-        #     "media_type": kwargs.get("message_media_type"),
-        #     "temporary_data": temporary_data,
-        #     "conversation_id": conversation_id,
-        #     "language": "english",
-        #     "response_length": "full",
-        #     "_async": True,
-        #     "_skip_filler": True,
-        #     "response_channel": "communication_whatsapp",
-        #     "enterprise_id":enterprise_id
-        # }
-
+        logger.info(f"[Performance Tracking] USER SENT TIME ---{temporary_data.get('message_sent_at')}")
+        logger.info(f"[Performance Tracking] WEBHOOK RECEIVED TIME ---{webhook_received_time}")
+        logger.info(f"[Performance Tracking] WEBHOOK PROCESS TIME ---{temporary_data.get('webhook_start_time')}")
+        logger.info(f"[Performance Tracking] WEBHOOK PROCESS END TIME ---{temporary_data.get('webhook_process_time')}")
         converse_kwargs = {
             "customer_response" : message_text,
             "channel":"whatsapp_chat",
@@ -945,9 +615,10 @@ class BaseWebhookConverter:
         logger.info(f"Session logic result: {d}")
         converse_kwargs.update({
             "session_id":d.get("session_id",None),
-            "campaign_id":d.get("campaign_id",None),
+            "campaign_id":d.get("campaign_id","inbound"),
             "campaign_type":d.get("campaign_type",None),
-            "dealershp_id":d.get("dealershp_id",None)
+            "dealershp_id":d.get("dealershp_id",None),
+            # "lead_id":d.get("lead_id",None),
         })
         # Remove all None values
         converse_kwargs = {k: v for k, v in converse_kwargs.items() if v is not None}
@@ -960,59 +631,6 @@ class BaseWebhookConverter:
 
         logger.info(f"Created Async task result: {res}")
 
-    # def patch_person_session_status(self, *args, **kwargs):
-    #     logger.info(f"Updating the person session status ---- {kwargs}")
-
-    #     session_id = kwargs.get("session_id")
-    #     wa_status = kwargs.get("message_status","").lower()
-    #     enterprise_id = kwargs.get("enterprise_id")
-
-    #     if not session_id:
-    #         logger.info("SessionID not found. Not calling update_person_session_status...")
-    #         return
-
-    #     WA_TO_DISPOSITION = {
-    #         "read": "contacted",
-    #         "sent": "attempted",
-    #         "initiated": "queued",
-    #         "delivered": "reached",
-    #         "failed": "failed",
-    #         "interacted":"engaged"
-    #     }
-            
-    #     disposition = WA_TO_DISPOSITION.get(wa_status, None)
-    #     logger.info(f"Disposition for {wa_status} is {disposition}")
-    #     if not disposition:
-    #         logger.warning(f"Unknown WhatsApp status '{wa_status}'. Skipping update.")
-    #         return
-
-    #     HEADERS = ConverseHeader.get(enterprise_id)
-
-    #     payload = {
-    #         "session_id": session_id,
-    #         "status": wa_status,
-    #         "disposition": disposition,
-    #         "campaign_user_id":kwargs.get("campaign_user_id")
-    #     }
-    #     try:
-    #         r = requests.patch(
-    #             f"{BASE_URL}/object/person_session/{session_id}",
-    #             headers=HEADERS,
-    #             json=payload,
-    #             timeout=10
-    #         )
-
-    #         patch_res = r.json() if r.status_code == 200 else {}
-    #         logger.info(
-    #             f"Updated session status: status_code={r.status_code}, "
-    #             f"whatsapp_status={wa_status} → disposition={disposition}, "
-    #             f"session_id={session_id}, response={patch_res}"
-    #         )
-
-    #     except Exception as e:
-    #         logger.error(f"Error updating person session status for {session_id}: {e}", exc_info=True)
-    
-    
     def get_or_create_person(self,phone_number):
         """Return person object; create if not exists."""
         logger.info(f"Getting or creating person for phone_number: {phone_number}")
@@ -1026,15 +644,20 @@ class BaseWebhookConverter:
                 logger.info(f"Person already exists for phone_number: {phone_number}")
                 return person_list[0]  
             
+            d={
+                "phone_number": phone_number,
+                "created":time.time(),
+            }
             # Create new person
-            user_id_attr=self.generate_uid(phone_number)
+            user_id_attr=self.generate_uid(d)
             logger.info(f"user_id_attr: {user_id_attr}")
-            d= pg.update("person","user_id",user_id_attr,{"phone_number": phone_number})
+            d= pg.update("person","user_id",user_id_attr,{
+                "phone_number": phone_number,
+                "created":time.time(),
+                "updated":time.time()
+                })
             logger.info(f"Person with phone_number: {phone_number}. Doesnt exist. Created a new one. data: {d}")
             return d
-
-
-
 
     def generate_uid(self,data):
         if isinstance(data, (dict, list)):
@@ -1046,8 +669,6 @@ class BaseWebhookConverter:
 
         return uid.hex[:16]   # 16 characters
     
-    # ( dict->>'model_ids' IS NULL  AND  CAST (dict->>'session_live' AS bool) = True  AND  LOWER(CAST(dict->>'status' AS text)) <> LOWER(completed)  AND  LOWER(CAST(dict->>'channel' AS text)) = LOWER(whatsapp_chat)  AND  LOWER(CAST(dict->>'user_id' AS text)) = LOWER(696bf125225b3cf3) ) LIMIT 50 OFFSET 0
-
     def apply_filters(self, session_id, user_id, channel, session_live, status):
         conditions = [] 
         params = ()
@@ -1102,90 +723,129 @@ class BaseWebhookConverter:
             sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
             # logger.info(f'TEST sessions found for {sessions}')
             if sessions:
-                logger.info(f"Found session for user_id: {data.get('user_id')}")
+                logger.info(f"Found exisiting session for user_id: {data.get('user_id')}")
                 return sessions[0]
 
+            logger.info(f"No Existing session found. Creating a new one..")
             # Create new session
             new_session = {
                 **data,
                 "session_live": True,
                 "channel": "whatsapp_chat",
                 "status": "pre-initiated",
-                "campaign_type": "inbound"
+                "campaign_type": data.get("campaign_type","inbound"),
+                "campaign_id": data.get("campaign_id",'inbound'),
+                "created": time.time(),
+                "updated": time.time(),
+                "start_time": time.time()
             }
+            
+            # while creating a new object when using update, then add created and updated . 
+            # Also add start_time when creating
+            # soham will send a task for end session . check if the validation is 1 day without user interaction and then call his task end the session by passing
+            data["updated"] = time.time()
             session_id=self.generate_uid(data)
             logger.info(f"GENERATED session_id--{session_id}")
             s= pg.update("session","session_id",session_id,new_session)
-            # s = post_data("session", new_session)
-            logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. s -- {s}")
+            logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. And the session_id is -- {s}")
             return s
 
-    def handle_incoming_message(self,phone_number):
-        payload={}
+    def handle_incoming_message(self, phone_number, campaign_details=None):
+        payload = {}
+
         # 1. PERSON
         person = self.get_or_create_person(phone_number)
         if person:
-            user_id = person.get("user_id", None)
             payload["phone_number"] = phone_number
-            payload["user_id"]=user_id
+            payload["user_id"] = person.get("user_id")
 
-        # 2. CONTACT STATUS (detect campaign)
         with get_pg_connector() as pg:
-            contact = list(pg.list(
-                "contact_status", 
-                {"phone_number":phone_number}
-            ))
-            # contact = get_objects_by_filter("contact_status", {"phone_number": phone_number})
-            logger.info(f"GET the contact_status for this phone_number: {phone_number}")
-            if contact:
-                logger.info(f"contact status: {contact} ,contact[0]: {contact[0]}")
-                
-                campaign_id = contact.get("campaign_id", None)
-                campaign_type= contact.get("campaign_type", None)
-                campaign_model=contact.get("campaign_model", None)
-                dealership_id = contact.get("dealership_id", None)
-                logger.info(f"Found campaign_id: {campaign_id}, dealership_id: {dealership_id}")
-                payload["campaign_id"]=campaign_id
-                # payload["dealership_id"]=dealership_id.
-                payload["campaign_type"]=campaign_type
-                payload["campaign_model"]=campaign_model
-            else:
-                campaign_id = None
-                dealership_id = None
-                logger.info(f"No campaign found for this phone_number: {phone_number}")
+
+            # 2. CONTACT STATUS
             
-            # 3. FIND/CREATE SESSION
-            if campaign_id:
-                # campaign → lookup campaign details based on campaign_id
-                campaign_details = get_objects_by_filter("campaign_detail", {"campaign_id": campaign_id})
-                
-                # pre_sales_campaign_details=pg.list(
-                #     "pre_sales_campaign", 
-                #     {"campaign_id": campaign_id}
-                # )
-                # if pre_sales_campaign_details:
-                    
-                if campaign_details:
-                    dealership_id = campaign_details.get("dealership_id",None)
-                    payload["dealership_id"] = dealership_id
-                session = self.get_or_create_session(payload)
+            #TODO: check with dinesh if you can add a filter
+            contact_list = list(pg.list("contact_status", {"phone_number": phone_number}))
+            logger.info(f"GET the contact_status for: {phone_number}")
+
+            campaign_id = None
+            campaign_type = None
+            campaign_model = None
+            lead_id = None
+            if contact_list:
+                contact = contact_list[0]  
+                logger.info(f"Contact List is Present: {contact}")
+
+                campaign_id = contact.get("campaign_id",None)
+                campaign_type = contact.get("campaign_type",None)
+                campaign_model = contact.get("campaign_model",None)
+                lead_id= contact.get("lead_id",None)
+
+                payload.update({
+                    "campaign_id": campaign_id,
+                    "campaign_type": campaign_type,
+                    "campaign_model": campaign_model,
+                    "lead_id": lead_id
+                })
             else:
-                creds=list(pg.list(
-                    "communication_credential", 
-                    {"sender": phone_number}
-                ))
-                # non-campaign → lookup credentials based on sender (phone_number)
-                # creds = get_objects_by_filter("communication_credential", {"sender": phone_number})
-                
-                if creds:
-                    dealership_id = creds.get("dealership_id", None)
-                    payload["dealership_id"] = dealership_id #check with soham
+                logger.info(f"No campaign found for phone_number: {phone_number}")
+
+            # 3. FIND / CREATE SESSION
+            # Either detect campaign or use incoming campaign_details
+            if campaign_id or campaign_details:
+
+                # If campaign_details is provided, override
+                if campaign_details:
+                    logger.info(f"Campaign details is present: {campaign_details}")
+                    if not campaign_details.get("campaign_id"):
+                        return {"error": "Campaign details missing campaign_id"}
+
+                    campaign_id = campaign_details["campaign_id"]
+                    campaign_type = campaign_details.get("campaign_type")
+                    payload.update({
+                        "campaign_id": campaign_id,
+                        "campaign_type": campaign_type
+                    })
+
+                # load pre/post-sales campaign data
+                model_name = (
+                    "pre_sales_campaign"
+                    if campaign_type == "pre_sales"
+                    else "post_sales_campaign"
+                )
+
+                m_data_list = list(pg.list(model_name, {"campaign_id": campaign_id}))
+                dealership_id = None
+
+                if m_data_list:
+                    m_data = m_data_list[0] 
+                    dealership_id = m_data.get("dealership_id")
+                    payload["dealership_id"] = dealership_id
+
+                    # get credentials except "dave"
+                    if dealership_id and dealership_id.lower() != "dave":
+                        logger.info(f"Dealership id is not dave: {dealership_id}")
+                        _ = list(pg.list("communication_credential", {"dealership_id": dealership_id}))
+
                 session = self.get_or_create_session(payload)
-                
-            # logger.info(f"TEST SESSION Data ----- {session}")
+                # check which model has the credits info. 
+                return {
+                    **session,
+                    "dealership_id": dealership_id
+                }
+
+            # 4. NON-CAMPAIGN FLOW
+            creds_list = list(pg.list("communication_credential", {"sender": phone_number}))
+            dealership_id = None
+            if creds_list:
+                creds = creds_list[0]
+                dealership_id = creds.get("dealership_id")
+                payload["dealership_id"] = dealership_id
+
+            session = self.get_or_create_session(payload)
+
             return {
                 **session,
-                "dealership_id":dealership_id
+                "dealership_id": dealership_id
             }
 
 
@@ -1206,12 +866,8 @@ class BaseWebhookConverter:
         """
         # logger.info("TEST process webhook before payload converter----")
         self.payload_converter(*args, **kwargs)
-        # self.payload_converter(*args, **kwargs["messages"][0])
         
-        # logger.info("TEST process webhook after payload converter-")
 
-        # Schedule campaign status update asynchronously
-        # update_campaign_status_params.apply_async(*[kwargs.get("whatsapp_provider"),kwargs.get("enterprise_id")],**kwargs)
         # gryd.create_async_task("update_campaign_status_params",GRYD_COMMUNICATION_STATUS_SERVICE,args=[kwargs.get("whatsapp_provider"),kwargs.get("enterprise_id")],kwargs=kwargs)
         if self.process_status_check():
             return {"info": f"Status Webhook Processed for {self.default_message_dict.get('enterprise_id', '')}"}
@@ -1766,6 +1422,7 @@ class WhatsappCampaignTemplate:
 
     @classmethod
     def register(cls, source_type: str, source_class: type):
+        logger.info(f"TEST class registry {source_type} -> {source_class}")
         cls._registry[source_type.lower()] = source_class
         # logger.info(f"✅ {cls._class_name} Registered source: {source_type} -> {source_class.__name__}")
     @classmethod
@@ -1777,6 +1434,7 @@ class WhatsappCampaignTemplate:
 
         logger.info(f"Loading campaign src_type: {src_type}")
         source_class = cls._registry.get(src_type)
+        logger.info(f"source_class: {source_class}")
         if not source_class:
             raise ValueError(f"Unsupported source type: {src_type}")
         
