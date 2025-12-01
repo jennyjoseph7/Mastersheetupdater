@@ -3,13 +3,10 @@
     "template_id": "template-001",
     "template_name": "Test Drive Booking",
     "template_type": "text",
-    "channel": "whatsapp",
+    "channel": "whatsapp_chat",
     "language": "english",
-    "template_variables": [
-      "person_name",
-      "model_name"
-    ],
-    "status": "approved",
+    "template_variables": ["person_name", "model_name"],
+    "status": ["approved"],
     "created": 1704067200,
     "updated": 1704067200,
     "template_media_id": null,
@@ -18,7 +15,7 @@
     "template_message": null,
     "dealer_name": null,
     "region_name": null,
-    "communication_credentials_id": null,
+    "communication_credential_id": "airtel-917795030574",
     "media_file_name": null,
     "template_payload": {},
     "sender": null,
@@ -29,14 +26,10 @@
     "template_id": "template-002",
     "template_name": "Service Reminder",
     "template_type": "text",
-    "channel": "whatsapp",
+    "channel": "whatsapp_chat",
     "language": "english",
-    "template_variables": [
-      "person_name",
-      "vehicle_model",
-      "reg_number"
-    ],
-    "status": "approved",
+    "template_variables": ["person_name", "vehicle_model", "reg_number"],
+    "status": ["approved"],
     "created": 1704067200,
     "updated": 1704067200,
     "template_media_id": null,
@@ -45,7 +38,7 @@
     "template_message": null,
     "dealer_name": null,
     "region_name": null,
-    "communication_credentials_id": null,
+    "communication_credential_id": "airtel-917795030574",
     "media_file_name": null,
     "template_payload": {},
     "sender": null,
@@ -56,14 +49,10 @@
     "template_id": "template-003",
     "template_name": "Price Enquiry Response",
     "template_type": "text",
-    "channel": "whatsapp",
+    "channel": "whatsapp_chat",
     "language": "english",
-    "template_variables": [
-      "person_name",
-      "variant_name",
-      "price"
-    ],
-    "status": "approved",
+    "template_variables": ["person_name", "variant_name", "price"],
+    "status": ["approved"],
     "created": 1704153600,
     "updated": 1704153600,
     "template_media_id": null,
@@ -72,11 +61,302 @@
     "template_message": null,
     "dealer_name": null,
     "region_name": null,
-    "communication_credentials_id": null,
+    "communication_credential_id": "airtel-917795030574",
     "media_file_name": null,
     "template_payload": {},
     "sender": null,
     "provider_name": null,
     "template_buttons_payload": []
-  }
+  },{
+    "template_name": "Autobot_Service_Reminder_Message",
+    "template_message": "Hello, this is a reminder that your {{vehicle_model}} is due for service on {{service_due_date}} at {{workshop_name}}. Regular service keeps your vehicle running smoothly and ensures safety. Would you like to book a service slot?",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Service"
+        },
+        {
+            "type":"QUICK_REPLY",
+            "text":"Request a Call Back"
+        }
+    ],
+    "template_button_payloads": [
+        "autobot_service_reminder_message-book_a_service",
+        "autobot_service_reminder_message-request_a_call_back"
+    ],
+    "attributes_used": [
+        "vehicle_model",
+        "service_due_date",
+        "workshop_name"
+    ],
+    "template_id" : "01kazdn1a2w0d797m937k7jwxs"
+},{
+    "template_name": "Autobot_Service_Discount_Enquiry",
+    "template_message": "Hello, we noticed you were exploring service options for your {{vehicle_model}}. While discounts vary by workshop, we can help you check the best available offer at {{workshop_name}}. Your service is due on {{service_due_date}}. Would you any need assistance?",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Check Offers"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_button_payloads": [
+        "autobot_service_discount_enquiry-check_offers",
+        "autobot_service_discount_enquiry-request_a_call_back"
+    ],
+    "attributes_used": [
+        "vehicle_model",
+        "workshop_name",
+        "service_due_date"
+    ],
+    "disposition_tags": [
+        "reached",
+        "looking-for-a-discount"
+    ],
+    "lead_tags": [
+        "service-due",
+        "retention"
+    ],
+    "template_id": "01kazax15650cy6d1ycw10qj1v"
+},{
+    "template_name": "Autobot_Service_FollowUp_Tomorrow",
+    "template_message": "Hi, as discussed earlier, your service for {{vehicle_model}} at {{workshop_name}} is due soon. You mentioned you will decide by tomorrow. Let us know if you need help with booking.",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Service"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_button_payloads": [
+        "autobot_service_followup_decide_tomorrow-book_a_service",
+        "autobot_service_followup_decide_tomorrow-request_a_call_back"
+    ],
+    "attributes_used": [
+        "vehicle_model",
+        "workshop_name"
+    ],
+    "disposition_tags": [
+        "reached",
+        "will-decide-tomorrow"
+    ],
+    "lead_tags": [
+        "service-due"
+    ],
+    "template_id": "01kazb2xesq96z1zh9tx94f39z"
+},{
+    "template_name": "Autobot_Service_FollowUp_4to7Days",
+    "template_message": "Hello, this is a reminder that service for your {{vehicle_model}} is due soon. You had planned to decide within 4 to 7 days. We can share available slots at {{workshop_name}} whenever you are ready.",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Service"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_button_payloads": [
+        "autobot_service_followup_4to7days-book_a_service",
+        "autobot_service_followup_4to7days-request_a_call_back"
+    ],
+    "attributes_used": [
+        "vehicle_model",
+        "workshop_name"
+    ],
+    "disposition_tags": [
+        "reached",
+        "will-decide-4-7-days"
+    ],
+    "lead_tags": [
+        "service-due"
+    ],
+    "template_id": "01kazbac2yr4yz4gcs0dt1nyh8"
+},{
+    "template_name": "Autobot_Service_FollowUp_8to14Days",
+    "template_message": "Hey, your service for {{vehicle_model}} is due on {{service_due_date}}. You mentioned you will decide within 8 to 14 days. Please let us know whenever you need assistance with the booking.",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Service"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_button_payloads": [
+        "autobot_service_followup_8to14days-book_a_service",
+        "autobot_service_followup_8to14days-request_a_call_back"
+    ],
+    "attributes_used": [
+        "vehicle_model",
+        "service_due_date"
+    ],
+    "disposition_tags": [
+        "reached",
+        "will-decide-8-14-days"
+    ],
+    "lead_tags": [
+        "service-due"
+    ],
+    "template_id": "01kazbg0459bx91tgdvtge6rsq"
+},{
+    "template_name": "Autobot_Service_FollowUp_15to30Days",
+    "template_message": "Hi, we hope your {{vehicle_model}} is running well. Your next service is due on {{service_due_date}}. You mentioned you will decide within 15 to 30 days. We are here if you need any assistance. Please complete your vehicle service timely.",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Service"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_button_payloads": [
+        "autobot_service_followup_15to30days-book_a_service",
+        "autobot_service_followup_15to30days-request_a_call_back"
+    ],
+    "attributes_used": [
+        "vehicle_model",
+        "service_due_date"
+    ],
+    "disposition_tags": [
+        "reached",
+        "will-decide-15-30-days"
+    ],
+    "audience_tags": [
+        "service-due"
+    ],
+    "template_id": "01kazbk48j4cw885nfjt37258m"
+},{
+    "template_name": "Autobot_Service_FollowUp_61to90Days",
+    "template_message": "Hello, your {{vehicle_model}} service due was on {{service_due_date}}. Since you plan to decide within 61 to 90 days. Please ensure timely service of your vehicle for a good health and long run. Click on book a service to book your service slot.",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Service"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_button_payloads": [
+        "autobot_service_followup_61to90days-book_a_service",
+        "autobot_service_followup_61to90days-request_a_call_back"
+    ],
+    "attributes_used": [
+        "service_due_date",
+        "vehicle_model"
+    ],
+    "disposition_tags": [
+        "reached",
+        "will-decide-61-90-days"
+    ],
+    "lead_tags": [
+        "service_due"
+    ],
+    "template_id": "01kazbvsp8kbncswa2w30ymqf7"
+},{
+    "template_name": "Autobot_Service_FollowUp_After90Days",
+    "template_message": "Hi, your {{vehicle_model}} service due was on {{service_due_date}}. Since you will decide after 90 days regarding the service of your {{vehicle_model}}, we want to remind you that please complete your vehicle service timely to ensure good health of your vehicle for a long run.",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Service"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_button_payloads": [
+        "autobot_service_followup_after90days-book_a_service",
+        "autobot_service_followup_after90days-request_a_call_back"
+    ],
+    "attributes_used": [
+        "service_due_date",
+        "vehicle_model"
+    ],
+    "disposition_tags": [
+        "reached",
+        "will-decide-after-90-days"
+    ],
+    "lead_tags": [
+        "service_due"
+    ],
+    "template_id": "01kazbz6c24fktnmvz7gnc5b2w"
+},{
+    "template_name": "Autobot_Service_SelfCall_Reminder",
+    "template_message": "Hello, noted that you will call {{workshop_name}} directly for the service of your {{vehicle_model}}. But we noticed that the call is not completed yet. If you need any assistance or want us to schedule it for you, feel free to reply here.",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Schedule a Call"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_button_payloads": [
+        "autobot_service_selfcall_reminder-request_a_call_back",
+        "autobot_service_selfcall_reminder-schedule_a_call"
+    ],
+    "attributes_used": [
+        "vehicle_model",
+        "workshop_name"
+    ],
+    "disposition_tags": [
+        "reached",
+        "will-call-workshop"
+    ],
+    "lead_tags": [
+        "service_due"
+    ],
+    "template_id": "01kazc203gj2wqw1hxgdcfs831"
+},{
+    "template_name": "Autobot_Service_LowUsage_VehicleNotRun",
+    "template_message": "Hi, we understand your {{vehicle_model}} is not being run often. Even with low usage, periodic service is important for vehicle health, fluid condition, and safety checks. Would you like to have a no-obligation inspection at {{workshop_name}}?",
+    "buttons": [
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book Inspection"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Book a Service"
+        },
+        {
+            "type": "QUICK_REPLY",
+            "text": "Request a Call Back"
+        }
+    ],
+    "template_button_payloads": [
+        "autobot_service_lowusage_vehicle_not_run-book_inspection",
+        "autobot_service_lowusage_vehicle_not_run-book_a_service",
+        "autobot_service_lowusage_vehicle_not_run-request_a_call_back"
+    ],
+    "attributes_used": [
+        "vehicle_model",
+        "workshop_name"
+    ],
+    "disposition_tags": [
+        "vehicle-not-run"
+    ],
+    "lead_tags": [
+        "low-mileage",
+        "inactive-user"
+    ],
+    "template_id": "01kazczxjgnx4m7c4bsw5cwjwc"
+}
 ]
