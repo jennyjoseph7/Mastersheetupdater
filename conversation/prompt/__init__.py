@@ -2,7 +2,7 @@
 import os,sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-from gryd_worker import gryd
+from gryd_worker import gryd, gryd_helpers as hp
 gryd.SERVICE = os.environ.get("AUTOBOT_CONVERSATION_SERVICE_NAME","autocrm-conversation")
 import json
 from autocrm_db_helper import get_pg_connector
@@ -39,7 +39,7 @@ def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], **kw
     return resp
 
 def get_document_data(*args, **kwargs):
-    return """
+    data = """
     Maruti Ciaz Data -
     Maruti Suzuki Ciaz - Complete Information
 1. General Overview
@@ -267,6 +267,8 @@ Bold front grille with chrome accents
 End Of Document Data
 """
 
+    return ""
+
 def get_who_are_you(*args, **kwargs):
     return "You are a digital sales assistant bot."   
 
@@ -352,7 +354,8 @@ def get_tone_and_style(*args, **kwargs):
 
 def get_output_format(*args, **kwargs):
     return "" if "voice" in kwargs.get("request_data",{}).get("response_channel","text") else "text"
-
+def get_conversation_history(*args, **kwargs):
+    return hp.json.dumps(kwargs.get("session_data_cache",{}).get("messages",[])).decode("utf-8")
 
 def setup_primary_prompt(*args, **kwargs):
     '''
@@ -409,8 +412,9 @@ def setup_primary_prompt(*args, **kwargs):
     possible_states_and_solutions = get_example_states_and_solutions(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     rules = get_rules(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     tone_and_style = get_tone_and_style(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    conversation_history = get_conversation_history(*args,**{"session_data_cache":session_data_cache_data})
     output_format = get_output_format(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-
+    mlogger.info("my history data == {}".format(conversation_history))
 
     primary_prompt = f"""
     Who you are -
@@ -431,6 +435,8 @@ def setup_primary_prompt(*args, **kwargs):
     {showroom_workshop_desc}
     Documents Data -
     {doc_data}
+    Conversation History -
+    {conversation_history}
     Output Format -
     {output_format}
     """
