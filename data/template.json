@@ -29,9 +29,9 @@
       "indexed": true
     },
     {
-      "name": "communication_credential_id",
+      "name": "communication_credentials_id",
       "refers": "parents.communication_credential.communication_credentials_id",
-      "required": true
+      "required": true 
     },
     {
       "name": "provider_name",
@@ -126,7 +126,7 @@
     },
     {
       "name": "campaign_type",
-      "type": "list",
+      "type": "text",
       "options": [
         "pre-sales",
         "post-sales",
@@ -239,7 +239,7 @@
     },
     {
       "name": "status",
-      "type": "list",
+      "type": "text",
       "options": ["pending", "approved", "rejected"]
     },
     {
