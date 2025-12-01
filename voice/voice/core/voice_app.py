@@ -21,7 +21,6 @@ import utils
 logger = utils.get_logger(__name__)
 
 
-Queue()
 
 def user_session(system_prompt:str, init_config: dict = None,  **user_data):
 
