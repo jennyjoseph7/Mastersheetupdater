@@ -3,6 +3,23 @@
     "model_type": "default",
     "attributes": [
         {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
             "name": "dealership_id",
             "type": "uid",
             "required": true
@@ -248,8 +265,8 @@
             "default": {
                 "function": "get_from_model",
                 "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
+                    "campaign_objective",
+                    "campaign_objective_id",
                     "reasons_users_may_not_be_interested"
                 ]
             }
@@ -262,7 +279,7 @@
                 "function": "get_from_model",
                 "args": [
                     "campaign_objective",
-                    "campaign_id",
+                    "campaign_objective_id",
                     "campaign_reasons_for_non_applicability"
                 ]
             }
@@ -274,8 +291,8 @@
             "default": {
                 "function": "get_from_model",
                 "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
+                    "campaign_objective",
+                    "campaign_objective_id",
                     "other_important_information"
                 ]
             }
@@ -285,11 +302,12 @@
             "default": {
                 "function": "get_from_model",
                 "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
+                    "campaign_objective",
+                    "campaign_objective_id",
                     "ctas"
                 ]
-            }
+            },
+            "type": "string_list"
         },
         {
             "name": "lead_tags",
@@ -298,12 +316,22 @@
             "list_adder": {
                 "function": "list_adder"
             },
-            "option_others": true
+            "option_others": true,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "lead_tags"
+                ]
+            },
+            "type": "string_list"
         },
         {
             "name": "vehicle_id",
             "type": "uid",
-            "required": true
+            "required": true,
+            "indexed": true
         },
         {
             "name": "vehicle_brand",
@@ -416,14 +444,14 @@
             }
         },
         {
-            "name": "engine_capacity",
+            "name": "engine_capacity_cc",
             "type": "number",
             "default": {
                 "function": "get_from_model",
                 "args": [
                     "vehicle",
                     "vehicle_id",
-                    "engine_capacity"
+                    "engine_capacity_cc"
                 ]
             }
         },
@@ -441,6 +469,7 @@
         },
         {
             "name": "reg_number",
+            "indexed": true,
             "type": "text",
             "default": {
                 "function": "get_from_model",
@@ -597,7 +626,7 @@
         },
         {
             "name": "next_service_due",
-            "type": "number",
+            "type": "text",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1048,13 +1077,78 @@
             }
         },
         {
-            "type": "number",
-            "name": "customer_score"
+            "name": "phone_number",
+            "type": "text",
+            "indexed": true,
+            "constraint": {
+                "function": "phone_validator"
+            }
+        },
+        {
+            "name": "email",
+            "type": "text",
+            "indexed": true,
+            "constraint": {
+                "function": "email_validator"
+            }
+        },
+        {
+            "name": "alt_phone_number_2",
+            "type": "text",
+            "indexed": true,
+            "constraint": {
+                "function": "phone_validator"
+            }
+        },
+        {
+            "name": "alt_phone_number_3",
+            "type": "text",
+            "indexed": true,
+            "constraint": {
+                "function": "phone_validator"
+            }
+        },
+        {
+            "name": "alt_phone_number_4",
+            "type": "text",
+            "indexed": true,
+            "constraint": {
+                "function": "phone_validator"
+            }
+        },
+        {
+            "name": "alt_email_2",
+            "type": "text",
+            "indexed": true,
+            "constraint": {
+                "function": "email_validator"
+            }
+        },
+        {
+            "name": "alt_email_3",
+            "type": "text",
+            "indexed": true,
+            "constraint": {
+                "function": "email_validator"
+            }
+        },
+        {
+            "name": "alt_email_4",
+            "type": "text",
+            "indexed": true,
+            "constraint": {
+                "function": "email_validator"
+            }
+        },
+        {
+            "name": "customer_score",
+            "type": "number"
         },
         {
             "name": "workshop_id",
             "type": "uid",
-            "required": false
+            "required": false,
+            "indexed": true
         },
         {
             "name": "workshop_name",
@@ -1068,7 +1162,8 @@
                 ]
             },
             "auto_updater": true,
-            "force_update": "workshop_id"
+            "force_update": "workshop_id",
+            "indexed": true
         },
         {
             "name": "workshop_full_name",
@@ -1109,6 +1204,7 @@
                     "contact_number"
                 ]
             },
+            "indexed": true,
             "auto_updater": true,
             "force_update": "workshop_id"
         },
@@ -1124,7 +1220,8 @@
                 ]
             },
             "auto_updater": true,
-            "force_update": "workshop_id"
+            "force_update": "workshop_id",
+            "indexed": true
         },
         {
             "name": "workshop_address",
@@ -1152,7 +1249,8 @@
                 ]
             },
             "auto_updater": true,
-            "force_update": "workshop_id"
+            "force_update": "workshop_id",
+            "indexed": true
         },
         {
             "name": "workshop_state",
@@ -1165,6 +1263,7 @@
                     "state"
                 ]
             },
+            "indexed": true,
             "auto_updater": true,
             "force_update": "workshop_id"
         },
@@ -1179,6 +1278,7 @@
                     "pincode"
                 ]
             },
+            "indexed": true,
             "auto_updater": true,
             "force_update": "workshop_id"
         },
@@ -1194,7 +1294,8 @@
                 ]
             },
             "auto_updater": true,
-            "force_update": "workshop_id"
+            "force_update": "workshop_id",
+            "indexed": true
         },
         {
             "name": "workshop_operating_hours",
@@ -1277,10 +1378,6 @@
         {
             "name": "service_due_timetamp",
             "type": "number"
-        },
-        {
-            "name": "service_due_date",
-            "type": "text"
         },
         {
             "name": "appointment_date",
@@ -1469,23 +1566,6 @@
         {
             "name": "scheduled_timestamp",
             "type": "number"
-        },
-        {
-            "name": "created",
-            "type": "number",
-            "auto_updater": true,
-            "default": {
-                "function": "now_ctime"
-            }
-        },
-        {
-            "name": "updated",
-            "type": "number",
-            "auto_updater": true,
-            "force_update": true,
-            "default": {
-                "function": "now_ctime"
-            }
         }
     ]
 }

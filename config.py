@@ -12,6 +12,9 @@ AUTOCRM_COMMUNICATION_SERVICE_NAME = os.environ.get("AUTOCRM_COMMUNICATION_SERVI
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
 AUTOCRM_CORE_SERVICE_NAME = os.environ.get("AUTOCRM_CORE_SERVICE_NAME", "autocrm-core")
 AUTOCRM_CAMPAIGN_SERVICE_NAME = os.environ.get("AUTOCRM_CAMPAIGN_SERVICE_NAME", "autocrm-campaign")
+GRYD_FILE_USER_ID = os.environ.get("GRYD_FILE_USER_ID")
+GRYD_FILE_API_KEY = os.environ.get("GRYD_FILE_API_KEY")
+GRYD_FILE_SERVER_URL = os.environ.get("GRYD_FILE_SERVER_URL", "https://file-prod.gryd.in")
 BASE_DIR = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_DIR, "data")
 if BASE_DIR not in sys.path:
