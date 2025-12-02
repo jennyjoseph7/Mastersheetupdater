@@ -7,7 +7,10 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import asyncio
 import typing
 from gryd_worker import gryd_helpers as hp
-from .gemini import GEMINIAPI
+try:
+    from .gemini import GEMINIAPI
+except:
+    from gemini import GEMINIAPI
 from multiprocessing import Queue
 import logging
 import utils
@@ -46,54 +49,57 @@ class TestVoiceAgent:
         
         self.running = True
         self.client = client_class(input_queue, output_queue, system_prompt, self.server_timeout, **agent_param)
-        self.create_session()
+        # self.create_session()
         
-    def create_session(self) -> None:
-        asyncio.run(self.client.create_session(self.session_id))
+    async def create_session(self) -> None:
+        # asyncio.run(self.client.create_session(self.session_id))
+        await self.client.create_session(self.session_id)
         logger.info(f"Started agent session {self.session_id} for agent_type={self.agent_type}")
 
-    def push_audio(self, message_id:str, sequence_number, audio_byte:typing.Union[bytes, None]=None):
-        try:
-            sequence_number = int(sequence_number)
-        except Exception:
-            logger.warning('No sequence number set. Using Default sequence number.')
-            sequence_number = 0
+    
+    # def receive_and_push_audio()
+    # def push_audio(self, message_id:str, sequence_number, audio_byte:typing.Union[bytes, None]=None):
+    #     try:
+    #         sequence_number = int(sequence_number)
+    #     except Exception:
+    #         logger.warning('No sequence number set. Using Default sequence number.')
+    #         sequence_number = 0
         
-        message_sequence_number = f'{message_id}----{sequence_number}----{hp.time()}'
-        payload_audio = {
-            message_sequence_number : audio_byte
-        }
+    #     message_sequence_number = f'{message_id}----{sequence_number}----{hp.time()}'
+    #     payload_audio = {
+    #         message_sequence_number : audio_byte
+    #     }
         
-        try:
-            if audio_byte:
-                logger.info(f'Pushed audio to input manager of len {len(audio_byte)}')
-            else:
-                logger.info(f'Sending sentinel to input manager.')
-            self.input_queue.put_nowait(payload_audio)
+    #     try:
+    #         if audio_byte:
+    #             logger.info(f'Pushed audio to input manager of len {len(audio_byte)}')
+    #         else:
+    #             logger.info(f'Sending sentinel to input manager.')
+    #         self.input_queue.put_nowait(payload_audio)
             
-        except Exception as e:
-            logger.warning(f'Failed to put audio into input manager. For detailed info Check traceback logs')
-            import traceback
-            traceback.print_exc()
+    #     except Exception as e:
+    #         logger.warning(f'Failed to put audio into input manager. For detailed info Check traceback logs')
+    #         import traceback
+    #         traceback.print_exc()
 
-    def stream_response(self, media_params: dict):
-        message_id = media_params.get('message_id')
-        if not message_id  or not message_id.strip():
-            raise VoiceAgentError(f'Message id is required to stream the response')    
+    # def stream_response(self, media_params: dict):
+    #     message_id = media_params.get('message_id')
+    #     if not message_id  or not message_id.strip():
+    #         raise VoiceAgentError(f'Message id is required to stream the response')    
         
-        session_id = media_params.get('session_id')
+    #     session_id = media_params.get('session_id')
         
-        if not session_id or not session_id.strip():
-            session_id = self.session_id
+    #     if not session_id or not session_id.strip():
+    #         session_id = self.session_id
             
-        if session_id!=self.session_id:
-            raise VoiceAgentError(f'Session id miss matched. Check the intialized session_id')
+    #     if session_id!=self.session_id:
+    #         raise VoiceAgentError(f'Session id miss matched. Check the intialized session_id')
         
-        self.sequence_number = media_params.get('sequence_number', self.sequence_number)
+    #     self.sequence_number = media_params.get('sequence_number', self.sequence_number)
             
-        audio_data = media_params.get('audio_data')
-        self.push_audio(message_id, self.sequence_number, audio_data)
-        self.sequence_number = self.sequence_number + 1
+    #     audio_data = media_params.get('audio_data')
+    #     self.push_audio(message_id, self.sequence_number, audio_data)
+    #     self.sequence_number = self.sequence_number + 1
         
     def end_session(self) -> None:
         try:
@@ -106,60 +112,68 @@ class TestVoiceAgent:
             raise
         
 async def main():
-    output_queue = asyncio.Queue()
-    client = TestVoiceAgent('shivam_rawat_123', output_queue, 'have a talk with shivam', 4)
-    
+    import multiprocessing
+    output_queue = multiprocessing.Queue()
+    input_queue = multiprocessing.Queue()
+    print('shivam start')
+
+    client = TestVoiceAgent('shivam_rawat_123', input_queue, output_queue, 'have a talk with shivam', 4)
+
+    await client.create_session()
+    print('shivam end')
+
     with open('voice.wav', 'rb') as f:
         audio_byte = f.read()
-    
-    count = 0
+
     for i in range(0, len(audio_byte), 5000):
         audio_content = audio_byte[i:i+5000]
-        client.stream_response({
-            'message_id': 'shivam_rawat_end',
-            'audio_data': audio_content
+        input_queue.put({
+            'message_id': 'shivam',
+            'audio_data': audio_content,
+            'session_id': 'shivam_rawat_123'
         })
-        # print('sent audio byte for:', count)
-        count = count+1
-    
-    # client.end_session()
-    
+
+    client.end_session()
+
     import wave
     wf = wave.open('test_agent_flow.wav', 'wb')
     wf.setframerate(24000)
     wf.setnchannels(1)
     wf.setsampwidth(2)
-    # {'shivam_test': {'shivam-test-11': {'sequence_number': , 'agent_response': , 'agent_responded': , 'agent_recieved': }}
     print("Waiting for agent responses...")
 
+    loop = asyncio.get_running_loop()
+
     while True:
-        data = await output_queue.get()
+        data = await loop.run_in_executor(None, output_queue.get)
+
+        if data is None:
+            print("Received end-of-stream sentinel from worker")
+            break
 
         if isinstance(data, dict) and "error" in data:
             raise RuntimeError(f"Voice worker failed: {data['error']}")
 
-        if data is None:
-            # print("Received end-of-stream sentinel from worker")
-            break
-
-        session_payload = data.get('shivam_rawat_123')
-        if not session_payload:
+        if not isinstance(data, dict):
             print("Unexpected payload:", data)
             continue
-        # print(session_payload)
-        message_id, message_payload = next(iter(session_payload.items()))
-        seq_num = message_payload.get('sequence_number')
-        # start_time = message_payload.get('agent_recieved')
-        # end_time = message_payload.get('agent_responded')
-        
-        # print('-----------------------------timerr--------------------------', start_time, end_time, end_time-start_time)
-        audio_bytes = message_payload.get('agent_response')
+
+        if data.get("session_id") != 'shivam_rawat_123':
+            print("Payload for different session:", data)
+            continue
+
+        if data.get("message_type") != "audio_output":
+            print("Non-audio payload:", data)
+            continue
+
+        audio_bytes = data.get("audio_data")
         if not audio_bytes:
             continue
 
-        print(f"Writing sequence {seq_num} from message_id={message_id}")
+        msg_id = data.get("message_id")
+        print(f"Writing chunk from message_id={msg_id}, len={len(audio_bytes)}")
         wf.writeframes(audio_bytes)
-    
+
     wf.close()
 
 if __name__ == '__main__':

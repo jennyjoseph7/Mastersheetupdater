@@ -2,7 +2,7 @@
 import os,sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-from gryd_worker import gryd
+from gryd_worker import gryd, gryd_helpers as hp
 gryd.SERVICE = os.environ.get("AUTOBOT_CONVERSATION_SERVICE_NAME","autocrm-conversation")
 import json
 from autocrm_db_helper import get_pg_connector
@@ -39,7 +39,7 @@ def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], **kw
     return resp
 
 def get_document_data(*args, **kwargs):
-    return """
+    data = """
     Maruti Ciaz Data -
     Maruti Suzuki Ciaz - Complete Information
 1. General Overview
@@ -267,6 +267,8 @@ Bold front grille with chrome accents
 End Of Document Data
 """
 
+    return ""
+
 def get_who_are_you(*args, **kwargs):
     return "You are a digital sales assistant bot."   
 
@@ -320,12 +322,14 @@ def get_purpose_and_steps(*args, **kwargs):
         steps = ["- Full Name \n- Interested Model\n- Date & Time "]
     if campaign_type == "inbound":
         return "Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy."
-    return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n.You should help answer any and all questions that the customer asks about cars that are related to the dealer. You should always try to move the user to your original purpose but do not be pushy."
+    return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n The current date for your reference is {hp.time()}.You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user isnt already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy."
 
 def get_example_states_and_solutions(*args, **kwargs):
     examples = [
-        "If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose.",
-        ""
+        "If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose if the arent already in the purpose flow.",
+        "If a purpose flow is completed, you should provide a confirmation message to the user with the details of the booking.",
+        "After the purpose is completed already in this conversation, do not urge them again.",
+        "if the customer provides you a date and time you should always check against the current date time and validate. also you should always provide the DD-MM-YYYY format for the date you want to mention. Do not say today or tomorrow or other such references to date."
     ]
     return ", ".join(examples)
 
@@ -352,7 +356,8 @@ def get_tone_and_style(*args, **kwargs):
 
 def get_output_format(*args, **kwargs):
     return "" if "voice" in kwargs.get("request_data",{}).get("response_channel","text") else "text"
-
+def get_conversation_history(*args, **kwargs):
+    return hp.json.dumps(kwargs.get("session_data_cache",{}).get("messages",[])).decode("utf-8")
 
 def setup_primary_prompt(*args, **kwargs):
     '''
@@ -409,8 +414,9 @@ def setup_primary_prompt(*args, **kwargs):
     possible_states_and_solutions = get_example_states_and_solutions(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     rules = get_rules(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     tone_and_style = get_tone_and_style(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    conversation_history = get_conversation_history(*args,**{"session_data_cache":session_data_cache_data})
     output_format = get_output_format(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-
+    mlogger.info("my history data == {}".format(conversation_history))
 
     primary_prompt = f"""
     Who you are -
@@ -431,6 +437,8 @@ def setup_primary_prompt(*args, **kwargs):
     {showroom_workshop_desc}
     Documents Data -
     {doc_data}
+    Conversation History -
+    {conversation_history}
     Output Format -
     {output_format}
     """

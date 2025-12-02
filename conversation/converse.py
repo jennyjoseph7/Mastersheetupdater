@@ -8,6 +8,7 @@ from config import AUTOCRM_CONVERSATION_SERVICE_NAME
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
 from prompt import yield_primary_prompt, run_prompt_sync
+from yield_response import yield_result,yield_error, yield_status
 json = hp.json
 
 gryd.SERVICE = AUTOCRM_CONVERSATION_SERVICE_NAME
@@ -124,6 +125,55 @@ def converse(*args, **kargs):
     
     return
 
+
+
+@gryd.is_a_task()
+def post_messages_data(*args, **pass_kwargs):
+    '''
+        Picks up all messages sent and posts it to message model
+    '''
+    mlogger.info("post_messages_data called with data == {}".format(pass_kwargs))
+    with get_pg_connector() as pg:
+        new_messages = []
+        if not pass_kwargs.get("reply_to"):
+            in_message_id = str(gryd.hp.make_uuid3(hp.time(),pass_kwargs.get("session_id"),pass_kwargs.get("user_id"),pass_kwargs.get("customer_response")))
+
+        incoming_message = {
+            "reply_to":"",
+            "message_id":pass_kwargs.get("reply_to") or in_message_id,
+            "message":pass_kwargs.get("customer_response") or pass_kwargs.get("request_data",{}).get("customer_response",""),
+            "session_id":pass_kwargs.get("session_id"),
+            "created" : hp.time(),
+            "updated" : hp.time(),
+            "index" : 0
+            }
+        
+        first_message = pg.update("message","message_id",pass_kwargs.get("reply_to"),incoming_message)
+        new_messages.append(first_message)
+        mlogger.info("first_message {}".format(first_message))
+        for message in pass_kwargs.get("responses"):
+            message_id = str(gryd.hp.make_uuid3(hp.time(),pass_kwargs.get("session_id"),message.get("intent"),message.get("placeholder")))
+            out_message = {
+                    "reply_to":pass_kwargs.get("reply_to"),
+                    "message_id":message_id,
+                    "message":message.get("placeholder"),
+                    "session_id":pass_kwargs.get("session_id"),
+                    "intent" : message.get("intent","unknown_intent"),
+                    "index" : message.get("index",0),
+                    "created" : message.get("created",hp.now()),
+                    "updated" : message.get("updated",hp.now())
+                }
+            respper = pg.update("message","message_id",message_id,out_message)
+            new_messages.append(respper)
+            # mlogger.info("respper {}".format(respper))
+        session_data_cache_data = pass_kwargs.get("session_data_cache").get("data",{})
+        current_cache_messages = session_data_cache_data.get("messages",[])
+        current_cache_messages.extend(new_messages)
+        session_data_cache_data["messages"] = current_cache_messages
+        pg.update("session_data_cache","session_id",pass_kwargs.get("session_id"),{"data":session_data_cache_data})
+        
+
+        
 def setup_session_data_cache(*args, **kwargs):
     logger = kwargs.get("logger",mlogger)
     logger.info("setup_session_cache_data called with data \n {} \n\n ---------------".format(kwargs))
@@ -133,7 +183,8 @@ def setup_session_data_cache(*args, **kwargs):
     session_id = kwargs.get("session_id")
     session_data = kwargs.get("session_data")
     with get_pg_connector() as pg:
-        session_data_cache = pg.get("session_data_cache","session_id",session_id)
+        session_data_cache = pg.get("session_data_cache","session_id",session_id) or {}
+        mlogger.info("session_data_cache fetched == {}".format(session_data_cache)) 
         if not session_data_cache or not session_data_cache.get("data",{}).get("campaign_data") or not session_data_cache.get("data",{}).get("user_data"):
             campaign_model_name = session_data.get("campaign_model")
             lead_model_name = session_data.get("lead_model")
@@ -141,7 +192,13 @@ def setup_session_data_cache(*args, **kwargs):
             dealership_id = campaign_data.get("dealership_id")
             dealership_data = pg.get("dealership","dealership_id",dealership_id)
             lead_data = pg.get(session_data.get("lead_model"),"{}_id".format(lead_model_name),session_data.get("lead_id")) or {}
-            session_data_cache = pg.update("session_data_cache","session_id",session_id,{"session_id":session_id,"data":{"campaign_data":campaign_data,"user_data":lead_data,"dealership_data":dealership_data}})
+            current_data = session_data_cache.get("data",{})
+            current_data["campaign_data"] = campaign_data
+            current_data["user_data"] = lead_data
+            current_data["dealership_data"] = dealership_data
+            postable = {"session_id":session_id,"data":current_data}
+            mlogger.info("postable == {}".format(postable))
+            session_data_cache = pg.update("session_data_cache","session_id",session_id,postable)
             
     return session_data_cache or {}
 
@@ -182,58 +239,6 @@ def execute_primary_prompt(*args, **kwargs):
     
 
 @gryd.is_a_task()
-def session_close(*args, **kwargs):
-    '''
-    Called when session is over (1 day since last message/phone call cut). 
-    calls agents to analyse call history
-    deletes session_data_cache
-    sets disposition and disposition description
-    '''
-    logger = kwargs.get("logger",mlogger)
-    logger.info("session_close called")
-
-    ##TODO call all closing tasks for getting stats etc.
-    awaited_tasks = []
-    awaited_tasks.append({
-        "task": "update_lead_data",
-        "kwargs": kwargs
-    })
-    awaited_tasks.append({
-        "task": "update_person_data",
-        "kwargs": kwargs
-    })
-    task_result_generator = gryd.yield_results(awaited_tasks)
-
-    for task_result in task_result_generator:
-        logger.info(f"Task '{task_result[1]}' status: {task_result[3]} \n") 
-    with get_pg_connector() as pg:
-        if kwargs.get("history"):
-            ##TODO post history into message model
-            pass
-
-        if kwargs.get("session_data_cache"):
-            pass
-        pg.delete("session_data_cache","session_id",kwargs.get("session_id"))
-
-    yield {"status" : "complete","session_id":kwargs.get("session_id")}
-
-@gryd.is_a_task()
-def add_to_session_cache(*args, **kwargs):
-    logger = kwargs.get("logger",mlogger)
-    logger.info("add_to_session_cache called")
-    new_session_data = kwargs.get("session_data_cache_data")
-    if not new_session_data:
-        yield from yield_error("error","session_data_cache_data not found",*args, **kwargs)
-        return
-    session_id = kwargs.get("session_id")
-    with get_pg_connector() as pg:
-        session_data_old = pg.get("session_data_cache","session_id",session_id)
-        session_data_cache_updated = pg.update("session_data_cache","session_id",session_id,{"session_id":session_id,"data":session_data_old.get("data",{}).update(new_session_data)})
-    yield from yield_status("success","added_to_session_cache",*args, **kwargs)
-    yield {"session_data_cache":session_data_cache_updated}
-    return
-
-@gryd.is_a_task()
 def run_orchestrator(*args, **kwargs):
     logger = kwargs.get("logger",mlogger)
     logger.info("run_orchestrator called")
@@ -264,99 +269,13 @@ def prune_response( response, *args, **kargs):
                         "service" :  response_task_data.get("service"),
                         "kwargs" : ret                    }
                 }
+    response["created"] = hp.time()
+    response["updated"] = response["created"]
     kargs["responses"].append(response)
     yield response
     return
 
 
-
-
-@gryd.is_a_task(
-        # function_name = "update_person_vehicle", #custom name of function
-        # job_param = "job_params", #provide a job param attr with this name
-        # auth_param= "auth_params", #provide a auth param attr with this name
-        # logger_param = "logger", #provide a logger attr with this name
-        # service = "autocrm-conversation", #set name of service under which you want to create the task
-        # is_special_task = False, #IGNORE for result queue etc
-        # input_generator = None, #function to generate input for testing #MANDATORY
-        # result_verifier = None, #function to verify result should return True or False
-        # sample_input = None, #Dict[str, Any]
-        # is_agent = True, # True if agent. make sure you adhere to agent input and output 
-        # depends_on = None, #:Union[List[Tuple[str, str]], List[str], None] either pass list of service,task or just list of task
-        # expected_input = {"fruit_one":"text","fruit_two" : "number"}, #:Union[Dict[str, str], None] 
-        # optional_input = {"vegetable" : "text"}, #:Union[Dict[str, str], None] 
-        # capability_function = None #:Union[Dict[str, str], None] Defaults to using Docstring
-        )
-def update_person_vehicle(*args, **kwargs):
-    '''
-    This task called to update the person or vehicle data based on lead model and conversation history from message model.
-    '''
-    logger = kwargs.get("logger",mlogger)
-    logger.info("test_agent called")
-    return
-@gryd.is_a_task()
-def post_messages_data(*args, **pass_kwargs):
-    '''
-        Picks up all messages sent and posts it to message model
-    '''
-    with get_pg_connector() as pg:
-        new_messages = []
-        first_message = pg.update("message","message_id",pass_kwargs.get("reply_to"),{"reply_to":"","message_id":pass_kwargs.get("reply_to"),"message":pass_kwargs.get("request_data",{}).get("customer_response",""),"session_id":pass_kwargs.get("session_id"),"index" : 0})
-        new_messages.append(first_message)
-        mlogger.info("first_message {}".format(first_message))
-        for message in pass_kwargs.get("responses"):
-            message_id = str(gryd.hp.make_uuid3(hp.time(),pass_kwargs.get("session_id"),message.get("intent"),message.get("placeholder")))
-            respper = pg.update("message","message_id",message_id,{"reply_to":pass_kwargs.get("reply_to"),"message_id":message_id,"message":message.get("placeholder"),"session_id":pass_kwargs.get("session_id"),"intent" : message.get("intent","unknown_intent"),"index" : message.get("index",0)})
-            new_messages.append(respper)
-            mlogger.info("respper {}".format(respper))
-        session_data_cache_data = pass_kwargs.get("session_data_cache").get("data",{})
-        current_cache_messages = session_data_cache_data.get("messages",[])
-        current_cache_messages.extend(new_messages)
-        session_data_cache_data["messages"] = current_cache_messages
-        pg.update("session_data_cache","session_id",pass_kwargs.get("session_id"),{"data":session_data_cache_data})
-@gryd.is_a_task()
-def update_lead_data(*args, **pass_kwargs):
-    '''
-    look at message history for a session and then check the person and existin lead data nad update the lead model attrs
-    '''
-    pass
-@gryd.is_a_task()
-def post_visit_data(*args, **pass_kwargs):
-    '''
-    agent to update the showroom/workshop visit model object based on messages for session
-    '''
-
-    visit_campaign_id = pass_kwargs.get("campaign_id")
-    if not visit_campaign_id:
-        yield from yield_error("error","campaign_id not found",*args, **pass_kwargs)
-    with get_pg_connector() as pg:
-        messages = list(pg.list("message","message_id",None,{"session_id":pass_kwargs.get("session_id")}))
-        
-    pass
-
-@gryd.is_a_task()
-def set_feedback(*args, **pass_kwargs):
-    '''
-    agent to analyse the feedback/review and also post the data to the session model
-    '''
-    if not pass_kwargs.get("session_id"):
-        yield from yield_error("error","session_id not found",*args, **pass_kwargs)
-        return
-    
-    
-    pass
-
-
-def yield_result(*args, **kwargs):
-    pass
-
-def yield_error(error_type, error_description, *args, **kwargs):
-    mlogger.info("ERROR!!!!!!!!!!!!!{}".format(error_description))
-    yield {"status" : "error","error_type":error_type, "error_description":error_description,"session_id":kwargs.get("request_data").get("session_id"),"message_id" : kwargs.get("reply_to")}
-
-
-def yield_status(status_id, status_description, *args, **kwargs):
-    yield {"status" : status_id,"message":status_description,"session_id":kwargs.get("request_data").get("session_id"),"message_id" : kwargs.get("reply_to")}
 
 
 

@@ -130,33 +130,41 @@
             "force_update": "variant_id"
         },
         {
-            "name": "vehicle_model_launch_year",
+            "name": "vehicle_model_year",
             "type": "number",
             "default": {
                 "function": "get_from_model",
                 "args": [
                     "variant",
                     "variant_id",
-                    "vehicle_model_launch_year"
+                    "vehicle_model_year"
                 ]
             },
             "auto_updater": true,
             "force_update": "variant_id"
         },
         {
-            "name": "vehicle_color",
+            "name": "vehicle_color_id",
+            "type": "uid"
+        },
+        {
+            "name": "vehicle_color_name",
+            "type": "text",
             "default": {
                 "function": "get_from_model",
                 "args": [
                     "variant_color",
                     "variant_color_id",
-                    "vehicle_color"
+                    "color_name"
                 ]
-            }
+            },
+            "auto_updater": true,
+            "force_update": "variant_color_id"
         },
         {
             "name": "reg_number",
             "type": "text",
+            "required": true,
             "indexed": true
         },
         {
@@ -215,7 +223,7 @@
             "ui_element": "select"
         },
         {
-            "name": "engine_capacity",
+            "name": "engine_capacity_cc",
             "type": "number",
             "units": "cc"
         },

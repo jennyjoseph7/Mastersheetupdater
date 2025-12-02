@@ -1,10 +1,11 @@
 [
   {
     "service_visit_id": "service-visit-001",
-    "workshop_id": "nexa-delhi-south-workshop-1",
     "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
     "dealership_name": "NEXA Delhi South",
     "vehicle_id": "vehicle-001",
+    "workshop_id": "nexa-delhi-south - nexa-delhi-south---service-center - delhi",
+    "odometer_reading": 5000,
     "created": 1704326400,
     "updated": 1704412800,
     "tags": {},
@@ -17,14 +18,15 @@
     "brand_id": null,
     "model_name": null,
     "issues_reported": [],
-    "service_date": 0
+    "service_date": 1704326400
   },
   {
     "service_visit_id": "service-visit-002",
-    "workshop_id": "nexa-mumbai-west-workshop-1",
     "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
     "dealership_name": "NEXA Mumbai West",
     "vehicle_id": "vehicle-002",
+    "workshop_id": "nexa-mumbai-west - nexa-mumbai-west---service-center - mumbai",
+    "odometer_reading": 8000,
     "created": 1704412800,
     "updated": 1704499200,
     "tags": {},
@@ -37,6 +39,53 @@
     "brand_id": null,
     "model_name": null,
     "issues_reported": [],
-    "service_date": 0
+    "service_date": 1704412800
+  },
+  {
+    "service_visit_id": "ambal-auto-service-visit-001",
+    "dealership_id": "ambal-auto-south-india",
+    "dealer_name": "Ambal Auto",
+    "vehicle_id": "vehicle-ambal-001",
+    "workshop_id": "ambal-auto - ambal-auto---service-center - coimbatore",
+    "odometer_reading": 15000,
+    "service_date": 1704326400,
+    "visit_date": "2024-01-05",
+    "visit_timestamp": 1704326400,
+    "appointment_date": "2024-01-05",
+    "appointment_time": "10:00",
+    "purpose_of_visit": ["General Service", "Oil Change", "Oil Filter Change"],
+    "status": "completed",
+    "services_performed": [
+      "Oil Change",
+      "Oil Filter Change",
+      "General Inspection"
+    ],
+    "issues_reported": ["Slight noise from engine"],
+    "created": 1704326400,
+    "updated": 1704412800,
+    "tags": {}
+  },
+  {
+    "service_visit_id": "ambal-auto-service-visit-002",
+    "dealership_id": "ambal-auto-south-india",
+    "dealer_name": "Ambal Auto",
+    "vehicle_id": "vehicle-ambal-002",
+    "workshop_id": "ambal-auto - ambal-auto---service-center - coimbatore",
+    "odometer_reading": 25000,
+    "service_date": 1704412800,
+    "visit_date": "2024-01-06",
+    "visit_timestamp": 1704412800,
+    "appointment_date": "2024-01-06",
+    "appointment_time": "14:30",
+    "purpose_of_visit": ["Paid Service", "Brakes Service", "AC / HVAC Service"],
+    "status": "scheduled",
+    "services_performed": [],
+    "issues_reported": [
+      "Brake pads need replacement",
+      "AC not cooling properly"
+    ],
+    "created": 1704412800,
+    "updated": 1704412800,
+    "tags": {}
   }
 ]

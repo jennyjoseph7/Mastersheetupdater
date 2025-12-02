@@ -8,7 +8,7 @@
     ],
     "attributes": [
         {
-            "name": "person_id",
+            "name": "user_id",
             "refers": "parents.person.user_id",
             "indexed": true,
             "required": true
@@ -16,6 +16,21 @@
         {
             "name": "person_name",
             "refers": "parents.person.name",
+            "indexed": true
+        },
+        {
+            "name": "last_contacted_whatsapp_number",
+            "refers": "parents.person.last_contacted_whatsapp_number",
+            "indexed": true
+        },
+        {
+            "name": "last_contacted_email",
+            "refers": "parents.person.last_contacted_email",
+            "indexed": true
+        },
+        {
+            "name": "last_contacted_phone_number",
+            "refers": "parents.person.last_contacted_phone_number",
             "indexed": true
         },
         {
@@ -41,7 +56,7 @@
         },
         {
             "name": "since",
-            "type": "datetime"
+            "type": "number"
         },
         {
             "name": "notes",
@@ -72,14 +87,15 @@
             "default": {
                 "function": "name_to_id",
                 "args": [
-                    "person_id",
+                    "user_id",
                     "vehicle_id",
                     "created"
                 ],
                 "kwargs": {
                     "is_unique": true,
                     "separator": "_",
-                    "skip_empty": true
+                    "skip_empty": true,
+                    "attribute_join": "-"
                 }
             }
         }
