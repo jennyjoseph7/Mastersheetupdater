@@ -21,8 +21,7 @@
         },
         {
             "name": "dealership_id",
-            "type": "uid",
-            "required": true
+            "refers": "parents.dealership.dealership_id"
         },
         {
             "name": "region_id",
@@ -1299,6 +1298,7 @@
         },
         {
             "name": "workshop_operating_hours",
+            "type" : "nested_object",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1567,5 +1567,8 @@
             "name": "scheduled_timestamp",
             "type": "number"
         }
-    ]
+    ],
+    "parents": [
+    "dealership"
+  ]
 }
