@@ -183,7 +183,7 @@ def setup_session_data_cache(*args, **kwargs):
     session_id = kwargs.get("session_id")
     session_data = kwargs.get("session_data")
     with get_pg_connector() as pg:
-        session_data_cache = pg.get("session_data_cache","session_id",session_id)
+        session_data_cache = pg.get("session_data_cache","session_id",session_id) or {}
         mlogger.info("session_data_cache fetched == {}".format(session_data_cache)) 
         if not session_data_cache or not session_data_cache.get("data",{}).get("campaign_data") or not session_data_cache.get("data",{}).get("user_data"):
             campaign_model_name = session_data.get("campaign_model")

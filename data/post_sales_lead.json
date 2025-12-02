@@ -26,64 +26,171 @@
         },
         {
             "name": "region_id",
-            "refers": "parents.dealership.region_id"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "region_id"
+                ]
+            }
         },
         {
             "name": "region_name",
-            "refers": "parents.dealership.region_name"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "region_name"
+                ]
+            }
         },
         {
             "name": "region_level_guidelines",
-            "refers": "parents.dealership.region_level_guidelines"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "region_level_guidelines"
+                ]
+            }
         },
         {
             "name": "region_level_guardrails",
-            "refers": "parents.dealership.region_level_guardrails"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "region_level_guardrails"
+                ]
+            }
         },
         {
             "name": "dealer_group_id",
-            "refers": "parents.dealership.dealer_group_id",
-            "required": false
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealer_group_id"
+                ]
+            }
         },
         {
             "name": "dealer_group_name",
-            "refers": "parents.dealership.dealer_group_name"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealer_group_name"
+                ]
+            }
         },
         {
             "name": "dealer_group_guidelines",
-            "refers": "parents.dealership.dealer_group_guidelines"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealer_group_guidelines"
+                ]
+            }
         },
         {
             "name": "dealer_group_description",
-            "refers": "parents.dealership.dealer_group_description"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealer_group_description"
+                ]
+            }
         },
         {
             "name": "dealer_name",
-            "refers": "parents.dealership.dealer_name"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealer_name"
+                ]
+            }
         },
         {
             "name": "dealership_guidelines",
-            "refers": "parents.dealership.dealership_guidelines"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealership_guidelines"
+                ]
+            }
         },
         {
             "name": "dealership_guardrails",
-            "refers": "parents.dealership.dealership_guardrails"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealership_guardrails"
+                ]
+            }
         },
         {
             "name": "dealership_description",
-            "refers": "parents.dealership.dealership_description"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealership_description"
+                ]
+            }
         },
         {
             "name": "supported_brands",
-            "refers": "parents.dealership.supported_brands"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "supported_brands"
+                ]
+            },
+            "type" : "string_list"
         },
         {
             "name": "supported_brand_names",
-            "refers": "parents.dealership.supported_brand_names"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "supported_brand_names"
+                ]
+            },
+            "type" : "string_list"
         },
         {
             "name": "supported_brands_guidelines",
-            "refers": "parents.dealership.supported_brands_guidelines"
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "supported_brands_guidelines"
+                ]
+            },
+            "type": "object_list"
         },
         {
             "name": "campaign_id",
@@ -117,7 +224,8 @@
                     "campaign_id",
                     "campaign_sub_type"
                 ]
-            }
+            },
+            "type": "list"
         },
         {
             "name": "campaign_description",
@@ -133,7 +241,7 @@
         {
             "name": "campaign_objective_id",
             "type": "uid",
-            "required": true,
+            "auto_updater":true,
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -166,7 +274,8 @@
             }
         },
         {
-            "name": "campaign_objective_type",
+            "name": "campaign_objective_type",    
+            "type": "list",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -235,6 +344,7 @@
             }
         },
         {
+            "type": "list",
             "name": "urgency_hook",
             "default": {
                 "function": "get_from_model",
@@ -311,7 +421,7 @@
         },
         {
             "name": "lead_tags",
-            "options": "/options/post_sales_campaign/applicable_tags",
+            "options": "/options/campaign_objective/target_audience_tags",
             "ui_element": "multiselect",
             "list_adder": {
                 "function": "list_adder"
@@ -322,7 +432,7 @@
                 "args": [
                     "campaign_objective",
                     "campaign_objective_id",
-                    "lead_tags"
+                    "target_audience_tags"
                 ]
             },
             "type": "string_list"
@@ -1072,7 +1182,8 @@
                     "unique_object_list"
                 ],
                 "kwargs": {
-                    "vehicle_id": "{vehicle_id}"
+                    "vehicle_id": "{vehicle_id}",
+                    "_fresh": true
                 }
             }
         },

@@ -322,12 +322,14 @@ def get_purpose_and_steps(*args, **kwargs):
         steps = ["- Full Name \n- Interested Model\n- Date & Time "]
     if campaign_type == "inbound":
         return "Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy."
-    return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n.You should help answer any and all questions that the customer asks about cars that are related to the dealer. You should always try to move the user to your original purpose but do not be pushy."
+    return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n The current date for your reference is {hp.time()}.You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user isnt already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy."
 
 def get_example_states_and_solutions(*args, **kwargs):
     examples = [
-        "If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose.",
-        ""
+        "If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose if the arent already in the purpose flow.",
+        "If a purpose flow is completed, you should provide a confirmation message to the user with the details of the booking.",
+        "After the purpose is completed already in this conversation, do not urge them again.",
+        "if the customer provides you a date and time you should always check against the current date time and validate. also you should always provide the DD-MM-YYYY format for the date you want to mention. Do not say today or tomorrow or other such references to date."
     ]
     return ", ".join(examples)
 
