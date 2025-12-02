@@ -117,7 +117,7 @@ async def main():
     input_queue = multiprocessing.Queue()
     print('shivam start')
 
-    client = TestVoiceAgent('shivam_rawat_123', input_queue, output_queue, 'have a talk with shivam', 4)
+    client = TestVoiceAgent('shivam_rawat_123', input_queue, output_queue,'have a talk with shivam', 4)
 
     await client.create_session()
     print('shivam end')
@@ -145,6 +145,7 @@ async def main():
     loop = asyncio.get_running_loop()
 
     while True:
+        # mp.Queue.get is blocking; run it in a thread
         data = await loop.run_in_executor(None, output_queue.get)
 
         if data is None:

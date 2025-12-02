@@ -292,6 +292,8 @@ class GEMINIAPI:
                 async def sender() -> None:
                     import queue as pyqueue
                     logger.info(f"[{session_id}] sender started")
+                    chunk_count = 0
+                    
                     try:
                         while True:
                             try:
@@ -299,19 +301,13 @@ class GEMINIAPI:
                             except pyqueue.Empty:
                                 continue
                             except Exception as e:
-                                logger.warning(f"[{session_id}] unexpected sender error: {e}")
+                                logger.warning(f"[{session_id}] unexpected sender error: {str(e)}")
                                 continue
-                            # try:
-                            #     data = input_queue.get(timeout = 1)
-                            # except Exception as e:
-                            #     logger.info(f'{e}')
-                            #     continue
-                            
 
                             if data is None:
                                 # logger.info(f'[{session_id}] Closing request acknowlegded')
                                 continue
-                            logger.info(f'Received data in input_queue of type {data}')
+                            logger.info(f'Received data in input_queue of type {type(data)}')
                             
                             message_id = data.get('message_id')
                             recieved_session_id = data.get('session_id')
@@ -322,6 +318,7 @@ class GEMINIAPI:
                                 continue
                             else:
                                 logger.info(f'received {type(audio_bytes)}')
+                            
                             self.provider_metadata = data.get('metadata',{})
                             message_type = data.get('message_type', 'start_stream')
                             ##message type to add some more logic - inital config when stream_start etc.
@@ -335,33 +332,25 @@ class GEMINIAPI:
 
                             await sent_keys_q.put(seq_key)
                             session["last_seq_key"] = seq_key
-
-                            # await asyncio.to_thread(async_session.send_realtime_input(
-                            #     audio = {
-                            #         "data": audio_bytes,
-                            #         "mime_type": f"audio/pcm;rate={self.sample_rate}",
-                            #     }
-                            # ), timeout=1)
-                            logger.info(f'received audio_bytes of type {type(audio_bytes)}')
-                            # logger.info(f'received audio_bytes {audio_bytes}')
+                            
+                            chunk_count += 1
+                            
+                            if chunk_count % 20 == 1:
+                                import array
+                                samples = array.array('h', audio_bytes)
+                                max_amp = max(abs(s) for s in samples) if samples else 0
+                                logger.info(f"[{session_id}] Chunk #{chunk_count}: {len(audio_bytes)} bytes, max_amp={max_amp}")
+                            
                             await async_session.send_realtime_input(
                                 audio = {
                                     "data": audio_bytes,
-                                    "mime_type": f"audio/pcm;rate={self.sample_rate}",
+                                    "mime_type": f"audio/pcm;rate={RECEIVE_SAMPLE_RATE}"  # 8000 for Twilio
                                 }
                             )
-                            
-                            logger.info(f'sending to realtime finished')
-                    except asyncio.CancelledError:
-                        logger.info(f"[{session_id}] sender cancelled (normal shutdown).")
-                    except VoiceAgentError as e:
-                        logger.error(f"[{session_id}] sender VoiceAgentError: {str(e)}")
-                        SessionRegistry.mark_session_error(session_id, str(e))
-                        raise
+
                     except Exception as e:
-                        logger.error(f"[{session_id}] sender crashed due to {str(e)}")
-                        SessionRegistry.mark_session_error(session_id, str(e))
-                        raise VoiceAgentError(str(e))
+                        logger.error(f"[{session_id}] sender crashed: {str(e)}")
+                        raise
 
                 async def receiver() -> None:
                     input_transcript: list[str] = []
@@ -369,37 +358,39 @@ class GEMINIAPI:
 
                     logger.info(f"[{session_id}] receiver started")
                     agen = async_session.receive().__aiter__()
-
+                    
+                    response_count = 0
+                    
                     try:
                         while True:
                             try:
+                                if response_count % 5 == 0:
+                                    logger.info(f"[{session_id}] Waiting for response #{response_count}...")
+                                
                                 response = await asyncio.wait_for(agen.__anext__(), timeout=self.process_timeout+1)
+                                
+                                response_count += 1
+                                logger.info(f"[{session_id}] ✓ Got response #{response_count}: {type(response)}")
+                                
                             except asyncio.TimeoutError:
+                                logger.warning(f"[{session_id}] Timeout after {self.process_timeout}s, will retry...")
                                 if hasattr(async_session, "ping"):
                                     try:
                                         await asyncio.wait_for(async_session.ping(), timeout=5)
-                                    except Exception:
-                                        logger.debug(f"[{session_id}] ping failed during timeout")
+                                        logger.info(f"[{session_id}] Ping successful")
+                                    except Exception as e:
+                                        logger.warning(f"[{session_id}] Ping failed: {e}")
                                 continue
+                                
                             except StopAsyncIteration:
-                                logger.info(f"[{session_id}] Agent Finished Executing.")
+                                logger.info(f"[{session_id}] StopAsyncIteration - turn complete, restarting")
                                 agen = async_session.receive().__aiter__()
                                 continue
-                                # traceback.print_exc()
-                                # break
-                            except asyncio.CancelledError:
-                                traceback.print_exc()
-                                logger.info(f"[{session_id}] receiver cancelled (normal shutdown).")
-                                break
-                            except Exception as e:
-                                logger.warning(f"[{session_id}] exception during receive(): {str(e)}")
-                                SessionRegistry.mark_session_error(session_id, str(e))
-                                break
-
+                                
                             try:
-                                logger.info(f'Shivam response {response}')
                                 server_content = getattr(response, "server_content", None)
                                 if server_content is None:
+                                    logger.debug(f"[{session_id}] Response has no server_content")
                                     continue
                                 
                                 if server_content.interrupted:
@@ -419,7 +410,7 @@ class GEMINIAPI:
                                 model_turn = server_content.model_turn
                                 if model_turn and model_turn.parts:
                                     part = model_turn.parts[0]
-                                    inline_data = getattr(getattr(part, "inline_data", None), "data", None,)
+                                    inline_data = getattr(getattr(part, "inline_data", None), "data", None)
                                     if inline_data is not None:
                                         if not resolved_seq_key:
                                             try:
@@ -454,17 +445,16 @@ class GEMINIAPI:
                                     # logger.info(f"[{session_id}] Agent finished generation.")
                                     logger.info(f"[{session_id}] Final Input Transcription: {''.join(input_transcript).strip()}")
                                     logger.info(f"[{session_id}] Final Output Transcription: {''.join(output_transcript).strip()}")
-
-                            except asyncio.CancelledError:
-                                logger.info(f"[{session_id}] receiver processing cancelled.")
+                                    
+                            except Exception as e:
+                                logger.error(f"[{session_id}] Error processing response: {e}")
+                                import traceback
                                 traceback.print_exc()
-                                break
-                            except Exception:
-                                logger.warning(f"[{session_id}] error processing response")
-                                traceback.print_exc()
+                                
+                    except Exception as e:
+                        logger.error(f"[{session_id}] receiver crashed: {e}")
+                        raise
 
-                    finally:
-                        pass
                     
                 sender_task = asyncio.create_task(sender())
                 receiver_task = asyncio.create_task(receiver())
