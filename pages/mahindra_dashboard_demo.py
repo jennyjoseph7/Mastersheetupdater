@@ -6,6 +6,7 @@ import plotly.io as pio
 import pandas as pd
 import os, sys, traceback
 import pydeck as pdk
+from streamlit_chat import message
 
 logger = get_logger(__name__)
 gryd.SERVICE = GRYD_SERVICE
@@ -46,6 +47,17 @@ if "propensity_agent_result" not in st.session_state:
     st.session_state.propensity_agent_result = None
 if "promo_added" not in st.session_state:
     st.session_state.promo_added = False
+
+if st.sidebar.button("🔄 Reset Entire Demo"):
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]   # Clears EVERYTHING
+    st.rerun()
+
+if st.sidebar.button("🧹 Reset Chat Only"):
+    st.session_state.messages = []
+    st.session_state.promo_added = False
+    st.rerun()
+
 
 def response_generator(response):
     for word in response.split():
@@ -118,6 +130,10 @@ with segment_classification:
     if st.session_state.segment_classifier_agent_result:
         segment_classifier_agent_result = st.session_state.segment_classifier_agent_result
         detected_segment = segment_classifier_agent_result.get("detected_segment")
+        reasoning = segment_classifier_agent_result.get("reasoning")
+        if reasoning:
+            st.markdown("#### Segment Classifier Agent Reasoning:")
+            st.info(reasoning)
 
         st.warning(f"The customer is in the **'{detected_segment}'** segment.") 
 
@@ -140,59 +156,146 @@ with segment_classification:
                 st.session_state.promo_added = True
             st.write(promotional_message)
 
+# with askbot:
+#     st.subheader("🤖 AskBot")
+#     if not st.session_state.segment_classifier_agent_result:
+#         st.info("Run the agent first to enable conversation.")
+#         st.stop()
+
+#     for message in st.session_state.messages:
+#         with st.chat_message(message["role"]):
+#             st.markdown(message["content"])
+    
+
+#     logger.info(f"st.session_state.messages: {st.session_state.messages}, type: {type(st.session_state.messages)}")
+    
+#     user_input = st.chat_input("Ask something…")
+#     if user_input:
+#         st.chat_message("user").markdown(user_input)
+#         st.session_state.messages.append({"role": "user", "content": user_input})
+
+#         with st.spinner("Processing..."):
+#             time.sleep(1)
+#             conversation_agent = [{
+#                     "task": "conversation_agent",
+#                     "service": GRYD_SERVICE,
+#                     "kwargs": {
+#                         "source": input_data,
+#                         "segment_classifier_result": segment_classifier_agent_result,
+#                         "propensity_result": propensity_agent_result,
+#                         "history": st.session_state.messages,
+#                         "user_message": user_input
+#                     },
+#                     "args": (None)
+#                 }]
+
+#         bot_result = gryd.await_results(conversation_agent)[0]
+#         logger.info(f"bot_result: {bot_result}")
+#         bot_response = bot_result["response"]
+#         st.markdown("**Assistant:**")
+#         streamed = st.write_stream(response_generator(bot_response))
+#         st.session_state.messages.append({"role": "assistant", "content": bot_response})
+        
+#         # Follow-up questions (optional)
+#         if bot_result.get("follow_up"):
+#             st.success(bot_result["follow_up"])
+
+#         # Show sidebar history
+#     history_sidebar()
+
+# with chat:
+#     message("My message") 
+#     message("Hello bot!", is_user=True)
+# -------------------------
+# Reset Conversation Button
+# -------------------------
+# if st.button("Reset Demo"):
+#     st.session_state.messages = []
+#     st.session_state.segment = None
+#     st.session_state.segment_classifier_agent_result = None
+#     st.session_state.propensity_agent_result = None
+#     st.session_state.promo_added = False
+#     st.rerun()
+
+initial_prompt = """
+You are an AI assistant for the Mahindra XUV 3XO. 
+Your job is to help potential buyers understand the car, explore variants, features, pricing, and guide them conversationally. 
+Always be friendly, easy to talk to, and helpful. 
+Highlight the strengths of the XUV 3XO such as its modern design, strong turbo-petrol and diesel engines, 
+premium interiors, large touchscreen, advanced safety package, and competitive pricing. Keep responses crisp, engaging, and tailored to the user's needs.
+### Key Highlights to Know:
+- Starting ex-showroom price around ₹ 7.49 Lakh. 
+- Distinctive, athletic exterior with LED headlamps/DRLs, bold wheel arches, and strong SUV stance.
+- Comfortable, premium-feeling cabin with leatherette seats, soft-touch dashboard, and modern interiors. 
+- Engine options include turbo-petrol and diesel. For petrol TGDi version: ~96 kW power, 230 Nm torque; 0-60 km/h in ~4.5 s (for TGDi), and competitive fuel efficiency.
+- Spacious cabin and practical boot (≈ 364 litre), along with good legroom and SUV-cabin ergonomics.
+- Robust safety: B-NCAP rated, 35+ standard safety features including multiple airbags, ESC with hill-hold, disc brakes on all wheels, ISOFIX child-seat mounts, etc.
+"""
+
+
 with askbot:
     st.subheader("🤖 AskBot")
+
     if not st.session_state.segment_classifier_agent_result:
         st.info("Run the agent first to enable conversation.")
         st.stop()
 
+    # Create a dedicated container for chat messages
+    chat_container = st.container()
+
+    # (Optional) Sidebar history stays separate
+    history_sidebar()
+
+# ----------------------------
+# Render chat history (dynamic)
+# ----------------------------
+with chat_container:
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-    
 
-    logger.info(f"st.session_state.messages: {st.session_state.messages}, type: {type(st.session_state.messages)}")
-    
+
+# ----------------------------
+# FIXED chat_input (inside askbot)
+# ----------------------------
+with askbot:
     user_input = st.chat_input("Ask something…")
-    if user_input:
+
+
+# ----------------------------
+# Process user message
+# ----------------------------
+if user_input:
+    with chat_container:
         st.chat_message("user").markdown(user_input)
-        st.session_state.messages.append({"role": "user", "content": user_input})
 
-        with st.spinner("Processing..."):
-            time.sleep(1)
-            conversation_agent = [{
-                    "task": "conversation_agent",
-                    "service": GRYD_SERVICE,
-                    "kwargs": {
-                        "source": input_data,
-                        "segment_classifier_result": segment_classifier_agent_result,
-                        "history": st.session_state.messages,
-                        "user_message": user_input
-                    },
-                    "args": (None)
-                }]
+    st.session_state.messages.append({"role": "user", "content": user_input})
 
-        bot_result = gryd.await_results(conversation_agent)[0]
-        logger.info(f"bot_result: {bot_result}")
-        bot_response = bot_result["response"]
-        st.markdown("**Assistant:**")
-        streamed = st.write_stream(response_generator(bot_response))
-        st.session_state.messages.append({"role": "assistant", "content": bot_response})
-        
-        # Follow-up questions (optional)
-        if bot_result.get("follow_up"):
-            st.success(bot_result["follow_up"])
+    with st.spinner("Processing..."):
+        conversation_agent = [{
+            "task": "conversation_agent",
+            "service": GRYD_SERVICE,
+            "kwargs": {
+                "source": input_data,
+                "segment_classifier_result": segment_classifier_agent_result,
+                "propensity_result": propensity_agent_result,
+                "history": st.session_state.messages,
+                "user_message": user_input,
+                "initial_prompt": initial_prompt
+            }
+        }]
 
-        # Show sidebar history
-    history_sidebar()
+    bot_result = gryd.await_results(conversation_agent)[0]
+    bot_response = bot_result["response"]
 
-# -------------------------
-# Reset Conversation Button
-# -------------------------
-if st.button("Reset Demo"):
-    st.session_state.messages = []
-    st.session_state.segment = None
-    st.session_state.segment_classifier_agent_result = None
-    st.session_state.propensity_agent_result = None
-    st.session_state.promo_added = False
-    st.rerun()
+    with chat_container:
+        with st.chat_message("assistant"):
+            st.write_stream(response_generator(bot_response))
+
+    st.session_state.messages.append({"role": "assistant", "content": bot_response})
+
+    if bot_result.get("follow_up"):
+        st.success(bot_result["follow_up"])
+
+# - Suggestions/more followup options in the initial msg
+# - dealer locator for mahindra -> have dict based (similar to aem)

@@ -27,7 +27,8 @@ class SegmentClassifierAgent(BaseAgent):
             response = requests.get(brand_url, timeout=10)
             html = response.text
         except Exception as e:
-            return {"error": f"Failed to fetch URL: {str(e)}"}
+            error = {"error": f"Failed to fetch URL: {str(e)}"}
+            return error
 
         soup = BeautifulSoup(html, "html.parser")
         image_links = [img["src"] for img in soup.find_all("img") if img.get("src")]
@@ -86,8 +87,12 @@ class SegmentClassifierAgent(BaseAgent):
         - Choose ONLY from the above list.
         - Do NOT create new segments.
         - Base your classification strictly on the provided data.
+        - Provide your reasoning for your choice in a separate field called "reasoning" with 5-6 sentences.
         - Your final response MUST be valid JSON in the format:
-        {{"detected_segment": "<one_of_the_segments>"}}
+        {{
+            "detected_segment": "<one_of_the_segments>",
+            "reasoning": "<reasoning>"
+        }}
 
         ### User Data:
         {self.data}

@@ -349,10 +349,35 @@ class AgentOrchestrator:
         ]
         response = self.llm_function(messages = messages)
         return response
+    
+    def random_initial_msg(self):
+        import random
+        messages = [
+            "Analyzing your query…",
+            "Let me think about that…",
+            "Working on it…",
+            "Hold on, generating insights…",
+            "Processing your request…"
+        ]
+        return random.choice(messages)
+    
+    def empathetic_filler(self):
+        fillers = [
+            "Got it, thinking about this for you…",
+            "I understand — let me work it out…",
+            "Thanks for your patience, analyzing your query…",
+            "Let me dig into this for you…",
+            "Alright, I'm looking into it right now…"
+        ]
+        for msg in fillers:
+            yield {"filler": msg}
+            
     @timer(view_type=float)
     def orchestrator(self, user_query: str, **agent_kwargs):
         if user_query is None:
             raise ValueError("'query' is required")
+        
+        yield {"initial_message": self.random_initial_msg()}
 
         plan_reasoning : str = self._llm_generate_reasoning(query = user_query, **agent_kwargs)
         yield {"reasoning": plan_reasoning}

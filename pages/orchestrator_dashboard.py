@@ -117,6 +117,10 @@ if run_clicked and user_query:
                 st.warning(result["reasoning"])
                 continue
 
+            if "initial_message" in result:
+                st.info(result["initial_message"])
+                continue
+
             if "agents_lineup" in result:
                 st.markdown("#### 🤖 Agents Execution Lineup:")
                 agents_lineup : list = result.get("agents_lineup")

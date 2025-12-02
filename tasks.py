@@ -908,12 +908,21 @@ def conversation_agent(*args, **kwargs):
         from agents.conversation_agent import ConversationAgent
         source = kwargs["source"]
         segment_classifier_result = kwargs["segment_classifier_result"]
+        propensity_result = kwargs["propensity_result"]
+
         model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
         history = kwargs.get("history", [])
+        initial_prompt = kwargs.get("initial_prompt", None)
 
         logger.info(f"History: {json.dumps(history, indent=4)}")
 
-        conversation_agent = ConversationAgent(source=source, segment_classifier_result=segment_classifier_result, model_identifier=model_identifier)
+        conversation_agent = ConversationAgent(
+            source=source, 
+            segment_classifier_result=segment_classifier_result, 
+            propensity_result=propensity_result, 
+            model_identifier=model_identifier,
+            initial_prompt=initial_prompt
+            )
         output = conversation_agent.chat(user_message=kwargs.get("user_message", None), history=history)
         return {
             "task": inspect.currentframe().f_code.co_name, 
