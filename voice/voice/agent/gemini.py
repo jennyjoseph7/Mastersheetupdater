@@ -23,7 +23,7 @@ CHANNELS = 1
 
 # Default Agent configs
 SEND_SAMPLE_RATE = 8000
-RECEIVE_SAMPLE_RATE = 16000
+RECEIVE_SAMPLE_RATE = 8000
 CHUNK_SIZE = 1024
 
 class VoiceAgentError(hp.GrydError):
