@@ -87,6 +87,27 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
         return gryd_routes.jsonify({"status": "error", "message": "Invalid channel"}), 400, {"Access-Control-Allow-Origin": "*"}
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
 
+
+@app.route('/test_voice_agent/<provider>', methods = ["POST"])
+def test_voice_agent(provider):
+    payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
+    prompt = payload.get("prompt")
+    
+    if not prompt:
+        user_data = payload.get('user_data')
+        conversation_id = payload.get('conversation_id')
+        campaign_id = payload.get('campaign_id')
+    
+    response = {
+        "status":"connected",  #failed 
+        "wss_url":"<websocket_url>"
+    }
+    return gryd_routes.jsonify(response), 200, {"Access-Control-Allow-Origin": "*"}
+
+
+
+
+
 app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
 if __name__ == "__main__":
