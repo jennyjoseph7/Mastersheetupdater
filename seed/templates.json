@@ -614,11 +614,11 @@
   "buttons": [
     {
       "type": "QUICK_REPLY",
-      "text": "Book Service"
+      "text": "Book a Service"
     },
     {
       "type": "QUICK_REPLY",
-      "text": "Request Call Back"
+      "text": "Request a Call Back"
     }
   ],
   "template_buttons_payload": [
@@ -637,6 +637,187 @@
   "status": "approved",
   "template_id": "01kb52hzx170wqea4zfwptq1eb"
 }
+,
 
+
+
+
+ {
+    "template_name": "Autobot_ServiceReminder_generic_v1",
+    "template_message": "Hello, This is a reminder that your vehicle service is due. Please visit your nearest service centre or contact us for assistance.",
+    "buttons": [
+        { "type": "QUICK_REPLY", "text": "Book a Service" },
+        { "type": "QUICK_REPLY", "text": "Request a Call Back" }
+    ],
+    "template_button_payloads": [
+        "autobot_servicereminder_generic_v1-book_a_service",
+        "autobot_servicereminder_generic_v1-request_a_callback"
+    ],
+    "template_variables": [],
+    "template_type": "text",
+  "communication_credentials_id": "airtel-917795030574",
+  "campaign_type" : "post-sales",
+  "campaign_objective" : ["Service Reminder"],
+  "status": "approved",
+  "template_id": "01kbcnnpysqfjm5rzgder2cz3k"
+},
+
+
+{
+    "template_name": "Autobot_ServiceReminder_generic_v2",
+    "template_message": "Hello, Your vehicle service is pending. Kindly take a moment to book your appointment and keep your car in peak condition.",
+    "buttons": [
+        { "type": "QUICK_REPLY", "text": "Book a Service" },
+        { "type": "QUICK_REPLY", "text": "Request a Call Back" }
+    ],
+    "template_button_payloads": [
+        "autobot_servicereminder_generic_v2-book_a_service",
+        "autobot_servicereminder_generic_v2-request_a_callback"
+    ],
+    "template_variables": [],
+    "template_type": "text",
+  "communication_credentials_id": "airtel-917795030574",
+  "campaign_type" : "post-sales",
+  "campaign_objective" : ["Service Reminder"],
+  "status": "approved",
+  "template_id": "01kbcp1bg51zzk34vbv81arhsq"
+}
+,
+
+
+
+{
+    "template_name": "Autobot_FreeService_generic_v1",
+    "template_message": "Hello, Your complimentary vehicle service is available. Visit the nearest workshop to redeem your free service.",
+    "buttons": [
+        { "type": "QUICK_REPLY", "text": "Book Free Service" },
+        { "type": "QUICK_REPLY", "text": "Request a Call Back" }
+    ],
+    "template_button_payloads": [
+        "autobot_freeservice_generic_v1-book_free_service",
+        "autobot_freeservice_generic_v1-request_a_callback"
+    ],
+    "template_variables": [],
+    "template_type": "text",
+  "communication_credentials_id": "airtel-917795030574",
+  "campaign_type" : "post-sales",
+  "campaign_objective" : ["Free service"],
+  "status": "approved",
+  "template_id": "01kbcp8rfn233zsyca59mr09db"
+    
+}
+
+
+,
+
+{
+    "template_name": "Autobot_FreeService_generic_v2",
+    "template_message": "Hello, You are eligible for a free vehicle service. Make sure to avail it before the offer expires.",
+    "buttons": [
+        { "type": "QUICK_REPLY", "text": "Book Free Service" },
+        { "type": "QUICK_REPLY", "text": "Request a Call Back" }
+    ],
+    "template_button_payloads": [
+        "autobot_freeservice_generic_v2-book_free_service",
+        "autobot_freeservice_generic_v2-request_a_callback"
+    ],
+    "template_variables": [],
+    "template_type": "text",
+  "communication_credentials_id": "airtel-917795030574",
+  "campaign_type" : "post-sales",
+  "campaign_objective" : ["Free service"],
+  "status": "approved",
+  "template_id": "01kbcpcmqgpgkqtjfxqny4nbgd"
+}
+,
+
+
+
+{
+    "template_name": "Autobot_RegularService_generic_v1",
+    "template_message": "Hello, Your vehicle is due for regular maintenance. Ensure optimal performance by booking your service today.",
+    "buttons": [
+        { "type": "QUICK_REPLY", "text": "Book a Service" },
+        { "type": "QUICK_REPLY", "text": "Request a Call Back" }
+    ],
+    "template_button_payloads": [
+        "autobot_regularservice_generic_v1-book_a_service",
+        "autobot_regularservice_generic_v1-request_a_callback"
+    ],
+    "template_variables": [],
+    "template_type": "text",
+  "communication_credentials_id": "airtel-917795030574",
+  "campaign_type" : "post-sales",
+  "campaign_objective" : ["Regular service"],
+  "status": "approved",
+  "template_id": "01kbcpjev14fjc4knqeh1ycsjk"
+}
+,
+
+
+{
+    "template_name": "Autobot_RegularService_generic_v2",
+    "template_message": "Hello, regular vehicle servicing helps maintain performance and safety. Book your routine service at your convenience.",
+    "buttons": [
+        { "type": "QUICK_REPLY", "text": "Book a Service" },
+        { "type": "QUICK_REPLY", "text": "Request a Call Back" }
+    ],
+    "template_button_payloads": [
+        "autobot_regularservice_generic_v2-book_a_service",
+        "autobot_regularservice_generic_v2-request_a_callback"
+    ],
+    "template_variables": [],
+    "template_type": "text",
+  "communication_credentials_id": "airtel-917795030574",
+  "campaign_type" : "post-sales",
+  "campaign_objective" : ["Regular service"],
+  "status": "approved",
+  "template_id": "01kbcppgrd3f89tfnq0jeh1xtv"
+},
+
+
+{
+    "template_name": "Autobot_Reactivation_generic_v1",
+    "template_message": "Hello, we noticed you haven't connected with us in a while. We're here to assist you with service bookings, offers, and updates anytime.",
+    "buttons": [
+        { "type": "QUICK_REPLY", "text": "Explore Services" },
+        { "type": "QUICK_REPLY", "text": "Book a Service" },
+        { "type": "QUICK_REPLY", "text": "Request a Call Back" }
+    ],
+    "template_button_payloads": [
+        "autobot_reactivation_generic_v1-explore_services",
+        "autobot_reactivation_generic_v1-book_a_service",
+        "autobot_reactivation_generic_v1-request_a_callback"
+    ],
+    "template_variables": [],
+    "template_type": "text",
+  "communication_credentials_id": "airtel-917795030574",
+  "campaign_type" : "post-sales",
+  "campaign_objective" : ["Re-activation of inactive customer"],
+  "status": "approved",
+  "template_id": "01kbcpzn378fsmer1226j80ap2"
+},
+
+
+
+{
+    "template_name": "Autobot_Reactivation_generic_v2",
+    "template_message": "Hello, We would love to welcome you back! Check out our services, offers, and support options to stay connected.",
+    "buttons": [
+        { "type": "QUICK_REPLY", "text": "Explore Services" },        
+        { "type": "QUICK_REPLY", "text": "Request a Call Back" }
+    ],
+    "template_button_payloads": [
+        "autobot_reactivation_generic_v2-explore_services",
+        "autobot_reactivation_generic_v2-request_a_callback"
+    ],
+    "template_variables": [],
+    "template_type": "text",
+  "communication_credentials_id": "airtel-917795030574",
+  "campaign_type" : "post-sales",
+  "campaign_objective" : ["Re-activation of inactive customer"],
+  "status": "approved",
+  "template_id": "01kbcqawsxd9n3xfre657xv7gw"
+}
 
 ]
