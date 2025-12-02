@@ -1,4 +1,4 @@
-
+import typing
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from typing import Optional, Dict, Any
@@ -144,14 +144,15 @@ class TwilioProvider(ProviderBase):
                 **generic_message.get('metadata')
             }
 
-    def _mulaw_to_pcm16(self, mulaw_b64: str) -> str:
+    def _mulaw_to_pcm16(self, mulaw_b64: str) -> typing.Union[str, bytes]:
         """Convert base64 mulaw to base64 PCM16"""
         import base64
         import audioop
 
         mulaw_bytes = base64.b64decode(mulaw_b64)
         pcm_bytes = audioop.ulaw2lin(mulaw_bytes, 2)
-        return base64.b64encode(pcm_bytes).decode('utf-8')
+        return pcm_bytes
+        # return base64.b64encode(pcm_bytes).decode('utf-8')
 
     def _pcm16_to_mulaw(self, pcm16_b64: str) -> str:
         """Convert base64 PCM16 to base64 mulaw"""

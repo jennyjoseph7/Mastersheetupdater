@@ -23,7 +23,7 @@ logger = utils.get_logger(__name__)
 
 Queue()
 
-def user_session(system_prompt:str, init_config: dict = None,  **user_data):
+async def user_session(system_prompt:str, init_config: dict = None,  **user_data):
 
     input_queue = Queue()
     output_queue = Queue()
@@ -73,12 +73,14 @@ def user_session(system_prompt:str, init_config: dict = None,  **user_data):
     "You are a helful assistant.",
     10)
 
+    await VB.create_session()
 
     try:
         while True:
-            if not im.is_alive or not om.is_alive:
+            # Note the () calls and async sleep
+            if not im.is_alive() or not om.is_alive():
                 break
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -110,7 +112,7 @@ def user_session(system_prompt:str, init_config: dict = None,  **user_data):
 
 if __name__ == "__main__":
     try:
-        user_session("hey")
+        asyncio.run(user_session("hey"))
     except KeyboardInterrupt:
         logger.info("\nShutting down gracefully...")
         logger.info("Cleanup complete")
