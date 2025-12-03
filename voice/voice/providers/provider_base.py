@@ -145,21 +145,51 @@ class TwilioProvider(ProviderBase):
             }
 
     def _mulaw_to_pcm16(self, mulaw_b64: str) -> typing.Union[str, bytes]:
-        """Convert base64 mulaw to base64 PCM16"""
+        """Convert base64 mulaw to base64 PCM16 and amplify"""
         import base64
         import audioop
+        import array
 
         mulaw_bytes = base64.b64decode(mulaw_b64)
         pcm_bytes = audioop.ulaw2lin(mulaw_bytes, 2)
+        
+        samples = array.array('h', pcm_bytes)
+        if samples:
+            max_amp_before = max(abs(s) for s in samples)
+            avg_amp_before = sum(abs(s) for s in samples) / len(samples)
+            
+            # AMPLIFY: Normal speech should be 1000-10000 range
+            if max_amp_before < 500:
+                amplification = 50.0
+                pcm_bytes = audioop.mul(pcm_bytes, 2, amplification)
+                
+                samples_after = array.array('h', pcm_bytes)
+                max_amp_after = max(abs(s) for s in samples_after)
+                logger.info(f"[Twilio] Amplified audio: {max_amp_before} -> {max_amp_after} (×{amplification})")
+            else:
+                logger.info(f"[Twilio] Audio OK: max={max_amp_before}, avg={avg_amp_before:.1f}")
+        
         return pcm_bytes
+    # def _mulaw_to_pcm16(self, mulaw_b64: str) -> typing.Union[str, bytes]:
+    #     """Convert base64 mulaw to base64 PCM16"""
+    #     import base64
+    #     import audioop
+
+    #     mulaw_bytes = base64.b64decode(mulaw_b64)
+    #     pcm_bytes = audioop.ulaw2lin(mulaw_bytes, 2)
+    #     return pcm_bytes
         # return base64.b64encode(pcm_bytes).decode('utf-8')
 
-    def _pcm16_to_mulaw(self, pcm16_b64: str) -> str:
+    def _pcm16_to_mulaw(self, pcm16_b64: typing.Union[str, bytes]) -> str:
         """Convert base64 PCM16 to base64 mulaw"""
         import base64
         import audioop
 
-        pcm_bytes = base64.b64decode(pcm16_b64)
+        if isinstance(pcm16_b64, str):
+            pcm_bytes = base64.b64decode(pcm16_b64)
+        else:
+            pcm_bytes = pcm16_b64
+
         mulaw_bytes = audioop.lin2ulaw(pcm_bytes, 2)
         return base64.b64encode(mulaw_bytes).decode('utf-8')
 
