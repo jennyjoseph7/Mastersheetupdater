@@ -19,6 +19,12 @@
 			"entry_point" : "communication_worker.py",
 			"parallel_threads" : 2,
 			"shutdown_time" : 60
+		},
+		{
+			"name" : "core",
+			"entry_point" : "core.py",
+			"parallel_threads" : 2,
+			"shutdown_time" : 60
 		}
 	]
 }
