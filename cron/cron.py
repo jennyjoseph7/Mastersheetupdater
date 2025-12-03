@@ -1,5 +1,3 @@
-from calendar import c
-import os
 import sys
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
@@ -34,9 +32,10 @@ def create_campaign_ideas_for_dealerships(
     logger = logger or mlogger
     pre_sales_campaign_model = gryd.base_model.Model('pre_sales_campaign', AUTOCRM_APP_ENTERPRISE_ID)
     post_sales_campaign_model = gryd.base_model.Model('post_sales_campaign', AUTOCRM_APP_ENTERPRISE_ID)
+    campaign_objective_model = gryd.base_model.Model('campaign_objective', AUTOCRM_APP_ENTERPRISE_ID)
     default_campaign_objectives = {
-        'post-sales': post_sales_campaign_model._model_ref.attributes['campaign_objective'].options,
-        'pre-sales': pre_sales_campaign_model._model_ref.attributes['campaign_objective'].options
+        'post-sales': campaign_objective_model.list(campaign_type='post-sales', _as_option = True, _page_size=100),
+        'pre-sales': campaign_objective_model.list(campaign_type='pre-sales', _as_option = True, _page_size=100)
     }
     campaign_types = hp.make_list(campaign_types or ['pre-sales', 'post-sales'])
     if isinstance(campaign_objectives, list):

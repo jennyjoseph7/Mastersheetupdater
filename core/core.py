@@ -112,12 +112,45 @@ def get_vehicle_id(vehicle_model, row, missing_reason = None, logger = None):
     logger = logger or mlogger
     logger.info(f"Getting vehicle ID for row: {row}")
     missing_reason = missing_reason or []
+    data = {}
+    for k in [ 
+            "emi_due_date",
+            "oil_change_date",
+            "tyre_change_date",
+            "original_delivery_date",
+            "brake_pad_change_date",
+            "suspension_check_date",
+            "coolant_radiator_service_date",
+            "car_wash_date",
+            "brake_oil_change_date",
+            "oil_filter_replacement_date",
+            "polishing_and_waxing_date",
+            "ac_vent_cleaning_date",
+            "ac_vent_cleaning_date",
+            "underbody_coating_date",
+            "odometer_reading_date",
+            "last_service_date",
+            "warranty_expiry_date",
+            "extended_warranty_expiry_date",
+            "battery_warranty_expiry_date",
+            "battery_change_date",
+            "battery_service_date",
+            "insurance_expiry_date",
+            "purchase_date",
+            "registration_date",
+            "original_delivery_date",
+        ]:
+        if is_valid_value(row, k):
+            try:
+                data[k] = hp.to_epoch(row.get(k))
+                row[k] = data[k]
+            except Exception as e:
+                missing_reason.append(f"Failed to convert {k} to date-time: {str(e)}")
     vehicles = vehicle_model.list(_as_option=True, _page_size=1, reg_number=row.get('reg_number'))
     if vehicles:
         vehicle_id = vehicles[0].get('vehicle_id')
         row['vehicle_id'] = vehicle_id
         return row, missing_reason
-    data = {}
     for k in [
             "reg_number",
             "vehicle_brand_name",
@@ -170,38 +203,6 @@ def get_vehicle_id(vehicle_model, row, missing_reason = None, logger = None):
         ]:
         if is_valid_value(row, k):
             data[k] = row.get(k)
-    for k in [ 
-            "emi_due_date",
-            "oil_change_date",
-            "tyre_change_date",
-            "original_delivery_date",
-            "brake_pad_change_date",
-            "suspension_check_date",
-            "coolant_radiator_service_date",
-            "car_wash_date",
-            "brake_oil_change_date",
-            "oil_filter_replacement_date",
-            "polishing_and_waxing_date",
-            "ac_vent_cleaning_date",
-            "ac_vent_cleaning_date",
-            "underbody_coating_date",
-            "odometer_reading_date",
-            "last_service_date",
-            "warranty_expiry_date",
-            "extended_warranty_expiry_date",
-            "battery_warranty_expiry_date",
-            "battery_change_date",
-            "battery_service_date",
-            "insurance_expiry_date",
-            "purchase_date",
-            "registration_date",
-            "original_delivery_date",
-        ]:
-        if is_valid_value(row, k):
-            try:
-                data[k] = hp.to_epoch(row.get(k))
-            except Exception as e:
-                missing_reason.append(f"Failed to convert {k} to date-time: {str(e)}")
     if is_valid_value(row, 'customer_score'):
         row['customer_score'] = int(row['customer_score'])
         data['customer_score'] = row['customer_score']
@@ -374,6 +375,7 @@ def process_common_row(campaign_type, row, models, missing_reason = None, dealer
         row, missing_reason = process_pre_sales_lead_row(row, models, missing_reason, rooftop_id, logger = logger)
     elif campaign_type == 'post-sales':
         row, missing_reason = process_post_sales_lead_row(row, models, missing_reason, rooftop_id, logger = logger)
+        logger.info(f"Post-sales lead processed: {row}")
     elif campaign_type == 'dealership':
         row, missing_reason = process_dealership_lead_row(row, models, missing_reason, rooftop_id, logger = logger)
     else:
@@ -404,7 +406,6 @@ def load_models(campaign_type, logger = None):
         'pre-sales': {
             'lead_model': 'pre_sales_lead',
             'person_model': 'person',
-            'person_vehicle_model': 'person_vehicle',
             'campaign_model': 'pre_sales_campaign',
             'rooftop_model': 'showroom',
         },
@@ -412,6 +413,7 @@ def load_models(campaign_type, logger = None):
             'lead_model': 'post_sales_lead',
             'vehicle_model': 'vehicle',
             'person_model': 'person',
+            'person_vehicle_model': 'person_vehicle',
             'campaign_model': 'post_sales_campaign',
             'rooftop_model': 'workshop',
         },
@@ -482,6 +484,7 @@ def gryd_task_import_leads_from_csv(
         dealership_id: id of the dealership
         csv_file_link: local path to CSV file
         kwargs:
+            - audience_name
             - campaign_id
             - mapping: header mapping
             - workshop_id
@@ -514,6 +517,9 @@ def gryd_task_import_leads_from_csv(
         campaign = validate_campaign_or_campaign_objective_id(campaign_id, campaign_objective_id, models, logger = logger)
         campaign_id = campaign.get('campaign_id')
         campaign_objective_id = campaign.get('campaign_objective_id')
+        total = 0
+        error = 0
+        processed = 0
         with open(csv_path, encoding="utf-8") as f:
             reader = csv.DictReader(f)
             headers = reader.fieldnames
@@ -525,9 +531,6 @@ def gryd_task_import_leads_from_csv(
                 error_csv_headers = ["line_num"] + headers + ["_error"]
                 writer = csv.DictWriter(fe, fieldnames=error_csv_headers)
                 writer.writeheader()
-                total = 0
-                error = 0
-                processed = 0
                 # Main CSV processing loop
                 for i, row in enumerate(reader, 2):
                     total += 1
@@ -547,9 +550,11 @@ def gryd_task_import_leads_from_csv(
                     else:
                         try:
                             # post the lead
+                            logger.info(f"Posting lead: {row}")
                             models['lead_model'].post(row)
                         except Exception as e:
                             error += 1
+                            logger.error(f"Failed to post lead: {str(e)}")
                             row_ctx['_error'] = f"Failed to post lead: {str(e)}"
                             writer.writerow({k: row_ctx.get(k) for k in error_csv_headers})
                             yield {"_error": row_ctx}
@@ -569,128 +574,6 @@ def gryd_task_import_leads_from_csv(
         raise ValueError(f"Failed to create temporary files: {str(e)}") from e
     wind_up(csv_path, error_csv_path)
     return
-
-
-
-    if typ == "pre-sales":
-        lead_model = models["lead_model"]
-        person_model = models["person_model"]
-        lead_attr_seq = attr_seqs.get("lead_model", [])
-        person_attr_seq = attr_seqs.get("person_model", [])
-
-        # Check if lead exists by phone/email
-        query = {}
-        if phone:
-            query["phone_number"] = phone
-        elif email:
-            query["email"] = email
-        found_leads = lead_model.list(_as_option=True, _page_size=1, **query)
-        if found_leads:
-            # Copy and make new lead (not update/overwrite)
-            existing_lead = found_leads[0]
-            new_data = dict(existing_lead)
-            for attr in lead_attr_seq:
-                if row_data.get(attr):
-                    new_data[attr] = row_data[attr]
-            new_data["dealership_id"] = dealership_id
-            new_data["campaign_id"] = campaign_id
-            new_data["workshop_id"] = ws_val
-            posted = lead_model.post(new_data)
-            return posted, None
-        else:
-            # Create person
-            person_data = {k: v for k, v in row_data.items() if k in person_attr_seq}
-            if phone:
-                person_data["phone_number"] = phone
-            if email:
-                person_data["email"] = email
-            p = person_model.post(person_data)
-            # Create the lead and link to person
-            lead_data = {k: v for k, v in row_data.items() if k in lead_attr_seq}
-            lead_data["dealership_id"] = dealership_id
-            lead_data["campaign_id"] = campaign_id
-            lead_data["workshop_id"] = ws_val
-            lead_data["user_id"] = p.get("person_id")
-            posted = lead_model.post(lead_data)
-            return posted, None
-
-    elif typ == "post-sales":
-        lead_model = models["lead_model"]
-        vehicle_model = models["vehicle_model"]
-        person_model = models["person_model"]
-        lead_attr_seq = attr_seqs.get("lead_model", [])
-        vehicle_attr_seq = attr_seqs.get("vehicle_model", [])
-        person_attr_seq = attr_seqs.get("person_model", [])
-
-        veh_reg = row_data.get("vehicle_registration_number", "")
-
-        # Find or create vehicle
-        vehicle_q = {"vehicle_registration_number": veh_reg}
-        vehicles = vehicle_model.list(_as_option=True, _page_size=1, **vehicle_q)
-        if vehicles:
-            vehicle = vehicles[0]
-            vehicle_id = vehicle.get("vehicle_id")
-        else:
-            vehicle_data = {k: v for k, v in row_data.items() if k in vehicle_attr_seq}
-            vehicle_data["vehicle_registration_number"] = veh_reg
-            v = vehicle_model.post(vehicle_data)
-            vehicle_id = v.get("vehicle_id")
-
-        # Find or create person by phone/email
-        person = None
-        if phone:
-            pquery = {"phone_number": phone}
-            people = person_model.list(_as_option=True, _page_size=1, **pquery)
-            if people:
-                person = people[0]
-        if not person and email:
-            pquery = {"email": email}
-            people = person_model.list(_as_option=True, _page_size=1, **pquery)
-            if people:
-                person = people[0]
-        if not person:
-            person_data = {k: v for k, v in row_data.items() if k in person_attr_seq}
-            if phone:
-                person_data["phone_number"] = phone
-            if email:
-                person_data["email"] = email
-            person = person_model.post(person_data)
-
-        # Create the lead
-        lead_data = {k: v for k, v in row_data.items() if k in lead_attr_seq}
-        lead_data["dealership_id"] = dealership_id
-        lead_data["campaign_id"] = campaign_id
-        lead_data["workshop_id"] = ws_val
-        lead_data["vehicle_id"] = vehicle_id
-        lead_data["user_id"] = person.get("person_id")
-        posted = lead_model.post(lead_data)
-        return posted, None
-
-    elif typ == "dealership":
-        lead_model = models["lead_model"]
-        dealership_model = models["dealership_model"]
-        lead_attr_seq = attr_seqs.get("lead_model", [])
-        dealership_query = {}
-        if row_data.get("dealership_id"):
-            dealership_query["dealership_id"] = row_data.get("dealership_id")
-        elif dealership_id:
-            dealership_query["dealership_id"] = dealership_id
-        elif row_data.get("dealer_name"):
-            dealership_query["dealer_name"] = row_data.get("dealer_name")
-        dealership_obj = None
-        if dealership_query:
-            ds = dealership_model.list(_as_option=True, _page_size=1, **dealership_query)
-            if ds:
-                dealership_obj = ds[0]
-
-        # Compose the lead data
-        lead_data = {k: v for k, v in row_data.items() if k in lead_attr_seq}
-        lead_data["dealership_id"] = dealership_obj.get("dealership_id") if dealership_obj else dealership_id
-        lead_data["campaign_id"] = campaign_id
-        lead_data["workshop_id"] = ws_val
-        posted = lead_model.post(lead_data)
-        return posted, None
-
 
 if __name__ == "__main__":
 
