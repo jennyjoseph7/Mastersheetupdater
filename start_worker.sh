@@ -19,6 +19,8 @@ export SETUP_WEBAPP=${WEBAPP:-True}
 export SETUP_WORKERS=${SETUP_WORKERS:-True}
 export RUN_IN_BG=True
 export DEV_CONTAINER=${DEV_CONTAINER:-True}
+export START_AGENTS=${START_AGENTS:-0}
+export START_WORKERS=${START_WORKERS:-0}
 
 process_config=`cat start_worker_config.json`
 
@@ -82,30 +84,36 @@ function stop_workers() {
 
 function start_worker_in_bg() {
 	worker_path=worker
-	echo "Starting up Agents."
-	jq -c '.agents[]' start_worker_config.json | while IFS= read -r wmap;do
-		echo "$wmap"
-		WORKER_NAME=$(jq -r '.name' <<< "$wmap")
-		WORKER_ENTRYPOINT=$(jq -r '.entry_point' <<< "$wmap")
-		WORKER_PARALLEL_THREADS=$(jq -r '.parallel_threads' <<< "$wmap")
-		WORKER_SHUTDOWN_TIME=$(jq -r '.shutdown_time' <<< "$wmap")
+	for a in ${START_AGENTS//,/ };do
+		echo "Starting up Agent - $a."
+		jq -c '.agents[]' start_worker_config.json | while IFS= read -r wmap;do
+			echo "$wmap"
+			WORKER_NAME=$(jq -r '.name' <<< "$wmap")
+			WORKER_ENTRYPOINT=$(jq -r '.entry_point' <<< "$wmap")
+			WORKER_PARALLEL_THREADS=$(jq -r '.parallel_threads' <<< "$wmap")
+			WORKER_SHUTDOWN_TIME=$(jq -r '.shutdown_time' <<< "$wmap")
 
-		echo "Setting up $WORKER_NAME in BG. Logs are written to ${LOGDIR}/${WORKER_NAME}_stderr.log and ${LOGDIR}/${WORKER_NAME}_stdout.log"
-	
-		nohup $worker_path -m agents/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_NAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_stderr.log &
+			if [ "$WORKER_NAME" == "$a" ];then
+				echo "Setting up $WORKER_NAME in BG. Logs are written to ${LOGDIR}/${WORKER_NAME}_stderr.log and ${LOGDIR}/${WORKER_NAME}_stdout.log"
+				nohup $worker_path -m agents/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_NAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_stderr.log &
+			fi
+		done
 	done
 
-	echo "Starting up workers."
-	jq -c '.workers[]' start_worker_config.json | while IFS= read -r wmap;do
-		echo "$wmap"
-		WORKER_NAME=$(jq -r '.name' <<< "$wmap")
-		WORKER_ENTRYPOINT=$(jq -r '.entry_point' <<< "$wmap")
-		WORKER_PARALLEL_THREADS=$(jq -r '.parallel_threads' <<< "$wmap")
-		WORKER_SHUTDOWN_TIME=$(jq -r '.shutdown_time' <<< "$wmap")
+	for w in ${START_WORKERS//,/ };do
+		echo "Starting up worker - $w."
+		jq -c '.workers[]' start_worker_config.json | while IFS= read -r wmap;do
+			echo "$wmap"
+			WORKER_NAME=$(jq -r '.name' <<< "$wmap")
+			WORKER_ENTRYPOINT=$(jq -r '.entry_point' <<< "$wmap")
+			WORKER_PARALLEL_THREADS=$(jq -r '.parallel_threads' <<< "$wmap")
+			WORKER_SHUTDOWN_TIME=$(jq -r '.shutdown_time' <<< "$wmap")
 
-		echo "Setting up $WORKER_NAME - '$WORKER_ENTRYPOINT' in BG. Logs are written to ${LOGDIR}/${WORKER_NAME}_stderr.log and ${LOGDIR}/${WORKER_NAME}_stdout.log"
-	
-		nohup $worker_path -m $WORKER_NAME/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_NAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_stderr.log &
+			if [ "$WORKER_NAME" == "$w" ];then
+				echo "Setting up $WORKER_NAME - '$WORKER_ENTRYPOINT' in BG. Logs are written to ${LOGDIR}/${WORKER_NAME}_stderr.log and ${LOGDIR}/${WORKER_NAME}_stdout.log"
+				nohup $worker_path -m $WORKER_NAME/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_NAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_stderr.log &
+			fi
+		done
 	done
 	
 
@@ -133,7 +141,7 @@ function start_workers() {
 			nohup waitress-serve --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log &
 
 			#export RDS_SECRET=${RDS_SECRET} && nohup python app.py 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log & 
-	    		app_pid=$!
+	    	app_pid=$!
 			echo $app_pid > app.pid
 		fi
 
