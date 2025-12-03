@@ -25,6 +25,18 @@
 			"entry_point" : "core.py",
 			"parallel_threads" : 2,
 			"shutdown_time" : 60
+		},
+		{
+			"name" : "campaign",
+			"entry_point" : "campaign_worker.py",
+			"parallel_threads" : 2,
+			"shutdown_time" : 60
+ 		},
+		{
+			"name" : "conversation",
+			"entry_point" : "converse.py",
+			"parallel_threads" : 2,
+			"shutdown_time" : 60
 		}
 	]
 }
