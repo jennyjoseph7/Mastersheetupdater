@@ -1,0 +1,108 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "audience",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
+      },
+      "indexed": true
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      },
+      "indexed": true
+    },
+    {
+      "name": "category",
+      "type": "text",
+      "title": "Category",
+      "required": true,
+      "options": ["Pre-Sales", "Post-Sales"],
+      "ui_element": "select",
+      "indexed": true
+    },
+    {
+      "name": "campaign_objective_id",
+      "type": "uid",
+      "title": "Campaign Objective",
+      "required": true,
+      "indexed": true
+    },
+    {
+      "name": "campaign_objective_name",
+      "type": "text",
+      "title": "Campaign Objective Name",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "campaign_objective_name"
+        ]
+      },
+      "auto_updater": true,
+      "force_update": "campaign_objective_id"
+    },
+    {
+      "name": "audience_name",
+      "type": "text",
+      "title": "Audience Name",
+      "required": true,
+      "indexed": true
+    },
+    {
+      "name": "tags",
+      "type": "string_list",
+      "title": "Tags",
+      "list_type": "text",
+      "ui_element": "tags",
+      "options": ["Active Customers", "premium leads", "Test Audience"],
+      "option_others": true,
+      "required": false
+    },
+    {
+      "name": "csv_file_url",
+      "type": "text",
+      "title": "CSV File URL",
+      "ui_element": "url",
+      "required": false
+    },
+    {
+      "name": "field_mapping",
+      "type": "object_list",
+      "title": "Field Mapping",
+      "list_type": "nested_object",
+      "dict_keys": ["source_field", "target_field", "enabled"],
+      "ui_element": "field_mapping",
+      "required": false,
+      "description": "Map your source CSV fields to standard audience fields. Disabled fields will be excluded."
+    },
+    {
+      "name": "audience_id",
+      "type": "uid",
+      "id": true,
+      "auto_updater": true,
+      "default": {
+        "function": "name_to_id",
+        "args": ["category", "audience_name", "campaign_objective_id"],
+        "kwargs": {
+          "attribute_join": "-",
+          "is_unique": true,
+          "separator": "-",
+          "skip_empty": true,
+          "case": "lower"
+        }
+      }
+    }
+  ]
+}
