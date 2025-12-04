@@ -51,7 +51,7 @@
         },
         {
             "name": "currency",
-            "type": "list",
+            "type": "text",
             "default": "INR",
             "options": ["INR", "USD", "EUR", "GBP"],
             "required": true
@@ -105,7 +105,10 @@
             "name": "transaction_id",
             "type": "text",
             "default":{
-                "function": "generate_transaction_id"
+                "function": "generate_transaction_id",
+                "kwargs" : {
+                    "mode" : "billing"
+                }
             },
             "auto_updater": true,
             "indexed": true
@@ -162,8 +165,7 @@
         },
         {
             "name": "total_tax_percentage",
-            "type": "number",
-            "required": true
+            "type": "number"
         },
         {
             "name": "total_tax_amount",
