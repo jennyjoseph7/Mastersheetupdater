@@ -545,7 +545,7 @@ def gryd_task_import_leads_from_csv(
                     missing_reason = [f"Line {i}: "]
                     row = {headers[i]: row.get(k) for i, k in enumerate(row.keys()) if is_valid_value(row, k)}
                     logger.info(f"Row: {row}")
-                    row, missing_reason = process_common_row(typ, row, models, missing_reason, dealership_id, campaign_id, campaign_objective_id, rooftop_type, rooftop_id, logger = logger)
+                    row, missing_reason = process_common_row(typ, row, models, missing_reason, dealership_id, campaign_id = campaign_id, campaign_objective_id = campaign_objective_id, audience_name = audience_name, rooftop_type = rooftop_type, rooftop_id = rooftop_id, logger = logger)
                     row_ctx = {
                       "line_num": i,
                       **row
