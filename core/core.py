@@ -231,7 +231,8 @@ def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id =
                     _page_size=1,
                     workshop_name=f"~{row.get('workshop_name')}"
                 ),
-                force = True
+                force = True,
+                default = {}
             )
             ws_val = ws_val.get('workshop_id')
     if not ws_val:
@@ -361,7 +362,7 @@ def get_valid_value(row, key):
         return None
     return value
 
-def process_common_row(campaign_type, row, models, missing_reason = None, dealership_id = None, campaign_id = None, campaign_objective_id = None, rooftop_type = None, rooftop_id = None, logger = None):
+def process_common_row(campaign_type, row, models, missing_reason = None, dealership_id = None, campaign_id = None, campaign_objective_id = None, audience_name = None, rooftop_type = None, rooftop_id = None, logger = None):
     logger = logger or mlogger
     logger.info(f"Processing common row: {row}")
     missing_reason = missing_reason or []
@@ -369,6 +370,9 @@ def process_common_row(campaign_type, row, models, missing_reason = None, dealer
     row['campaign_id'] = campaign_id
     row['campaign_objective_id'] = campaign_objective_id
     row['campaign_type'] = campaign_type
+    row['audience_name'] = audience_name
+    row[f"{rooftop_type}_id"] = rooftop_id if rooftop_type else None
+    logger.info(f"Processing common row after adding common columns: {row}")
     if is_valid_value(row, 'customer_score'):
         row['customer_score'] = int(row['customer_score'])
     if campaign_type == 'pre-sales':
@@ -449,21 +453,23 @@ def create_temporary_files(csv_file_link, logger = None):
         raise Exception(f"Failed to create error CSV file: {str(e)}")
     return csv_path, error_csv_path
 
-def validate_campaign_or_campaign_objective_id(campaign_id, campaign_objective_id, models, logger = None):
+def validate_campaign_or_campaign_objective_id(campaign_id, audience_name, campaign_objective_id, models, campaign_type, logger = None):
     logger = logger or mlogger
-    logger.info(f"Validating campaign or campaign objective ID: {campaign_id}, {campaign_objective_id}")
+    logger.info(f"Validating campaign or campaign objective ID or audience_name: {campaign_id}, {campaign_objective_id}, {audience_name}")
     if campaign_id:
         found = models['campaign_model'].get(campaign_id)
         if not found:
             raise ValueError(f"Campaign ID '{campaign_id}' not found in {models['campaign_model']}")
         return found
-    elif campaign_objective_id:
-        found = models['campaign_model'].list(_as_option=True, _page_size=1, campaign_objective_id=campaign_objective_id)
+    elif campaign_objective_id and audience_name:
+        found = gryd.base_model.Model('campaign_objective', AUTOCRM_APP_ENTERPRISE_ID).get(campaign_objective_id)
         if not found:
             raise ValueError(f"Campaign objective ID '{campaign_objective_id}' not found in {models['campaign_model']}")
+        if found.get('campaign_type') != campaign_type:
+            raise ValueError(f"Campaign objective provided {campaign_objective_id} is not aligned with the campaign_type")
         return found
     else:
-        raise ValueError("Campaign ID or campaign objective ID is required")
+        raise ValueError("Campaign ID or campaign objective ID  and audience_name is required")
     return found
 
 @gryd.is_a_task(function_name="import_leads_from_csv", job_param='job', auth_param='auth', logger_param='logger')
@@ -488,6 +494,7 @@ def gryd_task_import_leads_from_csv(
             - campaign_id
             - mapping: header mapping
             - workshop_id
+            - lead_tags
             - campaign_objective_id
             - etc.
     Yields:
@@ -498,14 +505,15 @@ def gryd_task_import_leads_from_csv(
     logger = logger or mlogger
     typ = (campaign_type or '').lower().strip().replace('_','-').replace(' ','-')
     campaign_id = kwargs.get('campaign_id')
+    audience_name = kwargs.get('audience_name')
     enterprise_id = kwargs.get("enterprise_id") or AUTOCRM_APP_ENTERPRISE_ID
     mapping = kwargs.get("mapping", {})
     workshop_id = str(kwargs.get("workshop_id"))
-    showroom_id = kwargs.get("showroom_id")
+    showroom_id = str(kwargs.get("showroom_id"))
     rooftop_type = "workshop" if workshop_id else "showroom" if showroom_id else "dealership"
     rooftop_id = workshop_id if rooftop_type == 'workshop' else showroom_id if rooftop_type == 'showroom' else dealership_id
     campaign_objective_id = kwargs.get("campaign_objective_id")
-    logger.info(f"Importing leads from CSV for campaign_type: {campaign_type}, dealership_id: {dealership_id}, csv_file_link: {csv_file_link}, campaign_id: {campaign_id}, enterprise_id: {enterprise_id}, mapping: {mapping}, {rooftop_type}_id: {rooftop_id}")
+    logger.info(f"Importing leads from CSV for campaign_type: {campaign_type}, dealership_id: {dealership_id}, csv_file_link: {csv_file_link}, campaign_id: {campaign_id}, enterprise_id: {enterprise_id}, mapping: {mapping}, {rooftop_type}_id: {rooftop_id}, audience_name: {audience_name}")
     # Model selection
     models = load_models(typ)
     csv_path = None
@@ -514,7 +522,7 @@ def gryd_task_import_leads_from_csv(
         csv_path, error_csv_path = create_temporary_files(csv_file_link, logger = logger)
         logger.info(f"CSV path: {csv_path}, error_csv_path: {error_csv_path}")
         # Campaign ID validation
-        campaign = validate_campaign_or_campaign_objective_id(campaign_id, campaign_objective_id, models, logger = logger)
+        campaign = validate_campaign_or_campaign_objective_id(campaign_id, audience_name, campaign_objective_id, models, campaign_type, logger = logger)
         campaign_id = campaign.get('campaign_id')
         campaign_objective_id = campaign.get('campaign_objective_id')
         total = 0
@@ -582,7 +590,9 @@ if __name__ == "__main__":
             "post-sales", 
             "ambal-auto-south-india", 
             "/Users/ggananth/Downloads/afinallead.csv", 
-            campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943", 
-            workshop_id = "12"
+            #campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
+            audience_name = "Ambal Auto - Service Center - New data",
+            campaign_objective_id = "post-sales-warranty-expiry-offer-nexa-mumbai-west-nexa-dealer-group-west-india",
+            workshop_id = "ambal-auto - ambal-auto---service-center - coimbatore"
         ):    
         print(hp.json.dumps(out, hp.json.OPT_INDENT_2))

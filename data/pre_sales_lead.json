@@ -202,9 +202,17 @@
             ]
         },
         {
+            "name": "audience_name",
+            "type": "text",
+            "indexed": true
+        },
+        {
             "name": "campaign_id",
             "type": "uid",
-            "required": false
+            "indexed": true,
+            "required": false,
+            "option_others": true,
+            "options": "/options/pre_sales_campaign/campaign_name"
         },
         {
             "name": "campaign_name",
@@ -248,6 +256,10 @@
         {
             "name": "campaign_objective_id",
             "type": "uid",
+            "indexed": true,
+            "required": true,
+            "option_others": true,
+            "options": "/options/pre_sales_campaign/campaign_objective_name",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -422,12 +434,12 @@
             "default": {
                 "function": "get_from_model",
                 "args": [
-                    "pre_sales_campaign",
-                    "campaign_id",
+                    "campaign_objective",
+                    "campaign_objective_id",
                     "ctas"
                 ]
             },
-            "type":"string_list"
+            "type": "string_list"
         },
         {
             "name": "assigned_to",
@@ -1143,6 +1155,24 @@
                     "channel"
                 ]
             }
+        },
+        {
+            "name": "lead_tags",
+            "options": "/options/campaign_objective/target_audience_tags",
+            "ui_element": "multiselect",
+            "list_adder": {
+                "function": "list_adder"
+            },
+            "option_others": true,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "target_audience_tags"
+                ]
+            },
+            "type": "string_list"
         },
         {
             "name": "follow_up_date",

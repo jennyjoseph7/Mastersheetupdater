@@ -41,7 +41,7 @@
                 "call_connected",
                 "call_completed",
                 "message_delivered",
-                "response_provided"
+                "response_to_query"
             ]
         },
         {
@@ -65,7 +65,12 @@
                 "minutes",
                 "hours",
                 "tokens",
-                "words"
+                "1K_tokens",
+                "1M_tokens",
+                "100_words",
+                "500_characters",
+                "1K_characters",
+                "1M_characters"
             ],
             "ui_element": "select"
         },
