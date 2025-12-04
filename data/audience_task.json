@@ -49,16 +49,7 @@
       "name": "campaign_objective_name",
       "type": "text",
       "title": "Campaign Objective Name",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "campaign_objective_name"
-        ]
-      },
-      "auto_updater": true,
-      "force_update": "campaign_objective_id"
+      "required":"false"
     },
     {
       "name": "audience_name",
