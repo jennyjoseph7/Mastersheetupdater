@@ -8,6 +8,7 @@ from db_routes import db_routes
 import os
 from flask import request
 from config import *
+import autocrm_validator
 
 gryd.SERVICE = f"{AUTOCRM_APP_ENTERPRISE_ID}-app"
 QM = gryd.set_queue_manager()

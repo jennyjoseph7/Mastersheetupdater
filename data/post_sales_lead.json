@@ -192,8 +192,14 @@
             "type": "object_list"
         },
         {
+            "name": "audience_name",
+            "type": "text",
+            "indexed": true
+        },
+        {
             "name": "campaign_id",
             "type": "uid",
+            "indexed": true,
             "required": false,
             "option_others": true,
             "options": "/options/post_sales_campaign/campaign_name"
@@ -241,6 +247,10 @@
             "name": "campaign_objective_id",
             "type": "uid",
             "auto_updater":true,
+            "indexed": true,
+            "required": true,
+            "option_others": true,
+            "options": "/options/post_sales_campaign/campaign_objective_name",
             "default": {
                 "function": "get_from_model",
                 "args": [

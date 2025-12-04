@@ -9,7 +9,8 @@
             "auto_updater": true,
             "default": {
                 "function": "now_ctime"
-            }
+            },
+            "indexed": true
         },
         {
             "name": "updated",
@@ -18,7 +19,8 @@
             "force_update": true,
             "default": {
                 "function": "now_ctime"
-            }
+            },
+            "indexed": true
         },
         {
             "name": "transaction_date",
@@ -27,55 +29,135 @@
         {
             "name": "transaction_type",
             "type": "text",
-            "options": ["credit", "debit", "refund"]
+            "options": ["credit", "debit", "refund"],
+            "default": "debit"
         },
         {
             "name": "item_name",
-            "type": "text"
+            "type": "text",
+            "required": true,
+            "indexed": true,
+            "options": [
+                "call_connected",
+                "call_completed",
+                "message_delivered",
+                "response_to_query"
+            ]
         },
         {
             "name": "item_description",
-            "type": "text"
+            "type": "text",
+            "placeholder": "campaign type - campaign objective - campaign name - channel - provider - phone number or email"
         },
         {
             "name": "item_quantity",
-            "type": "number"
+            "type": "number",
+            "default": 1
+        },
+        {
+            "name": "item_units",
+            "type": "number",
+            "default": "count",
+            "options": [
+                "count",
+                "seconds",
+                "days",
+                "minutes",
+                "hours",
+                "tokens",
+                "1K_tokens",
+                "1M_tokens",
+                "100_words",
+                "500_characters",
+                "1K_characters",
+                "1M_characters"
+            ],
+            "ui_element": "select"
         },
         {
             "name": "item_price",
-            "type": "number"
+            "type": "number",
+            "required": true
         },
         {
             "name": "item_total",
-            "type": "number"
+            "type": "number",
+            "default": {
+                "function": "multiply_attributes",
+                "args": [
+                    "item_quantity",
+                    "item_price"
+                ]
+            }
         },
         {
             "name": "currency",
-            "type": "list",
-            "default": "INR",
-            "options": ["INR", "USD", "EUR", "GBP"],
+            "type": "text",
+            "default": "credits",
+            "options": ["credits", "INR", "USD", "EUR", "GBP", "AED", "SAR", "JPY"],
+            "option_others": true,
             "required": true
         },
         {
             "name": "dealership_id",
-            "refers": "parents.dealership.dealership_id",
-            "required": true
+            "required": true,
+            "indexed": true
         },
         {
             "name": "billing_address",
-            "refers": "parents.dealership.billing_address"
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "billing_address"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "dealership_id"
         },
         {
             "name": "billing_contact_name",
-            "refers": "parents.dealership.billing_contact_name"
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "billing_contact_name"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "dealership_id"
         },
         {
             "name": "billing_contact_email",
-            "refers": "parents.dealership.billing_contact_email"
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "billing_contact_email"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "dealership_id"
         },
         {
             "name": "billing_contact_phone",
-            "refers": "parents.dealership.billing_contact_phone"
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "billing_contact_phone"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "dealership_id"
         },
         {
             "name": "payment_mode",
@@ -105,7 +187,10 @@
             "name": "transaction_id",
             "type": "text",
             "default":{
-                "function": "generate_transaction_id"
+                "function": "generate_transaction_id",
+                "kwargs" : {
+                    "mode" : "billing"
+                }
             },
             "auto_updater": true,
             "indexed": true
@@ -162,8 +247,7 @@
         },
         {
             "name": "total_tax_percentage",
-            "type": "number",
-            "required": true
+            "type": "number"
         },
         {
             "name": "total_tax_amount",
@@ -227,8 +311,5 @@
             },
             "auto_updater": true
         }
-    ],
-    "parents": [
-        "dealership"
     ]
 }
