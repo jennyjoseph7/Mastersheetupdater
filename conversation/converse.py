@@ -4,7 +4,7 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
-from config import AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID
+from config import AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_ITEM
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
 from prompt import yield_primary_prompt, run_prompt_sync
@@ -16,7 +16,7 @@ import autocrm_validator
 
 CHARACTER_COUNT_TO_CREDIT = 500
 PER_TOKEN_COST = 1
-TOKEN_COST_CURRENCY = "INR"
+TOKEN_COST_CURRENCY = "credits"
 gryd.SERVICE = AUTOCRM_CONVERSATION_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
@@ -129,7 +129,7 @@ def converse(*args, **kargs):
     
     ###TODO add in all needed data to be passed for this task
     post_messages_data(*args, **pass_kwargs) 
-    post_billing_data(customer_response, out_put_text, message_id, dealership_id)
+    post_billing_data(customer_response, out_put_text, pass_kwargs.get("session_data_cache",{}).get("data").get("campaign_data"), dealership_id, channel, request_data)
     logger.info("my messages == {}".format(pass_kwargs.get("responses")))
     logger.info("conversation_process_end_time == {}".format(conversation_process_end_time))
     logger.info("conversation_process_start_time == {}".format(conversation_process_start_time))
@@ -137,23 +137,32 @@ def converse(*args, **kargs):
     
     return
 
-def post_billing_data(customer_response, out_put_text, message_id, dealership_id):
+def post_billing_data(customer_response, out_put_text, campaign_data, dealership_id, channel, request_data):
     in_length = len(customer_response)
     out_length = len(out_put_text)
     total_length = in_length + out_length
     credits = math.ceil(total_length/CHARACTER_COUNT_TO_CREDIT)
     tme = hp.now(as_datetime=False)
     timmm = hp.time()
+
+    campaign_type = campaign_data.get("campaign_type")
+    campaign_objective = campaign_data.get("campaign_objective")
+    campaign_name = campaign_data.get("campaign_name")
+    
+    provider = "airtel" ##TODO update from request data
+    contact = "9999999999" ##TODO update from request data
+    
     postable = {
         "created" : timmm,
         "updated" : timmm,
         "transaction_date" : tme,
         "transaction_type" : "debit",
         "item_name" : "conversation",
-        "item_description" : f"conversation for message_id = {message_id}",
+        "item_description" : f"{campaign_type} - {campaign_objective} - {campaign_name} - {channel} - {provider} - {contact}",
         "item_quantity" : credits,
-        "item_price" : PER_TOKEN_COST,
-        "item_total" : credits*PER_TOKEN_COST,
+        "item_price" : AUTOCRM_RESPONSE_PROVIDED_PRICE,
+        "item_total" : credits*AUTOCRM_RESPONSE_PROVIDED_PRICE,
+        "item_units" : AUTOCRM_RESPONSE_PROVIDED_UNITS,
         "currency" : TOKEN_COST_CURRENCY,
         "dealership_id" : dealership_id,
         "status" : "success"

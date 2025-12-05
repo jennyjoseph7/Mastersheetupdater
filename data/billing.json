@@ -56,7 +56,7 @@
         },
         {
             "name": "item_units",
-            "type": "number",
+            "type": "text",
             "default": "count",
             "options": [
                 "count",

@@ -331,6 +331,17 @@ def get_example_states_and_solutions(*args, **kwargs):
         "After the purpose is completed already in this conversation, do not urge them again.",
         "if the customer provides you a date and time you should always check against the current date time and validate. also you should always provide the DD-MM-YYYY format for the date you want to mention. Do not say today or tomorrow or other such references to date."
     ]
+    if kwargs.get("campaign_data").get("why_user_should_avail_this"):
+        examples.append("Following are the reasons the user should avail this offer - {}".format(kwargs.get("campaign_data").get("why_user_should_avail_this")))
+    
+    if kwargs.get("campaign_data").get("reasons_users_may_not_be_interested"):
+        examples.append("Reasons user may not be interested and how to respond - {}".format(kwargs.get("campaign_data").get("reasons_users_may_not_be_interested")))
+    
+    if kwargs.get("campaign_data").get("reasons_for_non_applicability"):
+        examples.append("Reasons why the offer may not be applicable - {}".format(kwargs.get("campaign_data").get("reasons_for_non_applicability")))
+    
+    if kwargs.get("campaign_data").get("other_important_information"):
+        examples.append("Other information that may be relevant to this offer and or campaign - {}".format(kwargs.get("campaign_data").get("other_important_information")))
     return ", ".join(examples)
 
 
