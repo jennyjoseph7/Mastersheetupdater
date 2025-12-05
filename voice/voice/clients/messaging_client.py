@@ -223,19 +223,25 @@ class MessagingClient:
 
     def disconnect(self):
         """Close WebSocket connection gracefully"""
+        logger.info(f"[{self.tag}] Initiating disconnect...")
         self.running = False
-        self._set_state(ConnectionState.DISCONNECTED)
 
         if self.ws:
             try:
                 self.ws.close()
-                logger.info(f"[{self.tag}] Disconnected from messaging server")
+                logger.info(f"[{self.tag}] WebSocket close() called")
             except Exception as e:
-                logger.error(f"Error during disconnect: {e}")
+                logger.error(f"Error during ws.close(): {e}")
 
         # Wait for thread to finish
         if self.ws_thread and self.ws_thread.is_alive():
-            self.ws_thread.join(timeout=5)
+            logger.info(f"[{self.tag}] Waiting for WebSocket thread to finish...")
+            self.ws_thread.join(timeout=3)
+            if self.ws_thread.is_alive():
+                logger.warning(f"[{self.tag}] WebSocket thread did not finish in time")
+
+        self._set_state(ConnectionState.DISCONNECTED)
+        logger.info(f"[{self.tag}] Disconnected from messaging server")
 
     def send_message(self, message: Dict[str, Any]) -> bool:
         """

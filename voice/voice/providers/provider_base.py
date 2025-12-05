@@ -95,6 +95,13 @@ class TwilioProvider(ProviderBase):
                     'stream_sid': raw_message.get('streamSid')
                 }
             )
+        elif msg_type == 'stop':
+            return dict(
+                message_type='end_stream',
+                metadata={
+                    'stream_sid': raw_message.get('streamSid')
+                }
+            )
         else:
             # Unknown type, pass through
             return dict(
@@ -107,8 +114,14 @@ class TwilioProvider(ProviderBase):
         msg_type = generic_message.get('message_type')
 
         if msg_type == 'audio_output':
-            # Convert PCM16 to mulaw for Twilio
-            audio_mulaw = self._pcm16_to_mulaw(generic_message.get('audio_data')) if generic_message.get('audio_data') else None
+            # Convert PCM16 to mulaw for Twilio (with resampling to 8000 Hz)
+            audio_data = generic_message.get('audio_data')
+            if audio_data:
+                # Get source sample rate from metadata, default to 24000 (OpenAI)
+                source_rate = generic_message.get('metadata', {}).get('sample_rate', 24000)
+                audio_mulaw = self._pcm16_to_mulaw(audio_data, source_sample_rate=source_rate)
+            else:
+                audio_mulaw = None
 
             return {
                 'event': 'media',
@@ -180,8 +193,17 @@ class TwilioProvider(ProviderBase):
     #     return pcm_bytes
         # return base64.b64encode(pcm_bytes).decode('utf-8')
 
-    def _pcm16_to_mulaw(self, pcm16_b64: typing.Union[str, bytes]) -> str:
-        """Convert base64 PCM16 to base64 mulaw"""
+    def _pcm16_to_mulaw(self, pcm16_b64: typing.Union[str, bytes], source_sample_rate: int = 24000) -> str:
+        """
+        Convert PCM16 to mulaw for Twilio (8000 Hz required).
+
+        Args:
+            pcm16_b64: Base64 encoded PCM16 audio or raw bytes
+            source_sample_rate: Sample rate of the input audio (default: 24000 for OpenAI)
+
+        Returns:
+            Base64 encoded mulaw audio at 8000 Hz
+        """
         import base64
         import audioop
 
@@ -190,6 +212,19 @@ class TwilioProvider(ProviderBase):
         else:
             pcm_bytes = pcm16_b64
 
+        # Resample to 8000 Hz if needed (Twilio requirement)
+        if source_sample_rate != 8000:
+            pcm_bytes, _ = audioop.ratecv(
+                pcm_bytes,      # input data
+                2,              # sample width (16-bit = 2 bytes)
+                1,              # number of channels (mono)
+                source_sample_rate,  # input sample rate
+                8000,           # output sample rate (Twilio requirement)
+                None            # no state (for streaming would need to maintain state)
+            )
+            logger.debug(f"[Twilio] Resampled audio from {source_sample_rate}Hz to 8000Hz")
+
+        # Convert to mulaw
         mulaw_bytes = audioop.lin2ulaw(pcm_bytes, 2)
         return base64.b64encode(mulaw_bytes).decode('utf-8')
 

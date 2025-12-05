@@ -202,11 +202,6 @@
             ]
         },
         {
-            "name": "audience_name",
-            "type": "text",
-            "indexed": true
-        },
-        {
             "name": "campaign_id",
             "type": "uid",
             "indexed": true,
@@ -226,6 +221,17 @@
             },
             "auto_updater": true,
             "force_update": "campaign_id"
+        },
+        {
+            "name": "audience_name",
+            "type": "text",
+            "indexed": true,
+            "default": {
+                "function": "copy_attribute",
+                "args": [
+                    "campaign_name"
+                ]
+            }
         },
         {
             "name": "campaign_type",

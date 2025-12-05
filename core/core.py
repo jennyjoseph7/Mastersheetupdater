@@ -1,3 +1,4 @@
+from calendar import c
 import sys
 import os
 from os.path import dirname, abspath, join as joinpath
@@ -434,17 +435,22 @@ def load_models(campaign_type, logger = None):
         models[k] = gryd.base_model.Model(v, AUTOCRM_APP_ENTERPRISE_ID)
     return models
 
-def create_temporary_files(csv_file_link, logger = None):
+def create_csv_path(csv_file_link, logger = None):
     logger = logger or mlogger
-    logger.info(f"Creating temporary files for CSV file: {csv_file_link}")
     csv_path = None
-    error_csv_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             csv_path = hp.download_or_copy(csv_file_link, path = temp_file.name, raise_error_downloading=True, force = True, force_copy = True)
     except Exception as e:
         wind_up(csv_path)
         raise Exception(f"Failed to create temporary file: {str(e)}")
+    return csv_path
+
+def create_temporary_files(csv_file_link, logger = None):
+    logger = logger or mlogger
+    logger.info(f"Creating temporary files for CSV file: {csv_file_link}")
+    csv_path = create_csv_path(csv_file_link, logger = logger)
+    error_csv_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as temp_file:
             error_csv_path = temp_file.name
@@ -471,6 +477,16 @@ def validate_campaign_or_campaign_objective_id(campaign_id, audience_name, campa
     else:
         raise ValueError("Campaign ID or campaign objective ID  and audience_name is required")
     return found
+
+
+@gryd.is_a_task(function_name="extract_csv_headers", job_param='job', logger_param='logger')
+def extract_csv_headers(csv_file_link, job = None, logger = None):
+    csv_path = create_csv_path(csv_file_link, logger = logger)
+    with open(csv_path, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        headers = reader.fieldnames
+        logger.info(f"Headers: {headers}")
+        return headers
 
 @gryd.is_a_task(function_name="import_leads_from_csv", job_param='job', auth_param='auth', logger_param='logger')
 def gryd_task_import_leads_from_csv(
@@ -545,7 +561,7 @@ def gryd_task_import_leads_from_csv(
                     missing_reason = [f"Line {i}: "]
                     row = {headers[i]: row.get(k) for i, k in enumerate(row.keys()) if is_valid_value(row, k)}
                     logger.info(f"Row: {row}")
-                    row, missing_reason = process_common_row(typ, row, models, missing_reason, dealership_id, campaign_id, campaign_objective_id, rooftop_type, rooftop_id, logger = logger)
+                    row, missing_reason = process_common_row(typ, row, models, missing_reason, dealership_id, campaign_id = campaign_id, campaign_objective_id = campaign_objective_id, audience_name = audience_name, rooftop_type = rooftop_type, rooftop_id = rooftop_id, logger = logger)
                     row_ctx = {
                       "line_num": i,
                       **row
