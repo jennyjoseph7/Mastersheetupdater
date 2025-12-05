@@ -1,4 +1,8 @@
-import sys
+import sys, os
+import requests
+import json
+import re
+                    
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
@@ -6,6 +10,9 @@ if BASE_DIR not in sys.path:
 from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
+from autocrm_db_helper.PGConnector import AutoCRMPGConnector
+pg = AutoCRMPGConnector(enterprise_id="autocrm")
+AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 
 gryd.SERVICE = AUTOCRM_CRON_SERVICE_NAME
 gryd.set_queue_manager()
@@ -84,10 +91,30 @@ def create_campaign_templates(logger=None, job=None):
     # For all dealerships registered on whatsapp or whatsapp_chat, create campaign templates for them.
     for communication_credential in communication_credentials_model.yield_list(channel in ["whatsapp_chat", "whatsapp"]):
         dealership_id = communication_credential['dealership_id']
+        communication_credential_id = communication_credential['communication_credential_id']
         dealer_name = communication_credential['dealer_name']
         communication_provider_id = communication_credential['communication_provider_id']
         provider_name = communication_credential['provider_name']
         channel = communication_credential['channel']
+        data = {
+            'waba_id' : communication_credential['waba_id'],
+            'customer_id' : communication_credential['customer_id'],
+            'sub_account_id' : communication_credential['sub_account_id'],
+            'auth_headers' : communication_credential['channel']
+        }
+        default_data = {
+            "waba_id": "113485138500957",
+            "customer_id": "SOCIOGRAPH_uu76NiJRbNmsq5zPgu5V",
+            "sub_account_id": "965a92cd-ac2e-4674-87ab-99fc174e071f",
+            "auth_headers": {
+                "Content-Type": "application/json",
+                "Authorization": "Basic ZGF2ZV9haTpJSjJQVjhebDVjODU="
+            }       
+        }
+        if not all(v not in [None, "", {}] for v in data.values()):
+            data = default_data
+
+
         post_sales_campaign_model = gryd.base_model.Model('post_sales_campaign', AUTOCRM_APP_ENTERPRISE_ID)
         pre_sales_campaign_model = gryd.base_model.Model('pre_sales_campaign', AUTOCRM_APP_ENTERPRISE_ID)
         default_campaign_objectives = {
@@ -101,7 +128,6 @@ def create_campaign_templates(logger=None, job=None):
                 logger.info(f"Creating campaign template for dealer {dealer_name} for provider {provider_name} on channel {channel} for campaign type {campaign_type} and campaign objective {campaign_objective}")
                 dealership = dealership_model.get(dealership_id)
                 languages = dealership.get('languages', ['English'])
-                kwargs = {'dealership_id': dealership_id, 'languages': languages}
                 default_attributes = {
                     "pre-sales": {
                         "campaign_type": campaign_type,
@@ -118,24 +144,268 @@ def create_campaign_templates(logger=None, job=None):
                 },
                 template_required_attributes = {
                     "pre-sales": ["dealer_name", "showroom_full_name", "person_name", "vehicle_category"],
-                    "post-sales": ["dealer_name", "workshop_full_name", "reg_number", "vehicle_model", "vehicle_category"]
-                }
-                template_optional_attributes = {
-                    "pre-sales": [
-                        'last_session_channel', 'last_session_status', "last_session_timestamp", 
-                        "brand_preference", "model_preference", "variant_preference", "color_preference", 
-                        "engine_type_preference", "transmission_preference", "range_preference", "feature_preferences"
-                    ],
-                    "post-sales": [
-                        "vehicle_variant", "vehicle_color", "vehicle_type", 
-                        "campaign_offer", 
-                        "last_session_channel", "last_session_status", "last_session_timestamp"
-                    ]
+                    "post-sales": ["dealer_name", "workshop_full_name", "reg_number", "vehicle_model", "vehicle_category","next_service_due"]
 
                 }
-                campaign_template = gryd.await_result(
-                    'generate_whatsapp_template',AUTOCRM_AGENT_SERVICE_NAME, args=[campaign_type, campaign_objective], kwargs=kwargs, gryd_logger=logger, job_param=job
-                )
+                audiance_required_attributes = {
+                    "pre-sales":[],
+                    "post-sales" : []
+                }
+
+                template_optional_attributes = {
+                    "pre-sales": {
+                        "sessions":['last_session_channel', 'last_session_status', "last_session_timestamp"], 
+                        "car_preferences": ["brand_preference", "model_preference", "variant_preference", "color_preference"], 
+                        "engine_preference":["engine_type_preference", "transmission_preference", "range_preference", "feature_preferences"],
+                        "campaign_info":["campaign_offer","urgency_hook","campaign_tagline"]
+                    },
+                    "post-sales": {
+                        "preferences" : ["vehicle_variant", "vehicle_color", "vehicle_type" ],
+                        "campaign_info":[ "campaign_offer", "urgency_hook","campaign_tagline"],
+                        "sessions": ["last_session_channel", "last_session_status", "last_session_timestamp"]
+                    }
+
+                }
+                pre_sale_special_combinations = [["model_preference","color_preference" ],["model_preference", "variant_preference"],["last_session_channel", "last_session_status"]]
+                post_sale_special_combinations = [["campaign_offer", "urgency_hook"],["last_session_channel", "last_session_status"]]
+
+
+
+                dispositions = ["reached", "engaged"]
+
+                postsales_disposition_detail = [{"reached":["Message Deliverd but didn't seen","Message sent but not replied"]},
+                                                
+                                                {"engaged":["Looking for a discount"
+                                        "Will decide tomorrow",
+                                        "Will decide within 1 to 3 days",
+                                        "Will decide within 4 to 7 days",
+                                        "Will decide within 8 to 14 days",
+                                        "Will decide within 15 to 30 days",
+                                        "Will decide within 31 to 60 days",
+                                        "Will decide within 61 to 90 days",
+                                        "Will decide after 90 days",
+                                        "Will call workshop themselves"
+                                        "Vehicle is not being run"]
+                                        }
+
+                                        ]
+                presale_disposition_detail =[
+                    {"reached": ["Message Deliverd but didn't seen","Message sent but not replied"],
+
+                     "engaged" : ["Looking for a discount"
+                                        "Will decide tomorrow",
+                                        "Will decide within 1 to 3 days",
+                                        "Will decide within 4 to 7 days",
+                                        "Will decide within 8 to 14 days",
+                                        "Will decide within 15 to 30 days",
+                                        "Will decide within 31 to 60 days",
+                                        "Will decide within 61 to 90 days",
+                                        "Will decide after 90 days",
+                                        "Will call dealership themselves"]}
+                ]
+                
+
+                def get_template_variable_list(campaign_type):
+                    final_list = []
+
+                    required = template_required_attributes[campaign_type]
+                    optional = template_optional_attributes[campaign_type]
+                    specials = (
+                        pre_sale_special_combinations
+                        if campaign_type == "pre-sales"
+                        else post_sale_special_combinations
+                    )
+                    disposition_details = (
+                        presale_disposition_detail
+                        if campaign_type == "pre-sales"
+                        else postsales_disposition_detail
+                    )
+
+                    # Base template (required only)
+                    base_templates = [required.copy()]
+
+                    # Type-1: required + one optional field
+
+                    for opt_list in optional.values():
+                        for field in opt_list:
+                            base_templates.append(required + [field])
+
+                    # Type-2: required + special combination
+
+                    for special in specials:
+                        base_templates.append(required + special)
+
+                    # Add disposition variations
+
+                    for tmpl in base_templates:
+                        for disp in dispositions:
+                            for detail in disposition_details[disp]:
+                                t = tmpl.copy()
+                                t.append({
+                                    "disposition": disp,
+                                    "disposition_detail": detail
+                                })
+                                final_list.append(t)
+
+                    return final_list
+                
+                    
+                def send_template_for_approval(template_data: dict,languages: list) -> str | None:
+                    """
+                    Extract variables directly from message body {{var_name}}
+                    Replace them in order to {{1}}, {{2}}, ...
+                    Add the original variable names in templateContent.sample.variables
+                    Submit template for approval and return templateId.
+                    """
+
+
+                    LANG_TO_CODE = {
+                        "English": "en",
+                        "Hindi": "hi",
+                        "Assamese": "as",
+                        "Bengali": "bn",
+                        "Gujarati": "gu",
+                        "Kannada": "kn",
+                        "Kashmiri": "ks",
+                        "Malayalam": "ml",
+                        "Marathi": "mr",
+                        "Nepali": "ne",
+                        "Odia": "or",
+                        "Punjabi": "pa",
+                        "Sanskrit": "sa",
+                        "Sindhi": "sd",
+                        "Tamil": "ta",
+                        "Telugu": "te",
+                        "Urdu": "ur",
+                        "Konkani": "kok",
+                        "Manipuri": "mni",
+                        "Maithili": "mai",
+                        "Santali": "sat",
+                        "Dogri": "doi",
+                        "Bodo": "bdo"
+                    }
+                    lang = languages[0].strip().lower()
+                    lang = LANG_TO_CODE.get(lang,"en")
+
+                
+                    url = "https://iqwhatsapp.airtel.in/gateway/airtel-xchange/whatsapp-content-manager/v1/template"
+                
+                    template_name = template_data.get("template_name")
+                    template_message = template_data.get("template_message")
+                    buttons = template_data.get("buttons", [])
+                    standard_buttons = []
+                    for btn in template_data.get("buttons", []):
+                        new_btn = {
+                            "type": btn.get("type", "QUICK_REPLY"),
+                            "buttonText": btn.get("buttonText") or btn.get("text")
+                        }
+                        standard_buttons.append(new_btn)
+                
+                    buttons = standard_buttons
+                
+                    if not template_name or not template_message:
+                        raise ValueError("template_name and template_message must exist in template_data")
+                
+                    # Extract variables from message body in order of appearance
+                    # Matches: {{vehicle_model}}, {{ service_due_date }} etc.
+                    variable_pattern = r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}"
+                    extracted_variables = re.findall(variable_pattern, template_message)
+                
+                    # Remove duplicates but preserve order
+                    seen = set()
+                    ordered_variables = [v for v in extracted_variables if not (v in seen or seen.add(v))]
+                
+                    # Replace each variable with numeric placeholder
+                    processed_message = template_message
+                    for idx, var_name in enumerate(ordered_variables, start=1):
+                        pattern = r"\{\{\s*" + re.escape(var_name) + r"\s*\}\}"
+                        processed_message = re.sub(pattern, "{{" + str(idx) + "}}", processed_message)
+                
+                    # Build Airtel payload
+                    payload = {
+                        "templateName": template_name,
+                        "wabaId": data["waba_id"],
+                        "customerId": data["customer_id"],
+                        "category": "MARKETING",
+                        "subAccountId": data["sub_account_id"],
+                        "templateContent": {
+                            "language": lang,
+                            "body": processed_message,
+                            "buttons": buttons,
+                            "sample": {
+                                "variables": ordered_variables  
+                            }
+                        }
+                    }
+                
+                    headers = {
+                        "Content-Type": "application/json",
+                        "Authorization": "Basic ZGF2ZV9haTpJSjJQVjhebDVjODU=" 
+                    }
+                
+                
+                    print(payload)
+                
+                    #Submit request
+                    try:
+                        response = requests.post(url, headers=headers, data=json.dumps(payload))
+                
+                        if not response.ok:
+                            print(f"API Error: {response.status_code} - {response.text}")
+                            return None
+                
+                        response_data = response.json()
+                        print(response_data)
+                        template_id = response_data.get("template", {}).get("templateId")
+                
+                        if not template_id:
+                            print("Template ID not found in API response:", response_data)
+                            return None
+                
+                        return template_id
+
+                    except Exception as e:
+                        print("Unexpected error:", e)
+                        return None
+                
+                def post_template_into_model(template_data,template_id, template_variables):
+
+                    if not isinstance(template_id):
+                        pass
+                    template_data["template_id"] = template_id
+                    template_data["campaign_type"] = campaign_type
+                    template_data["campaign_objective"] = campaign_objectives
+                    template_data["communication_credentials_id"] = communication_credential_id
+                    template_data["template_type"] = "text"
+                    disposition = template_variables.get("disposition")
+                    disposition_detail = template_variables.get("disposition_detail")
+
+
+                    if isinstance(dispositions):
+                        template_data["disposition_tags"] = [disposition,disposition_detail]
+
+
+                    try:
+                        dim = gryd.base_model.Model('template', AUTOCRM_APP_ENTERPRISE_ID)
+                        logger.info(f"Posting result to model 'templates' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
+                        dim.post(template_data)
+                        logger.info("Post completed successfully!")
+                    except Exception as db_error:
+                        logger.error(f"Failed posting to Gryd model: {db_error}")
+
+                
+
+                final_attribute_list = get_template_variable_list(campaign_type)
+
+                for attr_list in final_attribute_list:
+                    kwargs = {'dealership_id': dealership_id, 'languages': languages, 'data':{'attribute_name':attr_list}}
+                    campaign_template = gryd.await_result(
+                        'generate_whatsapp_template',AUTOCRM_AGENT_SERVICE_NAME, args=[campaign_type, campaign_objective], kwargs=kwargs, gryd_logger=logger, job_param=job
+                    )
+                    #logic for airtel api 
+                    api_response = send_template_for_approval(template_data= campaign_template, languages= languages)
+                    post_template_into_model(template_data = campaign_template ,template_id= api_response, template_variables = attr_list)
+
                 if campaign_template:
                     created_template_count += 1
     return {
