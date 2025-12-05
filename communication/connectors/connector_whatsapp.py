@@ -282,8 +282,8 @@ def post_contact_status(*args, **data):
 
     return
 
-@gryd.is_a_task()    
-def check_or_create_session(self, phone_number): 
+@gryd.is_a_task(function_name="check_or_create_session")    
+def check_or_create_session(phone_number,lead_id,campaign_id): 
     """
     Process an incoming WhatsApp message and resolve the correct Person,
     Campaign context, Dealership, and Session data for the conversation.
@@ -306,15 +306,34 @@ def check_or_create_session(self, phone_number):
 
     """
     
-    yield {
-        "session_id": "session_id_123",
-        "conversation_id": "conversation_id_123",
-        "session_live": True,
-        "status": "active",
-        "application": "whatsapp",
-        "user_id": "user_id_123",
-        "dealership_id": "dealership_id_123"
-    }
+    payload={}
+    person = BaseWebhookConverter().get_or_create_person(phone_number)
+    if person:
+        payload["phone_number"] = phone_number
+        payload["user_id"] = person.get("user_id")
+    
+    if campaign_id and lead_id:
+        payload["campaign_id"] = campaign_id
+        payload["lead_id"] = lead_id
+    else:
+        logger.info("No campaign_id or lead_id found")
+        return {"error":"No campaign_id or lead_id found"}
+    
+    session = BaseWebhookConverter().get_or_create_session(payload)
+    logger.info(f"TEST check_or_create_session data---{session}")
+    if session:
+        payload["session_id"] = session.get("session_id")
+        payload["conversation_id"] = session.get("conversation_id")
+        payload["session_live"] = session.get("session_live")
+        payload["status"] = session.get("status")
+        payload["application"] = session.get("application")
+        payload["user_id"] = session.get("user_id")
+        # payload["dealership_id"] = session.get("dealership_id")
+        logger.info(f"TEST check_or_create_session payload data---{payload}")
+        
+        return payload
+
+
 
 if __name__=="__main__":
     # for airtel 

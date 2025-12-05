@@ -334,7 +334,7 @@ class BaseCustomCampaignManager:
             
             is_testing = kwargs.pop("_is_testing", False)
 
-            logger.info(f"process_campaign_users_generic campaign_details---{campaign_data}---campaign_users---{user}")
+            # logger.info(f"process_campaign_users_generic campaign_details---{campaign_data}---campaign_users---{user}")
             
             if channel.upper()=="WHATSAPP_CHAT":
                 logger.info(f"[{count}] Sent {channel} message for {campaign_data}")
@@ -361,9 +361,9 @@ class BaseCustomCampaignManager:
                         count
                     ],enterprise_id=enterprise_id)
             if channel.upper()=="VOICEBOT":
-                logger.info(f"[{count}] Sent {channel} message for {campaign_user_id}")
-                #TODO Get the data from audience model and then see 
-                send_voice_campaign_message(campaign_user_data.get("mobile_number"),campaign_user_data,campaign_details_data,VOICE_CAMPAIGN_BASE_URL)
+                logger.info(f"[{count}] Sent {channel} message for phone_number:{campaign_data.get('mobile_number')}, campaign_id:{campaign_data.get('campaign_id')}, lead_id:{campaign_users.get('lead_id')}")
+                # send_voice_campaign_message(campaign_user_data.get("mobile_number"),campaign_user_data,campaign_details_data,VOICE_CAMPAIGN_BASE_URL)
+                # TODO call nikit task for voice
                 pass
 
             processed_users.append(campaign_users[0].get("lead_id"))
