@@ -186,7 +186,7 @@
     },
     {
       "name": "campaign_objective_name",
-      "type": "list",
+      "type": "text",
       "options": [
         "Product Launch / Reveal",
         "Post-Purchase Call",

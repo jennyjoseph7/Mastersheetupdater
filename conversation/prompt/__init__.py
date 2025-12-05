@@ -326,22 +326,22 @@ def get_purpose_and_steps(*args, **kwargs):
 
 def get_example_states_and_solutions(*args, **kwargs):
     examples = [
-        "If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose if the arent already in the purpose flow.",
-        "If a purpose flow is completed, you should provide a confirmation message to the user with the details of the booking.",
-        "After the purpose is completed already in this conversation, do not urge them again.",
-        "if the customer provides you a date and time you should always check against the current date time and validate. also you should always provide the DD-MM-YYYY format for the date you want to mention. Do not say today or tomorrow or other such references to date."
+        "- If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose if the arent already in the purpose flow.",
+        "\n- If a purpose flow is completed, you should provide a confirmation message to the user with the details of the booking.",
+        "\n- After the purpose is completed already in this conversation, do not urge them again.",
+        "\n- if the customer provides you a date and time you should always check against the current date time and validate. also you should always provide the DD-MM-YYYY format for the date you want to mention. Do not say today or tomorrow or other such references to date."
     ]
     if kwargs.get("campaign_data").get("why_user_should_avail_this"):
-        examples.append("Following are the reasons the user should avail this offer - {}".format(kwargs.get("campaign_data").get("why_user_should_avail_this")))
+        examples.append("\n- Following are the reasons the user should avail this offer - {}".format(kwargs.get("campaign_data").get("why_user_should_avail_this")))
     
     if kwargs.get("campaign_data").get("reasons_users_may_not_be_interested"):
-        examples.append("Reasons user may not be interested and how to respond - {}".format(kwargs.get("campaign_data").get("reasons_users_may_not_be_interested")))
+        examples.append("\n- Reasons user may not be interested and how to respond - {}".format(kwargs.get("campaign_data").get("reasons_users_may_not_be_interested")))
     
     if kwargs.get("campaign_data").get("reasons_for_non_applicability"):
-        examples.append("Reasons why the offer may not be applicable - {}".format(kwargs.get("campaign_data").get("reasons_for_non_applicability")))
+        examples.append("\n- Reasons why the offer may not be applicable - {}".format(kwargs.get("campaign_data").get("reasons_for_non_applicability")))
     
     if kwargs.get("campaign_data").get("other_important_information"):
-        examples.append("Other information that may be relevant to this offer and or campaign - {}".format(kwargs.get("campaign_data").get("other_important_information")))
+        examples.append("\n- Other information that may be relevant to this offer and or campaign - {}".format(kwargs.get("campaign_data").get("other_important_information")))
     return ", ".join(examples)
 
 
