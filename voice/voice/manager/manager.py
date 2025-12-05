@@ -12,6 +12,7 @@ from typing import Optional, Union, Literal
 from multiprocessing import Process, Queue
 import threading
 import queue
+import signal
 
 import utils
 logger = utils.get_logger(__name__)
@@ -72,18 +73,19 @@ class Message:
 class InputManager:
     """Manages incoming user audio stream in a separate process"""
 
-    def __init__(self, session_id: str, client, input_queue: Queue, output_queue: Queue, provider):
+    def __init__(self, session_id: str, client, input_queue: Queue, output_queue: Queue, provider, shutdown_event=None):
         self.session_id = session_id
         self.input_queue = input_queue  # multiprocessing.Queue - sends to voice agent
         self.output_queue = output_queue  # multiprocessing.Queue - receives from voice agent
         self.provider = provider # to keep input and output consistent
+        self.shutdown_event = shutdown_event  # multiprocessing.Event for shutdown signal
 
         self.state = InputState.IDLE
 
         self.current_message_id: Optional[str] = None
         self.active_generation = False
         self.last_activity_time = time.time()
-        
+
         #websocket connected client
         self.client = client
 
@@ -114,28 +116,29 @@ class InputManager:
 
         if not raw_data:
             return
-        
+
         if raw_data.get('tag') and raw_data.get('tag') != self.tag:
             logger.info('Seems like message from output manager, ignoring...')
-                
+
         in_payload = self.provider.receive_message(raw_data)
-        logger.info(f'recieved data in input queue: {in_payload}')
+        logger.info(f'recieved data in input queue: {type(in_payload.get("audio_data"))}')
         if in_payload.get('message_type','') == 'stream_start':
             session_id = in_payload.get('metadata',{}).get('custom_params', {}).get('session_id')
             if  session_id !=  self.session_id:
                 logger.info(f'looks like getting stream for different session id, current session_id {self.session_id} but recieved is {session_id}')
                 return
-        
+
         message = Message(
+
             message_id=message_id,
             session_id=self.session_id,
             audio_data = in_payload.get('audio_data', None),
             message_type = in_payload['message_type'],
             metadata = in_payload.get('metadata', {}),
-            state=state        
+            state=state
             )
 
-        logger.info(f"user input [{message_id}]: {message.to_dict()}")
+        #logger.info(f"user input [{message_id}]: {message.to_dict()}")
 
         # Update state
         self.state = state
@@ -145,7 +148,7 @@ class InputManager:
         self.input_queue.put(message.to_dict())
 
         # Monitor response latency (simple blocking approach) --> using threading
-        response_latencylatency_task = threading.Thread(target=self.check_response_latency, args = (message_id, ), daemon=True)
+        response_latencylatency_task = threading.Thread(target=self.check_response_latency, args = (message_id, ), daemon=False)
         response_latencylatency_task.start()
 
         #so that if running later we can disconnect
@@ -243,21 +246,44 @@ class InputManager:
         """Main run loop for Input Manager (blocking, runs in separate process)"""
         logger.info(f"Input Manager started for session {self.session_id} in process {os.getpid()}")
 
-        # Set the sync callback for MessagingClient
-        message_id = generate_uuid()
-        state = InputState.PROCESSING
+        # Set up signal handlers for graceful shutdown
+        def signal_handler(signum, _frame):
+            logger.info(f"Input Manager received signal {signum}, shutting down...")
+            self.running = False
 
-        self.client.on_message_callback = lambda x: self.process_user_input(x, message_id, state)
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
 
-        # Start the MessagingClient in a separate thread
-        self.client.run()
+        try:
+            # Set the sync callback for MessagingClient
+            message_id = generate_uuid()
+            state = InputState.PROCESSING
 
-        # Keep the process alive while running
-        logger.info(f"Input Manager entering main loop for session {self.session_id}")
-        while self.running:
-            time.sleep(0.1)
+            self.client.on_message_callback = lambda x: self.process_user_input(x, message_id, state)
 
-        logger.info(f"Input Manager stopped for session {self.session_id}")
+            # Start the MessagingClient in a separate thread
+            self.client.run()
+
+            # Keep the process alive while running
+            logger.info(f"Input Manager entering main loop for session {self.session_id}")
+            while self.running:
+                # Check shutdown event
+                if self.shutdown_event and self.shutdown_event.is_set():
+                    logger.info("Shutdown event detected in InputManager")
+                    self.running = False
+                    break
+                time.sleep(0.1)
+
+        except Exception as e:
+            logger.error(f"Error in Input Manager: {e}")
+        finally:
+            # Cleanup: disconnect client when exiting
+            logger.info(f"Input Manager shutting down, disconnecting client...")
+            try:
+                self.client.disconnect()
+            except Exception as e:
+                logger.error(f"Error disconnecting client: {e}")
+            logger.info(f"Input Manager stopped for session {self.session_id}")
 
     def get_process(self):
         return Process(
@@ -267,10 +293,11 @@ class InputManager:
 class OutputManager:
     """Manages outgoing voice responses in a separate process"""
 
-    def __init__(self, session_id: str, client, output_queue: Queue, provider):
+    def __init__(self, session_id: str, client, output_queue: Queue, provider, shutdown_event=None):
         self.session_id = session_id
         self.output_queue = output_queue  # multiprocessing.Queue - receives from voice agent
         self.provider  = provider #to maintain consistent output
+        self.shutdown_event = shutdown_event  # multiprocessing.Event for shutdown signal
         self.running = True
 
         #websocket connected client
@@ -280,21 +307,60 @@ class OutputManager:
     def run(self):
         """Main run loop for Output Manager (blocking, runs in separate process)"""
         logger.info(f"Output Manager started for session {self.session_id} in process {os.getpid()}")
-        
-        self.client.run()
 
-        # Keep the process alive while running
-        logger.info(f"Input Manager entering main loop for session {self.session_id}")
-        while self.running:
-            message = self.output_queue.get()
-            if not message:
-                continue
-            message =self.provider.send_message(message)
-            message['tag'] = 'output_manager'
-            logger.info(f'recieved message from output queue: {message}')
-            #message_id
-            self.client.send_message(message)
-            time.sleep(0.1)
+        # Set up signal handlers for graceful shutdown
+        def signal_handler(signum, _frame):
+            logger.info(f"Output Manager received signal {signum}, shutting down...")
+            self.running = False
+
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
+
+        try:
+            self.client.run()
+
+            # Keep the process alive while running
+            logger.info(f"Output Manager entering main loop for session {self.session_id}")
+            while self.running:
+                # Check shutdown event
+                if self.shutdown_event and self.shutdown_event.is_set():
+                    logger.info("Shutdown event detected in OutputManager")
+                    self.running = False
+                    break
+
+                try:
+                    message = self.output_queue.get(timeout=0.1)
+                    if not message:
+                        continue
+
+                    # Check for shutdown signal
+                    if message.get("type") == "shutdown":
+                        logger.info("Received shutdown signal in OutputManager")
+                        self.running = False
+                        break
+
+                    message = self.provider.send_message(message)
+                    #message['tag'] = 'output_manager'
+                    logger.info(f'recieved message from output queue: {message}')
+                    #message_id
+                    self.client.send_message(message)
+                except queue.Empty:
+                    pass
+                except Exception as e:
+                    logger.error(f"Error in OutputManager main loop: {e}")
+
+                time.sleep(0.1)
+
+        except Exception as e:
+            logger.error(f"Error in Output Manager: {e}")
+        finally:
+            # Cleanup: disconnect client when exiting
+            logger.info(f"Output Manager shutting down, disconnecting client...")
+            try:
+                self.client.disconnect()
+            except Exception as e:
+                logger.error(f"Error disconnecting client: {e}")
+            logger.info(f"Output Manager stopped for session {self.session_id}")
 
     def get_process(self):
         return Process(
@@ -305,4 +371,5 @@ class OutputManager:
 
 
 if __name__ == "__main__":
+    #pkill -9 -f "multiprocessing.resource_tracker" && pkill -9 -f "multiprocessing.spawn" && echo "Killed orphaned multiprocessing processes"
     pass

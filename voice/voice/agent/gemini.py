@@ -423,12 +423,15 @@ class GEMINIAPI:
                                         except Exception:
                                             message_id, start_time = resolved_seq_key, hp.time()
 
+                                        # Add sample rate to metadata for proper audio conversion
+                                        metadata = {**self.provider_metadata, "sample_rate": SEND_SAMPLE_RATE}
+
                                         payload = {
                                             "session_id": session_id,
                                             "message_id": message_id,
                                             "audio_data": inline_data,
                                             "message_type": "audio_output",
-                                            "metadata": self.provider_metadata,
+                                            "metadata": metadata,
                                         }
                                         logger.info(f'Puting payload to output queue: {payload}')
                                         output_queue.put(payload)
