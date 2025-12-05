@@ -95,6 +95,13 @@ class TwilioProvider(ProviderBase):
                     'stream_sid': raw_message.get('streamSid')
                 }
             )
+        elif msg_type == 'stop':
+            return dict(
+                message_type='end_stream',
+                metadata={
+                    'stream_sid': raw_message.get('streamSid')
+                }
+            )
         else:
             # Unknown type, pass through
             return dict(
