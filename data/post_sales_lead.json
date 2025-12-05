@@ -192,8 +192,14 @@
             "type": "object_list"
         },
         {
+            "name": "campaign_type",
+            "type": "text",
+            "default": "post-sales"
+        },
+        {
             "name": "campaign_id",
             "type": "uid",
+            "indexed": true,
             "required": false,
             "option_others": true,
             "options": "/options/post_sales_campaign/campaign_name"
@@ -210,9 +216,15 @@
             }
         },
         {
-            "name": "campaign_type",
+            "name": "audience_name",
             "type": "text",
-            "default": "post-sales"
+            "indexed": true,
+            "default": {
+                "function": "copy_attribute",
+                "args": [
+                    "campaign_name"
+                ]
+            }
         },
         {
             "name": "campaign_sub_type",
@@ -240,7 +252,10 @@
         {
             "name": "campaign_objective_id",
             "type": "uid",
-            "auto_updater":true,
+            "indexed": true,
+            "required": true,
+            "option_others": true,
+            "options": "/options/post_sales_campaign/campaign_objective_name",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1639,7 +1654,7 @@
                 "Has sold/given away the car",
                 "Has moved to another location",
                 "Cannot make decision on servicing",
-                "Will call showroom themselves",
+                "Will call workshop themselves",
                 "Looking for a discount",
                 "Language barrier",
                 "Has serviced car in another dealership",

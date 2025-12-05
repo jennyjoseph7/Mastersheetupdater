@@ -1,0 +1,190 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "audience_task",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
+      },
+      "indexed": true
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      },
+      "indexed": true
+    },
+    {
+      "name": "task_id",
+      "type": "uid",
+      "title": "Task ID",
+      "required": true,
+      "indexed": true
+    },
+    {
+      "name": "campaign_type",
+      "type": "text",
+      "title": "Campaign Type",
+      "required": true,
+      "options": ["pre-sales", "post-sales"],
+      "ui_element": "select",
+      "indexed": true
+    },
+    {
+      "name": "campaign_objective_id",
+      "type": "uid",
+      "title": "Campaign Objective",
+      "required": true,
+      "indexed": true
+    },
+    {
+      "name": "campaign_objective_name",
+      "type": "text",
+      "title": "Campaign Objective Name",
+      "required":"false"
+    },
+    {
+      "name": "audience_name",
+      "type": "text",
+      "title": "Audience Name",
+      "required": true,
+      "indexed": true
+    },
+    {
+      "name": "tags",
+      "type": "string_list",
+      "title": "Tags",
+      "list_type": "text",
+      "ui_element": "tags",
+      "options": ["Active Customers", "premium leads", "Test Audience"],
+      "option_others": true,
+      "required": false
+    },
+    {
+      "name": "csv_file_url",
+      "type": "text",
+      "title": "CSV File URL",
+      "ui_element": "url",
+      "required": false
+    },
+    {
+      "name": "error_csv_link",
+      "type": "text",
+      "title": "Error CSV Link",
+      "ui_element": "url",
+      "required": false
+    },
+    {
+      "name": "field_mapping",
+      "type": "object_list",
+      "title": "Field Mapping",
+      "list_type": "nested_object",
+      "dict_keys": ["source_field", "target_field", "enabled"],
+      "ui_element": "field_mapping",
+      "required": false,
+      "description": "Map your source CSV fields to standard audience fields. Disabled fields will be excluded."
+    },
+    {
+      "name": "source_name",
+      "type": "text",
+      "title": "Source Name",
+      "required": false,
+      "indexed": true
+    },
+    {
+      "name": "campaign_id",
+      "type": "uid",
+      "title": "Campaign ID",
+      "required": true,
+      "indexed": true
+    },
+    {
+      "name": "campaign_name",
+      "type": "text",
+      "title": "Campaign Name",
+      "required": false,
+      "indexed": true
+    },
+    {
+      "name": "csv_status",
+      "type": "text",
+      "title": "Status of the CSV",
+      "options": ["pending", "processing", "completed", "failed", "cancelled"],
+      "ui_element": "select",
+      "default": "pending",
+      "indexed": true,
+      "required": false
+    },
+    {
+      "name": "dealership_id",
+      "type": "uid",
+      "title": "Dealership ID",
+      "refers": "parents.dealership.dealership_id",
+      "required": false,
+      "indexed": true
+    },
+    {
+      "name": "audience_size_api",
+      "type": "number",
+      "title": "Audience Size (API)",
+      "default": 0,
+      "required": false
+    },
+    {
+      "name": "audience_size_csv",
+      "type": "number",
+      "title": "Audience Size (CSV)",
+      "default": 0,
+      "required": false
+    },
+    {
+      "name": "error_size",
+      "type": "number",
+      "title": "Error Size",
+      "default": 0,
+      "required": false
+    },
+    {
+      "name": "process_size",
+      "type": "number",
+      "title": "Process Size",
+      "default": 0,
+      "required": false
+    },
+    {
+      "name": "source_type",
+      "type": "text",
+      "title": "Source Type",
+      "options": ["api", "csv"],
+      "ui_element": "select",
+      "required": false,
+      "indexed": true
+    },
+    {
+      "name": "audience_task_id",
+      "type": "uid",
+      "id": true,
+      "auto_updater": true,
+      "default": {
+        "function": "name_to_id",
+        "args": ["task_id", "campaign_type", "audience_name"],
+        "kwargs": {
+          "attribute_join": "-",
+          "is_unique": true,
+          "separator": "-",
+          "skip_empty": true,
+          "case": "lower"
+        }
+      }
+    }
+  ],
+  "parents": ["dealership"]
+}

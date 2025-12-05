@@ -15,13 +15,16 @@ def calulate_total_billing_func(ins, model, attribute, action, **kwargs):
         filter = f"{ins.get('start_date')},"
     elif ins.get('end_date'):
         if not ins.get('start_date'):
-            filter = f',{ins.get('end_date')}'
+            filter = f"{ins.get('end_date')}"
     else:
         filter = filter + ins.get('end_date')
 
     #TODO:  complete this
 
 def generate_billing_invoice_func(ins, mode, *args, **kwagrs):
+    pass
+
+def get_transaction_id(ins, *args, **kwargs):
     pass
 
 def get_campaign_end_date_func(ins, campaign_id, campaign_end_date, **kwargs):
@@ -49,4 +52,13 @@ val.make_function(
     given_args="instance",
     is_idempotent=False, 
     help_string = "Get campaign end date based on campaign id and campaign type"
+)
+
+
+val.make_function(
+    get_transaction_id,
+    "generate_transaction_id",
+    given_args="instance",
+    is_idempotent=False, 
+    help_string = "Get transaction id from payment gateway"
 )

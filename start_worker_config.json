@@ -10,7 +10,7 @@
 			"name" : "whatsapp_template_creator",
 			"entry_point" : "whatsapp_template_creator_agent.py",
 			"parallel_threads" : 2,
-			"shutdown_time" : 60
+			"shutdown_time" : 0
 		}
 	],
 	"workers" : [
@@ -18,7 +18,25 @@
 			"name" : "communication",
 			"entry_point" : "communication_worker.py",
 			"parallel_threads" : 2,
-			"shutdown_time" : 60
+			"shutdown_time" : 0
+		},
+		{
+			"name" : "core",
+			"entry_point" : "core.py",
+			"parallel_threads" : 2,
+			"shutdown_time" : 0
+		},
+		{
+			"name" : "campaign",
+			"entry_point" : "campaign_worker.py",
+			"parallel_threads" : 2,
+			"shutdown_time" : 0
+ 		},
+		{
+			"name" : "conversation",
+			"entry_point" : "converse.py",
+			"parallel_threads" : 2,
+			"shutdown_time" : 0
 		}
 	]
 }

@@ -240,7 +240,8 @@
     {
       "name": "status",
       "type": "text",
-      "options": ["pending", "approved", "rejected"]
+      "options": ["pending", "approved", "rejected"],
+      "default": "pending"
     },
     {
       "name": "template_id",
