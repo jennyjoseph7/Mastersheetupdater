@@ -363,6 +363,8 @@ def get_rules(*args, **kwargs):
     return rules
 
 def get_tone_and_style(*args, **kwargs):
+    if kwargs.get("campaign_data",{}).get("conversation_tone"):
+        return kwargs.get("campaign_data",{}).get("conversation_tone")
     return "be descriptive in your explanations, give examples and explanations when asking the user to select any options. try to acheive your goal but dont force the customer."
 
 def get_output_format(*args, **kwargs):

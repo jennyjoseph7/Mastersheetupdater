@@ -315,6 +315,7 @@ def prune_response( response, *args, **kargs):
                 }
     response["created"] = hp.time()
     response["updated"] = response["created"]
+    response["reply_to"] = kargs.get("reply_to")
     kargs["responses"].append(response)
     yield response
     return
