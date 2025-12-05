@@ -181,7 +181,7 @@
       "name": "campaign_objective_id",
       "type": "uid",
       "option_others": true,
-      "options": "/options/campaign_objective/campaign_objective_name",
+      "options": "/options/campaign_objective/campaign_objective_id",
       "required": false
     },
     {
