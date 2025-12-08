@@ -1,6 +1,15 @@
 import { notFound } from "next/navigation";
-import { getCampaignBySlug } from "@/lib/campaign-insights-data";
+import {
+  getCampaignBySlug,
+  campaignConversions,
+} from "@/lib/campaign-insights-data";
 import { CampaignAnalyticsView } from "@/components/campaign/campaign-analytics-view";
+
+export async function generateStaticParams() {
+  return campaignConversions.map((campaign) => ({
+    slug: campaign.slug,
+  }));
+}
 
 type CampaignAnalyticsPageProps = {
   params: {
@@ -19,4 +28,3 @@ export default function CampaignAnalyticsPage({
 
   return <CampaignAnalyticsView campaign={campaign} />;
 }
-

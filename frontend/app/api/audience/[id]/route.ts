@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Generate static params for all audience IDs
 export async function generateStaticParams() {
   return [
     { id: "car-buyers" },

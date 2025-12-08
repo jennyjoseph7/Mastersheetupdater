@@ -1,69 +1,93 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Users, MessageSquare, Mail, Phone, User, Bot, ThumbsUp, ThumbsDown, Download, ArrowLeft } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { ProtectedRoute } from "@/components/protected-route"
-import type { Campaign } from "@/types/campaign"
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Users,
+  MessageSquare,
+  Mail,
+  Phone,
+  User,
+  Bot,
+  ThumbsUp,
+  ThumbsDown,
+  Download,
+  ArrowLeft,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ProtectedRoute } from "@/components/protected-route";
+import type { Campaign } from "@/types/campaign";
 
 interface Message {
-  id: string
-  sender: "user" | "bot"
-  text: string
-  timestamp: string
-  rating?: "thumbs-up" | "thumbs-down"
+  id: string;
+  sender: "user" | "bot";
+  text: string;
+  timestamp: string;
+  rating?: "thumbs-up" | "thumbs-down";
 }
 
 interface Conversation {
-  id: string
-  personName: string
-  email: string
-  contactNumber: string
-  channel: "WhatsApp" | "Email" | "Voice" | "SMS"
-  messages: Message[]
-  conversionDate: string
-  userId: string
+  id: string;
+  personName: string;
+  email: string;
+  contactNumber: string;
+  channel: "WhatsApp" | "Email" | "Voice" | "SMS";
+  messages: Message[];
+  conversionDate: string;
+  userId: string;
 }
 
 // Generate mock conversations based on campaign channels
 const generateMockConversations = (campaign: Campaign): Conversation[] => {
-  const conversations: Conversation[] = []
-  const names = ["Rajesh Kumar", "Priya Sharma", "Amit Patel", "Sneha Reddy", "Vikram Singh", "Anjali Mehta"]
-  const channels = campaign.channelsUsed || ["WhatsApp", "Email", "SMS"]
-  
+  const conversations: Conversation[] = [];
+  const names = [
+    "Rajesh Kumar",
+    "Priya Sharma",
+    "Amit Patel",
+    "Sneha Reddy",
+    "Vikram Singh",
+    "Anjali Mehta",
+  ];
+  const channels = campaign.channelsUsed || ["WhatsApp", "Email", "SMS"];
+
   channels.forEach((channel, channelIndex) => {
     // Create 2-3 conversations per channel
-    const conversationsPerChannel = 2 + (channelIndex % 2)
-    
+    const conversationsPerChannel = 2 + (channelIndex % 2);
+
     for (let i = 0; i < conversationsPerChannel; i++) {
-      const personIndex = (channelIndex * conversationsPerChannel + i) % names.length
-      const personName = names[personIndex]
-      const baseDate = new Date(campaign.createdOn)
-      baseDate.setDate(baseDate.getDate() + channelIndex * 2 + i)
-      
+      const personIndex =
+        (channelIndex * conversationsPerChannel + i) % names.length;
+      const personName = names[personIndex];
+      const baseDate = new Date(campaign.createdOn);
+      baseDate.setDate(baseDate.getDate() + channelIndex * 2 + i);
+
       const messages: Message[] = [
         {
           id: `msg-${channel}-${i}-1`,
           sender: "bot",
-          text: `Hello ${personName.split(" ")[0]}! Thank you for your interest in ${campaign.name}. How can I assist you today?`,
+          text: `Hello ${
+            personName.split(" ")[0]
+          }! Thank you for your interest in ${
+            campaign.name
+          }. How can I assist you today?`,
           timestamp: new Date(baseDate.getTime() - 30 * 60000).toISOString(),
         },
         {
           id: `msg-${channel}-${i}-2`,
           sender: "user",
-          text: channel === "WhatsApp" 
-            ? "Hi! I'm interested in learning more about this offer. Can you tell me the details?"
-            : channel === "Email"
-            ? "I received your email about the campaign. Could you provide more information?"
-            : channel === "Voice"
-            ? "Hello, I'm calling regarding the campaign I saw. Can you help me?"
-            : "I got your SMS. Please send me more details.",
+          text:
+            channel === "WhatsApp"
+              ? "Hi! I'm interested in learning more about this offer. Can you tell me the details?"
+              : channel === "Email"
+              ? "I received your email about the campaign. Could you provide more information?"
+              : channel === "Voice"
+              ? "Hello, I'm calling regarding the campaign I saw. Can you help me?"
+              : "I got your SMS. Please send me more details.",
           timestamp: new Date(baseDate.getTime() - 28 * 60000).toISOString(),
         },
         {
@@ -98,8 +122,8 @@ const generateMockConversations = (campaign: Campaign): Conversation[] => {
           timestamp: new Date(baseDate.getTime() - 10 * 60000).toISOString(),
           rating: "thumbs-up",
         },
-      ]
-      
+      ];
+
       conversations.push({
         id: `conv-${channel}-${i}`,
         personName,
@@ -109,41 +133,41 @@ const generateMockConversations = (campaign: Campaign): Conversation[] => {
         messages,
         conversionDate: baseDate.toISOString(),
         userId: `USER-${campaign.id}-${channelIndex}-${i}`,
-      })
+      });
     }
-  })
-  
-  return conversations
-}
+  });
+
+  return conversations;
+};
 
 const getChannelIcon = (channel: string) => {
   switch (channel) {
     case "WhatsApp":
-      return <MessageSquare className="h-4 w-4" />
+      return <MessageSquare className="h-4 w-4" />;
     case "Email":
-      return <Mail className="h-4 w-4" />
+      return <Mail className="h-4 w-4" />;
     case "Voice":
     case "SMS":
-      return <Phone className="h-4 w-4" />
+      return <Phone className="h-4 w-4" />;
     default:
-      return <MessageSquare className="h-4 w-4" />
+      return <MessageSquare className="h-4 w-4" />;
   }
-}
+};
 
 const getChannelColor = (channel: string) => {
   switch (channel) {
     case "WhatsApp":
-      return "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400"
+      return "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400";
     case "Email":
-      return "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+      return "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400";
     case "SMS":
-      return "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400"
+      return "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400";
     case "Voice":
-      return "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400"
+      return "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400";
     default:
-      return "bg-gray-100 text-gray-700"
+      return "bg-gray-100 text-gray-700";
   }
-}
+};
 
 // Sample campaigns data - in production, fetch from API
 const sampleCampaigns: Campaign[] = [
@@ -177,23 +201,23 @@ const sampleCampaigns: Campaign[] = [
     conversions: 52,
     budget: 42000,
   },
-]
+];
 
 export default function CampaignAnalyticsPage() {
-  const params = useParams()
-  const router = useRouter()
-  const campaignId = params.campaignId as string
-  const [campaign, setCampaign] = useState<Campaign | null>(null)
-  const [conversations, setConversations] = useState<Conversation[]>([])
+  const params = useParams();
+  const router = useRouter();
+  const campaignId = params.campaignId as string;
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
 
   useEffect(() => {
     // In production, fetch campaign from API
-    const foundCampaign = sampleCampaigns.find((c) => c.id === campaignId)
+    const foundCampaign = sampleCampaigns.find((c) => c.id === campaignId);
     if (foundCampaign) {
-      setCampaign(foundCampaign)
-      setConversations(generateMockConversations(foundCampaign))
+      setCampaign(foundCampaign);
+      setConversations(generateMockConversations(foundCampaign));
     }
-  }, [campaignId])
+  }, [campaignId]);
 
   if (!campaign) {
     return (
@@ -206,17 +230,17 @@ export default function CampaignAnalyticsPage() {
           </Button>
         </div>
       </ProtectedRoute>
-    )
+    );
   }
 
   // Group conversations by channel
   const conversationsByChannel = conversations.reduce((acc, conv) => {
     if (!acc[conv.channel]) {
-      acc[conv.channel] = []
+      acc[conv.channel] = [];
     }
-    acc[conv.channel].push(conv)
-    return acc
-  }, {} as Record<string, Conversation[]>)
+    acc[conv.channel].push(conv);
+    return acc;
+  }, {} as Record<string, Conversation[]>);
 
   const handleExportCSV = () => {
     // Prepare CSV data with all lead information
@@ -243,22 +267,29 @@ export default function CampaignAnalyticsPage() {
         campaign.name,
         campaign.status,
       ]),
-    ]
+    ];
 
     // Convert to CSV string
-    const csvContent = csvRows.map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n")
+    const csvContent = csvRows
+      .map((row) => row.map((cell) => `"${cell}"`).join(","))
+      .join("\n");
 
     // Create download link
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const link = document.createElement("a")
-    const url = URL.createObjectURL(blob)
-    link.setAttribute("href", url)
-    link.setAttribute("download", `${campaign.name.replace(/\s+/g, "_")}_leads_${new Date().toISOString().split("T")[0]}.csv`)
-    link.style.visibility = "hidden"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `${campaign.name.replace(/\s+/g, "_")}_leads_${
+        new Date().toISOString().split("T")[0]
+      }.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <ProtectedRoute>
@@ -302,19 +333,30 @@ export default function CampaignAnalyticsPage() {
                 People's Conversations by Channel
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                View all conversations with people who converted, organized by their communication channels
+                View all conversations with people who converted, organized by
+                their communication channels
               </p>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue={campaign.channelsUsed?.[0] || "WhatsApp"} className="w-full">
-                <TabsList 
-                  className="grid w-full mb-6" 
-                  style={{ 
-                    gridTemplateColumns: `repeat(${Math.min(campaign.channelsUsed?.length || 1, 4)}, minmax(0, 1fr))` 
+              <Tabs
+                defaultValue={campaign.channelsUsed?.[0] || "WhatsApp"}
+                className="w-full"
+              >
+                <TabsList
+                  className="grid w-full mb-6"
+                  style={{
+                    gridTemplateColumns: `repeat(${Math.min(
+                      campaign.channelsUsed?.length || 1,
+                      4
+                    )}, minmax(0, 1fr))`,
                   }}
                 >
                   {campaign.channelsUsed?.map((channel) => (
-                    <TabsTrigger key={channel} value={channel} className="flex items-center gap-2">
+                    <TabsTrigger
+                      key={channel}
+                      value={channel}
+                      className="flex items-center gap-2"
+                    >
                       {getChannelIcon(channel)}
                       {channel}
                       <Badge variant="secondary" className="ml-1">
@@ -328,7 +370,10 @@ export default function CampaignAnalyticsPage() {
                   <TabsContent key={channel} value={channel} className="mt-0">
                     <div className="space-y-4">
                       {conversationsByChannel[channel]?.map((conversation) => (
-                        <Card key={conversation.id} className="border-l-4 border-l-primary">
+                        <Card
+                          key={conversation.id}
+                          className="border-l-4 border-l-primary"
+                        >
                           <CardHeader className="pb-3">
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                               <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -336,7 +381,9 @@ export default function CampaignAnalyticsPage() {
                                   <User className="h-5 w-5 text-primary" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <CardTitle className="text-lg truncate">{conversation.personName}</CardTitle>
+                                  <CardTitle className="text-lg truncate">
+                                    {conversation.personName}
+                                  </CardTitle>
                                   <div className="flex flex-wrap items-center gap-2 mt-1">
                                     <Badge className={getChannelColor(channel)}>
                                       <span className="flex items-center gap-1">
@@ -345,18 +392,28 @@ export default function CampaignAnalyticsPage() {
                                       </span>
                                     </Badge>
                                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                      {new Date(conversation.conversionDate).toLocaleDateString()}
+                                      {new Date(
+                                        conversation.conversionDate
+                                      ).toLocaleDateString()}
                                     </span>
                                   </div>
                                   <div className="flex flex-col gap-1 mt-2 sm:hidden">
-                                    <p className="text-sm text-muted-foreground truncate">{conversation.email}</p>
-                                    <p className="text-sm text-muted-foreground">{conversation.contactNumber}</p>
+                                    <p className="text-sm text-muted-foreground truncate">
+                                      {conversation.email}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {conversation.contactNumber}
+                                    </p>
                                   </div>
                                 </div>
                               </div>
                               <div className="hidden sm:flex flex-col gap-1 text-right flex-shrink-0 ml-4">
-                                <p className="text-sm text-muted-foreground break-all">{conversation.email}</p>
-                                <p className="text-sm text-muted-foreground whitespace-nowrap">{conversation.contactNumber}</p>
+                                <p className="text-sm text-muted-foreground break-all">
+                                  {conversation.email}
+                                </p>
+                                <p className="text-sm text-muted-foreground whitespace-nowrap">
+                                  {conversation.contactNumber}
+                                </p>
                               </div>
                             </div>
                           </CardHeader>
@@ -368,13 +425,17 @@ export default function CampaignAnalyticsPage() {
                                     key={message.id}
                                     className={cn(
                                       "flex items-start gap-3",
-                                      message.sender === "user" ? "justify-end" : "justify-start"
+                                      message.sender === "user"
+                                        ? "justify-end"
+                                        : "justify-start"
                                     )}
                                   >
                                     <div
                                       className={cn(
                                         "flex gap-2 max-w-[80%]",
-                                        message.sender === "user" ? "flex-row-reverse" : "flex-row"
+                                        message.sender === "user"
+                                          ? "flex-row-reverse"
+                                          : "flex-row"
                                       )}
                                     >
                                       <div className="flex-shrink-0">
@@ -399,11 +460,14 @@ export default function CampaignAnalyticsPage() {
                                         <p>{message.text}</p>
                                         <div className="flex items-center justify-between mt-2 gap-2">
                                           <p className="text-xs opacity-70">
-                                            {new Date(message.timestamp).toLocaleTimeString()}
+                                            {new Date(
+                                              message.timestamp
+                                            ).toLocaleTimeString()}
                                           </p>
                                           {message.rating && (
                                             <div className="ml-2">
-                                              {message.rating === "thumbs-up" ? (
+                                              {message.rating ===
+                                              "thumbs-up" ? (
                                                 <ThumbsUp className="w-3 h-3 text-green-500" />
                                               ) : (
                                                 <ThumbsDown className="w-3 h-3 text-red-500" />
@@ -420,7 +484,8 @@ export default function CampaignAnalyticsPage() {
                           </CardContent>
                         </Card>
                       ))}
-                      {(!conversationsByChannel[channel] || conversationsByChannel[channel].length === 0) && (
+                      {(!conversationsByChannel[channel] ||
+                        conversationsByChannel[channel].length === 0) && (
                         <div className="text-center text-muted-foreground py-8">
                           No conversations found for {channel}
                         </div>
@@ -434,8 +499,5 @@ export default function CampaignAnalyticsPage() {
         </main>
       </div>
     </ProtectedRoute>
-  )
+  );
 }
-
-
-
