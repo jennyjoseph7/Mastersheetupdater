@@ -150,7 +150,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         dict: Response from Airtable containing the `template_id`.
               This ID can be used to track approval status.
     """
-    
+    logger.info("hiiiii")
     logger.info("----- In process_single_lead task -----")
 
     with get_pg_connector() as pg:
@@ -204,15 +204,17 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         "lead_info": {}
         }
     )
+    
     if not template_data:
         logger.error(f"No template data found for lead_id={lead_id}")
         return None
-    # template_data = template_data[0]
+    template_data = template_data[0]
+    logger.info(f"TEMPLATE DATA:\n{json.dumps(template_data, indent=4)}")
 
     buttons = template_data.pop("buttons", None)
-    if buttons:
-        template_data = buttons
-    logger.info(f"TEMPLATE DATA:\n{json.dumps(template_data, indent=4)}")
+    # if buttons:
+    #     template_data = buttons
+    # logger.info(f"TEMPLATE DATA:\n{json.dumps(template_data, indent=4)}")
     template_variables = template_data.get("template_variables", [])
     #TODO:later we need to change this..
     if campaign_type == "pre-sales":
@@ -253,7 +255,19 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         "template_details": template_data.get("template_details"),
         **variable_mapping
     }
-
+    logger.info("CAMPAIGN USER ----:\n{}".format(json.dumps(campaign_user, indent=4)))
+    t_v = {item["name"]: item["value"] for item in template_data.get("template_variables", [])}
+    template_message=template_data.get("template_message").format(**t_v)
+    logger.info(f"template_message ---{template_message}")
+    if channel == "web_chat":
+        logger.info("Since it is a webchat channel we need to get the message from the template")
+        data={
+            "placeholder":template_message,
+            "buttons":buttons
+        }
+        yield data
+        return
+    
     final_payload = {
         **campaign_details,
         **template_data,
@@ -264,6 +278,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         "channel": channel,
         "sender": "917795030574",
         "provider_name": "airtel",
+        "template_message": template_message,
         "campaign_user_source": {
             "source_type": "default",
             "campaign_users": [campaign_user],

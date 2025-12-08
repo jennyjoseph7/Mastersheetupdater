@@ -165,7 +165,7 @@ class BaseCampaignCreater:
             mobile_number,
             country_code=campaign_user_data.get("country_code", "91") or "91"
         )
-        patch_user_data = {"mobile_number":mobile_number,"campaign_message":campaign_details.get("campaign_message",'').format(**campaign_user_data)}
+        patch_user_data = {"mobile_number":mobile_number,"template_message":campaign_details.get("template_message",'').format(**campaign_user_data)}
         logger.info(f"Campaign Message patch_user_data: {patch_user_data}")
         # Build payload
         send_data = self.create_campaign_payload(
