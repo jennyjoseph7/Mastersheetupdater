@@ -1,139 +1,211 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useRef } from "react"
-
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
-import { Upload, FileText, X, AlertCircle, Loader2, CheckCircle2 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import type { DataSourceFormData } from "../add-data-source-dialog"
-
-// Defined based on your JSON response
-interface GrydFileUploadResponse {
-  cdn_url: string
-  file_id: string
-  file_name: string
-  // ... other fields if needed
-}
+import type React from "react";
+import { useState, useRef } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Upload,
+  X,
+  AlertCircle,
+  Loader2,
+  CheckCircle2,
+  Clock,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { DataSourceFormData } from "../add-data-source-dialog";
+import { 
+  uploadFileToGryd, 
+  startImportTask, 
+  getTaskStatus, 
+  getTaskResult 
+} from "@/utils/api";
 
 interface EnterConnectionDetailsProps {
-  formData: DataSourceFormData
-  updateFormData: (updates: Partial<DataSourceFormData>) => void
+  formData: DataSourceFormData;
+  updateFormData: (updates: Partial<DataSourceFormData>) => void;
 }
 
-export function EnterConnectionDetails({ formData, updateFormData }: EnterConnectionDetailsProps) {
-  const [isDragging, setIsDragging] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
-  const [jsonError, setJsonError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+export function EnterConnectionDetails({
+  formData,
+  updateFormData,
+}: EnterConnectionDetailsProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  
+  const [status, setStatus] = useState<
+    "idle" | "uploading" | "starting_task" | "polling" | "fetching_result" | "success" | "error"
+  >("idle");
+  
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- API Upload Logic ---
-  const uploadFileToGryd = async (file: File) => {
-    setIsUploading(true)
+  const isReadyForNextStep = status === "success" || status === "polling" || status === "fetching_result";
 
-    const uploadData = new FormData()
-    uploadData.append("file", file)
+  // --- Step 3: Get Final Result ---
+  const fetchTaskResult = async (taskId: string, file: File, fileUrl: string) => {
+    setStatus("fetching_result");
+    setStatusMessage("Finalizing data processing...");
 
     try {
-      const response = await fetch("https://file-prod.gryd.in/media/document", {
-        method: "POST",
-        headers: {
-          "X-I2CE-ENTERPRISE-ID": "gryd_file_system",
-          "X-I2CE-USER-ID": "abhishek+file-gryd@iamdave.ai",
-          "X-I2CE-API-KEY": "4bd3fe53-02bf-3918-8e27-53095dd0e32b",
-          // Note: Do NOT set Content-Type here; fetch sets it automatically with the boundary for FormData
-        },
-        body: uploadData,
-      })
+      const data = await getTaskResult(taskId);
+      
+      const resultObj = data.result || data; 
+      const errorUrl = resultObj.error_csv_url || resultObj.error_csv || null;
+      const validRows = resultObj.preview_rows || resultObj.data || [];
+      const totalCount = resultObj.total_records || resultObj.count || validRows.length;
 
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`)
-      }
+      updateFormData({
+        file: file,
+        fileUrl: fileUrl,
+        sourceType: "File",
+        audienceSize: totalCount,
+        sampleData: validRows.slice(0, 10),
+        errorCsvUrl: errorUrl,
+        taskId: taskId,
+        taskStatus: "completed"
+      });
 
-      const data: GrydFileUploadResponse = await response.json()
-
-      // Success: Store the File object (for display) AND the cdn_url (for logic)
-      updateFormData({ 
-        file: file, 
-        fileUrl: data.cdn_url // We assume your form data interface has this field
-      })
+      setStatus("success");
+      setStatusMessage(errorUrl ? "Processed with warnings." : "File processed successfully!");
 
     } catch (error) {
-      console.error("Upload error:", error)
-      alert("Failed to upload file. Please try again.")
-      updateFormData({ file: null, fileUrl: undefined })
-    } finally {
-      setIsUploading(false)
+      console.error("Result fetch error:", error);
+      setStatus("error");
+      setStatusMessage("Failed to retrieve final data.");
     }
-  }
+  };
 
-  // --- File Event Handlers ---
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      uploadFileToGryd(file)
-    }
-    e.target.value = "" // Reset input
-  }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    if (!isUploading) setIsDragging(true)
-  }
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
+  // --- Step 2: Poll Status ---
+  const pollTaskStatus = async (taskId: string, file: File, fileUrl: string) => {
+    setStatus("polling");
     
-    if (isUploading) return
+    const checkStatus = async () => {
+      try {
+        const data = await getTaskStatus(taskId);
+        console.log("Poll Status:", data); 
+        
+        if (data.status === "error" || data.state === "FAILURE" || data.state === "REVOKED") {
+          setStatus("error");
+          let errorMsg = "Task failed on server.";
+          if (Array.isArray(data.error) && data.error.length > 0) {
+             const firstError = data.error[0];
+             if (typeof firstError === 'string') errorMsg = firstError;
+             else if (typeof firstError === 'object') errorMsg = firstError._error || firstError.message || "Validation errors found.";
+          } else if (typeof data.error === "string") {
+            errorMsg = data.error;
+          }
+          setStatusMessage(errorMsg);
+          return; 
+        }
 
-    const file = e.dataTransfer.files?.[0]
-    // Validate CSV
-    if (file && (file.type === "text/csv" || file.name.endsWith(".csv"))) {
-      uploadFileToGryd(file)
-    } else {
-      alert("Please upload a valid CSV file.")
+        if (data.status === "success" || data.state === "SUCCESS" || data.status === "completed") {
+          await fetchTaskResult(taskId, file, fileUrl);
+          return; 
+        }
+
+        updateFormData({ 
+          taskId: taskId, 
+          taskStatus: data.status || data.state || "processing" 
+        });
+
+        const currentStatus = (data.status || data.state || "").toLowerCase();
+        
+        if (currentStatus.includes("started") || currentStatus.includes("queued")) {
+           setStatusMessage(`Task ${currentStatus}... (You can continue)`);
+        } else {
+           setStatusMessage(`Processing... ${currentStatus}`);
+        }
+        
+        setTimeout(checkStatus, 2000);
+
+      } catch (error) {
+        console.error("Polling error:", error);
+        setStatus("error");
+        setStatusMessage("Lost connection to status server.");
+      }
+    };
+
+    checkStatus();
+  };
+
+  // --- Step 1: Start Task ---
+  const handleStartImportTask = async (fileUrl: string, file: File) => {
+    setStatus("starting_task");
+    setStatusMessage("Initiating import task...");
+
+    try {
+      // Updated to pass tags and sourceName
+      const data = await startImportTask(
+        formData.category,
+        formData.audienceName,
+        fileUrl,
+        formData.tags,        // Passed to kwargs.tags
+        formData.sourceName   // Passed to kwargs.source_name
+      );
+      
+      const taskId = data.job?.task_id;
+
+      if (!taskId) throw new Error("No Task ID returned");
+
+      updateFormData({ 
+        taskId: taskId, 
+        taskStatus: "started",
+        file: file,
+        fileUrl: fileUrl
+      });
+
+      pollTaskStatus(taskId, file, fileUrl);
+
+    } catch (error: any) {
+      console.error("Start Task Exception:", error);
+      setStatus("error");
+      setStatusMessage(error.message || "Failed to start processing task.");
     }
-  }
+  };
+
+  // --- Step 0: Upload File ---
+  const handleUploadFile = async (file: File) => {
+    setStatus("uploading");
+    setStatusMessage("Uploading file to storage...");
+
+    try {
+      const data = await uploadFileToGryd(file);
+
+      if (data.cdn_url) {
+        handleStartImportTask(data.cdn_url, file);
+      } else {
+        throw new Error("No CDN URL received.");
+      }
+
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      setStatus("error");
+      setStatusMessage(error.message || "Failed to upload file.");
+      updateFormData({ file: null, fileUrl: undefined });
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleUploadFile(file);
+    e.target.value = "";
+  };
 
   const removeFile = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    // Clear both the file object and the uploaded URL
-    updateFormData({ file: null, fileUrl: undefined })
-  }
-
-  // --- JSON Validation Logic (Existing) ---
-  const handleHeadersChange = (value: string) => {
-    updateFormData({ headers: value })
-    if (!value.trim()) {
-      setJsonError(null); return
-    }
-    try {
-      JSON.parse(value)
-      setJsonError(null)
-    } catch (e) {
-      setJsonError("Invalid JSON format")
-    }
-  }
+    e.preventDefault();
+    e.stopPropagation();
+    setStatus("idle");
+    setStatusMessage(null);
+    updateFormData({ file: null, fileUrl: undefined, sampleData: [], audienceSize: 0, errorCsvUrl: undefined, taskId: undefined });
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-2">Enter Connection Details</h3>
         <p className="text-sm text-muted-foreground">
-          {formData.sourceType === "API"
-            ? "Provide the API credentials and endpoint information"
-            : "Upload your CSV file with audience data"}
+          {formData.sourceType === "API" ? "API credentials" : "Upload your CSV file to import audience data"}
         </p>
       </div>
 
@@ -142,134 +214,70 @@ export function EnterConnectionDetails({ formData, updateFormData }: EnterConnec
           <Label htmlFor="sourceName">Source Name *</Label>
           <Input
             id="sourceName"
-            placeholder={formData.sourceType === "API" ? "e.g., Salesforce, HubSpot" : "e.g., Q4 Leads CSV"}
+            placeholder={formData.sourceType === "API" ? "e.g., Salesforce" : "e.g., Q4 Leads CSV"}
             value={formData.sourceName}
             onChange={(e) => updateFormData({ sourceName: e.target.value })}
           />
         </div>
 
         {formData.sourceType === "API" ? (
-          /* API FORM FIELDS (Unchanged) */
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="baseUrl">Base URL *</Label>
-              <Input
-                id="baseUrl"
-                placeholder="https://api.example.com/v1"
-                value={formData.baseUrl}
-                onChange={(e) => updateFormData({ baseUrl: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="authType">Authentication Type *</Label>
-              <Select value={formData.authType} onValueChange={(value) => updateFormData({ authType: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="api-key">API Key</SelectItem>
-                  <SelectItem value="bearer">Bearer Token</SelectItem>
-                  <SelectItem value="oauth">OAuth 2.0</SelectItem>
-                  <SelectItem value="basic">Basic Auth</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="apiKey">
-                 {formData.authType === 'bearer' ? 'Token' : 'API Key / Secret'} *
-              </Label>
-              <Input
-                id="apiKey"
-                type="password"
-                placeholder="Enter your credentials"
-                value={formData.apiKey}
-                onChange={(e) => updateFormData({ apiKey: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label htmlFor="headers">Custom Headers (Optional)</Label>
-                {jsonError && <span className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {jsonError}</span>}
-              </div>
-              <Textarea
-                id="headers"
-                placeholder={'{\n  "Content-Type": "application/json"\n}'}
-                rows={4}
-                value={formData.headers}
-                onChange={(e) => handleHeadersChange(e.target.value)}
-                className={cn("font-mono text-sm", jsonError && "border-destructive focus-visible:ring-destructive")}
-              />
-            </div>
-          </>
+             <div className="p-4 border border-dashed rounded text-center text-muted-foreground">API Form Fields Here</div>
         ) : (
-          /* CSV UPLOAD SECTION */
           <div className="space-y-2">
             <Label htmlFor="file">Upload CSV File *</Label>
-            
-            {!formData.file && !isUploading ? (
-              /* 1. Empty State (Ready to Upload) */
-              <Card 
-                className={cn(
-                  "border-2 border-dashed transition-colors", 
-                  isDragging ? "border-primary bg-primary/5" : "border-border"
+
+            {status === "idle" || status === "error" ? (
+              <div className="space-y-2">
+                <Card
+                  className={cn("border-2 border-dashed transition-colors", status === "error" ? "border-destructive/50 bg-destructive/5" : "border-border")}
+                >
+                  <CardContent className="p-6">
+                    <label htmlFor="file" className="flex flex-col items-center justify-center cursor-pointer w-full h-full">
+                      <div className={cn("rounded-full p-4 mb-3 transition-colors", "bg-muted")}>
+                        <Upload className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <p className="text-sm font-medium mb-1">Click to upload CSV</p>
+                      <input id="file" ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+                    </label>
+                  </CardContent>
+                </Card>
+                {status === "error" && (
+                  <div className="text-xs text-destructive flex items-center gap-2 mt-2 font-medium">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span className="break-all">{statusMessage}</span>
+                  </div>
                 )}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                <CardContent className="p-6">
-                  <label htmlFor="file" className="flex flex-col items-center justify-center cursor-pointer w-full h-full">
-                    <div className={cn("rounded-full p-4 mb-3 transition-colors", isDragging ? "bg-primary/20" : "bg-muted")}>
-                      <Upload className={cn("h-6 w-6", isDragging ? "text-primary" : "text-muted-foreground")} />
-                    </div>
-                    <p className="text-sm font-medium mb-1">
-                      Click to upload or drag and drop
-                    </p>
-                    <p className="text-xs text-muted-foreground">CSV files up to 10MB</p>
-                    <input 
-                      id="file" 
-                      ref={fileInputRef}
-                      type="file" 
-                      accept=".csv" 
-                      className="hidden" 
-                      onChange={handleFileChange} 
-                    />
-                  </label>
-                </CardContent>
-              </Card>
+              </div>
             ) : (
-              /* 2. Uploading or Completed State */
-              <Card className="border border-border">
+              <Card className={cn("border border-border", isReadyForNextStep && "border-green-500/50 bg-green-50/10")}>
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={cn("rounded-full p-2", isUploading ? "bg-muted" : "bg-green-100 dark:bg-green-900/30")}>
-                      {isUploading ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <div className={cn("rounded-full p-2", status === "success" ? "bg-green-100" : "bg-muted")}>
+                      {status === "success" ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
                       ) : (
-                        <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
                       )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium">
-                        {formData.file?.name || "Uploading..."}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {isUploading 
-                          ? "Uploading to secure server..." 
-                          : `${(formData.file!.size / 1024).toFixed(1)} KB • Upload complete`
-                        }
-                      </p>
+                      <p className="text-sm font-medium">{formData.file?.name || "Processing..."}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {status === "uploading" && <span>Uploading...</span>}
+                        {(status === "polling" || status === "starting_task") && (
+                           <span className="flex items-center gap-1 text-primary">
+                             <Clock className="w-3 h-3" /> {statusMessage}
+                           </span>
+                        )}
+                        {status === "success" && (
+                          <span className={formData.errorCsvUrl ? "text-yellow-600 font-medium" : "text-green-600"}>
+                             {statusMessage || "Ready"}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  
-                  {!isUploading && (
-                    <button 
-                      onClick={removeFile}
-                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                    >
+                  {status === "success" && (
+                    <button onClick={removeFile} className="text-muted-foreground hover:text-destructive p-1">
                       <X className="h-5 w-5" />
                     </button>
                   )}
@@ -280,5 +288,5 @@ export function EnterConnectionDetails({ formData, updateFormData }: EnterConnec
         )}
       </div>
     </div>
-  )
+  );
 }

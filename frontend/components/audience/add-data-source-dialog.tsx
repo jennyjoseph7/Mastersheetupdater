@@ -10,53 +10,47 @@ import {
 import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/campaign/stepper";
 import { EnterConnectionDetails } from "./steps/enter-connection-details";
-// import { MapFields } from "./steps/map-fields"; // Commented out for now
 import { AssignAudienceDetails } from "./steps/assign-audience-details";
 import { PreviewConfirm } from "./steps/preview-confirm";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { DataSource } from "@/app/audience/page";
 
 interface AddDataSourceDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (
-    dataSource: Omit<DataSource, "id" | "lastSynced" | "status">
+    dataSource: Omit<DataSource, "id" | "lastSynced" | "status"> & {
+      [key: string]: any;
+    }
   ) => void;
-}
-
-export interface FieldMapping {
-  id: string;
-  sourceField: string;
-  targetField: string;
-  enabled: boolean;
 }
 
 export interface DataSourceFormData {
   sourceType: "API" | "File" | null;
   sourceName: string;
-  // API fields
   baseUrl: string;
   authType: string;
   apiKey: string;
   headers: string;
-  // File fields
   file: File | null;
-  fileUrl?: string; // <--- Added: Stores the CDN URL after upload
-  // Field mapping
-  fieldMappings: FieldMapping[];
-  // Audience details
+  fileUrl?: string;
+  errorCsvUrl?: string;
+  taskId?: string;
+  taskStatus?: string;
+  fieldMappings: any[];
   audienceName: string;
   category: string;
   tags: string[];
-  // Preview
   sampleData: any[];
   audienceSize: number;
+  // Added specific counters
+  processedCount?: number;
+  errorCount?: number;
 }
 
 const steps = [
   { number: 1, title: "Details", completed: false },
   { number: 2, title: "Connection", completed: false },
-  // { number: 3, title: "Map Fields", completed: false }, // Commented out for now
   { number: 3, title: "Preview", completed: false },
 ];
 
@@ -76,19 +70,18 @@ export function AddDataSourceDialog({
     apiKey: "",
     headers: "",
     file: null,
-    fileUrl: undefined, // <--- Added: Initial state
-    fieldMappings: [
-      { id: "1", sourceField: "", targetField: "Name", enabled: true },
-      { id: "2", sourceField: "", targetField: "Mobile Number", enabled: true },
-      { id: "3", sourceField: "", targetField: "Email", enabled: true },
-      { id: "4", sourceField: "", targetField: "Language", enabled: true },
-      { id: "5", sourceField: "", targetField: "Tags", enabled: true },
-    ],
+    fileUrl: undefined,
+    taskId: undefined,
+    taskStatus: undefined,
+    errorCsvUrl: undefined,
+    fieldMappings: [],
     audienceName: "",
     category: "",
     tags: [],
     sampleData: [],
     audienceSize: 0,
+    processedCount: 0,
+    errorCount: 0,
   });
 
   const updateFormData = (updates: Partial<DataSourceFormData>) => {
@@ -115,15 +108,24 @@ export function AddDataSourceDialog({
   };
 
   const handleSave = () => {
-    const dataSource: Omit<DataSource, "id" | "lastSynced" | "status"> = {
+    const dataSource = {
       sourceName: formData.sourceName,
       audienceName: formData.audienceName,
       type: formData.sourceType!,
       audienceSize: formData.audienceSize,
+      category: formData.category,
+      tags: formData.tags,
+      connectionDetails: {
+        fileUrl: formData.fileUrl,
+        errorCsvUrl: formData.errorCsvUrl,
+        taskId: formData.taskId,
+        baseUrl: formData.baseUrl,
+        authType: formData.authType,
+        apiKey: formData.apiKey,
+        headers: formData.headers,
+      },
     };
-    // Note: You might want to pass formData.fileUrl to the onSave handler here as well
-    // depending on how your backend expects to receive the file reference.
-    onSave(dataSource);
+    onSave(dataSource as any);
     handleClose();
   };
 
@@ -138,24 +140,18 @@ export function AddDataSourceDialog({
       apiKey: "",
       headers: "",
       file: null,
-      fileUrl: undefined, // <--- Reset state
-      fieldMappings: [
-        { id: "1", sourceField: "", targetField: "Name", enabled: true },
-        {
-          id: "2",
-          sourceField: "",
-          targetField: "Mobile Number",
-          enabled: true,
-        },
-        { id: "3", sourceField: "", targetField: "Email", enabled: true },
-        { id: "4", sourceField: "", targetField: "Language", enabled: true },
-        { id: "5", sourceField: "", targetField: "Tags", enabled: true },
-      ],
+      fileUrl: undefined,
+      taskId: undefined,
+      taskStatus: undefined,
+      errorCsvUrl: undefined,
+      fieldMappings: [],
       audienceName: "",
       category: "",
       tags: [],
       sampleData: [],
       audienceSize: 0,
+      processedCount: 0,
+      errorCount: 0,
     });
     onClose();
   };
@@ -168,17 +164,12 @@ export function AddDataSourceDialog({
         if (formData.sourceType === "API") {
           return !!(formData.sourceName && formData.baseUrl && formData.apiKey);
         }
-        // For File type: We need the name, the file object, AND the uploaded URL.
-        // This effectively disables the 'Continue' button while uploading.
         return !!(
           formData.sourceName &&
           formData.file !== null &&
-          formData.fileUrl
+          formData.fileUrl &&
+          (formData.audienceSize > 0 || formData.errorCsvUrl || formData.taskId)
         );
-      // case 3: // Map Fields step - commented out
-      //   return formData.fieldMappings.some(
-      //     (m) => m.enabled && m.sourceField && m.targetField
-      //   );
       case 3:
         return true;
       default:
@@ -225,10 +216,12 @@ export function AddDataSourceDialog({
               updateFormData={updateFormData}
             />
           )}
-          {/* {currentStep === 3 && (
-            <MapFields formData={formData} updateFormData={updateFormData} />
-          )} */}
-          {currentStep === 3 && <PreviewConfirm formData={formData} />}
+          {currentStep === 3 && (
+            <PreviewConfirm
+              formData={formData}
+              updateFormData={updateFormData} // <--- Added this prop
+            />
+          )}
         </div>
 
         <div className="flex items-center justify-between px-6 py-4 border-t bg-muted/30">
@@ -249,7 +242,10 @@ export function AddDataSourceDialog({
               <ChevronRight className="h-4 w-4 ml-2" />
             </Button>
           ) : (
-            <Button onClick={handleSave}>Save & Connect</Button>
+            <Button onClick={handleSave} disabled={formData.taskStatus !== "completed"}>
+              {/* Disable Save until processing completes */}
+              {formData.taskStatus === "completed" ? "Save & Connect" : "Processing..."}
+            </Button>
           )}
         </div>
       </DialogContent>
