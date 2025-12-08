@@ -34,3 +34,4 @@ coverage/
 
 # Bun debug (do not ignore bun.lockb — keep lockfile committed)
 bun-debug.log
+.vercel
