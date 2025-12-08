@@ -1,0 +1,433 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Search, ChevronUp, ChevronDown, Download } from "lucide-react";
+import type { AudienceMember } from "@/types/audience";
+
+interface AudienceDatatableProps {
+  data: AudienceMember[];
+  audienceName: string;
+  onBack: () => void;
+}
+
+export function AudienceDatatable({
+  data,
+  audienceName,
+  onBack,
+}: AudienceDatatableProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortColumn, setSortColumn] = useState<keyof AudienceMember | null>(
+    null,
+  );
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [cityFilter, setCityFilter] = useState<string>("all");
+  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Extract unique values for filters
+  const cities = useMemo(
+    () => Array.from(new Set(data.map((item) => item.city))).sort(),
+    [data],
+  );
+  const vehicleTypes = useMemo(
+    () => Array.from(new Set(data.map((item) => item.vehicleType))).sort(),
+    [data],
+  );
+
+  const filteredAndSortedData = useMemo(() => {
+    let filtered = data.filter((item) => {
+      const matchesSearch =
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.phoneNumber.includes(searchTerm);
+
+      const matchesCity = cityFilter === "all" || item.city === cityFilter;
+      const matchesVehicleType =
+        vehicleTypeFilter === "all" || item.vehicleType === vehicleTypeFilter;
+      const matchesStatus =
+        statusFilter === "all" || item.status === statusFilter;
+
+      return (
+        matchesSearch && matchesCity && matchesVehicleType && matchesStatus
+      );
+    });
+
+    if (sortColumn) {
+      filtered = filtered.sort((a, b) => {
+        const aValue = a[sortColumn];
+        const bValue = b[sortColumn];
+
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          return sortDirection === "asc"
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+        if (typeof aValue === "number" && typeof bValue === "number") {
+          return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
+        }
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [
+    data,
+    searchTerm,
+    sortColumn,
+    sortDirection,
+    cityFilter,
+    vehicleTypeFilter,
+    statusFilter,
+  ]);
+
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredAndSortedData.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAndSortedData, currentPage]);
+
+  const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
+
+  const handleSort = (column: keyof AudienceMember) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Converted":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "Qualified":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "Lead":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "Losing":
+        return "bg-orange-100 text-orange-800 border-orange-200";
+      case "Lost":
+        return "bg-red-100 text-red-800 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const handleExport = () => {
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      "Name,Phone Number,Email,City,Vehicle Type,Status,Last Interaction,Total Interactions,Lifetime Value\n" +
+      filteredAndSortedData
+        .map(
+          (item) =>
+            `${item.name},${item.phoneNumber},${item.email},${item.city},${item.vehicleType},${item.status},${item.lastInteraction},${item.totalInteractions},₹${item.lifetimeValue}`,
+        )
+        .join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute(
+      "download",
+      `${audienceName.toLowerCase().replace(/\s+/g, "-")}-members.csv`,
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>{audienceName} Members</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              {filteredAndSortedData.length} member
+              {filteredAndSortedData.length !== 1 ? "s" : ""} found
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center mt-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, or phone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <Select value={cityFilter} onValueChange={setCityFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="All Cities" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cities</SelectItem>
+                {cities.map((city) => (
+                  <SelectItem key={city} value={city}>
+                    {city}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={vehicleTypeFilter}
+              onValueChange={setVehicleTypeFilter}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="All Vehicles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Vehicles</SelectItem>
+                {vehicleTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="Lead">Lead</SelectItem>
+                <SelectItem value="Qualified">Qualified</SelectItem>
+                <SelectItem value="Converted">Converted</SelectItem>
+                <SelectItem value="Losing">Losing</SelectItem>
+                <SelectItem value="Lost">Lost</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => handleSort("name")}
+                >
+                  Name
+                  {sortColumn === "name" &&
+                    (sortDirection === "asc" ? (
+                      <ChevronUp className="inline h-4 w-4 ml-1" />
+                    ) : (
+                      <ChevronDown className="inline h-4 w-4 ml-1" />
+                    ))}
+                </TableHead>
+                <TableHead>Phone Number</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => handleSort("city")}
+                >
+                  City
+                  {sortColumn === "city" &&
+                    (sortDirection === "asc" ? (
+                      <ChevronUp className="inline h-4 w-4 ml-1" />
+                    ) : (
+                      <ChevronDown className="inline h-4 w-4 ml-1" />
+                    ))}
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => handleSort("vehicleType")}
+                >
+                  Vehicle Type
+                  {sortColumn === "vehicleType" &&
+                    (sortDirection === "asc" ? (
+                      <ChevronUp className="inline h-4 w-4 ml-1" />
+                    ) : (
+                      <ChevronDown className="inline h-4 w-4 ml-1" />
+                    ))}
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => handleSort("status")}
+                >
+                  Status
+                  {sortColumn === "status" &&
+                    (sortDirection === "asc" ? (
+                      <ChevronUp className="inline h-4 w-4 ml-1" />
+                    ) : (
+                      <ChevronDown className="inline h-4 w-4 ml-1" />
+                    ))}
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => handleSort("lastInteraction")}
+                >
+                  Last Interaction
+                  {sortColumn === "lastInteraction" &&
+                    (sortDirection === "asc" ? (
+                      <ChevronUp className="inline h-4 w-4 ml-1" />
+                    ) : (
+                      <ChevronDown className="inline h-4 w-4 ml-1" />
+                    ))}
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer text-right"
+                  onClick={() => handleSort("totalInteractions")}
+                >
+                  Interactions
+                  {sortColumn === "totalInteractions" &&
+                    (sortDirection === "asc" ? (
+                      <ChevronUp className="inline h-4 w-4 ml-1" />
+                    ) : (
+                      <ChevronDown className="inline h-4 w-4 ml-1" />
+                    ))}
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer text-right"
+                  onClick={() => handleSort("lifetimeValue")}
+                >
+                  Lifetime Value
+                  {sortColumn === "lifetimeValue" &&
+                    (sortDirection === "asc" ? (
+                      <ChevronUp className="inline h-4 w-4 ml-1" />
+                    ) : (
+                      <ChevronDown className="inline h-4 w-4 ml-1" />
+                    ))}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedData.length > 0 ? (
+                paginatedData.map((member) => (
+                  <TableRow key={member.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium">{member.name}</TableCell>
+                    <TableCell>{member.phoneNumber}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {member.email}
+                    </TableCell>
+                    <TableCell>{member.city}</TableCell>
+                    <TableCell>{member.vehicleType}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(member.status)}>
+                        {member.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(member.lastInteraction).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {member.totalInteractions}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      ₹{member.lifetimeValue.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={9}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    No members found matching your criteria.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between space-x-2 py-4">
+            <div className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+              {Math.min(
+                currentPage * itemsPerPage,
+                filteredAndSortedData.length,
+              )}{" "}
+              of {filteredAndSortedData.length} results
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let page;
+                  if (totalPages <= 5) {
+                    page = i + 1;
+                  } else if (currentPage <= 3) {
+                    page = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    page = totalPages - 4 + i;
+                  } else {
+                    page = currentPage - 2 + i;
+                  }
+                  return (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {page}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
