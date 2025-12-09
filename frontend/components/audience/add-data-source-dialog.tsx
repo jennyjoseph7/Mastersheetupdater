@@ -15,7 +15,8 @@ import { MapFields } from "./steps/map-fields";
 import { PreviewConfirm } from "./steps/preview-confirm";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import type { DataSource } from "@/app/audience/page";
-import { startImportTask } from "@/utils/api";
+// Import the new createAudienceTask function
+import { startImportTask, createAudienceTask } from "@/utils/api";
 
 interface AddDataSourceDialogProps {
   isOpen: boolean;
@@ -29,8 +30,8 @@ interface AddDataSourceDialogProps {
 
 export interface FieldMapping {
   id: string;
-  sourceField: string; // From CSV
-  targetField: string; // To System
+  sourceField: string;
+  targetField: string;
   enabled: boolean;
 }
 
@@ -43,17 +44,11 @@ export interface DataSourceFormData {
   headers: string;
   file: File | null;
   fileUrl?: string;
-  
-  // Headers extracted from the CSV in Step 2
   extractedHeaders: string[]; 
-  
-  // Mappings created in Step 3
   fieldMappings: FieldMapping[];
-
   errorCsvUrl?: string;
-  taskId?: string; // This is the IMPORT task ID
+  taskId?: string; 
   taskStatus?: string;
-  
   audienceName: string;
   category: string;
   tags: string[];
@@ -109,7 +104,7 @@ export function AddDataSourceDialog({
   const triggerImportTask = async () => {
     setIsStartingImport(true);
     try {
-      // Create a mapping object { "csv_header": "db_field" }
+      // 1. Prepare Mapping
       const mappingPayload: Record<string, string> = {};
       formData.fieldMappings.forEach(m => {
         if (m.enabled && m.sourceField && m.targetField) {
@@ -117,29 +112,53 @@ export function AddDataSourceDialog({
         }
       });
 
+      // 2. Start Import Task
       const data = await startImportTask(
         formData.category,
         formData.audienceName,
         formData.fileUrl,
         formData.tags,
         formData.sourceName,
-        mappingPayload // Pass the mapping
+        mappingPayload
       );
 
       const taskId = data.job?.task_id;
       if (!taskId) throw new Error("No Task ID returned");
 
+      // 3. Create Audience Task Record in DB
+      // We use the same campaign_id as used in startImportTask (hardcoded in api.js)
+      const campaignId = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943"; 
+
+      await createAudienceTask({
+        task_id: taskId,
+        campaign_type: formData.category,
+        campaign_objective_id: campaignId, // Using Campaign ID as placeholder for Objective ID
+        campaign_id: campaignId,
+        audience_name: formData.audienceName,
+        tags: formData.tags || [],
+        csv_file_url: formData.fileUrl,
+        error_csv_link: "", // Will be updated later if errors occur
+        field_mapping: formData.fieldMappings.map(m => ({
+          source_field: m.sourceField,
+          target_field: m.targetField,
+          enabled: m.enabled
+        })),
+        source_name: formData.sourceName || "Uploaded via csv",
+        source_type: formData.sourceType || "File",
+        csv_status: "pending"
+      });
+
+      // 4. Update State & Move to Next Step
       updateFormData({ 
         taskId: taskId, 
         taskStatus: "started" 
       });
       
-      // Move to next step (Preview)
       setCompletedSteps([...completedSteps, currentStep]);
       setCurrentStep(currentStep + 1);
 
     } catch (error) {
-      console.error("Failed to start import:", error);
+      console.error("Failed to start import or create task record:", error);
       alert("Failed to initiate import task. Please try again.");
     } finally {
       setIsStartingImport(false);
@@ -148,7 +167,6 @@ export function AddDataSourceDialog({
 
   const handleNext = () => {
     if (currentStep === 3) {
-      // If finishing Mapping step, trigger import
       triggerImportTask();
     } else if (currentStep < 4) {
       setCompletedSteps([...completedSteps, currentStep]);
@@ -163,13 +181,13 @@ export function AddDataSourceDialog({
   };
 
   const handleStepClick = (step: number) => {
-    // Only allow clicking strictly previous completed steps to avoid skipping logic
     if (completedSteps.includes(step) || step === currentStep) {
       setCurrentStep(step);
     }
   };
 
   const handleSave = () => {
+    // Just pass basic info back to parent, the real data is already in the DB via createAudienceTask
     const dataSource = {
       sourceName: formData.sourceName,
       audienceName: formData.audienceName,
@@ -178,10 +196,7 @@ export function AddDataSourceDialog({
       category: formData.category,
       tags: formData.tags,
       connectionDetails: {
-        fileUrl: formData.fileUrl,
-        errorCsvUrl: formData.errorCsvUrl,
         taskId: formData.taskId,
-        mapping: formData.fieldMappings,
       },
     };
     onSave(dataSource as any);
@@ -191,7 +206,7 @@ export function AddDataSourceDialog({
   const handleClose = () => {
     setCurrentStep(1);
     setCompletedSteps([]);
-    // Reset data ... (simplified for brevity)
+    // Reset data logic...
     onClose();
   };
 
@@ -203,7 +218,6 @@ export function AddDataSourceDialog({
         if (formData.sourceType === "API") {
           return !!(formData.sourceName && formData.baseUrl && formData.apiKey);
         }
-        // File type: Need file, url, and EXTRACTED HEADERS
         return !!(
           formData.sourceName &&
           formData.file !== null &&
@@ -211,7 +225,6 @@ export function AddDataSourceDialog({
           formData.extractedHeaders.length > 0
         );
       case 3: 
-        // Mapping: At least one field enabled and mapped
         return formData.fieldMappings.some(m => m.enabled && m.sourceField && m.targetField);
       case 4:
         return true;
