@@ -11,6 +11,12 @@
 			"entry_point" : "whatsapp_template_creator_agent.py",
 			"parallel_threads" : 2,
 			"shutdown_time" : 0
+		},
+		{
+			"name": "get_whatsapp_template",
+			"entry_point": "get_whatsapp_template_agent.py",
+			"parallel_threads": 2,
+			"shutdown_time": 0
 		}
 	],
 	"workers" : [
