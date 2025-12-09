@@ -71,13 +71,13 @@ class CampaignIdeaCreatorAgent(BaseAgent):
     PRE_SALE_FIELDS = [
         "campaign_type", "campaign_name", "campaign_tagline", "campaign_objective",
         "idea", "campaign_offer", "campaign_description", "campaign_tone",
-        "urgency_hook", "ctas", "channels", "init_conversation", "email_subject", "email_body"
+        "urgency_hook", "ctas", "channels"
     ]
     
     POST_SALE_FIELDS = [
         "campaign_type", "campaign_name", "campaign_objective", "idea",
         "campaign_tagline", "campaign_offer", "campaign_description",
-        "campaign_tone", "urgency_hook", "ctas", "channels", "init_conversation", "email_subject", "email_body"
+        "campaign_tone", "urgency_hook", "ctas", "channels"
     ]
     
     PRE_SALE_KEYWORDS = {"pre-sale", "pre_sale", "pre sale", "pre-sales", "pre_sales", "presales"}
@@ -179,9 +179,6 @@ class CampaignIdeaCreatorAgent(BaseAgent):
              ["rcs", "email", "web_chat", "web_chat_voice", "fb_chat", "insta_chat", "twitter_chat", 
               "voice_phone", "whatsapp_chat", "whatsapp_voice_note", "whatsapp_voice_call", 
               "zoom_bot", "ms_teams"]
-           - init_conversation: It will contain a initial message that can be send to the user.
-           - email_subject- The subject that we can have to send a email. It will contain a subject to send the email where we will use the idea.
-           - email_body- The body or the main message of the email.
         4. PRESERVATION: If a field exists in the user's existing data, preserve it exactly.
         5. NO NULLS/EMPTY: Never output null, empty string, or empty list for any field.
         6. NO EXTRA KEYS: Do not add languages, budgets, metrics, dates, audiences, or any keys other than the allowed list.
@@ -490,18 +487,21 @@ def generate_campaign_idea(campaign_type, campaign_objective, dealership_idea=No
     
     try:
         dealership_idea = dealership_idea or {}
-        dealership_idea.update({
+        updates = {
             'campaign_type': campaign_type,
             'dealership_id': dealership_id,
             'campaign_objective': campaign_objective
-        })
-        
+        }
+        for key, val in updates.items():
+            if val is not None:      
+                dealership_idea[key] = val
+
         agent = CampaignIdeaCreatorAgent(source=dealership_idea, logger=logger)
         result = agent.run()
         
-        # Post to database if dealership_id provided
+        #Post to database if dealership_id provided
         if dealership_id:
-            dim = gryd.base_model.Model('dealership', AUTOCRM_APP_ENTERPRISE_ID)
+            dim = gryd.base_model.Model('dealership_idea', AUTOCRM_APP_ENTERPRISE_ID)
             result.update({
                 "campaign_type": campaign_type,
                 "dealership_id": dealership_id,
