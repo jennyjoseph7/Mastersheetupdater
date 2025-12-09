@@ -71,13 +71,13 @@ class CampaignIdeaCreatorAgent(BaseAgent):
     PRE_SALE_FIELDS = [
         "campaign_type", "campaign_name", "campaign_tagline", "campaign_objective",
         "idea", "campaign_offer", "campaign_description", "campaign_tone",
-        "urgency_hook", "ctas", "channels", "init_conversation", "email_subject", "email_body"
+        "urgency_hook", "ctas", "channels"
     ]
     
     POST_SALE_FIELDS = [
         "campaign_type", "campaign_name", "campaign_objective", "idea",
         "campaign_tagline", "campaign_offer", "campaign_description",
-        "campaign_tone", "urgency_hook", "ctas", "channels", "init_conversation", "email_subject", "email_body"
+        "campaign_tone", "urgency_hook", "ctas", "channels"
     ]
     
     PRE_SALE_KEYWORDS = {"pre-sale", "pre_sale", "pre sale", "pre-sales", "pre_sales", "presales"}
@@ -104,7 +104,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         self.ai_generation = source.get("ai_generation",True)
         self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
 
-        self.model_identifier = "gcp-gemini-2.5-flash-lite"
+        self.model_identifier =   "openai-gpt-4.1-mini"#"gcp-gemini-2.5-flash-lite"
 
     def validate_campaign_type(self, campaign_type):
         """Validate campaign type with proper error message."""
@@ -174,14 +174,11 @@ class CampaignIdeaCreatorAgent(BaseAgent):
            - campaign_description: non-empty string (2-4 concise sentences).
            - campaign_tone: non-empty string describing the tone (e.g., "Persuasive", "Urgent", "Exciting").
            - urgency_hook: single short string (ONE urgency sentence; e.g., "Limited stock available — offer ends soon!")
-           - ctas: array of 2-3 non-empty strings "cta_library": [ "Download Brochure", "Compare Variants", "Compare with Other Brands", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Confirm Booking", "Exchange Old Car"], the "Request a Call Back" will be always there but you need to translate it according to the first language. But remember that it should be under 50 characters.
+           - ctas: array of 2-3 non-empty strings "cta_library": [ "Download Brochure", "Compare Variants", "Compare with Other Brands", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Confirm Booking", "Exchange Old Car"], the "Request a Call Back" will be always there but you need to translate it according to the first language. But remember that it should be under 20 characters.
            - channels: array of 1-2 strings from this exact list only: 
              ["rcs", "email", "web_chat", "web_chat_voice", "fb_chat", "insta_chat", "twitter_chat", 
               "voice_phone", "whatsapp_chat", "whatsapp_voice_note", "whatsapp_voice_call", 
               "zoom_bot", "ms_teams"]
-           - init_conversation: It will contain a initial message that can be send to the user.
-           - email_subject- The subject that we can have to send a email. It will contain a subject to send the email where we will use the idea.
-           - email_body- The body or the main message of the email.
         4. PRESERVATION: If a field exists in the user's existing data, preserve it exactly.
         5. NO NULLS/EMPTY: Never output null, empty string, or empty list for any field.
         6. NO EXTRA KEYS: Do not add languages, budgets, metrics, dates, audiences, or any keys other than the allowed list.
@@ -236,7 +233,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
            - campaign_offer: Check whether the dealer wants to give any offer : {json.dumps(existing_data.get("campaign_offer", "No Offer"))} . If not mentioned any offer then do not return offer. If offer is mentioned then make it sound attractive offer in {language} only.
            - campaign_description: non-empty string (2-4 concise sentences).
            - urgency_hook: single short string (ONE urgency sentence)
-           - ctas: array of 2-3 non-empty strings (example: ["Schedule Service", "Renew Warranty"])
+           - ctas: array of 2-3 non-empty strings (example: ["Schedule Service", "Renew Warranty"]) (maximum 20 characters allowed)
            - channels: array of 1-2 strings from allowed list only
            - idea: idea will be a overall campaign suggestion, It will be a 2-3 lines of an explaination of the overall campaign in a attractive way, It will be different than the campaign_description and will give a shorter attractive idea to the dealer.
            - campaign_tagline: This will be tagline based on the idea.
@@ -490,18 +487,21 @@ def generate_campaign_idea(campaign_type, campaign_objective, dealership_idea=No
     
     try:
         dealership_idea = dealership_idea or {}
-        dealership_idea.update({
+        updates = {
             'campaign_type': campaign_type,
             'dealership_id': dealership_id,
             'campaign_objective': campaign_objective
-        })
-        
+        }
+        for key, val in updates.items():
+            if val is not None:      
+                dealership_idea[key] = val
+
         agent = CampaignIdeaCreatorAgent(source=dealership_idea, logger=logger)
         result = agent.run()
         
-        # Post to database if dealership_id provided
+        #Post to database if dealership_id provided
         if dealership_id:
-            dim = gryd.base_model.Model('dealership', AUTOCRM_APP_ENTERPRISE_ID)
+            dim = gryd.base_model.Model('dealership_idea', AUTOCRM_APP_ENTERPRISE_ID)
             result.update({
                 "campaign_type": campaign_type,
                 "dealership_id": dealership_id,

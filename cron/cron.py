@@ -85,22 +85,34 @@ def create_campaign_templates(logger=None, job=None):
     Returns:
         dict: The number of campaign templates created.
     """
+    created_template_count = 0
+
     logger = logger or mlogger
     communication_credentials_model = gryd.base_model.Model('communication_credential', AUTOCRM_APP_ENTERPRISE_ID)
     dealership_model = gryd.base_model.Model('dealership', AUTOCRM_APP_ENTERPRISE_ID)
     # For all dealerships registered on whatsapp or whatsapp_chat, create campaign templates for them.
-    for communication_credential in communication_credentials_model.yield_list(channel in ["whatsapp_chat", "whatsapp"]):
+    communication_credentials = list(
+    communication_credentials_model.yield_list(
+        channel=["whatsapp_chat", "whatsapp"]
+        )
+    )
+
+    logger.info(f"communication creds are : {communication_credentials}")
+
+    # Now loop safely without depending on an active DB cursor
+    for communication_credential in communication_credentials:
         dealership_id = communication_credential['dealership_id']
-        communication_credential_id = communication_credential['communication_credential_id']
+        logger.info(f"dealership id id : {dealership_id}")
+        communication_credential_id = communication_credential['communication_credentials_id']
         dealer_name = communication_credential['dealer_name']
         communication_provider_id = communication_credential['communication_provider_id']
         provider_name = communication_credential['provider_name']
         channel = communication_credential['channel']
         data = {
-            'waba_id' : communication_credential['waba_id'],
-            'customer_id' : communication_credential['customer_id'],
-            'sub_account_id' : communication_credential['sub_account_id'],
-            'auth_headers' : communication_credential['channel']
+            'waba_id': communication_credential.get('waba_id'),
+            'customer_id': communication_credential.get('customer_id'),
+            'sub_account_id': communication_credential.get('sub_account_id'),
+            'auth_headers': communication_credential.get('auth_headers')  
         }
         default_data = {
             "waba_id": "113485138500957",
@@ -111,23 +123,46 @@ def create_campaign_templates(logger=None, job=None):
                 "Authorization": "Basic ZGF2ZV9haTpJSjJQVjhebDVjODU="
             }       
         }
-        if not all(v not in [None, "", {}] for v in data.values()):
-            data = default_data
+               
+        string_auth_fields = [
+            data.get("waba_id"),
+            data.get("customer_id"),
+            data.get("sub_account_id")
+        ]
 
+        valid_strings = all(
+            isinstance(v, (str, int)) and str(v).strip() != ""
+            for v in string_auth_fields
+        )
+
+        # Validate auth header dict
+        auth = data.get("auth_headers")
+        valid_auth_header = (
+            isinstance(auth, dict)
+            and "Authorization" in auth
+            and isinstance(auth["Authorization"], str)
+            and auth["Authorization"].strip() != ""
+        )
+
+        # If ANY field is missing/invalid → fallback to default
+        if not (valid_strings and valid_auth_header):
+            data = default_data
 
         post_sales_campaign_model = gryd.base_model.Model('post_sales_campaign', AUTOCRM_APP_ENTERPRISE_ID)
         pre_sales_campaign_model = gryd.base_model.Model('pre_sales_campaign', AUTOCRM_APP_ENTERPRISE_ID)
         default_campaign_objectives = {
-            'post-sales': post_sales_campaign_model._model_ref.attributes['campaign_objective'].options,
-            'pre-sales': pre_sales_campaign_model._model_ref.attributes['campaign_objective'].options
+            'post-sales': post_sales_campaign_model._model_ref.attributes['campaign_objective_name'].options,
+            'pre-sales': pre_sales_campaign_model._model_ref.attributes['campaign_objective_name'].options
         }
+        logger.info(f"default_campaign_objectives are : {default_campaign_objectives}")
+
         logger.info(f"Creating campaign templates for dealer {dealer_name} for provider {provider_name} on channel {channel}")
         for campaign_type in ["pre-sales", "post-sales"]:
             campaign_objectives = default_campaign_objectives[campaign_type]
             for campaign_objective in campaign_objectives:
-                logger.info(f"Creating campaign template for dealer {dealer_name} for provider {provider_name} on channel {channel} for campaign type {campaign_type} and campaign objective {campaign_objective}")
+                logger.info(f"generating campaign template for dealer {dealer_name} for provider {provider_name} on channel {channel} for campaign type {campaign_type} and campaign objective {campaign_objective}")
                 dealership = dealership_model.get(dealership_id)
-                languages = dealership.get('languages', ['English'])
+                languages = dealership.get('languages') or ['English']
                 default_attributes = {
                     "pre-sales": {
                         "campaign_type": campaign_type,
@@ -141,7 +176,7 @@ def create_campaign_templates(logger=None, job=None):
                         "dealership_id": dealership_id,
                         "languages": languages
                     }
-                },
+                }
                 template_required_attributes = {
                     "pre-sales": ["dealer_name", "showroom_full_name", "person_name", "vehicle_category"],
                     "post-sales": ["dealer_name", "workshop_full_name", "reg_number", "vehicle_model", "vehicle_category","next_service_due"]
@@ -173,36 +208,45 @@ def create_campaign_templates(logger=None, job=None):
 
                 dispositions = ["reached", "engaged"]
 
-                postsales_disposition_detail = [{"reached":["Message Deliverd but didn't seen","Message sent but not replied"]},
-                                                
-                                                {"engaged":["Looking for a discount"
-                                        "Will decide tomorrow",
-                                        "Will decide within 1 to 3 days",
-                                        "Will decide within 4 to 7 days",
-                                        "Will decide within 8 to 14 days",
-                                        "Will decide within 15 to 30 days",
-                                        "Will decide within 31 to 60 days",
-                                        "Will decide within 61 to 90 days",
-                                        "Will decide after 90 days",
-                                        "Will call workshop themselves"
-                                        "Vehicle is not being run"]
-                                        }
+                postsales_disposition_detail = {
+                        "reached": [
+                            "Message Deliverd but didn't seen",
+                            "Message sent but not replied"
+                        ],
+                        "engaged": [
+                            "Looking for a discount",
+                            "Will decide tomorrow",
+                            "Will decide within 1 to 3 days",
+                            "Will decide within 4 to 7 days",
+                            "Will decide within 8 to 14 days",
+                            "Will decide within 15 to 30 days",
+                            "Will decide within 31 to 60 days",
+                            "Will decide within 61 to 90 days",
+                            "Will decide after 90 days",
+                            "Will call workshop themselves",
+                            "Vehicle is not being run"
+                        ]
+                    }
 
-                                        ]
-                presale_disposition_detail =[
-                    {"reached": ["Message Deliverd but didn't seen","Message sent but not replied"],
+                presale_disposition_detail = {
+                        "reached": [
+                            "Message Deliverd but didn't seen",
+                            "Message sent but not replied"
+                        ],
+                        "engaged": [
+                            "Looking for a discount",
+                            "Will decide tomorrow",
+                            "Will decide within 1 to 3 days",
+                            "Will decide within 4 to 7 days",
+                            "Will decide within 8 to 14 days",
+                            "Will decide within 15 to 30 days",
+                            "Will decide within 31 to 60 days",
+                            "Will decide within 61 to 90 days",
+                            "Will decide after 90 days",
+                            "Will call dealership themselves"
+                        ]
+                    }
 
-                     "engaged" : ["Looking for a discount"
-                                        "Will decide tomorrow",
-                                        "Will decide within 1 to 3 days",
-                                        "Will decide within 4 to 7 days",
-                                        "Will decide within 8 to 14 days",
-                                        "Will decide within 15 to 30 days",
-                                        "Will decide within 31 to 60 days",
-                                        "Will decide within 61 to 90 days",
-                                        "Will decide after 90 days",
-                                        "Will call dealership themselves"]}
-                ]
                 
 
                 def get_template_variable_list(campaign_type):
@@ -338,10 +382,7 @@ def create_campaign_templates(logger=None, job=None):
                         }
                     }
                 
-                    headers = {
-                        "Content-Type": "application/json",
-                        "Authorization": "Basic ZGF2ZV9haTpJSjJQVjhebDVjODU=" 
-                    }
+                    headers = data["auth_headers"]
                 
                 
                     print(payload)
@@ -370,19 +411,27 @@ def create_campaign_templates(logger=None, job=None):
                 
                 def post_template_into_model(template_data,template_id, template_variables):
 
-                    if not isinstance(template_id):
-                        pass
+                    if not template_id:
+                        return
+
                     template_data["template_id"] = template_id
                     template_data["campaign_type"] = campaign_type
-                    template_data["campaign_objective"] = campaign_objectives
+                    template_data["campaign_objective"] = [campaign_objective]
                     template_data["communication_credentials_id"] = communication_credential_id
                     template_data["template_type"] = "text"
-                    disposition = template_variables.get("disposition")
-                    disposition_detail = template_variables.get("disposition_detail")
+                    disposition = None
+                    disposition_detail = None
 
+                    if isinstance(template_variables, list):
+                        for item in template_variables:
+                            if isinstance(item, dict):
+                                disposition = item.get("disposition")
+                                disposition_detail = item.get("disposition_detail")
+                                break
+                            
+                    if disposition and disposition_detail:
+                        template_data["disposition_tags"] = [disposition, disposition_detail]
 
-                    if isinstance(dispositions):
-                        template_data["disposition_tags"] = [disposition,disposition_detail]
 
 
                     try:
@@ -398,9 +447,9 @@ def create_campaign_templates(logger=None, job=None):
                 final_attribute_list = get_template_variable_list(campaign_type)
 
                 for attr_list in final_attribute_list:
-                    kwargs = {'dealership_id': dealership_id, 'languages': languages, 'data':{'attribute_name':attr_list}}
+                    kwargs = {'campaign_type':campaign_type,'campaign_objective': campaign_objective, 'dealership_id': dealership_id, 'languages': languages, 'data':{'attribute_name':attr_list}}
                     campaign_template = gryd.await_result(
-                        'generate_whatsapp_template',AUTOCRM_AGENT_SERVICE_NAME, args=[campaign_type, campaign_objective], kwargs=kwargs, gryd_logger=logger, job_param=job
+                        'generate_whatsapp_template',AUTOCRM_AGENT_SERVICE_NAME, kwargs=kwargs, gryd_logger=logger
                     )
                     #logic for airtel api 
                     api_response = send_template_for_approval(template_data= campaign_template, languages= languages)

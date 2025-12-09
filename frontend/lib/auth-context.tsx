@@ -27,7 +27,7 @@ interface AuthContextType {
   updateCredits: (credits: number) => void;
   updateVerificationStatus: (
     isVerified: boolean,
-    verificationStatus?: "pending" | "verified" | "rejected",
+    verificationStatus?: "pending" | "verified" | "rejected"
   ) => void;
 }
 
@@ -61,27 +61,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     console.log("Attempting login with:", { email });
 
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    // Client-side authentication for static export compatibility
+    // In production, this should point to your backend API
+    if (email === "user@iamdave.ai" && password === "12345678") {
+      const user = {
+        id: "dealer_001",
+        email: "user@iamdave.ai",
+        name: "Dave AI Dealer",
+        credits: 5000,
+        isVerified: false,
+        verificationStatus: "pending" as const,
+      };
 
-    console.log("Login response status:", response.status);
+      const token = `token_${Date.now()}_${Math.random()
+        .toString(36)
+        .substring(7)}`;
 
-    if (!response.ok) {
-      const error = await response.json();
-      console.error("Login failed:", error);
-      throw new Error(error.message || "Authentication failed");
+      console.log("Login successful, user:", user);
+
+      localStorage.setItem("auth_token", token);
+      localStorage.setItem("user_data", JSON.stringify(user));
+
+      setUser(user);
+    } else {
+      throw new Error("Invalid email or password");
     }
-
-    const data = await response.json();
-    console.log("Login successful, user:", data.user);
-
-    localStorage.setItem("auth_token", data.token);
-    localStorage.setItem("user_data", JSON.stringify(data.user));
-
-    setUser(data.user);
   };
 
   const logout = () => {
@@ -103,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateVerificationStatus = (
     isVerified: boolean,
-    verificationStatus?: "pending" | "verified" | "rejected",
+    verificationStatus?: "pending" | "verified" | "rejected"
   ) => {
     if (user) {
       const updatedUser = { ...user, isVerified, verificationStatus };

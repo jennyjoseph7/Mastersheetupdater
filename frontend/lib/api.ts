@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:5008";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://autobot-webapp-dev.gryd.in";
 
 interface ApiOptions {
   method?: string;
@@ -11,7 +11,7 @@ export async function api(
   endpoint: string,
   method: string = "GET",
   body?: any,
-  customHeaders: Record<string, string> = {},
+  customHeaders: Record<string, string> = {}
 ) {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
