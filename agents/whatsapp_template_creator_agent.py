@@ -77,7 +77,7 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         self.ai_generation = source.get("ai_generation",True)
         self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
 
-        self.model_identifier = "gcp-gemini-2.5-flash-lite"
+        self.model_identifier =   'openai-gpt-4.1-mini' #"gcp-gemini-2.5-flash-lite" #"groq-qwen-3-32B" 'groq-qwen-32b' 'groq-deepseek-r1-distill-llama-70b'
 
     def _validate_campaign_objective(self, objective):
         """Validate campaign objective."""
@@ -113,53 +113,106 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         """
         language = self.languages[0]
 
+        airtel_rules = """airtel_whatsapp_template_rules:
+
+        general:
+          - Template_name must be lowercase without spaces or special characters (only a–z, 0–9, underscore).
+          - No grammar or spelling mistakes.
+
+        content_format:
+          - Placeholders must use double curly braces (e.g., {{name}}).
+          - No placeholders allowed in header if header type is plain text.
+          - Placeholders must not break sentence meaning.
+          - Emojis allowed only in body (not in header).
+          - No URLs allowed inside body text.
+          - No phone numbers allowed inside body text (use CTA call button instead).
+
+        compliance_policies:
+          - No sensitive personal data (e.g., Aadhaar, PAN, bank info).
+          - No threatening, abusive, or fear-triggering content.
+          - No medical, gambling, political content.
+
+        structure:
+          body:
+            - Max length: 1024 characters.
+            - Recommended max placeholders: 4–5 only.
+          header:
+            - Only 1 header allowed (text OR media).
+            - Media header requires alt text.
+          footer:
+            - Plain text only (no placeholders, no emojis).
+          buttons:
+            - Allowed: 2 CTA buttons OR 3 quick reply buttons (not both).
+            - Max length for button text: 20 characters.
+            - Button text cannot contain placeholders.
+            - Quick reply button text must be concise (e.g., “Check Offers”, “Request a Callback”).
+
+        payload_key_rules:
+          - Payload keys for buttons must be lowercase and unique.
+          - No spaces, only hyphens/underscore allowed.
+
+        rejection_common_reasons:
+          - Placeholder formatting wrong.
+          - Category mismatch (e.g., promo under utility).
+          - Buttons contain placeholders.
+          - Link inside body instead of CTA URL button.
+          - Brand mismatch with account.
+          - Too many placeholders."""
+
         system_prompt = f"""
-        You are an intelligent WhatsApp Template Generator Autobot for automotive dealership campaigns.
+        You are an intelligent WhatsApp Template Generator Autobot for automotive dealership markeiting campaigns, adhering strictly to Airtel's messaging compliance standards (professional tone, clear value proposition) generate attractive and interactive whatsapp templates for running campaigns.
 
         Important rules (follow exactly):
-        1. OUTPUT: Return a single valid JSON object and nothing else (no prose, no code fences).
+        1. OUTPUT: Return a single valid JSON object and nothing else (no prose, no code fences, no extra characters).
         2. KEYS: The JSON object MUST contain exactly these keys (no others):
-           - template_name: string, It should be relevant to the type and objective.
-           - template_text: string , This is the main message, use the attributes of data to create the template and the message will be as the objective and type of the campaign 
-           - attributes_used: array of strings
-           - suggested_ctas: array of strings
+            - template_name: string,
+            - template_text: string
+            - attributes_used: array of strings
+            - suggested_ctas: array of strings
+            - lead_tags: array of strings (must contain 2-3 relevant tags for the template's purpose) for example : "service-due","regular-customer", "warranty-active", "early-adopter","launch-interested","premium-seeker", "test-drive-interested", "high-intent", "new-buyer"
 
-        3. TYPES & CONSTRAINTS:
-           - The language you'll be using to generate template_text must be colloquial {language}
-           - template_name: descriptive name related to campaign (use underscores, no spaces)
-           - template_text: personalized message using the attributes with {{placeholders}}, under 400 characters. Must be inside double curly brackets or curly brackets inside a curly brackets and inside the attribute name.
-           - attributes_used: array of attribute names actually used in template_text
-           - suggested_ctas: array of 2-3 CTA buttons
+        3. TYPES & CONSTRAINTS (Airtel/Meta Compliance):
+            - Rules of airtel are listed here, follow them so that your templates are not get rejected : {airtel_rules}
+            - The language you'll be using to generate template_text must be colloquial {language}
+            - template_name: descriptive name related to campaign (use underscores, NO SPACES, must be lowercase).  will start with autobot word, an unique template name each time.
+            - template_text: personalized message using ALL attributes with the EXACT format: {{attribute_name}}, You need to use all attributes and nothing more than given, under 400 characters (strict limit for compliance). The message must align with the Campaign Objective and campaign Type also should Disposition and disposition details if exists.
+            - attributes_used: array of attribute names actually used in template_text.
+            - suggested_ctas: array of 2-3 CTA buttons.
+            - lead_tags: array of 2-3 short, descriptive words (e.g., ["service-due", "new-model"]).
 
-        4. CTA HANDLING:
-           - If existing CTA buttons are provided: {self.cta_buttons}
-           - If no CTA buttons provided, generate 2-3 relevant CTAs including "Request a Call Back"
-           - CTA library: ["Download Brochure", "Compare Variants", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Confirm Booking", "Exchange Old Car"]
+        4. ATTRIBUTE HANDLING (CRITICAL):
+            - You MUST use ALL key attributes provided : '{self.input_data}' in the 'Available Customer Data' except 'disposition' and 'disposition_details'. Don't add anything that is not present, but whatever is present, must include.
+            - If 'disposition' is present in the data, **use its value solely to understand the customer's last interaction and tailor the message's tone and context (e.g., if the disposition is "Busy", the template should be apologetic or mention trying again later).**
+            - **'disposition' and 'disposition_details' MUST NOT be included as placeholders in the template_message and attributes_used. Use these details for have a understanding of what to write. If disposition and disposition details exists in input it means it is a follow up message template. Just have understanding of what type of followup and write template message**
+            - The placeholder format MUST be {{attribute_name}} exactly (e.g., {{person_name}}).
 
-        5. CONTEXT:
-           - Campaign Objective: {self.campaign_objective}
-           - Campaign Type: {self.campaign_type}
-           - Available Data: 
+        5. CTA HANDLING:
+            - If existing CTA buttons are provided: {self.cta_buttons}, use them as suggested_ctas.
+            - If no CTA buttons provided, generate 2-3 relevant CTAs, always including "Request a Call Back".
+            - CTA library for reference: ["Download Brochure", "Compare Variants", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Confirm Booking", "Exchange Old Car"]
 
-        6. PRESERVATION: Use the existing CTA buttons if provided, otherwise generate relevant ones.
-        7. NO NULLS/EMPTY: Never output null, empty string, or empty list for any field.
-        8. FORMAT: Keep template_text conversational and WhatsApp-friendly.
+        6. CONTEXT:
+            - Campaign Objective: {self.campaign_objective}
+            - Campaign Type: {self.campaign_type}
+            - Available Data Attributes: (Refer to user_prompt for the exact data dictionary structure)
+
+        7. FORMAT & INTEGRITY: Never output null, empty string, or empty list for any field. Ensure the JSON is a single, valid object.
 
         If you understand, respond with the single JSON object that follows these rules.
         """
 
         user_prompt = f"""
-        Generate a WhatsApp message template using the provided campaign context and data.
+        Generate a WhatsApp message template using the provided campaign context and customer data.
 
         Campaign Objective: {self.campaign_objective}
         Campaign Type: {self.campaign_type}
-        Available Customer Data: {self.input_data}, Make sure you use all these key attributes. and attribute names will be inside double curly brackets like this '{{"attribute_name"}}'
+        Available Customer Data: {self.input_data} (Use ALL attributes except 'disposition_details'. Attributes must be formatted as {{attribute_name}} in the template_text.), All attributes must include in the template_message except 'disposition_details' and 'disposition'
         Preferred CTA Buttons: {self.cta_buttons}
 
-        Create an engaging, personalized template that uses relevant customer attributes.
-        Return ONLY the JSON object with the required fields.
-        """
+        Create an engaging, personalized template under 400 characters that uses ALL necessary customer attributes and strictly follows the instructions above. Generate relevant 'lead_tags' (2-3 words) based on the template's purpose.
 
+        Return ONLY the required JSON object.
+        """
         return [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
@@ -251,17 +304,17 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
 
     def run(self):
         """Executes template generation and returns final result."""
-        if self.campaign_type in ["pre-sale","Pre-sale","pre_sale","Pre_Sale","pre sale","Pre Sale"]:
-            model_attributes = self._extract_attributes("data/pre_sales_lead.json")
-        elif self.campaign_type in ["Post-Sale","post-sale","Post_Sale","post_sale","Post-Sales","post-sales","Post_Sales","post_sales","post sale","Post Sale","post sales","Post Sales"]:
-            model_attributes = self._extract_attributes("data/post_sales_lead.json")
+        # if self.campaign_type in ["pre-sales","Pre-sale","pre_sale","Pre_Sale","pre sale","Pre Sale"]:
+        #     model_attributes = self._extract_attributes("data/pre_sales_lead.json")
+        # elif self.campaign_type in ["Post-Sale","post-sales","Post_Sale","post_sale","Post-Sales","post-sales","Post_Sales","post_sales","post sale","Post Sale","post sales","Post Sales"]:
+        #     model_attributes = self._extract_attributes("data/post_sales_lead.json")
 
-        self.input_data = {
-            key: value
-            for key, value in self.input_data.items()
-            if key in model_attributes
-        }
-        attributes_used = [key for key in self.input_data]
+        # self.input_data = {
+        #     key: value
+        #     for key, value in self.input_data.items()
+        #     if key in model_attributes
+        # }
+        # attributes_used = [key for key in self.input_data]
 
         if self.ai_generation is True:
             try:
@@ -279,7 +332,9 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
                 # Assemble final output
                 final_output = self._assemble_output(generated_data)
 
-                final_output["attributes_used"] = attributes_used
+                final_output["attributes_used"] = generated_data.get("attributes_used",[])
+                final_output["lead_tags"] = generated_data.get("lead_tags", [])
+
 
                 final_output = self.fix_template_message_braces(final_output)
 
@@ -306,7 +361,7 @@ def generate_whatsapp_template(*args, logger=None, job=None, **kwargs):
     
 
     try:
-        #user_data = kwargs or {}
+        user_data = kwargs or {}
         if "user_data" in kwargs and isinstance(kwargs["user_data"], dict):
             user_data = kwargs["user_data"]
 
@@ -319,7 +374,7 @@ def generate_whatsapp_template(*args, logger=None, job=None, **kwargs):
         campaign_id = user_data.get("campaign_id","")
         campaign_type = user_data.get("campaign_type","")
 
-        attribute_agent = data_attribute_retriever(campaign_id = campaign_id, campaign_type = campaign_type)
+        #attribute_agent = data_attribute_retriever(campaign_id = campaign_id, campaign_type = campaign_type)
 
         agent = WhatsappTemplateCreatorAgent(source=user_data, logger=logger)
         logger.info("Running template generation agent...")
@@ -327,59 +382,9 @@ def generate_whatsapp_template(*args, logger=None, job=None, **kwargs):
         result = agent.run()
         logger.info("Template generated successfully")
 
-        # try:
-        #     dim = gryd.base_model.Model('template', AUTOCRM_APP_ENTERPRISE_ID)
-        #     logger.info(f"Posting result to model 'templates' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
-        #     dim.post(result)
-        #     logger.info("Post completed successfully!")
-        # except Exception as db_error:
-        #     logger.error(f"Failed posting to Gryd model: {db_error}")
-
         return result
 
     except Exception as e:
         logger.error(f"WhatsApp template generation failed: {str(e)}")
         raise
-
-
-# @gryd.is_a_task('generate_whatsapp_template', logger_param='logger', job_param='job')
-# def generate_whatsapp_template(*args,user_data=None, logger=None, job=None,**kwargs):
-#     """
-#     Gryd task wrapper for template generation.
-#     Matches the structure of CampaignIdeaCreatorAgent.
-#     """
-#     logger = logger or gryd.hp.get_logger(__name__)
-#     logger.info("Creating WhatsApp template using CRM data...")
-
-#     try:
-#         user_data = user_data or {}
-        
-#         # Validate input structure
-#         if not isinstance(user_data, dict):
-#             logger.error("Invalid user_data type. Expected dict.")
-#             raise ValueError("user_data must be a dictionary")
-
-#         logger.info(f"Incoming template data: {user_data}")
-        
-#         # Instantiate TemplateCreatorAgent with proper structure
-#         agent = WhatsappTemplateCreatorAgent(source=user_data, logger=logger)
-#         logger.info("Running template generation agent...")
-
-#         result = agent.run()
-#         logger.info("Template generated successfully")
-
-#         # Post to database
-#         #try:
-#             #dim = gryd.base_model.Model('templates', AUTOCRM_APP_ENTERPRISE_ID)
-#             #logger.info(f"Posting result to model 'templates' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
-#             #dim.post(result)
-#             #logger.info("Post completed successfully!")
-#         #except Exception as db_error:
-#             #logger.error(f"Failed posting to Gryd model: {db_error}")
-
-#         return result
-
-#     except Exception as e:
-#         logger.error(f"WhatsApp template generation failed: {str(e)}")
-#         raise
 
