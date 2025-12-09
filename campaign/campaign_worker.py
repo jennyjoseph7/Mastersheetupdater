@@ -11,7 +11,7 @@ logger=hp.get_logger(__name__)
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from autocrm_db_helper import get_pg_connector
-
+from agents.get_whatsapp_template_agent import get_whatsapp_template
 from campaign.campaign_manager import BaseCustomCampaignManager
 from config import AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
@@ -150,7 +150,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         dict: Response from Airtable containing the `template_id`.
               This ID can be used to track approval status.
     """
-    
+    logger.info("hiiiii")
     logger.info("----- In process_single_lead task -----")
 
     with get_pg_connector() as pg:
@@ -194,14 +194,34 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
     if not channel:
         channel = get_channel(lead_data, campaign_details)
 
-    template_data = get_template_from_lead(lead_id)  # TODO: replace with GRYD async
+    # template_data = get_template_from_lead(lead_id)  # TODO: replace with GRYD async // input--lead_id, campaign_type output - template_data ,task name - get_whatsapp_template 
+    template_data=gryd.await_result(
+        task="get_whatsapp_template",
+        service="autocrm-agent",
+        kwargs={
+        "lead_id": lead_id,
+        "campaign_type": campaign_type,
+        "lead_info": {}
+        }
+    )
+    
+    if not template_data:
+        logger.error(f"No template data found for lead_id={lead_id}")
+        return None
+    template_data = template_data[0]
     logger.info(f"TEMPLATE DATA:\n{json.dumps(template_data, indent=4)}")
 
+    buttons = template_data.pop("buttons", None)
+    # if buttons:
+    #     template_data = buttons
+    # logger.info(f"TEMPLATE DATA:\n{json.dumps(template_data, indent=4)}")
+    template_variables = template_data.get("template_variables", [])
     #TODO:later we need to change this..
     if campaign_type == "pre-sales":
         mobile = lead_data.get("phone_number")
         customer_name = lead_data.get("person_name")
-        model = (lead_data.get("model_preference") or [None])[0]
+        # model = (lead_data.get("model_preference") or [None])[0]
+        variable_mapping = get_variable_values(template_variables, lead_data)
         
     else:
         persons = lead_data.get("persons_involved") or []
@@ -223,25 +243,42 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
 
         mobile = selected_person.get("last_contacted_whatsapp_number")
         customer_name = selected_person.get("person_name")
-        model = lead_data.get("vehicle_model")
-
+        # model = lead_data.get("vehicle_model")
+        variable_mapping = get_variable_values(template_variables, lead_data, selected_person)
     campaign_user = {
         "lead_id": lead_id,
         "mobile_number": mobile,
         "customer_name": customer_name,
-        "model": model,
+        # "model": model,
         "contact_channel": channel,
         "template_id": template_data.get("template_id"),
         "template_details": template_data.get("template_details"),
+        **variable_mapping
     }
-
+    logger.info("CAMPAIGN USER ----:\n{}".format(json.dumps(campaign_user, indent=4)))
+    t_v = {item["name"]: item["value"] for item in template_data.get("template_variables", [])}
+    template_message=template_data.get("template_message").format(**t_v)
+    logger.info(f"template_message ---{template_message}")
+    if channel == "web_chat":
+        logger.info("Since it is a webchat channel we need to get the message from the template")
+        data={
+            "placeholder":template_message,
+            "buttons":buttons
+        }
+        yield data
+        return
+    
     final_payload = {
         **campaign_details,
         **template_data,
 
         "enterprise_id": campaign_details.get("enterprise_id"),
         "campaign_id": campaign_details.get("campaign_id"),
-
+        # these 2 channel and sender has to come from template_data check with prince 
+        "channel": channel,
+        "sender": "917795030574",
+        "provider_name": "airtel",
+        "template_message": template_message,
         "campaign_user_source": {
             "source_type": "default",
             "campaign_users": [campaign_user],
@@ -363,3 +400,15 @@ def get_template_from_lead(*args,**kwargs):
     }
 
 
+def get_variable_values(template_variables, lead_data, selected_person=None):
+    """
+    Extract values for template variables from lead_data or selected_person.
+    Priority: selected_person → lead_data → None
+    """
+    values = {}
+    for var in template_variables:
+        if selected_person and var in selected_person:
+            values[var] = selected_person.get(var)
+        else:
+            values[var] = lead_data.get(var)
+    return values

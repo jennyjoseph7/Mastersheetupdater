@@ -267,6 +267,7 @@
         },
         {
             "name": "campaign_objective_name",
+            "type": "list",
             "default": {
                 "function": "get_from_model",
                 "args": [

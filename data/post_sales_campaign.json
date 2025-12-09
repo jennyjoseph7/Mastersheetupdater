@@ -181,12 +181,12 @@
       "name": "campaign_objective_id",
       "type": "uid",
       "option_others": true,
-      "options": "/options/campaign_objective/campaign_objective_name",
+      "options": "/options/campaign_objective/campaign_objective_id",
       "required": false
     },
     {
       "name": "campaign_objective_name",
-      "type": "list",
+      "type": "text",
       "options": [
         "Product Launch / Reveal",
         "Post-Purchase Call",

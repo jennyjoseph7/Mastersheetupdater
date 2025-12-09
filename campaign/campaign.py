@@ -127,7 +127,7 @@ def run_workflow(
         msg = f"No campaign found for campaign_id={campaign_id}, campaign_type={campaign_type}, enterprise_id={enterprise_id}, doing nothing."
         logger.error(msg)
         raise ValueError(msg)
-    if lead_id:
+    # if lead_id:
     if not user_id and session_id:
         last_session = session_model.get(session_id)
         user_id = last_session.get('user_id')

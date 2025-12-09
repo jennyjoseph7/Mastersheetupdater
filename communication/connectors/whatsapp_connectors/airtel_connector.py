@@ -485,7 +485,7 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
         # Update the default payload with session ID
         self.default_payload.update({"sessionId": session_id}) if session_id else None
 
-        logger.info(f"Response data for creating payload: {safe_orjson_dumps(response_data)}", )
+        # logger.info(f"Response data for creating payload: {safe_orjson_dumps(response_data)}", )
         
         def handle_media():
             """
