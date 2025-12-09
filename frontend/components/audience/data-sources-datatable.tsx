@@ -21,6 +21,7 @@ import {
   Trash2,
   RefreshCw,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -52,14 +53,17 @@ interface DataSourcesDataTableProps {
 }
 
 const getStatusBadge = (status: DataSource["status"]) => {
-  switch (status) {
-    case "Connected":
+  const statusLower = status?.toLowerCase() || "";
+
+  switch (statusLower) {
+    case "connected":
       return (
         <Badge className="bg-emerald-500 hover:bg-emerald-600">Connected</Badge>
       );
-    case "Error":
+    case "error":
+    case "failed":
       return <Badge variant="destructive">Error</Badge>;
-    case "Expired":
+    case "expired":
       return (
         <Badge
           variant="outline"
@@ -68,8 +72,36 @@ const getStatusBadge = (status: DataSource["status"]) => {
           Expired
         </Badge>
       );
+    case "pending":
+      return (
+        <Badge
+          variant="outline"
+          className="bg-yellow-50 text-yellow-700 border-yellow-300"
+        >
+          Pending
+        </Badge>
+      );
+    case "processing":
+    case "in_progress":
+      return (
+        <Badge
+          variant="outline"
+          className="bg-blue-50 text-blue-700 border-blue-300"
+        >
+          Processing
+        </Badge>
+      );
+    case "completed":
+    case "success":
+      return (
+        <Badge className="bg-emerald-500 hover:bg-emerald-600">Completed</Badge>
+      );
     default:
-      return <Badge variant="outline">{status}</Badge>;
+      // Capitalize first letter for display
+      const displayStatus = status
+        ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+        : "Unknown";
+      return <Badge variant="outline">{displayStatus}</Badge>;
   }
 };
 
@@ -84,7 +116,10 @@ const formatDate = (dateString: string) => {
   }).format(date);
 };
 
-export const columns: ColumnDef<DataSource>[] = [
+// Create columns function that accepts router
+const createColumns = (
+  router: ReturnType<typeof useRouter>
+): ColumnDef<DataSource>[] => [
   {
     accessorKey: "sourceName",
     header: ({ column }) => {
@@ -115,7 +150,45 @@ export const columns: ColumnDef<DataSource>[] = [
         </Button>
       );
     },
-    cell: ({ row }) => <div>{row.getValue("audienceName")}</div>,
+    cell: ({ row }) => {
+      const audienceName = row.getValue("audienceName") as string;
+      const source = row.original;
+      return (
+        <div
+          className="font-medium text-primary cursor-pointer hover:underline"
+          onClick={(e) => {
+            e.stopPropagation();
+            // Navigate to audience detail page using the source ID
+            router.push(`/audiences/${source.id}`);
+          }}
+        >
+          {audienceName}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "tags",
+    header: "Tags",
+    cell: ({ row }) => {
+      const tags = row.getValue("tags") as string[] | undefined;
+      if (!tags || tags.length === 0) {
+        return <div className="text-muted-foreground">-</div>;
+      }
+      return (
+        <div className="flex flex-wrap gap-1">
+          {tags.map((tag, index) => (
+            <Badge
+              key={index}
+              variant="secondary"
+              className="text-xs bg-muted text-muted-foreground"
+            >
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      );
+    },
   },
   {
     accessorKey: "type",
@@ -232,6 +305,7 @@ export function DataSourcesDataTable({
   onRemove,
   onResync,
 }: DataSourcesDataTableProps) {
+  const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -242,7 +316,7 @@ export function DataSourcesDataTable({
 
   const table = useReactTable({
     data,
-    columns: columns.map((col) => {
+    columns: createColumns(router).map((col) => {
       if (col.id === "actions") {
         return {
           ...col,

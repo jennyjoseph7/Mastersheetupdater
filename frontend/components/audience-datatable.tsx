@@ -35,48 +35,71 @@ export function AudienceDatatable({
   onBack,
 }: AudienceDatatableProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortColumn, setSortColumn] = useState<keyof AudienceMember | null>(
-    null,
-  );
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [cityFilter, setCityFilter] = useState<string>("all");
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [cityFilter, setCityFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   // Extract unique values for filters
-  const cities = useMemo(
-    () => Array.from(new Set(data.map((item) => item.city))).sort(),
-    [data],
-  );
   const vehicleTypes = useMemo(
-    () => Array.from(new Set(data.map((item) => item.vehicleType))).sort(),
-    [data],
+    () =>
+      Array.from(
+        new Set(
+          data
+            .map((item) => item.vehicle_model || item.vehicleType)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [data]
+  );
+  const cities = useMemo(
+    () =>
+      Array.from(new Set(data.map((item) => item.city).filter(Boolean))).sort(),
+    [data]
   );
 
   const filteredAndSortedData = useMemo(() => {
     let filtered = data.filter((item) => {
+      const personName = item.person_name || item.name || "";
+      const phoneNumber = item.phone_number || item.phoneNumber || "";
+      const email = item.email || "";
+
+      const city = item.city || "";
+
       const matchesSearch =
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.phoneNumber.includes(searchTerm);
+        personName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        phoneNumber.includes(searchTerm) ||
+        city.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesCity = cityFilter === "all" || item.city === cityFilter;
+      const vehicleModel = item.vehicle_model || item.vehicleType || "";
       const matchesVehicleType =
-        vehicleTypeFilter === "all" || item.vehicleType === vehicleTypeFilter;
-      const matchesStatus =
-        statusFilter === "all" || item.status === statusFilter;
+        vehicleTypeFilter === "all" || vehicleModel === vehicleTypeFilter;
+      const matchesCity = cityFilter === "all" || city === cityFilter;
 
-      return (
-        matchesSearch && matchesCity && matchesVehicleType && matchesStatus
-      );
+      return matchesSearch && matchesVehicleType && matchesCity;
     });
 
     if (sortColumn) {
       filtered = filtered.sort((a, b) => {
-        const aValue = a[sortColumn];
-        const bValue = b[sortColumn];
+        let aValue: any;
+        let bValue: any;
+
+        // Handle field name mapping
+        if (sortColumn === "person_name") {
+          aValue = a.person_name || a.name || "";
+          bValue = b.person_name || b.name || "";
+        } else if (sortColumn === "vehicle_model") {
+          aValue = a.vehicle_model || a.vehicleType || "";
+          bValue = b.vehicle_model || b.vehicleType || "";
+        } else if (sortColumn === "city") {
+          aValue = a.city || "";
+          bValue = b.city || "";
+        } else {
+          aValue = (a as any)[sortColumn] || "";
+          bValue = (b as any)[sortColumn] || "";
+        }
 
         if (typeof aValue === "string" && typeof bValue === "string") {
           return sortDirection === "asc"
@@ -96,9 +119,8 @@ export function AudienceDatatable({
     searchTerm,
     sortColumn,
     sortDirection,
-    cityFilter,
     vehicleTypeFilter,
-    statusFilter,
+    cityFilter,
   ]);
 
   const paginatedData = useMemo(() => {
@@ -108,7 +130,7 @@ export function AudienceDatatable({
 
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
 
-  const handleSort = (column: keyof AudienceMember) => {
+  const handleSort = (column: string) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -137,11 +159,13 @@ export function AudienceDatatable({
   const handleExport = () => {
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      "Name,Phone Number,Email,City,Vehicle Type,Status,Last Interaction,Total Interactions,Lifetime Value\n" +
+      "Person Name,Vehicle Model,Mobile No,City\n" +
       filteredAndSortedData
         .map(
           (item) =>
-            `${item.name},${item.phoneNumber},${item.email},${item.city},${item.vehicleType},${item.status},${item.lastInteraction},${item.totalInteractions},₹${item.lifetimeValue}`,
+            `${item.person_name || item.name || ""},${
+              item.vehicle_model || item.vehicleType || ""
+            },${item.phone_number || item.phoneNumber || ""},${item.city || ""}`
         )
         .join("\n");
 
@@ -150,7 +174,7 @@ export function AudienceDatatable({
     link.setAttribute("href", encodedUri);
     link.setAttribute(
       "download",
-      `${audienceName.toLowerCase().replace(/\s+/g, "-")}-members.csv`,
+      `${audienceName.toLowerCase().replace(/\s+/g, "-")}-members.csv`
     );
     document.body.appendChild(link);
     link.click();
@@ -179,7 +203,7 @@ export function AudienceDatatable({
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name, email, or phone..."
+              placeholder="Search by name, phone, or city..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8"
@@ -187,50 +211,39 @@ export function AudienceDatatable({
           </div>
 
           <div className="flex gap-2 flex-wrap">
-            <Select value={cityFilter} onValueChange={setCityFilter}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="All Cities" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Cities</SelectItem>
-                {cities.map((city) => (
-                  <SelectItem key={city} value={city}>
-                    {city}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={vehicleTypeFilter}
-              onValueChange={setVehicleTypeFilter}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="All Vehicles" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Vehicles</SelectItem>
-                {vehicleTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="Lead">Lead</SelectItem>
-                <SelectItem value="Qualified">Qualified</SelectItem>
-                <SelectItem value="Converted">Converted</SelectItem>
-                <SelectItem value="Losing">Losing</SelectItem>
-                <SelectItem value="Lost">Lost</SelectItem>
-              </SelectContent>
-            </Select>
+            {vehicleTypes.length > 0 && (
+              <Select
+                value={vehicleTypeFilter}
+                onValueChange={setVehicleTypeFilter}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="All Vehicles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Vehicles</SelectItem>
+                  {vehicleTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {cities.length > 0 && (
+              <Select value={cityFilter} onValueChange={setCityFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="All Cities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cities</SelectItem>
+                  {cities.map((city) => (
+                    <SelectItem key={city} value={city}>
+                      {city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -242,18 +255,29 @@ export function AudienceDatatable({
               <TableRow>
                 <TableHead
                   className="cursor-pointer"
-                  onClick={() => handleSort("name")}
+                  onClick={() => handleSort("person_name")}
                 >
-                  Name
-                  {sortColumn === "name" &&
+                  Person Name
+                  {sortColumn === "person_name" &&
                     (sortDirection === "asc" ? (
                       <ChevronUp className="inline h-4 w-4 ml-1" />
                     ) : (
                       <ChevronDown className="inline h-4 w-4 ml-1" />
                     ))}
                 </TableHead>
-                <TableHead>Phone Number</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => handleSort("vehicle_model")}
+                >
+                  Vehicle Model
+                  {sortColumn === "vehicle_model" &&
+                    (sortDirection === "asc" ? (
+                      <ChevronUp className="inline h-4 w-4 ml-1" />
+                    ) : (
+                      <ChevronDown className="inline h-4 w-4 ml-1" />
+                    ))}
+                </TableHead>
+                <TableHead>Mobile No</TableHead>
                 <TableHead
                   className="cursor-pointer"
                   onClick={() => handleSort("city")}
@@ -266,99 +290,31 @@ export function AudienceDatatable({
                       <ChevronDown className="inline h-4 w-4 ml-1" />
                     ))}
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort("vehicleType")}
-                >
-                  Vehicle Type
-                  {sortColumn === "vehicleType" &&
-                    (sortDirection === "asc" ? (
-                      <ChevronUp className="inline h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="inline h-4 w-4 ml-1" />
-                    ))}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort("status")}
-                >
-                  Status
-                  {sortColumn === "status" &&
-                    (sortDirection === "asc" ? (
-                      <ChevronUp className="inline h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="inline h-4 w-4 ml-1" />
-                    ))}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort("lastInteraction")}
-                >
-                  Last Interaction
-                  {sortColumn === "lastInteraction" &&
-                    (sortDirection === "asc" ? (
-                      <ChevronUp className="inline h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="inline h-4 w-4 ml-1" />
-                    ))}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer text-right"
-                  onClick={() => handleSort("totalInteractions")}
-                >
-                  Interactions
-                  {sortColumn === "totalInteractions" &&
-                    (sortDirection === "asc" ? (
-                      <ChevronUp className="inline h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="inline h-4 w-4 ml-1" />
-                    ))}
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer text-right"
-                  onClick={() => handleSort("lifetimeValue")}
-                >
-                  Lifetime Value
-                  {sortColumn === "lifetimeValue" &&
-                    (sortDirection === "asc" ? (
-                      <ChevronUp className="inline h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="inline h-4 w-4 ml-1" />
-                    ))}
-                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedData.length > 0 ? (
-                paginatedData.map((member) => (
-                  <TableRow key={member.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">{member.name}</TableCell>
-                    <TableCell>{member.phoneNumber}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {member.email}
-                    </TableCell>
-                    <TableCell>{member.city}</TableCell>
-                    <TableCell>{member.vehicleType}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(member.status)}>
-                        {member.status}
-                      </Badge>
+                paginatedData.map((member, index) => (
+                  <TableRow
+                    key={member.id || index}
+                    className="hover:bg-muted/50"
+                  >
+                    <TableCell className="font-medium">
+                      {member.person_name || member.name || "-"}
                     </TableCell>
                     <TableCell>
-                      {new Date(member.lastInteraction).toLocaleDateString()}
+                      {member.vehicle_model || member.vehicleType || "-"}
                     </TableCell>
-                    <TableCell className="text-right">
-                      {member.totalInteractions}
+                    <TableCell>
+                      {member.phone_number || member.phoneNumber || "-"}
                     </TableCell>
-                    <TableCell className="text-right font-medium">
-                      ₹{member.lifetimeValue.toLocaleString()}
-                    </TableCell>
+                    <TableCell>{member.city || "-"}</TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={4}
                     className="h-24 text-center text-muted-foreground"
                   >
                     No members found matching your criteria.
@@ -376,7 +332,7 @@ export function AudienceDatatable({
               Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
               {Math.min(
                 currentPage * itemsPerPage,
-                filteredAndSortedData.length,
+                filteredAndSortedData.length
               )}{" "}
               of {filteredAndSortedData.length} results
             </div>
