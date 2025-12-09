@@ -89,7 +89,7 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
 
 
-@app.route('/test_voice_agent/<provider>', methods = ["POST"])
+@app.route('/test_voice_agent/<provider>/<session_id>', methods = ["POST"])
 def test_voice_agent(provider):
     payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
     prompt = payload.get("prompt")
