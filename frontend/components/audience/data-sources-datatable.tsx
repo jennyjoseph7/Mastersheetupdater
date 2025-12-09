@@ -44,12 +44,14 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatusCell } from "./status-cell";
 import type { DataSource } from "@/app/audience/page";
 
 interface DataSourcesDataTableProps {
   data: DataSource[];
   onRemove: (id: string) => void;
   onResync: (id: string) => void;
+  onRefreshStatus?: (id: string) => Promise<void>;
 }
 
 const getStatusBadge = (status: DataSource["status"]) => {
@@ -116,9 +118,10 @@ const formatDate = (dateString: string) => {
   }).format(date);
 };
 
-// Create columns function that accepts router
+// Create columns function that accepts router and refresh handler
 const createColumns = (
-  router: ReturnType<typeof useRouter>
+  router: ReturnType<typeof useRouter>,
+  onRefreshStatus?: (id: string) => Promise<void>
 ): ColumnDef<DataSource>[] => [
   {
     accessorKey: "sourceName",
@@ -245,7 +248,14 @@ const createColumns = (
     header: "Status",
     cell: ({ row }) => {
       const status = row.getValue("status") as DataSource["status"];
-      return getStatusBadge(status);
+      const source = row.original;
+      return (
+        <StatusCell
+          status={status}
+          sourceId={source.id}
+          onRefreshStatus={onRefreshStatus}
+        />
+      );
     },
   },
   {
@@ -304,6 +314,7 @@ export function DataSourcesDataTable({
   data,
   onRemove,
   onResync,
+  onRefreshStatus,
 }: DataSourcesDataTableProps) {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -316,7 +327,7 @@ export function DataSourcesDataTable({
 
   const table = useReactTable({
     data,
-    columns: createColumns(router).map((col) => {
+    columns: createColumns(router, onRefreshStatus).map((col) => {
       if (col.id === "actions") {
         return {
           ...col,

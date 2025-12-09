@@ -137,6 +137,37 @@ export default function AudiencePage() {
     );
   };
 
+  const handleRefreshStatus = async (id: string) => {
+    try {
+      // Fetch fresh data from API
+      const response = await fetch("/api/audience-task");
+      if (!response.ok) {
+        throw new Error("Failed to refresh status");
+      }
+      const responseData = await response.json();
+      const tasks =
+        responseData.data || responseData.items || responseData || [];
+
+      if (Array.isArray(tasks)) {
+        // Find the task with matching ID and update its status
+        const updatedTask = tasks.find(
+          (task: any) =>
+            String(task.id || task._id || task.task_id) === String(id)
+        );
+
+        if (updatedTask) {
+          const transformed = transformAudienceTaskToDataSource(updatedTask, 0);
+          setDataSources((prev) =>
+            prev.map((ds) => (ds.id === id ? transformed : ds))
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing status:", error);
+      throw error;
+    }
+  };
+
   // Fetch data from API
   useEffect(() => {
     const loadData = async () => {
@@ -248,6 +279,7 @@ export default function AudiencePage() {
             data={dataSources}
             onRemove={handleRemove}
             onResync={handleResync}
+            onRefreshStatus={handleRefreshStatus}
           />
         )}
       </main>
