@@ -17,6 +17,9 @@ import signal
 import utils
 logger = utils.get_logger(__name__)
 
+
+BUFFER_IDENTIFIER = None  # Special identifier for clear buffer messages
+
 class InputState(Enum):
     IDLE = "idle"
     LISTENING = "listening"
@@ -119,9 +122,15 @@ class InputManager:
 
         if raw_data.get('tag') and raw_data.get('tag') != self.tag:
             logger.info('Seems like message from output manager, ignoring...')
+        
 
         in_payload = self.provider.receive_message(raw_data)
         logger.info(f'recieved data in input queue: {type(in_payload.get("audio_data"))}')
+
+        if in_payload.get('audio_data')[:10] == BUFFER_IDENTIFIER:
+            logger.info('Clear buffer message received, ignoring in input manager...')
+            return
+
         if in_payload.get('message_type','') == 'stream_start':
             session_id = in_payload.get('metadata',{}).get('custom_params', {}).get('session_id')
             if  session_id !=  self.session_id:
@@ -338,11 +347,13 @@ class OutputManager:
                         logger.info("Received shutdown signal in OutputManager")
                         self.running = False
                         break
-
+                    
+                    BUFFER_IDENTIFIER = message.get('audio_data')[:10]
                     message = self.provider.send_message(message)
                     #message['tag'] = 'output_manager'
                     logger.info(f'recieved message from output queue: {message}')
                     #message_id
+
                     self.client.send_message(message)
                 except queue.Empty:
                     pass
