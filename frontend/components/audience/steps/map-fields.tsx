@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Trash2 } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import type { DataSourceFormData, FieldMapping } from "../add-data-source-dialog"
 
 interface MapFieldsProps {
@@ -14,107 +14,82 @@ interface MapFieldsProps {
 }
 
 export function MapFields({ formData, updateFormData }: MapFieldsProps) {
-  const addFieldMapping = () => {
-    const newMapping: FieldMapping = {
-      id: `field_${Date.now()}`,
-      sourceField: "",
-      targetField: "",
-      enabled: true,
-    }
-    updateFormData({
-      fieldMappings: [...formData.fieldMappings, newMapping],
-    })
-  }
-
-  const removeFieldMapping = (id: string) => {
-    updateFormData({
-      fieldMappings: formData.fieldMappings.filter((m) => m.id !== id),
-    })
-  }
-
+  
   const updateFieldMapping = (id: string, updates: Partial<FieldMapping>) => {
     updateFormData({
       fieldMappings: formData.fieldMappings.map((m) => (m.id === id ? { ...m, ...updates } : m)),
     })
   }
 
-  // Mock source fields - in real app, these would come from API/CSV
-  const sourceFields = ["first_name", "last_name", "phone", "email_address", "preferred_language", "customer_tags"]
+  // Pre-defined target fields in your system (optional suggestion list)
+  const systemTargets = [
+    "Name", "Mobile Number", "Email", "Vehicle Model", "Registration Number", "Last Service Date", "City"
+  ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-2">Map Fields to Standard Fields</h3>
+        <h3 className="text-lg font-semibold mb-2">Map CSV Columns</h3>
         <p className="text-sm text-muted-foreground">
-          Map your source fields to standard audience fields. Disabled fields will be excluded.
+          Match the columns from your uploaded CSV to the fields in the CRM.
         </p>
       </div>
 
-      <div className="space-y-3">
-        {formData.fieldMappings.map((mapping, index) => (
-          <div
-            key={mapping.id}
-            className={`flex items-center gap-3 p-3 rounded-lg border ${
-              !mapping.enabled ? "bg-muted/50 opacity-60" : "bg-background"
-            }`}
-          >
-            <div className="flex items-center">
-              <Switch
-                checked={mapping.enabled}
-                onCheckedChange={(enabled) => updateFieldMapping(mapping.id, { enabled })}
-              />
+      {formData.fieldMappings.length === 0 ? (
+         <div className="p-4 border border-dashed rounded-lg text-center text-muted-foreground">
+            <AlertCircle className="h-6 w-6 mx-auto mb-2 opacity-50"/>
+            No headers found. Please go back and ensure your CSV is valid.
+         </div>
+      ) : (
+        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+            <div className="grid grid-cols-12 gap-3 mb-2 px-2 text-xs font-semibold text-muted-foreground">
+                <div className="col-span-1 text-center">Import</div>
+                <div className="col-span-5">CSV Header (Source)</div>
+                <div className="col-span-6">System Field (Target)</div>
             </div>
 
-            <div className="flex-1 grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Source Field</Label>
-                <Select
-                  value={mapping.sourceField}
-                  onValueChange={(value) => updateFieldMapping(mapping.id, { sourceField: value })}
-                  disabled={!mapping.enabled}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select source field" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sourceFields.map((field) => (
-                      <SelectItem key={field} value={field}>
-                        {field}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Target Field</Label>
-                <Input
-                  value={mapping.targetField}
-                  onChange={(e) => updateFieldMapping(mapping.id, { targetField: e.target.value })}
-                  placeholder="Enter target field name"
-                  disabled={!mapping.enabled}
+            {formData.fieldMappings.map((mapping) => (
+            <div
+                key={mapping.id}
+                className={`grid grid-cols-12 gap-3 items-center p-3 rounded-lg border transition-colors ${
+                !mapping.enabled ? "bg-muted/40 opacity-70 border-dashed" : "bg-card border-solid"
+                }`}
+            >
+                {/* Enable/Disable Toggle */}
+                <div className="col-span-1 flex justify-center">
+                <Switch
+                    checked={mapping.enabled}
+                    onCheckedChange={(enabled) => updateFieldMapping(mapping.id, { enabled })}
+                    className="scale-75"
                 />
-              </div>
+                </div>
+
+                {/* Source Field (Read Only) */}
+                <div className="col-span-5">
+                    <div className="text-sm font-medium truncate" title={mapping.sourceField}>
+                        {mapping.sourceField}
+                    </div>
+                </div>
+
+                {/* Target Field Input */}
+                <div className="col-span-6">
+                    <Input
+                        value={mapping.targetField}
+                        onChange={(e) => updateFieldMapping(mapping.id, { targetField: e.target.value })}
+                        placeholder="Map to..."
+                        disabled={!mapping.enabled}
+                        className="h-8 text-sm"
+                        list={`suggestions-${mapping.id}`}
+                    />
+                    {/* Native Datalist for suggestions */}
+                    <datalist id={`suggestions-${mapping.id}`}>
+                        {systemTargets.map(t => <option key={t} value={t} />)}
+                    </datalist>
+                </div>
             </div>
-
-            {index >= 5 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => removeFieldMapping(mapping.id)}
-                className="text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <Button variant="outline" onClick={addFieldMapping} className="w-full bg-transparent">
-        <Plus className="h-4 w-4 mr-2" />
-        Add Field Mapping
-      </Button>
+            ))}
+        </div>
+      )}
     </div>
   )
 }

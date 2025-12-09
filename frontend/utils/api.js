@@ -1,4 +1,6 @@
-import { APP_BASE_URL, HEADERS } from "./headers";
+import { APP_BASE_URL, HEADERS, FILE_UPLOAD_URL, FILE_UPLOAD_HEADERS } from "./headers";
+
+// ... [Existing fetchAPIData and fetchPivotCountForCampaign remain unchanged] ...
 
 async function fetchAPIData(modelName, queryParams = {}) {
   try {
@@ -81,6 +83,103 @@ async function fetchPivotCountForCampaign(type) {
   }
 }
 
+// --- File Upload & Import Flow ---
+
+// 1. Upload File
+async function uploadFileToGryd(file) {
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+
+    const response = await fetch(FILE_UPLOAD_URL, {
+        method: "POST",
+        headers: FILE_UPLOAD_HEADERS,
+        body: uploadData,
+    });
+
+    if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+    }
+    return response.json();
+}
+
+// 2. NEW: Extract CSV Headers
+async function extractCsvHeadersAPI(fileUrl) {
+    const response = await fetch(
+        `${APP_BASE_URL}/gryd/task/autocrm-core/extract_csv_headers`,
+        {
+            method: "POST",
+            headers: HEADERS,
+            body: JSON.stringify({
+                args: [fileUrl], // Assuming it takes the URL as the first arg
+                kwargs: {},
+                 cancellable: true,
+            }),
+        }
+    );
+
+    if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`Header extraction failed: ${errorBody}`);
+    }
+    return response.json();
+}
+
+// 3. Start Import Task (Updated to accept mapping)
+async function startImportTask(category, audienceName, fileUrl, tags = [], sourceName = "", fieldMapping = {}) {
+    const response = await fetch(
+        `${APP_BASE_URL}/gryd/task/autocrm-core/import_leads_from_csv`,
+        {
+            method: "POST",
+            headers: HEADERS,
+            body: JSON.stringify({
+                args: [
+                    category || "post-sales", 
+                    audienceName || "default-audience", 
+                    fileUrl
+                ],
+                kwargs: {
+                    campaign_id: "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
+                     workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+                    source: "csv",
+                    tags: tags,
+                    source_name: sourceName || "Uploaded via csv",
+                    field_mapping: fieldMapping // Pass the mapping here
+                },
+                runtime_limit: 3600,
+                cancellable: true,
+            }),
+        }
+    );
+
+    if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`Task start failed: ${errorBody}`);
+    }
+
+    return response.json();
+}
+
+// 4. Get Status
+async function getTaskStatus(taskId) {
+    const response = await fetch(`${APP_BASE_URL}/gryd/status/${taskId}`, {
+        method: "GET",
+        headers: HEADERS,
+    });
+    if (!response.ok) throw new Error(`Status check failed: ${response.statusText}`);
+    return response.json();
+}
+
+// 5. Get Result
+async function getTaskResult(taskId) {
+    const response = await fetch(`${APP_BASE_URL}/gryd/result/${taskId}`, {
+        method: "GET",
+        headers: HEADERS,
+    });
+    if (!response.ok) throw new Error(`Failed to fetch result: ${response.statusText}`);
+    return response.json();
+}
+
+// ... [Existing Helpers] ...
 function epochToIST(epochTime) {
   if (!epochTime) return "";
   const date = new Date(epochTime * 1000);
@@ -102,4 +201,14 @@ function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
 
-export { fetchAPIData, fetchPivotCountForCampaign, epochToIST, capitalize };
+export { 
+    fetchAPIData, 
+    fetchPivotCountForCampaign, 
+    uploadFileToGryd, 
+    extractCsvHeadersAPI, // New
+    startImportTask, 
+    getTaskStatus, 
+    getTaskResult,
+    epochToIST, 
+    capitalize 
+};
