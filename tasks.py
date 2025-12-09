@@ -935,6 +935,27 @@ def conversation_agent(*args, **kwargs):
             "task": inspect.currentframe().f_code.co_name,
             "error": str(e).strip()
         }
+    
+
+@gryd.is_a_task()
+def media_extraction_agent(*args, **kwargs):
+    try:
+        from agents.media_extraction_agent import MediaExtractionAgent
+        url = kwargs["url"]
+        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+        media_extraction_agent = MediaExtractionAgent(url=url, model_identifier=model_identifier)
+        output = media_extraction_agent.run()
+        return {
+            "task": inspect.currentframe().f_code.co_name, 
+            **output
+        }
+    except Exception as e:
+        logger.error(f"Media Extraction Agent Error: {e}")
+        traceback.print_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip()
+        }
 
 # ------------------ Global Agents Finish ------------------
 
@@ -961,9 +982,23 @@ def query_orchestrator(*args, **kwargs):
     for r in response:
         yield r
 
+
 if __name__ == "__main__":
-    r = compute_on_road_price(source = {"state" : "maha", "engine_type" : "ev", "ex_showroom_price" : 950000, "gst_rate" : 18})
-    logger.info(f"Result: {json.dumps(r, indent=4, default=str)}")
+    # r = compute_on_road_price(source = {"state" : "maha", "engine_type" : "ev", "ex_showroom_price" : 950000, "gst_rate" : 18})
+    # logger.info(f"Result: {json.dumps(r, indent=4, default=str)}")
+
+    from agents.media_extraction_agent import MediaExtractionAgent
+
+    agent = MediaExtractionAgent("https://cars.tatamotors.com/sierra/ice.html")
+    media = agent.run()
+    print("Images:")
+    for img in media["images"]:
+        print(img)
+
+    print("\nVideos:")
+    for vid in media["videos"]:
+        print(vid)
+
 
 
 
