@@ -6,16 +6,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Database, Loader2 } from "lucide-react";
 import { DataSourcesDataTable } from "@/components/audience/data-sources-datatable";
 import { AddDataSourceDialog } from "@/components/audience/add-data-source-dialog";
-import { fetchPersonObjects } from "@/lib/api";
+// Using Next.js API route instead of direct external API call to avoid CORS issues
 
 export interface DataSource {
   id: string;
   sourceName: string;
   audienceName: string;
-  type: "API" | "File";
+  tags?: string[];
+  type: "API" | "File" | "CSV";
   audienceSize: number;
   lastSynced: string;
-  status: "Connected" | "Error" | "Expired";
+  status: "Connected" | "Error" | "Expired" | string; // Allow any status string for csv_status
 }
 
 // Mock data for demonstration
@@ -23,44 +24,79 @@ const mockDataSources: DataSource[] = [
   {
     id: "1",
     sourceName: "Salesforce",
-    audienceName: "Premium Customers – CRM",
+    audienceName: "Premium Customers - CRM",
+    tags: ["Active Customers", "Premium Leads", "VIP Customers"],
     type: "API",
     audienceSize: 1250,
-    lastSynced: "2025-01-10T14:30:00Z",
+    lastSynced: "2025-01-10T20:00:00Z",
     status: "Connected",
   },
   {
     id: "2",
     sourceName: "Google Sheets",
     audienceName: "Q4 Leads",
+    tags: ["Test Audience", "Premium Leads"],
     type: "File",
     audienceSize: 850,
-    lastSynced: "2025-01-09T10:15:00Z",
+    lastSynced: "2025-01-09T15:45:00Z",
     status: "Connected",
   },
   {
     id: "3",
     sourceName: "HubSpot",
     audienceName: "Active Subscribers",
+    tags: ["Inactive Users", "Active Customers"],
     type: "API",
     audienceSize: 3200,
-    lastSynced: "2025-01-08T16:45:00Z",
+    lastSynced: "2025-01-08T22:15:00Z",
     status: "Error",
   },
 ];
 
-// Transform API person objects to DataSource format
-// Adjust this based on your actual API response structure
-function transformPersonToDataSource(person: any, index: number): DataSource {
-  // This is a sample transformation - adjust based on your actual API response
+// Transform API audience_task objects to DataSource format
+function transformAudienceTaskToDataSource(
+  task: any,
+  index: number
+): DataSource {
+  // Map the API response fields to DataSource format
+  // Adjust field mappings based on actual API response structure
+  const id = task.id || task._id || task.task_id || `task_${index}`;
+  const sourceName =
+    task.source_name || task.sourceName || task.source || "Unknown Source";
+  const audienceName =
+    task.audience_name ||
+    task.audienceName ||
+    task.name ||
+    `Audience ${index + 1}`;
+  // Always set type to CSV for now
+  const type: "API" | "File" | "CSV" = "CSV";
+
+  const audienceSize =
+    task.audience_size || task.audienceSize || task.total || task.size || 0;
+  const lastSynced =
+    task.last_synced ||
+    task.lastSynced ||
+    task.updated_at ||
+    task.updatedAt ||
+    task.created_at ||
+    new Date().toISOString();
+
+  // Use csv_status for status, fallback to other status fields
+  const status = task.csv_status || task.status || "Connected";
+
+  // Extract tags if available
+  const tags = task.tags || task.tag || [];
+  const tagsArray = Array.isArray(tags) ? tags : tags ? [tags] : [];
+
   return {
-    id: person.id || person._id || `person_${index}`,
-    sourceName: person.sourceName || person.source_name || person.source || "Unknown Source",
-    audienceName: person.audienceName || person.audience_name || person.name || `Audience ${index + 1}`,
-    type: (person.type === "File" || person.type === "file") ? "File" : "API",
-    audienceSize: person.audienceSize || person.audience_size || person.size || 0,
-    lastSynced: person.lastSynced || person.last_synced || person.updatedAt || person.updated_at || new Date().toISOString(),
-    status: person.status === "error" ? "Error" : person.status === "expired" ? "Expired" : "Connected",
+    id: String(id),
+    sourceName,
+    audienceName,
+    tags: tagsArray,
+    type,
+    audienceSize: Number(audienceSize),
+    lastSynced,
+    status,
   };
 }
 
@@ -71,7 +107,7 @@ export default function AudiencePage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleAddDataSource = (
-    newSource: Omit<DataSource, "id" | "lastSynced" | "status">,
+    newSource: Omit<DataSource, "id" | "lastSynced" | "status">
   ) => {
     const dataSource: DataSource = {
       ...newSource,
@@ -96,33 +132,45 @@ export default function AudiencePage() {
               lastSynced: new Date().toISOString(),
               status: "Connected" as const,
             }
-          : ds,
-      ),
+          : ds
+      )
     );
   };
 
-  // Fetch data from API on component mount
+  // Fetch data from API
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetchPersonObjects();
+        // Use Next.js API route proxy to avoid CORS issues
+        const response = await fetch("/api/audience-task");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || `HTTP error! status: ${response.status}`
+          );
+        }
+        const responseData = await response.json();
+
         // Handle different response structures
-        const persons = response.data || response.items || response || [];
-        
-        if (Array.isArray(persons)) {
-          const transformed = persons.map((person: any, index: number) =>
-            transformPersonToDataSource(person, index)
+        // The API might return { data: [...] } or directly an array
+        const tasks =
+          responseData.data || responseData.items || responseData || [];
+
+        if (Array.isArray(tasks)) {
+          const transformed = tasks.map((task: any, index: number) =>
+            transformAudienceTaskToDataSource(task, index)
           );
           setDataSources(transformed);
         } else {
           // If response is not an array, try to extract data
-          console.warn("Unexpected API response structure:", response);
-          setDataSources([]);
+          console.warn("Unexpected API response structure:", responseData);
+          // Fallback to mock data if structure is unexpected
+          setDataSources(mockDataSources);
         }
       } catch (err) {
-        console.error("Error fetching person objects:", err);
+        console.error("Error fetching audience task:", err);
         setError(err instanceof Error ? err.message : "Failed to load data");
         // Fallback to mock data on error
         setDataSources(mockDataSources);
@@ -158,7 +206,9 @@ export default function AudiencePage() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-              <p className="text-sm text-muted-foreground">Loading data sources...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading data sources...
+              </p>
             </CardContent>
           </Card>
         ) : error ? (
@@ -171,9 +221,7 @@ export default function AudiencePage() {
               <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
                 {error}
               </p>
-              <Button onClick={() => window.location.reload()}>
-                Retry
-              </Button>
+              <Button onClick={() => window.location.reload()}>Retry</Button>
             </CardContent>
           </Card>
         ) : dataSources.length === 0 ? (
