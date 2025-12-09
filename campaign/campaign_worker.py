@@ -193,21 +193,22 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         channel = get_channel(lead_data, campaign_details)
 
     # template_data = get_template_from_lead(lead_id)  # TODO: replace with GRYD async // input--lead_id, campaign_type output - template_data ,task name - get_whatsapp_template 
-    template_data=gryd.await_result(
-        task="get_whatsapp_template",
-        service="autocrm-agent",
-        kwargs={
-        "lead_id": lead_id,
-        "campaign_type": campaign_type,
-        "lead_info": {}
-        }
-    )
-    
+    # template_data=gryd.await_result(
+    #     task="get_whatsapp_template",
+    #     service="autocrm-agent",
+    #     kwargs={
+    #     "lead_id": lead_id,
+    #     "campaign_type": campaign_type,
+    #     "lead_info": {}
+    #     }
+    # )
+    template_data=get_whatsapp_template(lead_id=lead_id, campaign_type=campaign_type, lead_info={})
+        
     if not template_data:
         logger.error(f"No template data found for lead_id={lead_id}")
         return None
     template_data = template_data[0]
-    logger.info(f"TEMPLATE DATA for lead_id= {lead_id} and template details :\n{json.dumps(template_data, indent=4)}")
+    logger.info(f"TEMPLATE DATA for mobile_number = {lead_data.get('phone_number')} and lead_id= {lead_id} and template details :\n{json.dumps(template_data, indent=4)}")
 
     buttons = template_data.pop("buttons", None)
     # if buttons:
