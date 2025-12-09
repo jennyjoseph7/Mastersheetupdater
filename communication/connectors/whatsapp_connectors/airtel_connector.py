@@ -589,7 +589,7 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
 
         
         def handle_template():
-            logger.info(f"response_data::: {safe_orjson_dumps(response_data)}")
+            # logger.info(f"response_data::: {safe_orjson_dumps(response_data)}")
             if any(response_data.get(i) for i in ['template', 'template_id']) or response_data.get("is_campaign"):
                 if response_data.get("template", "").lower() in NONE_TEMPLATE_TYPES or response_data.get("template_id", "").lower() in NONE_TEMPLATE_TYPES:
                     logger.info("Template not found or marked to skip")
