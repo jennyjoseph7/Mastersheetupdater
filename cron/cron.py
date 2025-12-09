@@ -442,9 +442,38 @@ def create_campaign_templates(logger=None, job=None):
                     except Exception as db_error:
                         logger.error(f"Failed posting to Gryd model: {db_error}")
 
+                def get_approval_status_and_update_in_db(template_ids:List):
+                    for template_id in template_ids:
+                        total = len(template_ids)
+                        logger.info(f"Starting template approval sync for {total} templates")
+                        try:
+                            for id in template_ids:
+                            
+                                url = "https://iqwhatsapp.airtel.in/gateway/airtel-xchange/whatsapp-content-manager/v1/template?customerId="+data["customer_id"]+"&"+"subAccountId="+data["sub_account_id"]+"&"+"wabaId="+data["waba_id"]+"&"+"templateId="+id
+
+                                payload = {}
+                                headers = data["auth_headers"]
+
+                                logger.debug(f"GET → {url}")
+
+                                response = requests.request("GET", url, headers=headers, data=payload)
+                                response = response.json()
+                                template_data = response.get("template")
+                                logger.info(f"response is {response}")
+                                status = template_data.get("registrationStatus").lower()
+
+                                pg.update(table_name="template",id_attr="template_id", id=id,data={"status" : status})
+                                logger.info(f"Updated Successfully for template id = {id}")
+
+
+                        except Exception as e:
+                           # Log and continue to next one
+                           print(f"[FAILED] template {template_id}: {e}")
+                           continue
                 
 
                 final_attribute_list = get_template_variable_list(campaign_type)
+                template_ids = []
 
                 for attr_list in final_attribute_list:
                     kwargs = {'campaign_type':campaign_type,'campaign_objective': campaign_objective, 'dealership_id': dealership_id, 'languages': languages, 'data':{'attribute_name':attr_list}}
@@ -453,7 +482,10 @@ def create_campaign_templates(logger=None, job=None):
                     )
                     #logic for airtel api 
                     api_response = send_template_for_approval(template_data= campaign_template, languages= languages)
+                    template_ids.append(api_response)
                     post_template_into_model(template_data = campaign_template ,template_id= api_response, template_variables = attr_list)
+                
+                get_approval_status_and_update_in_db(template_ids=template_ids)
 
                 if campaign_template:
                     created_template_count += 1
