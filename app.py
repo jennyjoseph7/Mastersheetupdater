@@ -4,13 +4,13 @@ from models import model as base_model
 from ai_service import ai_service_app
 # from communication.connectors.connector_whatsapp import process_forwarded_webhook
 from db_routes import db_routes
-#from voice import process_webhook
+from voice.voice.providers.twilio import app as twilio_routes
 import os
 from flask import request
 from config import *
 import autocrm_validator
 
-gryd.SERVICE = f"{AUTOCRM_APP_ENTERPRISE_ID}-app"
+gryd.SERVICE = f"{AUTOCRM_APP_ENTERPRISE_ID}-app"   
 QM = gryd.set_queue_manager()
 logger = gryd.hp.get_logger(AUTOCRM_APP_ENTERPRISE_ID)
 app_dict = gryd_routes.make_app(__name__, current_module = __name__)                                                                 
@@ -90,7 +90,8 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
 
 
 @app.route('/test_voice_agent/<provider>/<session_id>', methods = ["POST"])
-def test_voice_agent(provider):
+def test_voice_agent(provider, session_id):
+    import voice
     payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
     prompt = payload.get("prompt")
     
@@ -99,6 +100,7 @@ def test_voice_agent(provider):
         conversation_id = payload.get('conversation_id')
         campaign_id = payload.get('campaign_id')
     
+
     response = {
         "status":"connected",  #failed 
         "wss_url":"<websocket_url>"
@@ -109,8 +111,10 @@ def test_voice_agent(provider):
 
 
 
-app.register_blueprint(ai_service_app.ai_service_routes)
+app.register_blueprint(ai_service_app.app)
 app.register_blueprint(db_routes)
+app.register_blueprint(twilio_routes)
 if __name__ == "__main__":
+
     app.run(debug=True, host=app_dict['host'], port=app_dict['port'])
 

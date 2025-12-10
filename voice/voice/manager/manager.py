@@ -9,16 +9,13 @@ import logging
 from enum import Enum
 from dataclasses import dataclass, asdict
 from typing import Optional, Union, Literal
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Manager
 import threading
 import queue
 import signal
 
 import utils
 logger = utils.get_logger(__name__)
-
-
-BUFFER_IDENTIFIER = None  # Special identifier for clear buffer messages
 
 class InputState(Enum):
     IDLE = "idle"
@@ -76,11 +73,12 @@ class Message:
 class InputManager:
     """Manages incoming user audio stream in a separate process"""
 
-    def __init__(self, session_id: str, client, input_queue: Queue, output_queue: Queue, provider, shutdown_event=None):
+    def __init__(self, session_id: str, client, input_queue: Queue, output_queue: Queue, provider, buffer_identifier, shutdown_event=None):
         self.session_id = session_id
         self.input_queue = input_queue  # multiprocessing.Queue - sends to voice agent
         self.output_queue = output_queue  # multiprocessing.Queue - receives from voice agent
         self.provider = provider # to keep input and output consistent
+        self.buffer_identifier = buffer_identifier  # Shared buffer identifier between processes
         self.shutdown_event = shutdown_event  # multiprocessing.Event for shutdown signal
 
         self.state = InputState.IDLE
@@ -120,15 +118,12 @@ class InputManager:
         if not raw_data:
             return
 
-        if raw_data.get('tag') and raw_data.get('tag') != self.tag:
-            logger.info('Seems like message from output manager, ignoring...')
-        
 
         in_payload = self.provider.receive_message(raw_data)
         logger.info(f'recieved data in input queue: {type(in_payload.get("audio_data"))}')
 
-        if in_payload.get('audio_data')[:10] == BUFFER_IDENTIFIER:
-            logger.info('Clear buffer message received, ignoring in input manager...')
+        if in_payload.get('audio_data')[:10] == self.buffer_identifier.value:
+            logger.info('Looks like messaage from output manager ignoring...')
             return
 
         if in_payload.get('message_type','') == 'stream_start':
@@ -302,10 +297,11 @@ class InputManager:
 class OutputManager:
     """Manages outgoing voice responses in a separate process"""
 
-    def __init__(self, session_id: str, client, output_queue: Queue, provider, shutdown_event=None):
+    def __init__(self, session_id: str, client, output_queue: Queue, provider, buffer_identifier, shutdown_event=None):
         self.session_id = session_id
         self.output_queue = output_queue  # multiprocessing.Queue - receives from voice agent
         self.provider  = provider #to maintain consistent output
+        self.buffer_identifier = buffer_identifier  # Shared buffer identifier between processes
         self.shutdown_event = shutdown_event  # multiprocessing.Event for shutdown signal
         self.running = True
 
@@ -347,8 +343,11 @@ class OutputManager:
                         logger.info("Received shutdown signal in OutputManager")
                         self.running = False
                         break
-                    
-                    BUFFER_IDENTIFIER = message.get('audio_data')[:10]
+
+                    # Set shared buffer identifier from the first 10 bytes of audio data
+                    if message.get('audio_data'):
+                        self.buffer_identifier.value = message.get('audio_data')[:10]
+
                     message = self.provider.send_message(message)
                     #message['tag'] = 'output_manager'
                     logger.info(f'recieved message from output queue: {message}')
