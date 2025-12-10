@@ -240,8 +240,9 @@
     {
       "name": "status",
       "type": "text",
-      "options": ["pending", "approved", "rejected"],
-      "default": "pending"
+      "options": ["pending", "approved", "rejected","error"],
+      "default": "pending",
+      "option_others":true
     },
     {
       "name": "template_id",
@@ -251,6 +252,6 @@
       "default": {
         "function": "make_uuid_timestamp"
       }
-    }
+    } 
   ]
 }
