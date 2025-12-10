@@ -1,6 +1,18 @@
-// Audience metadata for header
+// Audience metadata for header - includes data source IDs
 const audienceMetadata: Record<string, { name: string; description: string }> =
   {
+    "1": {
+      name: "Premium Customers - CRM",
+      description: "Premium customers from Salesforce CRM",
+    },
+    "2": {
+      name: "Q4 Leads",
+      description: "Leads from Q4 campaign",
+    },
+    "3": {
+      name: "Active Subscribers",
+      description: "Active subscribers from HubSpot",
+    },
     "car-buyers": {
       name: "Car Buyers",
       description: "Customers who have purchased vehicles",

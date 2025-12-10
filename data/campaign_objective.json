@@ -23,11 +23,7 @@
     {
       "name": "campaign_type",
       "type": "text",
-      "options": [
-        "pre-sales",
-        "post-sales",
-        "dealership"
-      ],
+      "options": ["pre-sales", "post-sales", "dealership"],
       "ui_element": "select",
       "indexed": true
     },
@@ -74,27 +70,24 @@
     {
       "name": "conversation_tone",
       "type": "text",
-      "options": [
-        "Friendly",
-        "Professional",
-        "Polite",
-        "Urgent",
-        "Persuasive",
-        "Empathetic"
-      ],
-      "default": "Friendly",
-      "ui_element": "select"
+      "title": "Conversation Tone",
+      "default": "Be on-point, warm, confident, polite, conversational, and very crisp — like a friendly local representative. Avoid being pushy or overly sales oriented. Incorporate natural conversational elements like brief affirmations   to maintain engagement. End every conversation politely, with warmth and gratitude. Speak at a medium pace, easy to follow, with positive, empathetic, and reassuring emotion (not robotic).",
+      "option_others":true,
+      "ui_element": "textarea"
+      
     },
     {
-      "name": "custom_attributes",
+      "name": "required_attributes",
+      "type": "string_list",
+      "list_type": "text",
+      "title": "Required Attributes",
+      "ui_element": "tags"
+    },
+    {
+      "name": "audience_attributes",
       "type": "object_list",
       "list_type": "nested_object",
-      "dict_keys": [
-        "attribute_name",
-        "attribute_value",
-        "attribute_type",
-        "attribute_description"
-      ]
+      "title": "Audience Attributes"
     },
     {
       "name": "guardrails_guidelines",
@@ -177,17 +170,20 @@
       "indexed": true
     },
     {
+      "name": "brand_id",
+      "type": "uid",
+      "indexed": true,
+      "required": false,
+      "title": "Brand ID"
+    },
+    {
       "name": "campaign_objective_id",
       "type": "uid",
       "id": true,
       "auto_updater": true,
       "default": {
         "function": "name_to_id",
-        "args": [
-          "campaign_type",
-          "campaign_objective_name",
-          "dealership_id"
-        ],
+        "args": ["campaign_type", "campaign_objective_name", "dealership_id"],
         "kwargs": {
           "attribute_join": "-",
           "is_unique": true,
@@ -198,7 +194,5 @@
       }
     }
   ],
-  "parents": [
-    "dealership"
-  ]
+  "parents": ["dealership"]
 }

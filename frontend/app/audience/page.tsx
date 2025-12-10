@@ -2,212 +2,217 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Database, Loader2 } from "lucide-react";
+import { Plus, RefreshCcw } from "lucide-react";
 import { DataSourcesDataTable } from "@/components/audience/data-sources-datatable";
 import { AddDataSourceDialog } from "@/components/audience/add-data-source-dialog";
-import { fetchPersonObjects } from "@/lib/api";
+import { fetchAudienceTasks, getTaskStatus, getTaskResult, updateAudienceTask } from "@/utils/api";
 
 export interface DataSource {
-  id: string;
+  id: string;          
+  taskId: string;      
   sourceName: string;
   audienceName: string;
-  type: "API" | "File";
+  type: string;
   audienceSize: number;
   lastSynced: string;
-  status: "Connected" | "Error" | "Expired";
-}
-
-// Mock data for demonstration
-const mockDataSources: DataSource[] = [
-  {
-    id: "1",
-    sourceName: "Salesforce",
-    audienceName: "Premium Customers – CRM",
-    type: "API",
-    audienceSize: 1250,
-    lastSynced: "2025-01-10T14:30:00Z",
-    status: "Connected",
-  },
-  {
-    id: "2",
-    sourceName: "Google Sheets",
-    audienceName: "Q4 Leads",
-    type: "File",
-    audienceSize: 850,
-    lastSynced: "2025-01-09T10:15:00Z",
-    status: "Connected",
-  },
-  {
-    id: "3",
-    sourceName: "HubSpot",
-    audienceName: "Active Subscribers",
-    type: "API",
-    audienceSize: 3200,
-    lastSynced: "2025-01-08T16:45:00Z",
-    status: "Error",
-  },
-];
-
-// Transform API person objects to DataSource format
-// Adjust this based on your actual API response structure
-function transformPersonToDataSource(person: any, index: number): DataSource {
-  // This is a sample transformation - adjust based on your actual API response
-  return {
-    id: person.id || person._id || `person_${index}`,
-    sourceName: person.sourceName || person.source_name || person.source || "Unknown Source",
-    audienceName: person.audienceName || person.audience_name || person.name || `Audience ${index + 1}`,
-    type: (person.type === "File" || person.type === "file") ? "File" : "API",
-    audienceSize: person.audienceSize || person.audience_size || person.size || 0,
-    lastSynced: person.lastSynced || person.last_synced || person.updatedAt || person.updated_at || new Date().toISOString(),
-    status: person.status === "error" ? "Error" : person.status === "expired" ? "Expired" : "Connected",
-  };
+  status: "Connected" | "Error" | "Expired" | "Pending" | "Processing" | "Completed" | "Failed";
+  tags?: string[];
+  errorDetails?: any[]; 
 }
 
 export default function AudiencePage() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleAddDataSource = (
-    newSource: Omit<DataSource, "id" | "lastSynced" | "status">,
-  ) => {
-    const dataSource: DataSource = {
-      ...newSource,
-      id: `ds_${Date.now()}`,
-      lastSynced: new Date().toISOString(),
-      status: "Connected",
-    };
-    setDataSources([...dataSources, dataSource]);
-    setIsAddDialogOpen(false);
+  // Map backend string to frontend badge status
+  const mapBackendStatus = (status: string): DataSource["status"] => {
+    if (!status) return "Pending";
+    const s = status.toLowerCase();
+    
+    // Explicitly mapping success/completed to "Connected"
+    if (s === "completed" || s === "success" || s === "connected") return "Connected";
+    if (s === "started" || s === "processing" || s === "in_progress") return "Processing";
+    if (s === "error" || s === "failed" || s === "failure") return "Error";
+    if (s === "expired") return "Expired";
+    
+    return "Pending";
   };
 
-  const handleRemove = (id: string) => {
-    setDataSources(dataSources.filter((ds) => ds.id !== id));
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const { items } = await fetchAudienceTasks();
+      
+      const mappedData: DataSource[] = items.map((item: any) => ({
+        id: item.audience_task_id || item._id, 
+        taskId: item.task_id, 
+        sourceName: item.source_name || "Unknown Source",
+        audienceName: item.audience_name || "Untitled Audience",
+        type: item.source_type || "File", 
+        audienceSize: item.process_size || item.audience_size_csv || 0,
+        lastSynced: item.updated ? new Date(item.updated * 1000).toISOString() : new Date().toISOString(), 
+        status: mapBackendStatus(item.csv_status),
+        tags: item.tags || [],
+        errorDetails: item.error_details || [] 
+      }));
+
+      setDataSources(mappedData);
+    } catch (error) {
+      console.error("Failed to load audience tasks", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleResync = (id: string) => {
-    setDataSources(
-      dataSources.map((ds) =>
-        ds.id === id
-          ? {
-              ...ds,
-              lastSynced: new Date().toISOString(),
-              status: "Connected" as const,
-            }
-          : ds,
-      ),
-    );
-  };
+  // --- REFRESH LOGIC ---
+  const handleRefreshRow = async (rowId: string) => {
+    const row = dataSources.find((d) => d.id === rowId);
+    
+    // We need the UUID (taskId) for the API calls
+    if (!row || !row.taskId) {
+      console.error("No Task ID found for row", rowId);
+      return;
+    }
 
-  // Fetch data from API on component mount
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetchPersonObjects();
-        // Handle different response structures
-        const persons = response.data || response.items || response || [];
-        
-        if (Array.isArray(persons)) {
-          const transformed = persons.map((person: any, index: number) =>
-            transformPersonToDataSource(person, index)
-          );
-          setDataSources(transformed);
-        } else {
-          // If response is not an array, try to extract data
-          console.warn("Unexpected API response structure:", response);
-          setDataSources([]);
-        }
-      } catch (err) {
-        console.error("Error fetching person objects:", err);
-        setError(err instanceof Error ? err.message : "Failed to load data");
-        // Fallback to mock data on error
-        setDataSources(mockDataSources);
-      } finally {
-        setIsLoading(false);
+    try {
+      // 1. Fetch Status from Task Queue using UUID
+      const statusData = await getTaskStatus(row.taskId);
+      
+      let newStatus: DataSource["status"] = "Pending";
+      let backendStatusString = "pending";
+      let errorList: any[] = [];
+
+      // 2. Logic: Check for Errors First
+      // Even if status says "success", if the error array has items, it is an Error.
+      if (
+          (statusData.error && Array.isArray(statusData.error) && statusData.error.length > 0) ||
+          statusData.status === "error" || 
+          statusData.state === "FAILURE" || 
+          statusData.state === "REVOKED"
+      ) {
+         newStatus = "Error";
+         backendStatusString = "error";
+         // Capture errors
+         if (statusData.error) {
+            errorList = Array.isArray(statusData.error) ? statusData.error : [statusData.error];
+         }
+      } 
+      // 3. If "Success" and No Errors -> Connected
+      else if (statusData.status === "success" || statusData.state === "SUCCESS") {
+         newStatus = "Connected"; 
+         backendStatusString = "connected"; 
+      } 
+      // 4. Otherwise Processing
+      else {
+         newStatus = "Processing";
+         backendStatusString = (statusData.status || statusData.state || "processing").toLowerCase();
       }
-    };
 
+      let newSize = row.audienceSize;
+      let errorCsvLink = "";
+
+      // 5. If Connected (Success), fetch final counts from Result API
+      if (newStatus === "Connected") {
+          try {
+             const resultData = await getTaskResult(row.taskId);
+             const result = resultData.result || resultData;
+             
+             // Update size logic
+             if (result.processed !== undefined) newSize = result.processed;
+             else if (result.total !== undefined) newSize = result.total;
+             
+             // Capture error link if it exists
+             if (result.error_csv || result.error_csv_url) {
+                errorCsvLink = result.error_csv || result.error_csv_url;
+             }
+             
+          } catch (resError) {
+             console.error("Failed to fetch result details", resError);
+          }
+      }
+
+      // 6. UPDATE DB (PUT) 
+      // Using the UUID (taskId) as requested by the URL structure ?task_id=...
+      const updatePayload: any = {
+          csv_status: backendStatusString,
+          process_size: newSize,
+      };
+      
+      if (errorCsvLink) updatePayload.error_csv_link = errorCsvLink;
+
+      try {
+        await updateAudienceTask(row.taskId, updatePayload);
+      } catch (dbError) {
+        console.error("Failed to update audience task in DB", dbError);
+      }
+
+      // 7. Update Local UI State immediately
+      setDataSources((prev) => 
+        prev.map((item) => {
+          if (item.id === rowId) {
+            return { 
+                ...item, 
+                status: newStatus,
+                audienceSize: newSize,
+                lastSynced: newStatus === "Connected" ? new Date().toISOString() : item.lastSynced,
+                errorDetails: errorList 
+            };
+          }
+          return item;
+        })
+      );
+    } catch (error) {
+      console.error(`Failed to refresh row ${rowId}`, error);
+    }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
+  const handleSaveDataSource = async () => {
+    setIsDialogOpen(false);
+    setTimeout(() => loadData(), 500); 
+  };
+
   return (
-    <div className="flex min-h-screen flex-col">
-      <div>
-        <div className="flex h-20 items-center justify-between px-6 md:px-8">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Audience Data Sources
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Connect and manage your audience data sources
-            </p>
-          </div>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
+    <div className="space-y-6 p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Audience Data Sources</h1>
+          <p className="text-muted-foreground">
+            Manage your connected data sources and audience lists.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={loadData} title="Refresh List">
+                <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
             Add Data Source
-          </Button>
+            </Button>
         </div>
       </div>
 
-      <main className="flex-1 p-6 md:p-8">
-        {isLoading ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-4" />
-              <p className="text-sm text-muted-foreground">Loading data sources...</p>
-            </CardContent>
-          </Card>
-        ) : error ? (
-          <Card className="border-destructive">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className="rounded-full bg-destructive/10 p-6 mb-4">
-                <Database className="h-12 w-12 text-destructive" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Error loading data</h3>
-              <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
-                {error}
-              </p>
-              <Button onClick={() => window.location.reload()}>
-                Retry
-              </Button>
-            </CardContent>
-          </Card>
-        ) : dataSources.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className="rounded-full bg-muted p-6 mb-4">
-                <Database className="h-12 w-12 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">
-                No audience sources connected yet
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
-                Connect your first data source to start building targeted
-                audience segments for your campaigns
-              </p>
-              <Button onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Data Source
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <DataSourcesDataTable
-            data={dataSources}
-            onRemove={handleRemove}
-            onResync={handleResync}
-          />
-        )}
-      </main>
+      {isLoading && dataSources.length === 0 ? (
+         <div className="flex items-center justify-center h-64 border rounded-lg bg-card">
+            <p className="text-muted-foreground">Loading audiences...</p>
+         </div>
+      ) : (
+        <DataSourcesDataTable
+          data={dataSources}
+          onRemove={(id) => console.log("Remove", id)}
+          onResync={(id) => console.log("Resync", id)}
+          onRefreshStatus={handleRefreshRow} 
+        />
+      )}
 
       <AddDataSourceDialog
-        isOpen={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
-        onSave={handleAddDataSource}
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSave={handleSaveDataSource}
       />
     </div>
   );

@@ -11,8 +11,15 @@ if __name__ == "__main__":
     # trigger_campaign("post-sales","626952a0-1ac7-3a7c-85aa-c46d30897ea4")
     
     gryd.create_async_task(
-            "process_single_lead",
-            "autocrm-campaign",
-            args=["None", "dl9cay2838-ambal-auto-scheduled-service-reminder","post-sales","74f260b8-e8dc-3c52-ab8d-31bd0fc49943"],
-            kwargs={}
-        )
+        "trigger_campaign",
+        "autocrm-campaign",
+        args=["post-sales","626952a0-1ac7-3a7c-85aa-c46d30897ea4"],
+        kwargs={}
+    )
+    
+    # gryd.create_async_task(
+        #     "process_single_lead",
+        #     "autocrm-campaign",
+        #     args=["None", "dl9cay2838-ambal-auto-scheduled-service-reminder","post-sales","74f260b8-e8dc-3c52-ab8d-31bd0fc49943"],
+        #     kwargs={}
+        # )

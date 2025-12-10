@@ -157,9 +157,9 @@ class BaseCampaignCreater:
         sender = campaign_details.get("sender")
         logger.info(
             f"Preparing to send campaign message for lead_id={lead_id}, "
-            f"provider={whatsapp_provider}, number={sender}"
+            f"provider={whatsapp_provider}, number={mobile_number}"
         )
-        logger.info(f"MOBILE NUMBER_---{mobile_number}")
+        # logger.info(f"MOBILE NUMBER_---{mobile_number}")
         # Format mobile number safely
         mobile_number = self._format_mobile_number(
             mobile_number,
@@ -472,7 +472,7 @@ class BaseCustomCampaignManager:
         """
 
         try:
-            logger.info(f"Campaign details: {json.dumps(kwargs, indent=4, default=str)}")
+            # logger.info(f"Campaign details: {json.dumps(kwargs, indent=4, default=str)}")
             logger.info(f"kwargs--{kwargs.get('campaign_id')}")
             # Resolve IDs
             enterprise_id = kwargs.get("enterprise_id") or enterprise_id or "test1"
