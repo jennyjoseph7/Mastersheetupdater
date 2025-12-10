@@ -492,3 +492,86 @@ def create_campaign_templates(logger=None, job=None):
     return {
         "created_template_count": created_template_count,
     }
+
+@gryd.is_a_task('update_template_status', logger_param='logger', job_param='job')
+def update_template_status(template_ids:List,dealership_id:str,logger=None, job=None):
+    """
+    get_template_status worker gets the status of a whatsapp template and update the status in template model:
+    input : template_ids : A list of template ids, 
+            dealership_id : Id of the dealership, required for getting their comm creds 
+
+    """
+    logger = logger or mlogger
+    if not template_ids or not isinstance(template_ids, list):
+        logger.error("template_ids is missing or invalid. Must be a non-empty list.")
+        return
+
+    if not dealership_id:
+        logger.error("dealership_id is None or empty.")
+        return
+
+
+    default_data = {
+            "waba_id": "113485138500957",
+            "customer_id": "SOCIOGRAPH_uu76NiJRbNmsq5zPgu5V",
+            "sub_account_id": "965a92cd-ac2e-4674-87ab-99fc174e071f",
+            "auth_headers": {
+                "Content-Type": "application/json",
+                "Authorization": "Basic ZGF2ZV9haTpJSjJQVjhebDVjODU="
+            }       
+        }
+    records = list(pg.list(
+    table_name= "communication_credential",
+    where= {
+
+        "dealership_id": dealership_id
+
+    }
+    ))
+    data = records[0] if records else default_data
+
+    string_auth_fields = [
+            data.get("waba_id"),
+            data.get("customer_id"),
+            data.get("sub_account_id")
+        ]
+
+    valid_strings = all(
+        isinstance(v, (str, int)) and str(v).strip() != ""
+        for v in string_auth_fields
+    )
+    # Validate auth header dict
+    auth = data.get("auth_headers")
+    valid_auth_header = (
+        isinstance(auth, dict)
+        and "Authorization" in auth
+        and isinstance(auth["Authorization"], str)
+        and auth["Authorization"].strip() != ""
+    )
+    # If ANY field is missing/invalid → fallback to default
+    if not (valid_strings and valid_auth_header):
+        data = default_data
+
+    total = len(template_ids)
+    logger.info(f"Starting template approval sync for {total} templates")
+
+    for template_id in template_ids:
+        
+        try:
+            for id in template_ids:
+            
+                url = "https://iqwhatsapp.airtel.in/gateway/airtel-xchange/whatsapp-content-manager/v1/template?customerId="+data["customer_id"]+"&"+"subAccountId="+data["sub_account_id"]+"&"+"wabaId="+data["waba_id"]+"&"+"templateId="+id
+                payload = {}
+                headers = data["auth_headers"]
+                logger.debug(f"GET → {url}")
+                response = requests.request("GET", url, headers=headers, data=payload)
+                response = response.json()
+                template_data = response.get("template")
+                logger.info(f"response is {response}")
+                status = template_data.get("registrationStatus").lower()
+                pg.update(table_name="template",id_attr="template_id", id=id,data={"status" : status})
+                logger.info(f"Updated Successfully for template id = {id}")
+        except Exception as e:
+           # Log and continue to next one
+           print(f"[FAILED] template {template_id}: {e}")
+           continue
