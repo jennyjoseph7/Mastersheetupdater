@@ -54,60 +54,8 @@ interface DataSourcesDataTableProps {
   onRefreshStatus?: (id: string) => Promise<void>;
 }
 
-const getStatusBadge = (status: DataSource["status"]) => {
-  const statusLower = status?.toLowerCase() || "";
-
-  switch (statusLower) {
-    case "connected":
-      return (
-        <Badge className="bg-emerald-500 hover:bg-emerald-600">Connected</Badge>
-      );
-    case "error":
-    case "failed":
-      return <Badge variant="destructive">Error</Badge>;
-    case "expired":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-orange-50 text-orange-700 border-orange-300"
-        >
-          Expired
-        </Badge>
-      );
-    case "pending":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-yellow-50 text-yellow-700 border-yellow-300"
-        >
-          Pending
-        </Badge>
-      );
-    case "processing":
-    case "in_progress":
-      return (
-        <Badge
-          variant="outline"
-          className="bg-blue-50 text-blue-700 border-blue-300"
-        >
-          Processing
-        </Badge>
-      );
-    case "completed":
-    case "success":
-      return (
-        <Badge className="bg-emerald-500 hover:bg-emerald-600">Completed</Badge>
-      );
-    default:
-      // Capitalize first letter for display
-      const displayStatus = status
-        ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
-        : "Unknown";
-      return <Badge variant="outline">{displayStatus}</Badge>;
-  }
-};
-
 const formatDate = (dateString: string) => {
+  if (!dateString) return "-";
   const date = new Date(dateString);
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -118,10 +66,12 @@ const formatDate = (dateString: string) => {
   }).format(date);
 };
 
-// Create columns function that accepts router and refresh handler
+// Helper function to create column definitions
 const createColumns = (
   router: ReturnType<typeof useRouter>,
-  onRefreshStatus?: (id: string) => Promise<void>
+  onRefreshStatus?: (id: string) => Promise<void>,
+  onRemove?: (id: string) => void,
+  onResync?: (id: string) => void
 ): ColumnDef<DataSource>[] => [
   {
     accessorKey: "sourceName",
@@ -154,18 +104,17 @@ const createColumns = (
       );
     },
     cell: ({ row }) => {
-      const audienceName = row.getValue("audienceName") as string;
+      // Access the original row data to get the ID
       const source = row.original;
       return (
         <div
           className="font-medium text-primary cursor-pointer hover:underline"
           onClick={(e) => {
             e.stopPropagation();
-            // Navigate to audience detail page using the source ID
             router.push(`/audiences/${source.id}`);
           }}
         >
-          {audienceName}
+          {row.getValue("audienceName")}
         </div>
       );
     },
@@ -176,19 +125,24 @@ const createColumns = (
     cell: ({ row }) => {
       const tags = row.getValue("tags") as string[] | undefined;
       if (!tags || tags.length === 0) {
-        return <div className="text-muted-foreground">-</div>;
+        return <div className="text-muted-foreground text-xs">-</div>;
       }
       return (
-        <div className="flex flex-wrap gap-1">
-          {tags.map((tag, index) => (
+        <div className="flex flex-wrap gap-1 max-w-[200px]">
+          {tags.slice(0, 2).map((tag, index) => (
             <Badge
               key={index}
               variant="secondary"
-              className="text-xs bg-muted text-muted-foreground"
+              className="text-[10px] h-5 px-1 bg-muted text-muted-foreground whitespace-nowrap"
             >
               {tag}
             </Badge>
           ))}
+          {tags.length > 2 && (
+            <Badge variant="outline" className="text-[10px] h-5 px-1 text-muted-foreground">
+              +{tags.length - 2}
+            </Badge>
+          )}
         </div>
       );
     },
@@ -197,8 +151,7 @@ const createColumns = (
     accessorKey: "type",
     header: "Type",
     cell: ({ row }) => {
-      const type = row.getValue("type") as string;
-      return <Badge variant="outline">{type}</Badge>;
+      return <Badge variant="outline">{row.getValue("type")}</Badge>;
     },
   },
   {
@@ -218,27 +171,28 @@ const createColumns = (
     },
     cell: ({ row }) => {
       const size = parseFloat(row.getValue("audienceSize"));
-      return <div className="text-right">{size.toLocaleString()} contacts</div>;
+      return <div className="text-right font-mono">{size.toLocaleString()}</div>;
     },
   },
   {
     accessorKey: "lastSynced",
     header: ({ column }) => {
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Last Synced
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+        <div className="whitespace-nowrap">
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Last Synced
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
       );
     },
     cell: ({ row }) => {
-      const dateString = row.getValue("lastSynced") as string;
       return (
-        <div className="text-sm text-muted-foreground">
-          {formatDate(dateString)}
+        <div className="text-sm text-muted-foreground whitespace-nowrap">
+          {formatDate(row.getValue("lastSynced"))}
         </div>
       );
     },
@@ -247,12 +201,12 @@ const createColumns = (
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-      const status = row.getValue("status") as DataSource["status"];
       const source = row.original;
       return (
         <StatusCell
-          status={status}
+          status={row.getValue("status")}
           sourceId={source.id}
+          errorDetails={source.errorDetails}
           onRefreshStatus={onRefreshStatus}
         />
       );
@@ -263,7 +217,6 @@ const createColumns = (
     enableHiding: false,
     cell: ({ row }) => {
       const source = row.original;
-
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -274,30 +227,17 @@ const createColumns = (
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => {
-                // Handle edit action
-                console.log("Edit", source.id);
-              }}
-            >
+            <DropdownMenuItem onClick={() => console.log("Edit", source.id)}>
               <Edit className="mr-2 h-4 w-4" />
               Edit
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                // Handle resync action
-                console.log("Resync", source.id);
-              }}
-            >
-              <ChevronDown className="mr-2 h-4 w-4" />
+            <DropdownMenuItem onClick={() => onResync && onResync(source.id)}>
+              <RefreshCw className="mr-2 h-4 w-4" />
               Resync
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => {
-                // Handle remove action
-                console.log("Remove", source.id);
-              }}
+              onClick={() => onRemove && onRemove(source.id)}
               className="text-destructive"
             >
               <Trash2 className="mr-2 h-4 w-4" />
@@ -318,59 +258,19 @@ export function DataSourcesDataTable({
 }: DataSourcesDataTableProps) {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+
+  // Define columns using useMemo to keep references stable
+  const columns = React.useMemo(
+    () => createColumns(router, onRefreshStatus, onRemove, onResync),
+    [router, onRefreshStatus, onRemove, onResync]
+  );
 
   const table = useReactTable({
     data,
-    columns: createColumns(router, onRefreshStatus).map((col) => {
-      if (col.id === "actions") {
-        return {
-          ...col,
-          cell: ({ row }: any) => {
-            const source = row.original;
-            return (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
-                    <span className="sr-only">Open menu</span>
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      console.log("Edit", source.id);
-                    }}
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => onResync(source.id)}>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Resync
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => onRemove(source.id)}
-                    className="text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remove
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            );
-          },
-        };
-      }
-      return col;
-    }),
+    columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -397,14 +297,9 @@ export function DataSourcesDataTable({
           <div className="flex items-center py-4">
             <Input
               placeholder="Filter by source name..."
-              value={
-                (table.getColumn("sourceName")?.getFilterValue() as string) ??
-                ""
-              }
+              value={(table.getColumn("sourceName")?.getFilterValue() as string) ?? ""}
               onChange={(event) =>
-                table
-                  .getColumn("sourceName")
-                  ?.setFilterValue(event.target.value)
+                table.getColumn("sourceName")?.setFilterValue(event.target.value)
               }
               className="max-w-sm"
             />
@@ -424,9 +319,7 @@ export function DataSourcesDataTable({
                         key={column.id}
                         className="capitalize"
                         checked={column.getIsVisible()}
-                        onCheckedChange={(value) =>
-                          column.toggleVisibility(!!value)
-                        }
+                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
                       >
                         {column.id}
                       </DropdownMenuCheckboxItem>
@@ -475,7 +368,8 @@ export function DataSourcesDataTable({
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={columns.length}
+                      // FIX: Using table.getVisibleFlatColumns() avoids "columns is not defined" error
+                      colSpan={table.getVisibleFlatColumns().length}
                       className="h-24 text-center"
                     >
                       No results.
