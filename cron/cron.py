@@ -179,7 +179,7 @@ def create_campaign_templates(logger=None, job=None):
                 }
                 template_required_attributes = {
                     "pre-sales": ["dealer_name", "showroom_full_name", "person_name", "vehicle_category"],
-                    "post-sales": ["dealer_name", "workshop_full_name", "reg_number", "vehicle_model", "vehicle_category","next_service_due"]
+                    "post-sales": ["dealer_name", "workshop_full_name", "reg_number", "vehicle_model", "vehicle_category"]
 
                 }
                 audiance_required_attributes = {
@@ -202,7 +202,7 @@ def create_campaign_templates(logger=None, job=None):
 
                 }
                 pre_sale_special_combinations = [["model_preference","color_preference" ],["model_preference", "variant_preference"],["last_session_channel", "last_session_status"]]
-                post_sale_special_combinations = [["campaign_offer", "urgency_hook"],["last_session_channel", "last_session_status"]]
+                post_sale_special_combinations = [["campaign_offer", "urgency_hook"],["last_session_channel", "last_session_status"],["dealer_name", "workshop_full_name", "reg_number", "vehicle_model", "vehicle_category","next_service_due"]]
 
 
 
