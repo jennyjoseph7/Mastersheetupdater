@@ -102,16 +102,17 @@ async function startImportTask(category, audienceName, fileUrl, tags = [], sourc
             body: JSON.stringify({
                 args: [
                     category || "post-sales", 
-                    audienceName || "default-audience", 
+                     "ambal-auto-south-india", 
                     fileUrl
                 ],
                 kwargs: {
-                    campaign_id: "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
+                    campaign_id: "626952a0-1ac7-3a7c-85aa-c46d30897ea4",
+                    campaign_objective_id: "626952a0-1ac7-3a7c-85aa-c46d30897ea4",
                     workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
                     source: "csv",
                     tags: tags,
                     source_name: sourceName || "Uploaded via csv",
-                    field_mapping: fieldMapping
+                    mapping: fieldMapping
                 },
                   runtime_limit: 3600,
                 cancellable: true,
