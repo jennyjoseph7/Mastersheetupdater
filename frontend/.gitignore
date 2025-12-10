@@ -32,6 +32,7 @@ Thumbs.db
 .turbo/
 coverage/
 
-# Bun debug (do not ignore bun.lockb — keep lockfile committed)
+# Bun
+bun.lockb
 bun-debug.log
 .vercel
