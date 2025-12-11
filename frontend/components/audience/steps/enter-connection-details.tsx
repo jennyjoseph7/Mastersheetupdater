@@ -5,7 +5,13 @@ import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, X, AlertCircle, Loader2, CheckCircle2, FileJson } from "lucide-react";
+import {
+  Upload,
+  AlertCircle,
+  Loader2,
+  CheckCircle2,
+  FileJson,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DataSourceFormData } from "../add-data-source-dialog";
 import { 
@@ -24,7 +30,6 @@ export function EnterConnectionDetails({
   formData,
   updateFormData,
 }: EnterConnectionDetailsProps) {
-  const [isDragging, setIsDragging] = useState(false);
   const [status, setStatus] = useState<
     "idle" | "uploading" | "extracting" | "polling" | "success" | "error"
   >("idle");
@@ -35,24 +40,20 @@ export function EnterConnectionDetails({
   const fetchHeadersResult = async (taskId: string, file: File, fileUrl: string) => {
     try {
       const data = await getTaskResult(taskId);
-      
-      // Assumption: Result is either { result: ["col1", "col2"] } or just ["col1"...]
       const rawResult = data.result || data;
-      // Handle if result is nested or direct array
       const headers = Array.isArray(rawResult) ? rawResult : (rawResult.headers || []);
 
-      if (headers.length === 0) throw new Error("No headers found in CSV.");
+      if (!headers || headers.length === 0) throw new Error("No headers found in CSV.");
 
       updateFormData({
         file: file,
         fileUrl: fileUrl,
         sourceType: "File",
         extractedHeaders: headers,
-        // Reset mappings if file changes
         fieldMappings: headers.map((h: string, i: number) => ({
             id: `map_${i}`,
             sourceField: h,
-            targetField: h, // Default to same name, user can change
+            targetField: h,
             enabled: true
         }))
       });
@@ -75,9 +76,35 @@ export function EnterConnectionDetails({
       try {
         const data = await getTaskStatus(taskId);
         
-        if (data.status === "error" || data.state === "FAILURE") {
+        // --- SAFE ERROR HANDLING FIX ---
+        if (data.status === "error" || data.state === "FAILURE" || data.state === "REVOKED") {
           setStatus("error");
-          setStatusMessage("Header extraction failed.");
+          
+          let errorMsg = "Header extraction failed.";
+          
+          // Check if error is in an array
+          if (Array.isArray(data.error) && data.error.length > 0) {
+             const firstErr = data.error[0];
+             if (typeof firstErr === 'string') {
+               errorMsg = firstErr;
+             } else if (typeof firstErr === 'object' && firstErr !== null) {
+               // Safely access properties: _error, message, error
+               errorMsg = (firstErr as any)._error || (firstErr as any).message || (firstErr as any).error || "Validation error in CSV.";
+             }
+          } 
+          // Check if error is a direct object
+          else if (typeof data.error === 'object' && data.error !== null) {
+             errorMsg = (data.error as any)._error || (data.error as any).message || "Unknown error object.";
+          }
+          // Check if error is a string
+          else if (typeof data.error === 'string') {
+             errorMsg = data.error;
+          }
+
+          // Truncate if message is too long
+          if (errorMsg.length > 120) errorMsg = errorMsg.substring(0, 120) + "...";
+
+          setStatusMessage(errorMsg);
           return;
         }
 
@@ -92,6 +119,7 @@ export function EnterConnectionDetails({
       } catch (error) {
         console.error("Polling error:", error);
         setStatus("error");
+        setStatusMessage("Connection lost.");
       }
     };
     checkStatus();
@@ -132,12 +160,11 @@ export function EnterConnectionDetails({
     } catch (error: any) {
       console.error("Upload error:", error);
       setStatus("error");
-      setStatusMessage(error.message);
+      setStatusMessage(error.message || "Upload failed.");
       updateFormData({ file: null, fileUrl: undefined });
     }
   };
 
-  // --- UI Handlers ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) handleUploadFile(file);
@@ -195,9 +222,9 @@ export function EnterConnectionDetails({
                   </CardContent>
                 </Card>
                 {status === "error" && (
-                  <div className="text-xs text-destructive flex items-center gap-2 mt-2 font-medium">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>{statusMessage}</span>
+                  <div className="text-xs text-destructive flex items-start gap-2 mt-2 font-medium">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span className="break-all">{statusMessage}</span>
                   </div>
                 )}
               </div>
@@ -230,7 +257,7 @@ export function EnterConnectionDetails({
                   </div>
                   {status === "success" && (
                     <button onClick={removeFile} className="text-muted-foreground hover:text-destructive p-1">
-                      <X className="h-5 w-5" />
+                      <AlertCircle className="w-5 h-5" />
                     </button>
                   )}
                 </CardContent>

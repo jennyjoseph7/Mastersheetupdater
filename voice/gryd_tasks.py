@@ -5,7 +5,7 @@ from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as
 from gryd_worker.gryd_routes import payload_decorator
 from models import model as base_model
 from ai_service import ai_service_app
-from voice import *
+from voice.core import voice_app
 
 gryd.SERVICE = os.environ.get("AUTOBOT_CONVERSATION_SERVICE_NAME","autocrm-voice")
 
@@ -15,7 +15,7 @@ mlogger = gryd.hp.get_logger(__name__)
 
 
 
-@gryd.is_task()
+@gryd.is_task(function_name="trigger_voice_call")
 def trigger_voice_call(user_data, *args, **kwargs):
     """
     Initiates a call to the user and prepares session-related data.
@@ -42,9 +42,13 @@ def trigger_voice_call(user_data, *args, **kwargs):
         None or dict: (Describe return value if applicable)
     """
 
+    voice_app.run_async_session(
+        system_prompt = user_data.get("system_prompt", ""),
+        **user_data
+    )
 
     yield {
-        "seesion_id":"",
+        "seesion_id":user_data.get("session_id",""),
         "user_id":"",
         "call_sid": "<voice_provider_response_sid>",
         "campaign_id": "<campaign_id>"

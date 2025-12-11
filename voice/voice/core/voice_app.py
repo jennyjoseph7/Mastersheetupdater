@@ -6,15 +6,15 @@ from agent import voice_agent
 from manager.manager import *
 from clients import messaging_client as ws
 from utils import *
-from providers import provider_base as voice_provider
-
+import providers
 
 import asyncio
 import uuid
-from multiprocessing import Process, Queue, Event
+from multiprocessing import Process, Queue, Event, Manager
 import queue
 import time
 import signal
+
 
 from enum import Enum
 from dataclasses import dataclass
@@ -27,13 +27,19 @@ shutdown_requested = False
 
 
 
-async def user_session(system_prompt:str, init_config: dict = None,  **user_data):
+async def user_session(**user_data):
 
     input_queue = Queue()
     output_queue = Queue()
 
     # Shutdown events for graceful termination
     shutdown_event = Event()
+
+    # Create shared Manager for process-safe shared variables
+    manager = Manager()
+    # Create shared namespace for buffer identifier
+    buffer_identifier = manager.Namespace()
+    buffer_identifier.value = None  # Will store the first 10 bytes of audio_data
 
     session_id = user_data.get('session_id', 'test_session')
 
@@ -48,14 +54,16 @@ async def user_session(system_prompt:str, init_config: dict = None,  **user_data
         tag = "output_client"
     )
 
-    provider = voice_provider.get_provider(user_data.get('provider', 'twilio'))
+    provider = providers.get_provider(user_data.get('provider', 'twilio'))
 
+    from voice.voice.providers.twilio import MessageHandler, call
     IM = InputManager(
         session_id,
         input_client,
         input_queue,
         output_queue,
-        provider,
+        MessageHandler(),
+        buffer_identifier,
         shutdown_event
     )
 
@@ -63,7 +71,8 @@ async def user_session(system_prompt:str, init_config: dict = None,  **user_data
        session_id,
        output_client,
        output_queue,
-       provider,
+        MessageHandler(),
+       buffer_identifier,
        shutdown_event
     )
 
@@ -83,6 +92,9 @@ async def user_session(system_prompt:str, init_config: dict = None,  **user_data
     10)
 
     await VB.create_session()
+
+    #make call to user:
+    #call_object = call(user_data.get('number'), session_id)
 
     try:
         while True:
@@ -168,6 +180,15 @@ async def user_session(system_prompt:str, init_config: dict = None,  **user_data
         logger.info("Cleanup complete")
 
 
+def run_async_session(**user_data):
+    """Run the async user session in a new event loop"""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(user_session(**user_data))
+    finally:
+        loop.close()
+
 
 if __name__ == "__main__":
     def signal_handler(signum, _frame):
@@ -180,7 +201,10 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, signal_handler)
 
     try:
-        asyncio.run(user_session("hey"))
+        asyncio.run(user_session(**{
+            "number":"+918850988794",
+            "session_id":"918850988794-session-"+str(uuid.uuid4()),
+        }))
     except KeyboardInterrupt:
         logger.info("\nKeyboardInterrupt in main, shutting down...")
     except Exception as e:
