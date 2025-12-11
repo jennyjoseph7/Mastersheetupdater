@@ -126,7 +126,8 @@ def converse(*args, **kargs):
             yield from prune_response(orch_res,*args, **pass_kwargs)
 
     conversation_process_end_time = hp.time()
-    
+    with get_pg_connector() as pg:
+        pg.update("session","session_id",session_id,{"last_response_time":hp.time()})
     ###TODO add in all needed data to be passed for this task
     post_messages_data(*args, **pass_kwargs) 
     post_billing_data(customer_response, out_put_text, pass_kwargs.get("session_data_cache",{}).get("data").get("campaign_data"), dealership_id, channel, request_data)
@@ -138,6 +139,7 @@ def converse(*args, **kargs):
     return
 
 def post_billing_data(customer_response, out_put_text, campaign_data, dealership_id, channel, request_data):
+    ###TODO update the post call to do pg call, move to post session worker
     in_length = len(customer_response)
     out_length = len(out_put_text)
     total_length = in_length + out_length
