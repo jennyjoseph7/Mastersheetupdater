@@ -19,7 +19,7 @@ class ConversationAgent(BaseAgent):
         self.segment_classifier_result=segment_classifier_result 
         self.segment=self.segment_classifier_result["detected_segment"]
         self.promo_message=self.segment_classifier_result["promotional_message"]
-        self.media_links=self.segment_classifier_result["media_links"]
+        # self.media_links=self.segment_classifier_result["media_links"]
 
         self.propensity_result=propensity_result
         self.propensity_score=self.propensity_result["scores"]
