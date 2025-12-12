@@ -68,7 +68,7 @@
       "type": "list"
     },
     {
-      "name": "template_buttons_payload",
+      "name": "template_button_payloads",
       "type": "list"
     },
     {

@@ -403,7 +403,8 @@ def create_campaign_templates(logger=None, job=None):
                             print("Template ID not found in API response:", response_data)
                             return None
                 
-                        return template_id
+                        return_data =  {"template_id":template_id,"template_variables":ordered_variables}
+                        return return_data
 
                     except Exception as e:
                         print("Unexpected error:", e)
@@ -423,14 +424,20 @@ def create_campaign_templates(logger=None, job=None):
                     disposition_detail = None
 
                     if isinstance(template_variables, list):
-                        for item in template_variables:
+                        for idx, item in enumerate(template_variables):
                             if isinstance(item, dict):
                                 disposition = item.get("disposition")
                                 disposition_detail = item.get("disposition_detail")
+
+                                if disposition and disposition_detail:
+                                    del template_variables[idx]
+                                    break
                                 break
                             
                     if disposition and disposition_detail:
                         template_data["disposition_tags"] = [disposition, disposition_detail]
+
+                    template_data["template_variables"] = template_variables
 
 
 
@@ -482,8 +489,10 @@ def create_campaign_templates(logger=None, job=None):
                     )
                     #logic for airtel api 
                     api_response = send_template_for_approval(template_data= campaign_template, languages= languages)
-                    template_ids.append(api_response)
-                    post_template_into_model(template_data = campaign_template ,template_id= api_response, template_variables = attr_list)
+                    template_id = api_response.get("template_id")
+                    variables = api_response.get("template_variables")
+                    template_ids.append(template_id)
+                    post_template_into_model(template_data = campaign_template ,template_id= template_id, template_variables = variables)
                 
                 get_approval_status_and_update_in_db(template_ids=template_ids)
 

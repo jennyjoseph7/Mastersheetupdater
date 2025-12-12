@@ -167,7 +167,6 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         2. KEYS: The JSON object MUST contain exactly these keys (no others):
             - template_name: string,
             - template_text: string
-            - attributes_used: array of strings
             - suggested_ctas: array of strings
             - lead_tags: array of strings (must contain 2-3 relevant tags for the template's purpose) for example : "service-due","regular-customer", "warranty-active", "early-adopter","launch-interested","premium-seeker", "test-drive-interested", "high-intent", "new-buyer"
 
@@ -176,7 +175,6 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
             - The language you'll be using to generate template_text must be colloquial {language}
             - template_name: descriptive name related to campaign (use underscores, NO SPACES, must be lowercase).  will start with autobot word, an unique template name each time.
             - template_text: personalized message using ALL attributes with the EXACT format: {{attribute_name}}, You need to use all attributes and nothing more than given, under 400 characters (strict limit for compliance). The message must align with the Campaign Objective and campaign Type also should Disposition and disposition details if exists.
-            - attributes_used: array of attribute names actually used in template_text.
             - suggested_ctas: array of 2-3 CTA buttons.
             - lead_tags: array of 2-3 short, descriptive words (e.g., ["service-due", "new-model"]).
 
@@ -266,23 +264,6 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
                 "template_button_payloads": template_button_payloads
             }
     
-    def pick_from_model(self):
-
-        records = list(pg.list(
-        table_name= "template",
-        where= {
-            #filtering conditions will be added later
-        }
-        ))
-
-        if not records:
-            return []
-
-        # Randomly pick 5 without duplicates
-        sample_size = min(5, len(records))
-        picked = random.sample(records, sample_size)
-
-        return picked
     
     def fix_template_message_braces(self,template_json: dict) -> dict:
         """
@@ -304,51 +285,27 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
 
     def run(self):
         """Executes template generation and returns final result."""
-        # if self.campaign_type in ["pre-sales","Pre-sale","pre_sale","Pre_Sale","pre sale","Pre Sale"]:
-        #     model_attributes = self._extract_attributes("data/pre_sales_lead.json")
-        # elif self.campaign_type in ["Post-Sale","post-sales","Post_Sale","post_sale","Post-Sales","post-sales","Post_Sales","post_sales","post sale","Post Sale","post sales","Post Sales"]:
-        #     model_attributes = self._extract_attributes("data/post_sales_lead.json")
 
-        # self.input_data = {
-        #     key: value
-        #     for key, value in self.input_data.items()
-        #     if key in model_attributes
-        # }
-        # attributes_used = [key for key in self.input_data]
-
-        if self.ai_generation is True:
-            try:
-                self.logger.info("Starting WhatsApp template generation...")
-                self.logger.info(f"Source data: {json.dumps(self.source, indent=2)}")
-
-                # Generate template data
-                generated_data = ai_service_app.get_llm_response(
-                    messages= self._build_prompt(),
-                    model_identifier=self.model_identifier
-                )
-
-                generated_data = self._parse_ai_response(generated_data)
-
-                # Assemble final output
-                final_output = self._assemble_output(generated_data)
-
-                final_output["attributes_used"] = generated_data.get("attributes_used",[])
-                final_output["lead_tags"] = generated_data.get("lead_tags", [])
-
-
-                final_output = self.fix_template_message_braces(final_output)
-
-                self.logger.info("Template generation completed successfully")
-                self.logger.info(f"Generated template: {final_output['template_name']}")
-
-                return final_output
-
-            except Exception as e:
-                self.logger.error(f"Template generation failed: {str(e)}")
-                raise
-        else:
-            final_output = self.pick_from_model()
+        try:
+            self.logger.info("Starting WhatsApp template generation...")
+            self.logger.info(f"Source data: {json.dumps(self.source, indent=2)}")
+            # Generate template data
+            generated_data = ai_service_app.get_llm_response(
+                messages= self._build_prompt(),
+                model_identifier=self.model_identifier
+            )
+            generated_data = self._parse_ai_response(generated_data)
+            # Assemble final output
+            final_output = self._assemble_output(generated_data)
+            final_output["lead_tags"] = generated_data.get("lead_tags", [])
+            final_output = self.fix_template_message_braces(final_output)
+            self.logger.info("Template generation completed successfully")
+            self.logger.info(f"Generated template: {final_output['template_name']}")
             return final_output
+        except Exception as e:
+            self.logger.error(f"Template generation failed: {str(e)}")
+            raise
+
 
 
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
@@ -371,10 +328,6 @@ def generate_whatsapp_template(*args, logger=None, job=None, **kwargs):
             raise ValueError("user_data must be a dictionary")
 
         logger.info(f"Incoming template data: {user_data}")
-        campaign_id = user_data.get("campaign_id","")
-        campaign_type = user_data.get("campaign_type","")
-
-        #attribute_agent = data_attribute_retriever(campaign_id = campaign_id, campaign_type = campaign_type)
 
         agent = WhatsappTemplateCreatorAgent(source=user_data, logger=logger)
         logger.info("Running template generation agent...")
