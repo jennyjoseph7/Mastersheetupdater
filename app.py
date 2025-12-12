@@ -112,7 +112,7 @@ def test_voice_agent(provider, session_id):
 
 
 
-app.register_blueprint(ai_service_app.app)
+app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
 # app.register_blueprint(twilio_routes)
 # app.register_blueprint(elevanlabs_tatatele_app)
