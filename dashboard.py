@@ -273,6 +273,10 @@ with dealer_locator_agent:
             st.info("ℹ️ Dealer locator agent yet to be written.")
             return
         
+        if "error" in dealer_locator_result:
+            st.error("Dealer locator agent under development.")
+            return
+        
         location_data = dealer_locator_result["location"]
         for loc in location_data:
             if "error" in loc:
