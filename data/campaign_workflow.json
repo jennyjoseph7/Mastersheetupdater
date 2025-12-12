@@ -2,12 +2,6 @@
     "name": "campaign_workflow",
     "attributes": [
         {
-            "name": "campaign_id",
-            "type": "text",
-            "indexed": true,
-            "required": true
-        },
-        {
             "name": "campaign_type",
             "type": "text",
             "required": true,
@@ -44,25 +38,24 @@
             }
         },
         {
-            "name": "campaign_name",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "{campaign_model}",
-                    "{campaign_id}",
-                    "campaign_name"
-                ]
-            }
+            "name": "campaign_objective_id",
+            "type": "uid",
+            "required": true,
+            "indexed": true
         },
         {
-            "name": "campaign_objective",
+            "name": "campaign_objective_name",
+            "type": "text",
+            "force_update": [
+                "campaign_objective_id"
+            ],
+            "auto_updater": true,
             "default": {
                 "function": "get_from_model",
                 "args": [
-                    "{campaign_model}",
-                    "{campaign_id}",
-                    "campaign_objective"
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "campaign_objective_name"
                 ]
             }
         },
@@ -70,15 +63,30 @@
             "name": "dealership_id",
             "type": "uid",
             "force_update": [
-                "campaign_id"
+                "campaign_objective_id"
+            ],
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "dealership_id",
+                    "dave"
+                ]
+            }
+        },
+        {
+            "name": "dealership_name",
+            "type": "uid",
+            "force_update": [
+                "campaign_objective_id"
             ],
             "default": {
                 "function": "get_from_model",
                 "args": [
                     "dealership",
                     "dealership_id",
-                    "dealership_id",
-                    "dave"
+                    "dealer_name"
                 ]
             }
         },
@@ -108,11 +116,14 @@
             "name": "campaign_workflow_stage",
             "type": "text",
             "options": [
-                "pre-initiated",
-                "initiated",
+                "queued",
+                "attempted",
+                "reached",
                 "contacted",
                 "engaged",
-                "converted"
+                "converted",
+                "failed",
+                "error"
             ],
             "option_others": true
         },
@@ -123,10 +134,9 @@
             "default": {
                 "function": "make_uuid3",
                 "args": [
-                    "channel",
-                    "campaign_id",
                     "campaign_type",
-                    "campaign_objective",
+                    "channel",
+                    "campaign_objective_id",
                     "campaign_workflow_stage"
                 ]
             }
@@ -135,7 +145,6 @@
             "name": "campaign_workflow_name",
             "type": "text",
             "force_update": [
-                "campaign_id",
                 "channel",
                 "campaign_objective",
                 "campaign_workflow_stage"
@@ -143,15 +152,18 @@
             "default": {
                 "function": "name_to_id",
                 "args": [
-                    "campaign_name",
+                    "campaign_type",
                     "channel",
-                    "campaign_objective",
-                    "campaign_workflow_stage"
+                    "campaign_objective_name",
+                    "campaign_workflow_stage",
+                    "dealership_name"
                 ],
                 "kwargs": {
                     "attribute_join": " ",
                     "is_unique": true,
-                    "separator": " "
+                    "separator": " ",
+                    "skip_empty": true,
+                    "case": "title"
                 }
             }
         },

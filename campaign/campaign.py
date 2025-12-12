@@ -6,6 +6,7 @@ if BASE_DIR not in sys.path:
 from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CAMPAIGN_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
+from functools import reduce
 
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
@@ -29,8 +30,6 @@ DISPOSITION_MAP = {
     'contacted': 'contacted',
     'engaged': 'engaged',
     'converted': 'converted',
-    'failed': 'failed',
-    'error': 'error',
     "reply": "engaged",
     "converted": "converted",
     "dnd": "error",
@@ -56,7 +55,17 @@ DISPOSITION_MAP = {
     "in-progress": "contacted",
     "completed": "engaged",
     "no-answer": "failed",
+    "initiated": "queued",
 }
+
+def dict_appender(a, b):
+    a[b[1]].append(b[0])
+    return a
+
+PROVIDER_STATUS_MAP = reduce(dict_appender,
+    DISPOSITION_MAP.items(),
+    {s: [] for s in set(DISPOSITION_MAP.values())}
+)
 
 DISPOSITION_DETAIL_MAP = {
 
@@ -72,6 +81,30 @@ CHANNEL_IDENTIFIER_MAP = {
 
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
+
+def get_model_and_attrs(campaign_type: str, enterprise_id: str = None):
+    enterprise_id = enterprise_id or AUTOCRM_APP_ENTERPRISE_ID
+    if campaign_type == "pre-sales":
+        campaign_model = gryd.base_model.Model("pre_sales_campaign", enterprise_id)
+        lead_model = gryd.base_model.Model("pre_sales_lead", enterprise_id)
+        user_model = gryd.base_model.Model("person", enterprise_id)
+        user_id_attr = "user_id"
+        lead_id_attr = "pre_sales_lead_id"
+    elif campaign_type == "post-sales":
+        campaign_model = gryd.base_model.Model("post_sales_campaign", enterprise_id)
+        lead_model = gryd.base_model.Model("post_sales_lead", enterprise_id)
+        user_model = gryd.base_model.Model("vehicle", enterprise_id)
+        user_id_attr = "vehicle_id"
+        lead_id_attr = "post_sales_lead_id"
+    elif campaign_type == "dealership":
+        campaign_model = gryd.base_model.Model("dealership_campaign", enterprise_id)
+        lead_model = gryd.base_model.Model("dealership_lead", enterprise_id)
+        user_model = gryd.base_model.Model("dealership", enterprise_id)
+        user_id_attr = "dealership_id"
+        lead_id_attr = "dealership_lead_id"
+    else:
+        raise ValueError(f"Invalid campaign type: {campaign_type}")
+    return campaign_model, lead_model, user_model, user_id_attr, lead_id_attr
 
 @gryd.is_a_task(function_name="run_workflow", job_param='job', auth_param='auth', logger_param='logger')
 def run_workflow(
@@ -91,32 +124,19 @@ def run_workflow(
     logger = logger or mlogger
     campaign_type = campaign_type.lower()
     channel = channel.lower()
-    campaign_model = None
-    lead_model = None
-    user_model = None
-    user_id_attr = None
-    if campaign_type == "pre-sales":
-        campaign_model = "pre_sales_campaign"
-        lead_model = "pre_sales_lead"
-        user_model = "person"
-        user_id_attr = "user_id"
-    elif campaign_type == "post-sales":
-        campaign_model = "post_sales_campaign"
-        lead_model = "post_sales_lead"
-        user_model = "vehicle"
-        user_id_attr = "vehicle_id"
-    elif campaign_type == "dealership":
-        campaign_model = "dealership_campaign"
-        lead_model = "dealership_lead"
-        user_model = "dealership"
-        user_id_attr = "dealership_id"
-    else:
-        raise ValueError(f"Invalid campaign type: {campaign_type}")
+    campaign_model, lead_model, user_model, user_id_attr, lead_id_attr = get_model_and_attrs(campaign_type)
     channel_identifier_name = CHANNEL_IDENTIFIER_MAP.get(channel)
     if not channel_identifier_name:
         msg = f"Invalid channel: {channel} for campaign_id={campaign_id}, campaign_type={campaign_type}, enterprise_id={enterprise_id}, doing nothing."
         logger.error(msg)
         raise ValueError(msg)
+    campaign_workflow = gryd.base_model.Model('campaign_workflow', enterprise_id)
+    campaign_workflow = campaign_workflow.list(_page_size=1, _as_option=True, campaign_id=campaign_id, channel=channel)
+    if not campaign_workflow:
+        msg = f"No campaign workflow found for campaign_id={campaign_id}, channel={channel}, enterprise_id={enterprise_id}, doing nothing."
+        logger.error(msg)
+        raise ValueError(msg)
+    campaign_workflow = hp.make_single(campaign_workflow)
     logger.info(f"Running next workflow for {channel_identifier_name}={channel_identifier} for campaign_id={campaign_id}, campaign_type={campaign_type}, enterprise_id={enterprise_id}")
     logger.info(f"next_flow_dict={hp.json.dumps(next_flow_dict, hp.json.OPT_INDENT_2)}, delay={delay}")
     lead_model = gryd.load_gryd_model(lead_model, enterprise_id)
@@ -127,7 +147,14 @@ def run_workflow(
         msg = f"No campaign found for campaign_id={campaign_id}, campaign_type={campaign_type}, enterprise_id={enterprise_id}, doing nothing."
         logger.error(msg)
         raise ValueError(msg)
-    # if lead_id:
+    if not lead_id:
+        if session_id:
+            last_session = session_model.get(session_id)
+            lead_id = last_session.get('lead_id')
+        if not lead_id:
+            msg = f"No lead_id found for session_id={session_id}, campaign_id={campaign_id}, campaign_type={campaign_type}, enterprise_id={enterprise_id}, doing nothing."
+            logger.error(msg)
+            raise ValueError(msg)
     if not user_id and session_id:
         last_session = session_model.get(session_id)
         user_id = last_session.get('user_id')
@@ -159,79 +186,9 @@ def run_workflow(
     kwargs[f'{campaign_type.replace("-", "_")}_id'] = lead_id
     gryd.create_async_task('RunCampaignOrCreater', AUTOCRM_CAMPAIGN_SERVICE_NAME, kwargs=kwargs)
 
-def get_user_details(enterprise_id: str, campaign_id: str, channel: str, user_id: str, i2ce_headers: Union[dict, None] = None, **kwargs):
-    i2ce_headers = i2ce_headers or I2CE_HEADERS
-    if channel.upper() == 'WHATSAPP':
-        if 'started' in kwargs:
-            kwargs['created'] = kwargs.pop('started')
-            kwargs['initiated_timestamp~'] = None
-        user_detail_model = gryd.load_gryd_model('gryd_campaign_user_detail', enterprise_id)
-        user_detail_archive_model = gryd.load_gryd_model('gryd_campaign_user_detail_archive', enterprise_id)
-        try:
-            user_details = user_detail_model.list(_page_size=1, _as_option=True, campaign_id=campaign_id, mobile_number=[user_id, user_id[-10:]], **kwargs)
-        except Exception as e:
-            hp.print_error(e)
-            logger.error(f"Error getting user details for campaign_id={campaign_id}, channel={channel}, user_id={user_id}, error={e}")
-            user_details = []
-        try:
-            user_detail_archive = user_detail_archive_model.list(_as_option=True, campaign_id=campaign_id, mobile_number=[user_id, user_id[-10:]], **kwargs)
-        except Exception as e:
-            hp.print_error(e)
-            logger.error(f"Error getting user detail archive for campaign_id={campaign_id}, channel={channel}, user_id={user_id}, error={e}")
-            user_detail_archive = []
-        user_details = user_details + user_detail_archive
-        return user_details
-    elif channel.upper() in ['VOICE', 'VOICEBOT']:
-        i2ce_headers = i2ce_headers or I2CE_HEADERS
-        params = {
-            "campaign_id": campaign_id,
-            "user_id": user_id,
-            "_sort_by": "started",
-            "application": "voicebot",
-            "_sort_reverse": True,
-        }
-        params.update(**kwargs)
-        user_details = get_i2ce_response(f"{I2CE_BASE_URL}/objects/person_session", headers=i2ce_headers, params=params)
-        user_details = user_details.get('data', [])
-        return user_details
-
-def get_campaign_detail(enterprise_id: str, campaign_id: str, channel: str, i2ce_headers: Union[dict, None] = None):
-    if channel.upper() == 'WHATSAPP':
-        campaign_detail_model = gryd.load_gryd_model('gryd_campaign_detail', enterprise_id)
-        campaign_detail = campaign_detail_model.list(_page_size=1, _as_option=True, campaign_id=campaign_id, source = channel.lower(), _sort_by="created", _sort_reverse=True)
-        if not campaign_detail:
-            logger.info(f"No campaign detail found for campaign_id={campaign_id}, channel={channel}, doing nothing.")
-            return
-        return hp.make_single(campaign_detail, force = True)
-    elif channel.upper() in ['VOICE', 'VOICEBOT']:  
-        i2ce_headers = i2ce_headers or I2CE_HEADERS
-        campaign_detail = get_i2ce_response(f"{I2CE_BASE_URL}/objects/campaign_detail",
-            headers=i2ce_headers,
-            params={
-                "campaign_id": campaign_id,
-                "_sort_by": "created",
-                "_sort_reverse": True,
-                "_page_size": 1
-            })
-        campaign_detail = hp.make_single(campaign_detail.get('data', []), force = True)
-        return campaign_detail
-    else:
-        logger.info(f"No campaign detail found for campaign_id={campaign_id}, channel={channel}, doing nothing.")
-        return
-
-def get_proceed_status(user_details: list, max_attempts: int = 3, max_failed: int = 10):
-    disposition_options = {
-        "error": ["error", "queued"],
-        "failed": ["failed", "queued"],
-        "attempted": ["attempted", "queued", "engaged", "converted", "reached", "contacted"],
-        "reached": ["reached", "queued", "contacted", "engaged", "converted", "attempted"],
-        "contacted": ["contacted", "queued", "engaged", "converted"],
-        "engaged": ["engaged", "queued", "converted"],
-        "converted": ["converted", "queued"],
-    }
-    if not user_details:
-        return True
-    user_detail = hp.make_single(user_details, force = True)
+def get_proceed_status(lead_detail: dict, max_attempts: int = 3, max_failed: int = 10, logger=None):
+    logger = logger or mlogger
+    user_detail = hp.make_single(user_detail, force = True)
     channel = user_detail.get('channel')
     campaign_id = user_detail.get('campaign_id')
     user_id = user_detail.get('user_id')
@@ -253,61 +210,115 @@ def get_proceed_status(user_details: list, max_attempts: int = 3, max_failed: in
         return False
     return True
 
-def determine_campaign_next_action(enterprise_id: str, campaign_id: str, channel: str, user_id: str, session_id: str, disposition: str, i2ce_headers: Union[dict, None] = None):
-    # Get the campaign workflow for this campaign and channel
-    workflow_model = gryd.load_gryd_model('campaign_workflow', enterprise_id)
-    workflow = workflow_model.list(_page_size=1, _as_option=True, campaign_id=campaign_id, channel=channel)
-
-    if not workflow:
-        logger.info(f"No workflow found for campaign_id={campaign_id}, channel={channel}, doing nothing.")
+@gryd.is_a_task(function_name="determine_campaign_next_action", job_param='job', auth_param='auth', logger_param='logger')
+def determine_campaign_next_action(
+        campaign_type: str,
+        lead_id: str,
+        channel: str,
+        channel_identifier: str,
+        disposition: str,
+        disposition_detail: str,
+        enterprise_id: Union[str, None] = None,
+        logger=None, job=None, auth=None, 
+        *args, **kwargs):
+    enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
+    logger = logger or mlogger
+    campaign_type = campaign_type.lower()
+    channel = channel.lower()
+    campaign_model, lead_model, user_model, user_id_attr, lead_id_attr = get_model_and_attrs(campaign_type)
+    dealership_model = gryd.base_model.Model('dealership', enterprise_id)
+    campaign_objective_model = gryd.base_model.Model('campaign_objective', enterprise_id)
+    lead = None
+    _values = {}
+    for _id_attr, _model in [
+            (lead_id_attr, lead_model), 
+            (user_id_attr, user_model), 
+            ('campaign_id', campaign_model), 
+            ('dealership_id', dealership_model), 
+            ('campaign_objective_id', campaign_objective_model)
+        ]:
+        if not lead:
+            _detail = lead = lead_model.get(lead_id)
+            _id_value = lead_id
+        else:
+            _id_value = lead.get(_id_attr)
+            _detail = _model.get(_id_value)
+        if not _detail:
+            str_msg = f"No {_model.name} found for {_id_attr}={_id_value}, campaign_type={campaign_type}, enterprise_id={enterprise_id}"
+            logger.error(str_msg)
+            raise ValueError(str_msg)
+        _values[_model.name] = {
+            "id": _id_value,
+            "object": _detail
+        }
+    workflow_model = gryd.base_model.Model('campaign_workflow', enterprise_id)
+    dispostion = dispostion.lower() 
+    disposition_options = {
+        "error": ["error", "queued"],
+        "failed": ["failed", "queued"],
+        "attempted": ["attempted", "queued", "engaged", "converted", "reached", "contacted"],
+        "reached": ["reached", "queued", "contacted", "engaged", "converted", "attempted"],
+        "contacted": ["contacted", "queued", "engaged", "converted"],
+        "engaged": ["engaged", "queued", "converted"],
+        "converted": ["converted", "queued"],
+    }
+    disposition = DISPOSITION_MAP.get(disposition)
+    if not disposition:
+        str_msg = f"Invalid disposition: {disposition} for campaign_type={campaign_type}, channel={channel}, enterprise_id={enterprise_id}"
+        logger.error(str_msg)
+        raise ValueError(str_msg)
+    if disposition not in disposition_options:
+        str_msg = f"Invalid disposition: {disposition} for campaign_type={campaign_type}, channel={channel}, enterprise_id={enterprise_id}"
+        logger.error(str_msg)
+        raise ValueError(str_msg)
+    workflow_stage = disposition_options.get(disposition, [])
+    workflows = workflow_model.list(
+        _page_size=1, 
+        _as_option=True, 
+        campaign_type=campaign_type, 
+        channel=channel, 
+        campaign_objective_id=_values.get('campaign_objective', {}).get('id'),
+        workflow_stage=workflow_stage
+    )
+    if not workflows:
+        str_msg = f"No workflow found for campaign_type={campaign_type}, channel={channel}, campaign_objective_id={_values.get('campaign_objective', {}).get('id')}, disposition={disposition}, workflow_stage={workflow_stage}, enterprise_id={enterprise_id}, doing nothing."
+        logger.info(str_msg)
         return
-        
-    workflow = hp.make_single(workflow)
-    
-    # Get the campaign details
-    campaign_detail_model = gryd.load_gryd_model('gryd_campaign_detail', enterprise_id)
-    campaign_detail = campaign_detail_model.list(_page_size=1, _as_option=True, campaign_id=campaign_id, channel = channel.lower())
-    if not campaign_detail:
-        logger.info(f"No campaign detail found for campaign_id={campaign_id}, channel={channel}, doing nothing.")
-        return
-    
-    campaign_detail = hp.make_single(campaign_detail, force = True)
-    
-    
-    # Get the campaign user detail to check status history
-
-    user_details = get_user_details(enterprise_id, campaign_id, channel, user_id)
-    if not user_details:
-        logger.info(f"No user details found for campaign_id={campaign_id}, channel={channel}, user_id={user_id}, doing nothing.")
-        return
-        
+    next_workflow = hp.make_single(workflows, force = True)
     # Map disposition to workflow triggers
     trigger_map = {
-        'error': ('on_error_trigger', 'on_error_retries', 'on_error_delay'),
-        'failed': ('on_failed_trigger', 'on_failed_retries', 'on_failed_delay'),
-        'attempted': ('on_attempted_trigger', 'on_attempted_retries', 'on_attempted_delay'),
-        'reached': ('on_reached_trigger', 'on_reached_retries', 'on_reached_delay'),
-        'contacted': ('on_contacted_trigger', 'on_contacted_retries', 'on_contacted_delay'),
-        'engaged': ('on_engaged_trigger', 'on_engaged_retries', 'on_engaged_delay'),
-        'converted': ('on_converted_trigger', None, None)
+        'error': ('on_error_trigger', 'on_error_trigger_id', 'on_error_retries', 'on_error_delay'),
+        'failed': ('on_failed_trigger', 'on_failed_trigger_id', 'on_failed_retries', 'on_failed_delay'),
+        'attempted': ('on_attempted_trigger', 'on_attempted_trigger_id', 'on_attempted_retries', 'on_attempted_delay'),
+        'reached': ('on_reached_trigger', 'on_reached_trigger_id', 'on_reached_retries', 'on_reached_delay'),
+        'contacted': ('on_contacted_trigger', 'on_contacted_trigger_id', 'on_contacted_retries', 'on_contacted_delay'),
+        'engaged': ('on_engaged_trigger', 'on_engaged_trigger_id', 'on_engaged_retries', 'on_engaged_delay'),
+        'converted': ('on_converted_trigger', 'on_converted_trigger_id', None, None)
     }
-    
     # Get trigger details based on disposition
-    converted_disposition = DISPOSITION_MAP.get(disposition, '')
-    logger.info(f"Converted disposition: {converted_disposition} for disposition={disposition} in channel={channel}")
-    if not converted_disposition:
-        logger.info(f"No disposition found for disposition={disposition} in DISPOSITION_MAP, doing nothing.")
-        return
-    trigger_field, retries_field, delay_field = trigger_map.get(converted_disposition, (None, None, None))
+    trigger_field, trigger_id_field, retries_field, delay_field = trigger_map.get(disposition, (None, None, None, None))
     
-    if not trigger_field or not workflow.get(trigger_field):
-        logger.info(f"No trigger field found for disposition={converted_disposition} in workflow={workflow}, doing nothing.")
+    if not (trigger_field or (trigger_id_field and next_workflow.get(trigger_id_field))):
+        str_msg = f"No trigger field found for disposition={disposition} in workflow={next_workflow}, doing nothing."
+        logger.info(str_msg)
         return
-        
+    contact_status_model = gryd.base_model.Model('contact_status', enterprise_id)
+    channel_identifier_name = CHANNEL_IDENTIFIER_MAP.get(channel)
+    provider_statuses = PROVIDER_STATUS_MAP.get(disposition, [])
+    cs_params = {
+       channel_identifier_name : channel_identifier,
+       'campaign_type': campaign_type,
+       'campaign_id': _values.get('campaign', {}).get('id'),
+       'channel': channel,
+       'provider_status': provider_statuses,
+       "_sort_by": "created",
+       "_sort_reverse": True
+    }
+    contact_statuses = contact_status_model.list(_page_size=500, _as_option=True, **cs_params)
+    status_count = len(contact_statuses)
     # Check if we've exceeded retries
-    status_count = len([s for s in user_details if s.get('disposition', '') == converted_disposition])
     ## Get from campagign_user_detail, and campaign_user_detail_archive
-    max_retries = workflow.get(retries_field, 0) if retries_field else 0
+    max_retries = next_workflow.get(retries_field, 0) if retries_field else 0
     logger.info(f"Max retries: {max_retries}, Status count: {status_count} for disposition={converted_disposition} in channel={channel}")
 
     if not max_retries or status_count > max_retries:

@@ -75,7 +75,7 @@
             "force_update": "password",
             "required": true,
             "default": {
-                "function": "add_time",
+                "function": "sum_attributes",
                 "args": [
                     "updated",
                     2592000
@@ -86,6 +86,7 @@
             "name" : "role",
             "type" : "text",
             "options": [
+                "Dealership Admin",
                 "Workshop Manager",
                 "Relationship Manager",
                 "Sales Executive",
@@ -148,16 +149,13 @@
             "id" : true,
             "auto_updater":true,
             "default" : {
-                "function" : "name_to_id",
+                "function" : "make_uuid3",
                 "args": [
                     "agent_name",
-                    "dealership_id"
-                ],
-                "kwargs" : {
-                    "is_unique" : false,
-                    "separator" : "_",
-                    "skip_empty" : true
-                }
+                    "dealership_id",
+                    "phone_number",
+                    "email"
+                ]
             }
         }
     ],

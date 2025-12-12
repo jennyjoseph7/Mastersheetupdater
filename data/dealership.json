@@ -27,16 +27,6 @@
             "required": true
         },
         {
-            "name": "dealership_url",
-            "type": "text",
-            "constraint": {
-                "function": "url_validator"
-            },
-            "converter": {
-                "function": "url_converter"
-            }
-        },
-        {
             "name": "credits_balance",
             "type": "number",
             "units": "credits",
@@ -420,12 +410,28 @@
         {
             "name": "dealer_status",
             "type": "text",
+            "default": "lead",
             "options": [
+                "lead",
+                "otp_verified",
+                "signed_up",
+                "verified",
                 "active",
                 "inactive",
                 "suspended"
             ],
             "indexed": true
+        },
+        {
+            "name": "logo_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "image"
         },
         {
             "name": "dealership_id",
