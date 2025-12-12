@@ -134,3 +134,13 @@ task flow
 
 
 
+Second service name in config.AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
+
+task to call after session ends - post_session_process(session_id=<your session id>)
+
+Post session process is a task that runs after a conversation is closed.
+It takes in the session_id and session_data and updates the lead data and session data accordingly.
+It also calls the sentiment agent to get the sentiment analysis of the conversation.
+If the lead disposition is converted, it also gets the appointment date and time, and updates the lead data with it.
+Finally, it updates the session data with the sentiment score and emotion analysis.
+:param session_id: The unique identifier of the session.

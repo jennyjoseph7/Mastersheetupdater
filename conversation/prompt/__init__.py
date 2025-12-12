@@ -28,7 +28,7 @@ def execute_orchestrator(*args, **kwargs):
 
 
 def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], **kwargs):
-    request_data = kwargs.get("request_data")
+    request_data = kwargs.get("request_data",{})
     resp = ""
     if messages:
         resp = ai_service_app.get_llm_response(messages=messages,audit_params={"session_id":request_data.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{ }).get("model_identifier","gcp-gemini-2.5-flash-lite")})

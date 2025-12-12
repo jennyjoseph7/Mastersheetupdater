@@ -7,19 +7,850 @@ if BASE_DIR not in sys.path:
 from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
-from prompt import yield_primary_prompt, run_prompt_sync
 json = hp.json
-from yield_response import yield_response,yield_error, yield_status
+from yield_response import yield_result,yield_error, yield_status
+from prompt import run_prompt_sync
+
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
 
+
+
+# from ai_service import ai_service_app
+
 def WARM_UP():
-    mlogger.info("WARM_UP CALLED")
+    mlogger.info("WARM_UP CALLED for {} service".format(gryd.SERVICE))
     with get_pg_connector() as pg:
         pass    
     return
+
+@gryd.is_a_task()
+def post_session_process(*args, **kwargs):
+    """
+    Post session process is a task that runs after a conversation is closed.
+    It takes in the session_id and session_data and updates the lead data and session data accordingly.
+    It also calls the sentiment agent to get the sentiment analysis of the conversation.
+    If the lead disposition is converted, it also gets the appointment date and time, and updates the lead data with it.
+    Finally, it updates the session data with the sentiment score and emotion analysis.
+    :param session_id: The unique identifier of the session.
+    :param session_data: The data of the session.
+    :return: The result of the task.
+    """
+    session_id = kwargs.get("session_id")
+    if not session_id:
+        mlogger.info("session_id not passed in kwargs")
+        yield from yield_error("error","session_id not passed in kwargs",*args, **kwargs)
+        return
+    session_data = {}
+    with get_pg_connector() as pg:
+        session_data = pg.get("session_data_cache","session_id",session_id)
+
+    if not session_data:
+        mlogger.info("session_id not passed in kwargs")
+
+        yield from yield_error("error","session_data not found",*args, **kwargs)
+        return
+    session_data = session_data.get("data",{})
+    campaign_data = session_data.get("campaign_data")
+    mlogger.info("campaign_data == {}".format(campaign_data))
+    campaign_type = "pre_sales" if campaign_data.get("campaign_type") == "pre-sales" else "post_sales"
+
+    lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id")
+    lead_data = {}
+    with get_pg_connector() as pg:
+        lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data")
+
+    if not lead_data:
+        yield from yield_error("error","lead_data not found",*args, **kwargs)
+        mlogger.info("session_id not passed in kwargs")
+
+        return
+
+    # lead_disposition = lead_data.get("disposition")
+
+    # if lead_disposition != "engaged":
+    #     mlogger.info("lead_disposition is not engaged")
+    #     yield from yield_error("error","lead_disposition is not engaged",*args, **kwargs)
+    #     return
+
+    messages = session_data.get("messages")
+    sentiment_score = -1
+    emotion_analysis = {}
+    if messages:
+        from agents import sentiment_agent
+        sentiment_agent = sentiment_agent.SentimentAnalysisAgent(source = messages, model_identifier="gcp-gemini-2.5-flash-lite")
+        aa = sentiment_agent.run()
+        sentiment_score = aa.get("conversation_analytics",{}).get("overall_sentiment_score",-1)
+        emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
+        mlogger.info(f"sentiment data gave me score = {sentiment_score} and ananlusis = {emotion_analysis}")
+    
+    updated_lead_data = get_disposition(session_id,session_data)
+    mlogger.info("got disposition as == {}".format(updated_lead_data))
+    session_update_data = {"disposition":updated_lead_data.get("disposition"),"disposition_detail":updated_lead_data.get("disposition_detail")}
+
+    if sentiment_score != -1:
+        session_update_data["sentiment_score"] = sentiment_score
+    if emotion_analysis:
+        session_update_data["emotion_analysis"] = emotion_analysis
+
+    if updated_lead_data.get("disposition") == "converted":
+        appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
+        updated_lead_data.update(appt_date_time_purpose)
+    mlogger.info("updated_lead_data == {}".format(updated_lead_data))
+    
+    user_or_vehicle_data = get_extra_data(session_id,session_data)
+    mlogger.info("user_or_vehicle_data == {}".format(user_or_vehicle_data))
+    
+    
+    if campaign_type == "post-sales":
+        with get_pg_connector() as pg:
+            pg.update("vehicle","vehicle_id",session_data.get("user_data").get("vehicle_id"),user_or_vehicle_data)
+    
+    if campaign_type == "pre-sales":
+        with get_pg_connector() as pg:
+            pg.update("person","user_id",session_data.get("user_data").get("user_id"),user_or_vehicle_data)
+
+    with get_pg_connector() as pg:
+        pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
+        pg.update("session","session_id",session_id,session_update_data)
+    
+def get_lead_variables(campaign_type):
+    """
+        Get the list of lead variables for the given campaign type.
+
+        Args:
+            campaign_type (str): The type of campaign, either "post-sales" or "pre-sales".
+
+        Returns:
+            list: A list of lead variables for the given campaign type.
+
+        Raises:
+            ValueError: If the campaign type is not one of "post-sales" or "pre-sales".
+    """
+    if campaign_type == "post-sales":
+        return [
+            {
+            "name": "engine_capacity_cc",
+            "type": "number",
+            "units": "cc"
+        },
+        {
+            "name": "drivetrain",
+            "type": "text",
+            "options": [
+                "FWD",
+                "RWD",
+                "AWD",
+                "4WD"
+            ]
+        },
+        {
+            "name": "engine_number",
+            "type": "text"
+        },
+        {
+            "name": "chassis_number",
+            "type": "text"
+        },
+        {
+            "name": "accessories",
+            "type": "text"
+        },
+        {
+            "name": "purchase_date",
+            "type": "number"
+        },
+        {
+            "name": "registration_date",
+            "type": "number"
+        },
+        {
+            "name": "original_delivery_date",
+            "type": "number"
+        },
+        {
+            "name": "next_service_due",
+            "type": "number"
+        },
+        {
+            "name": "service_feedback",
+            "type": "text"
+        },
+        {
+            "name": "feedback_rating",
+            "type": "text"
+        },
+        {
+            "name": "feedback_sentiment_score",
+            "type": "text"
+        },
+        {
+            "name": "warranty_expiry_date",
+            "type": "number"
+        },
+        {
+            "name": "extended_warranty_purchased",
+            "type": "bool"
+        },
+        {
+            "name": "avg_service_cost",
+            "type": "number"
+        },
+        {
+            "name": "service_frequency",
+            "type": "number"
+        },
+        {
+            "name": "loan_end_date",
+            "type": "number"
+        },
+        {
+            "name": "odometer_reading",
+            "type": "number",
+            "units": "km"
+        },
+        {
+            "name": "odometer_reading_date",
+            "type": "number"
+        },
+        {
+            "name": "avg_monthly_mileage",
+            "type": "number",
+            "units": "km"
+        },
+        {
+            "name": "vehicle_usage_category",
+            "type": "text",
+            "options": [
+                "Personal",
+                "Fleet",
+                "Commercial",
+                "Rental",
+                "Demo"
+            ]
+        },
+        {
+            "name": "battery_health",
+            "type": "text",
+            "options": [
+                "Good",
+                "Average",
+                "Weak",
+                "Needs Replacement"
+            ]
+        },
+        {
+            "name": "battery_warranty_expiry_date",
+            "type": "number"
+        },
+        {
+            "name": "battery_change_date",
+            "type": "number"
+        },
+        {
+            "name": "battery_service_date",
+            "type": "number"
+        },
+        {
+            "name": "oil_change_date",
+            "type": "number"
+        },
+        {
+            "name": "brake_pad_change_date",
+            "type": "number"
+        },
+        {
+            "name": "tyre_change_date",
+            "type": "number"
+        },
+        {
+            "name": "tyre_change_details",
+            "type": "text"
+        },
+        {
+            "name": "tyre_health",
+            "type": "text"
+        },
+        {
+            "name": "wheel_alignment",
+            "type": "text",
+            "options": [
+                "Front-end",
+                "Thrust",
+                "Four-wheel"
+            ]
+        },
+        {
+            "name": "suspension_check_date",
+            "type": "number"
+        },
+        {
+            "name": "coolant_radiator_service_date",
+            "type": "number"
+        },
+        {
+            "name": "ac_vent_cleaning_date",
+            "type": "number"
+        },
+        {
+            "name": "underbody_coating_date",
+            "type": "number"
+        },
+        {
+            "name": "car_wash_date",
+            "type": "number"
+        },
+        {
+            "name": "brake_oil_change_date",
+            "type": "number"
+        },
+        {
+            "name": "oil_filter_replacement_date",
+            "type": "number"
+        },
+        {
+            "name": "polishing_and_waxing_date",
+            "type": "number"
+        },
+        {
+            "name": "ac_vent_cleaning_date",
+            "type": "number"
+        },
+        {
+            "name": "repair_notes",
+            "type": "text"
+        },
+        {
+            "name": "first_owner_name",
+            "type": "text"
+        },
+        {
+            "name": "ownership_status",
+            "type": "text",
+            "options": [
+                "Owned",
+                "Leased",
+                "Financed",
+                "Fleet",
+                "Corporate"
+            ]
+        },
+        {
+            "name": "finance_loan_status",
+            "type": "text"
+        },
+        {
+            "name": "loan_provider",
+            "type": "text"
+        },
+        {
+            "name": "loan_account_number",
+            "type": "text"
+        },
+        {
+            "name": "loan_amount",
+            "type": "number",
+            "units": "INR"
+        },
+        {
+            "name": "emi_amount",
+            "type": "number",
+            "units": "INR"
+        },
+        {
+            "name": "emi_due_date",
+            "type": "number"
+        },
+        {
+            "name": "fastag_id",
+            "type": "text"
+        },
+        {
+            "name": "rc_book_number",
+            "type": "text"
+        },
+        {
+            "name": "status",
+            "type": "text",
+            "options": [
+                "Active",
+                "In Service",
+                "Sold",
+                "Scrapped",
+                "Pending Transfer",
+                "Inactive"
+            ]
+        }
+        ]
+    if campaign_type == "pre-sales":
+        return [
+            {
+            "name": "name",
+            "title": "Name",
+            "type": "text",
+            "ui_element": "text"
+        },
+        {
+            "name": "full_name",
+            "title": "Name",
+            "type": "text",
+            "ui_element": "text"
+        },
+        {
+            "name": "name_title",
+            "title": "Name",
+            "type": "text",
+            "options": [
+                "Mr.",
+                "Ms.",
+                "Mrs.",
+                "Dr.",
+                "Prof.",
+                "Rev.",
+                "Fr.",
+                "Sister",
+                "Brother",
+                ""
+            ],
+            "default": "",
+            "ui_element": "text"
+        },
+        {
+            "name": "phone_number",
+            "title": "Phone Number",
+            "type": "text"
+        },
+        {
+            "name": "email",
+            "title": "Email",
+            "type": "text",
+            "ui_element": "email"
+        },
+        {
+            "name": "area",
+            "title": "Area or Region",
+            "type": "text"
+        },
+        {
+            "name": "city",
+            "title": "City or District",
+            "type": "text"
+        },
+        {
+            "name": "pincode",
+            "title": "Pincode",
+            "type": "text"
+        },
+        {
+            "name": "address",
+            "title": "Address",
+            "type": "text",
+            "ui_element": "textarea"
+        },
+
+        {
+            "name": "alt_phone_number_2",
+            "title": "Alt Phone Number 2",
+            "type": "text",
+            "ui_element": "tel"
+        },
+        {
+            "name": "alt_phone_number_3",
+            "title": "Alt Phone Number 3",
+            "type": "text",
+            "ui_element": "tel"
+        },
+        {
+            "name": "alt_phone_number_4",
+            "title": "Alt Phone Number 4",
+            "type": "text",
+            "ui_element": "tel"
+        },
+        {
+            "name": "alt_email_2",
+            "title": "Alt Email 2",
+            "type": "text",
+            "ui_element": "email"
+        },
+        {
+            "name": "alt_email_3",
+            "title": "Alt Email 3",
+            "type": "text",
+            "ui_element": "email"
+        },
+        {
+            "name": "alt_email_4",
+            "title": "Alt Email 4",
+            "type": "text",
+            "constraint": {
+                "function": "email_validator"
+            }
+        },
+        {
+            "name": "preferred_language",
+            "title": "Preferred Language",
+            "type": "text",
+            "ui_element": "select",
+            "options": [
+                "Spanish (Mexico)",
+                "Spanish",
+                "Spanish (Argentina)",
+                "Spanish (South America)",
+                "Arabic (Qatar)",
+                "Arabic (UAE)",
+                "Arabic (KSA)",
+                "Arabic (Oman)",
+                "Arabic (Kuwait)",
+                "English (India)",
+                "English (USA)",
+                "English (UK)",
+                "English (Australia)",
+                "Assamese",
+                "Hindi",
+                "Tamil",
+                "Telugu",
+                "Kannada",
+                "Malayalam",
+                "Marathi",
+                "Bengali",
+                "Gujarati",
+                "Punjabi",
+                "Odia",
+                "Other"
+            ]
+        },
+        {
+            "name": "known_languages",
+            "title": "Known Languages",
+            "type": "string_list",
+            "options": [
+                "Spanish (Mexico)",
+                "Spanish",
+                "Spanish (Argentina)",
+                "Spanish (South America)",
+                "Arabic (Qatar)",
+                "Arabic (UAE)",
+                "Arabic (KSA)",
+                "Arabic (Oman)",
+                "Arabic (Kuwait)",
+                "English (India)",
+                "English (USA)",
+                "English (UK)",
+                "English (Australia)",
+                "Assamese",
+                "Hindi",
+                "Tamil",
+                "Telugu",
+                "Kannada",
+                "Malayalam",
+                "Marathi",
+                "Bengali",
+                "Gujarati",
+                "Punjabi",
+                "Odia",
+                "Other"
+            ]
+        },
+        {
+            "name": "profile_summary",
+            "title": "Profile Summary",
+            "type": "text"
+        },
+        {
+            "name": "preferred_communication_channel",
+            "title": "Preferred Communication Channel",
+            "type": "text",
+            "ui_element": "select",
+            "options": [
+                "Phone",
+                "WhatsApp",
+                "Email",
+                "SMS",
+                "In-person"
+            ]
+        },
+        {
+            "name": "preferred_contact_window",
+            "title": "Preferred Contact Window",
+            "type": "nested_object",
+            "dict_keys": [
+                "start_time",
+                "end_time"
+            ],
+            "ui_element": "time_interval"
+        },
+        {
+            "name": "gender",
+            "title": "Gender",
+            "type": "text",
+            "ui_element": "select",
+            "options": [
+                "Male",
+                "Female",
+                "Other"
+            ]
+        },
+        {
+            "name": "estimated_monthly_income",
+            "title": "Estimated Monthly Income",
+            "type": "number",
+            "ui_element": "number",
+            "units": "INR"
+        },
+        {
+            "name": "education_level",
+            "title": "Education Level",
+            "type": "text",
+            "ui_element": "select",
+            "options": [
+                "Unknown",
+                "High School",
+                "Undergraduate",
+                "Diploma",
+                "Postgraduate",
+                "Doctorate",
+                "Other"
+            ]
+        },
+        {
+            "name": "fleet_owner",
+            "title": "Fleet Owner",
+            "type": "bool",
+            "ui_element": "switch"
+        },
+        {
+            "name": "family_size",
+            "title": "Family Size",
+            "type": "number",
+            "ui_element": "number"
+        },
+        {
+            "name": "marital_status",
+            "title": "Marital Status",
+            "type": "text",
+            "ui_element": "select",
+            "options": [
+                "Single",
+                "Married",
+                "Divorced",
+                "Widowed",
+                "Other"
+            ]
+        }
+        ]
+    else:
+        return ["vehicle_name","vehicle_model","vehicle_type"]
+def get_disposition(session_id, session_data_cache):
+    lead_data = session_data_cache.get("user_data")
+    campaign_data = session_data_cache.get("campaign_data")
+    campaign_objective = campaign_data.get("campaign_objective")
+    campaign_description = campaign_data.get("campaign_description")
+    message_history = session_data_cache.get("messages")
+    campaign_type = campaign_data.get("campaign_type")
+    example_disposition_response =  """{
+        "disposition": "converted" or "engaged",
+        "disposition_detail": "choose from list above based on history of conversation",
+        "prioritization_score" : "number_values_from_0_to_100",
+        "prioritization_category" : "COMPLETE, HOT or WARM or COOL or COLD or INACTIVE"
+    }"""
+    disp_details_options = [
+                "Language barrier",
+                "Is not decision maker",
+                "Will decide later, will purchase within 15 days",
+                "Will decide later, will purchase within 1 to 3 months",
+                "Will decide later, exploring options",
+                "No buying intent",
+                "Just Exploring",
+                "Will call showroom themselves",
+                "Purchased elsewhere",
+                "Converted",
+                "Enquired for Pricing",
+                "Enquired for Specifications",
+                "Enquired for Test Drive",
+                "Enquired for Showroom Visit",
+                "Enquired for Brochure",
+                "Enquired for Dealership Details",
+                "Enquired for Others",
+                "Comparing with another brand",
+                "Others"]
+
+    if campaign_type == "post-sales":
+        disp_details_options = [
+            "Vehicle is commercial or part of a fleet",
+            "Vehicle is not being run",
+            "Requires special spare parts",
+            "Others",
+            "Wrong contact number",
+            "Voicemail",
+            "Has sold/given away the car",
+            "Has moved to another location",
+            "Cannot make decision on servicing",
+            "Will call workshop themselves",
+            "Looking for a discount",
+            "Language barrier",
+            "Has serviced car in another dealership",
+            "Will decide tomorrow",
+            "Will decide within 1 to 3 days",
+            "Will decide within 4 to 7 days",
+            "Will decide within 8 to 14 days",
+            "Will decide within 15 to 30 days",
+            "Will decide within 31 to 60 days",
+            "Will decide within 61 to 90 days",
+            "Will decide after 90 days",
+            "Converted"
+            ]
+
+    prompt = f"""
+    You are a analyst bot that has the single purpose of looking at the conversation history with my customer and I and check if they completed the objective of my campaign. 
+    I am running a campaign with the objective of {campaign_objective}.
+    these are some details of the campaign {campaign_description}.
+    I want to know if the purpose of the campaign was met by the customer.
+    For example:
+        If campaign is about booking a test drive check if the customer booked a test drive.
+        If campaign is about buying a car check if the customer bought a car.
+        If campaign is about informing the user about an offer we are running check if the customer was informed about the offer.
+
+    The conversation history is as follows:
+    {message_history}
+    Now check if the objective of the campaign was met by the customer. and select of the the following disposition detail to be the disposition description. If the disposition is converted the prioritization score should be 100 and prioritization category should be COMPLETE. Other wise determine the interest the have shown during the call and put a score and pick from the categories for prioritization.
+    Possible values for disposition_detail:
+    {disp_details_options}
+    Only pick ONE value from this above list for disposition details.
+
+    Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
+    Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
+    do NOT prepend labels (like "json"). Output only valid JSON.
+
+    Your response should be in the following JSON format:
+    {example_disposition_response}
+    """
+
+    mlogger.info("prompt == {}".format(prompt))
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    mlogger.info("disposition prompt response ======= {}".format(resp))
+    return hp.json.loads(resp)
+
+def get_appt_date_time_purpose(session_id,session_data_cache):
+    """
+    Retrieves the appointment date time and purpose from the conversation history.
+
+    Parameters
+    ----------
+    session_id : str
+        The unique identifier of the session.
+    session_data_cache : dict
+        The data of the session.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the appointment date, time and purpose.
+    """
+    lead_data = session_data_cache.get("user_data")
+    campaign_data = session_data_cache.get("campaign_data")
+    campaign_objective = campaign_data.get("campaign_objective")
+    campaign_description = campaign_data.get("campaign_description")
+    message_history = session_data_cache.get("messages")
+    campaign_type = campaign_data.get("campaign_type")
+    response_example = {
+        "appointment_date": "DD-MM-YYYY format for the date mentioned",
+        "appointment_time": "HH:MM format for the time mentioned",
+        "purpose": ["purpose1","purpose2","purpose3"]
+    }
+    prompt = f"""
+    You are an analyst bot that looks at my conversation history with my customer and detects if the customer made a booking for a date time and given any purpose details.
+    I am running a campaign with the objective of {campaign_objective}.
+    these are some details of the campaign {campaign_description}.
+    I want to know if the customer made a booking for a date time and given any purpose details.
+
+    The conversation history is as follows:
+    {message_history}
+    Now check if the customer made a booking for a date time and given any purpose details.
+    for your reference the timestamp for today is {hp.time()}
+    For example:
+    if campaign was to book a service, purpose would be a list of issues they would like to get fixed during the service or list of different services they want.
+    if campaign was to book a test drive, purpose would be the aspects of the car they would like to test.
+
+    Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
+    Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
+    do NOT prepend labels (like "json"). Output only valid JSON.
+
+    Your response should be in the following JSON format:
+    {response_example}
+    """
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    mlogger.info("get_appt_date_time_purpose prompt response ======= {}".format(resp))
+    return hp.json.loads(resp)
+
+
+
+
+def get_extra_data(session_id,session_data_cache):
+    """
+    Retrieves extra data from the conversation history that can be posted to person or vehicle model based on campaign type
+
+    Parameters
+    ----------
+    session_id : str
+        The unique identifier of the session.
+    session_data_cache : dict
+        The data of the session.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the extra data that was able to be identified from the conversation history.
+    """
+    lead_data = session_data_cache.get("user_data")
+    campaign_data = session_data_cache.get("campaign_data")
+    campaign_objective = campaign_data.get("campaign_objective")
+    campaign_description = campaign_data.get("campaign_description")
+    message_history = session_data_cache.get("messages")
+    campaign_type = campaign_data.get("campaign_type")
+    example_data = {
+        "colour": "blue"
+    }
+    empty_dict = {}
+    prompt = f"""
+    You are a data identifier bot that helps pick out values i want to save about the user from the conversation history.
+    I am running a campaign with the objective of {campaign_objective}.
+    these are some details of the campaign {campaign_description}.
+    This the the information i already have about the user.
+    {lead_data}
+    I want you to check the history for the following attributes:
+    {get_lead_variables(campaign_type)}
+
+    The conversation history is as follows: 
+    {message_history}
+
+    Your response should be in JSON format with a dictionary with keys for the attributes you were able to identify from the above list. Do not add keys you are unable to find values for or ones that are already available in the data above.
+
+    
+
+    Example if the attributes im looking for include colour and variant_name and the message history contains a message from the user specifying they have a blue car. Your response should be like the following:-
+    {example_data}
+    if no new data is found then return empty json object.
+    Your response must be ONLY the JSON object string that i can convert to json using json.loads(<your response>). 
+    Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
+    do NOT prepend labels (like "json"). Output only valid JSON.
+    """
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    mlogger.info("got extra data response as ===== {}".format(resp))
+    return hp.json.loads(resp)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @gryd.is_a_task()

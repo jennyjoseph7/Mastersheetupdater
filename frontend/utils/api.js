@@ -137,7 +137,7 @@ async function startImportTask(category, audienceName, fileUrl, tags = [], sourc
 // --- 6. Create Audience Task Record (DB) ---
 async function createAudienceTask(taskData) {
     const response = await fetch(`${APP_BASE_URL}/gryd/db/objects/audience_task`, {
-        method: "POST",
+        method: "PUT",
         headers: HEADERS,
         body: JSON.stringify(taskData),
     });

@@ -744,6 +744,7 @@
             "name": "prioritization_category",
             "type": "text",
             "options": [
+                "COMPLETE",
                 "HOT",
                 "WARM",
                 "COOL",
