@@ -178,5 +178,1774 @@
     "total_sales_executives": 5,
     "parking_capacity": 20,
     "display_vehicle_count": 10
+  },
+
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Ramanathapuram",
+    "showroom_type": "ARENA Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "D.No.432 Sri Raam plaza Nanjundapuram Road Ramanathapuram Coimbatore 641045",
+    "city": "Coimbatore",
+    "state": "Tamil Nadu",
+    "pincode": "641045",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Saibaba Colony",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "211 Alagesan Road Saibaba Colony Coimbatore 641011",
+    "city": "Coimbatore",
+    "state": "Tamil Nadu",
+    "pincode": "641011",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Singanallur",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "SFNO 493/1 Opp Perks Arch Trichy Road Singanallur Coimbatore 641005",
+    "city": "Coimbatore",
+    "state": "Tamil Nadu",
+    "pincode": "641005",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Kovaipudhur",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "SF NO 281/B NEAR BHARAT PETROL BUNK KARUMATHAMATTI 641659 or 21 Anna Nagar Kovaipudhur Near Ashramam Matric School 641042",
+    "city": "Kovaipudhur",
+    "state": "Tamil Nadu",
+    "pincode": "641042",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Navaindia",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "No 397 SNR college road Nava India Peelamedu Coimbatore 641004 or 149 SNR Road Nava India 641004 or 98/1 Maheswari Nagar Vilankurichi Main Road Thanner Pandhal Peelamedu PO 641004",
+    "city": "Coimbatore",
+    "state": "Tamil Nadu",
+    "pincode": "641004",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "NEXA Avinashi Road",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "480/761 Avinashi Rd near Suguna Kalyana Mandapam near Peelamedu KR Puram STV Nagar 641004",
+    "city": "Coimbatore",
+    "state": "Tamil Nadu",
+    "pincode": "641004",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "True Value Navaindia",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "No 397 SNR college road Nava India Peelamedu Coimbatore 641004 or 149 SNR Road Nava India 641004 or 98/1 Maheswari Nagar Vilankurichi Main Road Thanner Pandhal Peelamedu PO 641004",
+    "city": "Coimbatore",
+    "state": "Tamil Nadu",
+    "pincode": "641004",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Kumalankuttai",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "23/1 Perundurai Road Kumalankuttai Erode 638011 or 134/3 Perundurai Rd Teachers Colony 638011",
+    "city": "Erode",
+    "state": "Tamil Nadu",
+    "pincode": "638011",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Gobichettipalayam",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "318 Katcheri Street Sathy Main Road Gobichettypalayam 638476",
+    "city": "Gobichettipalayam",
+    "state": "Tamil Nadu",
+    "pincode": "638476",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Sathyamangalam",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "No 37 Bannari Main Road Kombupallam Sathymangalam 638401",
+    "city": "Sathyamangalam",
+    "state": "Tamil Nadu",
+    "pincode": "638401",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Dharapuram",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "Opp Anjineyar Temple Near 5 Corner Park Road Dharapuram 638656",
+    "city": "Dharapuram",
+    "state": "Tamil Nadu",
+    "pincode": "638656",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Perundurai",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "542/1 Kovai Main Road Perundurai 638052",
+    "city": "Perundurai",
+    "state": "Tamil Nadu",
+    "pincode": "638052",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Kodumudi",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "548/A Karur Main Road Kodumudi 638151",
+    "city": "Kodumudi",
+    "state": "Tamil Nadu",
+    "pincode": "638151",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Anthiyur Bhavani",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "495/4 Kanchi Thotti Thottam Bhavani Main Road 638501 or 280 near Union Bank Chenniappa Theater Opp Tirupur Road 638701",
+    "city": "Bhavani",
+    "state": "Tamil Nadu",
+    "pincode": "638701",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "NEXA Erode West",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "Perundurai Road area NEXA Perundurai Road",
+    "city": "Perundurai",
+    "state": "Tamil Nadu",
+    "pincode": "641004",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "True Value Perundurai Rd",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "542/1 Kovai Main Road Perundurai 638052",
+    "city": "Erode",
+    "state": "Tamil Nadu",
+    "pincode": "638052",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Coonoor",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "Opp Union Bank Bedford Coonoor 643101",
+    "city": "Coonoor",
+    "state": "Tamil Nadu",
+    "pincode": "643101",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Ooty",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "Near Rose Garden Vijayanagaram Road Ooty 643001",
+    "city": "Ooty",
+    "state": "Tamil Nadu",
+    "pincode": "643001",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Gudalur",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "12/687-F Chevidepet Mysore Road Gudalur 643212 or Door no-7/235C9 ST-1 via Kundha Bridge Kilkundha 643219",
+    "city": "Gudalur",
+    "state": "Tamil Nadu",
+    "pincode": "643219",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Namakkal",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "No 644/143 HDFC Bank opposite Salem Main Road 637001 or 1/10-11 Near Murugan Temple Salem Road 637001 or 827/1 Near Old SP Office Salem Main Road 637001",
+    "city": "Namakkal",
+    "state": "Tamil Nadu",
+    "pincode": "637001",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Pavithram",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "No 3/330 Namakkal Main Road Pavithram 637021",
+    "city": "Namakkal",
+    "state": "Tamil Nadu",
+    "pincode": "637021",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Mallasamuthiram",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "MPK Oil Mill opposite Salem Main Road Mallasamuthiram 637503",
+    "city": "Mallasamuthiram",
+    "state": "Tamil Nadu",
+    "pincode": "637503",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Tiruchengode",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "10 Kottapalli Water Tank Post Opp Ponusamy Kalyana Mandapam Erode Road 637214",
+    "city": "Erode",
+    "state": "Tamil Nadu",
+    "pincode": "637214",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Paramathivelur",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "Near Kongu School Namakkal Bye Pass Road Padamudipalayam Paramathivelur TK Velur 638182",
+    "city": "Namakkal",
+    "state": "Tamil Nadu",
+    "pincode": "638182",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Rasipuram",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "41/1 BIA Mulakkadu Village Masakali Patty Salem Main Road 637401",
+    "city": "Rasipuram",
+    "state": "Tamil Nadu",
+    "pincode": "637401",
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
+  },
+  {
+    "dealership_id": "ambal-auto-south-india",
+    "showroom_name": "ARENA Showroom Salem Main Road",
+    "showroom_type": "Main Showroom",
+    "contact_number": null,
+    "email": null,
+    "address": "Namakkal Salem Main Road linked",
+    "city": "Namakkal",
+    "state": "Tamil Nadu",
+    "pincode": null,
+    "geolocation": null,
+    "operating_hours": {
+      "opening_time": "09:00",
+      "closing_time": "19:00"
+    },
+    "days_open": {
+      "Monday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Tuesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Wednesday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Thursday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Friday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Saturday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      },
+      "Sunday": {
+        "start_time": "09:00",
+        "end_time": "19:00",
+        "is_closed": false
+      }
+    },
+    "manager_name": null,
+    "manager_contact": null,
+    "created": 1704067200,
+    "updated": 1704067200,
+    "daily_walkin_capacity": 0,
+    "total_sales_executives": 0,
+    "parking_capacity": 0,
+    "display_vehicle_count": 0,
+    "facilities_available": [],
+    "google_reviews_rating": null,
+    "google_reviews": null,
+    "google_my_business_listing": null,
+    "showroom_reviews": null,
+    "showroom_photos": null,
+    "showroom_rating": null
   }
 ]

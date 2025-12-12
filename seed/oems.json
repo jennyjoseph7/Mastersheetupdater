@@ -12,6 +12,13 @@
     "oem_vehicle_categories": ["Passenger vehicles", "Commercial Vehicles"],
     "created": 1704067200,
     "updated": 1704067200
+  },{
+    "oem_id": "maruti-suzuki-oem-id",
+    "region_id": "india-region-id",
+    "brand_name": "Maruti Suzuki",
+    "website": "https://www.marutisuzuki.com",
+    "created": 1704067200,
+    "updated": 1704067200
   },
   {
     "oem_id": "hyundai",
