@@ -4,7 +4,8 @@ from models import model as base_model
 from ai_service import ai_service_app
 # from communication.connectors.connector_whatsapp import process_forwarded_webhook
 from db_routes import db_routes
-from voice.voice.providers.twilio import app as twilio_routes
+# from voice.voice.providers.twilio import app as twilio_routes
+# from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_app
 import os
 from flask import request
 from config import *
@@ -113,7 +114,8 @@ def test_voice_agent(provider, session_id):
 
 app.register_blueprint(ai_service_app.app)
 app.register_blueprint(db_routes)
-app.register_blueprint(twilio_routes)
+# app.register_blueprint(twilio_routes)
+# app.register_blueprint(elevanlabs_tatatele_app)
 if __name__ == "__main__":
 
     app.run(debug=True, host=app_dict['host'], port=app_dict['port'])
