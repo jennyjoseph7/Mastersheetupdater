@@ -11,9 +11,7 @@ json = hp.json
 from yield_response import yield_result,yield_error, yield_status
 from prompt import run_prompt_sync
 
-print(f"SERVICE NAME1 {AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME}")
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
-print(f"SERVICE NAME2 {gryd.SERVICE}")
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 

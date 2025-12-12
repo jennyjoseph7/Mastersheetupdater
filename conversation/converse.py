@@ -174,10 +174,82 @@ def post_billing_data(customer_response, out_put_text, campaign_data, dealership
     mlogger.info("posted data == {}".format(xx))
 
 @gryd.is_a_task()
+def post_all_messages_for_session(*args, **pass_kwargs):
+    """
+    Example input:
+    [{
+        "reply_to": "1234",
+        "customer_response": "hello",
+        "request_data": {
+            "customer_response": "hello"
+        },
+        "session_id": "1234",
+        "user_id": "5678",
+        "responses": [
+            {
+                "intent": "llm_response",
+                "placeholder": "hello",
+                "index": 1,
+                "created": 1234567890,
+                "updated": 1234567890
+            }
+        ]
+    },{
+        "reply_to": "1234",
+        "customer_response": "hello",
+        "request_data": {
+            "customer_response": "hello"
+        },
+        "session_id": "1234",
+        "user_id": "5678",
+        "responses": [
+            {
+                "intent": "llm_response",
+                "placeholder": "hello",
+                "index": 1,
+                "created": 1234567890,
+                "updated": 1234567890
+            }
+        ]
+    }]
+    """
+    for x in pass_kwargs.get("history"):
+        post_messages_data(*args, **x)
+
+
+@gryd.is_a_task()
 def post_messages_data(*args, **pass_kwargs):
-    '''
-        Picks up all messages sent and posts it to message model
-    '''
+    """
+    Saves messages to the session data cache.
+
+    Example input:
+    {
+        "reply_to": "1234",
+        "customer_response": "hello",
+        "request_data": {
+            "customer_response": "hello"
+        },
+        "session_id": "1234",
+        "user_id": "5678",
+        "responses": [
+            {
+                "intent": "greeting",
+                "placeholder": "hello",
+                "index": 1,
+                "created": 1234567890,
+                "updated": 1234567890
+            }
+        ]
+    }
+
+    :param reply_to: The message ID of the message to reply to.
+    :param customer_response: The message sent by the user.
+    :param request_data: The request data object.
+    :param session_id: The ID of the session.
+    :param user_id: The ID of the user.
+    :param responses: A list of response objects.
+    :return: The result of the task.
+    """
     mlogger.info("post_messages_data called with data == {}".format(pass_kwargs))
     with get_pg_connector() as pg:
         new_messages = []
