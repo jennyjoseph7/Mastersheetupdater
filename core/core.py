@@ -6,7 +6,7 @@ BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CORE_SERVICE_NAME, \
-    gryd, hp, \
+    gryd, gryd_routes, hp, \
     GRYD_FILE_USER_ID, \
     GRYD_FILE_API_KEY, \
     GRYD_FILE_SERVER_URL
@@ -487,6 +487,140 @@ def extract_csv_headers(csv_file_link, job = None, logger = None):
         headers = reader.fieldnames
         logger.info(f"Headers: {headers}")
         return headers
+
+@gryd.is_a_task(function_name="dealership_signup", job_param='job', auth_param='auth', logger_param='logger')
+def dealership_signup(dealer_name:str, region_id:str, vehicle_category:str, dealership_type:str, languages:list[str], supported_brands:list[str], primary_contact_name:str, primary_contact_email:str, primary_contact_phone:str, aliases = None, pan_number = None, gstin = None, website = None, job = None, logger = None, **kwargs):
+    """
+    Unified gryd task to sign up a dealership
+    Args:
+        dealer_name: name of the dealership
+        region_id: id of the region
+        vehicle_category: category of the vehicle
+        dealership_type: type of the dealership
+        languages: languages supported by the dealership
+        supported_brands: brands supported by the dealership
+        primary_contact_name: name of the primary contact
+        primary_contact_email: email of the primary contact
+        primary_contact_phone: phone number of the primary contact
+    Kwargs:
+        aliases: aliases of the dealership, list of strings
+        pan_number: PAN number of the dealership, string
+        gstin: GSTIN of the dealership, string
+        website: website of the dealership, string
+        kwargs: other kwargs to pass to the dealership model, dict
+    Returns:
+        dealership: dealership object, which includes the dealership details and login_token
+
+    Example:
+        dealership_signup(
+            dealer_name = "Ambal Auto",
+            region_id = "south-india",
+            vehicle_category = "car",
+            dealership_type = "Single Brand",
+            languages = ["english", "hindi"],
+            supported_brands = ["maruti-suzuki-nexa", "maruti-suzuki-arena"],
+            primary_contact_name = "Ambal Auto",
+            primary_contact_email = "ambalauto@gmail.com",
+            primary_contact_phone = "+91-9876543201",
+        )
+    Throws Error:
+        ValueError: If the dealership already exists
+        ValueError: If GSTIN, PAN number, or website is not provided
+        ValueError: If region_id is not valid
+        ValueError: If vehicle_category is not valid
+        ValueError: If dealership_type is not valid
+        ValueError: If languages are not valid
+        ValueError: If supported brands are not valid
+        ValueError: If primary contact name is not valid
+        ValueError: If primary contact email is not valid
+        ValueError: If primary contact phone is not valid
+    Example:
+        dealership_signup(
+            dealer_name = "Ambal Auto",
+            region_id = "south-india",
+            vehicle_category = "car",
+            dealership_type = "Multi Brand",
+            languages = ["english", "hindi"],
+            supported_brands = ["maruti-suzuki-nexa", "maruti-suzuki-arena", "hyundai"],
+            primary_contact_name = "Ambal Auto",
+            primary_contact_email = "ambalauto@gmail.com",
+            primary_contact_phone = "+91-9876543201",
+            aliases = ["Ambal Auto", "Ambal Auto - Service Center"],
+            pan_number = "ABCD1234567890",
+            gstin = "ABCD1234567890",
+            website = "https://ambalauto.com",
+        )
+    # Example input JSON format for dealership_signup:
+    # {
+    #   "args": [
+    #     "Ambal Auto",
+    #     "south-india",
+    #     "car",
+    #     "Multi Brand",
+    #     ["english", "hindi"],
+    #     ["maruti-suzuki-nexa", "maruti-suzuki-arena", "hyundai"],
+    #     "Ambal Auto",
+    #     "ambalauto@gmail.com",
+    #     "+91-9876543201"
+    #   ],
+    #   "kwargs": {
+    #     "aliases": ["Ambal Auto", "Ambal Auto - Service Center"],
+    #     "pan_number": "ABCD1234567890",
+    #     "gstin": "ABCD1234567890",
+    #     "website": "https://ambalauto.com"
+    #   }
+    # }
+    Returns:
+        dealership: dealership object, which includes the dealership details and login_token
+    """
+    logger = logger or mlogger
+    logger.info(f"Dealer signing up for dealership: {dealer_name}, {region_id}, {vehicle_category}, {dealership_type}")
+    dealership_model = gryd.base_model.Model('dealership', AUTOCRM_APP_ENTERPRISE_ID)
+    previous_dealership = dealership_model.list(_as_option=True, _page_size=1, dealer_name=f"~{dealer_name}", region_id=region_id, vehicle_category=vehicle_category)
+    if previous_dealership:
+        raise ValueError(f"Dealer with name {dealer_name}, region {region_id}, vehicle category {vehicle_category} already exists")
+    if not any([gstin, pan_number, website]):
+        raise ValueError("Either GSTIN, PAN number, or website is required")
+    region_model = gryd.base_model.Model('region', AUTOCRM_APP_ENTERPRISE_ID)
+    region = region_model.get(region_id)
+    if not region:
+        raise ValueError(f"Region {region_id} not found")
+    kwargs.update({
+        'dealer_name': dealer_name,
+        'region_id': region_id,
+        'vehicle_category': vehicle_category,
+        'dealership_type': dealership_type,
+        'languages': languages,
+        'supported_brands': supported_brands,
+        'aliases': aliases,
+        'pan_number': pan_number,
+        'gstin': gstin,
+        'website': website
+    })
+    human_agent_model = gryd.base_model.Model('human_agent', AUTOCRM_APP_ENTERPRISE_ID)
+    existing_human_agent = human_agent_model.list(_as_option=True, _page_size=1, primary_contact_email=primary_contact_email)
+    if existing_human_agent:
+        raise ValueError(f"Human agent with email {primary_contact_email} already exists")
+    existing_human_agent = human_agent_model.list(_as_option=True, _page_size=1, primary_contact_phone=primary_contact_phone)
+    if existing_human_agent:
+        raise ValueError(f"Human agent with phone number {primary_contact_phone} already exists")
+    with human_agent_model.objects._db._transaction() as db_transaction:
+        dealership = dealership_model.post(kwargs)
+        human_agent = human_agent_model.post({
+            'dealership_id': dealership.get('dealership_id'),
+            'agent_name': primary_contact_name,
+            'email': primary_contact_email,
+            'phone_number': primary_contact_phone,
+            'role': 'Dealership Admin'
+        })
+        login_token = gryd_routes.return_login_token(
+            enterprise_id = AUTOCRM_APP_ENTERPRISE_ID, 
+            user_id = human_agent.get('human_agent_id'), 
+            role = 'Dealership Admin',
+            application_id = "autocrm",
+        )
+        dealership['login_token'] = login_token
+    return dealership
 
 @gryd.is_a_task(function_name="import_leads_from_csv", job_param='job', auth_param='auth', logger_param='logger')
 def gryd_task_import_leads_from_csv(

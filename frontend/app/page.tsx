@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   fetchAPIData,
   fetchPivotCountForCampaign,
+  fetchDealershipCampaigns,
   epochToIST,
 } from "@/utils/api";
 
@@ -100,6 +101,23 @@ export default function CampaignDashboard() {
 
   // Fetch campaigns by type and page
   const fetchCampaigns = async (type: string, page: number) => {
+    console.log(
+      "[fetchCampaigns] Fetching campaigns for type:",
+      type,
+      "page:",
+      page
+    );
+    // Handle dealership campaigns separately
+    if (type === "dealership") {
+      console.log("[fetchCampaigns] Fetching dealership campaigns...");
+      const res = await fetchDealershipCampaigns();
+      console.log("[fetchCampaigns] Dealership campaigns response:", res);
+      return {
+        merged: res?.items ?? [],
+        total: res?.total ?? 0,
+      };
+    }
+
     const params = { page_number: page, page_size: ITEMS_PER_PAGE };
     const res = await fetchAPIData(
       type === "pre_sales" ? "pre_sales_campaign" : "post_sales_campaign",
@@ -126,6 +144,26 @@ export default function CampaignDashboard() {
 
   // Update counts header (total campaigns of current type)
   useEffect(() => {
+    // For dealership campaigns, use the campaignsData total
+    if (campaignTypeFilter === "dealership" && campaignsData) {
+      setTotalCount(campaignsData.total ?? 0);
+      // Count active dealership campaigns
+      const activeDealership = (campaignsData.merged ?? []).filter(
+        (c: Campaign) => {
+          const status =
+            c.campaign_status ||
+            (c.start_date && c.end_date && Date.now() / 1000 > c.end_date
+              ? "completed"
+              : c.start_date && Date.now() / 1000 >= c.start_date
+              ? "live"
+              : "scheduled");
+          return status === "live";
+        }
+      ).length;
+      setActiveCount(activeDealership);
+      return;
+    }
+
     if (counts) {
       let totalForType = 0;
       let activeForType = 0;
@@ -159,11 +197,18 @@ export default function CampaignDashboard() {
       setTotalCount(totalForType);
       setActiveCount(activeForType);
     }
-  }, [counts, campaignTypeFilter]);
+  }, [counts, campaignTypeFilter, campaignsData]);
 
   // Update campaigns and total count whenever data or type changes
   useEffect(() => {
+    console.log("[useEffect] campaignsData changed:", campaignsData);
+    console.log("[useEffect] campaignTypeFilter:", campaignTypeFilter);
     if (campaignsData) {
+      console.log(
+        "[useEffect] Setting campaigns:",
+        campaignsData.merged?.length,
+        "items"
+      );
       setMergedCampaigns(campaignsData.merged ?? []);
       setTotalCount(campaignsData.total ?? 0);
     }
@@ -171,12 +216,32 @@ export default function CampaignDashboard() {
 
   const filteredCampaigns = useMemo<Campaign[]>(() => {
     const q = (searchQuery || "").trim().toLowerCase();
+    console.log(
+      "[filteredCampaigns] mergedCampaigns:",
+      mergedCampaigns.length,
+      "items"
+    );
+    console.log("[filteredCampaigns] campaignTypeFilter:", campaignTypeFilter);
 
     return mergedCampaigns.filter((campaign: Campaign) => {
-      const matchesSearch =
-        q === "" || (campaign.name ?? "").toLowerCase().includes(q);
+      const campaignName = campaign.name ?? campaign.campaign_name ?? "";
+      const matchesSearch = q === "" || campaignName.toLowerCase().includes(q);
+
+      // Derive status if not present (for dealership campaigns)
+      const campaignStatus =
+        campaign.campaign_status ||
+        (campaign.start_date &&
+        campaign.end_date &&
+        Date.now() / 1000 > campaign.end_date
+          ? "completed"
+          : campaign.start_date && Date.now() / 1000 >= campaign.start_date
+          ? "live"
+          : campaign.start_date
+          ? "scheduled"
+          : "draft");
+
       const matchesStatus =
-        statusFilter === "all" || campaign.campaign_status === statusFilter;
+        statusFilter === "all" || campaignStatus === statusFilter;
       const matchesChannel =
         channelFilter === "all" ||
         (campaign.channels ?? []).includes(channelFilter);
@@ -184,9 +249,17 @@ export default function CampaignDashboard() {
       const normalize = (val: string | undefined) =>
         val?.toLowerCase().replace("-", "_");
 
+      // Handle campaign_type as array or string
+      const campaignType = Array.isArray(campaign.campaign_type)
+        ? campaign.campaign_type[0]
+        : campaign.campaign_type;
+
+      // When filtering by dealership, show all campaigns (already filtered by fetch)
+      // Otherwise, match by campaign_type
       const matchesCampaignType =
         campaignTypeFilter === "all" ||
-        normalize(campaign.campaign_type) === normalize(campaignTypeFilter);
+        campaignTypeFilter === "dealership" ||
+        normalize(campaignType) === normalize(campaignTypeFilter);
 
       return (
         matchesSearch && matchesStatus && matchesChannel && matchesCampaignType
@@ -275,7 +348,9 @@ export default function CampaignDashboard() {
                   Current type:{" "}
                   {campaignTypeFilter === "pre_sales"
                     ? "Pre-Sales"
-                    : "Post-Sales"}
+                    : campaignTypeFilter === "post_sales"
+                    ? "Post-Sales"
+                    : "Dealership"}
                 </p>
               </CardContent>
             </Card>
@@ -328,7 +403,7 @@ export default function CampaignDashboard() {
 
           {/* Campaign Table */}
           <div
-            className="transform-gpu transition-transform duration-500 ease-out"
+            className="transform-gpu transition-transform duration-500 ease-out "
             style={{
               transform: "perspective(1000px) rotateX(1deg) rotateY(-1deg)",
               transformStyle: "preserve-3d",
@@ -452,7 +527,9 @@ export default function CampaignDashboard() {
                           Campaign Type:{" "}
                           {campaignTypeFilter === "pre_sales"
                             ? "Pre-Sales"
-                            : "Post-Sales"}
+                            : campaignTypeFilter === "post_sales"
+                            ? "Post-Sales"
+                            : "Dealership"}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -475,6 +552,14 @@ export default function CampaignDashboard() {
                           }}
                         >
                           Post-Sales
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setCampaignTypeFilter("dealership");
+                            setPage(1);
+                          }}
+                        >
+                          Dealership
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -524,73 +609,103 @@ export default function CampaignDashboard() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      displaySlice.map((campaign) => (
-                        <TableRow
-                          key={`${campaign.campaign_id}-${
-                            campaign.campaign_type ?? "type"
-                          }`}
-                        >
-                          <TableCell className="font-medium">
-                            {campaign.campaign_type === "pre-sales" ||
-                            campaign.campaign_type === "pre_sales"
-                              ? "Pre-Sales"
-                              : campaign.campaign_type === "post-sales" ||
-                                campaign.campaign_type === "post_sales"
-                              ? "Post-Sales"
-                              : "—"}
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {campaign.campaign_name ?? "—"}
-                          </TableCell>
-                          <TableCell>
-                            {getChannelBadges(campaign.channels)}
-                          </TableCell>
-                          <TableCell>
-                            {getStatusBadge(campaign.campaign_status)}
-                          </TableCell>
-                          <TableCell>
-                            {epochToIST(campaign.start_date) ??
-                              campaign.start_date ??
-                              "—"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem>
-                                  <Pencil className="mr-2 h-4 w-4" /> Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  <Copy className="mr-2 h-4 w-4" /> Duplicate
-                                </DropdownMenuItem>
-                                {campaign.campaign_status === "live" ? (
+                      displaySlice.map((campaign) => {
+                        // Handle campaign_type as array or string
+                        const campaignType = Array.isArray(
+                          campaign.campaign_type
+                        )
+                          ? campaign.campaign_type[0]
+                          : campaign.campaign_type;
+
+                        return (
+                          <TableRow
+                            key={
+                              campaign.campaign_id ??
+                              campaign.id ??
+                              Math.random()
+                            }
+                          >
+                            <TableCell className="font-medium">
+                              {campaignType === "pre-sales" ||
+                              campaignType === "pre_sales"
+                                ? "Pre-Sales"
+                                : campaignType === "post-sales" ||
+                                  campaignType === "post_sales"
+                                ? "Post-Sales"
+                                : campaignType === "dealership" ||
+                                  campaignTypeFilter === "dealership"
+                                ? "Dealership"
+                                : campaignType
+                                ? campaignType.charAt(0).toUpperCase() +
+                                  campaignType.slice(1)
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {campaign.campaign_name ?? "—"}
+                            </TableCell>
+                            <TableCell>
+                              {getChannelBadges(campaign.channels)}
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(
+                                campaign.campaign_status ||
+                                  (campaign.start_date &&
+                                  campaign.end_date &&
+                                  Date.now() / 1000 > campaign.end_date
+                                    ? "completed"
+                                    : campaign.start_date &&
+                                      Date.now() / 1000 >= campaign.start_date
+                                    ? "live"
+                                    : "scheduled")
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {epochToIST(campaign.start_date) ??
+                                (campaign.start_date
+                                  ? new Date(
+                                      campaign.start_date * 1000
+                                    ).toLocaleDateString()
+                                  : "—")}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
                                   <DropdownMenuItem>
-                                    <Pause className="mr-2 h-4 w-4" /> Pause
+                                    <Pencil className="mr-2 h-4 w-4" /> Edit
                                   </DropdownMenuItem>
-                                ) : campaign.campaign_status === "draft" ||
-                                  campaign.campaign_status === "scheduled" ? (
                                   <DropdownMenuItem>
-                                    <Play className="mr-2 h-4 w-4" /> Launch
+                                    <Copy className="mr-2 h-4 w-4" /> Duplicate
                                   </DropdownMenuItem>
-                                ) : null}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive">
-                                  Insights
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                                  {campaign.campaign_status === "live" ? (
+                                    <DropdownMenuItem>
+                                      <Pause className="mr-2 h-4 w-4" /> Pause
+                                    </DropdownMenuItem>
+                                  ) : campaign.campaign_status === "draft" ||
+                                    campaign.campaign_status === "scheduled" ? (
+                                    <DropdownMenuItem>
+                                      <Play className="mr-2 h-4 w-4" /> Launch
+                                    </DropdownMenuItem>
+                                  ) : null}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="text-destructive">
+                                    Insights
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
