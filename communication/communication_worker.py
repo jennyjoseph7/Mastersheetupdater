@@ -7,7 +7,7 @@ import json
 from gryd_worker import gryd
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from campaign.campaign_workflow import determine_campaign_next_action
+from campaign.campaign import determine_campaign_next_action
 from typing import Union
 
 from os.path import exists as ispath, dirname, basename, join as joinpath, abspath, split as pathsplit, splitext, sep as dirsep, isfile

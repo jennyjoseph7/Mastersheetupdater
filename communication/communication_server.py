@@ -6,12 +6,10 @@ from flask_orjson import OrjsonProvider
 from os.path import exists as ispath, dirname, join as joinpath, abspath, split as pathsplit, splitext, sep as dirsep, isfile
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, encrypt as enc
 from AppConfig.gryd_config import *
-# from AppConfig.i2ceHeaders import *
 from connectors.communication_configs import *
 
 from connectors.gryd_communication import *
 from connectors.connector_whatsapp import *
-# from captcha.image import ImageCaptcha
 from autocrm_db_helper import get_pg_connector
 from config import AUTOCRM_COMMUNICATION_SERVICE_NAME
 GRYD_COMMUNICATION_BROKER=os.environ.get("GRYD_COMMUNICATION_BROKER","sqs")

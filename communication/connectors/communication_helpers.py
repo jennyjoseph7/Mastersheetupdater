@@ -2,38 +2,19 @@
 import functools
 import os
 import sys
-import re
 import json
 import time
 import uuid
 import base64
 import pprint
 import requests
-import mimetypes
-import urllib.parse
 import orjson
-# import pdfkit
-import smtplib
-import boto3
-import types
 from dateutil.relativedelta import relativedelta 
-from io import BytesIO
 from decimal import Decimal
 from uuid import UUID
-from pathlib import Path
-from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
-from itertools import islice
-from email.message import EmailMessage
-from email.utils import make_msgid
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
 from typing import Optional, Dict, Any, List, Union, Callable,Tuple,Generator
-# from PIL import Image
-from urllib.parse import urlparse
-import csv
-import io
+# from urllib.parse import urlparse
 from os.path import (
     exists as ispath,
     dirname,
@@ -45,7 +26,9 @@ from os.path import (
     sep as dirsep,
     isfile
 )
-from validate_email import validate_email
+
+#TEST from validate_email import validate_email
+
 # --- Set import path for internal modules ---
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 

@@ -21,7 +21,7 @@ class CampaignSourceBase:
     Automatically generates a deterministic campaign_status_check_id
     based on campaign and channel identifiers.
     """
-    MODEL_NAME= M_GRYD_CAMPAIGN_STATUS_CHECK
+    # MODEL_NAME= M_GRYD_CAMPAIGN_STATUS_CHECK
 
     def __init__(self, enterprise_id: str, campaign_details_data: dict, max_per_day: int = None):
         self.enterprise_id = enterprise_id
@@ -193,6 +193,7 @@ class CampaignSourceFactory:
         try:
             logger.info("Intializing create_from_source_json")
             src_type = (campaign_user_source or {}).get("source_type", "").lower()
+            
             if not src_type:
                 raise ValueError("Missing 'type' in campaign_user_source")
             logger.info(f"Loading campaign src_type: {src_type}")

@@ -13,13 +13,13 @@ import sys
 
 # --- Local & Gryd modules ---
 from models import model as mod, action as _act, validators as val
-import helpers as hp
-from gryd_worker import gryd, gryd_db_helper as db
+from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
+
 # --- Optional modules ---
-try:
-    from gryd_worker import gryd_helpers as ghp
-except ImportError:
-    ghp = None  # fallback if needed
+# try:
+#     from gryd_worker import gryd_helpers as ghp
+# except ImportError:
+#     ghp = None  # fallback if needed
 
 # --- Logger ---
 def get_logger(name=None,**kwargs):
@@ -64,12 +64,8 @@ ENVIRONMENT= cfg.ENVIRONMENT
 BASE_URL = cfg.CONVERSATION_BASE_URL 
 
 
-
-
 # Communication Services
 GRYD_COMMUNICATION_SERVICE = cfg.gryd_communication_service
-GRYD_COMMUNICATION_STATUS_SERVICE = cfg.gryd_communication_status_service
-GRYD_COMMUNICATION_CAMPAIGN_SERVICE = cfg.gryd_communication_campaign_service
 GRYD_COMMUNICATION_BROKER = cfg.gryd_communication_broker
 GRYD_COMMUNICATION_TIMEOUT = cfg.gryd_communication_timeout
 GRYD_COMMUNICATION_SHUTDOWN_TIMEOUT = cfg.gryd_communication_shutdown_timeout
@@ -92,15 +88,6 @@ VOICE_CAMPAIGN_BASE_URL=cfg.voice_campaign_base_url
 # Keep a sleep time of N sec before sending whatsapp message
 SLEEP_OVER_MESSAGE = cfg.sleep_over_message
 
-# Campaign Model Names
-M_GRYD_CAMPAIGN_USER_DETAIL=cfg.GRYD_CAMPAIGN_USER_DETAIL
-M_GRYD_CAMPAIGN_USER_DETAIL_ARCHIVE=cfg.GRYD_CAMPAIGN_USER_DETAIL_ARCHIVE
-M_GRYD_CAMPAIGN_USER_INTERACTION=cfg.GRYD_CAMPAIGN_USER_INTERACTION
-M_GRYD_CAMPAIGN=cfg.GRYD_CAMPAIGN
-M_GRYD_CAMPAIGN_DETAIL=cfg.GRYD_CAMPAIGN_DETAIL
-M_GRYD_CAMPAIGN_STATUS_CHECK=cfg.GRYD_CAMPAIGN_STATUS_CHECK
-
-
 # Misc
 DB_TIMEZONE = cfg.db_timezone
 FILE_CHUNK_SIZE = cfg.file_chunk_size
@@ -115,20 +102,24 @@ VOICE_MAX_MESSAGE_PER_DAY=cfg.VOICE_MAX_MESSAGE_PER_DAY
 GRYD_COMMUNICATION_WEBHOOK_ASYNC=cfg.gryd_communication_webhook_async
 
 
-
 # whatsapp configs
 
 
 INBOUND = "INBOUND"
 IGNORED_STATUSES = {"ACK"}
-# TRACKABLE_STATUSES = {"READ", "RECEIVED", "SENT", "DELIVERED", "INITIATED","FAILED"}
-TRACKABLE_STATUSES = {"READ", "RECEIVED", "SENT", "DELIVERED","FAILED"}
 
-MODEL_ID_DETAIL={
-    "gryd_campaign_user_detail":"campaign_user_id",
-    "gryd_campaign_user_detail_archive":"campaign_user_archive_id",
-    
+TRACKABLE_STATUSES = {"READ", "RECEIVED", "SENT", "DELIVERED", "INITIATED","FAILED"}
+
+
+WA_TO_DISPOSITION = {
+    "read": "contacted",
+    "sent": "attempted",
+    "initiated": "queued",
+    "delivered": "reached",
+    "failed": "failed",
+    "interacted":"engaged"
 }
+
 
 NONE_TEMPLATE_TYPES= ["buttons","images","url","image","document","documents","video","videos","audios"]
 PROVIDER_CONFIG = {
@@ -188,16 +179,4 @@ PROVIDER_CONFIG = {
 
 
 
-# logger.info(f"GRYD_COMMUNICATION_SERVICE:{GRYD_COMMUNICATION_SERVICE}")
-# logger.info(f"GRYD_COMMUNICATION_STATUS_SERVICE: {GRYD_COMMUNICATION_STATUS_SERVICE}")
-# logger.info(f"GRYD_COMMUNICATION_CAMPAIGN_SERVICE: {GRYD_COMMUNICATION_CAMPAIGN_SERVICE}")
 
-# config={
-#     "broker_type": GRYD_COMMUNICATION_BROKER,
-#     "timeout":GRYD_COMMUNICATION_TIMEOUT,
-#     "wait_time_to_shutdown":GRYD_COMMUNICATION_SHUTDOWN_TIMEOUT
-#     }
-# gryd.SERVICE = GRYD_COMMUNICATION_SERVICE
-# gryd.set_queue_manager(config = config)
-# gryd.__CUSTOM_MODULE__ = "COMMUNICATION"
-# logger.info(f"[INITGRYD] Intaializing  {gryd.__CUSTOM_MODULE__ } Worker")

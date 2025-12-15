@@ -1,6 +1,21 @@
-from connectors.whatsapp_connectors.source_connectors import *
-# from captcha.image import ImageCaptcha
+# from connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter,BaseWhatsappMessenger,WhatsappReceiverConnector,WhatsappMessangerConnector,SleepOverMessage
+# from connectors.communication_helpers import truncate_values,safe_orjson_dumps,NullEmptyCheck
+# from communication_configs import *
+# from typing import Optional,Dict,Any, List, Union, Callable,Tuple,Generator
+# import os
+# import uuid
+# import requests
+# import base64
+import types
+# import time
+# # from captcha.image import ImageCaptcha
+# # from PIL import Image
 # from PIL import Image
+# from io import BytesIO
+
+
+from connectors.whatsapp_connectors.source_connectors import *
+
 class AirtelWebhookConverter(BaseWebhookConverter):
     logger.info("AirtelWebhookConverter initialized")
     def __init__(self,whatsapp_provider,*args,**kwargs)-> None:
@@ -74,7 +89,7 @@ class AirtelWebhookConverter(BaseWebhookConverter):
             with open(opus_path, 'wb') as f:
                 f.write(content)
 
-            bucket_url= ghp.upload_to_s3(opus_path,enterprise_id=enterprise_id, )
+            bucket_url= hp.upload_to_s3(opus_path,enterprise_id=enterprise_id, )
 
             logger.info(f"File saved successfully with UUID: {file_uuid}")
             r={

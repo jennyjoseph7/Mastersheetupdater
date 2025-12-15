@@ -1,14 +1,25 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 from copy import deepcopy as copy
-import math
-import os
+import re
+import time
 from os.path import exists as ispath, dirname, basename, join as joinpath, abspath, split as pathsplit, splitext, sep as dirsep, isfile
 import sys
+import json
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
+
+
 from communication.connectors.communication_helpers import _wait_for_next_minute,yield_gryd_task_results
 from communication.connectors.base_connector_communication import *
-from config import AUTOCRM_CAMPAIGN_SERVICE_NAME
+
+# ---
+# from communication.connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappCampaignTemplate
+# from communication.connectors.user_source_connectors.source_connector import CampaignSourceFactory
+# from communication.connectors.communication_helpers import AuthManager
+# from gryd_worker import gryd,gryd_helpers as hp
+# from communication.connectors.communication_configs import DB_TIMEZONE,WA_TO_DISPOSITION
+# ---
+from config import AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 QUEUE_MANAGER = gryd.get_queue_manager(AUTOCRM_CAMPAIGN_SERVICE_NAME)
@@ -237,7 +248,9 @@ class BaseCampaignCreater:
             f"Updated campaign user {lead_id} with patch: {patch_user_data}"
         )
         
-        logger.info(f"TEST MESSAGE_STATUS ------{patch_user_data.get('message_status')}")
+        
+        msg_status=WA_TO_DISPOSITION.get(patch_user_data.get("message_status"), None)
+        logger.info(f"TEST MESSAGE_STATUS ------{msg_status}")
         
         data={
                 "lead_id":lead_id,
@@ -247,15 +260,19 @@ class BaseCampaignCreater:
                 "campaign_model":campaign_details.get("campaign_model"),
                 "phone_number":mobile_number,
                 "message_id":response.get("message_id"),
-                "provider_status":patch_user_data.get("message_status"),
+                "provider_status":msg_status,
                 "channel_provider":whatsapp_provider,
                 "channel":"whatsapp_chat",
             }
+        
         gryd.create_async_task(
             "post_contact_status", 
-            GRYD_COMMUNICATION_STATUS_SERVICE, 
+            GRYD_COMMUNICATION_SERVICE, 
             kwargs=data
         )
+        
+        
+        
         return patch_user_data
         
         
@@ -478,7 +495,7 @@ class BaseCustomCampaignManager:
             enterprise_id = kwargs.get("enterprise_id") or enterprise_id or "test1"
             campaign_id = kwargs.get("campaign_id") or campaign_id
             logger.info(f'*********[Running Campaign]**************\nCampaign_id: [{campaign_id}]')
-
+            # logger.info(f"Campaign user source--{kwargs.get('campaign_user_source')}")
             # Load campaign user source
             campaign_user_source = kwargs.get("campaign_user_source", {})
             channel = kwargs.get("channel", "").upper()
@@ -540,18 +557,5 @@ def async_run_custom_campaign(*args,**kwargs):
     logger.info("Sending Async Campaign message")
     b=BaseCustomCampaignManager()
     b.run_custom_campaign(*args,**kwargs)
-     
-# NOTE: Whatever template_variables are present we need to have that user_info 
-# Ex- in template_variables = ["customer_name", "model"] then we need to have
-# user_info = {"customer_name": "Praveen", "model": "Brezza"}
 
-"""
-TODO: check all the TODOs.
-post 3 status to contact status for each user with the campaign_id,then we need to also create a id while posting the status.
-remove unwanted logs.
-test with multiple users.
-handle session.
-check the fetch_next_batch.
-Add proper loggers with time taken.
-"""
 

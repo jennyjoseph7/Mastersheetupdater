@@ -3,7 +3,9 @@ import sys
 import json
 import importlib
 import pkgutil
+import time
 import flask as Flask
+import uuid
 # sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from gryd_worker import gryd,gryd_routes
 import helpers as hp
@@ -89,12 +91,14 @@ def send_text_template_for_approval(data, *args, **kwargs):
     }
 
 @gryd.is_a_task(function_name="trigger_campaign")
-def trigger_campaign(campaign_type, campaign_id):
+def trigger_campaign(*args, **kwargs):
     """
     Trigger a campaign for a given campaign type and campaign id.
     """
+    
     logger.info("------ Triggering Campaign ------")
-
+    campaign_id=kwargs.get("campaign_id")
+    campaign_type=kwargs.get("campaign_type")
     lead_table = "pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
 
     with get_pg_connector() as pg:
@@ -151,7 +155,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
               This ID can be used to track approval status.
     """
     logger.info("----- In process_single_lead task -----")
-
+    
+    
     with get_pg_connector() as pg:
         if campaign_type == "pre-sales":
             campaign_details = list(pg.list("pre_sales_campaign", {"campaign_id": campaign_id}))
@@ -163,6 +168,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
             lead_id_field = "post_sales_lead_id"
 
     if not campaign_details:
+        yield {"status" : "Error","error_description" : f"No campaign details found for campaign_id={campaign_id}"}
         raise ValueError("Invalid campaign_id")
 
     campaign_details = campaign_details[0]
@@ -180,44 +186,34 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
 
         if not result:
             logger.error(f"No lead found for {lead_id_field}={lead_id}")
-            return None
+            yield {"status" : "Error","error_description" : f"No lead found for {lead_id_field}={lead_id}"}
 
         lead_data = result[0]
 
     logger.info(f"Lead found: for lead_id={lead_id}")
     if not lead_id:
         logger.error("Lead ID missing in lead data so skipping..")
-        return None
+        yield {"status" : "Error","error_description" : "Lead ID missing in lead data so skipping.."}
+    
 
     if not channel:
         channel = get_channel(lead_data, campaign_details)
 
-    # template_data = get_template_from_lead(lead_id)  # TODO: replace with GRYD async // input--lead_id, campaign_type output - template_data ,task name - get_whatsapp_template 
-    # template_data=gryd.await_result(
-    #     task="get_whatsapp_template",
-    #     service="autocrm-agent",
-    #     kwargs={
-    #     "lead_id": lead_id,
-    #     "campaign_type": campaign_type,
-    #     "lead_info": {}
-    #     }
-    # )
     template_data=get_whatsapp_template(lead_id=lead_id, campaign_type=campaign_type, lead_info={})
         
     if not template_data:
         logger.error(f"No template data found for lead_id={lead_id}")
-        return None
+        yield {"status" : "Error","error_description" : f"No template data found for lead_id={lead_id}"}
     template_data = template_data[0]
     logger.info(f"TEMPLATE DATA for mobile_number = {lead_data.get('phone_number')} and lead_id= {lead_id} and template details :\n{json.dumps(template_data, indent=4)}")
 
     buttons = template_data.pop("buttons", None)
-    # if buttons:
-    #     template_data = buttons
-    # logger.info(f"TEMPLATE DATA:\n{json.dumps(template_data, indent=4)}")
     template_variables = template_data.get("template_variables", [])
     #TODO:later we need to change this..
     if campaign_type == "pre-sales":
         mobile = lead_data.get("phone_number")
+        # create a person if not exists
+        # get_or_create_person(mobile)
         customer_name = lead_data.get("person_name")
         # model = (lead_data.get("model_preference") or [None])[0]
         variable_mapping = get_variable_values(template_variables, lead_data)
@@ -238,9 +234,11 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
 
         if not selected_person:
             logger.error(f"No valid person found for post-sales lead_id={lead_id}")
-            return None
+            yield {"status" : "Error","error_description" : f"No valid person found for post-sales lead_id={lead_id}"}
 
         mobile = selected_person.get("last_contacted_whatsapp_number")
+        # create a person if not exists
+        # get_or_create_person(mobile)
         customer_name = selected_person.get("person_name")
         # model = lead_data.get("vehicle_model")
         variable_mapping = get_variable_values(template_variables, lead_data, selected_person)
@@ -275,8 +273,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         "enterprise_id": campaign_details.get("enterprise_id"),
         "campaign_id": campaign_details.get("campaign_id"),
         # these 2 channel and sender has to come from template_data check with prince 
-        "channel": channel,
-        "sender": "917795030574",
+        "channel": template_data.get("channel"),
+        "sender": template_data.get("sender"),
         "provider_name": "airtel",
         "template_message": template_message,
         "campaign_user_source": {
@@ -325,6 +323,44 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         "campaign_response": final_payload
     }
 
+# def get_or_create_person(phone_number):
+#     """Return person object; create if not exists."""
+#     logger.info(f"Getting or creating person for phone_number: {phone_number}")
+    
+#     with get_pg_connector() as pg:
+#         person_list = list(pg.list(
+#             "person", 
+#             {"phone_number":phone_number}
+#         ))
+#         if person_list:
+#             logger.info(f"Person already exists for phone_number: {phone_number}")
+#             return person_list[0]  
+        
+#         d={
+#             "phone_number": phone_number,
+#             "created":time.time(),
+#         }
+#         # Create new person
+#         user_id_attr=generate_uid(d)
+#         logger.info(f"user_id_attr: {user_id_attr}")
+#         d= pg.update("person","user_id",user_id_attr,{
+#             "phone_number": phone_number,
+#             "created":time.time(),
+#             "updated":time.time()
+#             })
+#         logger.info(f"Person with phone_number: {phone_number}. Doesnt exist. Created a new one. data: {d}")
+#         return d
+
+# def generate_uid(data):
+#     if isinstance(data, (dict, list)):
+#         data_str = json.dumps(data, sort_keys=True)
+#     else:
+#         data_str = str(data)
+
+#     uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
+
+#     return uid.hex[:16]   # 16 characters
+        
 def get_channel(lead, campaign_details):
     """
     Get the contact channel for a lead.
@@ -412,3 +448,47 @@ def get_variable_values(template_variables, lead_data, selected_person=None):
         else:
             values[var] = lead_data.get(var)
     return values
+
+def get_id(session_id):
+    with get_pg_connector() as pg:
+        # key = persons_involved[user_id]["last_contacted_whatsapp_number"]
+        # logger.info(f"Key>>>{key}")
+        # update_data = {
+        #     key: "91136872412",
+        #     "disposition": "queued"
+        # }
+
+        
+        d=pg.update("session", "session_id", session_id, {"status": "completed","session_live": False})
+        # lead = pg.list("post_sales_lead", "post_sales_lead_id",
+        #        "tn37dm7087-ambal-auto-ambal-auto---service-center-scheduled-service-reminder")
+        # lead = list(pg.list("post_sales_lead", {"post_sales_lead_id":"tn37dm7087-ambal-auto-ambal-auto---service-center-scheduled-service-reminder" }))
+        
+        # logger.info("Lead>>>" + str(lead))
+        # lead=lead[0]
+        # persons_involved = lead.get("persons_involved", [])
+        
+        # d = pg.update(
+        #     "post_sales_lead",
+        #     "post_sales_lead_id",
+        #     "tn37dm7087-ambal-auto-ambal-auto---service-center-scheduled-service-reminder",
+        #     {
+        #         "persons_involved": [
+        #             {**p, "last_contacted_whatsapp_number": "919113687241"}
+        #             if p.get("user_id") == user_id else p
+        #             for p in persons_involved
+        #         ],
+        #         "disposition": "pre-initiated",
+        #     }
+        # )
+        
+        # logger.info(f"Session with session_id: {session_id}. Has been ended.")
+        
+        # a=list( pg.list_order_by("contact_status", {
+        #             "phone_number": phone_number
+        #         },order_by="created", order="DESC"))
+        # logger.info(f"a->{a[0]}")
+
+if __name__ == "__main__":
+    get_id("a9ea7fa93f783742")
+    pass

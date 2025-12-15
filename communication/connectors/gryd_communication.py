@@ -3,6 +3,8 @@ from os.path import exists as ispath, dirname, basename, join as joinpath, abspa
 import sys
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from connectors.communication_helpers import *
+# from connectors.communication_configs import *
+from gryd_worker import gryd
 logger=get_logger(name=__name__)
 START_MAIL_TASK="gryd_start_mail"
 CHANNEL_ALIASES = {
@@ -10,7 +12,6 @@ CHANNEL_ALIASES = {
     "sms": {"sms", "message"},
     "push_notification": {"push_notification", "notification"}
 }
-
 
 @gryd.is_a_task(function_name="communication_hook")
 def communication_hook(channel, event_name, enterprise_id, recipient=None, reason=None, communication_id=None, **data):
@@ -78,7 +79,7 @@ def communication_hook(channel, event_name, enterprise_id, recipient=None, reaso
 
     # if not response.get("communication_id"):
     #     response["communication_id"] = post_obj["communication_id"]
-
+    response = post_obj
     logger.info("[HOOK] Response Communication: %s", json.dumps(response, default=str))
     return response
 

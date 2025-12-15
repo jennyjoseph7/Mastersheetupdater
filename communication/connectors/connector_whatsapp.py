@@ -18,8 +18,8 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from connectors.base_connector_communication import *
 logger= get_logger(__name__)
 logger.info("Intializing Test Whatsapp Connectors")
-# from campaign.campaign_manager import BaseCustomCampaignManager
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
+
 ALLOWED_PROVIDERS= str(os.environ.get("ALLOWED_PROVIDERS","airtel,rml,meta,concord,gupshup"))
 
 CACHE_FILE = "static/uploads/custom_whatsapp_webhook.json"
@@ -101,7 +101,7 @@ def process_forwarded_webhook(*args, **kwargs):
             **kwargs
         }
 
-        logger.info(f"[ForwardWebhook] Final payload: {json.dumps(forwarded_data, indent=4)}")
+        # logger.info(f"[ForwardWebhook] Final payload: {json.dumps(forwarded_data, indent=4)}")
 
         process_webhook.apply_async(
                 *(kwargs.get("whatsapp_provider"), kwargs.get("enterprise_id"), conversation_id, kwargs.get("language", "english")),
@@ -167,7 +167,7 @@ def process_webhook(*args, **kwargs):
 
     
     """
-    logger.info(f"Received a webhook request for {args} with kwargs: {safe_orjson_dumps(kwargs)}")
+    # logger.info(f"Received a webhook request for {args} with kwargs: {safe_orjson_dumps(kwargs)}")
     
     # as enterprise_id is not captured in kwargs so getting it from webhook args 
     whatsapp_provider, enterprise_id, conversation_id ,language= args[:4]
@@ -229,16 +229,36 @@ def send_message_whatsapp(*args,**kwargs):
 @gryd.is_a_task(function_name="post_contact_status")
 def post_contact_status(*args, **data):
     """
-    1) First call → args empty → create new contact_status
-    2) Second call → args contains message_id → update existing contact_status
-    """
+    Handle and store contact status updates coming from WhatsApp / messaging providers.
+    ----------
+    1. If `message_id` is NOT provided:
+        - Creates a new contact_status record.
+        - Generates a UID based on the payload.
+        - Stores created and updated timestamps.
 
+    2. If `message_id` IS provided:
+        - Fetches existing contact_status record.
+        - Updates provider_status, timestamps, and regenerates UID.
+        - Saves the updated contact_status record.
+
+    3. Additional updates when message_status is "initiated" or "queued":
+        - If campaign_type == "post-sales":
+              • Find the corresponding post_sales_lead
+              • Update persons_involved[].last_contacted_whatsapp_number
+        - Else (pre-sales):
+              • Update previous_contact_channel in pre_sales_lead
+        - Always update person model:
+              • last_contacted_whatsapp_number
+              • previous_contact_channel
+    """
+    logger.info(f"TEST [post_contact_status] status====={data.get('message_status')}")
     message_id = args[0] if args else None
     logger.info(f"[post_contact_status] message_id={message_id}")
+
     with get_pg_connector() as pg:
 
         if not message_id:
-            # logger.info("[post_contact_status] No message_id → creating new record")
+            logger.info("[post_contact_status] No message_id → creating new record")
 
             payload = {
                 **data,
@@ -246,18 +266,42 @@ def post_contact_status(*args, **data):
                 "updated": time.time()
             }
 
-            # Generate primary key
             contact_status_id = BaseWebhookConverter().generate_uid(payload)
-
+            # logger.info(f"[post_contact_status] data={data}")
             pg.update("contact_status", "contact_status_id", contact_status_id, payload)
-
+            if data.get("provider_status") in [ "initiated", "queued"]:
+                person_d=list(pg.list("person", {"phone_number": data.get("phone_number")}))
+                logger.info(f"[post_contact_status] person_d={person_d}")
+                if person_d:
+                    person_d=person_d[0]
+                    user_id=person_d.get("user_id")
+                    pg.update("person", "user_id", user_id, {"last_contacted_whatsapp_number": data.get("phone_number"),"previous_contact_channel": "whatsapp_chat"})
+                # we need to update vehicle also but there is nothing to update check once with soham or ananth.
+                if data.get("campaign_type") == "post-sales":
+                    lead_d = list(pg.list("post_sales_lead", {"post_sales_lead_id": data.get("lead_id")}))
+                    lead = lead_d[0]
+                    persons_involved = lead.get("persons_involved", [])
+                    pg.update(
+                        "post_sales_lead",
+                        "post_sales_lead_id",
+                        data.get("lead_id"),
+                        {
+                            "persons_involved": [
+                                {**p, "last_contacted_whatsapp_number": data.get("phone_number")}
+                                if p.get("user_id") == user_id else p
+                                for p in persons_involved
+                            ],
+                            "disposition": data.get("provider_status"),
+                        })
+                else:
+                    pg.update("pre_sales_lead", "pre_sales_lead_id", data.get("lead_id"), {"previous_contact_channel": "whatsapp_chat"})
+                    
             logger.info(
-                f"[post_contact_status] contact status {data.get('message_status')} "
-                f"campaign_id={data.get('campaign_id')} | phone={data.get('phone_number')}"
+                f"[post_contact_status] contact status {data.get('provider_status')} "
+                f"campaign_id={data.get('campaign_id')} | phone={data.get('phone_number')}| message_id={data.get('message_id')} | Also updated lead,person model.."
             )
 
             return 
-
 
         records = list(pg.list("contact_status", {"message_id": message_id}))
         existing = records[0] if records else None
@@ -266,75 +310,31 @@ def post_contact_status(*args, **data):
             logger.warning(f"[post_contact_status] No existing record found for {message_id}. Nothing to update.")
             return
 
-        existing["provider_status"] = (data.get("message_status") or "").upper()
+        existing["provider_status"] = (data.get("message_status") or "")
         existing["updated"] = time.time()
         existing["created"] = time.time()
         payload = existing
-        # logger.info(f"[post_contact_status] payload when message_id is present={payload}")
-        contact_status_id = BaseWebhookConverter().generate_uid(payload)
-
-        pg.update("contact_status", "contact_status_id", contact_status_id, payload)
-
+        contact_status_id =  BaseWebhookConverter().generate_uid(payload)
+        # Bcoz we have initially created the record for queued so skipping it
+        if data.get("message_status") not in ["initiated", "queued"]:
+            pg.update("contact_status", "contact_status_id", contact_status_id, payload)
+        # if data.get("message_status").lower() == "failed":
+        #     # we need to get the failure message and try to post
+        #     pass
         logger.info(
             f"[post_contact_status] contact status={data.get('message_status')} "
-            f"campaign_id={existing.get('campaign_id')} | phone={existing.get('phone_number')}"
+            f"campaign_id={existing.get('campaign_id')} | phone={existing.get('phone_number')} | message_id={existing.get('message_id')}"
         )
 
     return
 
-@gryd.is_a_task(function_name="check_or_create_session")    
-def check_or_create_session(phone_number,lead_id,campaign_id): 
-    """
-    Process an incoming WhatsApp message and resolve the correct Person,
-    Campaign context, Dealership, and Session data for the conversation.
-
-    Workflow:
-        1. Identify or create a Person based on the phone number.
-        2. Check the contact_status model to determine whether the incoming
-           message is related to a previously sent campaign.
-        3. If a campaign is found:
-               - Extract campaign_id and dealership_id.
-               - Pass these into the session creation logic.
-           If no campaign is found:
-               - Determine dealership_id from communication_credential
-                 based on the sender phone number.
-        4. Create or retrieve an active session based on the resolved payload.
-
-    Parameters:
-        phone_number (str): The user's WhatsApp mobile number from which the 
-                            message was received.
-
-    """
-    
-    payload={}
-    person = BaseWebhookConverter().get_or_create_person(phone_number)
-    if person:
-        payload["phone_number"] = phone_number
-        payload["user_id"] = person.get("user_id")
-    
-    if campaign_id and lead_id:
-        payload["campaign_id"] = campaign_id
-        payload["lead_id"] = lead_id
-    else:
-        logger.info("No campaign_id or lead_id found")
-        return {"error":"No campaign_id or lead_id found"}
-    
-    session = BaseWebhookConverter().get_or_create_session(payload)
-    logger.info(f"TEST check_or_create_session data---{session}")
-    if session:
-        payload["session_id"] = session.get("session_id")
-        payload["conversation_id"] = session.get("conversation_id")
-        payload["session_live"] = session.get("session_live")
-        payload["status"] = session.get("status")
-        payload["application"] = session.get("application")
-        payload["user_id"] = session.get("user_id")
-        # payload["dealership_id"] = session.get("dealership_id")
-        logger.info(f"TEST check_or_create_session payload data---{payload}")
         
-        return payload
+@gryd.is_a_task(function_name="check_or_create_session")
+def check_or_create_session(phone_number, campaign_details, from_web_chat): 
+    return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
 
 
-
+    
 if __name__=="__main__":
     # for airtel 
     # data={

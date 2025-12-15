@@ -64,14 +64,6 @@ class DynamicConfig:
         return self.get("GRYD_COMMUNICATION_SERVICE", "autocrm-communication")
 
     @property
-    def gryd_communication_status_service(self) -> str:
-        return self.get("GRYD_COMMUNICATION_STATUS_SERVICE", "autocrm-communication")
-
-    @property
-    def gryd_communication_campaign_service(self) -> str:
-        return self.get("GRYD_COMMUNICATION_CAMPAIGN_SERVICE", "autocrm-communication")
-
-    @property
     def gryd_communication_broker(self) -> str:
         return self.get("GRYD_COMMUNICATION_BROKER", "sqs")
 
@@ -169,9 +161,6 @@ class DynamicConfig:
     def GRYD_CAMPAIGN(self)->str:
         return str(self.get("GRYD_CAMPAIGN","gryd_campaign"))
     
-    @property
-    def GRYD_CAMPAIGN_DETAIL(self)->str:
-        return str(self.get("GRYD_CAMPAIGN_DETAIL","gryd_campaign_detail"))
     
     @property
     def GRYD_CAMPAIGN_STATUS_CHECK(self)->str:
