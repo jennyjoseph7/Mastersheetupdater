@@ -36,7 +36,8 @@
           "dealership_id"
         ]
       },
-      "required": true
+      "required": true,
+      "auto_updater":false
     },
     {
       "name": "dealer_name",
@@ -235,7 +236,7 @@
     },
     {
       "name": "campaign_sub_type",
-      "type": "list",
+      "type": "text",
       "options": [
         "workshop awareness",
         "event",
