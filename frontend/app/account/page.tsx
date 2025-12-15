@@ -1,23 +1,31 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Shield, Trash2, Eye, EyeOff } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState } from "react";
+import { Shield, Trash2, Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function AccountPage() {
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
-  const [showNewPassword, setShowNewPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your account security, billing, and preferences</p>
+        <p className="text-muted-foreground mt-1">
+          Manage your account security, billing, and preferences
+        </p>
       </div>
 
       <Tabs defaultValue="security" className="space-y-6">
@@ -37,7 +45,12 @@ export default function AccountPage() {
             <CardHeader>
               <div className="flex items-start gap-2">
                 <div className="mt-1">
-                  <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="h-5 w-5 text-muted-foreground"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -48,20 +61,30 @@ export default function AccountPage() {
                 </div>
                 <div>
                   <CardTitle>Email Address</CardTitle>
-                  <CardDescription>Update your email address for account access</CardDescription>
+                  <CardDescription>
+                    Update your email address for account access
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="current-email">Current Email</Label>
-                <Input id="current-email" type="email" defaultValue="user@g" disabled className="bg-muted" />
+                <Input
+                  id="current-email"
+                  type="email"
+                  defaultValue="user@g"
+                  disabled
+                  className="bg-muted"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="new-email">New Email</Label>
                 <Input id="new-email" type="email" placeholder="user@g" />
               </div>
-              <Button className="bg-primary hover:bg-primary/90">Change Email</Button>
+              <Button className="bg-primary hover:bg-primary/90">
+                Change Email
+              </Button>
             </CardContent>
           </Card>
 
@@ -69,7 +92,12 @@ export default function AccountPage() {
             <CardHeader>
               <div className="flex items-start gap-2">
                 <div className="mt-1">
-                  <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="h-5 w-5 text-muted-foreground"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -80,7 +108,9 @@ export default function AccountPage() {
                 </div>
                 <div>
                   <CardTitle>Password</CardTitle>
-                  <CardDescription>Update your password to keep your account secure</CardDescription>
+                  <CardDescription>
+                    Update your password to keep your account secure
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -145,7 +175,9 @@ export default function AccountPage() {
                       variant="ghost"
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -156,8 +188,12 @@ export default function AccountPage() {
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground">Password last changed: 15/07/2025</p>
-              <Button className="bg-primary hover:bg-primary/90">Change Password</Button>
+              <p className="text-sm text-muted-foreground">
+                Password last changed: 15/07/2025
+              </p>
+              <Button className="bg-primary hover:bg-primary/90">
+                Change Password
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -167,12 +203,15 @@ export default function AccountPage() {
             <CardHeader>
               <CardTitle className="text-destructive">Delete Account</CardTitle>
               <CardDescription>
-                Permanently delete your account and all associated data. This action cannot be undone.
+                Permanently delete your account and all associated data. This
+                action cannot be undone.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-lg bg-destructive/10 p-4 space-y-2">
-                <p className="text-sm font-medium">Warning: This action is irreversible</p>
+                <p className="text-sm font-medium">
+                  Warning: This action is irreversible
+                </p>
                 <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
                   <li>All your campaigns will be permanently deleted</li>
                   <li>Your billing history will be removed</li>
@@ -182,7 +221,8 @@ export default function AccountPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirm-delete">
-                  Type <span className="font-mono font-semibold">DELETE</span> to confirm
+                  Type <span className="font-mono font-semibold">DELETE</span>{" "}
+                  to confirm
                 </Label>
                 <Input id="confirm-delete" placeholder="DELETE" />
               </div>
@@ -192,5 +232,5 @@ export default function AccountPage() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

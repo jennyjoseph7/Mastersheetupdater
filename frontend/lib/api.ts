@@ -60,3 +60,78 @@ export async function fetchPersonObjects() {
 
   return res.json();
 }
+
+// Dealership signup API
+export interface DealershipSignupRequest {
+  args: [
+    string, // dealership_name
+    string, // region
+    string, // vehicle_type
+    string, // dealership_type
+    string[], // languages
+    string[], // brands
+    string, // admin_name
+    string, // email
+    string // phone
+  ];
+  kwargs: {
+    aliases?: string[];
+    pan_number?: string;
+    gstin?: string;
+    website?: string;
+  };
+  _timeout?: number;
+}
+
+export class ApiError extends Error {
+  status: number;
+  error: any;
+
+  constructor(status: number, message: string, error?: any) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.error = error;
+  }
+}
+
+export async function dealershipSignup(data: DealershipSignupRequest) {
+  // Use Next.js API route proxy to avoid CORS issues
+  const res = await fetch("/api/dealership-signup", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(data),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    let errorMessage = `Request failed (${res.status})`;
+    let errorData: any = null;
+
+    try {
+      const errorText = await res.text();
+      try {
+        errorData = JSON.parse(errorText);
+        errorMessage =
+          errorData.error || errorData.message || errorText || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+    } catch {
+      errorMessage = `Failed to process request (${res.status})`;
+    }
+
+    // Clean up error message - remove any "API Error:" prefixes
+    errorMessage = errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim();
+    if (!errorMessage) {
+      errorMessage = `Request failed (${res.status})`;
+    }
+
+    throw new ApiError(res.status, errorMessage, errorData);
+  }
+
+  return res.json();
+}

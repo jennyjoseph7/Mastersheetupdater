@@ -1,44 +1,112 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Pencil, CheckCircle2 } from "lucide-react"
-import type { DealershipData } from "@/types/dealership"
-import React from "react"
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Pencil, CheckCircle2 } from "lucide-react";
+import type { DealershipData } from "@/types/dealership";
+import { dealershipSignup, type DealershipSignupRequest } from "@/lib/api";
+import React from "react";
 
 interface ReviewStepProps {
-  data: DealershipData
-  onEdit: (step: number) => void
+  data: DealershipData;
+  onEdit: (step: number) => void;
 }
 
 export function ReviewStep({ data, onEdit }: ReviewStepProps) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [submitError, setSubmitError] = React.useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
 
   const handleSubmit = async () => {
-    setIsSubmitting(true)
-    setSubmitError(null)
+    setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
-      // Submit the dealership data
-      const response = await fetch("/api/dealership/onboard", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || "Failed to submit")
+      // Map DealershipData to API request format
+      const aliases: string[] = [];
+      if (data.dealer_name) aliases.push(data.dealer_name);
+      if (
+        data.dealership_legal_name &&
+        data.dealership_legal_name !== data.dealer_name
+      ) {
+        aliases.push(data.dealership_legal_name);
       }
 
+      // Extract PAN number from pan_card_link if it's a number format
+      // Otherwise use the link as-is or extract number
+      let panNumber = data.pan_card_link || "";
+      // If pan_card_link looks like a PAN number format (10 alphanumeric), use it directly
+      if (
+        panNumber &&
+        panNumber.length === 10 &&
+        /^[A-Z0-9]{10}$/.test(panNumber.toUpperCase())
+      ) {
+        // Already in correct format
+      } else if (panNumber) {
+        // Try to extract PAN from URL or other format
+        const panMatch = panNumber.match(/[A-Z]{5}[0-9]{4}[A-Z]{1}/i);
+        if (panMatch) {
+          panNumber = panMatch[0].toUpperCase();
+        }
+      }
+
+      // Convert brand names to API format (slug format)
+      // Map common brand names to API slugs
+      const brandSlugMap: Record<string, string> = {
+        "Maruti Suzuki": "maruti-suzuki-arena",
+        Hyundai: "hyundai",
+        Toyota: "toyota",
+        Honda: "honda",
+        "Tata Motors": "tata-motors",
+        Mahindra: "mahindra",
+        Kia: "kia",
+        "MG Motor": "mg-motor",
+        Ford: "ford",
+        Volkswagen: "volkswagen",
+      };
+
+      const brandSlugs = data.supported_brands
+        .map(
+          (brand) =>
+            brandSlugMap[brand] || brand.toLowerCase().replace(/\s+/g, "-")
+        )
+        .filter(Boolean);
+
+      // Prepare API request
+      const signupRequest: DealershipSignupRequest = {
+        args: [
+          data.dealer_name || "",
+          data.region_id || "south-india", // Default to south-india if not provided
+          "Passenger vehicles", // Default vehicle type
+          data.dealership_type === "Multi Brand"
+            ? "Multi Brand"
+            : "Single Brand",
+          data.languages.length > 0 ? data.languages : ["english"], // Default to english if empty
+          brandSlugs.length > 0 ? brandSlugs : [], // Use mapped brand slugs
+          data.primary_contact_name || "",
+          data.primary_contact_email || "",
+          data.primary_contact_phone || "",
+        ],
+        kwargs: {
+          ...(aliases.length > 0 && { aliases }),
+          ...(panNumber && { pan_number: panNumber }),
+          ...(data.gstin && { gstin: data.gstin }),
+          ...(data.website && { website: data.website }),
+        },
+        _timeout: 600,
+      };
+
+      // Call the dealership signup API
+      await dealershipSignup(signupRequest);
+
       // Redirect to success page or dashboard
-      window.location.href = "/onboarding/success"
+      window.location.href = "/onboarding/success";
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "An error occurred")
-      setIsSubmitting(false)
+      setSubmitError(
+        error instanceof Error ? error.message : "An error occurred"
+      );
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -103,11 +171,15 @@ export function ReviewStep({ data, onEdit }: ReviewStepProps) {
           </div>
           <div>
             <p className="text-muted-foreground">GST Certificate</p>
-            <p className="font-medium">{data.gst_certificate ? "✓ Uploaded" : "—"}</p>
+            <p className="font-medium">
+              {data.gst_certificate ? "✓ Uploaded" : "—"}
+            </p>
           </div>
           <div>
             <p className="text-muted-foreground">PAN Card</p>
-            <p className="font-medium">{data.pan_card_link ? "✓ Provided" : "—"}</p>
+            <p className="font-medium">
+              {data.pan_card_link ? "✓ Provided" : "—"}
+            </p>
           </div>
         </div>
       </div>
@@ -125,7 +197,9 @@ export function ReviewStep({ data, onEdit }: ReviewStepProps) {
           <div>
             <p className="text-muted-foreground">Primary Contact</p>
             <p className="font-medium">{data.primary_contact_name || "—"}</p>
-            <p className="text-xs text-muted-foreground">{data.primary_contact_email}</p>
+            <p className="text-xs text-muted-foreground">
+              {data.primary_contact_email}
+            </p>
           </div>
           <div>
             <p className="text-muted-foreground">Billing Address</p>
@@ -167,21 +241,29 @@ export function ReviewStep({ data, onEdit }: ReviewStepProps) {
           <div>
             <p className="text-muted-foreground">Total Centers</p>
             <p className="font-medium">
-              {data.showroom_center_count + data.workshop_center_count + data.buyback_center_count}
+              {data.showroom_center_count +
+                data.workshop_center_count +
+                data.buyback_center_count}
             </p>
           </div>
         </div>
       </div>
 
       {submitError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">{submitError}</div>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+          {submitError}
+        </div>
       )}
 
       <div className="flex gap-3 pt-4">
-        <Button onClick={handleSubmit} disabled={isSubmitting} className="flex-1">
+        <Button
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className="flex-1"
+        >
           {isSubmitting ? "Submitting..." : "Submit & Complete Onboarding"}
         </Button>
       </div>
     </div>
-  )
+  );
 }

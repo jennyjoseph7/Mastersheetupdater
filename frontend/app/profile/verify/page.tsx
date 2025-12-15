@@ -1,38 +1,52 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
-import { ProtectedRoute } from "@/components/protected-route"
-import { useAuth } from "@/lib/auth-context"
-import { CheckCircle2, ArrowLeft, ShieldCheck, Clock, Sparkles, Building2, CreditCard } from "lucide-react"
-import Link from "next/link"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { ProtectedRoute } from "@/components/protected-route";
+import { useAuth } from "@/lib/auth-context";
+import {
+  CheckCircle2,
+  ArrowLeft,
+  ShieldCheck,
+  Clock,
+  Sparkles,
+  Building2,
+  CreditCard,
+} from "lucide-react";
+import Link from "next/link";
 
 export default function ProfileVerification() {
-  const router = useRouter()
-  const { user, updateVerificationStatus, updateCredits } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const router = useRouter();
+  const { user, updateVerificationStatus, updateCredits } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const [verificationData, setVerificationData] = useState({
     gstin: "",
     panCard: "",
     address: "",
     city: "",
     state: "",
-  })
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setIsLoading(true)
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
 
     try {
       const response = await fetch("/api/dealer/verify", {
@@ -42,26 +56,30 @@ export default function ProfileVerification() {
           email: user?.email,
           ...verificationData,
         }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Verification submission failed")
+        throw new Error("Verification submission failed");
       }
 
       // Update verification status
-      updateVerificationStatus(true, "pending")
+      updateVerificationStatus(true, "pending");
       // Add credits immediately for demo purposes
       if (user) {
-        updateCredits(user.credits + 500)
+        updateCredits(user.credits + 500);
       }
 
-      router.push("/profile/verify/success")
+      router.push("/profile/verify/success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Verification failed. Please try again.")
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Verification failed. Please try again.",
+      );
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <ProtectedRoute>
@@ -84,9 +102,6 @@ export default function ProfileVerification() {
               <ShieldCheck className="h-8 w-8 text-primary" />
             </div>
             <h1 className="text-4xl font-bold mb-2">Profile Verification</h1>
-            <p className="text-lg text-muted-foreground">
-              Complete verification to unlock 500 testing credits and premium features
-            </p>
           </div>
 
           {/* Benefits Banner */}
@@ -101,21 +116,27 @@ export default function ProfileVerification() {
                   <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold text-sm">500 Credits</p>
-                    <p className="text-xs text-muted-foreground">Additional testing credits</p>
+                    <p className="text-xs text-muted-foreground">
+                      Additional testing credits
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold text-sm">24hr Approval</p>
-                    <p className="text-xs text-muted-foreground">Fast verification process</p>
+                    <p className="text-xs text-muted-foreground">
+                      Fast verification process
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold text-sm">Premium Access</p>
-                    <p className="text-xs text-muted-foreground">Enhanced features</p>
+                    <p className="text-xs text-muted-foreground">
+                      Enhanced features
+                    </p>
                   </div>
                 </div>
               </div>
@@ -126,7 +147,9 @@ export default function ProfileVerification() {
           <Card className="mb-6">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Verification Progress</span>
+                <span className="text-sm font-medium">
+                  Verification Progress
+                </span>
                 <Badge variant="outline">Step 1 of 1</Badge>
               </div>
               <Progress value={100} className="h-2" />
@@ -136,8 +159,12 @@ export default function ProfileVerification() {
           {/* Verification Form */}
           <Card className="shadow-xl">
             <CardHeader>
-              <CardTitle className="text-2xl">Business Verification Details</CardTitle>
-              <CardDescription>Provide your business documents for verification</CardDescription>
+              <CardTitle className="text-2xl">
+                Business Verification Details
+              </CardTitle>
+              <CardDescription>
+                Provide your business documents for verification
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -157,12 +184,19 @@ export default function ProfileVerification() {
                     id="gstin"
                     placeholder="Enter 15-digit GSTIN"
                     value={verificationData.gstin}
-                    onChange={(e) => setVerificationData({ ...verificationData, gstin: e.target.value })}
+                    onChange={(e) =>
+                      setVerificationData({
+                        ...verificationData,
+                        gstin: e.target.value,
+                      })
+                    }
                     maxLength={15}
                     className="font-mono"
                     required
                   />
-                  <p className="text-xs text-muted-foreground">Goods and Services Tax Identification Number</p>
+                  <p className="text-xs text-muted-foreground">
+                    Goods and Services Tax Identification Number
+                  </p>
                 </div>
 
                 {/* PAN Card */}
@@ -176,7 +210,10 @@ export default function ProfileVerification() {
                     placeholder="Enter PAN number"
                     value={verificationData.panCard}
                     onChange={(e) =>
-                      setVerificationData({ ...verificationData, panCard: e.target.value.toUpperCase() })
+                      setVerificationData({
+                        ...verificationData,
+                        panCard: e.target.value.toUpperCase(),
+                      })
                     }
                     maxLength={10}
                     className="font-mono uppercase"
@@ -193,7 +230,12 @@ export default function ProfileVerification() {
                     id="address"
                     placeholder="Enter complete business address"
                     value={verificationData.address}
-                    onChange={(e) => setVerificationData({ ...verificationData, address: e.target.value })}
+                    onChange={(e) =>
+                      setVerificationData({
+                        ...verificationData,
+                        address: e.target.value,
+                      })
+                    }
                     required
                   />
                 </div>
@@ -208,7 +250,12 @@ export default function ProfileVerification() {
                       id="city"
                       placeholder="City"
                       value={verificationData.city}
-                      onChange={(e) => setVerificationData({ ...verificationData, city: e.target.value })}
+                      onChange={(e) =>
+                        setVerificationData({
+                          ...verificationData,
+                          city: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -221,7 +268,12 @@ export default function ProfileVerification() {
                       id="state"
                       placeholder="State"
                       value={verificationData.state}
-                      onChange={(e) => setVerificationData({ ...verificationData, state: e.target.value })}
+                      onChange={(e) =>
+                        setVerificationData({
+                          ...verificationData,
+                          state: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -231,13 +283,19 @@ export default function ProfileVerification() {
                 <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
                   <Clock className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-sm text-blue-800 dark:text-blue-200">
-                    Your documents will be verified within 24 hours. Once approved, 500 testing credits will be added to
-                    your account automatically.
+                    Your documents will be verified within 24 hours. Once
+                    approved, 500 testing credits will be added to your account
+                    automatically.
                   </AlertDescription>
                 </Alert>
 
                 {/* Submit Button */}
-                <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  disabled={isLoading}
+                >
                   {isLoading ? (
                     "Submitting..."
                   ) : (
@@ -253,5 +311,5 @@ export default function ProfileVerification() {
         </div>
       </div>
     </ProtectedRoute>
-  )
+  );
 }

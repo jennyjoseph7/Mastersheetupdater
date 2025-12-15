@@ -1,16 +1,22 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Progress } from "@/components/ui/progress"
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import {
   ArrowLeft,
   Mail,
@@ -23,23 +29,54 @@ import {
   CreditCard,
   FileText,
   ArrowRight,
-} from "lucide-react"
+  Globe,
+  MapPin,
+  Car,
+  X,
+  AlertCircle,
+} from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  dealershipSignup,
+  type DealershipSignupRequest,
+  ApiError,
+} from "@/lib/api";
 
 export default function DealerSignup() {
-  const router = useRouter()
-  const [phase, setPhase] = useState<"registration" | "verification" | "success">("registration")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const router = useRouter();
+  const [phase, setPhase] = useState<
+    "registration" | "verification" | "success"
+  >("registration");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   // Registration data
   const [registrationData, setRegistrationData] = useState({
     dealershipName: "",
+    legalName: "",
     fullName: "",
     email: "",
     phone: "",
     password: "",
     confirmPassword: "",
-  })
+    region: "south-india",
+    vehicleType: "Passenger vehicles",
+    dealershipType: "Multi Brand" as "Single Brand" | "Multi Brand",
+    languages: [] as string[],
+    brands: [] as string[],
+    website: "",
+    panNumber: "",
+    gstin: "",
+  });
 
   // Verification data
   const [verificationData, setVerificationData] = useState({
@@ -48,69 +85,232 @@ export default function DealerSignup() {
     address: "",
     city: "",
     state: "",
-  })
+  });
 
   const handleRegistration = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault();
+    setError("");
 
     // Validate passwords match
     if (registrationData.password !== registrationData.confirmPassword) {
-      setError("Passwords do not match")
-      return
+      setError("Passwords do not match");
+      return;
     }
 
-    setIsLoading(true)
+    // Validate required fields
+    if (!registrationData.dealershipName) {
+      setError("Dealership name is required");
+      return;
+    }
+    if (!registrationData.fullName) {
+      setError("Admin name is required");
+      return;
+    }
+    if (!registrationData.email) {
+      setError("Email is required");
+      return;
+    }
+    if (!registrationData.phone) {
+      setError("Phone is required");
+      return;
+    }
+    if (registrationData.brands.length === 0) {
+      setError("Please select at least one brand");
+      return;
+    }
+    if (registrationData.languages.length === 0) {
+      setError("Please select at least one language");
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
-      // API call to register dealer
-      const response = await fetch("/api/dealer/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(registrationData),
-      })
-
-      if (!response.ok) {
-        throw new Error("Registration failed")
+      // Prepare aliases
+      const aliases: string[] = [];
+      if (registrationData.dealershipName)
+        aliases.push(registrationData.dealershipName);
+      if (
+        registrationData.legalName &&
+        registrationData.legalName !== registrationData.dealershipName
+      ) {
+        aliases.push(registrationData.legalName);
       }
+
+      // Map brand names to API format (slug format)
+      const brandSlugMap: Record<string, string> = {
+        "Maruti Suzuki": "maruti-suzuki-arena",
+        Hyundai: "hyundai",
+        Toyota: "toyota",
+        Honda: "honda",
+        "Tata Motors": "tata-motors",
+        Mahindra: "mahindra",
+        Kia: "kia",
+        "MG Motor": "mg-motor",
+        Ford: "ford",
+        Volkswagen: "volkswagen",
+      };
+
+      const brandSlugs = registrationData.brands
+        .map(
+          (brand) =>
+            brandSlugMap[brand] || brand.toLowerCase().replace(/\s+/g, "-")
+        )
+        .filter(Boolean);
+
+      // Prepare API request
+      const signupRequest: DealershipSignupRequest = {
+        args: [
+          registrationData.dealershipName,
+          registrationData.region,
+          registrationData.vehicleType,
+          registrationData.dealershipType,
+          registrationData.languages.length > 0
+            ? registrationData.languages
+            : ["english"],
+          brandSlugs.length > 0 ? brandSlugs : [],
+          registrationData.fullName,
+          registrationData.email,
+          registrationData.phone,
+        ],
+        kwargs: {
+          ...(aliases.length > 0 && { aliases }),
+          ...(registrationData.website && {
+            website: registrationData.website,
+          }),
+          ...(registrationData.panNumber && {
+            pan_number: registrationData.panNumber,
+          }),
+          ...(registrationData.gstin && {
+            gstin: registrationData.gstin,
+          }),
+        },
+        _timeout: 600,
+      };
+
+      // Call the dealership signup API
+      await dealershipSignup(signupRequest);
 
       // On success, show success with initial credits
-      setPhase("success")
+      setPhase("success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed. Please try again.")
+      if (err instanceof ApiError) {
+        // Extract clean error message
+        let cleanErrorMessage = err.message;
+        let details: string | null = null;
+
+        // Try to parse and extract a cleaner error message
+        if (err.error) {
+          if (typeof err.error === "string") {
+            // Try to parse if it's JSON string
+            try {
+              const parsed = JSON.parse(err.error);
+              if (parsed.error) {
+                cleanErrorMessage = parsed.error;
+              } else if (parsed.message) {
+                cleanErrorMessage = parsed.message;
+              }
+              // Store formatted JSON as details
+              details = JSON.stringify(parsed, null, 2);
+            } catch {
+              // Not JSON, use as is
+              cleanErrorMessage = err.error;
+              // Only store details if it's different from the message
+              if (err.error !== cleanErrorMessage) {
+                details = err.error;
+              } else {
+                details = null;
+              }
+            }
+          } else if (err.error.error) {
+            cleanErrorMessage = err.error.error;
+            details = JSON.stringify(err.error, null, 2);
+          } else if (err.error.message) {
+            cleanErrorMessage = err.error.message;
+            details = JSON.stringify(err.error, null, 2);
+          } else {
+            // Store the full error object as details
+            details = JSON.stringify(err.error, null, 2);
+          }
+        }
+
+        // Clean up error message - remove any "API Error:" prefixes and status codes
+        cleanErrorMessage = cleanErrorMessage
+          .replace(/^API Error:\s*\d*\s*/gi, "")
+          .replace(/^Request failed\s*\(\d+\)\s*/gi, "")
+          .trim();
+
+        // Try to extract JSON error if present in the message
+        try {
+          // Match JSON object (including multiline)
+          const jsonMatch = cleanErrorMessage.match(/\{[\s\S]*?\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.error) {
+              cleanErrorMessage = parsed.error;
+              // Store the full JSON as details if not already set
+              if (!details) {
+                details = JSON.stringify(parsed, null, 2);
+              }
+            } else if (parsed.message) {
+              cleanErrorMessage = parsed.message;
+              if (!details) {
+                details = JSON.stringify(parsed, null, 2);
+              }
+            }
+          }
+        } catch {
+          // Not JSON, keep as is
+        }
+
+        // If message is empty or just whitespace, use a default message
+        if (!cleanErrorMessage || cleanErrorMessage.trim() === "") {
+          cleanErrorMessage = "Registration failed. Please try again.";
+        }
+
+        setError(cleanErrorMessage.trim());
+        // Only set details if they exist and are different from the error message
+        if (details && details.trim() && details !== cleanErrorMessage) {
+          setErrorDetails(details);
+        } else {
+          setErrorDetails(null);
+        }
+      } else {
+        const errorMessage =
+          err instanceof Error
+            ? err.message.replace(/^API Error: \d+\s*/i, "")
+            : "Registration failed. Please try again.";
+        setError(errorMessage);
+        setErrorDetails(null);
+      }
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleVerification = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setIsLoading(true)
+    e.preventDefault();
+    setError("");
+    setErrorDetails(null);
+    setIsLoading(true);
 
     try {
-      // API call to submit verification
-      const response = await fetch("/api/dealer/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: registrationData.email,
-          ...verificationData,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Verification failed")
-      }
+      // Note: Verification API endpoint can be added later if needed
+      // For now, we'll just redirect to dashboard after successful signup
+      // The verification data (GSTIN, PAN) can be submitted separately
 
       // Redirect to dashboard
-      router.push("/")
+      router.push("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Verification failed. Please try again.")
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Verification failed. Please try again."
+      );
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen py-8">
@@ -135,26 +335,27 @@ export default function DealerSignup() {
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
                 <Building2 className="h-8 w-8 text-primary" />
               </div>
-              <h1 className="text-4xl font-bold text-foreground mb-2">Dealer Registration</h1>
-              <p className="text-lg text-muted-foreground">Create your account and get started in minutes</p>
+              <h1 className="text-4xl font-bold text-foreground mb-2">
+                Dealer Registration
+              </h1>
+              <p className="text-lg text-muted-foreground">
+                Create your account and get started in minutes
+              </p>
             </div>
 
             <Card className="shadow-xl border-border/50">
               <CardHeader>
                 <CardTitle className="text-2xl">Quick Registration</CardTitle>
-                <CardDescription>Enter your basic details to get started with 100 free credits</CardDescription>
+                <CardDescription>
+                  Enter your basic details to get started with 100 free credits
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleRegistration} className="space-y-4">
-                  {error && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
-
                   <div className="space-y-2">
                     <Label htmlFor="dealershipName">
-                      Dealership Name <span className="text-destructive">*</span>
+                      Dealership Name{" "}
+                      <span className="text-destructive">*</span>
                     </Label>
                     <div className="relative">
                       <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -162,11 +363,38 @@ export default function DealerSignup() {
                         id="dealershipName"
                         placeholder="Enter dealership name"
                         value={registrationData.dealershipName}
-                        onChange={(e) => setRegistrationData({ ...registrationData, dealershipName: e.target.value })}
+                        onChange={(e) =>
+                          setRegistrationData({
+                            ...registrationData,
+                            dealershipName: e.target.value,
+                          })
+                        }
                         className="pl-10"
                         required
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="legalName">Legal Name (Optional)</Label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="legalName"
+                        placeholder="Enter legal business name"
+                        value={registrationData.legalName}
+                        onChange={(e) =>
+                          setRegistrationData({
+                            ...registrationData,
+                            legalName: e.target.value,
+                          })
+                        }
+                        className="pl-10"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Legal name as per registration documents
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -179,7 +407,12 @@ export default function DealerSignup() {
                         id="fullName"
                         placeholder="Enter your name"
                         value={registrationData.fullName}
-                        onChange={(e) => setRegistrationData({ ...registrationData, fullName: e.target.value })}
+                        onChange={(e) =>
+                          setRegistrationData({
+                            ...registrationData,
+                            fullName: e.target.value,
+                          })
+                        }
                         className="pl-10"
                         required
                       />
@@ -198,7 +431,12 @@ export default function DealerSignup() {
                           type="email"
                           placeholder="you@dealership.com"
                           value={registrationData.email}
-                          onChange={(e) => setRegistrationData({ ...registrationData, email: e.target.value })}
+                          onChange={(e) =>
+                            setRegistrationData({
+                              ...registrationData,
+                              email: e.target.value,
+                            })
+                          }
                           className="pl-10"
                           required
                         />
@@ -216,11 +454,328 @@ export default function DealerSignup() {
                           type="tel"
                           placeholder="+91 98765 43210"
                           value={registrationData.phone}
-                          onChange={(e) => setRegistrationData({ ...registrationData, phone: e.target.value })}
+                          onChange={(e) =>
+                            setRegistrationData({
+                              ...registrationData,
+                              phone: e.target.value,
+                            })
+                          }
                           className="pl-10"
                           required
                         />
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Region Selection */}
+                  <div className="space-y-2">
+                    <Label htmlFor="region">
+                      Region <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <select
+                        id="region"
+                        value={registrationData.region}
+                        onChange={(e) =>
+                          setRegistrationData({
+                            ...registrationData,
+                            region: e.target.value,
+                          })
+                        }
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        required
+                      >
+                        <option value="south-india">South India</option>
+                        <option value="north-india">North India</option>
+                        <option value="east-india">East India</option>
+                        <option value="west-india">West India</option>
+                        <option value="central-india">Central India</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Vehicle Type */}
+                  <div className="space-y-2">
+                    <Label htmlFor="vehicleType">
+                      Vehicle Type <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Car className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <select
+                        id="vehicleType"
+                        value={registrationData.vehicleType}
+                        onChange={(e) =>
+                          setRegistrationData({
+                            ...registrationData,
+                            vehicleType: e.target.value,
+                          })
+                        }
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        required
+                      >
+                        <option value="Passenger vehicles">
+                          Passenger vehicles
+                        </option>
+                        <option value="Commercial vehicles">
+                          Commercial vehicles
+                        </option>
+                        <option value="Two-wheelers">Two-wheelers</option>
+                        <option value="Electric vehicles">
+                          Electric vehicles
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Dealership Type */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-semibold">
+                      Dealership Type{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <RadioGroup
+                      value={registrationData.dealershipType}
+                      onValueChange={(value) =>
+                        setRegistrationData({
+                          ...registrationData,
+                          dealershipType: value as
+                            | "Single Brand"
+                            | "Multi Brand",
+                        })
+                      }
+                    >
+                      <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <RadioGroupItem
+                          value="Single Brand"
+                          id="single-brand"
+                        />
+                        <Label
+                          htmlFor="single-brand"
+                          className="flex-1 cursor-pointer"
+                        >
+                          <div className="font-medium">Single Brand</div>
+                          <div className="text-sm text-muted-foreground">
+                            Exclusive partnership with one manufacturer
+                          </div>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <RadioGroupItem value="Multi Brand" id="multi-brand" />
+                        <Label
+                          htmlFor="multi-brand"
+                          className="flex-1 cursor-pointer"
+                        >
+                          <div className="font-medium">Multi Brand</div>
+                          <div className="text-sm text-muted-foreground">
+                            Multiple brand partnerships
+                          </div>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {/* Supported Brands */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-semibold">
+                      Supported Brands{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="space-y-2">
+                      <Select
+                        value=""
+                        onValueChange={(value) => {
+                          if (
+                            value &&
+                            !registrationData.brands.includes(value)
+                          ) {
+                            setRegistrationData({
+                              ...registrationData,
+                              brands: [...registrationData.brands, value],
+                            });
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a brand to add" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[
+                            "Toyota",
+                            "Honda",
+                            "Maruti Suzuki",
+                            "Hyundai",
+                            "Tata Motors",
+                            "Mahindra",
+                            "Kia",
+                            "MG Motor",
+                            "Ford",
+                            "Volkswagen",
+                          ]
+                            .filter(
+                              (brand) =>
+                                !registrationData.brands.includes(brand)
+                            )
+                            .map((brand) => (
+                              <SelectItem key={brand} value={brand}>
+                                {brand}
+                              </SelectItem>
+                            ))}
+                          {registrationData.brands.length >= 10 && (
+                            <SelectItem value="" disabled>
+                              Maximum brands selected
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {registrationData.brands.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2 p-3 bg-muted/50 rounded-lg border">
+                          {registrationData.brands.map((brand) => (
+                            <Badge
+                              key={brand}
+                              variant="secondary"
+                              className="flex items-center gap-1.5 px-3 py-1.5"
+                            >
+                              {brand}
+                              <X
+                                className="h-3.5 w-3.5 cursor-pointer hover:text-destructive transition-colors"
+                                onClick={() =>
+                                  setRegistrationData({
+                                    ...registrationData,
+                                    brands: registrationData.brands.filter(
+                                      (b) => b !== brand
+                                    ),
+                                  })
+                                }
+                              />
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      {registrationData.brands.length === 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          No brands selected. Please add at least one brand.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Languages */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-semibold">
+                      Supported Languages{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        "english",
+                        "hindi",
+                        "kannada",
+                        "telugu",
+                        "tamil",
+                        "malayalam",
+                        "odia",
+                        "bengali",
+                        "marathi",
+                        "gujarati",
+                      ].map((lang) => (
+                        <Badge
+                          key={lang}
+                          variant={
+                            registrationData.languages.includes(lang)
+                              ? "default"
+                              : "outline"
+                          }
+                          className="cursor-pointer px-3 py-2 text-sm capitalize"
+                          onClick={() => {
+                            if (registrationData.languages.includes(lang)) {
+                              setRegistrationData({
+                                ...registrationData,
+                                languages: registrationData.languages.filter(
+                                  (l) => l !== lang
+                                ),
+                              });
+                            } else {
+                              setRegistrationData({
+                                ...registrationData,
+                                languages: [
+                                  ...registrationData.languages,
+                                  lang,
+                                ],
+                              });
+                            }
+                          }}
+                        >
+                          {lang}
+                          {registrationData.languages.includes(lang) && (
+                            <X className="h-3 w-3 ml-2" />
+                          )}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Website */}
+                  <div className="space-y-2">
+                    <Label htmlFor="website">Website (Optional)</Label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="website"
+                        type="url"
+                        placeholder="https://www.yourdealership.com"
+                        value={registrationData.website}
+                        onChange={(e) =>
+                          setRegistrationData({
+                            ...registrationData,
+                            website: e.target.value,
+                          })
+                        }
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  {/* PAN and GSTIN (Optional) */}
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="panNumber">PAN Number (Optional)</Label>
+                      <Input
+                        id="panNumber"
+                        placeholder="ABCD1234567890"
+                        value={registrationData.panNumber}
+                        onChange={(e) =>
+                          setRegistrationData({
+                            ...registrationData,
+                            panNumber: e.target.value.toUpperCase(),
+                          })
+                        }
+                        maxLength={10}
+                        className="font-mono uppercase"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Permanent Account Number
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="gstin">GSTIN (Optional)</Label>
+                      <Input
+                        id="gstin"
+                        placeholder="ABCD1234567890"
+                        value={registrationData.gstin}
+                        onChange={(e) =>
+                          setRegistrationData({
+                            ...registrationData,
+                            gstin: e.target.value.toUpperCase(),
+                          })
+                        }
+                        maxLength={15}
+                        className="font-mono uppercase"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        15-digit GST Identification Number
+                      </p>
                     </div>
                   </div>
 
@@ -236,7 +791,12 @@ export default function DealerSignup() {
                           type="password"
                           placeholder="Create password"
                           value={registrationData.password}
-                          onChange={(e) => setRegistrationData({ ...registrationData, password: e.target.value })}
+                          onChange={(e) =>
+                            setRegistrationData({
+                              ...registrationData,
+                              password: e.target.value,
+                            })
+                          }
                           className="pl-10"
                           required
                           minLength={8}
@@ -246,7 +806,8 @@ export default function DealerSignup() {
 
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword">
-                        Confirm Password <span className="text-destructive">*</span>
+                        Confirm Password{" "}
+                        <span className="text-destructive">*</span>
                       </Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -256,7 +817,10 @@ export default function DealerSignup() {
                           placeholder="Confirm password"
                           value={registrationData.confirmPassword}
                           onChange={(e) =>
-                            setRegistrationData({ ...registrationData, confirmPassword: e.target.value })
+                            setRegistrationData({
+                              ...registrationData,
+                              confirmPassword: e.target.value,
+                            })
                           }
                           className="pl-10"
                           required
@@ -266,7 +830,65 @@ export default function DealerSignup() {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+                  {/* Error Display at Bottom */}
+                  {error && (
+                    <Alert
+                      variant="destructive"
+                      className="border-red-500/50 bg-red-50/50 dark:bg-red-950/20"
+                    >
+                      <AlertDescription>
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-red-900 dark:text-red-100 mb-2">
+                              Registration Failed
+                            </div>
+                            <div className="text-sm text-red-800 dark:text-red-200 leading-relaxed break-words">
+                              {error}
+                            </div>
+                            {errorDetails && (
+                              <details className="mt-3 group">
+                                <summary className="cursor-pointer text-xs font-medium text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 transition-colors list-none">
+                                  <span className="inline-flex items-center gap-1">
+                                    <span>View technical details</span>
+                                    <svg
+                                      className="w-3 h-3 transition-transform group-open:rotate-180"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 9l-7 7-7-7"
+                                      />
+                                    </svg>
+                                  </span>
+                                </summary>
+                                <div className="mt-2 p-3 bg-red-100/50 dark:bg-red-950/30 rounded-md border border-red-200/50 dark:border-red-800/50">
+                                  <pre className="text-xs overflow-auto max-h-40 font-mono text-red-900 dark:text-red-100 whitespace-pre-wrap break-words">
+                                    {typeof errorDetails === "string"
+                                      ? errorDetails
+                                      : JSON.stringify(errorDetails, null, 2)}
+                                  </pre>
+                                </div>
+                              </details>
+                            )}
+                          </div>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    size="lg"
+                    disabled={isLoading}
+                  >
                     {isLoading ? (
                       "Creating Account..."
                     ) : (
@@ -278,7 +900,8 @@ export default function DealerSignup() {
                   </Button>
 
                   <p className="text-xs text-center text-muted-foreground">
-                    By registering, you agree to our Terms of Service and Privacy Policy
+                    By registering, you agree to our Terms of Service and
+                    Privacy Policy
                   </p>
                 </form>
               </CardContent>
@@ -293,8 +916,12 @@ export default function DealerSignup() {
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-4 animate-in zoom-in duration-500">
                 <CheckCircle2 className="h-12 w-12 text-green-600" />
               </div>
-              <h1 className="text-4xl font-bold text-foreground mb-2">Welcome Aboard!</h1>
-              <p className="text-lg text-muted-foreground">Your account has been created successfully</p>
+              <h1 className="text-4xl font-bold text-foreground mb-2">
+                Welcome Aboard!
+              </h1>
+              <p className="text-lg text-muted-foreground">
+                Your account has been created successfully
+              </p>
             </div>
 
             {/* Initial Credits Card */}
@@ -305,8 +932,12 @@ export default function DealerSignup() {
                     <Sparkles className="h-8 w-8 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-2xl font-bold text-foreground">100 Credits Added!</h3>
-                    <p className="text-muted-foreground">Start exploring our platform with your welcome credits</p>
+                    <h3 className="text-2xl font-bold text-foreground">
+                      100 Credits Added!
+                    </h3>
+                    <p className="text-muted-foreground">
+                      Start exploring our platform with your welcome credits
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -320,8 +951,13 @@ export default function DealerSignup() {
                     <CreditCard className="h-6 w-6 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <CardTitle className="text-xl">Unlock Testing Credits</CardTitle>
-                    <CardDescription>Complete verification to get 500 additional testing credits</CardDescription>
+                    <CardTitle className="text-xl">
+                      Unlock Testing Credits
+                    </CardTitle>
+                    <CardDescription>
+                      Complete verification to get 500 additional testing
+                      credits
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -342,7 +978,11 @@ export default function DealerSignup() {
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-3">
-                  <Button variant="outline" size="lg" onClick={() => router.push("/")}>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => router.push("/")}
+                  >
                     Skip for Now
                   </Button>
                   <Button size="lg" onClick={() => setPhase("verification")}>
@@ -363,16 +1003,24 @@ export default function DealerSignup() {
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
                 <FileText className="h-8 w-8 text-primary" />
               </div>
-              <h1 className="text-4xl font-bold text-foreground mb-2">Profile Verification</h1>
-              <p className="text-lg text-muted-foreground">Complete verification to unlock 500 testing credits</p>
+              <h1 className="text-4xl font-bold text-foreground mb-2">
+                Profile Verification
+              </h1>
+              <p className="text-lg text-muted-foreground">
+                Complete verification to unlock 500 testing credits
+              </p>
             </div>
 
             {/* Progress Indicator */}
             <Card className="mb-6 border-primary/50">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Verification Progress</span>
-                  <span className="text-sm text-muted-foreground">Step 2 of 2</span>
+                  <span className="text-sm font-medium">
+                    Verification Progress
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    Step 2 of 2
+                  </span>
                 </div>
                 <Progress value={100} className="h-2" />
               </CardContent>
@@ -381,7 +1029,9 @@ export default function DealerSignup() {
             <Card className="shadow-xl border-border/50">
               <CardHeader>
                 <CardTitle className="text-2xl">Business Details</CardTitle>
-                <CardDescription>Provide your business verification documents</CardDescription>
+                <CardDescription>
+                  Provide your business verification documents
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleVerification} className="space-y-4">
@@ -399,12 +1049,19 @@ export default function DealerSignup() {
                       id="gstin"
                       placeholder="Enter 15-digit GSTIN"
                       value={verificationData.gstin}
-                      onChange={(e) => setVerificationData({ ...verificationData, gstin: e.target.value })}
+                      onChange={(e) =>
+                        setVerificationData({
+                          ...verificationData,
+                          gstin: e.target.value,
+                        })
+                      }
                       maxLength={15}
                       className="font-mono"
                       required
                     />
-                    <p className="text-xs text-muted-foreground">Goods and Services Tax Identification Number</p>
+                    <p className="text-xs text-muted-foreground">
+                      Goods and Services Tax Identification Number
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -415,7 +1072,12 @@ export default function DealerSignup() {
                       id="panCard"
                       placeholder="Enter PAN number"
                       value={verificationData.panCard}
-                      onChange={(e) => setVerificationData({ ...verificationData, panCard: e.target.value })}
+                      onChange={(e) =>
+                        setVerificationData({
+                          ...verificationData,
+                          panCard: e.target.value,
+                        })
+                      }
                       maxLength={10}
                       className="font-mono uppercase"
                       required
@@ -424,13 +1086,19 @@ export default function DealerSignup() {
 
                   <div className="space-y-2">
                     <Label htmlFor="address">
-                      Business Address <span className="text-destructive">*</span>
+                      Business Address{" "}
+                      <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="address"
                       placeholder="Enter complete business address"
                       value={verificationData.address}
-                      onChange={(e) => setVerificationData({ ...verificationData, address: e.target.value })}
+                      onChange={(e) =>
+                        setVerificationData({
+                          ...verificationData,
+                          address: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -444,7 +1112,12 @@ export default function DealerSignup() {
                         id="city"
                         placeholder="City"
                         value={verificationData.city}
-                        onChange={(e) => setVerificationData({ ...verificationData, city: e.target.value })}
+                        onChange={(e) =>
+                          setVerificationData({
+                            ...verificationData,
+                            city: e.target.value,
+                          })
+                        }
                         required
                       />
                     </div>
@@ -457,7 +1130,12 @@ export default function DealerSignup() {
                         id="state"
                         placeholder="State"
                         value={verificationData.state}
-                        onChange={(e) => setVerificationData({ ...verificationData, state: e.target.value })}
+                        onChange={(e) =>
+                          setVerificationData({
+                            ...verificationData,
+                            state: e.target.value,
+                          })
+                        }
                         required
                       />
                     </div>
@@ -465,13 +1143,19 @@ export default function DealerSignup() {
 
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p className="text-sm text-blue-800">
-                      Your documents will be verified within 24 hours. Once approved, 500 testing credits will be added
-                      to your account automatically.
+                      Your documents will be verified within 24 hours. Once
+                      approved, 500 testing credits will be added to your
+                      account automatically.
                     </p>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-3 pt-4">
-                    <Button type="button" variant="outline" size="lg" onClick={() => router.push("/")}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      onClick={() => router.push("/")}
+                    >
                       Skip & Go to Dashboard
                     </Button>
                     <Button type="submit" size="lg" disabled={isLoading}>
@@ -492,5 +1176,5 @@ export default function DealerSignup() {
         )}
       </div>
     </div>
-  )
+  );
 }
