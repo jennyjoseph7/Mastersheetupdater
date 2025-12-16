@@ -143,9 +143,9 @@ async function startImportTask(
 // 6. Create Audience Task Record (DB) ---
 async function createAudienceTask(taskData) {
   const response = await fetch(
-    `${APP_BASE_URL}/gryd/db/objects/audience_task`,
+    `${APP_BASE_URL}/gryd/db/object/audience_task`,
     {
-      method: "PUT",
+      method: "POST",
       headers: HEADERS,
       body: JSON.stringify(taskData),
     },
@@ -162,11 +162,11 @@ async function createAudienceTask(taskData) {
 // --- 7. UPDATE Audience Task Record (DB) ---
 async function updateAudienceTask(taskId, updateData) {
   // FIX: Using query param ?task_id=... as requested
-  const url = new URL(`${APP_BASE_URL}/gryd/db/objects/audience_task`);
-  url.searchParams.append("task_id", taskId);
+  const url = new URL(`${APP_BASE_URL}/gryd/db/object/audience_task/${taskId}`);
+//   url.searchParams.append("task_id", taskId);
 
   const response = await fetch(url.toString(), {
-    method: "POST", // Using PUT as per screenshot
+    method: "PATCH", // Using PUT as per screenshot
     headers: HEADERS,
     body: JSON.stringify(updateData),
   });

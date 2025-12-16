@@ -135,14 +135,16 @@ export default function AudiencePage() {
       // 6. UPDATE DB (PUT) 
       // Using the UUID (taskId) as requested by the URL structure ?task_id=...
       const updatePayload: any = {
+         
           csv_status: backendStatusString,
           process_size: newSize,
+
       };
       
       if (errorCsvLink) updatePayload.error_csv_link = errorCsvLink;
 
       try {
-        await updateAudienceTask(row.taskId, updatePayload);
+        await updateAudienceTask(row.id, updatePayload);
       } catch (dbError) {
         console.error("Failed to update audience task in DB", dbError);
       }
