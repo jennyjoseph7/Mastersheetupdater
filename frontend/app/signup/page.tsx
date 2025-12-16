@@ -34,6 +34,14 @@ import {
   Car,
   X,
   AlertCircle,
+  Copy,
+  Check,
+  Shield,
+  Tag,
+  Calendar,
+  Store,
+  Languages,
+  Award,
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +66,8 @@ export default function DealerSignup() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [signupResponse, setSignupResponse] = useState<any>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Registration data
   const [registrationData, setRegistrationData] = useState({
@@ -189,7 +199,10 @@ export default function DealerSignup() {
       };
 
       // Call the dealership signup API
-      await dealershipSignup(signupRequest);
+      const response = await dealershipSignup(signupRequest);
+
+      // Store the response data
+      setSignupResponse(response);
 
       // On success, show success with initial credits
       setPhase("success");
@@ -910,7 +923,7 @@ export default function DealerSignup() {
         )}
 
         {/* Success with Verification Option */}
-        {phase === "success" && (
+        {phase === "success" && signupResponse && (
           <>
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-4 animate-in zoom-in duration-500">
@@ -920,11 +933,181 @@ export default function DealerSignup() {
                 Welcome Aboard!
               </h1>
               <p className="text-lg text-muted-foreground">
-                Your account has been created successfully
+                Your dealership account has been created successfully
               </p>
             </div>
 
-            {/* Initial Credits Card */}
+            {/* Dealership Information Card */}
+            <Card className="shadow-xl border-primary/50 mb-6 bg-gradient-to-br from-primary/5 to-transparent">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Building2 className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-2xl">
+                      {signupResponse.dealer_name ||
+                        signupResponse.dealership_legal_name}
+                    </CardTitle>
+                    <CardDescription>
+                      Dealership ID: {signupResponse.dealership_id}
+                    </CardDescription>
+                  </div>
+                  <Badge
+                    variant={
+                      signupResponse.dealer_status === "active"
+                        ? "default"
+                        : "secondary"
+                    }
+                    className="text-sm"
+                  >
+                    {signupResponse.dealer_status || "Lead"}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium">Region</p>
+                        <p className="text-sm text-muted-foreground">
+                          {signupResponse.region_name ||
+                            signupResponse.region_id}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Store className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium">Dealership Type</p>
+                        <p className="text-sm text-muted-foreground">
+                          {signupResponse.dealership_type}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Car className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium">Vehicle Category</p>
+                        <p className="text-sm text-muted-foreground">
+                          {signupResponse.vehicle_category}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {signupResponse.website && (
+                      <div className="flex items-start gap-3">
+                        <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium">Website</p>
+                          <a
+                            href={signupResponse.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline"
+                          >
+                            {signupResponse.website}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {signupResponse.gstin && (
+                      <div className="flex items-start gap-3">
+                        <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium">GSTIN</p>
+                          <p className="text-sm text-muted-foreground font-mono">
+                            {signupResponse.gstin}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {signupResponse.pan_number && (
+                      <div className="flex items-start gap-3">
+                        <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium">PAN Number</p>
+                          <p className="text-sm text-muted-foreground font-mono">
+                            {signupResponse.pan_number}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Supported Brands */}
+                {signupResponse.supported_brands &&
+                  signupResponse.supported_brands.length > 0 && (
+                    <div className="pt-4 border-t">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Tag className="h-5 w-5 text-muted-foreground" />
+                        <p className="text-sm font-medium">Supported Brands</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {signupResponse.supported_brands.map(
+                          (brand: string, idx: number) => (
+                            <Badge key={idx} variant="outline">
+                              {brand
+                                .replace(/-/g, " ")
+                                .replace(/\b\w/g, (l: string) =>
+                                  l.toUpperCase()
+                                )}
+                            </Badge>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Languages */}
+                {signupResponse.languages &&
+                  signupResponse.languages.length > 0 && (
+                    <div className="pt-4 border-t">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Languages className="h-5 w-5 text-muted-foreground" />
+                        <p className="text-sm font-medium">
+                          Supported Languages
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {signupResponse.languages.map(
+                          (lang: string, idx: number) => (
+                            <Badge key={idx} variant="secondary">
+                              {lang.charAt(0).toUpperCase() + lang.slice(1)}
+                            </Badge>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Aliases */}
+                {signupResponse.aliases &&
+                  signupResponse.aliases.length > 0 && (
+                    <div className="pt-4 border-t">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Award className="h-5 w-5 text-muted-foreground" />
+                        <p className="text-sm font-medium">Aliases</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {signupResponse.aliases.map(
+                          (alias: string, idx: number) => (
+                            <Badge key={idx} variant="outline">
+                              {alias}
+                            </Badge>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+              </CardContent>
+            </Card>
+
+            {/* Credits Card */}
             <Card className="shadow-xl border-green-500/50 mb-6 bg-gradient-to-br from-green-50 to-transparent">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
@@ -933,61 +1116,161 @@ export default function DealerSignup() {
                   </div>
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold text-foreground">
-                      100 Credits Added!
+                      500 Testing Credits Added!
                     </h3>
                     <p className="text-muted-foreground">
-                      Start exploring our platform with your welcome credits
+                      Start exploring our platform with your testing credits
                     </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Verification CTA */}
-            <Card className="shadow-xl border-primary/50 bg-gradient-to-br from-primary/5 to-transparent">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <CreditCard className="h-6 w-6 text-primary" />
+            {/* Login Credentials Card */}
+            {signupResponse.login_token && (
+              <Card className="shadow-xl border-blue-500/50 mb-6 bg-gradient-to-br from-blue-50 to-transparent">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-500/10 rounded-lg">
+                      <Shield className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle className="text-xl">
+                        Login Credentials
+                      </CardTitle>
+                      <CardDescription>
+                        Save these credentials for future access
+                      </CardDescription>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <CardTitle className="text-xl">
-                      Unlock Testing Credits
-                    </CardTitle>
-                    <CardDescription>
-                      Complete verification to get 500 additional testing
-                      credits
-                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-background/50 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <User className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">User ID</p>
+                          <p className="text-sm text-muted-foreground font-mono">
+                            {signupResponse.login_token.user_id}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            signupResponse.login_token.user_id
+                          );
+                          setCopiedField("user_id");
+                          setTimeout(() => setCopiedField(null), 2000);
+                        }}
+                      >
+                        {copiedField === "user_id" ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Lock className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Session ID</p>
+                          <p className="text-sm text-muted-foreground font-mono">
+                            {signupResponse.login_token.session_id}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            signupResponse.login_token.session_id
+                          );
+                          setCopiedField("session_id");
+                          setTimeout(() => setCopiedField(null), 2000);
+                        }}
+                      >
+                        {copiedField === "session_id" ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Shield className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Token</p>
+                          <p className="text-sm text-muted-foreground font-mono truncate max-w-xs">
+                            {signupResponse.login_token.token}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            signupResponse.login_token.token
+                          );
+                          setCopiedField("token");
+                          setTimeout(() => setCopiedField(null), 2000);
+                        }}
+                      >
+                        {copiedField === "token" ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-3 pt-2 border-t">
+                      <Award className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Role</p>
+                        <p className="text-sm text-muted-foreground">
+                          {signupResponse.login_token.role}
+                        </p>
+                      </div>
+                    </div>
+                    {signupResponse.login_token.expiry && (
+                      <div className="flex items-center gap-3 pt-2 border-t">
+                        <Calendar className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Token Expiry</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(
+                              signupResponse.login_token.expiry * 1000
+                            ).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="bg-background/50 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center gap-3 text-sm">
-                    <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
-                    <span>Submit GST and business details</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
-                    <span>Get verified within 24 hours</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
-                    <span>Receive 500 testing credits instantly</span>
-                  </div>
-                </div>
+                </CardContent>
+              </Card>
+            )}
 
-                <div className="grid md:grid-cols-2 gap-3">
+            {/* Continue to Dashboard */}
+            <Card className="shadow-xl border-primary/50 bg-gradient-to-br from-primary/5 to-transparent">
+              <CardContent className="pt-6">
+                <div className="text-center space-y-4">
+                  <p className="text-muted-foreground">
+                    You're all set! Start creating campaigns and managing your
+                    dealership.
+                  </p>
                   <Button
-                    variant="outline"
                     size="lg"
                     onClick={() => router.push("/")}
+                    className="w-full md:w-auto"
                   >
-                    Skip for Now
-                  </Button>
-                  <Button size="lg" onClick={() => setPhase("verification")}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Verify Now
+                    Go to Dashboard
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>

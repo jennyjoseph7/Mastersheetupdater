@@ -1,4 +1,3 @@
-// utils/api.js
 import {
   APP_BASE_URL,
   HEADERS,
@@ -6,7 +5,6 @@ import {
   FILE_UPLOAD_HEADERS,
 } from "./headers";
 
-// --- 1. Generic Fetch Wrapper ---
 async function fetchAPIData(modelName, queryParams = {}) {
   try {
     let url = new URL(`${APP_BASE_URL}/gryd/db/objects/${modelName}`);
@@ -35,7 +33,6 @@ async function fetchAPIData(modelName, queryParams = {}) {
   }
 }
 
-// --- 2. Campaign Pivot Logic ---
 async function fetchPivotCountForCampaign(type) {
   const base = `${APP_BASE_URL}/gryd/db/pivot`;
   let preUrl = "";
@@ -65,7 +62,7 @@ async function fetchPivotCountForCampaign(type) {
   }
 }
 
-// --- 3. File Upload Service ---
+//  File Upload Service ---
 async function uploadFileToGryd(file) {
   const uploadData = new FormData();
   uploadData.append("file", file);
@@ -83,7 +80,7 @@ async function uploadFileToGryd(file) {
   return response.json();
 }
 
-// --- 4. Extract CSV Headers Task ---
+// Extract CSV Headers Task ---
 async function extractCsvHeadersAPI(fileUrl) {
   const response = await fetch(
     `${APP_BASE_URL}/gryd/task/autocrm-core/extract_csv_headers`,
@@ -94,7 +91,7 @@ async function extractCsvHeadersAPI(fileUrl) {
         args: [fileUrl],
         kwargs: {},
       }),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -104,14 +101,14 @@ async function extractCsvHeadersAPI(fileUrl) {
   return response.json();
 }
 
-// --- 5. Start Import Task ---
+// Start Import Task ---
 async function startImportTask(
   category,
   audienceName,
   fileUrl,
   tags = [],
   sourceName = "",
-  fieldMapping = {}
+  fieldMapping = {},
 ) {
   const response = await fetch(
     `${APP_BASE_URL}/gryd/task/autocrm-core/import_leads_from_csv`,
@@ -132,7 +129,7 @@ async function startImportTask(
         runtime_limit: 3600,
         cancellable: true,
       }),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -143,7 +140,7 @@ async function startImportTask(
   return response.json();
 }
 
-// --- 6. Create Audience Task Record (DB) ---
+// 6. Create Audience Task Record (DB) ---
 async function createAudienceTask(taskData) {
   const response = await fetch(
     `${APP_BASE_URL}/gryd/db/objects/audience_task`,
@@ -151,7 +148,7 @@ async function createAudienceTask(taskData) {
       method: "PUT",
       headers: HEADERS,
       body: JSON.stringify(taskData),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -209,12 +206,12 @@ async function getTaskResult(taskId) {
   return response.json();
 }
 
-// --- 10. Fetch Audience List (For Table) ---
+//  Fetch Audience List (For Table) ---
 async function fetchAudienceTasks() {
   return fetchAPIData("audience_task");
 }
 
-// --- 11. Fetch Dealership Campaigns ---
+// Fetch Dealership Campaigns ---
 async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
   try {
     // Use admin role header as per the curl command
@@ -247,13 +244,13 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
 
     console.log(
       "[fetchDealershipCampaigns] GET Response status:",
-      response.status
+      response.status,
     );
 
     // If GET returns 405 (Method Not Allowed), use POST as per curl command
     if (!response.ok && response.status === 405) {
       console.log(
-        "[fetchDealershipCampaigns] GET not allowed, using POST as per curl..."
+        "[fetchDealershipCampaigns] GET not allowed, using POST as per curl...",
       );
       response = await fetch(url, {
         method: "POST",
@@ -262,7 +259,7 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
       });
       console.log(
         "[fetchDealershipCampaigns] POST Response status:",
-        response.status
+        response.status,
       );
     }
 
@@ -280,7 +277,7 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
     const total = json?.total_number ?? 0;
 
     console.log(
-      `[fetchDealershipCampaigns] Returning ${items.length} items, total: ${total}`
+      `[fetchDealershipCampaigns] Returning ${items.length} items, total: ${total}`,
     );
 
     return {
