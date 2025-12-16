@@ -9,7 +9,7 @@ const getAppBaseUrl = () => {
     const envOverride = process.env.NEXT_PUBLIC_APP_ENV;
     if (envOverride === "prod") {
       env = "prod";
-      url = "https://autobot-webapp-dev.gryd.in";
+      url = "http://localhost:5008";
     } else if (envOverride === "test") {
       env = "test";
       url = "http://localhost:5008";
@@ -19,21 +19,21 @@ const getAppBaseUrl = () => {
         url = "http://localhost:5008";
       } else {
         env = "prod";
-        url = "https://autobot-webapp-dev.gryd.in";
+        url = "http://localhost:5008";
       }
     }
   } else {
     const envOverride = process.env.NEXT_PUBLIC_APP_ENV || process.env.APP_ENV;
     if (envOverride === "prod") {
       env = "prod";
-      url = "https://autobot-webapp-dev.gryd.in";
+      url = "http://localhost:5008";
     } else if (envOverride === "test") {
       env = "test";
       url = "http://localhost:5008";
     } else {
       if (process.env.NODE_ENV === "production") {
         env = "prod";
-        url = "https://autobot-webapp-dev.gryd.in";
+        url = "http://localhost:5008";
       } else {
         env = "test";
         url = "http://localhost:5008";

@@ -402,343 +402,323 @@ export default function CampaignDashboard() {
           </div>
 
           {/* Campaign Table */}
-          <div
-            className="transform-gpu transition-transform duration-500 ease-out "
-            style={{
-              transform: "perspective(1000px) rotateX(1deg) rotateY(-1deg)",
-              transformStyle: "preserve-3d",
-            }}
-          >
-            <Card className="shadow">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Recent Campaigns</CardTitle>
-                    <CardDescription>
-                      View and manage your marketing campaigns
-                    </CardDescription>
-                  </div>
+          <Card className="shadow">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Recent Campaigns</CardTitle>
+                  <CardDescription>
+                    View and manage your marketing campaigns
+                  </CardDescription>
                 </div>
+              </div>
 
-                {/* Filters */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center mt-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Search campaigns..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    {/* Status Filter */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="gap-2 bg-transparent"
-                        >
-                          Status:{" "}
-                          {statusFilter === "all"
-                            ? "All"
-                            : statusFilter.charAt(0).toUpperCase() +
-                              statusFilter.slice(1)}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setStatusFilter("all")}
-                        >
-                          All
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setStatusFilter("draft")}
-                        >
-                          Draft
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setStatusFilter("scheduled")}
-                        >
-                          Scheduled
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setStatusFilter("live")}
-                        >
-                          Live
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setStatusFilter("completed")}
-                        >
-                          Completed
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Channel Filter */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="gap-2 bg-transparent"
-                        >
-                          Channel:{" "}
-                          {channelFilter === "all"
-                            ? "All"
-                            : channelFilter.charAt(0).toUpperCase() +
-                              channelFilter.slice(1)}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Filter by Channel</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setChannelFilter("all")}
-                        >
-                          All
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setChannelFilter("whatsapp_chat")}
-                        >
-                          WhatsApp
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setChannelFilter("email")}
-                        >
-                          Email
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setChannelFilter("voice_phone")}
-                        >
-                          Voice
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Campaign Type */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="gap-2 bg-transparent"
-                        >
-                          Campaign Type:{" "}
-                          {campaignTypeFilter === "pre_sales"
-                            ? "Pre-Sales"
-                            : campaignTypeFilter === "post_sales"
-                            ? "Post-Sales"
-                            : "Dealership"}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>
-                          Filter by Campaign Type
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setCampaignTypeFilter("pre_sales");
-                            setPage(1);
-                          }}
-                        >
-                          Pre-Sales
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setCampaignTypeFilter("post_sales");
-                            setPage(1);
-                          }}
-                        >
-                          Post-Sales
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setCampaignTypeFilter("dealership");
-                            setPage(1);
-                          }}
-                        >
-                          Dealership
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+              {/* Filters */}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center mt-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search campaigns..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
                 </div>
-              </CardHeader>
+                <div className="flex gap-2">
+                  {/* Status Filter */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="gap-2 bg-transparent"
+                      >
+                        Status:{" "}
+                        {statusFilter === "all"
+                          ? "All"
+                          : statusFilter.charAt(0).toUpperCase() +
+                            statusFilter.slice(1)}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setStatusFilter("all")}>
+                        All
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setStatusFilter("draft")}
+                      >
+                        Draft
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setStatusFilter("scheduled")}
+                      >
+                        Scheduled
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setStatusFilter("live")}>
+                        Live
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setStatusFilter("completed")}
+                      >
+                        Completed
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
-              <CardContent>
-                <Table>
-                  <TableHeader>
+                  {/* Channel Filter */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="gap-2 bg-transparent"
+                      >
+                        Channel:{" "}
+                        {channelFilter === "all"
+                          ? "All"
+                          : channelFilter.charAt(0).toUpperCase() +
+                            channelFilter.slice(1)}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Filter by Channel</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setChannelFilter("all")}>
+                        All
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setChannelFilter("whatsapp_chat")}
+                      >
+                        WhatsApp
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setChannelFilter("email")}
+                      >
+                        Email
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setChannelFilter("voice_phone")}
+                      >
+                        Voice
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Campaign Type */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="gap-2 bg-transparent"
+                      >
+                        Campaign Type:{" "}
+                        {campaignTypeFilter === "pre_sales"
+                          ? "Pre-Sales"
+                          : campaignTypeFilter === "post_sales"
+                          ? "Post-Sales"
+                          : "Dealership"}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>
+                        Filter by Campaign Type
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setCampaignTypeFilter("pre_sales");
+                          setPage(1);
+                        }}
+                      >
+                        Pre-Sales
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setCampaignTypeFilter("post_sales");
+                          setPage(1);
+                        }}
+                      >
+                        Post-Sales
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setCampaignTypeFilter("dealership");
+                          setPage(1);
+                        }}
+                      >
+                        Dealership
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Campaign Type</TableHead>
+                    <TableHead>Campaign Name</TableHead>
+                    <TableHead>Channels Used</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Launch Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {loading ? (
                     <TableRow>
-                      <TableHead>Campaign Type</TableHead>
-                      <TableHead>Campaign Name</TableHead>
-                      <TableHead>Channels Used</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Launch Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableCell
+                        colSpan={6}
+                        className="text-center text-muted-foreground"
+                      >
+                        Loading...
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
+                  ) : error ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="text-center text-destructive"
+                      >
+                        {error}
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredCampaigns.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="text-center text-muted-foreground"
+                      >
+                        No campaigns found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    displaySlice.map((campaign) => {
+                      // Handle campaign_type as array or string
+                      const campaignType = Array.isArray(campaign.campaign_type)
+                        ? campaign.campaign_type[0]
+                        : campaign.campaign_type;
 
-                  <TableBody>
-                    {loading ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={6}
-                          className="text-center text-muted-foreground"
+                      return (
+                        <TableRow
+                          key={
+                            campaign.campaign_id ?? campaign.id ?? Math.random()
+                          }
                         >
-                          Loading...
-                        </TableCell>
-                      </TableRow>
-                    ) : error ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={6}
-                          className="text-center text-destructive"
-                        >
-                          {error}
-                        </TableCell>
-                      </TableRow>
-                    ) : filteredCampaigns.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={6}
-                          className="text-center text-muted-foreground"
-                        >
-                          No campaigns found
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      displaySlice.map((campaign) => {
-                        // Handle campaign_type as array or string
-                        const campaignType = Array.isArray(
-                          campaign.campaign_type
-                        )
-                          ? campaign.campaign_type[0]
-                          : campaign.campaign_type;
-
-                        return (
-                          <TableRow
-                            key={
-                              campaign.campaign_id ??
-                              campaign.id ??
-                              Math.random()
-                            }
-                          >
-                            <TableCell className="font-medium">
-                              {campaignType === "pre-sales" ||
-                              campaignType === "pre_sales"
-                                ? "Pre-Sales"
-                                : campaignType === "post-sales" ||
-                                  campaignType === "post_sales"
-                                ? "Post-Sales"
-                                : campaignType === "dealership" ||
-                                  campaignTypeFilter === "dealership"
-                                ? "Dealership"
-                                : campaignType
-                                ? campaignType.charAt(0).toUpperCase() +
-                                  campaignType.slice(1)
-                                : "—"}
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {campaign.campaign_name ?? "—"}
-                            </TableCell>
-                            <TableCell>
-                              {getChannelBadges(campaign.channels)}
-                            </TableCell>
-                            <TableCell>
-                              {getStatusBadge(
-                                campaign.campaign_status ||
-                                  (campaign.start_date &&
-                                  campaign.end_date &&
-                                  Date.now() / 1000 > campaign.end_date
-                                    ? "completed"
-                                    : campaign.start_date &&
-                                      Date.now() / 1000 >= campaign.start_date
-                                    ? "live"
-                                    : "scheduled")
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {epochToIST(campaign.start_date) ??
-                                (campaign.start_date
-                                  ? new Date(
-                                      campaign.start_date * 1000
-                                    ).toLocaleDateString()
-                                  : "—")}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
+                          <TableCell className="font-medium">
+                            {campaignType === "pre-sales" ||
+                            campaignType === "pre_sales"
+                              ? "Pre-Sales"
+                              : campaignType === "post-sales" ||
+                                campaignType === "post_sales"
+                              ? "Post-Sales"
+                              : campaignType === "dealership" ||
+                                campaignTypeFilter === "dealership"
+                              ? "Dealership"
+                              : campaignType
+                              ? campaignType.charAt(0).toUpperCase() +
+                                campaignType.slice(1)
+                              : "—"}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {campaign.campaign_name ?? "—"}
+                          </TableCell>
+                          <TableCell>
+                            {getChannelBadges(campaign.channels)}
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(
+                              campaign.campaign_status ||
+                                (campaign.start_date &&
+                                campaign.end_date &&
+                                Date.now() / 1000 > campaign.end_date
+                                  ? "completed"
+                                  : campaign.start_date &&
+                                    Date.now() / 1000 >= campaign.start_date
+                                  ? "live"
+                                  : "scheduled")
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {epochToIST(campaign.start_date) ??
+                              (campaign.start_date
+                                ? new Date(
+                                    campaign.start_date * 1000
+                                  ).toLocaleDateString()
+                                : "—")}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem>
+                                  <Pencil className="mr-2 h-4 w-4" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Copy className="mr-2 h-4 w-4" /> Duplicate
+                                </DropdownMenuItem>
+                                {campaign.campaign_status === "live" ? (
                                   <DropdownMenuItem>
-                                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                                    <Pause className="mr-2 h-4 w-4" /> Pause
                                   </DropdownMenuItem>
+                                ) : campaign.campaign_status === "draft" ||
+                                  campaign.campaign_status === "scheduled" ? (
                                   <DropdownMenuItem>
-                                    <Copy className="mr-2 h-4 w-4" /> Duplicate
+                                    <Play className="mr-2 h-4 w-4" /> Launch
                                   </DropdownMenuItem>
-                                  {campaign.campaign_status === "live" ? (
-                                    <DropdownMenuItem>
-                                      <Pause className="mr-2 h-4 w-4" /> Pause
-                                    </DropdownMenuItem>
-                                  ) : campaign.campaign_status === "draft" ||
-                                    campaign.campaign_status === "scheduled" ? (
-                                    <DropdownMenuItem>
-                                      <Play className="mr-2 h-4 w-4" /> Launch
-                                    </DropdownMenuItem>
-                                  ) : null}
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="text-destructive">
-                                    Insights
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
+                                ) : null}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive">
+                                  Insights
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
 
-                {/* Pagination */}
-                <div className="flex justify-between items-center mt-4">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      disabled={page <= 1}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={page >= totalPages}
-                      onClick={() =>
-                        setPage((p) => Math.min(totalPages, p + 1))
-                      }
-                    >
-                      Next
-                    </Button>
-                  </div>
-
-                  <div className="text-sm text-muted-foreground">
-                    Page {page} of {totalPages} • Showing {displaySlice.length}{" "}
-                    of {totalCount} campaigns
-                  </div>
+              {/* Pagination */}
+              <div className="flex justify-between items-center mt-4">
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    Next
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+
+                <div className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages} • Showing {displaySlice.length} of{" "}
+                  {totalCount} campaigns
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </ProtectedRoute>
