@@ -37,7 +37,7 @@ async function fetchAPIData(modelName, queryParams = {}) {
 async function deleteAPIData(modelName, id) {
   try {
     // Assuming DELETE endpoint uses singular object path
-    const url = `${APP_BASE_URL}/gryd/db/object/${modelName}/${id}`;
+    const url = `${APP_BASE_URL}/gryd/db/delete/${modelName}/${id}`;
     
     const response = await fetch(url, {
       method: "DELETE",
