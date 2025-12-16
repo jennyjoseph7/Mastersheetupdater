@@ -280,7 +280,6 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
         """
         # Call the payload function
         payload_result = payload_function(res_temp)
-
         # Check if payload_result is a generator
         if isinstance(payload_result, types.GeneratorType):
             first_batch = True
@@ -300,9 +299,7 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
             if message or kwargs.get("message_type"):
                 self._prepare_send_request(payload_result or {}, extra_payload, message, media_func=media_func,custom_api_path=api_path,**kwargs)
             
-
         return self.res
-    
     
     def message_payload(self, message: str, res_temp: Optional[Dict[str, Any]] = None):
         if not message: return None
@@ -655,8 +652,18 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
 
         logger.info(f'Time taken to manage Airtel API for {default_payload.get("to")}: {time.time() - start_time} seconds' )
         return self.res
-
-
+    
+    def handle_custom_template(self,*args,**kwargs):
+        logger.info(f"[trigger custom template---]--{kwargs}")
+        extra_payload = {"message": kwargs.get("message")} if "message" in kwargs else {}
+        logger.info(f"[HANDLE_TEMPLATE] Sending template with payload: {extra_payload}")
+        res = self.template_payload(response_data=kwargs)
+        res["from"]=self._format_mobile_number(kwargs.get("sender"))
+        res["to"]=self._format_mobile_number(kwargs.get("mobile_number"))
+        url = f"{kwargs.get('base_url')}/template/send"
+        headers=kwargs.get("headers")  
+        self.post_api(url, res, headers)
+        
 
 WhatsappReceiverConnector.register("airtel",AirtelWebhookConverter)
 WhatsappMessangerConnector.register("airtel",AirtelWhatsAppMessenger)

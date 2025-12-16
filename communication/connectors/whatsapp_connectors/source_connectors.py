@@ -14,7 +14,7 @@ import re
 # from connectors.communication_helpers import AuthManager,format_box_log,safe_orjson_dumps
 from conversation.lead_post_processing import post_session_process
 
-from config import AUTOCRM_COMMUNICATION_SERVICE_NAME
+from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NAME,WHATSAPP_PROVIDER_NUMBER
 from connectors.communication_helpers import * 
 # if any error comment the above ones and add this 
 # --
@@ -435,9 +435,9 @@ class BaseWebhookConverter:
         - Uses multiple number formats to improve hit rate.
         - Tries cache-aware fetch_credentials first, then whatsapp_auth, then DB model.
         """
-        if not enterprise_id:
-            logger.warning("[HEADERS] Enterprise ID missing. Returning empty headers.")
-            return {}
+        # if not enterprise_id:
+        #     logger.warning("[HEADERS] Enterprise ID missing. Returning empty headers.")
+        #     return {}
 
         start_time = time.time()
         auth = AuthManager(self.whatsapp_provider)
@@ -906,6 +906,51 @@ class BaseWebhookConverter:
             logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. And the session_id is -- {s}")
             return s 
     
+    def send_otp_template(*args, **kwargs):
+        logger.info("Send OTP template called")
+
+        template_id = kwargs.get("template_id")
+        mobile_number = kwargs.get("mobile_number")
+        otp = kwargs.get("otp")
+
+        if not template_id or not mobile_number or not otp:
+            logger.error("template_id or mobile_number or otp missing")
+            return
+
+        provider_name = WHATSAPP_PROVIDER_NAME
+        sender = WHATSAPP_PROVIDER_NUMBER
+
+        t_data = {
+            "mobile_number": mobile_number,
+            "template_id": template_id,
+            "provider_name": provider_name,
+            "sender": sender,
+        }
+
+        if otp:
+            otp_list = [otp]
+            t_data.update({
+                "template_variables": otp_list,
+                "variables": otp_list,
+                "suffix": otp_list,
+            })
+
+        headers = BaseWebhookConverter().get_headers(sender, "")
+        config = PROVIDER_CONFIG.get(provider_name.lower(), {})
+
+        t_data.update({
+            "headers": headers,
+            "base_url": config.get("base_url", ""),
+        })
+
+        provider = WhatsappMessangerConnector.whatsapp(
+            provider_name, *args, **kwargs
+        )
+
+        provider.handle_custom_template(**t_data)
+
+        return
+    
     # @timelogger()
     def process_webhook(self, *args, **kwargs):
         """
@@ -933,6 +978,43 @@ class BaseWebhookConverter:
  
         return {"info": f"Webhook Processed for {self.default_message_dict.get('enterprise_id', '')}"}
 
+    def send_custom_template(*args,**kwargs):
+        logger.info("Send custom template called---")
+        template_id=kwargs.get("template_id")
+        mobile_number=kwargs.get("mobile_number")        
+        if not template_id or not mobile_number:
+            logger.error("template_id or mobile_number missing")
+            return
+        t_data={}
+        
+        template_details=get_template_details(template_id)
+        if not template_details:
+            logger.error(f"No template found for template_id={template_id}")
+            return
+        
+        
+        logger.info(f"[Send template] Template details: {template_details}")
+        if template_details:
+            t_data.update({
+                "template_id": template_details.get("template_id"),
+                "variables": template_details.get("template_variables"),
+                "buttons": template_details.get("template_button_payloads"),
+                "channel":template_details.get("channel"),
+                "sender":template_details.get("sender"),
+                "provider_name":template_details.get("provider_name"),
+                "mobile_number":mobile_number
+            })
+                        
+        provider = WhatsappMessangerConnector.whatsapp(
+                t_data.get("provider_name"), *args, **kwargs
+            )
+        headers=BaseWebhookConverter().get_headers(t_data.get("sender"),"")
+        config = PROVIDER_CONFIG.get(t_data.get("provider_name").lower(), {})
+        base_url = config.get("base_url", "")
+        t_data.update({"headers":headers,"base_url":base_url})
+        provider.handle_custom_template(**t_data)
+        
+        
 class PayloadBuilder:
     def __init__(self, provider_name, from_number):
         self.provider_name = provider_name
@@ -1071,11 +1153,11 @@ class BaseWhatsappMessenger:
         })
         logger.info(f"Successful Response: {response_data} ====== {self.whatsapp_provider }  {self.response_mapping}")
 
-        try:
-            return self._map_and_post_message(response_data, payload, elapsed_time, **kwargs)
-        except Exception:
-            hp.print_error()
-            return response_data
+        # try:
+        #     # return self._map_and_post_message(response_data, payload, elapsed_time, **kwargs)
+        # except Exception:
+        #     hp.print_error()
+        #     return response_data
 
     def _handle_error_response(self, response):
         """Safely handle error responses."""
@@ -1117,17 +1199,17 @@ class BaseWhatsappMessenger:
 
         mapped_payload.update(kwargs.get("_additional_data", {}) or {})
 
-        enterprise_id = (
-            self.enterprise_id
-            or kwargs.get("enterprise_id")
-            or kwargs.get("_additional_data", {}).get("enterprise_id")
-        )
+        # enterprise_id = (
+        #     self.enterprise_id
+        #     or kwargs.get("enterprise_id")
+        #     or kwargs.get("_additional_data", {}).get("enterprise_id")
+        # )
 
-        logger.info(f"[**Posting**] Message Details to {enterprise_id}")
+        # logger.info(f"[**Posting**] Message Details to {enterprise_id}")
         post_dict={
                 **mapped_payload,
-                "enterprise_id": enterprise_id,
-                "ent_id": enterprise_id
+                # "enterprise_id": enterprise_id,
+                # "ent_id": enterprise_id
             }
         message_id=None
         # upsert_message_status.apply_async(*("whatsapp_message",enterprise_id,message_id,post_dict,True))
@@ -1421,10 +1503,6 @@ class BaseWhatsappMessenger:
             logger.error(f"Error processing request to {custom_api_path or self.base_url}: {e}", exc_info=True)
             if hasattr(hp, "print_error"):
                 hp.print_error()
-
-
-
-
 
 
 class WhatsappMessangerConnector:

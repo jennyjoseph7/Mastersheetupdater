@@ -433,7 +433,12 @@ def truncate_values(data, max_len=50):
     else:
         return data
 
+def get_template_details(template_id):
     
+    with get_pg_connector() as pg:
+        template_details=pg.get("template","template_id",template_id)
+        return template_details
+
 # ####################### IMPORTANT For Whatsapp Communication ###################################
 # @gryd.is_a_task(function_name="upsert_message_status")
 # @timelogger()
@@ -542,9 +547,9 @@ class AuthManager:
         """
         logger.info("[AuthManager]::: GETTING CREDS")
 
-        if not enterprise_id:
-            logger.warning("[HEADERS] Enterprise ID missing. Returning empty headers.")
-            return {}
+        # if not enterprise_id:
+        #     logger.warning("[HEADERS] Enterprise ID missing. Returning empty headers.")
+        #     return {}
 
         start_time = time.time()
 
