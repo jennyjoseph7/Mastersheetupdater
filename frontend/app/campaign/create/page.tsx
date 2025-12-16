@@ -209,6 +209,7 @@ function CampaignCreateContent() {
     "presales" | "postsales" | ""
   >("");
   const [selectedObjective, setSelectedObjective] = useState("");
+  const [selectedObjectiveData, setSelectedObjectiveData] = useState<any>(null);
   const [customObjective, setCustomObjective] = useState("");
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -390,6 +391,7 @@ function CampaignCreateContent() {
                 title,
                 campaignSubType,
                 icon: getObjectiveIcon(id, title),
+                fullData: obj, // Store the full objective data
               };
             });
 
@@ -399,6 +401,7 @@ function CampaignCreateContent() {
               title: "Custom Objective",
               campaignSubType: undefined,
               icon: <Edit3 className="h-6 w-6" />,
+              fullData: null,
             });
 
             setPreSalesObjectives(mappedObjectives);
@@ -448,6 +451,7 @@ function CampaignCreateContent() {
                   title,
                   campaignSubType,
                   icon: getObjectiveIcon(id, title),
+                  fullData: obj, // Store the full objective data
                 };
               }
             );
@@ -579,6 +583,7 @@ function CampaignCreateContent() {
                   title,
                   campaignSubType,
                   icon: getObjectiveIcon(id, title),
+                  fullData: obj, // Store the full objective data
                 };
               }
             );
@@ -589,6 +594,7 @@ function CampaignCreateContent() {
               title: "Custom Objective",
               campaignSubType: undefined,
               icon: <Edit3 className="h-6 w-6" />,
+              fullData: null,
             });
 
             console.log(
@@ -993,6 +999,14 @@ function CampaignCreateContent() {
                                     onSelect={() => {
                                       // Always set the new selection - this will automatically deselect others
                                       setSelectedObjective(objectiveId);
+                                      // Store the full objective data if available
+                                      if ((objective as any).fullData) {
+                                        setSelectedObjectiveData(
+                                          (objective as any).fullData
+                                        );
+                                      } else {
+                                        setSelectedObjectiveData(null);
+                                      }
                                       if (objectiveId !== "custom") {
                                         setCustomObjective("");
                                       }
@@ -1034,6 +1048,233 @@ function CampaignCreateContent() {
                             </CardContent>
                           </Card>
                         )}
+
+                        {/* Objective Data Editor - Show when objective has full data */}
+                        {selectedObjectiveData &&
+                          selectedObjective !== "custom" && (
+                            <Card className="border-2 border-primary/20 bg-primary/5 animate-in fade-in slide-in-from-top-2 duration-300">
+                              <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                  <Edit3 className="h-5 w-5 text-primary" />
+                                  Edit Campaign Objective Details
+                                </CardTitle>
+                                <CardDescription>
+                                  Review and modify the campaign objective
+                                  details
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <Label className="text-base font-semibold">
+                                      Campaign Objective Name
+                                    </Label>
+                                    <Input
+                                      value={
+                                        selectedObjectiveData.campaign_objective_name ||
+                                        ""
+                                      }
+                                      onChange={(e) => {
+                                        setSelectedObjectiveData({
+                                          ...selectedObjectiveData,
+                                          campaign_objective_name:
+                                            e.target.value,
+                                        });
+                                      }}
+                                      className="h-11"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label className="text-base font-semibold">
+                                      Campaign Sub Type
+                                    </Label>
+                                    <Input
+                                      value={
+                                        selectedObjectiveData.campaign_sub_type ||
+                                        ""
+                                      }
+                                      onChange={(e) => {
+                                        setSelectedObjectiveData({
+                                          ...selectedObjectiveData,
+                                          campaign_sub_type: e.target.value,
+                                        });
+                                      }}
+                                      className="h-11"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label className="text-base font-semibold">
+                                    Campaign Objective Description
+                                  </Label>
+                                  <Textarea
+                                    value={
+                                      selectedObjectiveData.campaign_objective_description ||
+                                      ""
+                                    }
+                                    onChange={(e) => {
+                                      setSelectedObjectiveData({
+                                        ...selectedObjectiveData,
+                                        campaign_objective_description:
+                                          e.target.value,
+                                      });
+                                    }}
+                                    rows={3}
+                                    className="resize-none"
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label className="text-base font-semibold">
+                                    Why User Should Avail This
+                                  </Label>
+                                  <Textarea
+                                    value={
+                                      selectedObjectiveData.why_user_should_avail_this ||
+                                      ""
+                                    }
+                                    onChange={(e) => {
+                                      setSelectedObjectiveData({
+                                        ...selectedObjectiveData,
+                                        why_user_should_avail_this:
+                                          e.target.value,
+                                      });
+                                    }}
+                                    rows={3}
+                                    className="resize-none"
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label className="text-base font-semibold">
+                                    Other Important Information
+                                  </Label>
+                                  <Textarea
+                                    value={
+                                      selectedObjectiveData.other_important_information ||
+                                      ""
+                                    }
+                                    onChange={(e) => {
+                                      setSelectedObjectiveData({
+                                        ...selectedObjectiveData,
+                                        other_important_information:
+                                          e.target.value,
+                                      });
+                                    }}
+                                    rows={3}
+                                    className="resize-none"
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label className="text-base font-semibold">
+                                    Conversation Tone
+                                  </Label>
+                                  <Input
+                                    value={
+                                      selectedObjectiveData.conversation_tone ||
+                                      ""
+                                    }
+                                    onChange={(e) => {
+                                      setSelectedObjectiveData({
+                                        ...selectedObjectiveData,
+                                        conversation_tone: e.target.value,
+                                      });
+                                    }}
+                                    className="h-11"
+                                    placeholder="e.g., Professional, Urgent, Friendly"
+                                  />
+                                </div>
+
+                                {/* Custom Attributes */}
+                                {selectedObjectiveData.custom_attributes &&
+                                  Array.isArray(
+                                    selectedObjectiveData.custom_attributes
+                                  ) &&
+                                  selectedObjectiveData.custom_attributes
+                                    .length > 0 && (
+                                    <div className="space-y-4">
+                                      <Label className="text-base font-semibold">
+                                        Custom Attributes
+                                      </Label>
+                                      <div className="space-y-3">
+                                        {selectedObjectiveData.custom_attributes.map(
+                                          (attr: any, idx: number) => (
+                                            <Card key={idx} className="p-4">
+                                              <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                  <Label className="text-sm font-medium">
+                                                    {attr.attribute_name ||
+                                                      `Attribute ${idx + 1}`}
+                                                  </Label>
+                                                  <Badge variant="outline">
+                                                    {attr.attribute_type ||
+                                                      "text"}
+                                                  </Badge>
+                                                </div>
+                                                <Input
+                                                  value={
+                                                    attr.attribute_value || ""
+                                                  }
+                                                  onChange={(e) => {
+                                                    const updatedAttributes = [
+                                                      ...selectedObjectiveData.custom_attributes,
+                                                    ];
+                                                    updatedAttributes[idx] = {
+                                                      ...attr,
+                                                      attribute_value:
+                                                        e.target.value,
+                                                    };
+                                                    setSelectedObjectiveData({
+                                                      ...selectedObjectiveData,
+                                                      custom_attributes:
+                                                        updatedAttributes,
+                                                    });
+                                                  }}
+                                                  className="h-10"
+                                                />
+                                                {attr.attribute_description && (
+                                                  <p className="text-xs text-muted-foreground">
+                                                    {attr.attribute_description}
+                                                  </p>
+                                                )}
+                                              </div>
+                                            </Card>
+                                          )
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                {/* Target Audience Tags */}
+                                {selectedObjectiveData.target_audience_tags &&
+                                  Array.isArray(
+                                    selectedObjectiveData.target_audience_tags
+                                  ) &&
+                                  selectedObjectiveData.target_audience_tags
+                                    .length > 0 && (
+                                    <div className="space-y-2">
+                                      <Label className="text-base font-semibold">
+                                        Target Audience Tags
+                                      </Label>
+                                      <div className="flex flex-wrap gap-2">
+                                        {selectedObjectiveData.target_audience_tags.map(
+                                          (tag: string, idx: number) => (
+                                            <Badge
+                                              key={idx}
+                                              variant="secondary"
+                                            >
+                                              {tag}
+                                            </Badge>
+                                          )
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                              </CardContent>
+                            </Card>
+                          )}
 
                         {/* Car Details Form for New Car Launch */}
                         {selectedObjective === "new-car-launch" && (
