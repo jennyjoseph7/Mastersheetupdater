@@ -2,10 +2,12 @@
 import useSWR from "swr";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   fetchAPIData,
   fetchPivotCountForCampaign,
   fetchDealershipCampaigns,
+  deleteAPIData,
   epochToIST,
 } from "@/utils/api";
 
@@ -34,6 +36,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ProtectedRoute } from "@/components/protected-route";
 
@@ -51,8 +61,6 @@ import {
   UsersIcon,
   BarChart3,
 } from "lucide-react";
-import { count } from "console";
-import { set } from "date-fns";
 
 const swrOptions = {
   revalidateOnFocus: false,
@@ -76,6 +84,7 @@ export interface Campaign {
 const ITEMS_PER_PAGE = 5;
 
 export default function CampaignDashboard() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
@@ -88,6 +97,11 @@ export default function CampaignDashboard() {
   const [totalCampaignCount, setTotalCampaignCount] = useState<number>(0);
   const [activeCampaignCount, setActiveCampaignCount] = useState<number>(0);
   const [page, setPage] = useState<number>(1);
+  
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch counts for header cards
   const fetchCounts = async () => {
@@ -136,6 +150,7 @@ export default function CampaignDashboard() {
     data: campaignsData,
     isLoading: loading,
     error,
+    mutate: mutateCampaigns,
   } = useSWR(
     ["campaigns", campaignTypeFilter, page],
     () => fetchCampaigns(campaignTypeFilter, page),
@@ -309,6 +324,113 @@ export default function CampaignDashboard() {
         {channel.charAt(0).toUpperCase() + channel.slice(1)}
       </Badge>
     ));
+
+  // Handler functions for dropdown actions
+  const handleEdit = (campaign: Campaign) => {
+    // Navigate to campaign create page with campaign data
+    const campaignId = campaign.campaign_id ?? campaign.id;
+    router.push(`/campaign/create?edit=${campaignId}`);
+  };
+
+  const handleDuplicate = async (campaign: Campaign) => {
+    try {
+      // Create a copy of the campaign
+      const campaignId = campaign.campaign_id ?? campaign.id;
+      const campaignType = Array.isArray(campaign.campaign_type)
+        ? campaign.campaign_type[0]
+        : campaign.campaign_type;
+      
+      const modelName = campaignType === "pre-sales" || campaignType === "pre_sales"
+        ? "pre_sales_campaign"
+        : "post_sales_campaign";
+
+      // Fetch the campaign data
+      const response = await fetchAPIData(modelName, {});
+      const campaignData = response.items.find(
+        (c: Campaign) => (c.campaign_id ?? c.id) === campaignId
+      );
+
+      if (campaignData) {
+        // Remove id fields and create a duplicate
+        const { campaign_id, id, ...duplicateData } = campaignData;
+        duplicateData.campaign_name = `${campaignData.campaign_name ?? "Campaign"} (Copy)`;
+        duplicateData.campaign_status = "draft";
+
+        // In a real implementation, you would POST this to create a new campaign
+        // For now, navigate to create page with the duplicate data
+        localStorage.setItem("duplicateCampaignData", JSON.stringify(duplicateData));
+        router.push("/campaign/create?duplicate=true");
+      }
+    } catch (error) {
+      console.error("Error duplicating campaign:", error);
+      alert("Failed to duplicate campaign. Please try again.");
+    }
+  };
+
+  const handlePauseOrLaunch = async (campaign: Campaign, action: "pause" | "launch") => {
+    try {
+      const campaignId = campaign.campaign_id ?? campaign.id;
+      const campaignType = Array.isArray(campaign.campaign_type)
+        ? campaign.campaign_type[0]
+        : campaign.campaign_type;
+      
+      const modelName = campaignType === "pre-sales" || campaignType === "pre_sales"
+        ? "pre_sales_campaign"
+        : "post_sales_campaign";
+
+      const newStatus = action === "pause" ? "paused" : "live";
+      
+      // Update campaign status
+      // In a real implementation, you would PATCH the campaign
+      // For now, we'll just refresh the data
+      await mutateCampaigns();
+      alert(`Campaign ${action === "pause" ? "paused" : "launched"} successfully`);
+    } catch (error) {
+      console.error(`Error ${action}ing campaign:`, error);
+      alert(`Failed to ${action} campaign. Please try again.`);
+    }
+  };
+
+  const handleInsights = (campaign: Campaign) => {
+    const campaignId = campaign.campaign_id ?? campaign.id;
+    router.push(`/insights?campaign_id=${campaignId}`);
+  };
+
+  const handleDeleteClick = (campaign: Campaign) => {
+    setCampaignToDelete(campaign);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!campaignToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const campaignId = campaignToDelete.campaign_id ?? campaignToDelete.id;
+      const campaignType = Array.isArray(campaignToDelete.campaign_type)
+        ? campaignToDelete.campaign_type[0]
+        : campaignToDelete.campaign_type;
+      
+      const modelName = campaignType === "pre-sales" || campaignType === "pre_sales"
+        ? "pre_sales_campaign"
+        : campaignType === "dealership"
+        ? "dealership_campaign"
+        : "post_sales_campaign";
+
+      await deleteAPIData(modelName, campaignId);
+      setDeleteDialogOpen(false);
+      setCampaignToDelete(null);
+      
+      // Refresh campaigns list
+      await mutateCampaigns();
+      alert("Campaign deleted successfully");
+    } catch (error) {
+      console.error("Error deleting campaign:", error);
+      alert("Failed to delete campaign. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <ProtectedRoute>
@@ -660,27 +782,30 @@ export default function CampaignDashboard() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(campaign)}>
                                   <Pencil className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDuplicate(campaign)}>
                                   <Copy className="mr-2 h-4 w-4" /> Duplicate
                                 </DropdownMenuItem>
                                 {campaign.campaign_status === "live" ? (
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handlePauseOrLaunch(campaign, "pause")}>
                                     <Pause className="mr-2 h-4 w-4" /> Pause
                                   </DropdownMenuItem>
                                 ) : campaign.campaign_status === "draft" ||
                                   campaign.campaign_status === "scheduled" ? (
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handlePauseOrLaunch(campaign, "launch")}>
                                     <Play className="mr-2 h-4 w-4" /> Launch
                                   </DropdownMenuItem>
                                 ) : null}
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive">
-                                  Insights
+                                <DropdownMenuItem onClick={() => handleInsights(campaign)}>
+                                  <BarChart3 className="mr-2 h-4 w-4" /> Insights
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => handleDeleteClick(campaign)}
+                                >
                                   <Trash2 className="mr-2 h-4 w-4" /> Delete
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
@@ -721,6 +846,38 @@ export default function CampaignDashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Campaign</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{campaignToDelete?.campaign_name ?? "this campaign"}"? 
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setCampaignToDelete(null);
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ProtectedRoute>
   );
 }

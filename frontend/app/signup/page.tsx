@@ -2,9 +2,10 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import ReCAPTCHA from "react-google-recaptcha";
 import {
   Card,
   CardContent,
@@ -68,6 +69,12 @@ export default function DealerSignup() {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [signupResponse, setSignupResponse] = useState<any>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+
+  // Get reCAPTCHA site key from environment
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
+  const isRecaptchaEnabled = Boolean(recaptchaSiteKey);
 
   // Registration data
   const [registrationData, setRegistrationData] = useState({
@@ -130,6 +137,12 @@ export default function DealerSignup() {
     }
     if (registrationData.languages.length === 0) {
       setError("Please select at least one language");
+      return;
+    }
+
+    // Validate reCAPTCHA if enabled
+    if (isRecaptchaEnabled && !recaptchaToken) {
+      setError("Please complete the reCAPTCHA verification");
       return;
     }
 
@@ -204,9 +217,20 @@ export default function DealerSignup() {
       // Store the response data
       setSignupResponse(response);
 
+      // Reset reCAPTCHA on successful registration
+      if (isRecaptchaEnabled) {
+        recaptchaRef.current?.reset();
+        setRecaptchaToken(null);
+      }
+
       // On success, show success with initial credits
       setPhase("success");
     } catch (err) {
+      // Reset reCAPTCHA on error
+      if (isRecaptchaEnabled) {
+        recaptchaRef.current?.reset();
+        setRecaptchaToken(null);
+      }
       if (err instanceof ApiError) {
         // Extract clean error message
         let cleanErrorMessage = err.message;
@@ -894,6 +918,24 @@ export default function DealerSignup() {
                         </div>
                       </AlertDescription>
                     </Alert>
+                  )}
+
+                  {/* reCAPTCHA */}
+                  {isRecaptchaEnabled && (
+                    <div className="space-y-2">
+                      <ReCAPTCHA
+                        ref={recaptchaRef}
+                        sitekey={recaptchaSiteKey}
+                        onChange={(token) => {
+                          setRecaptchaToken(token);
+                          if (token && error.includes("reCAPTCHA")) {
+                            setError("");
+                          }
+                        }}
+                        theme="light"
+                        size="normal"
+                      />
+                    </div>
                   )}
 
                   <Button
