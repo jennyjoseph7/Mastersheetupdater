@@ -30,6 +30,7 @@ AUTOCRM_RESPONSE_PROVIDED_UNITS = "500_characters"
 AUTOCRM_RESPONSE_PROVIDED_ITEM = "response_to_query"
 WHATSAPP_PROVIDER_NAME="airtel"
 WHATSAPP_PROVIDER_NUMBER="917795030574"
+VOICE_PROVIDER_NAME ="tata"
 BASE_DIR = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_DIR, "data")
 if BASE_DIR not in sys.path:
