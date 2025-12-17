@@ -267,7 +267,7 @@ class BaseCampaignCreater:
         
             gryd.create_async_task(
                 "post_contact_status", 
-                GRYD_COMMUNICATION_SERVICE, 
+                AUTOCRM_COMMUNICATION_SERVICE_NAME, 
                 kwargs=data
             )
         

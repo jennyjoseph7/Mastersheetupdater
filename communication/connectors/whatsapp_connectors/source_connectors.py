@@ -519,7 +519,7 @@ class BaseWebhookConverter:
             message_dict["message_status"]=wa_status
             gryd.create_async_task(
                 'post_contact_status',
-                GRYD_COMMUNICATION_SERVICE,
+                AUTOCRM_COMMUNICATION_SERVICE_NAME,
                 args=(message_dict.get('message_id'),),
                 kwargs=message_dict)
             # self.post_contact_status(message_dict.get('message_id'),**message_dict)
@@ -1152,12 +1152,11 @@ class BaseWhatsappMessenger:
             "to_number": payload.get("to") or payload.get("destination")
         })
         logger.info(f"Successful Response: {response_data} ====== {self.whatsapp_provider }  {self.response_mapping}")
-
-        # try:
-        #     # return self._map_and_post_message(response_data, payload, elapsed_time, **kwargs)
-        # except Exception:
-        #     hp.print_error()
-        #     return response_data
+        try:
+            return self._map_and_post_message(response_data, payload, elapsed_time, **kwargs)
+        except Exception:
+            hp.print_error()
+            return response_data
 
     def _handle_error_response(self, response):
         """Safely handle error responses."""
@@ -1206,15 +1205,11 @@ class BaseWhatsappMessenger:
         # )
 
         # logger.info(f"[**Posting**] Message Details to {enterprise_id}")
-        post_dict={
-                **mapped_payload,
-                # "enterprise_id": enterprise_id,
-                # "ent_id": enterprise_id
-            }
-        message_id=None
+        
         # upsert_message_status.apply_async(*("whatsapp_message",enterprise_id,message_id,post_dict,True))
         # gryd.create_async_task("upsert_message_status",GRYD_COMMUNICATION_STATUS_SERVICE,args=["whatsapp_message",enterprise_id,message_id,post_dict,True])
 
+        # logger.info(f"[_map_and_post_message] Mapped Payload: {mapped_payload}")
         return mapped_payload
 
 
