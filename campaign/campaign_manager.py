@@ -252,7 +252,6 @@ class BaseCampaignCreater:
         msg_status=WA_TO_DISPOSITION.get(patch_user_data.get("message_status"), None)
         if msg_status:
             logger.info(f"TEST MESSAGE_STATUS ------{msg_status} response--{response}")
-            
             data={
                     "lead_id":lead_id,
                     "enterprise_id":enterprise_id,
