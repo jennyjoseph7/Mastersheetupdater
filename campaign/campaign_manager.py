@@ -250,26 +250,27 @@ class BaseCampaignCreater:
         
         
         msg_status=WA_TO_DISPOSITION.get(patch_user_data.get("message_status"), None)
-        logger.info(f"TEST MESSAGE_STATUS ------{msg_status}")
+        if msg_status:
+            logger.info(f"TEST MESSAGE_STATUS ------{msg_status} response--{response}")
+            
+            data={
+                    "lead_id":lead_id,
+                    "enterprise_id":enterprise_id,
+                    "campaign_id":campaign_details.get("campaign_id"),
+                    "campaign_type":campaign_details.get("campaign_type"),
+                    "campaign_model":campaign_details.get("campaign_model"),
+                    "phone_number":mobile_number,
+                    "message_id":response.get("message_id",None),
+                    "provider_status":msg_status,
+                    "channel_provider":whatsapp_provider,
+                    "channel":"whatsapp_chat",
+                }
         
-        data={
-                "lead_id":lead_id,
-                "enterprise_id":enterprise_id,
-                "campaign_id":campaign_details.get("campaign_id"),
-                "campaign_type":campaign_details.get("campaign_type"),
-                "campaign_model":campaign_details.get("campaign_model"),
-                "phone_number":mobile_number,
-                "message_id":response.get("message_id"),
-                "provider_status":msg_status,
-                "channel_provider":whatsapp_provider,
-                "channel":"whatsapp_chat",
-            }
-        
-        gryd.create_async_task(
-            "post_contact_status", 
-            GRYD_COMMUNICATION_SERVICE, 
-            kwargs=data
-        )
+            gryd.create_async_task(
+                "post_contact_status", 
+                GRYD_COMMUNICATION_SERVICE, 
+                kwargs=data
+            )
         
         
         
