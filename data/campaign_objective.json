@@ -77,17 +77,23 @@
       
     },
     {
+      "name": "audience_attributes",
+      "type": "object_list",
+      "list_type": "nested_object",
+      "title": "Audience Attributes",
+      "dict_keys": [
+        "attribute_name",
+        "attribute_value",
+        "attribute_type",
+        "attribute_description"
+      ]
+    },
+    {
       "name": "required_attributes",
       "type": "string_list",
       "list_type": "text",
       "title": "Required Attributes",
       "ui_element": "tags"
-    },
-    {
-      "name": "audience_attributes",
-      "type": "object_list",
-      "list_type": "nested_object",
-      "title": "Audience Attributes"
     },
     {
       "name": "guardrails_guidelines",

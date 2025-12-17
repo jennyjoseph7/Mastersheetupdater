@@ -1,6 +1,6 @@
 from calendar import c
 import sys
-import os
+import os, re
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
@@ -9,12 +9,19 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CORE_SERVICE_NAME, \
     gryd, gryd_routes, hp, \
     GRYD_FILE_USER_ID, \
     GRYD_FILE_API_KEY, \
-    GRYD_FILE_SERVER_URL
+    GRYD_FILE_SERVER_URL, \
+    MAX_AUDIENCE_ERRORS, \
+    DEFAULT_OTP, \
+    ALLOWED_COUNTRY_CODES, \
+    OTP_TEMPLATE_ID
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 import csv
 import requests
 import tempfile
+from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
+from communication.connectors.whatsapp_connectors.airtel_connector import *
+
 
 gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME
 gryd.set_queue_manager()
@@ -76,6 +83,15 @@ MIME_TYPES = {
 }
 
 def func_gryd_file_system(local_path, logger = None, **kwargs):
+    """
+    Uploads a file to the Gryd File System.
+    Args:
+        local_path: The path to the local file to upload.
+        logger: The logger to use.
+        **kwargs: Additional keyword arguments.
+    Returns:
+        The URL of the uploaded file.
+    """
     logger = logger or mlogger
     logger.info(f"Uploading file to Gryd File System: {local_path}")
     url = f"{GRYD_FILE_SERVER_URL}/media/{kwargs.get('media_type','document')}"
@@ -387,7 +403,7 @@ def process_common_row(campaign_type, row, models, missing_reason = None, dealer
         raise ValueError(f"Invalid campaign type: {campaign_type}")
     return row, missing_reason
 
-def process_headers(headers, mapping, workshop_id, typ, logger = None):
+def process_headers(headers, mapping, workshop_id, campaign_type, logger = None):
     logger = logger or mlogger
     logger.info(f"Processing headers: {headers}")
     if not headers:
@@ -399,7 +415,7 @@ def process_headers(headers, mapping, workshop_id, typ, logger = None):
         raise ValueError(f"CSV missing at least one required contact field: {required_contact}")
     if not "workshop_id" in headers and not workshop_id and not "workshop_name" in headers:
         raise ValueError("Either workshop_id or workshop_name must be present as a column or argument")
-    if typ == 'post-sales':
+    if campaign_type == 'post-sales':
         if "reg_number" not in headers:
             raise ValueError("CSV is missing 'reg_number' which is required for post-sales campaign.")
     return headers
@@ -488,21 +504,256 @@ def extract_csv_headers(csv_file_link, job = None, logger = None):
         logger.info(f"Headers: {headers}")
         return headers
 
+
+@gryd.is_a_task(function_name="reset_password", job_param='job', logger_param='logger', auth_param='auth')
+def reset_password(phone_number_or_email:str, channel:str, new_password:str, confirm_password:str, token:str, otp:str, logger = None, job = None, auth = None):
+    logger = logger or mlogger
+    logger.info(f"Resetting password for {channel}: {phone_number_or_email}")
+    if channel not in ['whatsapp', 'email']:
+        raise ValueError(f"Invalid channel: {channel}. Allowed channels are: whatsapp, email")
+    kwargs = {}
+    if channel in ['whatsapp', 'phone_number']:
+        channel = 'whatsapp'
+        kwargs['phone_number'] = phone_number_or_email
+    elif channel == 'email':
+        kwargs['email'] = phone_number_or_email
+    verify_otp(token, otp, channel = channel, identifier = phone_number_or_email, response_prefix = f'{channel} ', logger = logger, job = job, auth = auth)
+    verify_password_compliance(new_password, confirm_password, logger = logger, job = job, auth = auth)
+    human_agent_model = gryd.base_model.Model('human_agent', AUTOCRM_APP_ENTERPRISE_ID)
+    existing_human_agent = human_agent_model.list(_as_option=True, _page_size=1, **kwargs)
+    if not existing_human_agent:
+        raise ValueError(f"No user found for {channel}: {phone_number_or_email}")
+    existing_human_agent = hp.make_single(existing_human_agent)
+    human_agent_id = existing_human_agent.get('human_agent_id')
+    human_agent_model.update(human_agent_id, {
+        'password': new_password,
+        'password_expiry': hp.epoch() + 2592000 # 30 days
+    })
+    return f"Password reset successfully for {channel}: {phone_number_or_email}"
+
+@gryd.is_a_task(function_name="generate_otp", job_param='job', logger_param='logger')
+def generate_otp(phone_number_or_email:str, channel:str = 'whatsapp', region_id: str = None, signup = True, logger = None, job = None, auth = None):
+    f"""
+    Unified gryd task to generate OTP for a phone number or email
+    Args:
+        phone_number_or_email: phone number or email to generate OTP for
+        channel: channel to generate OTP for
+        region_id: region id to generate OTP for
+        signup: If True, the OTP is generated for signup, else for password reset
+    Returns:
+        token: token of the OTP cache
+    Errors:
+        ValueError: If the channel is invalid
+        ValueError: If the region_id is invalid
+        ValueError: If the phone number is invalid or already exists, in case of signup
+        ValueError: If the email is invalid or already exists, in case of signup
+    """
+    logger = logger or mlogger
+    if channel not in ['whatsapp', 'email']:
+        raise ValueError(f"Invalid channel: {channel}. Allowed channels are: whatsapp, email")
+    logger.info(f"Generating OTP for {channel}: {phone_number_or_email}")
+    region_codes = ALLOWED_COUNTRY_CODES or ['+91']
+    if region_id:
+        region = gryd.base_model.Model('region', AUTOCRM_APP_ENTERPRISE_ID).get(region_id)
+        if not region:
+            raise ValueError(f"Invalid region_id: {region_id}")
+        region_codes = hp.make_list(region.get('country_phone_code', ['+91']))
+    human_agent_model = gryd.base_model.Model('human_agent', AUTOCRM_APP_ENTERPRISE_ID)
+    otp = hp.id_generator(6, chars = "0123456789")
+    logger.info(f"OTP for {channel} {phone_number_or_email} : {otp}")
+    expiry = hp.epoch() + 10 * 60 # 10 minutes
+    if channel == 'whatsapp':
+        phone_number = verify_phone_number(phone_number_or_email, region_codes = region_codes, human_agent_model = human_agent_model, signup = signup, logger = logger, job = job)
+        BaseWebhookConverter().send_otp_template(**{"template_id":OTP_TEMPLATE_ID,"mobile_number":phone_number,"otp":otp})
+    elif channel == 'email':
+        email = verify_email(phone_number_or_email, human_agent_model = human_agent_model, signup = signup, logger = logger, job = job)
+        # TODO: Send email OTP
+    with get_pg_connector() as db:
+        otp_cache_id = str(hp.make_uuid3(otp, expiry))
+        db.update('otp_cache', 'otp_cache_id', otp_cache_id, {
+            'otp': otp,
+            'expiry': expiry,
+            'max_attempts': 3,
+            'remaining_attempts': 3,
+            'last_attempt_time': hp.epoch(),
+            'otp_cache_id': otp_cache_id,
+            "channel": channel,
+            "identifier": phone_number_or_email
+        })
+        return {'token': otp_cache_id}
+
+@gryd.is_a_task(function_name="verify_otp", job_param='job', logger_param='logger')
+def verify_otp(token:str, otp:str, channel:str, identifier:str, response_prefix: str = '', logger = None, job = None, auth = None):
+    """
+    Unified gryd task to verify OTP for a token and otp
+    Args:
+        token: token to verify OTP for
+        otp: OTP to verify
+    Returns:
+        response: response from the task
+    Errors:
+        AuthError: If the token is invalid
+        AuthError: If the OTP is invalid
+        AuthError: If the OTP is expired
+        AuthError: If the OTP is max attempts reached
+    Example API:
+    POST /gryd/task/autocrm-core/verify_otp
+    Payload:
+    {
+        "args": [
+            "1234567890",
+            "123456"
+        ],
+        "kwargs": {
+            "response_prefix": "Phone Number"
+        }
+    }
+    Response:
+    {
+        "response": "OTP verified"
+    }
+    """
+    logger = logger or mlogger
+    logger.info(f"Verifying OTP for otp_cache_id: {token}, otp: {otp}")
+    nct = hp.epoch()
+    if DEFAULT_OTP and otp == DEFAULT_OTP:
+        with get_pg_connector() as db:
+            db.delete('otp_cache', 'otp_cache_id', token)
+        return f"Default {response_prefix}OTP verified"
+    with get_pg_connector() as db:
+        otp_cache = db.get('otp_cache', 'otp_cache_id', token)
+        if not otp_cache:
+            raise gryd_routes.AuthError(f"Invalid token to verify {response_prefix}OTP or {response_prefix}OTP attempts expired")
+        if nct > int(otp_cache.get('expiry')):
+            raise gryd_routes.AuthError(f"{response_prefix}OTP expired")
+        if otp_cache.get('identifier') != identifier or otp_cache.get('channel') != channel or otp_cache.get('otp') != otp:
+            if otp_cache.get('remaining_attempts') <= 0:
+                raise gryd_routes.AuthError(f"{response_prefix}OTP max attempts reached")
+            db.update('otp_cache', 'otp_cache_id', token, {
+                'remaining_attempts': otp_cache.get('remaining_attempts') - 1,
+                'last_attempt_time': hp.epoch()
+            })
+            raise gryd_routes.AuthError(f"Invalid {response_prefix}OTP, or identifier mismatch, remaining attempts: {otp_cache.get('remaining_attempts')}")
+        db.delete('otp_cache', 'otp_cache_id', token)
+        return f"{response_prefix}OTP verified"
+
+@gryd.is_a_task(function_name="verify_email", job_param='job', logger_param='logger')
+def verify_email(email:str, human_agent_model:gryd.base_model.Model = None, signup = True, logger = None, job = None):
+    """
+    Unified gryd task to verify email
+    Args:
+        email: email to verify
+        human_agent_model: human agent model
+        signup: signup flag
+    Returns:
+        email: verified email
+    Errors:
+        ClientError: If the email is invalid
+        ClientError: If the email is already in use and signup is True
+    Example API:
+    POST /gryd/task/autocrm-core/verify_email
+    Payload:
+    {
+        "args": ["test@example.com"],
+        "kwargs": {
+            "signup": true
+        }
+    }
+    Response:
+    {
+        "email": "test@example.com"
+    }
+    """
+    logger = logger or mlogger
+    logger.info(f"Verifying email: {email}")
+    email = email.lower().strip()
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+        raise gryd_routes.ClientError(f"Invalid email: {email}")
+    human_agent_model = human_agent_model or gryd.base_model.Model('human_agent', AUTOCRM_APP_ENTERPRISE_ID)
+    existing_human_agent = human_agent_model.list(_as_option=True, _page_size=1, email=email)
+    if existing_human_agent:
+        if signup:
+            raise gryd_routes.ClientError(f"Dealersip Admin with email {email} already exists")
+        else:
+            return hp.make_single(existing_human_agent).get('email')
+    return email
+
+@gryd.is_a_task(function_name="verify_phone_number", job_param='job', logger_param='logger')
+def verify_phone_number(phone_number:str, region_codes:list[str] = None, human_agent_model:gryd.base_model.Model = None, signup = True, logger = None, job = None, auth = None):
+    logger = logger or mlogger
+    logger.info(f"Verifying phone number: {phone_number}")
+    region_codes = hp.make_list(region_codes or ALLOWED_COUNTRY_CODES or ['+91'])
+    phone_number = phone_number.lower().strip().replace(' ', '').replace('-', '').replace('(', '').replace(')', '').replace(' ', '')
+    if not phone_number.startswith('+'):
+        phone_number = '+' + phone_number
+    if not any(phone_number.startswith(p) for p in region_codes):
+        raise gryd_routes.ClientError(f"Unsupported country code: {phone_number}, allowed country codes: {region_codes}")
+    if not re.match(r'^\+?[1-9]\d{9,14}$', phone_number):
+        raise gryd_routes.ClientError(f"Invalid phone number: {phone_number}")
+    human_agent_model = human_agent_model or gryd.base_model.Model('human_agent', AUTOCRM_APP_ENTERPRISE_ID)
+    existing_human_agent = human_agent_model.list(_as_option=True, _page_size=1, phone_number=phone_number)
+    if existing_human_agent:
+        if signup:
+            raise gryd_routes.ClientError(f"Dealersip Admin with phone number {phone_number} already exists")
+        else:
+            return hp.make_single(existing_human_agent).get('phone_number')
+    return phone_number
+
+@gryd.is_a_task(function_name="verify_password_compliance", job_param='job', logger_param='logger')
+def verify_password_compliance(password:str, confirm_password:str, logger = None, job = None, auth = None):
+    logger = logger or mlogger
+    logger.info(f"Verifying password compliance for password: {password}, confirm_password: {confirm_password}")
+    if not password == confirm_password:
+        raise gryd_routes.ClientError("Password and confirm password do not match")
+    if len(password) < 8:
+        raise gryd_routes.ClientError("Password must be at least 8 characters long")
+    if not any(char.isdigit() for char in password):
+        raise gryd_routes.ClientError("Password must contain at least one digit")
+    if not any(char.isalpha() for char in password):
+        raise gryd_routes.ClientError("Password must contain at least one letter")
+    if not any(char.isupper() for char in password):
+        raise gryd_routes.ClientError("Password must contain at least one uppercase letter")
+    if not any(char.islower() for char in password):
+        raise gryd_routes.ClientError("Password must contain at least one lowercase letter")
+    return "Password complies with the requirements"
+
 @gryd.is_a_task(function_name="dealership_signup", job_param='job', auth_param='auth', logger_param='logger')
-def dealership_signup(dealer_name:str, region_id:str, vehicle_category:str, dealership_type:str, languages:list[str], supported_brands:list[str], primary_contact_name:str, primary_contact_email:str, primary_contact_phone:str, aliases = None, pan_number = None, gstin = None, website = None, job = None, logger = None, **kwargs):
+def dealership_signup(
+    dealer_name:str, 
+    region_id:str, 
+    primary_contact_name:str, 
+    primary_contact_email:str, 
+    primary_contact_phone:str, 
+    password:str,
+    confirm_password:str,
+    email_otp:str,
+    phone_number_otp:str,
+    email_otp_token:str,
+    phone_number_otp_token:str,
+    vehicle_category:str = 'Passenger Vehicle', 
+    dealership_type:str = 'Single Brand', 
+    languages:list[str] = ['english'], 
+    supported_brands:list[str] = [], 
+    aliases = None, pan_number = None, gstin = None, website = None, job = None, logger = None, auth = None, **kwargs):
     """
     Unified gryd task to sign up a dealership
     Args:
         dealer_name: name of the dealership
         region_id: id of the region
+        primary_contact_name: name of the primary contact
+        primary_contact_email: email of the primary contact
+        primary_contact_phone: phone number of the primary contact
+        password: password for the dealership
+        confirm_password: confirm password for the dealership
+        email_otp: email OTP for the dealership
+        phone_number_otp: phone number OTP for the dealership
+        email_otp_token: email OTP token for the dealership
+        phone_number_otp_token: phone number OTP token for the dealership
+    Kwargs:
         vehicle_category: category of the vehicle
         dealership_type: type of the dealership
         languages: languages supported by the dealership
         supported_brands: brands supported by the dealership
-        primary_contact_name: name of the primary contact
-        primary_contact_email: email of the primary contact
-        primary_contact_phone: phone number of the primary contact
-    Kwargs:
         aliases: aliases of the dealership, list of strings
         pan_number: PAN number of the dealership, string
         gstin: GSTIN of the dealership, string
@@ -515,25 +766,30 @@ def dealership_signup(dealer_name:str, region_id:str, vehicle_category:str, deal
         dealership_signup(
             dealer_name = "Ambal Auto",
             region_id = "south-india",
-            vehicle_category = "car",
-            dealership_type = "Single Brand",
-            languages = ["english", "hindi"],
-            supported_brands = ["maruti-suzuki-nexa", "maruti-suzuki-arena"],
             primary_contact_name = "Ambal Auto",
             primary_contact_email = "ambalauto@gmail.com",
             primary_contact_phone = "+91-9876543201",
+            password = "MyWellMadePass@123",
+            confirm_password = "MyWellMadePass@123",
+            email_otp = "123456",
+            phone_number_otp = "123456",
+            email_otp_token = "token received while sending email OTP",
+            phone_number_otp_token = "token received while sending phone number OTP",
+            vehicle_category = "car",
+            dealership_type = "Single Brand",
+            supported_brands = ["maruti-suzuki-nexa", "maruti-suzuki-arena"],
+            languages = ["english", "hindi"],
         )
     Throws Error:
         ValueError: If the dealership already exists
-        ValueError: If GSTIN, PAN number, or website is not provided
         ValueError: If region_id is not valid
-        ValueError: If vehicle_category is not valid
-        ValueError: If dealership_type is not valid
-        ValueError: If languages are not valid
-        ValueError: If supported brands are not valid
-        ValueError: If primary contact name is not valid
-        ValueError: If primary contact email is not valid
-        ValueError: If primary contact phone is not valid
+        ValueError: If primary contact name is not valid or already in use
+        ValueError: If primary contact email is not valid or already in use
+        ValueError: If primary contact phone is not valid or already in use
+        ValueError: If password and confirm password do not match
+        ValueError: If password does not comply with the requirements
+        ValueError: If email OTP or phone number OTP are incorrect
+
     Example:
         dealership_signup(
             dealer_name = "Ambal Auto",
@@ -578,48 +834,178 @@ def dealership_signup(dealer_name:str, region_id:str, vehicle_category:str, deal
     dealership_model = gryd.base_model.Model('dealership', AUTOCRM_APP_ENTERPRISE_ID)
     previous_dealership = dealership_model.list(_as_option=True, _page_size=1, dealer_name=f"~{dealer_name}", region_id=region_id, vehicle_category=vehicle_category)
     if previous_dealership:
-        raise ValueError(f"Dealer with name {dealer_name}, region {region_id}, vehicle category {vehicle_category} already exists")
-    if not any([gstin, pan_number, website]):
-        raise ValueError("Either GSTIN, PAN number, or website is required")
+        raise ValueError(f"Dealer with name similar to {dealer_name} ({', '.join(previous_dealership.get('dealer_name'))}), region {region_id}, vehicle category {vehicle_category} already exists.")
     region_model = gryd.base_model.Model('region', AUTOCRM_APP_ENTERPRISE_ID)
     region = region_model.get(region_id)
     if not region:
         raise ValueError(f"Region {region_id} not found")
+    verify_password_compliance(password, confirm_password)
+    verify_otp(email_otp_token, email_otp, channel = 'email', identifier = primary_contact_email, response_prefix = 'Email ')
+    verify_otp(phone_number_otp_token, phone_number_otp, channel = 'whatsapp', identifier = primary_contact_phone, response_prefix = 'Phone number ')
     kwargs.update({
         'dealer_name': dealer_name,
         'region_id': region_id,
         'vehicle_category': vehicle_category,
-        'dealership_type': dealership_type,
-        'languages': languages,
-        'supported_brands': supported_brands,
-        'aliases': aliases,
-        'pan_number': pan_number,
-        'gstin': gstin,
-        'website': website
     })
+    for k in ['dealership_type', 'languages', 'supported_brands', 'aliases', 'pan_number', 'gstin', 'website']:
+        if kwargs.get(k):
+            kwargs[k] = kwargs.get(k)
     human_agent_model = gryd.base_model.Model('human_agent', AUTOCRM_APP_ENTERPRISE_ID)
-    existing_human_agent = human_agent_model.list(_as_option=True, _page_size=1, primary_contact_email=primary_contact_email)
-    if existing_human_agent:
-        raise ValueError(f"Human agent with email {primary_contact_email} already exists")
-    existing_human_agent = human_agent_model.list(_as_option=True, _page_size=1, primary_contact_phone=primary_contact_phone)
-    if existing_human_agent:
-        raise ValueError(f"Human agent with phone number {primary_contact_phone} already exists")
+    primary_contact_email = verify_email(primary_contact_email, human_agent_model, logger = logger, job = job)
+    primary_contact_phone = verify_phone_number(primary_contact_phone, region_codes = region.get('country_phone_code'), human_agent_model = human_agent_model, logger = logger, job = job)
     with human_agent_model.objects._db._transaction() as db_transaction:
         dealership = dealership_model.post(kwargs)
         human_agent = human_agent_model.post({
             'dealership_id': dealership.get('dealership_id'),
             'agent_name': primary_contact_name,
+            'password': password,
             'email': primary_contact_email,
             'phone_number': primary_contact_phone,
             'role': 'Dealership Admin'
         })
+        logger.info(f"Human agent created: {human_agent}")
         login_token = gryd_routes.return_login_token(
             enterprise_id = AUTOCRM_APP_ENTERPRISE_ID, 
             user_id = human_agent.get('human_agent_id'), 
-            role = 'Dealership Admin',
+            role = 'human_agent',
             application_id = "autocrm",
         )
         dealership['login_token'] = login_token
+    return dealership
+
+@gryd.is_a_task(function_name="verify_website", job_param='job', logger_param='logger')
+def verify_website(website:str, dealer_name:str, logger = None, job = None, auth = None):
+    logger = logger or mlogger
+    logger.info(f"Verifying website: {website}")
+    website = website.lower().strip().replace(' ', '').replace('-', '').replace('(', '').replace(')', '').replace(' ', '')
+    if not website.startswith('http'):
+        website = 'https://' + website
+    if not re.match(r'^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', website):
+        raise gryd_routes.ClientError(f"Invalid website: {website}")
+    return website
+    ## TODO: Implement website verification
+    #try:
+    #    website_content = requests.get(website, timeout=30)
+    #except requests.exceptions.ConnectTimeout as e:
+    #    raise gryd_routes.ClientError(f"Website {website} is not reachable: {e}")
+    #if not website_content.ok:
+    #    raise gryd_routes.ClientError(f"Website {website} is not reachable")
+    #website_content = website_content.text
+    #if not dealer_name.lower() in website_content.lower():
+    #    raise gryd_routes.ClientError(f"Website {website} does not contain dealer name Dealership: {dealer_name} in the content")
+    #return website
+    ##
+
+@gryd.is_a_task(function_name="verify_pan_number", job_param='job', logger_param='logger')
+def verify_pan_number(pan_number:str, logger = None, job = None, auth = None):
+    logger = logger or mlogger
+    logger.info(f"Verifying PAN number: {pan_number}")
+    if not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$', pan_number):
+        raise gryd_routes.ClientError(f"Invalid PAN number: {pan_number}")
+    return pan_number
+
+@gryd.is_a_task(function_name="verify_gstin", job_param='job', logger_param='logger')
+def verify_gstin(gstin:str, logger = None, job = None, auth = None):
+    logger = logger or mlogger
+    logger.info(f"Verifying GSTIN: {gstin}")
+    if not re.match(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$', gstin):
+        raise gryd_routes.ClientError(f"Invalid GSTIN: {gstin}")
+    return gstin
+
+@gryd.is_a_task(function_name="dealership_update_details", job_param='job', auth_param='auth', logger_param='logger')
+def dealership_update_details(
+    dealership_id:str,
+    supported_brands:list[str],
+    dealership_type:str,
+    languages:list[str],
+    aliases:list[str],
+    pan_number:str,
+    gstin:str,
+    website:str,
+    vehicle_category:str = None,
+    logger = None,
+    job = None,
+    auth = None,
+    **kwargs
+):
+    """
+    Unified gryd task to update dealership details
+    Args:
+        dealership_id: id of the dealership
+        supported_brands: list of supported brands
+        dealership_type: type of the dealership
+        languages: list of languages
+        pan_number: PAN number
+        gstin: GSTIN
+        website: website
+    Kwargs:
+        vehicle_category: category of the vehicle
+    Errors:
+        ValueError: If the vehicle category is invalid
+        ValueError: If the dealership type is invalid
+        ValueError: If the languages are invalid
+        ValueError: If all of GSTIN, PAN number, or website are required, and invalid
+        ValueError: If supported brands are required, and invalid
+        ValueError: If the dealership is not found
+        ValueError: If the brands are not supported in the region
+        ValueError: If dealership is not found
+    Returns:
+        dealership: dealership object, which includes the dealership details
+    Example Json:
+    {
+        "args": [
+            "dealership_id",
+            "supported_brands",
+            "dealership_type",
+            "languages",
+            "pan_number",
+            "gstin",
+            "website"
+        ],
+        "kwargs": {
+            "vehicle_category": "Passenger Vehicle"
+        }
+    }
+    """
+    logger = logger or mlogger
+    logger.info(f"Updating dealership details for dealership: {dealership_id}, supported_brands: {supported_brands}, dealership_type: {dealership_type}, languages: {languages}, pan_number: {pan_number}, gstin: {gstin}, website: {website}, vehicle_category: {vehicle_category}")
+    dealership_model = gryd.base_model.Model('dealership', AUTOCRM_APP_ENTERPRISE_ID)
+    dealership = dealership_model.get(dealership_id)
+    if not dealership:
+        raise ValueError(f"Dealership with id {dealership_id} not found")
+    if vehicle_category and vehicle_category not in ['Passenger Vehicle', 'Commercial Vehicle', 'Two Wheeler', 'Three Wheeler', 'Truck', 'Bus']:
+        raise ValueError(f"Invalid vehicle category: {vehicle_category}")
+    if dealership_type not in ['Single Brand', 'Multi Brand']:
+        raise ValueError(f"Invalid dealership type: {dealership_type}")
+    if any(lang not in ['english', 'hindi', 'kannada', 'telugu', 'tamil', 'malayalam', 'odia', 'bengali', 'marathi', 'gujarati', 'bengali', 'assamese', 'punjabi', 'spanish', 'arabic'] for lang in languages):
+        raise ValueError(f"Invalid languages: {languages}")
+    if pan_number:
+        pan_number = verify_pan_number(pan_number, logger = logger, job = job, auth = auth)
+    if gstin:
+        gstin = verify_gstin(gstin, logger = logger, job = job, auth = auth)
+    if website:
+        website = verify_website(website, dealership.get('dealer_name'), logger = logger, job = job)
+    if not any((pan_number, gstin, website)):
+        raise ValueError("Either GSTIN, PAN number, or website is required.")
+    if not supported_brands:
+        raise ValueError("Supported brands are required")
+    brand_model = gryd.base_model.Model('brand', AUTOCRM_APP_ENTERPRISE_ID)
+    brands = list(map(lambda x: x.get('brand_id'), brand_model.list(_as_option=True, _page_size=1, brand_id=supported_brands, region_id=dealership.get('region_id'))))
+    logger.info(f"Supported Brands for region {dealership.get('region_id')}: {brands}")
+    if any(brand not in brands for brand in supported_brands):
+        unsupported_brands = list(filter(lambda brand: brand not in brands, supported_brands))
+        raise ValueError(f"Brands {unsupported_brands} not supported in region {dealership.get('region_id')}")
+    kwargs.update({
+        'supported_brands': supported_brands,
+        'dealership_type': dealership_type,
+        'languages': languages,
+        'aliases': aliases,
+        'pan_number': pan_number,
+        'gstin': gstin,
+        'website': website
+    })
+    dealership = dealership_model.update(dealership_id, kwargs)
+    logger.info(f"Dealership details updated: {dealership}")
     return dealership
 
 @gryd.is_a_task(function_name="import_leads_from_csv", job_param='job', auth_param='auth', logger_param='logger')
@@ -653,7 +1039,7 @@ def gryd_task_import_leads_from_csv(
         - {"_result": error csv path}
     """
     logger = logger or mlogger
-    typ = (campaign_type or '').lower().strip().replace('_','-').replace(' ','-')
+    campaign_type = (campaign_type or '').lower().strip().replace('_','-').replace(' ','-')
     campaign_id = kwargs.get('campaign_id')
     audience_name = kwargs.get('audience_name')
     enterprise_id = kwargs.get("enterprise_id") or AUTOCRM_APP_ENTERPRISE_ID
@@ -665,7 +1051,7 @@ def gryd_task_import_leads_from_csv(
     campaign_objective_id = kwargs.get("campaign_objective_id")
     logger.info(f"Importing leads from CSV for campaign_type: {campaign_type}, dealership_id: {dealership_id}, csv_file_link: {csv_file_link}, campaign_id: {campaign_id}, enterprise_id: {enterprise_id}, mapping: {mapping}, {rooftop_type}_id: {rooftop_id}, audience_name: {audience_name}")
     # Model selection
-    models = load_models(typ)
+    models = load_models(campaign_type)
     csv_path = None
     error_csv_path = None
     try:
@@ -683,7 +1069,7 @@ def gryd_task_import_leads_from_csv(
             headers = reader.fieldnames
             logger.info(f"Headers: {headers}")
             original_headers = headers
-            headers = process_headers(original_headers, mapping, workshop_id, typ, logger = logger)
+            headers = process_headers(original_headers, mapping, workshop_id, campaign_type, logger = logger)
             with open(error_csv_path, "w", newline="", encoding="utf-8") as fe:
                 # Error csv
                 error_csv_headers = ["line_num"] + headers + ["_error"]
@@ -695,7 +1081,7 @@ def gryd_task_import_leads_from_csv(
                     missing_reason = [f"Line {i}: "]
                     row = {headers[i]: row.get(k) for i, k in enumerate(row.keys()) if is_valid_value(row, k)}
                     logger.info(f"Row: {row}")
-                    row, missing_reason = process_common_row(typ, row, models, missing_reason, dealership_id, campaign_id = campaign_id, campaign_objective_id = campaign_objective_id, audience_name = audience_name, rooftop_type = rooftop_type, rooftop_id = rooftop_id, logger = logger)
+                    row, missing_reason = process_common_row(campaign_type, row, models, missing_reason, dealership_id, campaign_id = campaign_id, campaign_objective_id = campaign_objective_id, audience_name = audience_name, rooftop_type = rooftop_type, rooftop_id = rooftop_id, logger = logger)
                     row_ctx = {
                       "line_num": i,
                       **row
@@ -717,10 +1103,14 @@ def gryd_task_import_leads_from_csv(
                             writer.writerow({k: row_ctx.get(k) for k in error_csv_headers})
                             yield {"_error": row_ctx}
                         else:
+                            logger.info(f"Finished posted lead row: {row}")
                             processed += 1
-                    if (total % 10) == 0:
-                        percent = int(100.0 * total / (reader.line_num or (total + error)))
-                        yield {"_status": f"{percent}% completed"}
+                    percent = int(100.0 * total / (reader.line_num or (total + error)))
+                    yield {"_status": f"{percent}% completed"}
+                    if error > MAX_AUDIENCE_ERRORS:
+                        # too many errors, stop the task
+                        logger.error(f"Too many errors, stopping the task")
+                        break
             # Write error CSV
             if error > 0:
                 url = func_gryd_file_system(error_csv_path, logger = logger)
