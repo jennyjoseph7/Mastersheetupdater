@@ -220,13 +220,14 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         template_data = get_whatsapp_template(
             lead_id=lead_id,
             campaign_type=campaign_type,
+            # campaign_objective=campaign_details.get("campaign_objective"),
             lead_info={}
         )
         if not template_data:
             yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
             return
         template_data = template_data[0]
-
+        logger.info(f"Template ID for phone_number={lead_data.get('phone_number')}: {template_data.get('template_id')}")
     else:
         yield {"status": "Error", "error_description": f"Unsupported channel: {channel}"}
         return
@@ -306,9 +307,6 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         }
     }
 
-    # -------------------------
-    # Run Campaign
-    # -------------------------
     run_async = campaign_details.get("run_async", True)
     is_testing = campaign_details.get("_is_testing", False)
 

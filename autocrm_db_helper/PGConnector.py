@@ -18,6 +18,11 @@ class AutoCRMPGConnector(db.GrydPGConnector):
         where  = "WHERE dict @> '{}'".format(json.dumps(where))
         return super().list(table_name, where)
     
+    def list_order_by(self, table_name, where, order_by="created", order="DESC"):
+        where_clause = "WHERE dict @> '{}'".format(json.dumps(where))
+        order_clause = f"ORDER BY {order_by} {order}"
+        return super().list(table_name, f"{where_clause} {order_clause}")
+    
     def delete(self, table_name, id_attr, id):
         print("DELETE FROM {} WHERE {} = '{}'".format(table_name,id_attr,id))
         return super().execute_write("DELETE FROM {} WHERE {} = '{}'".format(table_name,id_attr,id))
