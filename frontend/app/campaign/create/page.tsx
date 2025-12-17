@@ -52,6 +52,7 @@ import {
   AlertCircle,
   RefreshCw,
   Image as ImageIcon,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AILoader } from "@/components/ui/ai-loader";
@@ -96,11 +97,10 @@ const getObjectiveIcon = (objectiveId: string, title: string) => {
   if (id === "custom" || titleLower.includes("custom")) {
     return <Edit3 className="h-6 w-6" />;
   }
-  // Default icon
   return <Target className="h-6 w-6" />;
 };
 
-// Default pre-sales objectives (fallback)
+// Default pre-sales objectives
 const defaultPreSalesObjectives = [
   {
     id: "new-car-launch",
@@ -208,6 +208,9 @@ function CampaignCreateContent() {
   const [campaignType, setCampaignType] = useState<
     "presales" | "postsales" | ""
   >("");
+  const [isLaunchSuccessOpen, setIsLaunchSuccessOpen] = useState(false);
+  const [launchStatus, setLaunchStatus] = useState("");
+  const [isLaunchError, setIsLaunchError] = useState(false);
   const [selectedObjective, setSelectedObjective] = useState("");
   const [selectedObjectiveData, setSelectedObjectiveData] = useState<any>(null);
   const [customObjective, setCustomObjective] = useState("");
@@ -240,6 +243,9 @@ function CampaignCreateContent() {
   const [fetchedPostSalesObjectives, setFetchedPostSalesObjectives] =
     useState(postSalesObjectives);
   const [isLoadingObjectives, setIsLoadingObjectives] = useState(false);
+
+  // New state to control the objective details dialog
+  const [isObjectiveDetailsOpen, setIsObjectiveDetailsOpen] = useState(false);
 
   useEffect(() => {
     const isNew = searchParams.get("new");
@@ -294,8 +300,7 @@ function CampaignCreateContent() {
       try {
         const data = JSON.parse(saved);
         setCampaignType(data.campaignType || "");
-        // Don't restore selectedObjective - let user select fresh
-        setSelectedObjective("");
+        setSelectedObjective(""); // Reset selection to force fresh flow
         setCustomObjective(data.customObjective || "");
         setCampaignData(data.campaignData || null);
         setCampaignName(data.campaignName || "");
@@ -322,15 +327,13 @@ function CampaignCreateContent() {
     }
   }, []);
 
-  // Clear selected objective when campaign type changes
   useEffect(() => {
-    console.log("Campaign type changed to:", campaignType);
     setSelectedObjective("");
     setCustomObjective("");
     setCampaignData(null);
   }, [campaignType]);
 
-  // Fetch campaign objectives when campaign type is set to presales
+  // Fetch pre-sales objectives
   useEffect(() => {
     const fetchPreSalesObjectives = async () => {
       if (campaignType === "presales") {
@@ -340,62 +343,35 @@ function CampaignCreateContent() {
             "/gryd/db/objects/campaign_objective?campaign_type=pre-sales",
             "GET",
             undefined,
-            {
-              "X-GRYD-ROLE": "admin",
-            }
+            { "X-GRYD-ROLE": "admin" }
           );
 
-          // Map API response to objectives format
-          // Assuming the API returns an array of objects with id/name and title/name fields
           if (Array.isArray(response)) {
-            // Track used IDs to prevent duplicates
             const usedIds = new Set<string>();
             const mappedObjectives = response.map((obj: any, index: number) => {
-              // Prioritize API-provided IDs, but ensure uniqueness
               let id = obj.id || obj.objective_id;
-
-              // If no API ID, generate from name/title but ensure uniqueness
               if (!id || id === "") {
-                const baseId = (
-                  obj.name ||
-                  obj.title ||
-                  obj.objective_name ||
-                  `objective-${index}`
-                )
+                const baseId = (obj.name || obj.title || obj.objective_name || `objective-${index}`)
                   .toLowerCase()
                   .replace(/\s+/g, "-")
                   .replace(/[^a-z0-9-]/g, "");
-
-                // Ensure uniqueness by appending index if needed
                 id = baseId;
                 let counter = 0;
-                while (usedIds.has(id)) {
-                  id = `${baseId}-${counter}`;
-                  counter++;
-                }
+                while (usedIds.has(id)) { id = `${baseId}-${counter}`; counter++; }
               }
-
-              // Final fallback to index-based ID if still empty
-              if (!id || id === "") {
-                id = `objective-${index}`;
-              }
-
-              // Track this ID to prevent duplicates
+              if (!id || id === "") { id = `objective-${index}`; }
               usedIds.add(id);
 
               const title = obj.title || obj.name || obj.objective_name || "";
-              const campaignSubType =
-                obj.campaign_sub_type || obj.campaignSubType || "";
+              const campaignSubType = obj.campaign_sub_type || obj.campaignSubType || "";
               return {
                 id,
                 title,
                 campaignSubType,
                 icon: getObjectiveIcon(id, title),
-                fullData: obj, // Store the full objective data
+                fullData: obj,
               };
             });
-
-            // Always include custom objective at the end
             mappedObjectives.push({
               id: "custom",
               title: "Custom Objective",
@@ -403,105 +379,61 @@ function CampaignCreateContent() {
               icon: <Edit3 className="h-6 w-6" />,
               fullData: null,
             });
-
             setPreSalesObjectives(mappedObjectives);
           } else if (response.data && Array.isArray(response.data)) {
-            // Handle case where response is wrapped in a data property
-            // Track used IDs to prevent duplicates
             const usedIds = new Set<string>();
-            const mappedObjectives = response.data.map(
-              (obj: any, index: number) => {
-                // Prioritize API-provided IDs, but ensure uniqueness
-                let id = obj.id || obj.objective_id;
-
-                // If no API ID, generate from name/title but ensure uniqueness
-                if (!id || id === "") {
-                  const baseId = (
-                    obj.name ||
-                    obj.title ||
-                    obj.objective_name ||
-                    `objective-${index}`
-                  )
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")
-                    .replace(/[^a-z0-9-]/g, "");
-
-                  // Ensure uniqueness by appending index if needed
-                  id = baseId;
-                  let counter = 0;
-                  while (usedIds.has(id)) {
-                    id = `${baseId}-${counter}`;
-                    counter++;
-                  }
-                }
-
-                // Final fallback to index-based ID if still empty
-                if (!id || id === "") {
-                  id = `objective-${index}`;
-                }
-
-                // Track this ID to prevent duplicates
-                usedIds.add(id);
-
-                const title = obj.title || obj.name || obj.objective_name || "";
-                const campaignSubType =
-                  obj.campaign_sub_type || obj.campaignSubType || "";
-                return {
-                  id,
-                  title,
-                  campaignSubType,
-                  icon: getObjectiveIcon(id, title),
-                  fullData: obj, // Store the full objective data
-                };
+            const mappedObjectives = response.data.map((obj: any, index: number) => {
+              let id = obj.id || obj.objective_id;
+              if (!id || id === "") {
+                const baseId = (obj.name || obj.title || obj.objective_name || `objective-${index}`)
+                  .toLowerCase()
+                  .replace(/\s+/g, "-")
+                  .replace(/[^a-z0-9-]/g, "");
+                id = baseId;
+                let counter = 0;
+                while (usedIds.has(id)) { id = `${baseId}-${counter}`; counter++; }
               }
-            );
+              if (!id || id === "") { id = `objective-${index}`; }
+              usedIds.add(id);
 
+              const title = obj.title || obj.name || obj.objective_name || "";
+              const campaignSubType = obj.campaign_sub_type || obj.campaignSubType || "";
+              return {
+                id,
+                title,
+                campaignSubType,
+                icon: getObjectiveIcon(id, title),
+                fullData: obj,
+              };
+            });
             mappedObjectives.push({
               id: "custom",
               title: "Custom Objective",
               campaignSubType: undefined,
               icon: <Edit3 className="h-6 w-6" />,
             });
-
             setPreSalesObjectives(mappedObjectives);
           }
         } catch (error) {
           console.error("Error fetching campaign objectives:", error);
-          // Keep default objectives on error
           setPreSalesObjectives(defaultPreSalesObjectives);
         } finally {
           setIsLoadingObjectives(false);
         }
       } else {
-        // Reset to default when switching away from presales
         setPreSalesObjectives(defaultPreSalesObjectives);
       }
     };
-
     fetchPreSalesObjectives();
   }, [campaignType]);
 
-  // Fetch campaign objectives when campaign type is set to postsales
+  // Fetch post-sales objectives
   useEffect(() => {
-    console.log(
-      "[useEffect] Post-sales fetch effect triggered, campaignType:",
-      campaignType
-    );
     const fetchPostSalesObjectives = async () => {
-      console.log(
-        "[fetchPostSalesObjectives] Function called, campaignType:",
-        campaignType
-      );
       if (campaignType === "postsales") {
-        console.log(
-          "[fetchPostSalesObjectives] Campaign type is postsales, fetching objectives..."
-        );
         setIsLoadingObjectives(true);
         try {
-          // Use Next.js API route to avoid CORS issues
           const apiUrl = `/api/campaign-objectives?campaign_type=post-sales`;
-          console.log("[fetchPostSalesObjectives] Making API call to:", apiUrl);
-
           const response = await fetch(apiUrl, {
             method: "GET",
             headers: {
@@ -511,84 +443,40 @@ function CampaignCreateContent() {
             cache: "no-store",
           });
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API Error: ${response.status} ${errorText}`);
-          }
-
+          if (!response.ok) throw new Error(`API Error: ${response.status}`);
           const responseData = await response.json();
-          console.log("Post-sales objectives API response:", responseData);
-
-          // Map API response to objectives format
-          // The API returns { data: [...], page_number, page_size, total_number, ... }
           const objectivesArray = Array.isArray(responseData)
             ? responseData
             : responseData.data && Array.isArray(responseData.data)
             ? responseData.data
             : [];
 
-          console.log("Mapped objectives array:", objectivesArray);
-
           if (objectivesArray.length > 0) {
-            // Track used IDs to prevent duplicates
             const usedIds = new Set<string>();
-            const mappedObjectives = objectivesArray.map(
-              (obj: any, index: number) => {
-                // Prioritize API-provided IDs - check campaign_objective_id first
-                let id =
-                  obj.campaign_objective_id || obj.id || obj.objective_id;
-
-                // If no API ID, generate from name/title but ensure uniqueness
-                if (!id || id === "") {
-                  const baseId = (
-                    obj.campaign_objective_name ||
-                    obj.name ||
-                    obj.title ||
-                    obj.objective_name ||
-                    `objective-${index}`
-                  )
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")
-                    .replace(/[^a-z0-9-]/g, "");
-
-                  // Ensure uniqueness by appending index if needed
-                  id = baseId;
-                  let counter = 0;
-                  while (usedIds.has(id)) {
-                    id = `${baseId}-${counter}`;
-                    counter++;
-                  }
-                }
-
-                // Final fallback to index-based ID if still empty
-                if (!id || id === "") {
-                  id = `objective-${index}`;
-                }
-
-                // Track this ID to prevent duplicates
-                usedIds.add(id);
-
-                // Get title - prioritize campaign_objective_name
-                const title =
-                  obj.campaign_objective_name ||
-                  obj.title ||
-                  obj.name ||
-                  obj.objective_name ||
-                  "";
-                const campaignSubType =
-                  obj.campaign_sub_type || obj.campaignSubType || "";
-
-                return {
-                  id,
-                  title,
-                  campaignSubType,
-                  icon: getObjectiveIcon(id, title),
-                  fullData: obj, // Store the full objective data
-                };
+            const mappedObjectives = objectivesArray.map((obj: any, index: number) => {
+              let id = obj.campaign_objective_id || obj.id || obj.objective_id;
+              if (!id || id === "") {
+                const baseId = (obj.campaign_objective_name || obj.name || obj.title || obj.objective_name || `objective-${index}`)
+                  .toLowerCase()
+                  .replace(/\s+/g, "-")
+                  .replace(/[^a-z0-9-]/g, "");
+                id = baseId;
+                let counter = 0;
+                while (usedIds.has(id)) { id = `${baseId}-${counter}`; counter++; }
               }
-            );
+              if (!id || id === "") { id = `objective-${index}`; }
+              usedIds.add(id);
 
-            // Always include custom objective at the end
+              const title = obj.campaign_objective_name || obj.title || obj.name || obj.objective_name || "";
+              const campaignSubType = obj.campaign_sub_type || obj.campaignSubType || "";
+              return {
+                id,
+                title,
+                campaignSubType,
+                icon: getObjectiveIcon(id, title),
+                fullData: obj,
+              };
+            });
             mappedObjectives.push({
               id: "custom",
               title: "Custom Objective",
@@ -596,90 +484,69 @@ function CampaignCreateContent() {
               icon: <Edit3 className="h-6 w-6" />,
               fullData: null,
             });
-
-            console.log(
-              "Setting fetched post-sales objectives:",
-              mappedObjectives
-            );
             setFetchedPostSalesObjectives(mappedObjectives);
           } else {
-            // If no objectives found, keep default
-            console.warn(
-              "No post-sales objectives found in API response, using defaults"
-            );
             setFetchedPostSalesObjectives(postSalesObjectives);
           }
         } catch (error) {
-          console.error(
-            "Error fetching post-sales campaign objectives:",
-            error
-          );
-          // Keep default objectives on error
+          console.error("Error fetching post-sales campaign objectives:", error);
           setFetchedPostSalesObjectives(postSalesObjectives);
         } finally {
           setIsLoadingObjectives(false);
         }
       } else {
-        // Reset to default when switching away from postsales
-        console.log(
-          "[fetchPostSalesObjectives] Campaign type is NOT postsales, resetting to defaults. campaignType:",
-          campaignType
-        );
         setFetchedPostSalesObjectives(postSalesObjectives);
       }
     };
-
-    console.log("[useEffect] Calling fetchPostSalesObjectives function");
     fetchPostSalesObjectives();
   }, [campaignType]);
 
-  useEffect(() => {
-    if (
-      selectedObjective &&
-      (selectedObjective !== "custom" || customObjective.trim() !== "")
-    ) {
-      // Check if we need car details
-      const needsCarDetails =
-        selectedObjective === "new-car-launch" ||
-        selectedObjective === "stock-clearance";
-      const hasCarDetails =
-        carModel && (selectedObjective === "stock-clearance" || launchDate);
-
-      // Only generate campaign if:
-      // 1. No car details needed, OR
-      // 2. Car details are provided
-      if (!needsCarDetails || hasCarDetails) {
-        handleGenerateCampaign();
-      }
-    }
-  }, [selectedObjective, customObjective, carModel, launchDate]);
-
+  // Handle generating campaign
   const handleGenerateCampaign = async () => {
-    if (!selectedObjective) return;
+    // Basic validation
+    if (!selectedObjective && !customObjective) return;
+    
     setIsGenerating(true);
 
     try {
-      const objectiveText =
-        selectedObjective === "custom"
+      const objectiveText = selectedObjective === "custom"
           ? customObjective
-          : [...preSalesObjectives, ...fetchedPostSalesObjectives].find(
-              (o) => o.id === selectedObjective
-            )?.title || "";
+          : [...preSalesObjectives, ...fetchedPostSalesObjectives].find(o => o.id === selectedObjective)?.title || "";
 
-      // Build objective text with car details if available
       let enhancedObjectiveText = objectiveText;
-      if (carModel) {
-        if (selectedObjective === "new-car-launch") {
-          enhancedObjectiveText = `${objectiveText} for ${carModel}${
-            launchDate
-              ? ` launching on ${new Date(launchDate).toLocaleDateString()}`
-              : ""
-          }`;
-        } else if (selectedObjective === "stock-clearance") {
+      // Add standard car details to objective text if needed, mostly for logging/reference
+      if (carModel && selectedObjective === "new-car-launch") {
           enhancedObjectiveText = `${objectiveText} for ${carModel}`;
-        }
       }
 
+      // Prepare Custom Objects
+      const customObjects: Record<string, any> = {};
+
+      // 1. Add attributes from the selected objective data (dynamic fields)
+      if (selectedObjectiveData?.custom_attributes && Array.isArray(selectedObjectiveData.custom_attributes)) {
+          selectedObjectiveData.custom_attributes.forEach((attr: any) => {
+              if (attr.attribute_name && attr.attribute_value) {
+                  customObjects[attr.attribute_name] = attr.attribute_value;
+              }
+          });
+      }
+
+      // 2. Add specific fields captured in the UI
+      if (carModel) customObjects["Car Model"] = carModel;
+      if (launchDate) customObjects["Launch Date"] = launchDate;
+
+      // 3. Construct Campaign Offer text
+      let offerText = campaignDescription || "Exclusive offers and rewards await!";
+      if (selectedObjectiveData) {
+          if (selectedObjectiveData.campaign_objective_description) {
+              offerText = selectedObjectiveData.campaign_objective_description;
+          }
+          if (selectedObjectiveData.why_user_should_avail_this) {
+              offerText += `\n\nValue Proposition: ${selectedObjectiveData.why_user_should_avail_this}`;
+          }
+      }
+
+      // Payload Construction
       const payload = {
         args: [
           campaignType === "presales" ? "pre-sale" : "post-sale",
@@ -688,22 +555,22 @@ function CampaignCreateContent() {
         kwargs: {
           dealership_idea: {
             languages: [
-              languageOptions.find((l) => l.value === language)?.label ||
-                "English",
+              languageOptions.find((l) => l.value === language)?.label || "English",
             ],
-            campaign_offer:
-              campaignDescription || "Exclusive offers and rewards await!",
-            ...(carModel && { car_model: carModel }),
-            ...(launchDate && { launch_date: launchDate }),
+            campaign_offer: offerText,
+            custom_objects: customObjects,
           },
         },
       };
-      //calling the api for the campaign idea generation
+
+      console.log("Generating campaign with payload:", JSON.stringify(payload, null, 2));
+
       const data = await api(
         "/gryd/api/autocrm-agent/generate_campaign_idea",
         "POST",
         payload
       );
+      
       console.log("Generated campaign idea", data);
 
       const generated = {
@@ -713,14 +580,12 @@ function CampaignCreateContent() {
         tone: data.campaign_tone,
         callToAction: data.ctas?.[0] || "Learn More",
         language: data.languages?.[0] || "English",
-        selectedChannels:
-          data.channels?.map((ch: string) => ch.replace("_chat", "")) || [],
+        selectedChannels: data.channels?.map((ch: string) => ch.replace("_chat", "")) || [],
         campaignOffer: data.campaign_offer,
         urgencyHook: data.urgency_hook,
         campaignObjective: data.campaign_objective,
       };
 
-      // update UI states
       setCampaignData(generated);
       setCampaignName(generated.name);
       setCampaignDescription(generated.description);
@@ -763,45 +628,154 @@ function CampaignCreateContent() {
       .filter((seg) => targetAudience.includes(seg.value))
       .reduce((sum, seg) => sum + seg.size, 0);
 
-    const whatsappCredits = selectedChannels.includes("whatsapp")
-      ? totalAudience * 5
-      : 0;
-    const emailCredits = selectedChannels.includes("email")
-      ? totalAudience * 1
-      : 0;
-    const voiceCredits = selectedChannels.includes("voice")
-      ? totalAudience * 10
-      : 0;
+    const whatsappCredits = selectedChannels.includes("whatsapp") ? totalAudience * 5 : 0;
+    const emailCredits = selectedChannels.includes("email") ? totalAudience * 1 : 0;
+    const voiceCredits = selectedChannels.includes("voice") ? totalAudience * 10 : 0;
 
     return whatsappCredits + emailCredits + voiceCredits;
   };
 
-  const handleLaunch = () => {
-    const newCampaign = {
-      id: Date.now(),
-      name: campaignName,
-      type: campaignType,
-      objective: selectedObjective,
-      channels: selectedChannels,
-      status: "live",
-      launchDate: duration.start,
-      credits: calculateCredits(),
-      createdAt: new Date().toISOString(),
-      language: language,
+ const handleLaunch = async () => {
+    // 1. Validation
+    if (!campaignName || !duration.start || !duration.end) {
+      alert("Please fill in all required fields (Name, Start Date, End Date)");
+      return;
+    }
+
+    // 2. Helpers
+    const toEpoch = (dateStr: string) => Math.floor(new Date(dateStr).getTime() / 1000);
+    
+    const mapChannels = (channels: string[]) => {
+      const map: Record<string, string> = {
+        whatsapp: "whatsapp_chat",
+        email: "email",
+        voice: "voice_phone",
+        facebook: "facebook",
+        instagram: "instagram",
+        web: "web_chat",
+      };
+      return channels.map((c) => map[c] || c);
     };
 
-    const existing = JSON.parse(localStorage.getItem("campaigns") || "[]");
-    existing.push(newCampaign);
-    localStorage.setItem("campaigns", JSON.stringify(existing));
-    localStorage.removeItem("campaignFormData");
+    const mapLanguage = (code: string) => {
+      const map: Record<string, string> = {
+        en: "english",
+        hi: "hindi",
+        mr: "marathi",
+        ta: "tamil",
+        te: "telugu",
+        kn: "kannada",
+        bn: "bengali",
+        gu: "gujarati",
+      };
+      return map[code] || "english";
+    };
 
-    router.push("/");
+    // 3. Prepare Payloads
+    const commonPayload = {
+      campaign_name: campaignName,
+      campaign_description: campaignDescription,
+      campaign_status: "Active",
+      start_date: toEpoch(duration.start),
+      end_date: toEpoch(duration.end),
+      channels: mapChannels(selectedChannels),
+      languages: [mapLanguage(language)],
+      campaign_offer: campaignData?.campaignOffer || campaignDescription,
+      urgency_hook: [campaignData?.urgencyHook || ""],
+      ctas: [callToAction],
+      number_targeted: totalAudienceSize,
+      budget_allocated: calculateCredits(),
+      campaign_objective: selectedObjective === "custom" ? customObjective : selectedObjectiveData?.title || selectedObjective,
+      campaign_sub_type: selectedObjectiveData?.campaignSubType || "General",
+      
+      // Defaults
+      cost_per_lead: 0,
+      actual_spent: 0,
+      number_engaged: 0,
+      number_reached: 0,
+      number_contacted: 0,
+      number_converted: 0,
+      conversion_rate_percent: 0,
+       campaign_user_source: "file",
+
+      
+    };
+
+    // --- START MODAL & LOADING STATE ---
+    setIsLaunchSuccessOpen(true);
+    setIsLaunchError(false);
+    setLaunchStatus("Creating campaign records...");
+
+    try {
+      let createEndpoint = "";
+      let createPayload = {};
+      let taskCampaignType = ""; 
+
+      if (campaignType === "presales") {
+        createEndpoint = "/gryd/db/object/pre_sales_campaign";
+        taskCampaignType = "pre-sales";
+        createPayload = {
+          ...commonPayload,
+          campaign_type: "pre-sales",
+          dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
+          region_id: "north-india",
+          dealer_name: "NEXA Delhi South",
+          supported_brands: ["NEXA"],
+        };
+      } else {
+        createEndpoint = "/gryd/db/object/post_sales_campaign";
+        taskCampaignType = "post-sales";
+        createPayload = {
+          ...commonPayload,
+          campaign_type: "post_sales",
+          workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+          dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
+          campaign_objective_type: ["lead volume"],
+        };
+      }
+
+      // --- STEP 1: CREATE CAMPAIGN IN DB ---
+      const createResponse = await api(createEndpoint, "POST", createPayload);
+      
+      const newCampaignId = createResponse?.data?.id || createResponse?.id || createResponse?.campaign_id;
+
+      if (!newCampaignId) {
+        throw new Error("Campaign created but ID was not returned.");
+      }
+
+      // --- STEP 2: TRIGGER TASK ---
+      setLaunchStatus("Triggering campaign engine...");
+      
+      const triggerPayload = {
+        args: [],
+        kwargs: {
+          campaign_type: taskCampaignType,
+          campaign_id: newCampaignId
+        }
+      };
+
+      await api(
+        "/gryd/task/autocrm-campaign/trigger_campaign",
+        "POST",
+        triggerPayload
+      );
+
+      // --- FINISH ---
+      setLaunchStatus("Campaign launched successfully!");
+      
+      // Cleanup local storage after success
+      setTimeout(() => {
+        localStorage.removeItem("campaignFormData");
+      }, 500);
+
+    } catch (error) {
+      console.error("Launch Failed:", error);
+      setIsLaunchError(true);
+      setLaunchStatus("Launch failed. Please try again.");
+    }
   };
 
-  const objectives =
-    campaignType === "presales"
-      ? preSalesObjectives
-      : fetchedPostSalesObjectives;
+  const objectives = campaignType === "presales" ? preSalesObjectives : fetchedPostSalesObjectives;
   const totalAudienceSize = audienceSegments
     .filter((seg) => targetAudience.includes(seg.value))
     .reduce((sum, seg) => sum + seg.size, 0);
@@ -809,6 +783,257 @@ function CampaignCreateContent() {
   return (
     <ProtectedRoute>
       <div className="pb-24">
+        {/* EDIT CAMPAIGN DETAILS DIALOG */}
+        <Dialog open={isObjectiveDetailsOpen} onOpenChange={setIsObjectiveDetailsOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit3 className="h-5 w-5 text-primary" />
+                Review Campaign Details
+              </DialogTitle>
+              <DialogDescription>
+                Confirm objective details and fill in required attributes.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6 py-4">
+              {/* SECTION 1: CAMPAIGN INFO (Read Only) */}
+              {selectedObjectiveData && (
+                 <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                    <div className="p-6 space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Info className="h-4 w-4 text-primary" />
+                            <h3 className="font-semibold leading-none tracking-tight">Campaign Information</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Campaign Name</Label>
+                                <div className="font-medium text-base">{selectedObjectiveData.campaign_objective_name || selectedObjectiveData.title}</div>
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Type / Sub-Type</Label>
+                                <div className="font-medium text-base flex items-center gap-2">
+                                    <Badge variant="outline" className="capitalize">{campaignType}</Badge>
+                                    <span>/</span>
+                                    <span>{selectedObjectiveData.campaign_sub_type || "General"}</span>
+                                </div>
+                            </div>
+                            <div className="space-y-1 md:col-span-2">
+                                <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Description</Label>
+                                <div className="text-sm text-foreground/80 leading-relaxed bg-muted/30 p-3 rounded-md">
+                                    {selectedObjectiveData.campaign_objective_description || "No description available."}
+                                </div>
+                            </div>
+                            {selectedObjectiveData.why_user_should_avail_this && (
+                                <div className="space-y-1 md:col-span-2">
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Value Proposition</Label>
+                                    <div className="text-sm text-foreground/80 leading-relaxed bg-emerald-50/50 dark:bg-emerald-900/10 p-3 rounded-md border border-emerald-100 dark:border-emerald-900/20">
+                                        {selectedObjectiveData.why_user_should_avail_this}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                 </div>
+              )}
+
+              {/* SECTION 2: REQUIRED ATTRIBUTES (Editable) */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b">
+                     <Edit3 className="h-4 w-4 text-primary" />
+                     <h3 className="font-semibold leading-none tracking-tight">Required Attributes</h3>
+                </div>
+
+                {/* Special Inputs for New Car Launch */}
+                {selectedObjective === "new-car-launch" && (
+                    <Card className="border-primary/20 bg-primary/5">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Car className="h-4 w-4" /> Launch Specifics
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="dialog-car">Car Model <span className="text-destructive">*</span></Label>
+                                    <Input 
+                                        id="dialog-car" 
+                                        value={carModel} 
+                                        onChange={(e) => setCarModel(e.target.value)} 
+                                        placeholder="e.g. Vitara Brezza" 
+                                        className="bg-background"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="dialog-date">Launch Date <span className="text-destructive">*</span></Label>
+                                    <Input 
+                                        id="dialog-date" 
+                                        type="date" 
+                                        value={launchDate} 
+                                        onChange={(e) => setLaunchDate(e.target.value)} 
+                                        className="bg-background"
+                                    />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Special Inputs for Stock Clearance */}
+                {selectedObjective === "stock-clearance" && (
+                    <Card className="border-primary/20 bg-primary/5">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Tag className="h-4 w-4" /> Clearance Specifics
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="dialog-stock">Car Model / Type <span className="text-destructive">*</span></Label>
+                                <Input 
+                                    id="dialog-stock" 
+                                    value={carModel} 
+                                    onChange={(e) => setCarModel(e.target.value)} 
+                                    placeholder="e.g. All 2023 Models" 
+                                    className="bg-background"
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Dynamic Custom Attributes */}
+                {selectedObjectiveData?.custom_attributes &&
+                  Array.isArray(selectedObjectiveData.custom_attributes) &&
+                  selectedObjectiveData.custom_attributes.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-3">
+                        {selectedObjectiveData.custom_attributes.map((attr: any, idx: number) => (
+                            <Card key={idx} className="bg-muted/30 border-dashed hover:border-solid transition-colors">
+                                <CardContent className="p-4">
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <Label className="text-sm font-medium">
+                                                {attr.attribute_name || `Attribute ${idx + 1}`}
+                                                <span className="text-destructive ml-1">*</span>
+                                            </Label>
+                                            <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">{attr.attribute_type || "text"}</Badge>
+                                        </div>
+                                        <Input
+                                            value={attr.attribute_value || ""}
+                                            placeholder={`Enter ${attr.attribute_name}...`}
+                                            onChange={(e) => {
+                                                const updatedAttrs = [...selectedObjectiveData.custom_attributes];
+                                                updatedAttrs[idx] = { ...attr, attribute_value: e.target.value };
+                                                setSelectedObjectiveData({ ...selectedObjectiveData, custom_attributes: updatedAttrs });
+                                            }}
+                                            className="bg-background"
+                                        />
+                                        {attr.attribute_description && (
+                                            <p className="text-xs text-muted-foreground">{attr.attribute_description}</p>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                  ) : (
+                    // Show message if no extra attributes needed and not a special type
+                    (selectedObjective !== "new-car-launch" && selectedObjective !== "stock-clearance") && (
+                        <div className="flex items-center justify-center p-8 border-2 border-dashed rounded-lg text-muted-foreground">
+                            <p>No additional attributes required for this objective.</p>
+                        </div>
+                    )
+                  )}
+              </div>
+            </div>
+            
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsObjectiveDetailsOpen(false)}>Cancel</Button>
+                <Button onClick={() => { setIsObjectiveDetailsOpen(false); handleGenerateCampaign(); }}>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate Campaign
+                </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+{/* LAUNCH STATUS MODAL */}
+        <Dialog 
+          open={isLaunchSuccessOpen} 
+          onOpenChange={(open) => {
+            // Prevent closing while loading (only allow close on error or success)
+            if (!open && !isLaunchError && launchStatus !== "Campaign launched successfully!") {
+              return; 
+            }
+            setIsLaunchSuccessOpen(open);
+          }}
+        >
+          <DialogContent className="sm:max-w-md text-center" onInteractOutside={(e) => {
+             // Prevent clicking outside to close while loading
+             if (!isLaunchError && launchStatus !== "Campaign launched successfully!") {
+                e.preventDefault();
+             }
+          }}>
+            <DialogHeader>
+              <div className={cn(
+                "mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full transition-colors duration-300",
+                isLaunchError ? "bg-red-100" : "bg-green-100"
+              )}>
+                {isLaunchError ? (
+                   <AlertCircle className="h-6 w-6 text-red-600" />
+                ) : (
+                   <Rocket className="h-6 w-6 text-green-600" />
+                )}
+              </div>
+              <DialogTitle className="text-center text-xl">
+                {isLaunchError ? "Launch Error" : "Launching Campaign"}
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                {isLaunchError 
+                  ? "We encountered an issue while launching your campaign." 
+                  : "Please wait while we set up your campaign and audience."}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-6 space-y-4">
+              <div className="flex flex-col items-center gap-4">
+                {isLaunchError ? (
+                   <X className="h-10 w-10 text-red-500 animate-in zoom-in duration-300" />
+                ) : launchStatus === "Campaign launched successfully!" ? (
+                   <Check className="h-10 w-10 text-green-500 animate-in zoom-in duration-300" />
+                ) : (
+                   <RefreshCw className="h-10 w-10 text-primary animate-spin" />
+                )}
+                
+                <p className={cn(
+                  "text-sm font-medium transition-colors",
+                  isLaunchError ? "text-red-600" : "text-muted-foreground"
+                )}>
+                  {launchStatus}
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter className="sm:justify-center gap-2">
+              {isLaunchError ? (
+                <Button 
+                   variant="outline"
+                   onClick={() => setIsLaunchSuccessOpen(false)}
+                >
+                  Close & Retry
+                </Button>
+              ) : (
+                <Button 
+                  className="w-full sm:w-auto min-w-[140px]" 
+                  onClick={() => router.push("/")}
+                  disabled={launchStatus !== "Campaign launched successfully!"}
+                >
+                  {launchStatus === "Campaign launched successfully!" ? "Go to Dashboard" : "Processing..."}
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <div className="w-full px-4 py-8 md:px-6 lg:px-8">
           <div className="mx-auto max-w-5xl space-y-8">
             {!campaignType && (
@@ -852,9 +1077,6 @@ function CampaignCreateContent() {
                       <Card
                         className="cursor-pointer transition-all hover:shadow-xl hover:scale-[1.02] duration-300 border-2 hover:border-primary/50"
                         onClick={() => {
-                          console.log(
-                            "[onClick] Setting campaignType to 'postsales'"
-                          );
                           setCampaignType("postsales");
                         }}
                       >
@@ -964,8 +1186,7 @@ function CampaignCreateContent() {
                               Choose Your Campaign Objective
                             </Label>
                             <p className="text-sm text-muted-foreground mt-1">
-                              Select an objective to get started with your
-                              campaign
+                              Select an objective to configure details
                             </p>
                           </div>
                           {isLoadingObjectives &&
@@ -980,14 +1201,8 @@ function CampaignCreateContent() {
                           ) : (
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                               {objectives.map((objective, index) => {
-                                // Ensure we have a valid, unique ID - use the objective's ID directly
-                                const objectiveId =
-                                  objective.id || `objective-${index}`;
-
-                                // Strict comparison: only selected if exact match and not empty
-                                const isSelected =
-                                  selectedObjective !== "" &&
-                                  selectedObjective === objectiveId;
+                                const objectiveId = objective.id || `objective-${index}`;
+                                const isSelected = selectedObjective !== "" && selectedObjective === objectiveId;
 
                                 return (
                                   <ObjectiveCard
@@ -997,21 +1212,28 @@ function CampaignCreateContent() {
                                     campaignSubType={objective.campaignSubType}
                                     selected={isSelected}
                                     onSelect={() => {
-                                      // Always set the new selection - this will automatically deselect others
+                                      // INTERCEPT SELECTION: Open Dialog instead of generating
                                       setSelectedObjective(objectiveId);
-                                      // Store the full objective data if available
+                                      
                                       if ((objective as any).fullData) {
-                                        setSelectedObjectiveData(
-                                          (objective as any).fullData
-                                        );
+                                        setSelectedObjectiveData((objective as any).fullData);
+                                        // Open dialog for everything except "custom"
+                                        if (objectiveId !== "custom") {
+                                            setIsObjectiveDetailsOpen(true);
+                                        }
                                       } else {
                                         setSelectedObjectiveData(null);
+                                        // Still open dialog for standard ones like new-car-launch that might not have fullData but have local handlers
+                                        if (objectiveId !== "custom") {
+                                            setIsObjectiveDetailsOpen(true);
+                                        }
                                       }
+                                      
                                       if (objectiveId !== "custom") {
                                         setCustomObjective("");
                                       }
                                       setCampaignData(null);
-                                      // Clear car details when switching objectives
+                                      // Reset car details unless sticking to same objective
                                       if (
                                         objectiveId !== "new-car-launch" &&
                                         objectiveId !== "stock-clearance"
@@ -1027,7 +1249,7 @@ function CampaignCreateContent() {
                           )}
                         </div>
 
-                        {/* Custom Objective Input */}
+                        {/* Custom Objective Input - Stays Inline */}
                         {selectedObjective === "custom" && (
                           <Card className="border-2 border-primary/20 bg-primary/5">
                             <CardContent className="p-4">
@@ -1035,359 +1257,22 @@ function CampaignCreateContent() {
                                 <Label className="text-base font-semibold">
                                   Enter Your Custom Objective
                                 </Label>
-                                <Input
-                                  placeholder="e.g., Special promotion for premium customers..."
-                                  value={customObjective}
-                                  onChange={(e) => {
-                                    setCustomObjective(e.target.value);
-                                    setCampaignData(null);
-                                  }}
-                                  className="h-12 text-base"
-                                />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
-
-                        {/* Objective Data Editor - Show when objective has full data */}
-                        {selectedObjectiveData &&
-                          selectedObjective !== "custom" && (
-                            <Card className="border-2 border-primary/20 bg-primary/5 animate-in fade-in slide-in-from-top-2 duration-300">
-                              <CardHeader>
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                  <Edit3 className="h-5 w-5 text-primary" />
-                                  Edit Campaign Objective Details
-                                </CardTitle>
-                                <CardDescription>
-                                  Review and modify the campaign objective
-                                  details
-                                </CardDescription>
-                              </CardHeader>
-                              <CardContent className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div className="space-y-2">
-                                    <Label className="text-base font-semibold">
-                                      Campaign Objective Name
-                                    </Label>
+                                <div className="flex gap-2">
                                     <Input
-                                      value={
-                                        selectedObjectiveData.campaign_objective_name ||
-                                        ""
-                                      }
-                                      onChange={(e) => {
-                                        setSelectedObjectiveData({
-                                          ...selectedObjectiveData,
-                                          campaign_objective_name:
-                                            e.target.value,
-                                        });
-                                      }}
-                                      className="h-11"
+                                    placeholder="e.g., Special promotion for premium customers..."
+                                    value={customObjective}
+                                    onChange={(e) => {
+                                        setCustomObjective(e.target.value);
+                                        setCampaignData(null);
+                                    }}
+                                    className="h-12 text-base"
                                     />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label className="text-base font-semibold">
-                                      Campaign Sub Type
-                                    </Label>
-                                    <Input
-                                      value={
-                                        selectedObjectiveData.campaign_sub_type ||
-                                        ""
-                                      }
-                                      onChange={(e) => {
-                                        setSelectedObjectiveData({
-                                          ...selectedObjectiveData,
-                                          campaign_sub_type: e.target.value,
-                                        });
-                                      }}
-                                      className="h-11"
-                                    />
-                                  </div>
+                                    <Button size="lg" className="h-12" onClick={handleGenerateCampaign} disabled={!customObjective.trim()}>Generate</Button>
                                 </div>
-
-                                <div className="space-y-2">
-                                  <Label className="text-base font-semibold">
-                                    Campaign Objective Description
-                                  </Label>
-                                  <Textarea
-                                    value={
-                                      selectedObjectiveData.campaign_objective_description ||
-                                      ""
-                                    }
-                                    onChange={(e) => {
-                                      setSelectedObjectiveData({
-                                        ...selectedObjectiveData,
-                                        campaign_objective_description:
-                                          e.target.value,
-                                      });
-                                    }}
-                                    rows={3}
-                                    className="resize-none"
-                                  />
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label className="text-base font-semibold">
-                                    Why User Should Avail This
-                                  </Label>
-                                  <Textarea
-                                    value={
-                                      selectedObjectiveData.why_user_should_avail_this ||
-                                      ""
-                                    }
-                                    onChange={(e) => {
-                                      setSelectedObjectiveData({
-                                        ...selectedObjectiveData,
-                                        why_user_should_avail_this:
-                                          e.target.value,
-                                      });
-                                    }}
-                                    rows={3}
-                                    className="resize-none"
-                                  />
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label className="text-base font-semibold">
-                                    Other Important Information
-                                  </Label>
-                                  <Textarea
-                                    value={
-                                      selectedObjectiveData.other_important_information ||
-                                      ""
-                                    }
-                                    onChange={(e) => {
-                                      setSelectedObjectiveData({
-                                        ...selectedObjectiveData,
-                                        other_important_information:
-                                          e.target.value,
-                                      });
-                                    }}
-                                    rows={3}
-                                    className="resize-none"
-                                  />
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label className="text-base font-semibold">
-                                    Conversation Tone
-                                  </Label>
-                                  <Input
-                                    value={
-                                      selectedObjectiveData.conversation_tone ||
-                                      ""
-                                    }
-                                    onChange={(e) => {
-                                      setSelectedObjectiveData({
-                                        ...selectedObjectiveData,
-                                        conversation_tone: e.target.value,
-                                      });
-                                    }}
-                                    className="h-11"
-                                    placeholder="e.g., Professional, Urgent, Friendly"
-                                  />
-                                </div>
-
-                                {/* Custom Attributes */}
-                                {selectedObjectiveData.custom_attributes &&
-                                  Array.isArray(
-                                    selectedObjectiveData.custom_attributes
-                                  ) &&
-                                  selectedObjectiveData.custom_attributes
-                                    .length > 0 && (
-                                    <div className="space-y-4">
-                                      <Label className="text-base font-semibold">
-                                        Custom Attributes
-                                      </Label>
-                                      <div className="space-y-3">
-                                        {selectedObjectiveData.custom_attributes.map(
-                                          (attr: any, idx: number) => (
-                                            <Card key={idx} className="p-4">
-                                              <div className="space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                  <Label className="text-sm font-medium">
-                                                    {attr.attribute_name ||
-                                                      `Attribute ${idx + 1}`}
-                                                  </Label>
-                                                  <Badge variant="outline">
-                                                    {attr.attribute_type ||
-                                                      "text"}
-                                                  </Badge>
-                                                </div>
-                                                <Input
-                                                  value={
-                                                    attr.attribute_value || ""
-                                                  }
-                                                  onChange={(e) => {
-                                                    const updatedAttributes = [
-                                                      ...selectedObjectiveData.custom_attributes,
-                                                    ];
-                                                    updatedAttributes[idx] = {
-                                                      ...attr,
-                                                      attribute_value:
-                                                        e.target.value,
-                                                    };
-                                                    setSelectedObjectiveData({
-                                                      ...selectedObjectiveData,
-                                                      custom_attributes:
-                                                        updatedAttributes,
-                                                    });
-                                                  }}
-                                                  className="h-10"
-                                                />
-                                                {attr.attribute_description && (
-                                                  <p className="text-xs text-muted-foreground">
-                                                    {attr.attribute_description}
-                                                  </p>
-                                                )}
-                                              </div>
-                                            </Card>
-                                          )
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                {/* Target Audience Tags */}
-                                {selectedObjectiveData.target_audience_tags &&
-                                  Array.isArray(
-                                    selectedObjectiveData.target_audience_tags
-                                  ) &&
-                                  selectedObjectiveData.target_audience_tags
-                                    .length > 0 && (
-                                    <div className="space-y-2">
-                                      <Label className="text-base font-semibold">
-                                        Target Audience Tags
-                                      </Label>
-                                      <div className="flex flex-wrap gap-2">
-                                        {selectedObjectiveData.target_audience_tags.map(
-                                          (tag: string, idx: number) => (
-                                            <Badge
-                                              key={idx}
-                                              variant="secondary"
-                                            >
-                                              {tag}
-                                            </Badge>
-                                          )
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-                              </CardContent>
-                            </Card>
-                          )}
-
-                        {/* Car Details Form for New Car Launch */}
-                        {selectedObjective === "new-car-launch" && (
-                          <Card className="border-2 border-primary/20 bg-primary/5 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <CardHeader>
-                              <CardTitle className="text-lg flex items-center gap-2">
-                                <Car className="h-5 w-5 text-primary" />
-                                New Car Launch Details
-                              </CardTitle>
-                              <CardDescription>
-                                Provide details about the car model and launch
-                                date
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                              <div className="space-y-2">
-                                <Label
-                                  htmlFor="carModel"
-                                  className="text-base font-semibold"
-                                >
-                                  Car Model{" "}
-                                  <span className="text-destructive">*</span>
-                                </Label>
-                                <Input
-                                  id="carModel"
-                                  placeholder="e.g., Brezza, Swift, Baleno"
-                                  value={carModel}
-                                  onChange={(e) => setCarModel(e.target.value)}
-                                  className="h-11"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label
-                                  htmlFor="launchDate"
-                                  className="text-base font-semibold"
-                                >
-                                  Launch Date{" "}
-                                  <span className="text-destructive">*</span>
-                                </Label>
-                                <Input
-                                  id="launchDate"
-                                  type="date"
-                                  value={launchDate}
-                                  onChange={(e) =>
-                                    setLaunchDate(e.target.value)
-                                  }
-                                  className="h-11"
-                                  min={new Date().toISOString().split("T")[0]}
-                                />
                               </div>
                             </CardContent>
                           </Card>
                         )}
-
-                        {/* Car Details Form for Stock Clearance */}
-                        {selectedObjective === "stock-clearance" && (
-                          <Card className="border-2 border-primary/20 bg-primary/5 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <CardHeader>
-                              <CardTitle className="text-lg flex items-center gap-2">
-                                <Tag className="h-5 w-5 text-primary" />
-                                Stock Clearance Details
-                              </CardTitle>
-                              <CardDescription>
-                                Provide details about the car model or stock
-                                type
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                              <div className="space-y-2">
-                                <Label
-                                  htmlFor="stockCarModel"
-                                  className="text-base font-semibold"
-                                >
-                                  Car Model or Stock Type{" "}
-                                  <span className="text-destructive">*</span>
-                                </Label>
-                                <Input
-                                  id="stockCarModel"
-                                  placeholder="e.g., Brezza, Swift, or 'All Models'"
-                                  value={carModel}
-                                  onChange={(e) => setCarModel(e.target.value)}
-                                  className="h-11"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                  Enter specific car model(s) or "All Models"
-                                  for general clearance
-                                </p>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
-
-                        {/* Show alert only when objective is selected and ready */}
-                        {selectedObjective &&
-                          (selectedObjective !== "custom" ||
-                            customObjective.trim() !== "") &&
-                          ((selectedObjective !== "new-car-launch" &&
-                            selectedObjective !== "stock-clearance") ||
-                            carModel) &&
-                          (selectedObjective !== "new-car-launch" ||
-                            launchDate) && (
-                            <Alert className="border-primary/20 bg-primary/5 animate-in fade-in duration-300">
-                              <Sparkles className="h-5 w-5 text-primary" />
-                              <AlertDescription className="text-sm leading-relaxed">
-                                <span className="font-semibold">
-                                  AI will automatically generate:
-                                </span>{" "}
-                                Campaign name, description, budget, duration,
-                                channel recommendations, creative content,
-                                audience segments, and messaging
-                              </AlertDescription>
-                            </Alert>
-                          )}
                       </TabsContent>
 
                       {/* Tab 2: Previously Used Campaigns */}
@@ -1395,58 +1280,22 @@ function CampaignCreateContent() {
                         <PreviouslyUsedCampaigns
                           campaignType={campaignType}
                           onReuseCampaign={(campaign) => {
-                            // Populate form with reused campaign data
                             if (campaign.campaignData) {
                               const data = campaign.campaignData;
+                              if (data.selectedObjective) setSelectedObjective(data.selectedObjective);
+                              if (data.customObjective) setCustomObjective(data.customObjective);
+                              if ((data as any).carModel) setCarModel((data as any).carModel);
+                              if ((data as any).launchDate) setLaunchDate((data as any).launchDate);
+                              if (data.campaignName) setCampaignName(data.campaignName);
+                              if (data.campaignDescription) setCampaignDescription(data.campaignDescription);
+                              if (data.campaignTitle) setCampaignTitle(data.campaignTitle);
+                              if (data.tone) setTone(data.tone);
+                              if (data.callToAction) setCallToAction(data.callToAction);
+                              if (data.language) setLanguage(data.language);
+                              if (data.selectedChannels) setSelectedChannels(data.selectedChannels);
+                              if (data.duration) setDuration(data.duration);
+                              if (data.targetAudience) setTargetAudience(data.targetAudience);
 
-                              // Set objective
-                              if (data.selectedObjective) {
-                                setSelectedObjective(data.selectedObjective);
-                              }
-                              if (data.customObjective) {
-                                setCustomObjective(data.customObjective);
-                              }
-
-                              // Set car details if available
-                              if ((data as any).carModel) {
-                                setCarModel((data as any).carModel);
-                              }
-                              if ((data as any).launchDate) {
-                                setLaunchDate((data as any).launchDate);
-                              }
-
-                              // Set campaign details
-                              if (data.campaignName) {
-                                setCampaignName(data.campaignName);
-                              }
-                              if (data.campaignDescription) {
-                                setCampaignDescription(
-                                  data.campaignDescription
-                                );
-                              }
-                              if (data.campaignTitle) {
-                                setCampaignTitle(data.campaignTitle);
-                              }
-                              if (data.tone) {
-                                setTone(data.tone);
-                              }
-                              if (data.callToAction) {
-                                setCallToAction(data.callToAction);
-                              }
-                              if (data.language) {
-                                setLanguage(data.language);
-                              }
-                              if (data.selectedChannels) {
-                                setSelectedChannels(data.selectedChannels);
-                              }
-                              if (data.duration) {
-                                setDuration(data.duration);
-                              }
-                              if (data.targetAudience) {
-                                setTargetAudience(data.targetAudience);
-                              }
-
-                              // Set the full campaign data object
                               setCampaignData({
                                 name: data.campaignName || campaign.name,
                                 description: data.campaignDescription,
@@ -1454,11 +1303,9 @@ function CampaignCreateContent() {
                                 tone: data.tone,
                                 callToAction: data.callToAction,
                                 language: data.language,
-                                selectedChannels:
-                                  data.selectedChannels || campaign.channels,
+                                selectedChannels: data.selectedChannels || campaign.channels,
                               });
 
-                              // Switch to setup tab to show the filled form
                               setActiveTab("setup");
                             }
                           }}

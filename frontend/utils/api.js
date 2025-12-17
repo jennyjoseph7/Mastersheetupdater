@@ -25,11 +25,34 @@ async function fetchAPIData(modelName, queryParams = {}) {
 
     return {
       items: json?.data ?? [],
-      total: json?.total ?? 0,
+      // Handle both 'total' and 'total_number' based on your API response example
+      total: json?.total ?? json?.total_number ?? 0, 
     };
   } catch (error) {
     console.error("API fetch error:", error);
     return { items: [], total: 0 };
+  }
+}
+
+async function deleteAPIData(modelName, id) {
+  try {
+    // Assuming DELETE endpoint uses singular object path
+    const url = `${APP_BASE_URL}/gryd/db/delete/${modelName}/${id}`;
+    
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: HEADERS,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Delete failed: ${text}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Delete error:", error);
+    throw error;
   }
 }
 
@@ -143,9 +166,9 @@ async function startImportTask(
 // 6. Create Audience Task Record (DB) ---
 async function createAudienceTask(taskData) {
   const response = await fetch(
-    `${APP_BASE_URL}/gryd/db/objects/audience_task`,
+    `${APP_BASE_URL}/gryd/db/object/audience_task`,
     {
-      method: "PUT",
+      method: "POST",
       headers: HEADERS,
       body: JSON.stringify(taskData),
     },
@@ -161,12 +184,10 @@ async function createAudienceTask(taskData) {
 
 // --- 7. UPDATE Audience Task Record (DB) ---
 async function updateAudienceTask(taskId, updateData) {
-  // FIX: Using query param ?task_id=... as requested
-  const url = new URL(`${APP_BASE_URL}/gryd/db/objects/audience_task`);
-  url.searchParams.append("task_id", taskId);
+  const url = new URL(`${APP_BASE_URL}/gryd/db/object/audience_task/${taskId}`);
 
   const response = await fetch(url.toString(), {
-    method: "POST", // Using PUT as per screenshot
+    method: "PATCH", 
     headers: HEADERS,
     body: JSON.stringify(updateData),
   });
@@ -214,7 +235,6 @@ async function fetchAudienceTasks() {
 // Fetch Dealership Campaigns ---
 async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
   try {
-    // Use admin role header as per the curl command
     const adminHeaders = {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -224,7 +244,6 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
       "X-GRYD-ROLE": "admin",
     };
 
-    // Use 127.0.0.1:5008 directly to match the curl command exactly
     const baseUrl =
       typeof window !== "undefined" &&
       (window.location.hostname === "localhost" ||
@@ -233,52 +252,28 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
         : APP_BASE_URL;
 
     const url = `${baseUrl}/gryd/db/objects/dealership_campaign`;
-    console.log("[fetchDealershipCampaigns] Fetching from:", url);
-    console.log("[fetchDealershipCampaigns] Headers:", adminHeaders);
-
-    // Try GET first (like other db/objects endpoints work)
+    
     let response = await fetch(url, {
       method: "GET",
       headers: adminHeaders,
     });
 
-    console.log(
-      "[fetchDealershipCampaigns] GET Response status:",
-      response.status,
-    );
-
-    // If GET returns 405 (Method Not Allowed), use POST as per curl command
     if (!response.ok && response.status === 405) {
-      console.log(
-        "[fetchDealershipCampaigns] GET not allowed, using POST as per curl...",
-      );
       response = await fetch(url, {
         method: "POST",
         headers: adminHeaders,
-        body: "", // Empty string as per curl command --data ''
+        body: "", 
       });
-      console.log(
-        "[fetchDealershipCampaigns] POST Response status:",
-        response.status,
-      );
     }
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[fetchDealershipCampaigns] Error response:", errorText);
       throw new Error(`API Error: ${response.status} ${errorText}`);
     }
 
     const json = await response.json();
-    console.log("[fetchDealershipCampaigns] Response data:", json);
-
-    // Response format: { data: [], total_number: 2, page_number: 1, page_size: 50, ... }
     const items = json?.data ?? [];
     const total = json?.total_number ?? 0;
-
-    console.log(
-      `[fetchDealershipCampaigns] Returning ${items.length} items, total: ${total}`,
-    );
 
     return {
       items,
@@ -314,6 +309,7 @@ function capitalize(str) {
 
 export {
   fetchAPIData,
+  deleteAPIData,
   fetchPivotCountForCampaign,
   uploadFileToGryd,
   extractCsvHeadersAPI,
