@@ -664,6 +664,7 @@ def get_disposition(session_id, session_data_cache):
                 "No buying intent",
                 "Just Exploring",
                 "Will call showroom themselves",
+                "Requested Callback",
                 "Purchased elsewhere",
                 "Converted",
                 "Enquired for Pricing",
@@ -688,6 +689,7 @@ def get_disposition(session_id, session_data_cache):
             "Has moved to another location",
             "Cannot make decision on servicing",
             "Will call workshop themselves",
+            "Requested Callback",
             "Looking for a discount",
             "Language barrier",
             "Has serviced car in another dealership",
@@ -718,7 +720,8 @@ def get_disposition(session_id, session_data_cache):
     Possible values for disposition_detail:
     {disp_details_options}
     Only pick ONE value from this above list for disposition details.
-
+    Special Cases:-
+    - if the user has asked for a callback or requested to speak with a human or a phone call in any way without completing the objective of the campaign then the Disposition Detail would be = 'Callback Requested'.
     Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
     Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
     do NOT prepend labels (like "json"). Output only valid JSON.

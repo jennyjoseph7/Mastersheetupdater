@@ -120,17 +120,17 @@ class InputManager:
 
 
         in_payload = self.provider.receive_message(raw_data)
-        logger.info(f'recieved data in input queue: {type(in_payload.get("audio_data"))}')
+        # logger.info(f'recieved data in input queue: {type(in_payload.get("audio_data"))}')
 
         if in_payload.get('audio_data')[:10] == self.buffer_identifier.value:
-            logger.info('Looks like messaage from output manager ignoring...')
+            # logger.info('Looks like messaage from output manager ignoring...')
             return
 
         if in_payload.get('message_type','') == 'stream_start':
             session_id = in_payload.get('metadata',{}).get('custom_params', {}).get('session_id')
             if  session_id !=  self.session_id:
                 logger.info(f'looks like getting stream for different session id, current session_id {self.session_id} but recieved is {session_id}')
-                return
+                return  
 
         message = Message(
 
@@ -198,7 +198,7 @@ class InputManager:
             elapsed = time.time() - start_time
 
             if elapsed > 1.5:
-                logger.info(f"Response taking longer, triggering filler for {message_id}")
+                # logger.info(f"Response taking longer, triggering filler for {message_id}")
                 self.state = InputState.REQUEST_FILLER
 
                 # self.output_queue.put({
@@ -345,12 +345,12 @@ class OutputManager:
                         break
 
                     # Set shared buffer identifier from the first 10 bytes of audio data
-                    if message.get('audio_data'):
-                        self.buffer_identifier.value = message.get('audio_data')[:10]
+                    # if message.get('audio_data'):
+                    #     self.buffer_identifier.value = message.get('audio_data')[:10]
 
                     message = self.provider.send_message(message)
-                    #message['tag'] = 'output_manager'
-                    logger.info(f'recieved message from output queue: {message}')
+                    # message['tag'] = 'output_manager'
+                    # logger.info(f'recieved message from output queue: {message}')
                     #message_id
 
                     self.client.send_message(message)
@@ -359,7 +359,7 @@ class OutputManager:
                 except Exception as e:
                     logger.error(f"Error in OutputManager main loop: {e}")
 
-                time.sleep(0.1)
+                # time.sleep(0.1)
 
         except Exception as e:
             logger.error(f"Error in Output Manager: {e}")

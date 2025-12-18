@@ -1,11 +1,14 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://autobot-webapp-dev.gryd.in";
 
-interface ApiOptions {
-  method?: string;
-  headers?: Record<string, string>;
-  body?: any;
-}
+const DEFAULT_HEADERS = {
+  "Content-Type": "application/json",
+  Accept: "application/json",
+  "X-GRYD-ENTERPRISE-ID": "autocrm",
+  "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
+  "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
+  "X-GRYD-ROLE": "agent",
+};
 
 export async function api(
   endpoint: string,
@@ -13,55 +16,67 @@ export async function api(
   body?: any,
   customHeaders: Record<string, string> = {}
 ) {
+  const fullUrl = `${API_BASE_URL}${endpoint}`;
+
+  // Merge headers - customHeaders override DEFAULT_HEADERS
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-    "X-GRYD-ENTERPRISE-ID": "autocrm",
-    "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
-    "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
-    "X-GRYD-ROLE": "agent",
+    ...DEFAULT_HEADERS,
     ...customHeaders,
   };
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+
+  // For GET requests without body, don't include Content-Type
+  // Some servers reject GET requests with Content-Type header
+  if (method === "GET" && !body) {
+    delete headers["Content-Type"];
+  }
+
+  console.log(`[API] Making ${method} request to:`, fullUrl);
+  console.log(`[API] Headers:`, headers);
+
+  const fetchOptions: RequestInit = {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
     cache: "no-store",
-  });
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`API Error: ${res.status} ${errorText}`);
-  }
-  return res.json();
-}
-
-// Fetch person objects from the API
-// or the the added audience for
-export async function fetchPersonObjects() {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-    "X-GRYD-ENTERPRISE-ID": "autocrm",
-    "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
-    "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
-    "X-GRYD-ROLE": "admin",
+    credentials: "omit", // Don't send cookies
+    mode: "cors", // Explicitly set CORS mode
   };
 
-  const res = await fetch(`${API_BASE_URL}/gryd/db/objects/person`, {
-    method: "GET",
-    headers,
-    cache: "no-store",
-  });
+  // Only add body if it exists
+  if (body) {
+    fetchOptions.body = JSON.stringify(body);
+  }
+
+  const res = await fetch(fullUrl, fetchOptions);
+
+  console.log(`[API] Response status:`, res.status, `for`, fullUrl);
+  console.log(
+    `[API] Response headers:`,
+    Object.fromEntries(res.headers.entries())
+  );
 
   if (!res.ok) {
     const errorText = await res.text();
+    console.error(`[API] Error response (${res.status}):`, errorText);
+
+    // Provide more detailed error for 412
+    if (res.status === 412) {
+      throw new Error(
+        `Precondition Failed (412): The server rejected the request. This might be due to missing headers or CORS issues. Error: ${errorText}`
+      );
+    }
+
     throw new Error(`API Error: ${res.status} ${errorText}`);
   }
 
   return res.json();
 }
 
-// Dealership signup API
+export async function fetchPersonObjects() {
+  return api("/gryd/db/objects/person", "GET", undefined, {
+    "X-GRYD-ROLE": "admin",
+  });
+}
+
 export interface DealershipSignupRequest {
   args: [
     string, // dealership_name
@@ -96,7 +111,6 @@ export class ApiError extends Error {
 }
 
 export async function dealershipSignup(data: DealershipSignupRequest) {
-  // Use Next.js API route proxy to avoid CORS issues
   const res = await fetch("/api/dealership-signup", {
     method: "POST",
     headers: {
@@ -109,28 +123,18 @@ export async function dealershipSignup(data: DealershipSignupRequest) {
 
   if (!res.ok) {
     let errorMessage = `Request failed (${res.status})`;
-    let errorData: any = null;
-
     try {
       const errorText = await res.text();
-      try {
-        errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData.error || errorData.message || errorText || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
+      const errorData = JSON.parse(errorText);
+      errorMessage =
+        errorData?.error || errorData?.message || errorText || errorMessage;
     } catch {
-      errorMessage = `Failed to process request (${res.status})`;
+      // Use default error message
     }
 
-    // Clean up error message - remove any "API Error:" prefixes
-    errorMessage = errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim();
-    if (!errorMessage) {
-      errorMessage = `Request failed (${res.status})`;
-    }
-
-    throw new ApiError(res.status, errorMessage, errorData);
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
   }
 
   return res.json();

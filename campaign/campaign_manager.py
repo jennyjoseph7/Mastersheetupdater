@@ -250,26 +250,26 @@ class BaseCampaignCreater:
         
         
         msg_status=WA_TO_DISPOSITION.get(patch_user_data.get("message_status"), None)
-        logger.info(f"TEST MESSAGE_STATUS ------{msg_status}")
+        if msg_status:
+            logger.info(f"TEST MESSAGE_STATUS ------{msg_status} response--{response}")
+            data={
+                    "lead_id":lead_id,
+                    "enterprise_id":enterprise_id,
+                    "campaign_id":campaign_details.get("campaign_id"),
+                    "campaign_type":campaign_details.get("campaign_type"),
+                    "campaign_model":campaign_details.get("campaign_model"),
+                    "phone_number":mobile_number,
+                    "message_id":response.get("message_id",None),
+                    "provider_status":msg_status,
+                    "channel_provider":whatsapp_provider,
+                    "channel":"whatsapp_chat",
+                }
         
-        data={
-                "lead_id":lead_id,
-                "enterprise_id":enterprise_id,
-                "campaign_id":campaign_details.get("campaign_id"),
-                "campaign_type":campaign_details.get("campaign_type"),
-                "campaign_model":campaign_details.get("campaign_model"),
-                "phone_number":mobile_number,
-                "message_id":response.get("message_id"),
-                "provider_status":msg_status,
-                "channel_provider":whatsapp_provider,
-                "channel":"whatsapp_chat",
-            }
-        
-        gryd.create_async_task(
-            "post_contact_status", 
-            GRYD_COMMUNICATION_SERVICE, 
-            kwargs=data
-        )
+            gryd.create_async_task(
+                "post_contact_status", 
+                AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+                kwargs=data
+            )
         
         
         
@@ -377,8 +377,10 @@ class BaseCustomCampaignManager:
                         enterprise_id,
                         count
                     ],enterprise_id=enterprise_id)
-            if channel.upper()=="VOICEBOT":
-                logger.info(f"[{count}] Sent {channel} message for phone_number:{campaign_data.get('mobile_number')}, campaign_id:{campaign_data.get('campaign_id')}, lead_id:{campaign_users.get('lead_id')}")
+            if channel.upper()=="VOICE_PHONE":
+                logger.info("Sending Voice campaign---")
+                logger.info(f"[{count}] Sent {channel} message for phone_number:{campaign_data.get('mobile_number')}, campaign_id:{campaign_data.get('campaign_id')}, lead_id:{user.get('lead_id')}")
+                logger.info(f"[voice_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
                 # send_voice_campaign_message(campaign_user_data.get("mobile_number"),campaign_user_data,campaign_details_data,VOICE_CAMPAIGN_BASE_URL)
                 # TODO call nikit task for voice
                 pass
@@ -449,7 +451,7 @@ class BaseCustomCampaignManager:
                 - `campaign_user_source` : dict
                 Configuration details of the user source.
                 - `channel` : str
-                Communication channel (e.g., `"WHATSAPP_CHAT"`, `"VOICEBOT"`).
+                Communication channel (e.g., `"WHATSAPP_CHAT"`, `"VOICE_PHONE"`).
         campaign_id : str, optional
             Campaign identifier (used if not specified in `campaign_details_data`).
         campaign_status_check_id : str, optional
@@ -501,7 +503,7 @@ class BaseCustomCampaignManager:
             channel = kwargs.get("channel", "").upper()
 
             if kwargs.get("retry_failed"):
-                if campaign_users and channel in ["WHATSAPP_CHAT", "VOICEBOT"]:
+                if campaign_users and channel in ["WHATSAPP_CHAT", "VOICE_PHONE"]:
                     self.process_campaign_users_generic(
                         enterprise_id=enterprise_id, 
                         campaign_id=campaign_id, 
@@ -534,7 +536,7 @@ class BaseCustomCampaignManager:
 
                 logger.info(f"campaign_users----{campaign_users}---and channel----{channel}")
                 # Process users based on channel
-                if campaign_users and channel in ["WHATSAPP_CHAT", "VOICEBOT"]:
+                if campaign_users and channel in ["WHATSAPP_CHAT", "VOICE_PHONE"]:
                     self.process_campaign_users_generic(
                         enterprise_id=enterprise_id, 
                         campaign_id=campaign_id, 

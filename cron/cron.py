@@ -18,6 +18,12 @@ gryd.SERVICE = AUTOCRM_CRON_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
+
+def clear_otp_cache(logger=None, job=None):
+    logger = logger or mlogger
+    otp_cache_model = gryd.base_model.Model('otp_cache', AUTOCRM_APP_ENTERPRISE_ID)
+    otp_cache_model.delete_many({"expiry": f",{hp.epoch() - 3600}"})
+
 @gryd.is_a_task(logger_param='logger', job_param='job')
 def create_campaign_ideas_for_dealerships(
         campaign_types:Union[List[str], None]=None, 
@@ -201,8 +207,8 @@ def create_campaign_templates(logger=None, job=None):
                     }
 
                 }
-                pre_sale_special_combinations = [["model_preference","color_preference" ],["model_preference", "variant_preference"],["last_session_channel", "last_session_status"]]
-                post_sale_special_combinations = [["campaign_offer", "urgency_hook"],["last_session_channel", "last_session_status"],["dealer_name", "workshop_full_name", "reg_number", "vehicle_model", "vehicle_category","next_service_due"]]
+                pre_sale_special_combinations = [[],["model_preference","color_preference" ],["model_preference", "variant_preference"],["last_session_channel", "last_session_status"]]
+                post_sale_special_combinations = [[],["campaign_offer", "urgency_hook"],["last_session_channel", "last_session_status"],["dealer_name", "workshop_full_name", "reg_number", "vehicle_model", "vehicle_category","next_service_due"]]
 
 
 

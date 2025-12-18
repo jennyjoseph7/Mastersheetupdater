@@ -13,14 +13,25 @@ logger=hp.get_logger(__name__)
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from autocrm_db_helper import get_pg_connector
+# from campaign_analytics_sp.loader import load_sql
 from agents.get_whatsapp_template_agent import get_whatsapp_template
 from campaign.campaign_manager import BaseCustomCampaignManager
-from config import AUTOCRM_CAMPAIGN_SERVICE_NAME
+from config import AUTOCRM_CAMPAIGN_SERVICE_NAME,VOICE_PROVIDER_NAME
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 QUEUE_MANAGER = gryd.get_queue_manager(AUTOCRM_CAMPAIGN_SERVICE_NAME)
 
 logger.info(f"GRYD SERVICE---{gryd.SERVICE}")
+
+def WARM_UP():
+    logger.info("WARM_UP CALLED")
+    with get_pg_connector() as pg:
+        # load_sql(pg)
+        pass    
+    return
+
+# WARM_UP()
+
 def import_modules(module_name):
     logger.info(f"Initializing {module_name} module")
     module_ref = {
@@ -36,11 +47,7 @@ imported_modules = dict(map(lambda module: (module, import_modules(module)), mod
 
 logger.info(f"List of all task {json.dumps(gryd.LIST_OF_TASKS or {}, indent=4,default=str)}   {imported_modules}")
 
-def WARM_UP():
-    logger.info("WARM_UP CALLED")
-    with get_pg_connector() as pg:
-        pass    
-    return
+
 
 @gryd.is_a_task(function_name="send_text_template_for_approval")
 def send_text_template_for_approval(data, *args, **kwargs):
@@ -140,142 +147,147 @@ def trigger_campaign(*args, **kwargs):
 
 @gryd.is_a_task(function_name="process_single_lead")
 def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None):
+    
     """
-    Process a single lead from a campaign.
+    Process a single lead and send campaign messages for each user.
 
-    Args:
-        channel (str): The channel to use for communication. If not provided, it will be determined from the lead data.
-        lead (dict or str): Lead data to process. If a dict, it should contain the lead_id. If a str, it is the lead_id.
-        campaign_type (str): The type of campaign. Either "pre_sales" or "post_sales".
-        campaign_id (str): The ID of the campaign.
-        user_id (str, optional): The ID of the user to select for post-sales campaigns. If not provided, the first person will be selected.
+    Parameters
+    ----------
+    channel : str
+        The channel to use for sending the campaign message.
+    lead : dict or str
+        The lead data to process. If a dict, it should contain the lead_id and other relevant fields.
+    campaign_type : str
+        The type of campaign (pre-sales or post-sales).
+    campaign_id : str
+        The ID of the campaign.
+    user_id : str, optional
+        The ID of the user to target for post-sales campaigns. If not provided, the first person in the persons_involved list will be targeted.
 
-    Returns:
-        dict: Response from Airtable containing the `template_id`.
-              This ID can be used to track approval status.
+    Yields
+    -------
+    dict
+        A dictionary containing the status of the campaign and any errors that occurred.
     """
     logger.info("----- In process_single_lead task -----")
-    
-    
+
+    if campaign_type == "pre-sales":
+        campaign_table = "pre_sales_campaign"
+        lead_table = "pre_sales_lead"
+        lead_id_field = "pre_sales_lead_id"
+    else:
+        campaign_table = "post_sales_campaign"
+        lead_table = "post_sales_lead"
+        lead_id_field = "post_sales_lead_id"
+
     with get_pg_connector() as pg:
-        if campaign_type == "pre-sales":
-            campaign_details = list(pg.list("pre_sales_campaign", {"campaign_id": campaign_id}))
-            lead_table = "pre_sales_lead"
-            lead_id_field = "pre_sales_lead_id"
-        else:
-            campaign_details = list(pg.list("post_sales_campaign", {"campaign_id": campaign_id}))
-            lead_table = "post_sales_lead"
-            lead_id_field = "post_sales_lead_id"
+        campaign_details = list(pg.list(campaign_table, {"campaign_id": campaign_id}))
 
     if not campaign_details:
-        yield {"status" : "Error","error_description" : f"No campaign details found for campaign_id={campaign_id}"}
-        raise ValueError("Invalid campaign_id")
+        yield {"status": "Error", "error_description": f"No campaign found for campaign_id={campaign_id}"}
+        return
 
     campaign_details = campaign_details[0]
-    # logger.info(f"CAMPAIGN DETAILS:\n{json.dumps(campaign_details, indent=4)}")
 
     if isinstance(lead, dict):
         lead_data = lead
         lead_id = lead.get(lead_id_field)
     else:
         lead_id = lead
-        logger.info(f"Fetching full lead details for lead_id={lead_id}")
-
         with get_pg_connector() as pg:
             result = list(pg.list(lead_table, {lead_id_field: lead_id}))
-
         if not result:
-            logger.error(f"No lead found for {lead_id_field}={lead_id}")
-            yield {"status" : "Error","error_description" : f"No lead found for {lead_id_field}={lead_id}"}
-
+            yield {"status": "Error", "error_description": f"No lead found for {lead_id_field}={lead_id}"}
+            return
         lead_data = result[0]
 
-    logger.info(f"Lead found: for lead_id={lead_id}")
     if not lead_id:
-        logger.error("Lead ID missing in lead data so skipping..")
-        yield {"status" : "Error","error_description" : "Lead ID missing in lead data so skipping.."}
-    
+        yield {"status": "Error", "error_description": "Lead ID missing"}
+        return
+
+    logger.info(f"Lead found for lead_id={lead_id}")
 
     if not channel:
         channel = get_channel(lead_data, campaign_details)
 
-    template_data=get_whatsapp_template(lead_id=lead_id, campaign_type=campaign_type, lead_info={})
-        
-    if not template_data:
-        logger.error(f"No template data found for lead_id={lead_id}")
-        yield {"status" : "Error","error_description" : f"No template data found for lead_id={lead_id}"}
-    template_data = template_data[0]
-    logger.info(f"TEMPLATE DATA for mobile_number = {lead_data.get('phone_number')} and lead_id= {lead_id} and template details :\n{json.dumps(template_data, indent=4)}")
+    provider_name = None
+    template_data = None
 
-    buttons = template_data.pop("buttons", None)
-    template_variables = template_data.get("template_variables", [])
-    #TODO:later we need to change this..
+    if channel == "voice_phone":
+        provider_name = VOICE_PROVIDER_NAME
+
+    elif channel in ("whatsapp_chat", "sms", "rcs"):
+        template_data = get_whatsapp_template(
+            lead_id=lead_id,
+            campaign_type=campaign_type,
+            # campaign_objective=campaign_details.get("campaign_objective"),
+            lead_info={}
+        )
+        if not template_data:
+            yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
+            return
+        template_data = template_data[0]
+        logger.info(f"Template ID for phone_number={lead_data.get('phone_number')}: {template_data.get('template_id')}")
+    else:
+        yield {"status": "Error", "error_description": f"Unsupported channel: {channel}"}
+        return
+
     if campaign_type == "pre-sales":
         mobile = lead_data.get("phone_number")
-        # create a person if not exists
-        # get_or_create_person(mobile)
         customer_name = lead_data.get("person_name")
-        # model = (lead_data.get("model_preference") or [None])[0]
-        variable_mapping = get_variable_values(template_variables, lead_data)
-        
+        variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data) if template_data else {}
+
     else:
         persons = lead_data.get("persons_involved") or []
         selected_person = None
 
-        # user_id is provided then find matching person
         if user_id:
-            for p in persons:
-                if p.get("user_id") == user_id:
-                    selected_person = p
-                    break
-
+            selected_person = next((p for p in persons if p.get("user_id") == user_id), None)
         if not selected_person and persons:
             selected_person = persons[0]
 
         if not selected_person:
-            logger.error(f"No valid person found for post-sales lead_id={lead_id}")
-            yield {"status" : "Error","error_description" : f"No valid person found for post-sales lead_id={lead_id}"}
+            yield {"status": "Error", "error_description": f"No valid person for post-sales lead_id={lead_id}"}
+            return
 
         mobile = selected_person.get("last_contacted_whatsapp_number")
-        # create a person if not exists
-        # get_or_create_person(mobile)
         customer_name = selected_person.get("person_name")
-        # model = lead_data.get("vehicle_model")
-        variable_mapping = get_variable_values(template_variables, lead_data, selected_person)
+        variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data, selected_person) if template_data else {}
+
     campaign_user = {
         "lead_id": lead_id,
         "mobile_number": mobile,
         "customer_name": customer_name,
-        # "model": model,
         "contact_channel": channel,
-        "template_id": template_data.get("template_id"),
-        "template_details": template_data.get("template_details"),
+        "template_id": template_data.get("template_id") if template_data else None,
+        "template_details": template_data.get("template_details") if template_data else None,
         **variable_mapping
     }
-    logger.info(f"CAMPAIGN USER for lead_id = {lead_id}")
-    template_vars = template_data.get("template_variables", []) 
-    t_v = {var: template_data.get(var, "") for var in template_vars} 
-    template_message = template_data.get("template_message", "").format(**t_v) 
-    logger.info(f"Updated template_message: {template_message}")
+
+   
+    template_message = None
+    buttons = None
+
+    if template_data:
+        buttons = template_data.pop("buttons", None)
+        template_vars = template_data.get("template_variables", [])
+        render_data = {v: template_data.get(v, "") for v in template_vars}
+        template_message = template_data.get("template_message", "").format(**render_data)
+
+   
     if channel == "web_chat":
-        logger.info("Since it is a webchat channel we need to get the message from the template")
-        data={
-            "placeholder":template_message,
-            "buttons":buttons
-        }
-        yield data
+        yield {"placeholder": template_message, "buttons": buttons}
         return
-    
+
+   
     final_payload = {
         **campaign_details,
-        **template_data,
-
+        **(template_data or {}),
         "enterprise_id": campaign_details.get("enterprise_id"),
         "campaign_id": campaign_details.get("campaign_id"),
-        # these 2 channel and sender has to come from template_data check with prince 
-        "channel": template_data.get("channel"),
-        "sender": template_data.get("sender"),
-        "provider_name": "airtel",
+        "channel": channel,
+        "sender": template_data.get("sender") if template_data else None,
+        "provider_name": provider_name or (template_data.get("provider_name").lower() if template_data else None),
         "template_message": template_message,
         "campaign_user_source": {
             "source_type": "default",
@@ -299,17 +311,15 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
     is_testing = campaign_details.get("_is_testing", False)
 
     if not run_async:
-        logger.info("Running in SYNC mode")
-        b = BaseCustomCampaignManager()
-        b.run_custom_campaign(
+        logger.info("Running campaign in SYNC mode")
+        BaseCustomCampaignManager().run_custom_campaign(
             _is_testing=is_testing,
             **final_payload
         )
         yield {"campaign_response": final_payload}
         return
 
-    logger.info("Queueing async_run_custom_campaign task...")
-
+    logger.info("Queueing ASYNC campaign task")
     async_task = gryd.create_async_task(
         "async_run_custom_campaign",
         AUTOCRM_CAMPAIGN_SERVICE_NAME,
@@ -318,10 +328,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         enterprise_id=campaign_details.get("enterprise_id", "autobotcrm")
     )
 
-    yield {
-        "task_response": async_task,
-        "campaign_response": final_payload
-    }
+    yield {"task_response": async_task, "campaign_response": final_payload}
+
 
 # def get_or_create_person(phone_number):
 #     """Return person object; create if not exists."""
@@ -385,11 +393,11 @@ def get_channel(lead, campaign_details):
         return preferred
 
     # check for Campaign channels and use the first channel.
-    channels = campaign_details.get("channels") or ["voice"]
+    channels = campaign_details.get("channels") or ["voice_phone"]
     if len(channels) > 0:
         return channels[0]
 
-    return "voice"  #fallback
+    return "voice_phone"  #fallback
 
 # @gryd.is_a_task(function_name="get_template_from_lead")
 def get_template_from_lead(*args,**kwargs):

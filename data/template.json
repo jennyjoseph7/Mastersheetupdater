@@ -252,6 +252,31 @@
       "default": {
         "function": "make_uuid_timestamp"
       }
-    } 
+    },
+    {
+      "name": "search_term",
+      "type": "text",
+      "indexed": true,
+      "force_update": [
+        "template_name",
+        "template_type",
+        "language",
+        "campaign_type",
+        "campaign_objective",
+        "template_message"
+      ],
+      "auto_updater": true,
+      "default": {
+        "function": "name_to_id",
+        "args": ["template_name", "template_type", "language", "campaign_type", "campaign_objective", "template_message" ],
+        "kwargs": {
+          "attribute_join": " ",
+          "is_unique": true,
+          "separator": " ",
+          "skip_empty": true,
+          "case": "lower"
+        }
+      }
+    }
   ]
 }

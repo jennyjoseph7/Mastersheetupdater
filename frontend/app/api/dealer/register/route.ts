@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     // - Send welcome email
     // - Add initial 100 credits to account
 
-    console.log("[v0] Dealer registration data:", data)
+    console.log("[autoNgage] Dealer registration data:", data)
 
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       message: "Registration successful",
     })
   } catch (error) {
-    console.error("[v0] Registration error:", error)
+    console.error("[autoNgage] Registration error:", error)
     return NextResponse.json({ success: false, message: "Registration failed" }, { status: 500 })
   }
 }

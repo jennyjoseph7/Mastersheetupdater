@@ -70,7 +70,7 @@ def process_forwarded_webhook(*args, **kwargs):
     Process a forwarded webhook request from the communication server.
 
     Args:
-        channel (str): The channel name (e.g., 'WHATSAPP', 'VOICEBOT').
+        channel (str): The channel name (e.g., 'WHATSAPP', 'VOICE_PHONE').
         channel_provider (str): The channel provider (e.g., 'airtel', 'rml').
         enterprise_id (str): The enterprise ID.
         conversation_id (str): The conversation ID.

@@ -305,6 +305,7 @@
                 "DND",
                 "Not reachable",
                 "Didnt pickup",
+                "Requested Callback",
                 "Rejected"
             ],
             "option_others": true
