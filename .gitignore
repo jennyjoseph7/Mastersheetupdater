@@ -7,8 +7,9 @@
 node_modules/
 dist/
 autobot_voice.egg-info
-.env
-
+# .env
+.env.local
+.env.*.local
 #test files
 test_*
 
