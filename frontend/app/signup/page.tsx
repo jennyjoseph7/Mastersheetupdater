@@ -1692,6 +1692,22 @@ export default function DealerSignup() {
             </Card>
           </>
         )}
+        
+        {/* Made by Dave AI */}
+        <div className="text-center mt-8 pb-8">
+          <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+            Made by{" "}
+            <a
+              href="https://www.iamdave.ai/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-foreground hover:text-primary transition-colors"
+            >
+              Dave AI
+            </a>{" "}
+            with <span className="text-red-500">♥</span>
+          </p>
+        </div>
       </div>
     </div>
   );

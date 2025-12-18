@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
                 alt="DaveAI Logo"
                 width={180}
                 height={36}
-                className="w-auto h-8"
+                className="w-auto h-8 dark:invert dark:brightness-200 dark:contrast-200 dark:drop-shadow-[0_0_8px_rgba(139,92,246,0.5),0_0_16px_rgba(255,255,255,0.3)] dark:filter"
               />
             </div>
           </div>
@@ -124,13 +124,13 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <Image
-              src="images/logo.png"
-              alt="DaveAI Logo"
-              width={180}
-              height={36}
-              className="w-auto h-8"
-            />
+              <Image
+                src="images/logo.png"
+                alt="DaveAI Logo"
+                width={180}
+                height={36}
+                className="w-auto h-8 dark:invert dark:brightness-200 dark:contrast-200 dark:drop-shadow-[0_0_8px_rgba(139,92,246,0.5),0_0_16px_rgba(255,255,255,0.3)] dark:filter"
+              />
           </div>
           <h1 className="text-3xl font-bold text-foreground">
             Forgot password?
@@ -209,6 +209,22 @@ export default function ForgotPasswordPage() {
             </Link>
           </CardFooter>
         </Card>
+        
+        {/* Made by Dave AI */}
+        <div className="text-center mt-8">
+          <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+            Made by{" "}
+            <a
+              href="https://www.iamdave.ai/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-foreground hover:text-primary transition-colors"
+            >
+              Dave AI
+            </a>{" "}
+            with <span className="text-red-500">♥</span>
+          </p>
+        </div>
       </div>
     </div>
   );
