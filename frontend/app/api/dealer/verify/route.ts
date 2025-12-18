@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     // - Create verification request
     // - Add 500 testing credits upon approval
 
-    console.log("[v0] Dealer verification data:", data)
+    console.log("[autoNgage] Dealer verification data:", data)
 
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       message: "Verification submitted successfully",
     })
   } catch (error) {
-    console.error("[v0] Verification error:", error)
+    console.error("[autoNgage] Verification error:", error)
     return NextResponse.json({ success: false, message: "Verification failed" }, { status: 500 })
   }
 }
