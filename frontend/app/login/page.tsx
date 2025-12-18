@@ -163,11 +163,11 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <Image
-              src="https://www.iamdave.ai/wp-content/uploads/2025/09/DaveAI_Logo.svg"
-              alt="DaveAI Logo"
-              width={180}
-              height={36}
-              className="w-auto h-8"
+              src="images/logo.png"
+              alt="autoNgage Logo"
+              width={230}
+              height={56}
+              className="w-auto h-10"
             />
           </div>
           <h1 className="text-3xl font-bold text-foreground">Welcome back</h1>
