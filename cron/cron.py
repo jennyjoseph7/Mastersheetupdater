@@ -207,8 +207,8 @@ def create_campaign_templates(logger=None, job=None):
                     }
 
                 }
-                pre_sale_special_combinations = [["model_preference","color_preference" ],["model_preference", "variant_preference"],["last_session_channel", "last_session_status"]]
-                post_sale_special_combinations = [["campaign_offer", "urgency_hook"],["last_session_channel", "last_session_status"],["dealer_name", "workshop_full_name", "reg_number", "vehicle_model", "vehicle_category","next_service_due"]]
+                pre_sale_special_combinations = [[],["model_preference","color_preference" ],["model_preference", "variant_preference"],["last_session_channel", "last_session_status"]]
+                post_sale_special_combinations = [[],["campaign_offer", "urgency_hook"],["last_session_channel", "last_session_status"],["dealer_name", "workshop_full_name", "reg_number", "vehicle_model", "vehicle_category","next_service_due"]]
 
 
 
