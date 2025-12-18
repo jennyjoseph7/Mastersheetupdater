@@ -51,7 +51,7 @@
 			 "shutdown_time" : 0
 		 },
 		 {
-			 "name" : "post-process",
+			 "name" : "conversation",
 			 "entry_point" : "lead_post_processing.py",
 			 "parallel_threads" : 1,
 			 "shutdown_time" : 0
