@@ -1,20 +1,26 @@
 import json
 import os, requests
-from datetime import datetime
 from ai_service import ai_service_app
 import random
 
 try:
-    from .base_agent import BaseAgent, gryd
+    from .base_agent import BaseAgent
 except ImportError:
-    from base_agent import BaseAgent, gryd 
+    from base_agent import BaseAgent
 
 import sys
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+# PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# sys.path.insert(0, PROJECT_ROOT)
 
-# /autobot_agents/agents → go one level up → /autobot_agents
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, PROJECT_ROOT)
-
+from config import AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
+gryd.SERVICE = AUTOCRM_AGENT_SERVICE_NAME
+AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
+gryd.set_queue_manager()
+QUEUE_MANAGER = gryd.get_queue_manager(AUTOCRM_AGENT_SERVICE_NAME)
 
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 
@@ -449,7 +455,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
             return final_data
 
 
-AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
+
 
 
 @gryd.is_a_task('generate_campaign_idea', logger_param='logger', job_param='job')
