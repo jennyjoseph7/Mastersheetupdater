@@ -7,7 +7,7 @@ import sys
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from connectors.communication_helpers import *
 logger=hp.get_logger(__name__,level=hp.logging.DEBUG)
-
+# from . import default_connector
 for _, module_name, _ in pkgutil.iter_modules(__path__):
     if module_name not in ["source_connector","base_connector"]:
         importlib.import_module(f"{__name__}.{module_name}")

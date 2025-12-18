@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, RefreshCcw } from "lucide-react";
 import { DataSourcesDataTable } from "@/components/audience/data-sources-datatable";
 import { AddDataSourceDialog } from "@/components/audience/add-data-source-dialog";
+// Ensure updateAudienceTask is imported
 import { fetchAudienceTasks, getTaskStatus, getTaskResult, updateAudienceTask } from "@/utils/api";
 
 export interface DataSource {
@@ -65,18 +66,18 @@ export default function AudiencePage() {
     }
   };
 
-  // --- REFRESH LOGIC ---
+  // --- REFRESH LOGIC (Sync Status) ---
   const handleRefreshRow = async (rowId: string) => {
     const row = dataSources.find((d) => d.id === rowId);
     
-    // We need the UUID (taskId) for the API calls
+    // We need the UUID (taskId) for the Status API calls
     if (!row || !row.taskId) {
       console.error("No Task ID found for row", rowId);
       return;
     }
 
     try {
-      // 1. Fetch Status from Task Queue using UUID
+      // 1. Fetch Status from Task Queue
       const statusData = await getTaskStatus(row.taskId);
       
       let newStatus: DataSource["status"] = "Pending";
@@ -84,7 +85,6 @@ export default function AudiencePage() {
       let errorList: any[] = [];
 
       // 2. Logic: Check for Errors First
-      // Even if status says "success", if the error array has items, it is an Error.
       if (
           (statusData.error && Array.isArray(statusData.error) && statusData.error.length > 0) ||
           statusData.status === "error" || 
@@ -93,17 +93,14 @@ export default function AudiencePage() {
       ) {
          newStatus = "Error";
          backendStatusString = "error";
-         // Capture errors
          if (statusData.error) {
             errorList = Array.isArray(statusData.error) ? statusData.error : [statusData.error];
          }
       } 
-      // 3. If "Success" and No Errors -> Connected
       else if (statusData.status === "success" || statusData.state === "SUCCESS") {
          newStatus = "Connected"; 
          backendStatusString = "connected"; 
       } 
-      // 4. Otherwise Processing
       else {
          newStatus = "Processing";
          backendStatusString = (statusData.status || statusData.state || "processing").toLowerCase();
@@ -112,42 +109,44 @@ export default function AudiencePage() {
       let newSize = row.audienceSize;
       let errorCsvLink = "";
 
-      // 5. If Connected (Success), fetch final counts from Result API
+      // 3. If Connected, fetch result details
       if (newStatus === "Connected") {
           try {
              const resultData = await getTaskResult(row.taskId);
              const result = resultData.result || resultData;
              
-             // Update size logic
              if (result.processed !== undefined) newSize = result.processed;
              else if (result.total !== undefined) newSize = result.total;
              
-             // Capture error link if it exists
              if (result.error_csv || result.error_csv_url) {
                 errorCsvLink = result.error_csv || result.error_csv_url;
              }
-             
           } catch (resError) {
              console.error("Failed to fetch result details", resError);
           }
       }
 
-      // 6. UPDATE DB (PUT) 
-      // Using the UUID (taskId) as requested by the URL structure ?task_id=...
+      // 4. UPDATE DB (Using updateAudienceTask PATCH)
       const updatePayload: any = {
           csv_status: backendStatusString,
           process_size: newSize,
       };
+
+      // Also update model audience_size if connected
+      if (newStatus === "Connected") {
+        updatePayload.audience_size = newSize;
+      }
       
       if (errorCsvLink) updatePayload.error_csv_link = errorCsvLink;
 
       try {
-        await updateAudienceTask(row.taskId, updatePayload);
+        // Using the imported PATCH function
+        await updateAudienceTask(row.id, updatePayload);
       } catch (dbError) {
         console.error("Failed to update audience task in DB", dbError);
       }
 
-      // 7. Update Local UI State immediately
+      // 5. Update Local UI State
       setDataSources((prev) => 
         prev.map((item) => {
           if (item.id === rowId) {
@@ -171,8 +170,22 @@ export default function AudiencePage() {
     loadData();
   }, []);
 
-  const handleSaveDataSource = async () => {
+  // --- SAVE LOGIC (Using updateAudienceTask PATCH) ---
+  // Updated to accept taskId and the data payload
+  const handleSaveDataSource = async (taskId?: string, updatedValues?: any) => {
     setIsDialogOpen(false);
+
+    // Only attempt PATCH if we have an ID and data
+    if (taskId && updatedValues) {
+      try {
+        await updateAudienceTask(taskId, updatedValues);
+      } catch (error) {
+        console.error("Failed to patch audience task", error);
+        // You might want to show a toast error here
+      }
+    }
+    
+    // Refresh to show changes
     setTimeout(() => loadData(), 500); 
   };
 
@@ -211,8 +224,8 @@ export default function AudiencePage() {
 
       <AddDataSourceDialog
         isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        onSave={handleSaveDataSource}
+        onClose={() => { handleSaveDataSource(); setIsDialogOpen(false); }}
+        onSave={() => handleSaveDataSource()}
       />
     </div>
   );

@@ -1,7 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 from connectors.user_source_connectors.source_connector import *
+
+
 logger=hp.get_logger(__name__)
+
 # ---------------- DEFAULT CAMPAIGN SOURCE ----------------
 class DefaultCampaignSource(CampaignSourceBase):
     """

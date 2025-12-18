@@ -1,4 +1,3 @@
-// utils/api.js
 import {
   APP_BASE_URL,
   HEADERS,
@@ -6,7 +5,6 @@ import {
   FILE_UPLOAD_HEADERS,
 } from "./headers";
 
-// --- 1. Generic Fetch Wrapper ---
 async function fetchAPIData(modelName, queryParams = {}) {
   try {
     let url = new URL(`${APP_BASE_URL}/gryd/db/objects/${modelName}`);
@@ -27,7 +25,8 @@ async function fetchAPIData(modelName, queryParams = {}) {
 
     return {
       items: json?.data ?? [],
-      total: json?.total ?? 0,
+      // Handle both 'total' and 'total_number' based on your API response example
+      total: json?.total ?? json?.total_number ?? 0, 
     };
   } catch (error) {
     console.error("API fetch error:", error);
@@ -35,7 +34,28 @@ async function fetchAPIData(modelName, queryParams = {}) {
   }
 }
 
-// --- 2. Campaign Pivot Logic ---
+async function deleteAPIData(modelName, id) {
+  try {
+    // Assuming DELETE endpoint uses singular object path
+    const url = `${APP_BASE_URL}/gryd/db/delete/${modelName}/${id}`;
+    
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: HEADERS,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Delete failed: ${text}`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Delete error:", error);
+    throw error;
+  }
+}
+
 async function fetchPivotCountForCampaign(type) {
   const base = `${APP_BASE_URL}/gryd/db/pivot`;
   let preUrl = "";
@@ -65,7 +85,7 @@ async function fetchPivotCountForCampaign(type) {
   }
 }
 
-// --- 3. File Upload Service ---
+//  File Upload Service ---
 async function uploadFileToGryd(file) {
   const uploadData = new FormData();
   uploadData.append("file", file);
@@ -83,7 +103,7 @@ async function uploadFileToGryd(file) {
   return response.json();
 }
 
-// --- 4. Extract CSV Headers Task ---
+// Extract CSV Headers Task ---
 async function extractCsvHeadersAPI(fileUrl) {
   const response = await fetch(
     `${APP_BASE_URL}/gryd/task/autocrm-core/extract_csv_headers`,
@@ -94,7 +114,7 @@ async function extractCsvHeadersAPI(fileUrl) {
         args: [fileUrl],
         kwargs: {},
       }),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -104,15 +124,79 @@ async function extractCsvHeadersAPI(fileUrl) {
   return response.json();
 }
 
-// --- 5. Start Import Task ---
+// Start Import Task ---
+// async function startImportTask(
+//   category,
+//   audienceName,
+//   fileUrl,
+//   tags = [],
+//   sourceName = "",
+//   fieldMapping = {},
+//   campaignObjectiveId = ""
+// ) {
+//   const response = await fetch(
+//     `${APP_BASE_URL}/gryd/task/autocrm-core/import_leads_from_csv`,
+//     {
+//       method: "POST",
+//       headers: HEADERS,
+//       body: JSON.stringify({
+//         args: [category || "post-sales", "ambal-auto-south-india", fileUrl],
+//         kwargs: {
+//           // campaign_id: campaignObjectiveId, // <--- Passing the selected objective ID to the task
+//           campaign_objective_id: campaignObjectiveId, // <--- Also passing here for clarity if backend expects specific key
+//           audience_name: audienceName,
+//           // campaign_name: audienceName,
+//           workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+//           source: "csv",
+//           tags: tags,
+//           source_name: sourceName || "Uploaded via csv",
+//           mapping: fieldMapping,
+//         },
+//         runtime_limit: 3600,
+//         cancellable: true,
+//       }),
+//     },
+//   );
+
+//   if (!response.ok) {
+//     const errorBody = await response.text();
+//     throw new Error(`Task start failed: ${errorBody}`);
+//   }
+
+//   return response.json();
+// }
 async function startImportTask(
   category,
   audienceName,
   fileUrl,
   tags = [],
   sourceName = "",
-  fieldMapping = {}
+  fieldMapping = {},
+  campaignIdOrObjectiveId = "" // Accepts either ID
 ) {
+  // 1. Base kwargs
+  const kwargs = {
+    audience_name: audienceName,
+    workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+    source: "csv",
+    tags: tags,
+    source_name: sourceName || "Uploaded via csv",
+    mapping: fieldMapping,
+  };
+
+  // 2. Determine which ID key to use
+  if (campaignIdOrObjectiveId) {
+    // Check if UUID (Campaign ID)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(campaignIdOrObjectiveId);
+    
+    if (isUuid) {
+      kwargs.campaign_id = campaignIdOrObjectiveId;
+    } else {
+      // Assume slug (Campaign Objective ID)
+      kwargs.campaign_objective_id = campaignIdOrObjectiveId;
+    }
+  }
+
   const response = await fetch(
     `${APP_BASE_URL}/gryd/task/autocrm-core/import_leads_from_csv`,
     {
@@ -120,19 +204,11 @@ async function startImportTask(
       headers: HEADERS,
       body: JSON.stringify({
         args: [category || "post-sales", "ambal-auto-south-india", fileUrl],
-        kwargs: {
-          campaign_id: "626952a0-1ac7-3a7c-85aa-c46d30897ea4",
-          campaign_objective_id: "626952a0-1ac7-3a7c-85aa-c46d30897ea4",
-          workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
-          source: "csv",
-          tags: tags,
-          source_name: sourceName || "Uploaded via csv",
-          mapping: fieldMapping,
-        },
+        kwargs: kwargs,
         runtime_limit: 3600,
         cancellable: true,
       }),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -142,16 +218,15 @@ async function startImportTask(
 
   return response.json();
 }
-
-// --- 6. Create Audience Task Record (DB) ---
+// 6. Create Audience Task Record (DB) ---
 async function createAudienceTask(taskData) {
   const response = await fetch(
-    `${APP_BASE_URL}/gryd/db/objects/audience_task`,
+    `${APP_BASE_URL}/gryd/db/object/audience_task`,
     {
-      method: "PUT",
+      method: "POST",
       headers: HEADERS,
       body: JSON.stringify(taskData),
-    }
+    },
   );
 
   if (!response.ok) {
@@ -164,12 +239,10 @@ async function createAudienceTask(taskData) {
 
 // --- 7. UPDATE Audience Task Record (DB) ---
 async function updateAudienceTask(taskId, updateData) {
-  // FIX: Using query param ?task_id=... as requested
-  const url = new URL(`${APP_BASE_URL}/gryd/db/objects/audience_task`);
-  url.searchParams.append("task_id", taskId);
+  const url = new URL(`${APP_BASE_URL}/gryd/db/object/audience_task/${taskId}`);
 
   const response = await fetch(url.toString(), {
-    method: "POST", // Using PUT as per screenshot
+    method: "PATCH", 
     headers: HEADERS,
     body: JSON.stringify(updateData),
   });
@@ -205,19 +278,27 @@ async function getTaskResult(taskId) {
   if (!response.ok) {
     throw new Error(`Failed to fetch result: ${response.statusText}`);
   }
-
+  updateAudienceTask(taskId, { fetched_result: true }).catch((err) =>
+    console.error("Error updating fetched_result:", err)
+  );
   return response.json();
 }
 
-// --- 10. Fetch Audience List (For Table) ---
+//  Fetch Audience List (For Table) ---
 async function fetchAudienceTasks() {
   return fetchAPIData("audience_task");
 }
 
-// --- 11. Fetch Dealership Campaigns ---
+// --- NEW: Fetch Campaign Objectives ---
+async function fetchCampaignObjectives(campaignType) {
+  // Convert 'pre_sales' to 'pre-sales' to match API expectation
+  const type = campaignType ? campaignType.replace(/_/g, "-") : "";
+  return fetchAPIData("campaign_objective", { campaign_type: type });
+}
+
+// Fetch Dealership Campaigns ---
 async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
   try {
-    // Use admin role header as per the curl command
     const adminHeaders = {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -227,7 +308,6 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
       "X-GRYD-ROLE": "admin",
     };
 
-    // Use 127.0.0.1:5008 directly to match the curl command exactly
     const baseUrl =
       typeof window !== "undefined" &&
       (window.location.hostname === "localhost" ||
@@ -236,52 +316,28 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
         : APP_BASE_URL;
 
     const url = `${baseUrl}/gryd/db/objects/dealership_campaign`;
-    console.log("[fetchDealershipCampaigns] Fetching from:", url);
-    console.log("[fetchDealershipCampaigns] Headers:", adminHeaders);
-
-    // Try GET first (like other db/objects endpoints work)
+    
     let response = await fetch(url, {
       method: "GET",
       headers: adminHeaders,
     });
 
-    console.log(
-      "[fetchDealershipCampaigns] GET Response status:",
-      response.status
-    );
-
-    // If GET returns 405 (Method Not Allowed), use POST as per curl command
     if (!response.ok && response.status === 405) {
-      console.log(
-        "[fetchDealershipCampaigns] GET not allowed, using POST as per curl..."
-      );
       response = await fetch(url, {
         method: "POST",
         headers: adminHeaders,
-        body: "", // Empty string as per curl command --data ''
+        body: "", 
       });
-      console.log(
-        "[fetchDealershipCampaigns] POST Response status:",
-        response.status
-      );
     }
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[fetchDealershipCampaigns] Error response:", errorText);
       throw new Error(`API Error: ${response.status} ${errorText}`);
     }
 
     const json = await response.json();
-    console.log("[fetchDealershipCampaigns] Response data:", json);
-
-    // Response format: { data: [], total_number: 2, page_number: 1, page_size: 50, ... }
     const items = json?.data ?? [];
     const total = json?.total_number ?? 0;
-
-    console.log(
-      `[fetchDealershipCampaigns] Returning ${items.length} items, total: ${total}`
-    );
 
     return {
       items,
@@ -317,6 +373,7 @@ function capitalize(str) {
 
 export {
   fetchAPIData,
+  deleteAPIData,
   fetchPivotCountForCampaign,
   uploadFileToGryd,
   extractCsvHeadersAPI,
@@ -327,6 +384,7 @@ export {
   getTaskResult,
   fetchAudienceTasks,
   fetchDealershipCampaigns,
+  fetchCampaignObjectives,
   epochToIST,
   capitalize,
 };

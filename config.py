@@ -28,6 +28,13 @@ AUTOCRM_MESSAGE_DELIVERED_ITEM = "message_delivered"
 AUTOCRM_RESPONSE_PROVIDED_PRICE = os.environ.get("AUTOCRM_RESPONSE_PROVIDED_PRICE", 0.90)
 AUTOCRM_RESPONSE_PROVIDED_UNITS = "500_characters"
 AUTOCRM_RESPONSE_PROVIDED_ITEM = "response_to_query"
+WHATSAPP_PROVIDER_NAME="airtel"
+WHATSAPP_PROVIDER_NUMBER="917795030574"
+VOICE_PROVIDER_NAME ="tata"
+MAX_AUDIENCE_ERRORS = os.environ.get("MAX_AUDIENCE_ERRORS", 10)
+DEFAULT_OTP = os.environ.get("DEFAULT_OTP", "560102")
+ALLOWED_COUNTRY_CODES = list(map(str.strip, os.environ.get("ALLOWED_COUNTRY_CODES", "+971,+966,+62,+63,+91,+1").split(",")))
+OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe")
 BASE_DIR = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_DIR, "data")
 if BASE_DIR not in sys.path:

@@ -8,8 +8,8 @@ from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
 json = hp.json
-from yield_response import yield_result,yield_error, yield_status
-from prompt import run_prompt_sync
+from conversation.yield_response import yield_result,yield_error, yield_status
+from conversation.prompt import run_prompt_sync
 
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 gryd.set_queue_manager()

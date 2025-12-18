@@ -2,38 +2,19 @@
 import functools
 import os
 import sys
-import re
 import json
 import time
 import uuid
 import base64
 import pprint
 import requests
-import mimetypes
-import urllib.parse
 import orjson
-# import pdfkit
-import smtplib
-import boto3
-import types
 from dateutil.relativedelta import relativedelta 
-from io import BytesIO
 from decimal import Decimal
 from uuid import UUID
-from pathlib import Path
-from tempfile import NamedTemporaryFile
 from datetime import datetime, timedelta
-from itertools import islice
-from email.message import EmailMessage
-from email.utils import make_msgid
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
 from typing import Optional, Dict, Any, List, Union, Callable,Tuple,Generator
-# from PIL import Image
-from urllib.parse import urlparse
-import csv
-import io
+# from urllib.parse import urlparse
 from os.path import (
     exists as ispath,
     dirname,
@@ -45,7 +26,9 @@ from os.path import (
     sep as dirsep,
     isfile
 )
-from validate_email import validate_email
+
+#TEST from validate_email import validate_email
+
 # --- Set import path for internal modules ---
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
@@ -450,7 +433,12 @@ def truncate_values(data, max_len=50):
     else:
         return data
 
+def get_template_details(template_id):
     
+    with get_pg_connector() as pg:
+        template_details=pg.get("template","template_id",template_id)
+        return template_details
+
 # ####################### IMPORTANT For Whatsapp Communication ###################################
 # @gryd.is_a_task(function_name="upsert_message_status")
 # @timelogger()
@@ -559,9 +547,9 @@ class AuthManager:
         """
         logger.info("[AuthManager]::: GETTING CREDS")
 
-        if not enterprise_id:
-            logger.warning("[HEADERS] Enterprise ID missing. Returning empty headers.")
-            return {}
+        # if not enterprise_id:
+        #     logger.warning("[HEADERS] Enterprise ID missing. Returning empty headers.")
+        #     return {}
 
         start_time = time.time()
 

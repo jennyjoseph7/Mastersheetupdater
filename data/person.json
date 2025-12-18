@@ -246,6 +246,25 @@
             "option_others": true
         },
         {
+            "name":"previous_contact_channel",
+            "type": "text",
+            "options": [
+                "rcs",
+                "email",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "voice_phone",
+                "whatsapp_chat",
+                "whatsapp_voice_note",
+                "whatsapp_voice_call",
+                "zoom_bot",
+                "ms_teams"
+            ]
+        },
+        {
             "name": "timezone",
             "title": "Timezone",
             "type": "text",

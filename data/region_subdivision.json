@@ -1,0 +1,158 @@
+{
+    "name": "region_subdivision",
+    "model_type": "default",
+    "parents": [
+        "region"
+    ],
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.region.region_id",
+            "indexed": true
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.region.region_name"
+        },
+        {
+            "name": "country_name",
+            "refers": "parents.region.country_name"
+        },
+        {
+            "name": "subdivision_parent_id",
+            "refers": "parents.region_subdivision.subdivision_id"
+        },
+        {
+          "name": "languages",
+          "type": "list",
+          "list_type": "text",
+          "option_others": true,
+          "ui_element": "tags",
+          "options": [
+            "english",
+            "hindi",
+            "kannada",
+            "telugu",
+            "tamil",
+            "malayalam",
+            "odia",
+            "bengali",
+            "marathi",
+            "gujarati",
+            "bengali",
+            "assamese",
+            "punjabi",
+            "spanish",
+            "arabic",
+            "french",
+            "bahasa_indonesia",
+            "tagalog",
+            "portuguese"
+          ],
+          "default": {
+            "function": "get_from_model",
+            "args": [
+              "region",
+              "region_id",
+              "languages"
+            ]
+          }
+        },
+        {
+          "name": "subdivision_level_guidelines",
+          "type": "text",
+          "default": {
+            "function": "get_from_model",
+            "args": [
+              "region",
+              "region_id",
+              "region_level_guidelines"
+            ]
+          }
+        },
+        {
+          "name": "subdivision_level_guardrails",
+          "type": "text",
+          "default": {
+            "function": "get_from_model",
+            "args": [
+              "region",
+              "region_id",
+              "region_level_guardrails"
+            ]
+          }
+        },
+        {
+            "name": "subdivision_category",
+            "type": "text",
+            "options": [
+                "Province",
+                "State",
+                "District",
+                "Municipality",
+                "Region",
+                "Territory",
+                "Zone",
+                "Division",
+                "Sub-division",
+                "Sub-region",
+                "Sub-zone",
+                "Sub-division",
+                "Burough",
+                "Ward",
+                "Prefecture",
+                "Union Territories",
+                "County",
+                "Council",
+                "Municipal Corporation",
+                "Canton",
+                "Parish",
+                "Other",
+                "Other"
+            ]
+        },
+        {
+            "name": "subdivision_name",
+            "type": "text",
+            "required": true,
+            "indexed": true
+        },
+        {
+            "name": "subdivision_id",
+            "type": "text",
+            "id": true,
+            "auto_updater": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "subdivision_name",
+                    "region_name"
+                ],
+                "kwargs": {
+                    "attribute_join": "-",
+                    "is_unique": true,
+                    "separator": "-",
+                    "case": "lower",
+                    "skip_empty": true
+                }
+            }
+        }
+    ]
+}

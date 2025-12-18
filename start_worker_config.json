@@ -17,6 +17,12 @@
 			"entry_point": "get_whatsapp_template_agent.py",
 			"parallel_threads": 2,
 			"shutdown_time": 0
+		},
+		{
+			"name" : "campaign_idea_creator",
+			"entry_point" : "campaign_idea_creator.py",
+			"parallel_threads" : 2,
+			"shutdown_time" : 0
 		}
 	],
 	"workers" : [

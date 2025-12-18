@@ -1,7 +1,6 @@
 from connectors.whatsapp_connectors.source_connectors import *
 
-
-
+from typing import Any
 class AirtelCampaignManager:
     def __init__(self,*args,**kwargs):
         self.template_func_dict = {
@@ -48,14 +47,15 @@ class AirtelCampaignManager:
         template_id = message_data.get("template_id") or message_data.get("template_name", "")
         response_type = message_data.get("type", "template")
         variable_params = message_data.get("template_variables", [])
-        payload = message_data.get("template_buttons_payload", [])
+        payload = message_data.get("template_buttons_payload", []) or message_data.get("template_button_payloads", [])
 
         # logger.info(f"TEST message_data ----{message_data}, variable_params ----{variable_params}")
         # Resolve variables from params_data
         variables = [params_data.get(param, '') for param in variable_params]
         variables = [] if all(item in ("", None) for item in variables) else variables
 
-        logger.info(f"TEST variables ----{variables}")
+        # logger.info(f"TEST variables ----{variables}")
+        # logger.info(f"TEST payload ----{payload}")
         return {
             "airtel_function_sequence": ["template"],
             "type": response_type,

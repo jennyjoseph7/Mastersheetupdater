@@ -1,4 +1,4 @@
-from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as dbhp
+from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as dbhp, beats as cron_worker
 from gryd_worker.gryd_routes import payload_decorator
 from models import model as base_model
 from ai_service import ai_service_app
@@ -48,7 +48,7 @@ def post_autocrm_data(data_name):
     logger.info(f"Data posted successfully: {data_name}")
 
 
-def SETUP(skip_models = False, skip_data = False, start_models_from = None, start_data_from = None):
+def SETUP(skip_models = False, skip_data = False, start_models_from = None, start_data_from = None, skip_cron = False):
     gryd.setup_gryd_enterprise(AUTOCRM_APP_ENTERPRISE_ID, email = AUTOCRM_ADMIN_ID, phone_number = AUTOCRM_ADMIN_PHONE_NUMBER, password = AUTOCRM_ADMIN_PASSWORD)
     enterprise = base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
     if not skip_models:
@@ -67,6 +67,8 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
                     continue
                 start_data_from = None
                 post_autocrm_data(data_name)
+    if not skip_cron:
+        cron_worker.add_cron_job(AUTOCRM_APP_ENTERPRISE_ID, "clear_otp_cache", "cron", "*/15 * * * *", logger = logger)
 
 
 @app.route("/webhook/<channel>/<channel_provider>", methods = ["GET","POST"])
