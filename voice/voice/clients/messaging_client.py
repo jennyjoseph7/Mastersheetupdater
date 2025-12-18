@@ -1,4 +1,3 @@
-
 import os
 import json
 import sys, os
@@ -99,7 +98,12 @@ class MessagingClient:
         """
         self.session_id = session_id
         self.base_url = base_url or AUTOCRM_MESSEGING_SERVER_URL
-        self.ws_url = f"{self.base_url}?room_id={self.session_id}"
+        self.ws_url = f"{self.base_url}/{tag}/{self.session_id}_{tag}"
+        # self.ws_url = f"{self.base_url}/{tag}"
+        if tag=='output_client':
+            self.ws_url = self.ws_url+f'/{self.session_id}'
+            # self.ws_url = self.ws_url+'/test_session'
+        # self.ws_url += f'?room_id={self.session_id}_{tag}'
 
         self.ws: Optional[WebSocketApp] = None
         self.on_message_callback = on_message_callback
@@ -171,6 +175,16 @@ class MessagingClient:
             message_size = len(raw_message.encode('utf-8'))
 
             self.metrics.record_received(message_size)
+            
+            # message_tag = message.get('tag')
+            # if message_tag=='output_manager':
+                
+            #     logger.info(f"[{self.tag}] Received message: {message_type} ({message_size} bytes)")
+            #     message.pop('tag', None)
+            #     message_json = json.dumps(message)
+            #     if self.ws:
+            #         self.ws.send(message_json)
+            #     return
             #logger.info(f"[{self.tag}] Received message: {message_type} ({message_size} bytes)")
 
             # logger.info(f"Recieved message: {message}")
@@ -258,6 +272,7 @@ class MessagingClient:
             return False
 
         try:
+            # message.pop('tag', None)
             message_json = json.dumps(message)
             message_size = len(message_json.encode('utf-8'))
 
