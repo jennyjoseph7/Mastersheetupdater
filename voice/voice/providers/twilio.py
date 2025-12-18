@@ -8,6 +8,8 @@ import os
 from voice.voice.providers.provider_base import ProviderBase
 import json
 import base64
+import audioop
+import array
 import asyncio
 import logging
 import traceback
@@ -105,11 +107,13 @@ def outbound_call_twiml():
     logger.info('Request headers: %s', dict(request.headers))
 
     params = request.args.to_dict()
+    session_id = params.get('session_id')
+    
     twiml_response = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
     <Response>
         <Connect>
-            <Stream url=\"wss://autobot-messenger.gryd.in/ws?room_id=test_session\">
-                <Parameter name="session_id" value="{params.get('session_id')}"></Parameter>
+            <Stream url=\"wss://autobot-messenger.gryd.in/ws/twilio/{session_id}/{session_id}_input_client\">
+                <Parameter name="session_id" value="{session_id}"></Parameter>
             </Stream>
         </Connect>
     </Response>"""
@@ -121,7 +125,8 @@ class MessageHandler(ProviderBase):
 
     def __init__(self):
         super().__init__("Twilio")
-
+        self._resample_state = None
+        
     def parse_incoming(self, raw_message: Dict[str, Any]) -> dict:
         """Convert Twilio message to generic format"""
         msg_type = raw_message.get('event')
@@ -214,9 +219,6 @@ class MessageHandler(ProviderBase):
 
     def _mulaw_to_pcm16(self, mulaw_b64: str) -> typing.Union[str, bytes]:
         """Convert base64 mulaw to base64 PCM16 and amplify"""
-        import base64
-        import audioop
-        import array
 
         mulaw_bytes = base64.b64decode(mulaw_b64)
         pcm_bytes = audioop.ulaw2lin(mulaw_bytes, 2)
@@ -225,17 +227,6 @@ class MessageHandler(ProviderBase):
         if samples:
             max_amp_before = max(abs(s) for s in samples)
             avg_amp_before = sum(abs(s) for s in samples) / len(samples)
-            
-            # AMPLIFY: Normal speech should be 1000-10000 range
-            if max_amp_before < 500:
-                amplification = 50.0
-                pcm_bytes = audioop.mul(pcm_bytes, 2, amplification)
-                
-                samples_after = array.array('h', pcm_bytes)
-                max_amp_after = max(abs(s) for s in samples_after)
-                logger.info(f"[Twilio] Amplified audio: {max_amp_before} -> {max_amp_after} (×{amplification})")
-            else:
-                logger.info(f"[Twilio] Audio OK: max={max_amp_before}, avg={avg_amp_before:.1f}")
         
         return pcm_bytes
     
@@ -250,23 +241,17 @@ class MessageHandler(ProviderBase):
         Returns:
             Base64 encoded mulaw audio at 8000 Hz
         """
-        import base64
-        import audioop
 
-        if isinstance(pcm16_b64, str):
-            pcm_bytes = base64.b64decode(pcm16_b64)
-        else:
-            pcm_bytes = pcm16_b64
-
-        # Resample to 8000 Hz if needed (Twilio requirement)
+        pcm_bytes = (base64.b64decode(pcm16_b64) if isinstance(pcm16_b64, str) else pcm16_b64)
+        
         if source_sample_rate != 8000:
-            pcm_bytes, _ = audioop.ratecv(
-                pcm_bytes,      # input data
-                2,              # sample width (16-bit = 2 bytes)
-                1,              # number of channels (mono)
-                source_sample_rate,  # input sample rate
-                8000,           # output sample rate (Twilio requirement)
-                None            # no state (for streaming would need to maintain state)
+            pcm_bytes, self._resample_state = audioop.ratecv(
+                pcm_bytes, # input data
+                2, # sample width (16-bit = 2 bytes)
+                1, # number of channels (mono)
+                source_sample_rate, # input sample rate
+                8000, # output sample rate (Twilio requirement)
+                self._resample_state,
             )
             logger.debug(f"[Twilio] Resampled audio from {source_sample_rate}Hz to 8000Hz")
 

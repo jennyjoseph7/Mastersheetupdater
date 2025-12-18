@@ -329,7 +329,8 @@ def get_example_states_and_solutions(*args, **kwargs):
         "- If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose if the arent already in the purpose flow.",
         "\n- If a purpose flow is completed, you should provide a confirmation message to the user with the details of the booking.",
         "\n- After the purpose is completed already in this conversation, do not urge them again.",
-        "\n- if the customer provides you a date and time you should always check against the current date time and validate. also you should always provide the DD-MM-YYYY format for the date you want to mention. Do not say today or tomorrow or other such references to date."
+        "\n- If the customer provides you a date and time you should always check against the current date time and validate. also you should always provide the DD-MM-YYYY format for the date you want to mention. Do not say today or tomorrow or other such references to date.",
+        "\n- If the customer requests a callback or requests to speak with a human or a phone call in any way, you should say - 'Someone will be with you soon'.",
     ]
     if kwargs.get("campaign_data").get("why_user_should_avail_this"):
         examples.append("\n- Following are the reasons the user should avail this offer - {}".format(kwargs.get("campaign_data").get("why_user_should_avail_this")))

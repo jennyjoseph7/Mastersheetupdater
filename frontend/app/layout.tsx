@@ -20,8 +20,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Microbot Analytics",
-  description: "Dashboard for monitoring Microbot performance",
+  title: "autoNgage Analytics",
+  description: "Dashboard for monitoring autoNgage performance",
   generator: "v0.app",
 };
 
