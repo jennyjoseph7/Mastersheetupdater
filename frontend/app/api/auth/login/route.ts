@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   try {
     const { email, password, captchaToken } = await request.json();
 
-    console.log("[v0] Login attempt:", { email });
+    console.log("[autoNgage] Login attempt:", { email });
 
     if (!captchaToken) {
       return NextResponse.json(
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
         .toString(36)
         .substring(7)}`;
 
-      console.log("[v0] Login successful for:", email);
+      console.log("[autoNgage] Login successful for:", email);
 
       return NextResponse.json(
         {
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       { status: 401 }
     );
   } catch (error) {
-    console.error("[v0] Login error:", error);
+    console.error("[autoNgage] Login error:", error);
     return NextResponse.json(
       {
         success: false,

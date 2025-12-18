@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           setUser(JSON.parse(userData));
         } catch (error) {
-          console.error("[v0] Failed to parse user data:", error);
+          console.error("[autoNgage] Failed to parse user data:", error);
           localStorage.removeItem("auth_token");
           localStorage.removeItem("user_data");
         }
