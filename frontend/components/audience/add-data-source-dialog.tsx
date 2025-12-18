@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,9 +15,9 @@ import { MapFields } from "./steps/map-fields";
 import { PreviewConfirm } from "./steps/preview-confirm";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import type { DataSource } from "@/app/audience/page";
-// Import the new createAudienceTask function
 import { startImportTask, createAudienceTask } from "@/utils/api";
 
+// NEW PROP: prefilledData
 interface AddDataSourceDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -26,6 +26,11 @@ interface AddDataSourceDialogProps {
       [key: string]: any;
     }
   ) => void;
+  prefilledData?: {
+    category?: string;
+    objectiveId?: string;
+    campaignId?: string;
+  };
 }
 
 export interface FieldMapping {
@@ -51,6 +56,8 @@ export interface DataSourceFormData {
   taskStatus?: string;
   audienceName: string;
   category: string;
+  campaignObjectiveId?: string;
+  campaignId?: string; // Storing the draft campaign ID
   tags: string[];
   sampleData: any[];
   audienceSize: number;
@@ -69,11 +76,13 @@ export function AddDataSourceDialog({
   isOpen,
   onClose,
   onSave,
+  prefilledData, // Destructure prop
 }: AddDataSourceDialogProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [isStartingImport, setIsStartingImport] = useState(false);
 
+  // Initialize with prefilled data
   const [formData, setFormData] = useState<DataSourceFormData>({
     sourceType: null,
     sourceName: "",
@@ -89,13 +98,27 @@ export function AddDataSourceDialog({
     taskStatus: undefined,
     errorCsvUrl: undefined,
     audienceName: "",
-    category: "",
+    category: prefilledData?.category || "",
+    campaignObjectiveId: prefilledData?.objectiveId || "",
+    campaignId: prefilledData?.campaignId || "", // Initialize with draft ID
     tags: [],
     sampleData: [],
     audienceSize: 0,
     processedCount: 0,
     errorCount: 0,
   });
+
+  // Re-sync props if dialog is reused without unmounting
+  useEffect(() => {
+    if (isOpen && prefilledData) {
+        setFormData(prev => ({
+            ...prev,
+            category: prefilledData.category || prev.category,
+            campaignObjectiveId: prefilledData.objectiveId || prev.campaignObjectiveId,
+            campaignId: prefilledData.campaignId || prev.campaignId,
+        }));
+    }
+  }, [isOpen, prefilledData]);
 
   const updateFormData = (updates: Partial<DataSourceFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
@@ -104,7 +127,6 @@ export function AddDataSourceDialog({
   const triggerImportTask = async () => {
     setIsStartingImport(true);
     try {
-      // 1. Prepare Mapping
       const mappingPayload: Record<string, string> = {};
       formData.fieldMappings.forEach(m => {
         if (m.enabled && m.sourceField && m.targetField) {
@@ -112,32 +134,32 @@ export function AddDataSourceDialog({
         }
       });
 
-      // 2. Start Import Task
+      // Use the prefilled Draft Campaign ID if available, otherwise fallback to Objective ID
+      const targetCampaignId = formData.campaignId || formData.campaignObjectiveId;
+      
+
       const data = await startImportTask(
         formData.category,
         formData.audienceName,
         formData.fileUrl,
         formData.tags,
         formData.sourceName,
-        mappingPayload
+        mappingPayload,
+        targetCampaignId // Passing the actual Campaign ID as requested
       );
 
       const taskId = data.job?.task_id;
       if (!taskId) throw new Error("No Task ID returned");
 
-      // 3. Create Audience Task Record in DB
-      // We use the same campaign_id as used in startImportTask (hardcoded in api.js)
-      const campaignId = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943"; 
-
       await createAudienceTask({
         task_id: taskId,
         campaign_type: formData.category,
-        campaign_objective_id: campaignId, // Using Campaign ID as placeholder for Objective ID
-        campaign_id: campaignId,
+        campaign_objective_id: formData.campaignObjectiveId, 
+        campaign_id: targetCampaignId,
         audience_name: formData.audienceName,
         tags: formData.tags || [],
         csv_file_url: formData.fileUrl,
-        error_csv_link: "", // Will be updated later if errors occur
+        error_csv_link: "", 
         field_mapping: formData.fieldMappings.map(m => ({
           source_field: m.sourceField,
           target_field: m.targetField,
@@ -148,7 +170,6 @@ export function AddDataSourceDialog({
         csv_status: "pending"
       });
 
-      // 4. Update State & Move to Next Step
       updateFormData({ 
         taskId: taskId, 
         taskStatus: "started" 
@@ -187,7 +208,6 @@ export function AddDataSourceDialog({
   };
 
   const handleSave = () => {
-    // Just pass basic info back to parent, the real data is already in the DB via createAudienceTask
     const dataSource = {
       sourceName: formData.sourceName,
       audienceName: formData.audienceName,
@@ -196,7 +216,7 @@ export function AddDataSourceDialog({
       category: formData.category,
       tags: formData.tags,
       connectionDetails: {
-        taskId: formData.taskId,
+        taskId: formData.taskId, // Pass taskId back for auto-selection
       },
     };
     onSave(dataSource as any);
@@ -206,18 +226,14 @@ export function AddDataSourceDialog({
   const handleClose = () => {
     setCurrentStep(1);
     setCompletedSteps([]);
-    // Reset data logic...
     onClose();
   };
 
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
-        return !!(formData.audienceName && formData.category);
+        return !!(formData.audienceName && formData.category && formData.campaignObjectiveId);
       case 2:
-        if (formData.sourceType === "API") {
-          return !!(formData.sourceName && formData.baseUrl && formData.apiKey);
-        }
         return !!(
           formData.sourceName &&
           formData.file !== null &&
@@ -238,13 +254,16 @@ export function AddDataSourceDialog({
     completed: completedSteps.includes(step.number),
   }));
 
+  // Determine if we should hide category/objective inputs based on props
+  const isPrefilled = !!(prefilledData?.category && prefilledData?.objectiveId);
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="w-[80%] max-w-none sm:max-w-[80%] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {currentStep === 1
-              ? "Select Category & Add Audience Details"
+              ? (isPrefilled ? "Add Audience Details" : "Select Category & Add Audience Details")
               : currentStep === 2
               ? "Upload & Connection"
               : currentStep === 3
@@ -266,6 +285,7 @@ export function AddDataSourceDialog({
             <AssignAudienceDetails
               formData={formData}
               updateFormData={updateFormData}
+              isPrefilled={isPrefilled} // Pass prop to hide UI
             />
           )}
           {currentStep === 2 && (

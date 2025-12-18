@@ -89,7 +89,7 @@ export default function CampaignDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [campaignTypeFilter, setCampaignTypeFilter] =
-    useState<string>("post_sales"); // default
+    useState<string>("post-sales"); // default
 
   const [mergedCampaigns, setMergedCampaigns] = useState<Campaign[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -470,7 +470,7 @@ export default function CampaignDashboard() {
                   Current type:{" "}
                   {campaignTypeFilter === "pre_sales"
                     ? "Pre-Sales"
-                    : campaignTypeFilter === "post_sales"
+                    : campaignTypeFilter === "post-sales"
                     ? "Post-Sales"
                     : "Dealership"}
                 </p>
@@ -636,7 +636,7 @@ export default function CampaignDashboard() {
                         Campaign Type:{" "}
                         {campaignTypeFilter === "pre_sales"
                           ? "Pre-Sales"
-                          : campaignTypeFilter === "post_sales"
+                          : campaignTypeFilter === "post-sales"
                           ? "Post-Sales"
                           : "Dealership"}
                       </Button>
@@ -656,7 +656,7 @@ export default function CampaignDashboard() {
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
-                          setCampaignTypeFilter("post_sales");
+                          setCampaignTypeFilter("post-sales");
                           setPage(1);
                         }}
                       >

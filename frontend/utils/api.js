@@ -125,6 +125,46 @@ async function extractCsvHeadersAPI(fileUrl) {
 }
 
 // Start Import Task ---
+// async function startImportTask(
+//   category,
+//   audienceName,
+//   fileUrl,
+//   tags = [],
+//   sourceName = "",
+//   fieldMapping = {},
+//   campaignObjectiveId = ""
+// ) {
+//   const response = await fetch(
+//     `${APP_BASE_URL}/gryd/task/autocrm-core/import_leads_from_csv`,
+//     {
+//       method: "POST",
+//       headers: HEADERS,
+//       body: JSON.stringify({
+//         args: [category || "post-sales", "ambal-auto-south-india", fileUrl],
+//         kwargs: {
+//           // campaign_id: campaignObjectiveId, // <--- Passing the selected objective ID to the task
+//           campaign_objective_id: campaignObjectiveId, // <--- Also passing here for clarity if backend expects specific key
+//           audience_name: audienceName,
+//           // campaign_name: audienceName,
+//           workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+//           source: "csv",
+//           tags: tags,
+//           source_name: sourceName || "Uploaded via csv",
+//           mapping: fieldMapping,
+//         },
+//         runtime_limit: 3600,
+//         cancellable: true,
+//       }),
+//     },
+//   );
+
+//   if (!response.ok) {
+//     const errorBody = await response.text();
+//     throw new Error(`Task start failed: ${errorBody}`);
+//   }
+
+//   return response.json();
+// }
 async function startImportTask(
   category,
   audienceName,
@@ -132,7 +172,31 @@ async function startImportTask(
   tags = [],
   sourceName = "",
   fieldMapping = {},
+  campaignIdOrObjectiveId = "" // Accepts either ID
 ) {
+  // 1. Base kwargs
+  const kwargs = {
+    audience_name: audienceName,
+    workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+    source: "csv",
+    tags: tags,
+    source_name: sourceName || "Uploaded via csv",
+    mapping: fieldMapping,
+  };
+
+  // 2. Determine which ID key to use
+  if (campaignIdOrObjectiveId) {
+    // Check if UUID (Campaign ID)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(campaignIdOrObjectiveId);
+    
+    if (isUuid) {
+      kwargs.campaign_id = campaignIdOrObjectiveId;
+    } else {
+      // Assume slug (Campaign Objective ID)
+      kwargs.campaign_objective_id = campaignIdOrObjectiveId;
+    }
+  }
+
   const response = await fetch(
     `${APP_BASE_URL}/gryd/task/autocrm-core/import_leads_from_csv`,
     {
@@ -140,15 +204,7 @@ async function startImportTask(
       headers: HEADERS,
       body: JSON.stringify({
         args: [category || "post-sales", "ambal-auto-south-india", fileUrl],
-        kwargs: {
-          campaign_id: "626952a0-1ac7-3a7c-85aa-c46d30897ea4",
-          campaign_objective_id: "626952a0-1ac7-3a7c-85aa-c46d30897ea4",
-          workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
-          source: "csv",
-          tags: tags,
-          source_name: sourceName || "Uploaded via csv",
-          mapping: fieldMapping,
-        },
+        kwargs: kwargs,
         runtime_limit: 3600,
         cancellable: true,
       }),
@@ -162,7 +218,6 @@ async function startImportTask(
 
   return response.json();
 }
-
 // 6. Create Audience Task Record (DB) ---
 async function createAudienceTask(taskData) {
   const response = await fetch(
@@ -223,13 +278,22 @@ async function getTaskResult(taskId) {
   if (!response.ok) {
     throw new Error(`Failed to fetch result: ${response.statusText}`);
   }
-
+  updateAudienceTask(taskId, { fetched_result: true }).catch((err) =>
+    console.error("Error updating fetched_result:", err)
+  );
   return response.json();
 }
 
 //  Fetch Audience List (For Table) ---
 async function fetchAudienceTasks() {
   return fetchAPIData("audience_task");
+}
+
+// --- NEW: Fetch Campaign Objectives ---
+async function fetchCampaignObjectives(campaignType) {
+  // Convert 'pre_sales' to 'pre-sales' to match API expectation
+  const type = campaignType ? campaignType.replace(/_/g, "-") : "";
+  return fetchAPIData("campaign_objective", { campaign_type: type });
 }
 
 // Fetch Dealership Campaigns ---
@@ -320,6 +384,7 @@ export {
   getTaskResult,
   fetchAudienceTasks,
   fetchDealershipCampaigns,
+  fetchCampaignObjectives,
   epochToIST,
   capitalize,
 };
