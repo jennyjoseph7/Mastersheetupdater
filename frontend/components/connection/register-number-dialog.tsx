@@ -253,7 +253,7 @@ export function RegisterNumberDialog({ open, onOpenChange, onSubmit }: RegisterN
                 <h3 className="font-semibold">Additional Information</h3>
                 <div className="space-y-2">
                   <Label htmlFor="expectedTraffic">
-                    Expected Traffic for Business Initiated & User Initiated Microbot:
+                    Expected Traffic for Business Initiated & User Initiated autoNgage:
                   </Label>
                   <Textarea
                     id="expectedTraffic"
