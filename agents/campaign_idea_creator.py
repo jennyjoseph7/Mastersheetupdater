@@ -9,9 +9,12 @@ except ImportError:
     from base_agent import BaseAgent
 
 import sys
-
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, PROJECT_ROOT)
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+# PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# sys.path.insert(0, PROJECT_ROOT)
 
 from config import AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
 gryd.SERVICE = AUTOCRM_AGENT_SERVICE_NAME
