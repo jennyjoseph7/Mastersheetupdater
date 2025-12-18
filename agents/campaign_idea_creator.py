@@ -1,20 +1,26 @@
 import json
-import os
-from datetime import datetime
+import os, requests
 from ai_service import ai_service_app
 import random
 
 try:
-    from .base_agent import BaseAgent, gryd
+    from .base_agent import BaseAgent
 except ImportError:
-    from base_agent import BaseAgent, gryd 
+    from base_agent import BaseAgent
 
 import sys
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+# PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# sys.path.insert(0, PROJECT_ROOT)
 
-# /autobot_agents/agents → go one level up → /autobot_agents
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, PROJECT_ROOT)
-
+from config import AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
+gryd.SERVICE = AUTOCRM_AGENT_SERVICE_NAME
+AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
+gryd.set_queue_manager()
+QUEUE_MANAGER = gryd.get_queue_manager(AUTOCRM_AGENT_SERVICE_NAME)
 
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 
@@ -52,32 +58,23 @@ class CampaignIdeaCreatorAgent(BaseAgent):
           "Exchange Old Car",
           "Book a Test Drive",
           "Request a Call Back"
-        ],
-        "channels": [
-          "whatsapp_chat",
-          "email"
         ]
     }
 
     """
 
     # Constants
-    VALID_CHANNELS = [
-        "rcs", "email", "web_chat", "web_chat_voice", "fb_chat", 
-        "insta_chat", "twitter_chat", "voice_phone", "whatsapp_chat", 
-        "whatsapp_voice_note", "whatsapp_voice_call", "zoom_bot", "ms_teams"
-    ]
     
     PRE_SALE_FIELDS = [
         "campaign_type", "campaign_name", "campaign_tagline", "campaign_objective",
         "idea", "campaign_offer", "campaign_description", "campaign_tone",
-        "urgency_hook", "ctas", "channels"
+        "urgency_hook", "ctas"
     ]
     
     POST_SALE_FIELDS = [
         "campaign_type", "campaign_name", "campaign_objective", "idea",
         "campaign_tagline", "campaign_offer", "campaign_description",
-        "campaign_tone", "urgency_hook", "ctas", "channels"
+        "campaign_tone", "urgency_hook", "ctas"
     ]
     
     PRE_SALE_KEYWORDS = {"pre-sale", "pre_sale", "pre sale", "pre-sales", "pre_sales", "presales"}
@@ -175,10 +172,6 @@ class CampaignIdeaCreatorAgent(BaseAgent):
            - campaign_tone: non-empty string describing the tone (e.g., "Persuasive", "Urgent", "Exciting").
            - urgency_hook: single short string (ONE urgency sentence; e.g., "Limited stock available — offer ends soon!")
            - ctas: array of 2-3 non-empty strings "cta_library": [ "Download Brochure", "Compare Variants", "Compare with Other Brands", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Confirm Booking", "Exchange Old Car"], the "Request a Call Back" will be always there but you need to translate it according to the first language. But remember that it should be under 20 characters.
-           - channels: array of 1-2 strings from this exact list only: 
-             ["rcs", "email", "web_chat", "web_chat_voice", "fb_chat", "insta_chat", "twitter_chat", 
-              "voice_phone", "whatsapp_chat", "whatsapp_voice_note", "whatsapp_voice_call", 
-              "zoom_bot", "ms_teams"]
         4. PRESERVATION: If a field exists in the user's existing data, preserve it exactly.
         5. NO NULLS/EMPTY: Never output null, empty string, or empty list for any field.
         6. NO EXTRA KEYS: Do not add languages, budgets, metrics, dates, audiences, or any keys other than the allowed list.
@@ -201,7 +194,6 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         - Generate only the missing fields from the allowed list above.
         - Ensure 'ctas' is a list of 2-3 short CTAs focused on purchase conversion.
         - One urgency hook is required to create purchase urgency.
-        - Ensure 'channels' contains 1-2 allowed channel values relevant for pre-sales outreach.
         - Focus on attracting new customers and driving vehicle purchases.
         - Do NOT output anything beyond the allowed keys.
         - Check custom objectives for extra info {self.custom_objectives}, Utilize this to generate email, idea and other all. Do not add any emoji to email even if it is there in custom_objectives.
@@ -234,7 +226,6 @@ class CampaignIdeaCreatorAgent(BaseAgent):
            - campaign_description: non-empty string (2-4 concise sentences).
            - urgency_hook: single short string (ONE urgency sentence)
            - ctas: array of 2-3 non-empty strings (example: ["Schedule Service", "Renew Warranty"]) (maximum 20 characters allowed)
-           - channels: array of 1-2 strings from allowed list only
            - idea: idea will be a overall campaign suggestion, It will be a 2-3 lines of an explaination of the overall campaign in a attractive way, It will be different than the campaign_description and will give a shorter attractive idea to the dealer.
            - campaign_tagline: This will be tagline based on the idea.
            - campaign_tone: You have generated the idea and now this is the tone of the idea that you generated like formal, professional or maybe other
@@ -369,13 +360,10 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         return final_data
 
     def apply_fallbacks(self, final_data, missing_fields):
-        """Apply fallbacks ONLY for ctas and channels, skip others."""
+        """Apply fallbacks ONLY for ctas , skip others."""
         for field in missing_fields:
             if field == "ctas":
                 final_data[field] = ["Request a Call Back"]
-                self.logger.info(f"Applied fallback for: {field}")
-            elif field == "channels":
-                final_data[field] = ["email", "voice_phone"]
                 self.logger.info(f"Applied fallback for: {field}")
             else:
                 # For other fields, leave them as None - they must be generated
@@ -389,16 +377,6 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         # Remove offer if not applicable
         if self.is_no_offer(final_data.get("campaign_offer")):
             final_data.pop("campaign_offer", None)
-        
-        # Validate channels
-        if final_data.get("channels"):
-            final_data["channels"] = [
-                channel for channel in final_data["channels"] 
-                if channel in self.VALID_CHANNELS
-            ]
-            # Ensure at least one valid channel
-            if not final_data["channels"]:
-                final_data["channels"] = ["email"]
         
         # Preserve languages
         if self.languages:
@@ -477,7 +455,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
             return final_data
 
 
-AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
+
 
 
 @gryd.is_a_task('generate_campaign_idea', logger_param='logger', job_param='job')
@@ -489,7 +467,6 @@ def generate_campaign_idea(campaign_type, campaign_objective, dealership_idea=No
         dealership_idea = dealership_idea or {}
         updates = {
             'campaign_type': campaign_type,
-            'dealership_id': dealership_id,
             'campaign_objective': campaign_objective
         }
         for key, val in updates.items():
@@ -498,16 +475,60 @@ def generate_campaign_idea(campaign_type, campaign_objective, dealership_idea=No
 
         agent = CampaignIdeaCreatorAgent(source=dealership_idea, logger=logger)
         result = agent.run()
+
+        dealership_id = dealership_idea.get("dealership_id",None)
         
         #Post to database if dealership_id provided
         if dealership_id:
-            dim = gryd.base_model.Model('dealership_idea', AUTOCRM_APP_ENTERPRISE_ID)
-            result.update({
-                "campaign_type": campaign_type,
-                "dealership_id": dealership_id,
-                "campaign_objective": campaign_objective
+
+            logger.info("Posting to the dealership_idea db")
+
+            # try:
+            #     dim = gryd.base_model.Model('dealership_idea', AUTOCRM_APP_ENTERPRISE_ID)
+            #     logger.info(f"Posting result to model 'dealership_idea' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
+            #     dim.post(result)
+            #     logger.info("Post completed successfully!")
+            # except Exception as db_error:
+            #    logger.error(f"Failed posting to Gryd model: {db_error}")
+
+
+            import json
+
+
+            url = "https://autobot-webapp-dev.gryd.in/gryd/db/object/dealership_idea"
+
+            payload = json.dumps({
+              "ctas": result.get("ctas",[]),
+              "idea": result.get("idea",""),
+              "languages": result.get("languages",[]),
+              "urgency_hook": [
+                result.get("urgency_hook","")
+              ],
+              "campaign_name": result.get("campaign_name",""),
+              "campaign_tone": result.get("campaign_tone",""),
+              "campaign_type": result.get("campaign_type",""),
+              "dealership_id": dealership_id,
+              "campaign_offer": result.get("campaign_offer",""),
+              "campaign_tagline": result.get("campaign_tagline",""),
+              "campaign_objective": [
+                result.get("campaign_objective","")
+              ],
+              "campaign_description": result.get("campaign_description","")
             })
-            dim.post(result)
+            headers = {
+              'Content-Type': 'application/json',
+              'X-GRYD-ENTERPRISE-ID': 'autocrm',
+              'X-GRYD-TOKEN': '53014452-7df1-351c-9b79-af13d3d6b92f',
+              'X-GRYD-SESSION-ID': '94b970d4-5c2b-3762-bf65-272901d0ad53',
+              'Accept': 'application/json',
+              'X-GRYD-ROLE': 'agent'
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload)
+            logger.info(f"posted : {payload}")
+
+            print(response.text)
+
         
         return result
         
