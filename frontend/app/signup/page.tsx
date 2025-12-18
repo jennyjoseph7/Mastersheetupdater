@@ -55,7 +55,10 @@ import {
 } from "@/components/ui/select";
 import {
   dealershipSignup,
+  dealershipUpdateDetails,
+  generateOTP,
   type DealershipSignupRequest,
+  type DealershipUpdateDetailsRequest,
   ApiError,
 } from "@/lib/api";
 
@@ -71,6 +74,13 @@ export default function DealerSignup() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<ReCAPTCHA>(null);
+  const [phoneOtpToken, setPhoneOtpToken] = useState<string | null>(null);
+  const [phoneOtp, setPhoneOtp] = useState("");
+  const [emailOtpToken, setEmailOtpToken] = useState<string | null>(null);
+  const [emailOtp, setEmailOtp] = useState("");
+  const [isGeneratingOtp, setIsGeneratingOtp] = useState(false);
+  const [isGeneratingEmailOtp, setIsGeneratingEmailOtp] = useState(false);
+  const [otpError, setOtpError] = useState("");
 
   // Get reCAPTCHA site key from environment
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
@@ -104,6 +114,60 @@ export default function DealerSignup() {
     state: "",
   });
 
+  const handleGenerateOTP = async () => {
+    if (!registrationData.phone) {
+      setOtpError("Please enter a phone number first");
+      return;
+    }
+    if (!registrationData.email) {
+      setOtpError("Please enter an email address first");
+      return;
+    }
+
+    setIsGeneratingOtp(true);
+    setOtpError("");
+    setPhoneOtpToken(null);
+    setEmailOtpToken(null);
+
+    try {
+      // Generate phone OTP
+      const phoneResponse = await generateOTP(
+        registrationData.phone,
+        "whatsapp"
+      );
+      if (!phoneResponse.token) {
+        setOtpError("Failed to generate phone OTP. Please try again.");
+        return;
+      }
+      setPhoneOtpToken(phoneResponse.token);
+
+      // Generate email OTP automatically
+      try {
+        const emailResponse = await generateOTP(
+          registrationData.email,
+          "email"
+        );
+        if (emailResponse.token) {
+          setEmailOtpToken(emailResponse.token);
+        }
+      } catch (emailErr) {
+        // If email OTP fails, we'll use phone OTP token as fallback
+        console.error("Failed to generate email OTP:", emailErr);
+        setEmailOtpToken(phoneResponse.token); // Fallback to phone token
+      }
+
+      setOtpError("");
+    } catch (err) {
+      const errorMessage =
+        err instanceof ApiError
+          ? err.message
+          : "Failed to generate OTP. Please try again.";
+      setOtpError(errorMessage);
+    } finally {
+      setIsGeneratingOtp(false);
+    }
+  };
+
   const handleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -111,6 +175,16 @@ export default function DealerSignup() {
     // Validate passwords match
     if (registrationData.password !== registrationData.confirmPassword) {
       setError("Passwords do not match");
+      return;
+    }
+
+    // Validate password requirements
+    if (registrationData.password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
+    if (!/[a-zA-Z]/.test(registrationData.password)) {
+      setError("Password must contain at least one letter");
       return;
     }
 
@@ -129,6 +203,14 @@ export default function DealerSignup() {
     }
     if (!registrationData.phone) {
       setError("Phone is required");
+      return;
+    }
+    if (!phoneOtpToken) {
+      setError("Please generate OTP for your phone number");
+      return;
+    }
+    if (!phoneOtp) {
+      setError("Please enter the OTP sent to your phone number");
       return;
     }
     if (registrationData.brands.length === 0) {
@@ -183,20 +265,29 @@ export default function DealerSignup() {
 
       // Prepare API request
       const signupRequest: DealershipSignupRequest = {
-        args: [
-          registrationData.dealershipName,
-          registrationData.region,
-          registrationData.vehicleType,
-          registrationData.dealershipType,
-          registrationData.languages.length > 0
-            ? registrationData.languages
-            : ["english"],
-          brandSlugs.length > 0 ? brandSlugs : [],
-          registrationData.fullName,
-          registrationData.email,
-          registrationData.phone,
-        ],
+        args: [registrationData.dealershipName, registrationData.region],
         kwargs: {
+          primary_contact_name: registrationData.fullName,
+          primary_contact_email: registrationData.email,
+          primary_contact_phone: registrationData.phone,
+          password: registrationData.password,
+          confirm_password: registrationData.confirmPassword,
+          email_otp: emailOtp || phoneOtp, // Use email OTP if available, fallback to phone OTP
+          email_otp_token: emailOtpToken || phoneOtpToken, // Use email OTP token if available
+          phone_number_otp: phoneOtp,
+          phone_number_otp_token: phoneOtpToken,
+          ...(registrationData.vehicleType && {
+            vehicle_type: registrationData.vehicleType,
+          }),
+          ...(registrationData.dealershipType && {
+            dealership_type: registrationData.dealershipType,
+          }),
+          ...(registrationData.languages.length > 0 && {
+            languages: registrationData.languages,
+          }),
+          ...(brandSlugs.length > 0 && {
+            brands: brandSlugs,
+          }),
           ...(aliases.length > 0 && { aliases }),
           ...(registrationData.website && {
             website: registrationData.website,
@@ -216,6 +307,46 @@ export default function DealerSignup() {
 
       // Store the response data
       setSignupResponse(response);
+
+      // Update dealership details after successful signup
+      // Use dealership_id from response if available, otherwise construct from name and region
+      const dealershipId =
+        response.dealership_id ||
+        response.dealership_slug ||
+        `${registrationData.dealershipName.toLowerCase().replace(/\s+/g, "-")}-${registrationData.region}`;
+
+      try {
+        const updateRequest: DealershipUpdateDetailsRequest = {
+          args: [dealershipId],
+          kwargs: {
+            ...(registrationData.dealershipType && {
+              dealership_type: registrationData.dealershipType,
+            }),
+            ...(registrationData.languages.length > 0 && {
+              languages: registrationData.languages,
+            }),
+            ...(brandSlugs.length > 0 && {
+              supported_brands: brandSlugs,
+            }),
+            ...(aliases.length > 0 && { aliases }),
+            ...(registrationData.panNumber && {
+              pan_number: registrationData.panNumber,
+            }),
+            ...(registrationData.gstin && {
+              gstin: registrationData.gstin,
+            }),
+            ...(registrationData.website && {
+              website: registrationData.website,
+            }),
+          },
+        };
+
+        // Call update details API (don't fail signup if this fails)
+        await dealershipUpdateDetails(updateRequest);
+      } catch (updateError) {
+        // Log error but don't fail the signup process
+        console.error("Failed to update dealership details:", updateError);
+      }
 
       // Reset reCAPTCHA on successful registration
       if (isRecaptchaEnabled) {
@@ -484,25 +615,77 @@ export default function DealerSignup() {
                       <Label htmlFor="phone">
                         Phone <span className="text-destructive">*</span>
                       </Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="phone"
-                          type="tel"
-                          placeholder="+91 98765 43210"
-                          value={registrationData.phone}
-                          onChange={(e) =>
-                            setRegistrationData({
-                              ...registrationData,
-                              phone: e.target.value,
-                            })
-                          }
-                          className="pl-10"
-                          required
-                        />
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="phone"
+                            type="tel"
+                            placeholder="+91 98765 43210"
+                            value={registrationData.phone}
+                            onChange={(e) => {
+                              setRegistrationData({
+                                ...registrationData,
+                                phone: e.target.value,
+                              });
+                              // Reset OTP token if phone number changes
+                              if (phoneOtpToken) {
+                                setPhoneOtpToken(null);
+                                setPhoneOtp("");
+                              }
+                              setOtpError("");
+                            }}
+                            className="pl-10"
+                            required
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleGenerateOTP}
+                          disabled={isGeneratingOtp || !registrationData.phone}
+                        >
+                          {isGeneratingOtp ? "Generating..." : "Generate OTP"}
+                        </Button>
                       </div>
+                      {otpError && (
+                        <p className="text-sm text-destructive">{otpError}</p>
+                      )}
+                      {phoneOtpToken && (
+                        <p className="text-sm text-green-600">
+                          OTP sent successfully! Please check your phone.
+                        </p>
+                      )}
                     </div>
                   </div>
+
+                  {/* Phone OTP Input */}
+                  {phoneOtpToken && (
+                    <div className="space-y-2">
+                      <Label htmlFor="phoneOtp">
+                        Phone OTP <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="phoneOtp"
+                        type="text"
+                        placeholder="Enter OTP"
+                        value={phoneOtp}
+                        onChange={(e) => {
+                          // Only allow numbers and limit to 6 digits
+                          const value = e.target.value
+                            .replace(/\D/g, "")
+                            .slice(0, 6);
+                          setPhoneOtp(value);
+                        }}
+                        maxLength={6}
+                        className="font-mono text-center text-lg tracking-widest"
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Enter the 6-digit OTP sent to your phone number
+                      </p>
+                    </div>
+                  )}
 
                   {/* Region Selection */}
                   <div className="space-y-2">
@@ -674,17 +857,23 @@ export default function DealerSignup() {
                               className="flex items-center gap-1.5 px-3 py-1.5"
                             >
                               {brand}
-                              <X
-                                className="h-3.5 w-3.5 cursor-pointer hover:text-destructive transition-colors"
-                                onClick={() =>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
                                   setRegistrationData({
                                     ...registrationData,
                                     brands: registrationData.brands.filter(
                                       (b) => b !== brand
                                     ),
-                                  })
-                                }
-                              />
+                                  });
+                                }}
+                                className="ml-1.5 rounded-sm hover:bg-destructive/20 p-0.5 -mr-0.5 opacity-70 hover:opacity-100 transition-opacity"
+                                aria-label={`Remove ${brand}`}
+                              >
+                                <X className="h-3.5 w-3.5 cursor-pointer hover:text-destructive transition-colors" />
+                              </button>
                             </Badge>
                           ))}
                         </div>
@@ -839,6 +1028,10 @@ export default function DealerSignup() {
                           minLength={8}
                         />
                       </div>
+                      <p className="text-xs text-muted-foreground">
+                        Password must be at least 8 characters and contain at
+                        least one letter
+                      </p>
                     </div>
 
                     <div className="space-y-2">

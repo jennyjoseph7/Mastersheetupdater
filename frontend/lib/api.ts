@@ -80,22 +80,58 @@ export async function fetchPersonObjects() {
 export interface DealershipSignupRequest {
   args: [
     string, // dealership_name
-    string, // region
-    string, // vehicle_type
-    string, // dealership_type
-    string[], // languages
-    string[], // brands
-    string, // admin_name
-    string, // email
-    string // phone
+    string // region
   ];
   kwargs: {
     aliases?: string[];
     pan_number?: string;
     gstin?: string;
     website?: string;
+    vehicle_type?: string;
+    dealership_type?: string;
+    languages?: string[];
+    brands?: string[];
+    primary_contact_name?: string;
+    primary_contact_email?: string;
+    primary_contact_phone?: string;
+    password?: string;
+    confirm_password?: string;
+    email_otp?: string;
+    phone_number_otp?: string;
+    email_otp_token?: string;
+    phone_number_otp_token?: string;
   };
   _timeout?: number;
+}
+
+export async function generateOTP(contact: string, type: "whatsapp" | "email") {
+  const res = await fetch("/api/generate-otp", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ contact, type }),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    let errorMessage = `Request failed (${res.status})`;
+    try {
+      const errorText = await res.text();
+      const errorData = JSON.parse(errorText);
+      errorMessage =
+        errorData?.error || errorData?.message || errorText || errorMessage;
+    } catch {
+      // Use default error message
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  return res.json();
 }
 
 export class ApiError extends Error {
@@ -112,6 +148,52 @@ export class ApiError extends Error {
 
 export async function dealershipSignup(data: DealershipSignupRequest) {
   const res = await fetch("/api/dealership-signup", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(data),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    let errorMessage = `Request failed (${res.status})`;
+    try {
+      const errorText = await res.text();
+      const errorData = JSON.parse(errorText);
+      errorMessage =
+        errorData?.error || errorData?.message || errorText || errorMessage;
+    } catch {
+      // Use default error message
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  return res.json();
+}
+
+export interface DealershipUpdateDetailsRequest {
+  args: [string]; // dealership_id or dealership slug
+  kwargs: {
+    dealership_type?: string;
+    languages?: string[];
+    supported_brands?: string[];
+    aliases?: string[];
+    pan_number?: string;
+    gstin?: string;
+    website?: string;
+  };
+  _timeout?: number;
+}
+
+export async function dealershipUpdateDetails(
+  data: DealershipUpdateDetailsRequest
+) {
+  const res = await fetch("/api/dealership-update-details", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
