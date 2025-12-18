@@ -159,6 +159,17 @@
             "default": "initiated"
         },
         {
+          "name": "failure_reason",
+          "type": "text",
+          "options": [
+            "Message not delivered",
+            "Spam",
+            "Not reachable",
+            "Didn't pick up",
+            "Rejected"
+          ]
+        },
+        {
             "name": "contact_status_id",
             "type": "uid",
             "indexed": true,

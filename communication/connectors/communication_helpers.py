@@ -32,9 +32,12 @@ from os.path import (
 # --- Set import path for internal modules ---
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
+from gryd_worker import gryd, gryd_helpers as hp
+logger=gryd.logger
+
 # ------- Load All Configs ----------------------
 from connectors.communication_configs import *
-# ------------------------------------------------
+
 # Path to parent folder
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(PARENT_DIR)
@@ -603,8 +606,6 @@ class AuthManager:
         )
 
         return {}
-
-
 
 if __name__ == "__main__":
     # reset_rml_creds()

@@ -5,7 +5,7 @@ from connectors.communication_helpers import _wait_for_next_minute
 logger=hp.get_logger(__name__)
 import sys
 import os
-
+from models import validators as val
 
 # ---------------- CONFIG ----------------
 FILE_CHUNK_SIZE = 5* 1024 * 1024  # 5 MB

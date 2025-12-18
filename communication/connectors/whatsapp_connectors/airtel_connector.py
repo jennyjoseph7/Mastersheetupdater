@@ -1,19 +1,4 @@
-# from connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter,BaseWhatsappMessenger,WhatsappReceiverConnector,WhatsappMessangerConnector,SleepOverMessage
-# from connectors.communication_helpers import truncate_values,safe_orjson_dumps,NullEmptyCheck
-# from communication_configs import *
-# from typing import Optional,Dict,Any, List, Union, Callable,Tuple,Generator
-# import os
-# import uuid
-# import requests
-# import base64
 import types
-# import time
-# # from captcha.image import ImageCaptcha
-# # from PIL import Image
-# from PIL import Image
-# from io import BytesIO
-
-
 from connectors.whatsapp_connectors.source_connectors import *
 
 class AirtelWebhookConverter(BaseWebhookConverter):
@@ -213,7 +198,7 @@ class AirtelWebhookConverter(BaseWebhookConverter):
             # Extract required parameters
             message = kwargs.get("message", {})
             profile = kwargs.get("profile", {})
-            error_details = kwargs.get("error", {})
+            error_details = kwargs.get("errorDetails", {})
         
             # Update default message dictionary
             self.safe_update_dict({
@@ -244,7 +229,6 @@ class AirtelWebhookConverter(BaseWebhookConverter):
             # Flatten error details into self.default_message_dict
             if isinstance(error_details, dict):
                 self.safe_update_dict({f"error_{key}": value for key, value in error_details.items()})
-
 
             logger.info(f"Airtel webhook payload_converter: {kwargs}")
             # Extract and update additional context and media details
@@ -652,6 +636,7 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
 
         logger.info(f'Time taken to manage Airtel API for {default_payload.get("to")}: {time.time() - start_time} seconds' )
         return self.res
+    
     
     def handle_custom_template(self,*args,**kwargs):
         logger.info(f"[trigger custom template---]--{kwargs}")

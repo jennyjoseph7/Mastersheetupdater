@@ -8,10 +8,6 @@ import sys
 import json
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
-
-from communication.connectors.communication_helpers import _wait_for_next_minute,yield_gryd_task_results
-from communication.connectors.base_connector_communication import *
-
 # ---
 # from communication.connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappCampaignTemplate
 # from communication.connectors.user_source_connectors.source_connector import CampaignSourceFactory
@@ -19,11 +15,18 @@ from communication.connectors.base_connector_communication import *
 # from gryd_worker import gryd,gryd_helpers as hp
 # from communication.connectors.communication_configs import DB_TIMEZONE,WA_TO_DISPOSITION
 # ---
+
+from communication.connectors.base_connector_communication import *
+
+from communication.connectors.communication_helpers import _wait_for_next_minute,yield_gryd_task_results
+
+from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 from config import AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 QUEUE_MANAGER = gryd.get_queue_manager(AUTOCRM_CAMPAIGN_SERVICE_NAME)
-logger=hp.get_logger(__name__)
+logger=gryd.hp.get_logger(gryd.SERVICE)
+
 def clean_phone_number(phone_number: str) -> str:
     """
     Clean phone number:

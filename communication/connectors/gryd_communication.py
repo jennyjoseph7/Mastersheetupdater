@@ -5,7 +5,7 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from connectors.communication_helpers import *
 # from connectors.communication_configs import *
 from gryd_worker import gryd
-logger=get_logger(name=__name__)
+logger=gryd.logger
 START_MAIL_TASK="gryd_start_mail"
 CHANNEL_ALIASES = {
     "email": {"email", "mail"},
