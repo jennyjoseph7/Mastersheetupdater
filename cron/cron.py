@@ -389,6 +389,8 @@ def create_campaign_templates(logger=None, job=None):
                     }
                 
                     headers = data["auth_headers"]
+                    if not ordered_variables:
+                        payload["templateContent"].pop("sample", None)
                 
                 
                     print(payload)
