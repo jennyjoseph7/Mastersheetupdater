@@ -344,7 +344,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
                     model_identifier=self.model_identifier
                 )
             else:
-                ai_response = self._regenerate_missing_fields(
+                ai_response = self.regenerate_missing_fields(
                     final_data, missing_fields, all_fields, campaign_type
                 )
             
@@ -401,7 +401,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
                 self.logger.info("All fields generated successfully!")
                 break
                 
-            self.logger.info(f"Attempt {attempt}: Generating {len(missing_fields)} missing fields")
+            self.logger.info(f"Attempt {attempt}: Generating : {len(missing_fields)} missing fields : {missing_fields}")
             final_data = self.attempt_field_generation(final_data, missing_fields, fields, campaign_type, attempt)
         
         # Apply fallbacks for any remaining missing fields
