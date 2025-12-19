@@ -606,9 +606,10 @@ def update_template_status(dealership_id:str,logger=None, job=None):
                     continue
                 logger.info(f"response is {response}")
                 status = template_data.get("registrationStatus").lower()
-                if status != "pending_for_review":
-                    pg.update(table_name="template",id_attr="template_id", id=id,data={"status" : status})
-                    logger.info(f"Updated Successfully for template id = {id}")
+                if status == "pending_for_review":
+                    status = "pending"
+                pg.update(table_name="template",id_attr="template_id", id=id,data={"status" : status})
+                logger.info(f"Updated Successfully for template id = {id}")
             except Exception as e:
                # Log and continue to next one
                print(f"[FAILED] template {id}: {e}")
