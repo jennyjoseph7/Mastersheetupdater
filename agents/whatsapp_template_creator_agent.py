@@ -73,7 +73,7 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         self.input_data = source.get("data",{})
         self.dealership_id = source.get("dealership_id", "")
         self.languages = self._validate_languages(source.get("languages", ["english"]))
-        self.cta_buttons = source.get("cta_buttons", ["Get a Call Back"])
+        self.cta_buttons = source.get("cta_buttons", [])
         self.ai_generation = source.get("ai_generation",True)
         self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
 
@@ -145,7 +145,8 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
             - Allowed: 2 CTA buttons OR 3 quick reply buttons (not both).
             - Max length for button text: 20 characters.
             - Button text cannot contain placeholders.
-            - Quick reply button text must be concise (e.g., “Check Offers”, “Request a Callback”).
+            - Quick reply button text must be concise (e.g., “Check Offers”, "Book a Service", "Book a Testdrive", "Book Showroom Visit", “Request a Callback”).
+            - Buttons must have "Request a Callback" in all templates, This one is a mendatory requirement
 
         payload_key_rules:
           - Payload keys for buttons must be lowercase and unique.
@@ -187,8 +188,15 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         5. CTA HANDLING:
             - If existing CTA buttons are provided: {self.cta_buttons}, use them as suggested_ctas.
             - If no CTA buttons provided, generate 2-3 relevant CTAs, always including "Request a Call Back".
-            - CTA library for reference: ["Download Brochure", "Compare Variants", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Confirm Booking", "Exchange Old Car"]
-
+            - CTA eg. library for reference: ["Download Brochure", "Compare Variants", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Exchange Old Car"]
+            - Rules : These CTAs must be there when it comes to these campaign objectives :
+                    Free Service Due Reminder >> [Book a Service, Request a Call Back]
+                    General Service Due Reminder >> [Book a Service, Request a Call Back]
+                    Inactive Customer Reactivation >> [Book a Service, Request a Call Back]
+                    Service Overdue  >> [ Book a Service, Request a Call Back]
+                    Insurance Renewal Reminder >> [Renew Insurance, Request a Call Back]
+                    Extended Warranty Offer >> [Buy Extended Warranty, Request a Call Back]
+                    CCP >> [ Buy CCP, Request a Call Back ]
         6. CONTEXT:
             - Campaign Objective: {self.campaign_objective}
             - Campaign Type: {self.campaign_type}
