@@ -485,7 +485,7 @@ function CampaignCreateContent() {
                 endpoint = "/gryd/db/object/post_sales_campaign";
                 finalPayload = {
                     ...commonPayload,
-                    campaign_type: "post_sales",
+                    campaign_type: "post-sales",
                     workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
                     dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
                     campaign_objective_type: ["lead volume"],
@@ -779,7 +779,7 @@ function CampaignCreateContent() {
                     isOpen={isUploadDialogOpen}
                     onClose={() => setIsUploadDialogOpen(false)}
                     prefilledData={{
-                        category: campaignType === "presales" ? "pre_sales" : "post_sales",
+                        category: campaignType === "presales" ? "pre_sales" : "post-sales",
                         objectiveId: selectedObjective,
                         campaignId: createdCampaignId || undefined,
                     }}
