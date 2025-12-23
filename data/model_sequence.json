@@ -41,5 +41,8 @@
     "review",
     "paragraph",
     "billing",
-    "billing_report"
+    "billing_report",
+    "overall_campaign_summary",
+    "template_summary",
+    "campaign_performance_summary"
 ]
