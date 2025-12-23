@@ -84,7 +84,17 @@ Create a `.env.local` file in the frontend directory for environment variables:
 ```bash
 # Example .env.local
 NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your_recaptcha_site_key_here
 ```
+
+### reCAPTCHA Setup
+
+The login page uses Google reCAPTCHA v2 for bot protection. To set it up:
+
+1. Go to [Google reCAPTCHA Admin Console](https://www.google.com/recaptcha/admin)
+2. Register a new site and get your Site Key
+3. Add the Site Key to your `.env.local` file as `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`
+4. The reCAPTCHA will automatically appear on the login page
 
 ## Building and Deployment
 

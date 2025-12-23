@@ -6,7 +6,8 @@ from os.path import exists as ispath, dirname, basename, join as joinpath, abspa
 import sys
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from connectors.communication_helpers import *
-logger=hp.get_logger(__name__,level=hp.logging.DEBUG)
+from gryd_worker import gryd_helpers as hp
+logger=gryd.logger
 
 for _, module_name, _ in pkgutil.iter_modules(__path__):
     # logger.info(f"TEST connector module: {module_name}")

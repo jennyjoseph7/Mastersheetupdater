@@ -39,10 +39,107 @@ ALLOWED_COUNTRY_CODES = list(map(str.strip, os.environ.get("ALLOWED_COUNTRY_CODE
 OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe")
 
 #model names
-BILLING_MODEL_NAME = os.environ.get("BILLING_MODEL_NAME", "billing")
-SESSION_MODEL_NAME = os.environ.get("SESSION_MODEL_NAME", "session")
+SESSION_MODEL_NAME = "session"
+BILLING_MODEL_NAME = "billing"
 
-BASE_DIR = hp.dirname(hp.abspath(__file__))
-DATA_DIR = hp.joinpath(BASE_DIR, "data")
-if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
+BASE_PATH = hp.dirname(hp.abspath(__file__))
+DATA_DIR = hp.joinpath(BASE_PATH, "data")
+SERVICE = os.environ.get("SERVICE", "autocrm-app")
+if BASE_PATH not in sys.path:
+    sys.path.append(BASE_PATH)
+
+clogger = hp.get_logger(__name__)
+
+
+class AutocrmModel:
+
+    def __init__(self, model_name, logger = None):
+        self.model_name = model_name
+        self.logger = logger or clogger
+        self.model = gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
+
+    def get_model(self):
+        return self.model
+    
+    def get_attributes(self, *args, **kwargs):
+        return self.model.get_attributes(*args, **kwargs)
+
+    def post(self, data):
+        self.model.post(data)
+        self.logger.info(f"Data posted successfully: {self.model_name}")
+
+    def get(self, id):
+        return self.model.get(id)
+
+    def update(self, id, data):
+        self.model.update(id, data)
+        self.logger.info(f"Data updated successfully: {self.model_name}")
+
+    def delete(self, id):
+        self.model.delete(id)
+        self.logger.info(f"Data deleted successfully: {self.model_name}")
+
+    def filter(self, **kwargs):
+        return self.model.yield_list(**kwargs)
+
+    def list(self, **kwargs):
+        return self.model.list(**kwargs)
+
+    def count(self, **kwargs):
+        return self.model.count(**kwargs)
+
+    def delete_many(self, filters, **kwargs):
+        self.model.delete_many(filters, **kwargs)
+        self.logger.info(f"Data deleted successfully: {self.model_name}")
+    
+    def update_many(self, instance, filters = None,  **kwargs):
+        self.model.update_many(instance, filters, **kwargs)
+        self.logger.info(f"Data updated successfully: {self.model_name}")
+
+    def iadd(self, id, attribute, value):
+        self.model.iadd(id, attribute, value)
+        self.logger.info(f"Data added successfully: {self.model_name}")
+
+    def iupdate(self, id, instance):
+        self.model.iupdate(id, instance)
+        self.logger.info(f"Data updated successfully: {self.model_name}")
+
+def load_autocrm_models(logger = None):
+    logger = logger or clogger
+    models = {}
+    with hp.read_file(DATA_DIR, "model_sequence.json") as model_sequence:
+        for model_name in model_sequence:
+            models[model_name] = AutocrmModel(model_name, logger = logger)
+            logger.info(f"Loaded model: {model_name}")
+    return models
+
+def post_autocrm_model(model_name, enterprise = None, logger = None):
+    logger = logger or clogger
+    enterprise = enterprise or gryd.base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
+    with hp.read_file(DATA_DIR, f"{model_name}.json") as model_json:
+        logger.info(f"Posting model: {model_name}")
+        try:
+            enterprise.post_model(model_name, model = model_json)
+            logger.info(f"Model posted successfully: {model_name}")
+            return gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
+        except Exception as e:
+            logger.error(f"Error posting model: {model_name}")
+            raise
+
+def post_autocrm_data(data_name, logger = None):
+    logger = logger or clogger
+    filename = hp.joinpath(BASE_PATH, "seed", f"{data_name}s.json")
+    logger.info(f"Posting data: {data_name} from filename: {filename}")
+    if not hp.isfile(filename):
+        logger.error(f"File: {filename} not found")
+        raise FileNotFoundError(f"File: {filename} not found")
+    try:
+        m = AutocrmModel(model_name = data_name, logger = logger)
+        with hp.read_file(filename) as data_json:
+            for data in data_json:
+                m.post(data)
+                logger.info(f"Data posted successfully: {data_name}")
+        return m
+    except Exception as e:
+        logger.error(f"Error posting data for: {data_name} from filename: {filename}")
+        raise

@@ -45,9 +45,21 @@
             ]
         },
         {
+            "name": "campaign_id",
+            "type": "text",
+            "indexed": true,
+            "default": "inbound"
+        },
+        {
+            "name": "channel",
+            "type": "text",
+            "indexed": true
+        },
+        {
             "name": "item_description",
             "type": "text",
-            "placeholder": "campaign type - campaign objective - campaign name - channel - provider - phone number or email"
+            "placeholder": "campaign type - campaign objective - campaign name - channel - provider - phone number or email",
+            "indexed": true
         },
         {
             "name": "item_quantity",
@@ -271,7 +283,19 @@
         },
         {
             "name": "credit_balance_after",
-            "type": "number"
+            "type": "number",
+            "default": {
+                "function": "subtract_attributes",
+                "args": [
+                    "credit_balance_before",
+                    "item_total"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": [
+                "credit_balance_before",
+                "item_total"
+            ]
         },
         {
             "name": "gst_number",

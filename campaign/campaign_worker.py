@@ -7,26 +7,28 @@ import time
 import flask as Flask
 import uuid
 # sys.path.insert(0, dirname(dirname(abspath(__file__))))
-from gryd_worker import gryd,gryd_routes
-import helpers as hp
-logger=hp.get_logger(__name__)
+from gryd_worker import gryd,gryd_routes, gryd_helpers as hp
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from autocrm_db_helper import get_pg_connector
-# from campaign_analytics_sp.loader import load_sql
 from agents.get_whatsapp_template_agent import get_whatsapp_template
 from campaign.campaign_manager import BaseCustomCampaignManager
-from config import AUTOCRM_CAMPAIGN_SERVICE_NAME,VOICE_PROVIDER_NAME
+from config import AUTOCRM_CAMPAIGN_SERVICE_NAME,VOICE_PROVIDER_NAME,WHATSAPP_PROVIDER_NAME
+
+
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
-QUEUE_MANAGER = gryd.get_queue_manager(AUTOCRM_CAMPAIGN_SERVICE_NAME)
+logger = gryd.hp.get_logger(gryd.SERVICE)
 
 logger.info(f"GRYD SERVICE---{gryd.SERVICE}")
+from communication.connectors.whatsapp_connectors.load_providers import load_providers
+from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
+
 
 def WARM_UP():
     logger.info("WARM_UP CALLED")
     with get_pg_connector() as pg:
-        # load_sql(pg)
+        load_providers(provider_name=WHATSAPP_PROVIDER_NAME)
         pass    
     return
 
@@ -45,7 +47,7 @@ def import_modules(module_name):
 module_list=["campaign"]
 imported_modules = dict(map(lambda module: (module, import_modules(module)), module_list))
 
-logger.info(f"List of all task {json.dumps(gryd.LIST_OF_TASKS or {}, indent=4,default=str)}   {imported_modules}")
+logger.info(f"List of all task campaign {json.dumps(gryd.LIST_OF_TASKS or {}, indent=4,default=str)}   {imported_modules}")
 
 
 
@@ -188,7 +190,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         return
 
     campaign_details = campaign_details[0]
-
+    logger.info(f"Campaign details: {json.dumps(campaign_details,indent=4)}")
     if isinstance(lead, dict):
         lead_data = lead
         lead_id = lead.get(lead_id_field)
@@ -220,7 +222,10 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         template_data = get_whatsapp_template(
             lead_id=lead_id,
             campaign_type=campaign_type,
-            # campaign_objective=campaign_details.get("campaign_objective"),
+            campaign_objective=campaign_details.get("campaign_objective"),
+            # campaign_objective= [
+            #     "Service Reminder"
+            # ],
             lead_info={}
         )
         if not template_data:

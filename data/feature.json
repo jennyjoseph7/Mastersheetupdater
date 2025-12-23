@@ -36,6 +36,11 @@
             "indexed": true
         },
         {
+            "name": "feature_sub_category",
+            "type": "text",
+            "indexed": true
+        },
+        {
             "name": "feature_name",
             "type": "text",
             "indexed": true
@@ -132,6 +137,7 @@
             "default": {
                 "args": [
                     "feature_category",
+                    "feature_sub_category",
                     "feature_name",
                     "value_type",
                     "unit"
@@ -148,6 +154,30 @@
             "name": "feature_id",
             "type": "uid",
             "id": true
+        },
+        {
+            "name": "standard_feature",
+            "type": "bool"
+        },
+        {
+            "name": "engine_dependent",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "drivetrain_dependent",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "seating_dependent",
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "transmission_dependent",
+            "type": "list",
+            "list_type": "text"
         }
     ]
 }

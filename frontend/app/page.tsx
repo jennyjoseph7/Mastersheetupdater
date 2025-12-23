@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import {
   fetchAPIData,
   fetchPivotCountForCampaign,
+  fetchPreSalesCampaigns,
+  fetchPostSalesCampaigns,
   fetchDealershipCampaigns,
   deleteAPIData,
   epochToIST,
@@ -126,6 +128,28 @@ export default function CampaignDashboard() {
       console.log("[fetchCampaigns] Fetching dealership campaigns...");
       const res = await fetchDealershipCampaigns();
       console.log("[fetchCampaigns] Dealership campaigns response:", res);
+      return {
+        merged: res?.items ?? [],
+        total: res?.total ?? 0,
+      };
+    }
+
+    // Handle pre-sales campaigns using the dedicated function
+    if (type === "pre-sales" || type === "pre_sales") {
+      console.log("[fetchCampaigns] Fetching pre-sales campaigns...");
+      const res = await fetchPreSalesCampaigns(page, ITEMS_PER_PAGE);
+      console.log("[fetchCampaigns] Pre-sales campaigns response:", res);
+      return {
+        merged: res?.items ?? [],
+        total: res?.total ?? 0,
+      };
+    }
+
+    // Handle post-sales campaigns using the dedicated function
+    if (type === "post-sales" || type === "post_sales") {
+      console.log("[fetchCampaigns] Fetching post-sales campaigns...");
+      const res = await fetchPostSalesCampaigns(page, ITEMS_PER_PAGE);
+      console.log("[fetchCampaigns] Post-sales campaigns response:", res);
       return {
         merged: res?.items ?? [],
         total: res?.total ?? 0,

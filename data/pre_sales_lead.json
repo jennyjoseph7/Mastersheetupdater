@@ -1021,6 +1021,7 @@
         },
         {
             "name": "showroom_days_open",
+            "force_update": "showroom_id",
             "type": "nested_object",
             "option_others": true,
             "options": [
@@ -1046,6 +1047,72 @@
                     "facilities_available"
                 ]
             }
+        },
+        {
+            "name": "region_subdivision_id",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "region_subdivision_id"
+                ]
+            },
+            "type": "text"
+        },
+        {
+            "name": "subdivision_name",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "region_subdivision",
+                    "region_subdivision_id",
+                    "subdivision_name"
+                ]
+            },
+            "type": "text"
+        },
+        {
+            "name": "languages",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "region_subdivision",
+                    "region_subdivision_id",
+                    "languages"
+                ]
+            },
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "subdivision_level_guidelines",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "region_subdivision",
+                    "region_subdivision_id",
+                    "subdivision_level_guidelines"
+                ]
+            },
+            "type": "text"
+        },
+        {
+            "name": "subdivision_level_guardrails",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "region_subdivision",
+                    "region_subdivision_id",
+                    "subdivision_level_guardrails"
+                ]
+            },
+            "type": "text"
         },
         {
             "name": "showroom_level_guidelines",
