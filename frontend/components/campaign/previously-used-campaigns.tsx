@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { fetchPreSalesCampaigns, fetchPostSalesCampaigns } from "@/utils/api";
 
 interface PreviousCampaign {
   id: string;
@@ -239,9 +240,138 @@ export function PreviouslyUsedCampaigns({
   const [previousCampaigns, setPreviousCampaigns] = useState<PreviousCampaign[]>([]);
 
   useEffect(() => {
-    // Fetch previous campaigns from localStorage
-    const fetchPreviousCampaigns = () => {
+    // Fetch previous campaigns from API for both pre-sales and post-sales, localStorage for others
+    const fetchPreviousCampaigns = async () => {
       try {
+        // For pre-sales campaigns, fetch from API
+        if (campaignType === "presales") {
+          try {
+            const apiResponse = await fetchPreSalesCampaigns(1, 10);
+            const apiCampaigns = apiResponse?.items ?? [];
+            
+            if (apiCampaigns.length > 0) {
+              const mappedCampaigns = apiCampaigns
+                .filter((campaign: any) => {
+                  const status = campaign.campaign_status?.toLowerCase() || "";
+                  return status === "active" || status === "live" || status === "completed";
+                })
+                .map((campaign: any) => {
+                  const channels = Array.isArray(campaign.channels) 
+                    ? campaign.channels.map((c: string) => {
+                        if (c.includes("whatsapp")) return "whatsapp";
+                        if (c.includes("email")) return "email";
+                        if (c.includes("voice") || c.includes("phone")) return "voice";
+                        return c.toLowerCase();
+                      })
+                    : [];
+                  
+                  return {
+                    id: campaign.campaign_id || campaign.id || `campaign-${Date.now()}-${Math.random()}`,
+                    name: campaign.campaign_name || "Untitled Campaign",
+                    objective: campaign.campaign_objective?.[0] || campaign.campaign_objective_id || "custom",
+                    objectiveSummary: campaign.campaign_objective_name || campaign.campaign_objective?.[0] || "Custom Campaign",
+                    channels: channels,
+                    previewImage: undefined,
+                    campaignType: "presales" as const,
+                    createdAt: campaign.created ? new Date(campaign.created * 1000).toISOString() : new Date().toISOString(),
+                    campaignData: {
+                      campaignName: campaign.campaign_name,
+                      selectedChannels: channels,
+                      selectedObjective: campaign.campaign_objective?.[0] || campaign.campaign_objective_id,
+                      campaignDescription: campaign.campaign_description,
+                      campaignTitle: campaign.campaign_name,
+                      tone: campaign.conversation_tone,
+                      callToAction: campaign.ctas?.[0],
+                      language: campaign.languages?.[0] || "english",
+                      duration: campaign.start_date && campaign.end_date ? {
+                        start: new Date(campaign.start_date * 1000).toISOString().split('T')[0],
+                        end: new Date(campaign.end_date * 1000).toISOString().split('T')[0],
+                      } : undefined,
+                      targetAudience: campaign.target_audience_tags || [],
+                    },
+                  } as PreviousCampaign;
+                })
+                .sort((a: PreviousCampaign, b: PreviousCampaign) => {
+                  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                })
+                .slice(0, 10);
+              
+              if (mappedCampaigns.length > 0) {
+                setPreviousCampaigns(mappedCampaigns);
+                return;
+              }
+            }
+          } catch (apiError) {
+            console.error("Error fetching pre-sales campaigns from API:", apiError);
+            // Fall through to localStorage/dummy data
+          }
+        }
+        
+        // For post-sales campaigns, fetch from API
+        if (campaignType === "postsales") {
+          try {
+            const apiResponse = await fetchPostSalesCampaigns(1, 10);
+            const apiCampaigns = apiResponse?.items ?? [];
+            
+            if (apiCampaigns.length > 0) {
+              const mappedCampaigns = apiCampaigns
+                .filter((campaign: any) => {
+                  const status = campaign.campaign_status?.toLowerCase() || "";
+                  return status === "active" || status === "live" || status === "completed";
+                })
+                .map((campaign: any) => {
+                  const channels = Array.isArray(campaign.channels) 
+                    ? campaign.channels.map((c: string) => {
+                        if (c.includes("whatsapp")) return "whatsapp";
+                        if (c.includes("email")) return "email";
+                        if (c.includes("voice") || c.includes("phone")) return "voice";
+                        return c.toLowerCase();
+                      })
+                    : [];
+                  
+                  return {
+                    id: campaign.campaign_id || campaign.id || `campaign-${Date.now()}-${Math.random()}`,
+                    name: campaign.campaign_name || "Untitled Campaign",
+                    objective: campaign.campaign_objective?.[0] || campaign.campaign_objective_id || "custom",
+                    objectiveSummary: campaign.campaign_objective_name || campaign.campaign_objective?.[0] || "Custom Campaign",
+                    channels: channels,
+                    previewImage: undefined,
+                    campaignType: "postsales" as const,
+                    createdAt: campaign.created ? new Date(campaign.created * 1000).toISOString() : new Date().toISOString(),
+                    campaignData: {
+                      campaignName: campaign.campaign_name,
+                      selectedChannels: channels,
+                      selectedObjective: campaign.campaign_objective?.[0] || campaign.campaign_objective_id,
+                      campaignDescription: campaign.campaign_description,
+                      campaignTitle: campaign.campaign_name,
+                      tone: campaign.conversation_tone,
+                      callToAction: campaign.ctas?.[0],
+                      language: campaign.languages?.[0] || "english",
+                      duration: campaign.start_date && campaign.end_date ? {
+                        start: new Date(campaign.start_date * 1000).toISOString().split('T')[0],
+                        end: new Date(campaign.end_date * 1000).toISOString().split('T')[0],
+                      } : undefined,
+                      targetAudience: campaign.target_audience_tags || [],
+                    },
+                  } as PreviousCampaign;
+                })
+                .sort((a: PreviousCampaign, b: PreviousCampaign) => {
+                  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                })
+                .slice(0, 10);
+              
+              if (mappedCampaigns.length > 0) {
+                setPreviousCampaigns(mappedCampaigns);
+                return;
+              }
+            }
+          } catch (apiError) {
+            console.error("Error fetching post-sales campaigns from API:", apiError);
+            // Fall through to localStorage/dummy data
+          }
+        }
+        
+        // Fallback to localStorage for other types or if API fails
         const storedCampaigns = JSON.parse(
           localStorage.getItem("campaigns") || "[]"
         );

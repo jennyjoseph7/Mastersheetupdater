@@ -382,7 +382,7 @@ console.log("Common Payload:", commonPayload);
             endpoint = "/gryd/db/object/post_sales_campaign";
             finalPayload = {
                 ...commonPayload,
-                campaign_type: "post_sales",
+                campaign_type: "post-sales",
                 workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
                 dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
                 campaign_objective_type: ["lead volume"],
