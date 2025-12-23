@@ -30,13 +30,6 @@ AUTOCRM_MESSAGE_DELIVERED_ITEM = "message_delivered"
 AUTOCRM_RESPONSE_PROVIDED_PRICE = os.environ.get("AUTOCRM_RESPONSE_PROVIDED_PRICE", 0.90)
 AUTOCRM_RESPONSE_PROVIDED_UNITS = "500_characters"
 AUTOCRM_RESPONSE_PROVIDED_ITEM = "response_to_query"
-<<<<<<< HEAD
-
-#Model names
-SESSION_MODEL_NAME = "session"
-BILLING_MODEL_NAME = "billing"
-
-=======
 WHATSAPP_PROVIDER_NAME="airtel"
 WHATSAPP_PROVIDER_NUMBER="917795030574"
 VOICE_PROVIDER_NAME ="tata"
@@ -44,7 +37,11 @@ MAX_AUDIENCE_ERRORS = os.environ.get("MAX_AUDIENCE_ERRORS", 10)
 DEFAULT_OTP = os.environ.get("DEFAULT_OTP", "560102")
 ALLOWED_COUNTRY_CODES = list(map(str.strip, os.environ.get("ALLOWED_COUNTRY_CODES", "+971,+966,+62,+63,+91,+1").split(",")))
 OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe")
->>>>>>> 176108085a46b2c460a4c3a4a06ad83238518e78
+
+#model names
+BILLING_MODEL_NAME = os.environ.get("BILLING_MODEL_NAME", "billing")
+SESSION_MODEL_NAME = os.environ.get("SESSION_MODEL_NAME", "session")
+
 BASE_DIR = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_DIR, "data")
 if BASE_DIR not in sys.path:

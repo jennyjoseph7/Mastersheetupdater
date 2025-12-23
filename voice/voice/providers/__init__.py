@@ -1,10 +1,27 @@
 
-import twilio
+from . import twilio
+from . import elevanlabs_tatatele
 
 
 PROVIDERS = {
-    'twilio': twilio
+    'twilio': twilio,
+    'tatatele': elevanlabs_tatatele,
 }
+
+PROVDER_RESPONSE_FORMAT = {
+    "twilio": {
+        "call_sid": "sid",
+        "message": "message", 
+        "success": "success"
+    },
+    "tatatele": {
+        "call_sid": "ref_id",
+        "message": "message",
+        "success": "success",
+    }
+}
+
+
 
 def get_provider(provider_name: str):
     """
@@ -23,3 +40,28 @@ def get_provider(provider_name: str):
         raise ValueError(f"Unknown provider: {provider_name}. Available: {list(PROVIDERS.keys())}")
 
     return provider
+
+def make_call(provider_name: str, payload:dict,  *args, **kwargs):
+    """
+    Make a call using the specified provider.
+    Specific provider function should be defined as make_call_<provider_name>
+    e.g. def make_call_tatatele(payload, *args, **kwargs):
+            #implementation
+    """
+    provider = get_provider(provider_name)
+    func = getattr(provider, f'make_call_{provider_name.lower()}')
+
+    if not func:
+        raise NotImplementedError(f"make_call not implemented for provider: {provider_name}")
+    
+    if not callable(func):
+        raise NotImplementedError(f"make_call not implemented for provider: {provider_name}")
+
+    r =  func(payload, *args, **kwargs)
+
+    return {
+        "call_sid": r.get(PROVDER_RESPONSE_FORMAT[provider_name]["call_sid"]),
+        "message": r.get(PROVDER_RESPONSE_FORMAT[provider_name]["message"]),
+        "success": r.get(PROVDER_RESPONSE_FORMAT[provider_name]["success"]),
+    }
+
