@@ -119,13 +119,7 @@
     {
       "name": "audience_task_ids",
       "type": "string_list",
-      "list_type": "text",
-      "ui_element": "tags",
-      "options": [
-        "Active Customers",
-        "Premium Leads",
-        "Test Audience"
-      ]
+      "list_type": "text"
     },
     {
       "name": "campaign_name",

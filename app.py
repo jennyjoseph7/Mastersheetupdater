@@ -19,42 +19,6 @@ app_dict = gryd_routes.make_app(__name__, current_module = __name__)
 app = app_dict['app']
 
 
-def load_autocrm_models():
-    models = {}
-    with hp.read_file(DATA_DIR, "model_sequence.json") as model_sequence:
-        for model_name in model_sequence:
-            models[model_name] = gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
-            logger.info(f"Loaded model: {model_name}")
-    return models
-
-def post_autocrm_model(model_name, enterprise = None):
-    enterprise = enterprise or base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
-    with hp.read_file(DATA_DIR, f"{model_name}.json") as model_json:
-        logger.info(f"Posting model: {model_name}")
-        try:
-            enterprise.post_model(model_name, model = model_json)
-            return gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
-        except Exception as e:
-            logger.error(f"Error posting model: {model_name}")
-            raise
-        logger.info(f"Model posted successfully: {model_name}")
-
-def post_autocrm_data(data_name):
-    filename = hp.joinpath(BASE_PATH, "seed", f"{data_name}s.json")
-    logger.info(f"Posting data: {data_name} from filename: {filename}")
-    if not hp.isfile(filename):
-        logger.error(f"File: {filename} not found")
-        raise FileNotFoundError(f"File: {filename} not found")
-    try:
-        m = gryd.base_model.Model(data_name, AUTOCRM_APP_ENTERPRISE_ID)
-        with hp.read_file(filename) as data_json:
-            for data in data_json:
-                m.post(data)
-        return m
-    except Exception as e:
-        logger.error(f"Error posting data for: {data_name} from filename: {filename}")
-        raise
-    logger.info(f"Data posted successfully: {data_name}")
 
 
 def SETUP(skip_models = False, skip_data = False, start_models_from = None, start_data_from = None, skip_cron = False):
