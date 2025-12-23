@@ -13,7 +13,8 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CORE_SERVICE_NAME, \
     MAX_AUDIENCE_ERRORS, \
     DEFAULT_OTP, \
     ALLOWED_COUNTRY_CODES, \
-    OTP_TEMPLATE_ID
+    OTP_TEMPLATE_ID, \
+    AutocrmModel
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 import csv
@@ -21,6 +22,7 @@ import requests
 import tempfile
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 from communication.connectors.whatsapp_connectors.airtel_connector import *
+import autocrm_validator
 
 
 gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME
@@ -1122,6 +1124,67 @@ def gryd_task_import_leads_from_csv(
         raise ValueError(f"Failed to create temporary files: {str(e)}") from e
     wind_up(csv_path, error_csv_path)
     return
+
+@gryd.is_a_task()
+def post_billing(dealership_id, transaction_type, item_name, item_description, transaction_date, item_quantity, item_price, item_unit, currency):
+    """
+    Post a billing transaction to the database to debit credits from dealership and create billing object. 
+
+    Parameters:
+    dealership_id (str): The dealership ID. Mandatory
+    transaction_type (str): The type of transaction (e.g. debit, credit).
+    item_name (str): The name of the item, eg - conversation.
+    item_description (str): The description of the item - "campaign type - campaign objective - campaign name - channel - provider - phone number or email".
+    transaction_date (datetime): The date of the transaction timestamp.
+    item_quantity (float): The quantity of the item number of credits.
+    item_price (float): The price of the item per credit cost.
+    item_unit (str): The unit of the item (e.g. credits).
+    currency (str): The currency of the transaction - example - ["credits", "INR", "USD", "EUR", "GBP", "AED", "SAR", "JPY"].
+
+    Returns:
+    None
+    """
+    if not dealership_id:
+        raise ValueError("Post Billing called without dealership_id")
+
+    timmm = hp.time()
+    tme = transaction_date
+    if not transaction_date:
+        tme = hp.now(as_datetime=False)
+    
+    new_balance = 0
+    current_balance = 0
+
+    with get_pg_connector() as db:
+        dealership = db.get("dealership","dealership_id", dealership_id)
+        if not dealership:
+            raise ValueError("Post Billing called without dealership_id")
+        current_balance = float(dealership.get('credits_balance',0))
+        deductable = -1*item_quantity
+        db.iadd("dealership","dealership_id", dealership_id, "credits_balance", deductable)
+    new_balance = current_balance - item_quantity
+    if new_balance <= 0:
+        logger.info(f"Dealership {dealership_id} has no credits left")
+        ##TODO maybe send email or some action here.
+
+    m = AutocrmModel("billing", logger = logger)
+
+    postable = {
+        "transaction_date" : tme,
+        "transaction_type" : transaction_type,
+        "item_name" : item_name,
+        "item_description" : item_description,
+        "item_quantity" : item_quantity, ## credits used or added
+        "item_price" : item_price,
+        "item_total" : item_quantity*item_price,
+        "item_units" : item_unit,
+        "currency" : currency,
+        "dealership_id" : dealership_id,
+        "status" : "success",
+        "credit_balance_before" : current_balance,
+        "credit_balance_after" : new_balance
+    }
+    m.post(postable)
 
 if __name__ == "__main__":
 
