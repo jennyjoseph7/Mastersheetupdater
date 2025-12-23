@@ -26,7 +26,7 @@ async function fetchAPIData(modelName, queryParams = {}) {
     return {
       items: json?.data ?? [],
       // Handle both 'total' and 'total_number' based on your API response example
-      total: json?.total ?? json?.total_number ?? 0, 
+      total: json?.total ?? json?.total_number ?? 0,
     };
   } catch (error) {
     console.error("API fetch error:", error);
@@ -38,7 +38,7 @@ async function deleteAPIData(modelName, id) {
   try {
     // Assuming DELETE endpoint uses singular object path
     const url = `${APP_BASE_URL}/gryd/db/delete/${modelName}/${id}`;
-    
+
     const response = await fetch(url, {
       method: "DELETE",
       headers: HEADERS,
@@ -48,7 +48,7 @@ async function deleteAPIData(modelName, id) {
       const text = await response.text();
       throw new Error(`Delete failed: ${text}`);
     }
-    
+
     return true;
   } catch (error) {
     console.error("Delete error:", error);
@@ -114,7 +114,7 @@ async function extractCsvHeadersAPI(fileUrl) {
         args: [fileUrl],
         kwargs: {},
       }),
-    },
+    }
   );
 
   if (!response.ok) {
@@ -187,8 +187,11 @@ async function startImportTask(
   // 2. Determine which ID key to use
   if (campaignIdOrObjectiveId) {
     // Check if UUID (Campaign ID)
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(campaignIdOrObjectiveId);
-    
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        campaignIdOrObjectiveId
+      );
+
     if (isUuid) {
       kwargs.campaign_id = campaignIdOrObjectiveId;
     } else {
@@ -208,7 +211,7 @@ async function startImportTask(
         runtime_limit: 3600,
         cancellable: true,
       }),
-    },
+    }
   );
 
   if (!response.ok) {
@@ -220,14 +223,11 @@ async function startImportTask(
 }
 // 6. Create Audience Task Record (DB) ---
 async function createAudienceTask(taskData) {
-  const response = await fetch(
-    `${APP_BASE_URL}/gryd/db/object/audience_task`,
-    {
-      method: "POST",
-      headers: HEADERS,
-      body: JSON.stringify(taskData),
-    },
-  );
+  const response = await fetch(`${APP_BASE_URL}/gryd/db/object/audience_task`, {
+    method: "POST",
+    headers: HEADERS,
+    body: JSON.stringify(taskData),
+  });
 
   if (!response.ok) {
     const errorBody = await response.text();
@@ -242,7 +242,7 @@ async function updateAudienceTask(taskId, updateData) {
   const url = new URL(`${APP_BASE_URL}/gryd/db/object/audience_task/${taskId}`);
 
   const response = await fetch(url.toString(), {
-    method: "PATCH", 
+    method: "PATCH",
     headers: HEADERS,
     body: JSON.stringify(updateData),
   });
@@ -296,6 +296,112 @@ async function fetchCampaignObjectives(campaignType) {
   return fetchAPIData("campaign_objective", { campaign_type: type });
 }
 
+// Fetch Pre-Sales Campaigns ---
+async function fetchPreSalesCampaigns(page = 1, pageSize = 50) {
+  try {
+    const adminHeaders = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
+      "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
+      "X-GRYD-ROLE": "admin",
+    };
+
+    const baseUrl =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1")
+        ? "http://127.0.0.1:5008"
+        : APP_BASE_URL;
+
+    const url = `${baseUrl}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}`;
+
+    let response = await fetch(url, {
+      method: "GET",
+      headers: adminHeaders,
+    });
+
+    if (!response.ok && response.status === 405) {
+      response = await fetch(url, {
+        method: "POST",
+        headers: adminHeaders,
+        body: "",
+      });
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.status} ${errorText}`);
+    }
+
+    const json = await response.json();
+    const items = json?.data ?? [];
+    const total = json?.total_number ?? 0;
+
+    return {
+      items,
+      total,
+    };
+  } catch (error) {
+    console.error("[fetchPreSalesCampaigns] Fetch error:", error);
+    return { items: [], total: 0 };
+  }
+}
+
+// Fetch Post-Sales Campaigns ---
+async function fetchPostSalesCampaigns(page = 1, pageSize = 50) {
+  try {
+    const adminHeaders = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
+      "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
+      "X-GRYD-ROLE": "admin",
+    };
+
+    const baseUrl =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1")
+        ? "http://127.0.0.1:5008"
+        : APP_BASE_URL;
+
+    const url = `${baseUrl}/gryd/db/objects/post_sales_campaign?page_number=${page}&page_size=${pageSize}`;
+
+    let response = await fetch(url, {
+      method: "GET",
+      headers: adminHeaders,
+    });
+
+    if (!response.ok && response.status === 405) {
+      response = await fetch(url, {
+        method: "POST",
+        headers: adminHeaders,
+        body: "",
+      });
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.status} ${errorText}`);
+    }
+
+    const json = await response.json();
+    const items = json?.data ?? [];
+    const total = json?.total_number ?? 0;
+
+    return {
+      items,
+      total,
+    };
+  } catch (error) {
+    console.error("[fetchPostSalesCampaigns] Fetch error:", error);
+    return { items: [], total: 0 };
+  }
+}
+
 // Fetch Dealership Campaigns ---
 async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
   try {
@@ -316,7 +422,7 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
         : APP_BASE_URL;
 
     const url = `${baseUrl}/gryd/db/objects/dealership_campaign`;
-    
+
     let response = await fetch(url, {
       method: "GET",
       headers: adminHeaders,
@@ -326,7 +432,7 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
       response = await fetch(url, {
         method: "POST",
         headers: adminHeaders,
-        body: "", 
+        body: "",
       });
     }
 
@@ -383,6 +489,8 @@ export {
   getTaskStatus,
   getTaskResult,
   fetchAudienceTasks,
+  fetchPreSalesCampaigns,
+  fetchPostSalesCampaigns,
   fetchDealershipCampaigns,
   fetchCampaignObjectives,
   epochToIST,

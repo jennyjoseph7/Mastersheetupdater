@@ -22,6 +22,8 @@ AUTOCRM_CALL_CONNECTED_UNITS = "count"
 AUTOCRM_CALL_COMPLETED_PRICE = os.environ.get("AUTOCRM_CALL_COMPLETED_PRICE", 0.167)
 AUTOCRM_CALL_COMPLETED_UNITS = "seconds"
 AUTOCRM_CALL_COMPLETED_ITEM = "call_completed"
+AUTOCRM_CURRENCY = os.environ.get("AUTOCRM_CURRENCY", "INR")
+AUTOCRM_WEBSOCKET_BASE_URL = os.environ.get("AUTOCRM_WEBSOCKET_BASE_URL", "wss://autobot-messenger.gryd.in/ws")
 AUTOCRM_MESSAGE_DELIVERED_PRICE = os.environ.get("AUTOCRM_MESSAGE_DELIVERED_PRICE", 0.75)
 AUTOCRM_MESSAGE_DELIVERED_UNITS = "count"
 AUTOCRM_MESSAGE_DELIVERED_ITEM = "message_delivered"
@@ -35,6 +37,11 @@ MAX_AUDIENCE_ERRORS = os.environ.get("MAX_AUDIENCE_ERRORS", 10)
 DEFAULT_OTP = os.environ.get("DEFAULT_OTP", "560102")
 ALLOWED_COUNTRY_CODES = list(map(str.strip, os.environ.get("ALLOWED_COUNTRY_CODES", "+971,+966,+62,+63,+91,+1").split(",")))
 OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe")
+
+#model names
+SESSION_MODEL_NAME = "session"
+BILLING_MODEL_NAME = "billing"
+
 BASE_PATH = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_PATH, "data")
 SERVICE = os.environ.get("SERVICE", "autocrm-app")

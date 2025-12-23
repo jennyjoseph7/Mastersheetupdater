@@ -117,6 +117,17 @@
       "refers": "parents.dealership.supported_brands_guidelines"
     },
     {
+      "name": "audience_task_ids",
+      "type": "string_list",
+      "list_type": "text",
+      "ui_element": "tags",
+      "options": [
+        "Active Customers",
+        "Premium Leads",
+        "Test Audience"
+      ]
+    },
+    {
       "name": "campaign_name",
       "type": "text",
       "indexed": true

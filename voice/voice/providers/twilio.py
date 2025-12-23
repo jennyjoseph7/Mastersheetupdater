@@ -3,9 +3,9 @@ import sys, os
 
 from typing import Any, Dict
 import typing
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-import os
-from voice.voice.providers.provider_base import ProviderBase
+# Add the autobot_agents root directory to path to find config and other modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+from .provider_base import ProviderBase
 import json
 import base64
 import audioop
@@ -26,7 +26,6 @@ from pprint import pprint
 from gryd_worker import gryd
 import time
 import utils
-from ..core.voice_app import run_async_session #tempararoy install for calling from rest api
 
 logger = utils.get_logger(__name__)
 
@@ -39,11 +38,11 @@ TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN") or os.environ.get("TWILIO_AUT
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER") or os.environ.get("TWILIO_PHONE_NUMBER")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID") or os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
-if not all([API_KEY, AGENT_ID, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, PHONE_NUMBER_ID]):
-    raise Exception("Missing required environment variables: API_KEY, AGENT_ID, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, PHONE_NUMBER_ID")
+# Note: Environment variable validation moved to runtime (when functions are called)
+# This allows the module to be imported without raising exceptions
 
 app = Blueprint('twilio_routes', __name__)
-twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN else None
 
 
 
@@ -89,6 +88,8 @@ def outbound_call():
 
     #temp for now
     # Start the user session in a background thread
+    # Import here to avoid circular import
+    from ..core.voice_app import run_async_session
     thread = Thread(
         target=run_async_session,
         kwargs=data,
