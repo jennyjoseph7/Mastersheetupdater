@@ -1,9 +1,8 @@
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as dbhp, beats as cron_worker
-from gryd_worker.gryd_routes import payload_decorator
+from gryd_worker.gryd_routes import payload_decorator, signup_decorator
 from models import model as base_model
-from ai_service import ai_service_app
 # from communication.connectors.connector_whatsapp import process_forwarded_webhook
-from db_routes import db_routes
+from db_routes import db_routes, ai_service_app
 # from voice.voice.providers.twilio import app as twilio_routes
 # from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_app
 import os
@@ -11,12 +10,22 @@ from flask import request
 from config import *
 import autocrm_validator
 
-gryd.SERVICE = f"{AUTOCRM_APP_ENTERPRISE_ID}-app"   
+
+gryd.SERVICE = SERVICE
+gryd.BASE_PATH = BASE_PATH
 QM = gryd.set_queue_manager()
 logger = gryd.hp.get_logger(AUTOCRM_APP_ENTERPRISE_ID)
 app_dict = gryd_routes.make_app(__name__, current_module = __name__)                                                                 
 app = app_dict['app']
 
+
+def load_autocrm_models():
+    models = {}
+    with hp.read_file(DATA_DIR, "model_sequence.json") as model_sequence:
+        for model_name in model_sequence:
+            models[model_name] = gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
+            logger.info(f"Loaded model: {model_name}")
+    return models
 
 def post_autocrm_model(model_name, enterprise = None):
     enterprise = enterprise or base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
@@ -31,9 +40,9 @@ def post_autocrm_model(model_name, enterprise = None):
         logger.info(f"Model posted successfully: {model_name}")
 
 def post_autocrm_data(data_name):
-    filename = hp.joinpath(BASE_DIR, "seed", f"{data_name}s.json")
+    filename = hp.joinpath(BASE_PATH, "seed", f"{data_name}s.json")
     logger.info(f"Posting data: {data_name} from filename: {filename}")
-    if not gryd.hp.isfile(filename):
+    if not hp.isfile(filename):
         logger.error(f"File: {filename} not found")
         raise FileNotFoundError(f"File: {filename} not found")
     try:
@@ -60,7 +69,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
                 start_models_from = None
                 post_autocrm_model(model_name, enterprise = enterprise)
     if not skip_data:
-        with hp.read_file(BASE_DIR, "seed", "data_sequence.json") as data_sequence:
+        with hp.read_file(BASE_PATH, "seed", "data_sequence.json") as data_sequence:
             for data_name in data_sequence:
                 if start_data_from and data_name != start_data_from:
                     logger.info(f"Skipping data: {data_name}, starting from: {start_data_from}")

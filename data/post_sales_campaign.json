@@ -156,6 +156,11 @@
       "refers": "parents.workshop.workshop_level_guardrails"
     },
     {
+      "name": "audience_task_ids",
+      "type": "string_list",
+      "list_type": "text"
+    },
+    {
       "name": "campaign_name",
       "type": "text",
       "required": true,
