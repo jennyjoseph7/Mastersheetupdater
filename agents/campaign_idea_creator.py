@@ -171,7 +171,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
            - campaign_description: non-empty string (2-4 concise sentences).
            - campaign_tone: non-empty string describing the tone (e.g., "Persuasive", "Urgent", "Exciting").
            - urgency_hook: single short string (ONE urgency sentence; e.g., "Limited stock available — offer ends soon!")
-           - ctas: array of 2-3 non-empty strings "cta_library": [ "Download Brochure", "Compare Variants", "Compare with Other Brands", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Confirm Booking", "Exchange Old Car"], the "Request a Call Back" will be always there but you need to translate it according to the first language. But remember that it should be under 20 characters.
+           - ctas: array of 2-3 non-empty strings "cta_library": [ "Download Brochure", "Compare Variants", "Compare with Other Brands", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Confirm Booking", "Exchange Old Car", "Know More", "Get Onroad price", "register to event"], the "Request a Call Back" will be always there but you need to translate it according to the first language. But remember that it should be under 20 characters.
         4. PRESERVATION: If a field exists in the user's existing data, preserve it exactly.
         5. NO NULLS/EMPTY: Never output null, empty string, or empty list for any field.
         6. NO EXTRA KEYS: Do not add languages, budgets, metrics, dates, audiences, or any keys other than the allowed list.
@@ -225,7 +225,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
            - campaign_offer: Check whether the dealer wants to give any offer : {json.dumps(existing_data.get("campaign_offer", "No Offer"))} . If not mentioned any offer then do not return offer. If offer is mentioned then make it sound attractive offer in {language} only.
            - campaign_description: non-empty string (2-4 concise sentences).
            - urgency_hook: single short string (ONE urgency sentence)
-           - ctas: array of 2-3 non-empty strings (example: ["Schedule Service", "Renew Warranty"]) (maximum 20 characters allowed)
+           - ctas: array of 2-3 non-empty strings (example: ["Schedule Service", "Warranty Renewal", "Know More", "Request Call Back"]) (maximum 20 characters allowed)
            - idea: idea will be a overall campaign suggestion, It will be a 2-3 lines of an explaination of the overall campaign in a attractive way, It will be different than the campaign_description and will give a shorter attractive idea to the dealer.
            - campaign_tagline: This will be tagline based on the idea.
            - campaign_tone: You have generated the idea and now this is the tone of the idea that you generated like formal, professional or maybe other
@@ -392,46 +392,46 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         """
         Clean, validate, and finalize campaign data before persistence or response.
         """
-    
+
         if not isinstance(final_data, dict):
             raise ValueError("final_data must be a dictionary")
-    
+
         if not isinstance(fields, (list, set, tuple)):
             raise ValueError("fields must be a list, set, or tuple")
-    
+
         # 1. Filter only allowed fields and remove empty values
         cleaned_data = {
             k: v for k, v in final_data.items()
             if k in fields and v not in (None, "", [], {})
         }
-    
+
         # 2. Remove offer if not applicable
         if self.is_no_offer(cleaned_data.get("campaign_offer")):
             cleaned_data.pop("campaign_offer", None)
-    
+
         # 3. Normalize CTAs (INLINE)
         if "ctas" in cleaned_data and isinstance(cleaned_data["ctas"], list):
             normalized_ctas = []
             for cta in cleaned_data["ctas"]:
                 if not isinstance(cta, str):
                     continue
-                
+
                 text = cta.lower().strip()
                 text = re.sub(r'\ba\b', '', text)          # remove standalone 'a'
                 text = re.sub(r'\s+', ' ', text).strip()  # normalize spaces
                 text = text.replace(' ', '-')              # spaces → hyphen
-    
+
                 normalized_ctas.append(text)
-    
+
             cleaned_data["ctas"] = normalized_ctas
-    
+
         # 4. Preserve languages explicitly
         if getattr(self, "languages", None):
             cleaned_data["languages"] = self.languages
-    
+
         # 5. Remove internal-only fields (double safety)
         cleaned_data.pop("dealership_id", None)
-    
+
         return cleaned_data
     
     def merge_json(self,json1, json2):
