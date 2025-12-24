@@ -1,77 +1,34 @@
 [
   {
-    "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india",
-    "campaign_name": "Baleno Test Drive Campaign",
-    "campaign_type": "pre-sales",
-    "campaign_user_source": {
-      "source_type": "crm_database",
-      "filter_criteria": {
-        "interest_level": "high",
-        "vehicle_interest": "Baleno",
-        "customer_status": "active"
-      }
-    },
-    "campaign_offer": "Free test drive with home pickup and drop service",
-    "campaign_description": "Generate test drive bookings for Baleno by targeting interested customers",
-    "start_date": 1704067200,
-    "end_date": 1735689600,
-    "channels": ["whatsapp_chat", "email", "web_chat", "voice_phone"],
-    "languages": ["english", "hindi"],
-    "urgency_hook": "Limited slots available! Book your test drive today and experience the premium Baleno.",
-    "ctas": ["Book Test Drive", "Schedule Visit", "Know More"],
-    "number_targeted": 1000,
-    "number_reached": 900,
-    "number_contacted": 750,
-    "number_engaged": 500,
-    "number_converted": 200,
-    "budget_allocated": 100000,
-    "actual_spent": 85000,
-    "campaign_status": "Active",
-    "responsible_person": "Rahul Mehta",
-    "remarks": "Focus on customers who have shown interest in Baleno in the past 30 days",
-    "created": 1704067200,
-    "updated": 1704067200,
-    "conversion_rate_percent": 0,
-    "cost_per_lead": 0
-  },
-  {
-    "dealership_id": "nexa-mumbai-west-nexa-dealer-group-west-india",
-    "campaign_name": "Fronx Launch Campaign",
-    "campaign_type": "pre-sales",
-    "campaign_user_source": {
-      "source_type": "event_data",
-      "filter_criteria": {
-        "event_type": "product_launch",
-        "interest_level": "medium_to_high"
-      }
-    },
-    "campaign_offer": "Early bird offer: Special pricing and accessories package for first 100 bookings",
-    "campaign_description": "Create awareness and generate leads for the newly launched Fronx",
-    "start_date": 1704153600,
-    "end_date": 1735776000,
-    "channels": [
-      "whatsapp_chat",
-      "email",
-      "web_chat",
-      "fb_chat",
-      "voice_phone"
-    ],
-    "languages": ["english", "hindi", "marathi"],
-    "urgency_hook": "Be among the first to own the all-new Fronx! Limited launch offer available.",
-    "ctas": ["Book Now", "Know More", "Schedule Test Drive"],
-    "number_targeted": 2000,
-    "number_reached": 1800,
-    "number_contacted": 1500,
-    "number_engaged": 1000,
-    "number_converted": 350,
-    "budget_allocated": 200000,
-    "actual_spent": 175000,
-    "campaign_status": "Active",
-    "responsible_person": "Anjali Desai",
-    "remarks": "Leverage launch excitement to drive high engagement and conversions",
-    "created": 1704153600,
-    "updated": 1704153600,
-    "conversion_rate_percent": 0,
-    "cost_per_lead": 0
-  }
+  "campaign_name": "Ciaz 2025 Launch Buzz",
+  "campaign_description": "The all-new Ciaz is almost here! Be among the first to experience its fresh features and innovative design set to debut this December. With exclusive warranty support offers, this launch is your chance to upgrade with total confidence. Get ready to drive the future with Ciaz.",
+  "campaign_status": "Draft",
+  "start_date": 1766534400,
+  "end_date": 1767139200,
+  "channels": [
+    "voice_phone",
+    "whatsapp_chat",
+    "email"
+  ],
+  "languages": [
+    "english"
+  ],
+  "campaign_offer": "Your Ciaz warranty is ticking down, but our offer clock is just starting! Be the first to get a glimpse of the all-new Ciaz launching this December, and secure confidence with exclusive warranty support offers. Don’t miss out on the perfect combo of protection and innovation.",
+  "urgency_hook": [
+    "Get ahead now — limited launch offers available!"
+  ],
+  "ctas": [
+    "Book a Test Drive"
+  ],
+  "number_targeted": 0,
+  "budget_allocated": 0,
+  "campaign_objective_id": "pre-sales-product-launch-nexa-mumbai-west-nexa-dealer-group-west-india",
+  "campaign_sub_type": "General",
+  "created": 1766571699,
+  "updated": 1766571699,
+  "campaign_user_source": "file",
+  "campaign_type": "pre-sales",
+  "workshop_id": "ambal-auto - ambal-auto---service-center - coimbatore",
+  "dealership_id": "nexa-delhi-south-nexa-dealer-group-north-india"
+}
 ]

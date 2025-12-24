@@ -133,8 +133,14 @@
     },
     {
       "name": "campaign_user_source",
-      "type": "nested_object",
-      "required": true
+      "type": "text",
+      "required": true,
+      "option_others": true,
+      "options": [
+        "auto_generated",
+        "file",
+        "crm"
+      ]
     },
     {
       "name": "campaign_objective_id",
@@ -242,9 +248,19 @@
       "type": "text",
       "title": "Offer Applicability"
     },
-    {
+   {
       "name": "urgency_hook",
-      "type": "text"
+      "type": "list",
+      "list_type": "text",
+      "title": "Urgency Hooks",
+      "default": {
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "urgency_hook"
+        ]
+      }
     },
     {
       "name": "why_user_should_avail_this",
@@ -310,14 +326,14 @@
     {
       "name": "vehicle_category",
       "type": "text",
-      "required": true,
+      "required": false,
       "default": {
         "function": "get_from_model",
         "args": [
           "dealership",
           "dealership_id",
-          "vehicle_category",
-          "Passenger vehicles"
+          "vehicle_category"
+         
         ]
       },
       "option_others": true,
@@ -427,6 +443,7 @@
       "type": "text",
       "options": [
         "Planned",
+        "Draft",
         "Active",
         "Completed",
         "On Hold",

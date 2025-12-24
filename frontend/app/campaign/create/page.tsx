@@ -472,25 +472,25 @@ function CampaignCreateContent() {
       let finalPayload = {};
 
       if (campaignType === "presales") {
-        endpoint = "/gryd/db/object/pre_sales_campaign";
-        finalPayload = {
-          ...commonPayload,
-          campaign_type: "pre-sales",
-          dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
-          region_id: "north-india",
-          dealer_name: "NEXA Delhi South",
-          supported_brands: ["NEXA"],
-        };
-      } else {
-        endpoint = "/gryd/db/object/post_sales_campaign";
-        finalPayload = {
-          ...commonPayload,
-          campaign_type: "post-sales",
-          workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
-          dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
-          campaign_objective_type: ["lead volume"],
-        };
-      }
+                endpoint = "/gryd/db/object/pre_sales_campaign";
+                finalPayload = {
+                    ...commonPayload,
+                    campaign_type: "pre-sales",
+                      workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+                    dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
+                    // dealer_name: "NEXA Delhi South",
+                    // supported_brands: ["NEXA"],
+                };
+            } else {
+                endpoint = "/gryd/db/object/post_sales_campaign";
+                finalPayload = {
+                    ...commonPayload,
+                    campaign_type: "post-sales",
+                    workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+                    dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
+                    // campaign_objective_type: ["lead volume"],
+                };
+            }
 
       const res = await api(endpoint, "POST", finalPayload);
       const newId = res?.data?.id || res?.id || res?.campaign_id;
