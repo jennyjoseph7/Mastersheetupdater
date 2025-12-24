@@ -1,6 +1,7 @@
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as dbhp, beats as cron_worker
 from gryd_worker.gryd_routes import payload_decorator
 from models import model as base_model
+from analytics.loader import load_stored_procedures
 from ai_service import ai_service_app
 # from communication.connectors.connector_whatsapp import process_forwarded_webhook
 from db_routes import db_routes
@@ -51,6 +52,7 @@ def post_autocrm_data(data_name):
 def SETUP(skip_models = False, skip_data = False, start_models_from = None, start_data_from = None, skip_cron = False):
     gryd.setup_gryd_enterprise(AUTOCRM_APP_ENTERPRISE_ID, email = AUTOCRM_ADMIN_ID, phone_number = AUTOCRM_ADMIN_PHONE_NUMBER, password = AUTOCRM_ADMIN_PASSWORD)
     enterprise = base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
+    load_stored_procedures()
     if not skip_models:
         with hp.read_file(DATA_DIR, "model_sequence.json") as model_sequence:
             for model_name in model_sequence:
@@ -68,8 +70,25 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
                 start_data_from = None
                 post_autocrm_data(data_name)
     if not skip_cron:
-        cron_worker.add_cron_job(AUTOCRM_APP_ENTERPRISE_ID, "clear_otp_cache", "cron", "*/15 * * * *", logger = logger)
-
+        # cron_worker.add_cron_job(AUTOCRM_APP_ENTERPRISE_ID, "clear_otp_cache", "cron", "*/15 * * * *", logger = logger)
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="run_campaign_summary",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule = "*/10 * * * *",
+              add_schedule_to_queue=False
+            )
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="check_inactive_sessions",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule = "*/15 * * * *",
+              kwargs={"inactivity_time": 1440, "only_for_channels":["whatsapp_chat"]},
+              add_schedule_to_queue=False
+        )
+        # add cron jobs here
+        #  also stored procedures.. 
+    
 
 @app.route("/webhook/<channel>/<channel_provider>", methods = ["GET","POST"])
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>", methods = ["GET","POST"])
