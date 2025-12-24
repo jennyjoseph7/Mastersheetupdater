@@ -588,6 +588,8 @@ def create_campaign_templates(logger=None, job=None):
                     }
                 
                     headers = data["auth_headers"]
+                    if not ordered_variables:
+                        payload["templateContent"].pop("sample", None)
                 
                 
                     print(payload)
@@ -708,21 +710,31 @@ def create_campaign_templates(logger=None, job=None):
     }
 
 @gryd.is_a_task('update_template_status', logger_param='logger', job_param='job')
-def update_template_status(template_ids:List,dealership_id:str,logger=None, job=None):
+def update_template_status(dealership_id:str,logger=None, job=None):
     """
     get_template_status worker gets the status of a whatsapp template and update the status in template model:
-    input : template_ids : A list of template ids, 
-            dealership_id : Id of the dealership, required for getting their comm creds 
+    input : dealership_id : Id of the dealership, required for getting their comm creds 
 
     """
     logger = logger or mlogger
-    if not template_ids or not isinstance(template_ids, list):
-        logger.error("template_ids is missing or invalid. Must be a non-empty list.")
-        return
-
     if not dealership_id:
         logger.error("dealership_id is None or empty.")
         return
+    
+    
+    def retrieve_template_ids(communication_credentials_id):
+        records = list(pg.list(
+            table_name="template",
+            where={
+                "status": "pending",
+                "communication_credentials_id": communication_credentials_id
+            }
+        ))
+        return [
+            r.get("template_id")
+            for r in records
+            if r.get("template_id")
+        ]
 
 
     default_data = {
@@ -735,57 +747,71 @@ def update_template_status(template_ids:List,dealership_id:str,logger=None, job=
             }       
         }
     records = list(pg.list(
-    table_name= "communication_credential",
-    where= {
+        table_name= "communication_credential",
+        where= {
 
-        "dealership_id": dealership_id
+            "dealership_id": dealership_id
 
-    }
-    ))
-    data = records[0] if records else default_data
+        }))
+    
+    for data in records:
 
-    string_auth_fields = [
-            data.get("waba_id"),
-            data.get("customer_id"),
-            data.get("sub_account_id")
-        ]
+        string_auth_fields = [
+                data.get("waba_id"),
+                data.get("customer_id"),
+                data.get("sub_account_id")
+            ]
 
-    valid_strings = all(
-        isinstance(v, (str, int)) and str(v).strip() != ""
-        for v in string_auth_fields
-    )
-    # Validate auth header dict
-    auth = data.get("auth_headers")
-    valid_auth_header = (
-        isinstance(auth, dict)
-        and "Authorization" in auth
-        and isinstance(auth["Authorization"], str)
-        and auth["Authorization"].strip() != ""
-    )
-    # If ANY field is missing/invalid → fallback to default
-    if not (valid_strings and valid_auth_header):
-        data = default_data
+        communication_credential_id = data.get("communication_credentials_id")
+        template_ids = retrieve_template_ids(communication_credential_id)
+        if not template_ids:
+            if logger:
+                logger.info(f"No pending templates for credential {communication_credential_id}")
+            continue
 
-    total = len(template_ids)
-    logger.info(f"Starting template approval sync for {total} templates")
+        valid_strings = all(
+            isinstance(v, (str, int)) and str(v).strip() != ""
+            for v in string_auth_fields
+        )
+        # Validate auth header dict
+        auth = data.get("auth_headers")
+        valid_auth_header = (
+            isinstance(auth, dict)
+            and "Authorization" in auth
+            and isinstance(auth["Authorization"], str)
+            and auth["Authorization"].strip() != ""
+        )
+        # If ANY field is missing/invalid → fallback to default
+        auth_data = data if (valid_strings and valid_auth_header) else default_data
 
-    for template_id in template_ids:
+
+        total = len(template_ids)
+        logger.info(f"Starting template approval sync for {total} templates")
+
         
-        try:
-            for id in template_ids:
-            
-                url = "https://iqwhatsapp.airtel.in/gateway/airtel-xchange/whatsapp-content-manager/v1/template?customerId="+data["customer_id"]+"&"+"subAccountId="+data["sub_account_id"]+"&"+"wabaId="+data["waba_id"]+"&"+"templateId="+id
+        for id in template_ids:
+            try:
+        
+                url = "https://iqwhatsapp.airtel.in/gateway/airtel-xchange/whatsapp-content-manager/v1/template?customerId="+auth_data["customer_id"]+"&"+"subAccountId="+auth_data["sub_account_id"]+"&"+"wabaId="+auth_data["waba_id"]+"&"+"templateId="+id
                 payload = {}
-                headers = data["auth_headers"]
+                headers = auth_data["auth_headers"]
                 logger.debug(f"GET → {url}")
                 response = requests.request("GET", url, headers=headers, data=payload)
                 response = response.json()
                 template_data = response.get("template")
+                if not template_data:
+                    if logger:
+                        logger.warning(f"No template data for template {id}: {response}")
+                    continue
                 logger.info(f"response is {response}")
                 status = template_data.get("registrationStatus").lower()
+                if status == "pending_for_review":
+                    status = "pending"
                 pg.update(table_name="template",id_attr="template_id", id=id,data={"status" : status})
                 logger.info(f"Updated Successfully for template id = {id}")
-        except Exception as e:
-           # Log and continue to next one
-           print(f"[FAILED] template {template_id}: {e}")
-           continue
+            except Exception as e:
+               # Log and continue to next one
+               print(f"[FAILED] template {id}: {e}")
+               continue
+
+    return "Completed !!!!"

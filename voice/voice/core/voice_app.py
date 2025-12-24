@@ -6,7 +6,7 @@ from agent import voice_agent
 from manager.manager import *
 from clients import messaging_client as ws
 from utils import *
-import providers
+from .. import providers
 
 import asyncio
 import uuid

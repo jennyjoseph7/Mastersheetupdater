@@ -77,6 +77,18 @@
       
     },
     {
+      "name": "custom_campaign_attributes",
+      "type": "object_list",
+      "list_type": "nested_object",
+      "title": "Custom Campaign Attributes",
+      "dict_keys": [
+        "attribute_name",
+        "attribute_value",
+        "attribute_type",
+        "attribute_description"
+      ]
+    },
+    {
       "name": "audience_attributes",
       "type": "object_list",
       "list_type": "nested_object",

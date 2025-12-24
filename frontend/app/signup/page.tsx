@@ -6,6 +6,8 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ReCAPTCHA from "react-google-recaptcha";
+import { PhoneInput } from "react-international-phone";
+import "react-international-phone/style.css";
 import {
   Card,
   CardContent,
@@ -62,6 +64,11 @@ import {
   ApiError,
 } from "@/lib/api";
 
+const urlRegex =
+  /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
 export default function DealerSignup() {
   const router = useRouter();
   const [phase, setPhase] = useState<
@@ -81,6 +88,9 @@ export default function DealerSignup() {
   const [isGeneratingOtp, setIsGeneratingOtp] = useState(false);
   const [isGeneratingEmailOtp, setIsGeneratingEmailOtp] = useState(false);
   const [otpError, setOtpError] = useState("");
+  const [websiteError, setWebsiteError] = useState("");
+  const [panError, setPanError] = useState("");
+  const [gstinError, setGstinError] = useState("");
 
   // Get reCAPTCHA site key from environment
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
@@ -222,6 +232,30 @@ export default function DealerSignup() {
       return;
     }
 
+    // Validate website URL if provided
+    if (registrationData.website && !urlRegex.test(registrationData.website)) {
+      setWebsiteError("Please enter a valid website URL");
+      setError("Please enter a valid website URL");
+      return;
+    }
+
+    // Validate PAN Number if provided
+    if (
+      registrationData.panNumber &&
+      !panRegex.test(registrationData.panNumber)
+    ) {
+      setPanError("Please enter a valid PAN number (Format: ABCDE1234F)");
+      setError("Please enter a valid PAN number");
+      return;
+    }
+
+    // Validate GSTIN if provided
+    if (registrationData.gstin && !gstinRegex.test(registrationData.gstin)) {
+      setGstinError("Please enter a valid GSTIN (15 characters)");
+      setError("Please enter a valid GSTIN");
+      return;
+    }
+
     // Validate reCAPTCHA if enabled
     if (isRecaptchaEnabled && !recaptchaToken) {
       setError("Please complete the reCAPTCHA verification");
@@ -313,7 +347,9 @@ export default function DealerSignup() {
       const dealershipId =
         response.dealership_id ||
         response.dealership_slug ||
-        `${registrationData.dealershipName.toLowerCase().replace(/\s+/g, "-")}-${registrationData.region}`;
+        `${registrationData.dealershipName
+          .toLowerCase()
+          .replace(/\s+/g, "-")}-${registrationData.region}`;
 
       try {
         const updateRequest: DealershipUpdateDetailsRequest = {
@@ -612,21 +648,17 @@ export default function DealerSignup() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="phone">
+                      <Label>
                         Phone <span className="text-destructive">*</span>
                       </Label>
                       <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="phone"
-                            type="tel"
-                            placeholder="+91 98765 43210"
+                        <div className="flex-1">
+                          <PhoneInput
                             value={registrationData.phone}
-                            onChange={(e) => {
+                            onChange={(phone) => {
                               setRegistrationData({
                                 ...registrationData,
-                                phone: e.target.value,
+                                phone: phone,
                               });
                               // Reset OTP token if phone number changes
                               if (phoneOtpToken) {
@@ -635,8 +667,12 @@ export default function DealerSignup() {
                               }
                               setOtpError("");
                             }}
-                            className="pl-10"
-                            required
+                            defaultCountry="in"
+                            inputClassName="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            countrySelectorStyleProps={{
+                              buttonClassName:
+                                "flex h-10 items-center rounded-l-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                            }}
                           />
                         </div>
                         <Button
@@ -951,15 +987,25 @@ export default function DealerSignup() {
                         type="url"
                         placeholder="https://www.yourdealership.com"
                         value={registrationData.website}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const value = e.target.value;
                           setRegistrationData({
                             ...registrationData,
-                            website: e.target.value,
-                          })
-                        }
+                            website: value,
+                          });
+                          // Validate website URL if provided
+                          if (value && !urlRegex.test(value)) {
+                            setWebsiteError("Please enter a valid website URL");
+                          } else {
+                            setWebsiteError("");
+                          }
+                        }}
                         className="pl-10"
                       />
                     </div>
+                    {websiteError && (
+                      <p className="text-sm text-destructive">{websiteError}</p>
+                    )}
                   </div>
 
                   {/* PAN and GSTIN (Optional) */}
@@ -968,40 +1014,72 @@ export default function DealerSignup() {
                       <Label htmlFor="panNumber">PAN Number (Optional)</Label>
                       <Input
                         id="panNumber"
-                        placeholder="ABCD1234567890"
+                        placeholder="ABCDE1234F"
                         value={registrationData.panNumber}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const value = e.target.value
+                            .toUpperCase()
+                            .replace(/[^A-Z0-9]/g, "");
                           setRegistrationData({
                             ...registrationData,
-                            panNumber: e.target.value.toUpperCase(),
-                          })
-                        }
+                            panNumber: value,
+                          });
+                          // Validate PAN Number if provided
+                          if (value && !panRegex.test(value)) {
+                            setPanError(
+                              "Please enter a valid PAN number (Format: ABCDE1234F)"
+                            );
+                          } else {
+                            setPanError("");
+                          }
+                        }}
                         maxLength={10}
                         className="font-mono uppercase"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Permanent Account Number
-                      </p>
+                      {panError && (
+                        <p className="text-sm text-destructive">{panError}</p>
+                      )}
+                      {!panError && (
+                        <p className="text-xs text-muted-foreground">
+                          Permanent Account Number
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="gstin">GSTIN (Optional)</Label>
                       <Input
                         id="gstin"
-                        placeholder="ABCD1234567890"
+                        placeholder="22ABCDE1234F1Z5"
                         value={registrationData.gstin}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const value = e.target.value
+                            .toUpperCase()
+                            .replace(/[^A-Z0-9]/g, "");
                           setRegistrationData({
                             ...registrationData,
-                            gstin: e.target.value.toUpperCase(),
-                          })
-                        }
+                            gstin: value,
+                          });
+                          // Validate GSTIN if provided
+                          if (value && !gstinRegex.test(value)) {
+                            setGstinError(
+                              "Please enter a valid GSTIN (15 characters)"
+                            );
+                          } else {
+                            setGstinError("");
+                          }
+                        }}
                         maxLength={15}
                         className="font-mono uppercase"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        15-digit GST Identification Number
-                      </p>
+                      {gstinError && (
+                        <p className="text-sm text-destructive">{gstinError}</p>
+                      )}
+                      {!gstinError && (
+                        <p className="text-xs text-muted-foreground">
+                          15-digit GST Identification Number
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -1692,7 +1770,7 @@ export default function DealerSignup() {
             </Card>
           </>
         )}
-        
+
         {/* Made by Dave AI */}
         <div className="text-center mt-8 pb-8">
           <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">

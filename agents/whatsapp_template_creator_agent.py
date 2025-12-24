@@ -73,7 +73,7 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         self.input_data = source.get("data",{})
         self.dealership_id = source.get("dealership_id", "")
         self.languages = self._validate_languages(source.get("languages", ["english"]))
-        self.cta_buttons = source.get("cta_buttons", ["Get a Call Back"])
+        self.cta_buttons = source.get("cta_buttons", [])
         self.ai_generation = source.get("ai_generation",True)
         self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
 
@@ -121,44 +121,30 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
 
         content_format:
           - Placeholders must use double curly braces (e.g., {{name}}).
-          - No placeholders allowed in header if header type is plain text.
-          - Placeholders must not break sentence meaning.
-          - Emojis allowed only in body (not in header).
-          - No URLs allowed inside body text.
-          - No phone numbers allowed inside body text (use CTA call button instead).
 
-        compliance_policies:
-          - No sensitive personal data (e.g., Aadhaar, PAN, bank info).
-          - No threatening, abusive, or fear-triggering content.
-          - No medical, gambling, political content.
+        Rejections: 
 
-        structure:
-          body:
-            - Max length: 1024 characters.
-            - Recommended max placeholders: 4–5 only.
-          header:
-            - Only 1 header allowed (text OR media).
-            - Media header requires alt text.
-          footer:
-            - Plain text only (no placeholders, no emojis).
-          buttons:
-            - Allowed: 2 CTA buttons OR 3 quick reply buttons (not both).
-            - Max length for button text: 20 characters.
-            - Button text cannot contain placeholders.
-            - Quick reply button text must be concise (e.g., “Check Offers”, “Request a Callback”).
+        If your message template(s) have been rejected, it may have been for one of the following reasons.
 
-        payload_key_rules:
-          - Payload keys for buttons must be lowercase and unique.
-          - No spaces, only hyphens/underscore allowed.
+            - Formatting is incorrect
+            - Proofread your content for spelling and grammar before submitting it for review. Messages with misspellings or grammatical errors may prompt customers to view these message as spam or a hoax.
+            - Make sure to use variable parameters (e.g., {{1}}, {{2}}, etc.) and that they have the correct number of curly brackets (i.e., 2 on the left side of the number and 2 on the right side).
+            - Make sure the parameters are not used with an unknown purpose based on the context. Your template will be rejected if we do not know what goes into a specific parameter —this includes not knowing what media you plan to send in a media message, for example. To avoid this scenario, we strongly recommend that you add a sample.
+            - Ensure that your content is in English. A mixture of languages such as 'Hinglish' will not be approved.
+            - Refrain from using a URL shortener for your links (e.g., bit.ly, tinyurl, or goo.gl) because they obscure the intended link destination.
+            - The URL domain in your links should belong to your business.
+            The message template(s) contain content that violates WhatsApp's Commerce Policy
+            - When you offer goods or services for sale, we consider all messages and media related to your goods or services, including any descriptions, prices, fees, taxes and/or any required legal disclosures, to constitute transactions. Transactions must comply with the WhatsApp Commerce Policy.
 
-        rejection_common_reasons:
-          - Placeholder formatting wrong.
-          - Category mismatch (e.g., promo under utility).
-          - Buttons contain placeholders.
-          - Link inside body instead of CTA URL button.
-          - Brand mismatch with account.
-          - Too many placeholders."""
+            The message template(s) contain content that violates WhatsApp's Business Policy
+            - Do not request sensitive identifiers from users. For example, do not ask people to share full length individual payment card numbers, financial account numbers, National Identification numbers, or other sensitive identifiers. This also includes not requesting documents from users that might contain sensitive identifiers.
+            - A survey after an experience is fine, but do not submit a survey or poll to collect unrelated data from users.Example: “Hi, we're interested in knowing how you feel about certain food groups. Do you mind participating in a survey?”
+            The message template(s) contain potentially abusive or threatening content
+            Some examples of this include the following:
 
+            - Message templates that threaten customers with a legal course of action will be rejected.
+            - Message templates that threaten to add customers to a WhatsApp group with their friends and family to shame them if they don't pay back their loans will be rejected.
+            """
         system_prompt = f"""
         You are an intelligent WhatsApp Template Generator Autobot for automotive dealership markeiting campaigns, adhering strictly to Airtel's messaging compliance standards (professional tone, clear value proposition) generate attractive and interactive whatsapp templates for running campaigns.
 
@@ -187,8 +173,15 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         5. CTA HANDLING:
             - If existing CTA buttons are provided: {self.cta_buttons}, use them as suggested_ctas.
             - If no CTA buttons provided, generate 2-3 relevant CTAs, always including "Request a Call Back".
-            - CTA library for reference: ["Download Brochure", "Compare Variants", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Confirm Booking", "Exchange Old Car"]
-
+            - CTA eg. library for reference: ["Download Brochure", "Compare Variants", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Exchange Old Car"]
+            - Rules : These CTAs must be there when it comes to these campaign objectives :
+                    Free Service Due Reminder >> [Book a Service, Request a Call Back]
+                    General Service Due Reminder >> [Book a Service, Request a Call Back]
+                    Inactive Customer Reactivation >> [Book a Service, Request a Call Back]
+                    Service Overdue  >> [ Book a Service, Request a Call Back]
+                    Insurance Renewal Reminder >> [Renew Insurance, Request a Call Back]
+                    Extended Warranty Offer >> [Buy Extended Warranty, Request a Call Back]
+                    CCP >> [ Buy CCP, Request a Call Back ]
         6. CONTEXT:
             - Campaign Objective: {self.campaign_objective}
             - Campaign Type: {self.campaign_type}

@@ -117,6 +117,11 @@
       "refers": "parents.dealership.supported_brands_guidelines"
     },
     {
+      "name": "audience_task_ids",
+      "type": "string_list",
+      "list_type": "text"
+    },
+    {
       "name": "campaign_name",
       "type": "text",
       "indexed": true
