@@ -90,7 +90,7 @@
     },
     {
       "name": "oem_name",
-      "refers": "parents.vehicle_model.oem_id"
+      "refers": "parents.vehicle_model.oem_name"
     },
     {
       "name": "oem_brand_awareness",
@@ -99,10 +99,6 @@
     {
       "name": "oem_country_of_origin",
       "refers": "parents.vehicle_model.oem_country_of_origin"
-    },
-    {
-      "name": "oem_brand_awareness",
-      "refers": "parents.vehicle_model.oem_brand_awareness"
     },
     {
       "name": "oem_wiki_description",
@@ -164,7 +160,7 @@
         "args": [
           "vehicle_model",
           "vehicle_model_id",
-          "fuel_types"
+          "engine_types"
         ]
       }
     },
@@ -250,7 +246,7 @@
       "default": {
         "args": [
           "brand_name",
-          "model_name",
+          "vehicle_model_name",
           "year"
         ],
         "function": "name_to_id",

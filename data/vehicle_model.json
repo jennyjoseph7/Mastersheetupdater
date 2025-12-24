@@ -74,7 +74,7 @@
     },
     {
       "name": "oem_name",
-      "refers": "parents.brand.oem_id"
+      "refers": "parents.brand.oem_name"
     },
     {
       "name": "oem_brand_awareness",
@@ -83,10 +83,6 @@
     {
       "name": "oem_country_of_origin",
       "refers": "parents.brand.oem_country_of_origin"
-    },
-    {
-      "name": "oem_brand_awareness",
-      "refers": "parents.brand.oem_brand_awareness"
     },
     {
       "name": "oem_wiki_description",
@@ -125,7 +121,7 @@
     {
       "name": "vehicle_video",
       "type": "text",
-      "ui_element": "image",
+      "ui_element": "video",
       "constraint": {
         "function": "url_validator"
       },
@@ -249,7 +245,7 @@
       "auto_updater": true,
       "default": {
         "args": [
-          "model_name",
+          "vehicle_model_name",
           "brand_name"
         ],
         "function": "name_to_id",
