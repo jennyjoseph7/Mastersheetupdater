@@ -2,7 +2,7 @@ import sys, os
 import requests
 import json
 import re
-                    
+import time                 
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
@@ -11,6 +11,8 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
+from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
+from gryd_worker import gryd_db_helper as db
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 
@@ -18,11 +20,208 @@ gryd.SERVICE = AUTOCRM_CRON_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
-
+mlogger.info(f"SERVICE --{gryd.SERVICE}")
 def clear_otp_cache(logger=None, job=None):
     logger = logger or mlogger
     otp_cache_model = gryd.base_model.Model('otp_cache', AUTOCRM_APP_ENTERPRISE_ID)
     otp_cache_model.delete_many({"expiry": f",{hp.epoch() - 3600}"})
+
+@gryd.is_a_task(function_name="run_campaign_summary")
+def run_campaign_summary():
+    
+    with get_pg_connector() as pg:
+        pg.execute_write(
+            "CALL update_overall_campaign_summary();",
+            _fetch=False
+        )
+        rows = list(
+            pg.yield_results(
+                "SELECT COUNT(*) FROM overall_campaign_summary;"
+            )
+        )
+        mlogger.info(f"[CRON] update_total_campaign_summary row count = {rows}")
+        return rows
+
+@gryd.is_a_task(function_name="check_inactive_sessions")
+def check_inactive_sessions(*args, **kwargs):
+    """
+    Check for inactive sessions, and update them accordingly.
+
+    Parameters:
+        *args: Any additional positional arguments
+        **kwargs: Any additional keyword arguments
+
+    Keyword Arguments:
+        inactivity_time (int): The number of minutes to consider a session inactive.
+            Defaults to 30.
+        only_for_channels (List[str]): A list of channels to check for inactive sessions.
+            Defaults to [].
+        outbound_timeout_minutes (int): The number of minutes to wait for an outbound response.
+            Defaults to 1440.
+
+    Returns:
+        None
+    """
+
+    kwargs_dict = dict(kwargs)
+
+    inactivity_time = kwargs_dict.get("inactivity_time") or 30
+    only_for_channels = kwargs_dict.get("only_for_channels") or []
+    outbound_timeout_minutes = kwargs_dict.get("outbound_timeout_minutes") or 1440
+
+    mlogger.info(
+        "------------ Checking for inactive sessions ------------- "
+        f"inactivity_time={inactivity_time}"
+    )
+
+    filters = {"session_live": True, "status": "completed~"}
+    condition, param = BaseWebhookConverter().apply_filters(**filters)
+
+    with get_pg_connector() as pg:
+        session_list = list(
+            db.GrydPGConnector.list(pg, "session", condition, param)
+        )
+
+        mlogger.info(f"Active sessions count: {len(session_list)}")
+
+        if not session_list:
+            mlogger.info("No active sessions found.")
+            return
+
+        now_epoch = int(time.time())
+
+        for session in session_list:
+            session_id = session.get("session_id")
+            channel = session.get("channel")
+            campaign_type = session.get("campaign_type") or "inbound"
+
+            if channel not in only_for_channels:
+                mlogger.info(
+                    f"Skipping session {session_id} "
+                    f"(channel={channel})"
+                )
+                continue
+
+            # last activity time ----------
+            last_response_str = session.get("last_response_time")
+            last_history_str = session.get("history_updated_time")
+            session_created_str = (
+                session.get("created") or session.get("start_time")
+            )
+
+            if last_response_str:
+                last_activity_epoch = int(last_response_str)
+            elif last_history_str:
+                last_activity_epoch = int(last_history_str)
+            elif session_created_str:
+                last_activity_epoch = int(session_created_str)
+            else:
+                mlogger.warning(
+                    f"Session {session_id} has no timestamps; "
+                    "skipping inactivity check"
+                )
+                continue
+
+            last_response_epoch = (
+                int(last_response_str) if last_response_str else None
+            )
+            last_history_epoch = (
+                int(last_history_str) if last_history_str else None
+            )
+
+            # inactivity timeout ----------
+            if campaign_type != "post-sales":
+                session_timeout_seconds = outbound_timeout_minutes * 60
+            else:
+                session_timeout_seconds = inactivity_time * 60
+
+            inactive_cutoff_epoch = (
+                last_activity_epoch + session_timeout_seconds
+            )
+
+            existing_history = session.get("history", []) or []
+
+            # Only sync history if last_response_time moved forward
+            if (
+                last_response_epoch
+                and (
+                    last_history_epoch is None
+                    or last_response_epoch > last_history_epoch
+                )
+            ):
+                history_rows = list(
+                    pg.list("message", {"session_id": session_id})
+                )
+
+                new_records = []
+                for row in history_rows:
+                    ts = row.get("created") or row.get("updated")
+                    if ts:
+                        ts = int(ts)
+                        if (
+                            last_history_epoch is None
+                            or ts > last_history_epoch
+                        ):
+                            new_records.append(row)
+
+                if new_records:
+                    appended_history = []
+                    last_ts = None
+
+                    for record in new_records:
+                        ts = record.get("created") or record.get("updated")
+                        if ts:
+                            last_ts = int(ts)
+
+                        appended_history.append(
+                            {
+                                "index": record.get("index"),
+                                "role": (
+                                    "user"
+                                    if record.get("reply_to") == ""
+                                    else "agent"
+                                ),
+                                "timestamp": ts,
+                                "message": record.get("message"),
+                            }
+                        )
+
+                    pg.update(
+                        "session",
+                        "session_id",
+                        session_id,
+                        {
+                            "history": existing_history
+                            + appended_history,
+                            "history_updated_time": last_ts,
+                        },
+                    )
+
+                    mlogger.info(
+                        f"Appended {len(appended_history)} messages "
+                        f"to session {session_id}"
+                    )
+                else:
+                    mlogger.info(f"No new history rows for session {session_id}")
+            else:
+                mlogger.info(f"Skipping history sync for session {session_id} (no new responses)")
+
+            # Inactivity Check ----------
+            if now_epoch > inactive_cutoff_epoch:
+                mlogger.info(
+                    f"Ending inactive session {session_id} "
+                    f"(inactive for {now_epoch - last_activity_epoch}s)"
+                )
+
+                # ending the session --------
+                BaseWebhookConverter().end_session(session_id=session_id)
+            else:
+                mlogger.info(
+                    f"Session {session_id} still active "
+                    f"({inactive_cutoff_epoch - now_epoch}s remaining)"
+                )
+
+            mlogger.info("************************************************")
 
 @gryd.is_a_task(logger_param='logger', job_param='job')
 def create_campaign_ideas_for_dealerships(

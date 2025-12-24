@@ -4,8 +4,10 @@ import pkgutil
 import json
 from gryd_worker import gryd, gryd_helpers as hp
 import sys, os
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from campaign.campaign import determine_campaign_next_action
+from campaign.campaign_workflow import determine_campaign_next_action
+
 from typing import Union
 from os.path import exists as ispath, dirname, basename, join as joinpath, abspath, split as pathsplit, splitext, sep as dirsep, isfile
 
@@ -43,16 +45,6 @@ def WARM_UP():
 
 # logger.info(f"List of all task communication {json.dumps(gryd.LIST_OF_TASKS or {}, indent=4,default=str)}   {imported_modules}")
 
-@gryd.is_a_task(function_name="get_communication_status_details")
-def get_communication_status_details(*args,**kwargs):
-    return {
-        "info":"Communication Worker is running...",
-        "current-environment":os.environ.get("ENVIRONMENT"),
-        "service_name":GRYD_COMMUNICATION_SERVICE,
-        "service_broker":GRYD_COMMUNICATION_BROKER,
-        "converse_service":CONVERS_SERVICE_NAME,
-        "converse_taks":CONVERS_TASK_NAME
-    }
 
 @gryd.is_a_task(function_name="determine_campaign_next_action")
 def determine_campaign_next_action(enterprise_id: str, campaign_id: str, channel: str, user_id: str, session_id: str, disposition: str, i2ce_headers: Union[dict, None] = None):

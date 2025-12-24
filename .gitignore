@@ -12,7 +12,6 @@ autobot_voice.egg-info
 # .env
 .env.local
 .env.*.local
-.env
 #test files
 test_*
 

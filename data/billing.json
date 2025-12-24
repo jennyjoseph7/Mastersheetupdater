@@ -30,7 +30,8 @@
             "name": "transaction_type",
             "type": "text",
             "options": ["credit", "debit", "refund"],
-            "default": "debit"
+            "default": "debit",
+            "indexed": true
         },
         {
             "name": "item_name",
@@ -58,8 +59,7 @@
         {
             "name": "item_description",
             "type": "text",
-            "placeholder": "campaign type - campaign objective - campaign name - channel - provider - phone number or email",
-            "indexed": true
+            "placeholder": "campaign type - campaign objective - campaign name - channel - provider - phone number or email"
         },
         {
             "name": "item_quantity",
