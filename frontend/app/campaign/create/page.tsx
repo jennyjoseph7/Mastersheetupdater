@@ -535,7 +535,7 @@ function CampaignCreateContent() {
             await api(patchEndpoint, "PATCH", {
                 number_targeted: totalReach,
                 budget_allocated: budget,
-                campaign_status: "Active",
+                campaign_status: "Planned",
             });
 
             setLaunchStatus("Triggering campaign engine...");
