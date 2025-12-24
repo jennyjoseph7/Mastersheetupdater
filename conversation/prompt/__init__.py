@@ -323,8 +323,33 @@ def get_purpose_and_steps(*args, **kwargs):
     if campaign_type == "inbound":
         return "Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy."
     return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n The current date for your reference is {hp.time()}.You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user isnt already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy."
+def get_cta_options(*args, **kwargs):
+    ctas = kwargs.get("campaign_data").get("ctas")
+    if not ctas:
+        return
+    cta_dict = {
+        "know-more":"If the user asks to know more, explain the campaign details to them.",
+        "register-to-event":"if the user asks to register to event continue with the register to event process",
+        "book-test-drive":"if the user asks to book test drive, continue to helo the user book a test drive",
+        "book-showroom-visit":"if the user asks to book showroom visit, continue to helo the user book a showroom visit",
+        "download-brochure":"provide the user with the link to the brochure",
+        "book-home-test-drive":"if the user asks to book test drive at home, continue to helo the user book a test drive at home",
+        "get-onroad-price":"If the user asks for onroad price, provide the user with the onroad price for the vehicle in question or ask them for the vehicle they want the price for.",
+        "book-service":"If the user asks to book service,help the user with booking the service",
+        "order-accessory":"if the user asks to buy or order an accessorie or spare part, help the user with the order.",
+        "renew-insurance":"if the user asks to renew their insurance, help them with renewing their insurance",
+        "order-spare-part":"if the user asks to buy or order an accessorie or spare part, help the user with the order.",
+        "order-extended-warranty":"if the user asks to buy or order an extended warranty, help the user with the order.",
+        "order-care-package":"if the user asks to buy or order a care package, help the user with the order.",
+    }
+    cta_rules = []
+    for cta in ctas:
+        cta_rules.append(cta_dict.get(cta))
+    return cta_rules
+    
 
 def get_example_states_and_solutions(*args, **kwargs):
+    cta_options = get_cta_options(*args, **kwargs)
     examples = [
         "- If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose if the arent already in the purpose flow.",
         "\n- If a purpose flow is completed, you should provide a confirmation message to the user with the details of the booking.",
@@ -332,6 +357,8 @@ def get_example_states_and_solutions(*args, **kwargs):
         "\n- If the customer provides you a date and time you should always check against the current date time and validate. also you should always provide the DD-MM-YYYY format for the date you want to mention. Do not say today or tomorrow or other such references to date.",
         "\n- If the customer requests a callback or requests to speak with a human or a phone call in any way, you should say - 'Someone will be with you soon'.",
     ]
+    if cta_options:
+        examples.extend(cta_options)
     if kwargs.get("campaign_data").get("why_user_should_avail_this"):
         examples.append("\n- Following are the reasons the user should avail this offer - {}".format(kwargs.get("campaign_data").get("why_user_should_avail_this")))
     
@@ -349,6 +376,7 @@ def get_example_states_and_solutions(*args, **kwargs):
 def get_rules(*args, **kwargs):
     session_data_cache_data = kwargs.get("session_data_cache",{})
     campaign_data = session_data_cache_data.get("campaign_data",{})
+    user_data = session_data_cache_data.get("user_data",{})
     mlogger.info("campaign_data == {}".format(session_data_cache_data))
     rules = "Always be polite, be helpful, if the customer is rude, avoid confrontation, do not be pushy."
     if campaign_data.get("dealership_guardrails"):
@@ -361,6 +389,10 @@ def get_rules(*args, **kwargs):
         rules = "{}\n{}".format(rules,campaign_data.get("region_level_guidelines"))
     if campaign_data.get("supported_brands_guidelines"):
         rules = "{}\nThese are some brands the dealer supports and specific guidelines for them.\n{}".format(rules,campaign_data.get("supported_brands_guidelines"))
+    if user_data.get("subdivision_level_guidelines"):
+        rules = "{}\n{}".format(rules,user_data.get("subdivision_level_guidelines"))
+    if user_data.get("subdivision_level_guardrails"):
+        rules = "{}\nThese are some guardrails that are speicific to the area the user is in.\n{}".format(rules,user_data.get("subdivision_level_guardrails"))
     return rules
 
 def get_tone_and_style(*args, **kwargs):

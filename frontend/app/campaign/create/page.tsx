@@ -532,11 +532,11 @@ function CampaignCreateContent() {
           ? `/gryd/db/object/pre_sales_campaign/${createdCampaignId}`
           : `/gryd/db/object/post_sales_campaign/${createdCampaignId}`;
 
-      await api(patchEndpoint, "PATCH", {
-        number_targeted: totalReach,
-        budget_allocated: budget,
-        campaign_status: "Active",
-      });
+            await api(patchEndpoint, "PATCH", {
+                number_targeted: totalReach,
+                budget_allocated: budget,
+                campaign_status: "Planned",
+            });
 
       setLaunchStatus("Triggering campaign engine...");
       const taskType = campaignType === "presales" ? "pre-sales" : "post-sales";

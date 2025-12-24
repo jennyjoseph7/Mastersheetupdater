@@ -633,11 +633,15 @@ class BaseWebhookConverter:
         # call session logic here...
         d=self.handle_session_logic(mobile_number)
         logger.info(f"Session logic result: {d}")
+        user_d=temporary_data.get("whatsapp_user_details")
         converse_kwargs.update({
             "session_id":d.get("session_id",None),
             "campaign_id":d.get("campaign_id","inbound"),
             "campaign_type":d.get("campaign_type",None),
-            "dealershp_id":d.get("dealershp_id",None),
+            "dealershp_id":d.get("dealership_id",None),
+            # these 2 we need to check and send for email also..
+            "provider":user_d.get("whatsapp_provider",None), 
+            "contact":user_d.get("mobile_number",None),
             # "lead_id":d.get("lead_id",None),
         })
         # Remove all None values
@@ -788,8 +792,8 @@ class BaseWebhookConverter:
         uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
 
         return uid.hex[:16]   # 16 characters
-        
-    def apply_filters(self, session_id, user_id, channel, session_live, status):
+      
+    def apply_filters(self, session_id=None, user_id=None, channel=None, session_live=None, status=None):
         conditions = [] 
         params = ()
         if session_id:
