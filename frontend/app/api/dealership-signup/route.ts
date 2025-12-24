@@ -1,7 +1,22 @@
 import { NextResponse } from "next/server";
 
-// Use local backend for dealership signup endpoint
-const API_BASE_URL = "http://127.0.0.1:5008";
+// Determine API base URL based on environment
+const getApiBaseUrl = () => {
+  // Check for explicit environment variable override
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+  
+  // Check if we're in development (localhost)
+  if (process.env.NODE_ENV === "development") {
+    return "http://127.0.0.1:5008";
+  }
+  
+  // Production URL
+  return "https://autobot-webapp-dev.gryd.in";
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export async function POST(request: Request) {
   try {

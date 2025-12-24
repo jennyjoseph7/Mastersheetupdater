@@ -9,6 +9,7 @@ import {
   fetchPreSalesCampaigns,
   fetchPostSalesCampaigns,
   fetchDealershipCampaigns,
+  fetchCampaignSummary,
   deleteAPIData,
   epochToIST,
 } from "@/utils/api";
@@ -99,10 +100,16 @@ export default function CampaignDashboard() {
   const [totalCampaignCount, setTotalCampaignCount] = useState<number>(0);
   const [activeCampaignCount, setActiveCampaignCount] = useState<number>(0);
   const [page, setPage] = useState<number>(1);
-  
+  const [totalReach, setTotalReach] = useState<number>(0);
+  const [conversionRate, setConversionRate] = useState<number>(0);
+  const [currentCampaignType, setCurrentCampaignType] =
+    useState<string>("post-sales");
+
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(null);
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(
+    null
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch counts for header cards
@@ -181,8 +188,25 @@ export default function CampaignDashboard() {
     swrOptions
   );
 
+  // Fetch campaign summary data
+  const { data: campaignSummaryData } = useSWR(
+    "campaign-summary",
+    fetchCampaignSummary,
+    swrOptions
+  );
+
   // Update counts header (total campaigns of current type)
+  // Only use this if campaign summary data is not available (fallback)
   useEffect(() => {
+    // Skip if campaign summary data is available (it will handle the updates)
+    if (
+      campaignSummaryData &&
+      Array.isArray(campaignSummaryData) &&
+      campaignSummaryData.length > 0
+    ) {
+      return;
+    }
+
     // For dealership campaigns, use the campaignsData total
     if (campaignTypeFilter === "dealership" && campaignsData) {
       setTotalCount(campaignsData.total ?? 0);
@@ -236,7 +260,7 @@ export default function CampaignDashboard() {
       setTotalCount(totalForType);
       setActiveCount(activeForType);
     }
-  }, [counts, campaignTypeFilter, campaignsData]);
+  }, [counts, campaignTypeFilter, campaignsData, campaignSummaryData]);
 
   // Update campaigns and total count whenever data or type changes
   useEffect(() => {
@@ -252,6 +276,72 @@ export default function CampaignDashboard() {
       setTotalCount(campaignsData.total ?? 0);
     }
   }, [campaignsData, campaignTypeFilter]);
+
+  // Process campaign summary data
+  useEffect(() => {
+    if (campaignSummaryData && Array.isArray(campaignSummaryData)) {
+      // Aggregate data from all campaign types
+      let aggregatedTotalCount = 0;
+      let aggregatedActiveCount = 0;
+      let aggregatedTotalReach = 0;
+      let aggregatedConversationRate = 0;
+      let totalConversationRateSum = 0;
+      let campaignTypeCount = 0;
+
+      campaignSummaryData.forEach((summary: any) => {
+        aggregatedTotalCount += summary.total_count ?? 0;
+        aggregatedActiveCount += summary.active_count ?? 0;
+        aggregatedTotalReach += summary.total_reach ?? 0;
+
+        // Calculate weighted average for conversion rate
+        if (
+          summary.conversation_rate !== undefined &&
+          summary.conversation_rate !== null
+        ) {
+          totalConversationRateSum += summary.conversation_rate;
+          campaignTypeCount++;
+        }
+      });
+
+      // Update aggregated stats
+      setTotalCampaignCount(aggregatedTotalCount);
+      setActiveCampaignCount(aggregatedActiveCount);
+      setTotalReach(aggregatedTotalReach);
+
+      // Calculate average conversion rate
+      // If conversation_rate is stored as decimal (0.098 = 9.8%), multiply by 100
+      // If it's already a percentage (9.8 = 9.8%), use as-is
+      if (campaignTypeCount > 0) {
+        const avgRate = totalConversationRateSum / campaignTypeCount;
+        // If average is less than 1, assume it's a decimal and convert to percentage
+        setConversionRate(avgRate < 1 ? avgRate * 100 : avgRate);
+      }
+
+      // Set current campaign type based on filter
+      setCurrentCampaignType(
+        campaignTypeFilter === "pre_sales" || campaignTypeFilter === "pre-sales"
+          ? "pre-sales"
+          : campaignTypeFilter === "dealership"
+          ? "dealership"
+          : "post-sales"
+      );
+
+      // Update counts for current type
+      const currentTypeSummary = campaignSummaryData.find(
+        (s: any) =>
+          s.campaign_type === campaignTypeFilter ||
+          (campaignTypeFilter === "pre_sales" &&
+            s.campaign_type === "pre-sales") ||
+          (campaignTypeFilter === "post-sales" &&
+            s.campaign_type === "post-sales")
+      );
+
+      if (currentTypeSummary) {
+        setTotalCount(currentTypeSummary.total_count ?? 0);
+        setActiveCount(currentTypeSummary.active_count ?? 0);
+      }
+    }
+  }, [campaignSummaryData, campaignTypeFilter]);
 
   const filteredCampaigns = useMemo<Campaign[]>(() => {
     const q = (searchQuery || "").trim().toLowerCase();
@@ -363,10 +453,11 @@ export default function CampaignDashboard() {
       const campaignType = Array.isArray(campaign.campaign_type)
         ? campaign.campaign_type[0]
         : campaign.campaign_type;
-      
-      const modelName = campaignType === "pre-sales" || campaignType === "pre_sales"
-        ? "pre_sales_campaign"
-        : "post_sales_campaign";
+
+      const modelName =
+        campaignType === "pre-sales" || campaignType === "pre_sales"
+          ? "pre_sales_campaign"
+          : "post_sales_campaign";
 
       // Fetch the campaign data
       const response = await fetchAPIData(modelName, {});
@@ -377,12 +468,17 @@ export default function CampaignDashboard() {
       if (campaignData) {
         // Remove id fields and create a duplicate
         const { campaign_id, id, ...duplicateData } = campaignData;
-        duplicateData.campaign_name = `${campaignData.campaign_name ?? "Campaign"} (Copy)`;
+        duplicateData.campaign_name = `${
+          campaignData.campaign_name ?? "Campaign"
+        } (Copy)`;
         duplicateData.campaign_status = "draft";
 
         // In a real implementation, you would POST this to create a new campaign
         // For now, navigate to create page with the duplicate data
-        localStorage.setItem("duplicateCampaignData", JSON.stringify(duplicateData));
+        localStorage.setItem(
+          "duplicateCampaignData",
+          JSON.stringify(duplicateData)
+        );
         router.push("/campaign/create?duplicate=true");
       }
     } catch (error) {
@@ -391,24 +487,30 @@ export default function CampaignDashboard() {
     }
   };
 
-  const handlePauseOrLaunch = async (campaign: Campaign, action: "pause" | "launch") => {
+  const handlePauseOrLaunch = async (
+    campaign: Campaign,
+    action: "pause" | "launch"
+  ) => {
     try {
       const campaignId = campaign.campaign_id ?? campaign.id;
       const campaignType = Array.isArray(campaign.campaign_type)
         ? campaign.campaign_type[0]
         : campaign.campaign_type;
-      
-      const modelName = campaignType === "pre-sales" || campaignType === "pre_sales"
-        ? "pre_sales_campaign"
-        : "post_sales_campaign";
+
+      const modelName =
+        campaignType === "pre-sales" || campaignType === "pre_sales"
+          ? "pre_sales_campaign"
+          : "post_sales_campaign";
 
       const newStatus = action === "pause" ? "paused" : "live";
-      
+
       // Update campaign status
       // In a real implementation, you would PATCH the campaign
       // For now, we'll just refresh the data
       await mutateCampaigns();
-      alert(`Campaign ${action === "pause" ? "paused" : "launched"} successfully`);
+      alert(
+        `Campaign ${action === "pause" ? "paused" : "launched"} successfully`
+      );
     } catch (error) {
       console.error(`Error ${action}ing campaign:`, error);
       alert(`Failed to ${action} campaign. Please try again.`);
@@ -417,7 +519,7 @@ export default function CampaignDashboard() {
 
   const handleInsights = (campaign: Campaign) => {
     const campaignId = campaign.campaign_id ?? campaign.id;
-    router.push(`/insights?campaign_id=${campaignId}`);
+    router.push(`/campaign/insights?campaign_id=${campaignId}`);
   };
 
   const handleDeleteClick = (campaign: Campaign) => {
@@ -434,17 +536,18 @@ export default function CampaignDashboard() {
       const campaignType = Array.isArray(campaignToDelete.campaign_type)
         ? campaignToDelete.campaign_type[0]
         : campaignToDelete.campaign_type;
-      
-      const modelName = campaignType === "pre-sales" || campaignType === "pre_sales"
-        ? "pre_sales_campaign"
-        : campaignType === "dealership"
-        ? "dealership_campaign"
-        : "post_sales_campaign";
+
+      const modelName =
+        campaignType === "pre-sales" || campaignType === "pre_sales"
+          ? "pre_sales_campaign"
+          : campaignType === "dealership"
+          ? "dealership_campaign"
+          : "post_sales_campaign";
 
       await deleteAPIData(modelName, campaignId);
       setDeleteDialogOpen(false);
       setCampaignToDelete(null);
-      
+
       // Refresh campaigns list
       await mutateCampaigns();
       alert("Campaign deleted successfully");
@@ -492,7 +595,8 @@ export default function CampaignDashboard() {
                 <div className="text-2xl font-bold">{totalCampaignCount}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Current type:{" "}
-                  {campaignTypeFilter === "pre_sales"
+                  {campaignTypeFilter === "pre_sales" ||
+                  campaignTypeFilter === "pre-sales"
                     ? "Pre-Sales"
                     : campaignTypeFilter === "post-sales"
                     ? "Post-Sales"
@@ -524,7 +628,11 @@ export default function CampaignDashboard() {
                 <UsersIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">156.8K</div>
+                <div className="text-2xl font-bold">
+                  {totalReach >= 1000
+                    ? `${(totalReach / 1000).toFixed(1)}K`
+                    : totalReach.toLocaleString()}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Across all campaigns
                 </p>
@@ -539,9 +647,13 @@ export default function CampaignDashboard() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">9.8%</div>
+                <div className="text-2xl font-bold">
+                  {conversionRate > 0
+                    ? `${conversionRate.toFixed(1)}%`
+                    : "0.0%"}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  +1.2% from last month
+                  Average across all campaigns
                 </p>
               </CardContent>
             </Card>
@@ -797,43 +909,69 @@ export default function CampaignDashboard() {
                                 : "—")}
                           </TableCell>
                           <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleEdit(campaign)}>
-                                  <Pencil className="mr-2 h-4 w-4" /> Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDuplicate(campaign)}>
-                                  <Copy className="mr-2 h-4 w-4" /> Duplicate
-                                </DropdownMenuItem>
-                                {campaign.campaign_status === "live" ? (
-                                  <DropdownMenuItem onClick={() => handlePauseOrLaunch(campaign, "pause")}>
-                                    <Pause className="mr-2 h-4 w-4" /> Pause
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleInsights(campaign)}
+                                className="gap-2"
+                              >
+                                <BarChart3 className="h-4 w-4" />
+                                Insights
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleEdit(campaign)}
+                                  >
+                                    <Pencil className="mr-2 h-4 w-4" /> Edit
                                   </DropdownMenuItem>
-                                ) : campaign.campaign_status === "draft" ||
-                                  campaign.campaign_status === "scheduled" ? (
-                                  <DropdownMenuItem onClick={() => handlePauseOrLaunch(campaign, "launch")}>
-                                    <Play className="mr-2 h-4 w-4" /> Launch
+                                  <DropdownMenuItem
+                                    onClick={() => handleDuplicate(campaign)}
+                                  >
+                                    <Copy className="mr-2 h-4 w-4" /> Duplicate
                                   </DropdownMenuItem>
-                                ) : null}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleInsights(campaign)}>
-                                  <BarChart3 className="mr-2 h-4 w-4" /> Insights
-                                </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  className="text-destructive"
-                                  onClick={() => handleDeleteClick(campaign)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                                  {campaign.campaign_status === "live" ? (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handlePauseOrLaunch(campaign, "pause")
+                                      }
+                                    >
+                                      <Pause className="mr-2 h-4 w-4" /> Pause
+                                    </DropdownMenuItem>
+                                  ) : campaign.campaign_status === "draft" ||
+                                    campaign.campaign_status === "scheduled" ? (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handlePauseOrLaunch(campaign, "launch")
+                                      }
+                                    >
+                                      <Play className="mr-2 h-4 w-4" /> Launch
+                                    </DropdownMenuItem>
+                                  ) : null}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleInsights(campaign)}
+                                  >
+                                    <BarChart3 className="mr-2 h-4 w-4" />{" "}
+                                    Insights
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => handleDeleteClick(campaign)}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -877,8 +1015,9 @@ export default function CampaignDashboard() {
           <DialogHeader>
             <DialogTitle>Delete Campaign</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{campaignToDelete?.campaign_name ?? "this campaign"}"? 
-              This action cannot be undone.
+              Are you sure you want to delete "
+              {campaignToDelete?.campaign_name ?? "this campaign"}"? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
