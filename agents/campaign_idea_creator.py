@@ -1,7 +1,7 @@
 import json
 import os, requests
 from ai_service import ai_service_app
-import random
+import random, re
 
 try:
     from .base_agent import BaseAgent
@@ -372,20 +372,67 @@ class CampaignIdeaCreatorAgent(BaseAgent):
                     final_data[field] = None
         return final_data
 
-    def clean_and_validate_final_data(self, final_data, fields):
-        """Clean and validate the final campaign data."""
-        # Remove offer if not applicable
-        if self.is_no_offer(final_data.get("campaign_offer")):
-            final_data.pop("campaign_offer", None)
+    # def clean_and_validate_final_data(self, final_data, fields):
+    #     """Clean and validate the final campaign data."""
+    #     # Remove offer if not applicable
+    #     if self.is_no_offer(final_data.get("campaign_offer")):
+    #         final_data.pop("campaign_offer", None)
         
-        # Preserve languages
-        if self.languages:
-            final_data["languages"] = self.languages
+    #     # Preserve languages
+    #     if self.languages:
+    #         final_data["languages"] = self.languages
         
-        # Remove internal fields from output
-        final_data.pop("dealership_id", None)
+    #     # Remove internal fields from output
+    #     final_data.pop("dealership_id", None)
         
-        return final_data
+    #     return final_data
+
+
+    def clean_and_validate_final_data(self, final_data: dict, fields: list) -> dict:
+        """
+        Clean, validate, and finalize campaign data before persistence or response.
+        """
+    
+        if not isinstance(final_data, dict):
+            raise ValueError("final_data must be a dictionary")
+    
+        if not isinstance(fields, (list, set, tuple)):
+            raise ValueError("fields must be a list, set, or tuple")
+    
+        # 1. Filter only allowed fields and remove empty values
+        cleaned_data = {
+            k: v for k, v in final_data.items()
+            if k in fields and v not in (None, "", [], {})
+        }
+    
+        # 2. Remove offer if not applicable
+        if self.is_no_offer(cleaned_data.get("campaign_offer")):
+            cleaned_data.pop("campaign_offer", None)
+    
+        # 3. Normalize CTAs (INLINE)
+        if "ctas" in cleaned_data and isinstance(cleaned_data["ctas"], list):
+            normalized_ctas = []
+            for cta in cleaned_data["ctas"]:
+                if not isinstance(cta, str):
+                    continue
+                
+                text = cta.lower().strip()
+                text = re.sub(r'\ba\b', '', text)          # remove standalone 'a'
+                text = re.sub(r'\s+', ' ', text).strip()  # normalize spaces
+                text = text.replace(' ', '-')              # spaces → hyphen
+    
+                normalized_ctas.append(text)
+    
+            cleaned_data["ctas"] = normalized_ctas
+    
+        # 4. Preserve languages explicitly
+        if getattr(self, "languages", None):
+            cleaned_data["languages"] = self.languages
+    
+        # 5. Remove internal-only fields (double safety)
+        cleaned_data.pop("dealership_id", None)
+    
+        return cleaned_data
     
     def merge_json(self,json1, json2):
         merged = json2.copy()       
