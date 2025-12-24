@@ -1126,7 +1126,7 @@ def gryd_task_import_leads_from_csv(
     return
 
 @gryd.is_a_task()
-def post_billing(dealership_id, transaction_type, item_name, item_description, transaction_date, item_quantity, item_price, item_unit, currency):
+def post_billing(dealership_id, transaction_type, item_name, item_description, transaction_date, item_quantity, item_price, item_unit, currency, campaign_id, channel):
     """
     Post a billing transaction to the database to debit credits from dealership and create billing object. 
 
@@ -1140,7 +1140,8 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
     item_price (float): The price of the item per credit cost.
     item_unit (str): The unit of the item (e.g. credits).
     currency (str): The currency of the transaction - example - ["credits", "INR", "USD", "EUR", "GBP", "AED", "SAR", "JPY"].
-
+    campaign_id (str): The campaign ID if applicable else 'inbound'.
+    channel (str): The channel of the transaction (e.g. "rcs","email", "web_chat", "web_chat_voice","fb_chat","insta_chat","twitter_chat","voice_phone","whatsapp_chat","whatsapp_voice_note","whatsapp_voice_call","zoom_bot","ms_teams").
     Returns:
     None
     """
@@ -1182,7 +1183,9 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
         "dealership_id" : dealership_id,
         "status" : "success",
         "credit_balance_before" : current_balance,
-        "credit_balance_after" : new_balance
+        "credit_balance_after" : new_balance,
+        "campaing_id" : campaign_id or "inbound",
+        "channel" : channel
     }
     m.post(postable)
 
