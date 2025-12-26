@@ -184,8 +184,8 @@ function start_workers() {
 }
 
 function main() {
-	start_workers
 	start_default_workers
+	start_workers
 }
 
 #main
