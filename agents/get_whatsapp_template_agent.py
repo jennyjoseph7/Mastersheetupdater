@@ -3,12 +3,16 @@ import os, sys
 import random
 
 try:
-    from .base_agent import BaseAgent, gryd
+    from .base_agent import BaseAgent#, gryd
 except ImportError:
-    from base_agent import BaseAgent, gryd
+    from base_agent import BaseAgent#, gryd
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
+
+from config import  AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
+gryd.SERVICE = AUTOCRM_AGENT_SERVICE_NAME
+gryd.set_queue_manager()
 
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
@@ -31,20 +35,32 @@ class get_whatsapp_template_agent(BaseAgent):
         self.template_variables = self.template_variables[0]
         self.campaign_type = source.get("campaign_type","")
         self.campaign_objective = source.get("campaign_objective",[])
+        self.dealership_id = source.get("dealership_id","daveai")
         self.limit = 1
 
         if not isinstance(self.template_variables, list):
             raise ValueError("template_variables must be a list")
 
+    def retrieve_credentials(self,dealership_id):
+        records = list(pg.list(
+            table_name="communication_credential",
+            where={"dealership_id": dealership_id,
+            }
+        ))
+        communication_credential = records[0]
+        communication_credentials_id = communication_credential.get("communication_credentials_id")
+        return communication_credentials_id
 
-    def pick_from_model(self):
+
+    def pick_from_model(self, communication_credentials_id):
 
         records = list(pg.list(
             table_name="template",
             where={"campaign_type": self.campaign_type,
                    "template_type" : "text",
                    "channel" : "whatsapp_chat",
-                   "status" : "approved"
+                   "status" : "approved",
+                   "communication_credentials_id" : communication_credentials_id
             }
         ))
 
@@ -198,23 +214,26 @@ class get_whatsapp_template_agent(BaseAgent):
 
 
     def run(self):
-        all_templates = self.pick_from_model()
+        communication_credentials_id = self.retrieve_credentials(self.dealership_id)
+        all_templates = self.pick_from_model(communication_credentials_id)
         best = self.match_templates_strict(all_templates)
         return best
 
 
 
 @gryd.is_a_task('get_whatsapp_template', logger_param='logger', job_param='job')
-def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective = None, logger=None, job=None):
+def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective = None,dealership_id=None, logger=None, job=None):
 
         logger = logger or gryd.hp.get_logger(__name__)
         logger.info("Getting WhatsApp Template...")
-
+        if dealership_id is None:
+            dealership_id = 'daveai'
         try:
             lead_info = lead_info or {}
             updates = {
                 "id": lead_id,
-                "campaign_type": campaign_type
+                "campaign_type": campaign_type,
+                
             }
 
             for k, v in updates.items():
@@ -236,7 +255,8 @@ def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, camp
             data = {
                 "campaign_type": campaign_type,
                 "template_variables": attribute_list_sets,
-                "campaign_objective" : campaign_objective
+                "campaign_objective" : campaign_objective,
+                "dealership_id" : dealership_id
             }
 
             logger.info(f"Source data : {data}")
