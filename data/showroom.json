@@ -166,8 +166,7 @@
     },
     {
       "name": "days_open",
-      "type": "nested_object",
-      "option_others": true,
+      "type": "list",
       "options": [
         "Sunday",
         "Monday",

@@ -327,17 +327,10 @@
     
     {
       "name": "urgency_hook",
-      "type": "list",
-      "list_type": "text",
-      "title": "Urgency Hooks",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "urgency_hook"
-        ]
-      }
+      "type": "text",
+      
+      "title": "Urgency Hooks"
+      
     },
     {
       "name": "why_user_should_avail_this",
