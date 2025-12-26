@@ -21,6 +21,7 @@ export RUN_IN_BG=True
 export DEV_CONTAINER=${DEV_CONTAINER:-True}
 export START_AGENTS=${START_AGENTS:-0}
 export START_WORKERS=${START_WORKERS:-0}
+export DEFAULT_WORKERS=${DEFAULT_WORKERS:-0}
 
 process_config=`cat start_worker_config.json`
 
