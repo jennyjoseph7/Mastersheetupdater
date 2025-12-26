@@ -82,6 +82,21 @@ function stop_workers() {
     fi
 }
 
+function start_default_workers() {
+	for a in ${DEFAULT_WORKERS//,/ };do
+		echo "Starting default workers - $a"
+		if [ "$a" == "cron-scheduler" ];then
+			echo "Starting Cron Continuous in BG. Logs are written to ${LOGDIR}/${a}_stderr.log and ${LOGDIR}/${a}_stdout.log"
+			nohup execute-cron-continuous 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+		fi
+
+		if [ "$a" == "cron-executor" ];then
+			nohup execute-cron 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+		fi
+
+	done
+}
+
 function start_worker_in_bg() {
 	worker_path=worker
 	for a in ${START_AGENTS//,/ };do
@@ -92,10 +107,11 @@ function start_worker_in_bg() {
 			WORKER_ENTRYPOINT=$(jq -r '.entry_point' <<< "$wmap")
 			WORKER_PARALLEL_THREADS=$(jq -r '.parallel_threads' <<< "$wmap")
 			WORKER_SHUTDOWN_TIME=$(jq -r '.shutdown_time' <<< "$wmap")
+			WORKER_FNAME=${WORKER_ENTRYPOINT%.*}
 
 			if [ "$WORKER_NAME" == "$a" ];then
-				echo "Setting up $WORKER_NAME in BG. Logs are written to ${LOGDIR}/${WORKER_NAME}_stderr.log and ${LOGDIR}/${WORKER_NAME}_stdout.log"
-				nohup $worker_path -m agents/$WORKER_ENTRYPOINT -n $WORKER_PARALLEL_THREADS --shutdown-time=$WORKER_SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${WORKER_NAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_stderr.log &
+				echo "Setting up $WORKER_NAME in BG. Logs are written to ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stderr.log and ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stdout.log"
+				nohup $worker_path -m agents/$WORKER_ENTRYPOINT -n $WORKER_PARALLEL_THREADS --shutdown-time=$WORKER_SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stderr.log &
 			fi
 		done
 	done
@@ -108,10 +124,11 @@ function start_worker_in_bg() {
 			WORKER_ENTRYPOINT=$(jq -r '.entry_point' <<< "$wmap")
 			WORKER_PARALLEL_THREADS=$(jq -r '.parallel_threads' <<< "$wmap")
 			WORKER_SHUTDOWN_TIME=$(jq -r '.shutdown_time' <<< "$wmap")
+			WORKER_FNAME=${WORKER_ENTRYPOINT%.*}
 
 			if [ "$WORKER_NAME" == "$w" ];then
-				echo "Setting up $WORKER_NAME - '$WORKER_ENTRYPOINT' in BG. Logs are written to ${LOGDIR}/${WORKER_NAME}_stderr.log and ${LOGDIR}/${WORKER_NAME}_stdout.log"
-				nohup $worker_path -m $WORKER_NAME/$WORKER_ENTRYPOINT -n $WORKER_PARALLEL_THREADS --shutdown-time=$WORKER_SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${WORKER_NAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_stderr.log &
+				echo "Setting up $WORKER_NAME - '$WORKER_ENTRYPOINT' in BG. Logs are written to ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stderr.log and ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stdout.log"
+				nohup $worker_path -m $WORKER_NAME/$WORKER_ENTRYPOINT -n $WORKER_PARALLEL_THREADS --shutdown-time=$WORKER_SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stderr.log &
 			fi
 		done
 	done
@@ -167,6 +184,7 @@ function start_workers() {
 
 function main() {
 	start_workers
+	start_default_workers
 }
 
 #main
