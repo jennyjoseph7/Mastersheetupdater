@@ -12,13 +12,26 @@ from os.path import (
     isfile
 )
 from flask import request
-import sys
-# --- Set import path for internal modules ---
+
+# added new instead of
+import sys,os
+import time
+from connectors.communication_helpers import format_box_log,safe_orjson_dumps
+from connectors.communication_configs import DB_TIMEZONE
+from config import AUTOCRM_COMMUNICATION_SERVICE_NAME
+from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappReceiverConnector,BaseWebhookConverter
+import json
+from autocrm_db_helper import get_pg_connector
+#  this from connectors.base_connector_communication import *
+
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
-from connectors.base_connector_communication import *
-logger= get_logger(__name__)
-logger.info("Intializing Test Whatsapp Connectors")
-from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
+from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
+gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
+gryd.set_queue_manager()
+logger = gryd.hp.get_logger(gryd.SERVICE)
+
+logger.info("---Intializing Test Whatsapp Connectors")
+
 
 ALLOWED_PROVIDERS= str(os.environ.get("ALLOWED_PROVIDERS","airtel,rml,meta,concord,gupshup"))
 
@@ -295,12 +308,7 @@ def post_contact_status(*args, **data):
                         })
                 else:
                     pg.update("pre_sales_lead", "pre_sales_lead_id", data.get("lead_id"), {"previous_contact_channel": "whatsapp_chat"})
-                    
-            logger.info(
-                f"[post_contact_status] contact status {data.get('provider_status')} "
-                f"campaign_id={data.get('campaign_id')} | phone={data.get('phone_number')}| message_id={data.get('message_id')} | Also updated lead,person model.."
-            )
-
+            
             return 
 
         records = list(pg.list("contact_status", {"message_id": message_id}))
@@ -315,16 +323,17 @@ def post_contact_status(*args, **data):
         existing["created"] = time.time()
         payload = existing
         contact_status_id =  BaseWebhookConverter().generate_uid(payload)
+        if data.get("message_status")=="failed":
+            logger.info(f"[post_contact_status] failed message_id={data.get('message_id')} | Failed message = {data.get('error_message',data.get('error_title'))}")
+            payload["failure_reason"] = "Message not delivered"
         # Bcoz we have initially created the record for queued so skipping it
         if data.get("message_status") not in ["initiated", "queued"]:
             pg.update("contact_status", "contact_status_id", contact_status_id, payload)
-        # if data.get("message_status").lower() == "failed":
-        #     # we need to get the failure message and try to post
-        #     pass
-        logger.info(
-            f"[post_contact_status] contact status={data.get('message_status')} "
-            f"campaign_id={existing.get('campaign_id')} | phone={existing.get('phone_number')} | message_id={existing.get('message_id')}"
-        )
+            
+        # logger.info(
+        #     f"[post_contact_status] contact status={data.get('message_status')} "
+        #     f"campaign_id={existing.get('campaign_id')} | phone={existing.get('phone_number')} | message_id={existing.get('message_id')}"
+        # )
 
     return
 

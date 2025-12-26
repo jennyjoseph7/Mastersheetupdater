@@ -1,9 +1,3 @@
-# import os
-# import sys
-# import json
-# import time
-# import uuid
-# import requests
 import urllib.parse
 import re
 
@@ -12,17 +6,15 @@ import re
 # from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 # from connectors.communication_configs import *
 # from connectors.communication_helpers import AuthManager,format_box_log,safe_orjson_dumps
+# --
+
 from conversation.lead_post_processing import post_session_process
 
 from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NAME,WHATSAPP_PROVIDER_NUMBER
 from connectors.communication_helpers import * 
-# if any error comment the above ones and add this 
-# --
 
-gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
-gryd.set_queue_manager()
-mlogger = gryd.hp.get_logger(gryd.SERVICE)
-
+from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
+logger = gryd.logger
 
 
 # Path to parent folder
@@ -32,9 +24,6 @@ sys.path.append(PARENT_DIR)
 from autocrm_db_helper import get_pg_connector
 
 from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
-
-
-logger=hp.get_logger(__name__,level=hp.logging.DEBUG)
 
 logger.info("[INIT] Intializing Source Connector inside whatsapp_connector------------")
 def SleepOverMessage():
@@ -509,13 +498,13 @@ class BaseWebhookConverter:
         if not (message_dict := self.default_message_dict):
             return None
         
-        # logger.info(f"PROCESS STATUS CHECK---status --- {message_dict.get('message_status')}---data---{json.dumps(message_dict,indent=4)}")
+        # logger.info(f"PROCESS STATUS CHECK---status --- {message_dict.get('message_status')}---data---{json.dumps(self.default_message_dict,indent=4)}")
         msg_status=message_dict.get("message_status").lower()
         wa_status= WA_TO_DISPOSITION.get(msg_status, None)
         
         # whatsapp status webhooks received here-----
         if wa_status:
-            logger.info(f"Received {wa_status} status webhook for {message_dict.get('enterprise_id')} enterprise  and mobile number: {message_dict.get('recipientAddress')}")
+            logger.info(f"Received {wa_status} status webhook for {message_dict.get('enterprise_id')} enterprise and mobile number: {message_dict.get('recipientAddress',message_dict.get('mobile_number'))}")
             message_dict["message_status"]=wa_status
             gryd.create_async_task(
                 'post_contact_status',
@@ -644,11 +633,15 @@ class BaseWebhookConverter:
         # call session logic here...
         d=self.handle_session_logic(mobile_number)
         logger.info(f"Session logic result: {d}")
+        user_d=temporary_data.get("whatsapp_user_details")
         converse_kwargs.update({
             "session_id":d.get("session_id",None),
             "campaign_id":d.get("campaign_id","inbound"),
             "campaign_type":d.get("campaign_type",None),
-            "dealershp_id":d.get("dealershp_id",None),
+            "dealershp_id":d.get("dealership_id",None),
+            # these 2 we need to check and send for email also..
+            "provider":user_d.get("whatsapp_provider",None), 
+            "contact":user_d.get("mobile_number",None),
             # "lead_id":d.get("lead_id",None),
         })
         # Remove all None values
@@ -799,8 +792,8 @@ class BaseWebhookConverter:
         uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
 
         return uid.hex[:16]   # 16 characters
-        
-    def apply_filters(self, session_id, user_id, channel, session_live, status):
+      
+    def apply_filters(self, session_id=None, user_id=None, channel=None, session_live=None, status=None):
         conditions = [] 
         params = ()
         if session_id:
@@ -905,7 +898,6 @@ class BaseWebhookConverter:
             s= pg.update("session","session_id",session_id,new_session)
             logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. And the session_id is -- {s}")
             return s 
-    
     def send_otp_template(*args, **kwargs):
         logger.info("Send OTP template called")
 
@@ -942,11 +934,9 @@ class BaseWebhookConverter:
             "headers": headers,
             "base_url": config.get("base_url", ""),
         })
-
         provider = WhatsappMessangerConnector.whatsapp(
             provider_name, *args, **kwargs
         )
-
         provider.handle_custom_template(**t_data)
 
         return
@@ -1552,7 +1542,7 @@ class WhatsappCampaignTemplate:
 
     @classmethod
     def register(cls, source_type: str, source_class: type):
-        logger.info(f"TEST class registry {source_type} -> {source_class}")
+        # logger.info(f"TEST class registry {source_type} -> {source_class}")
         cls._registry[source_type.lower()] = source_class
         # logger.info(f"✅ {cls._class_name} Registered source: {source_type} -> {source_class.__name__}")
     @classmethod

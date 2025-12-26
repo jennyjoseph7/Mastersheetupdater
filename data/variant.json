@@ -86,7 +86,7 @@
     },
     {
       "name": "oem_name",
-      "refers": "parents.model_year.oem_id"
+      "refers": "parents.model_year.oem_name"
     },
     {
       "name": "oem_brand_awareness",
@@ -95,10 +95,6 @@
     {
       "name": "oem_country_of_origin",
       "refers": "parents.model_year.oem_country_of_origin"
-    },
-    {
-      "name": "oem_brand_awareness",
-      "refers": "parents.model_year.oem_brand_awareness"
     },
     {
       "name": "oem_wiki_description",
@@ -195,12 +191,6 @@
       "name": "engine_type",
       "type": "text",
       "options": ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"],
-      "ui_element": "select"
-    },
-    {
-      "name": "transmission",
-      "type": "text",
-      "options": ["Manual", "Automatic", "AMT", "CVT", "DCT"],
       "ui_element": "select"
     },
     {

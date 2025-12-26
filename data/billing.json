@@ -30,7 +30,8 @@
             "name": "transaction_type",
             "type": "text",
             "options": ["credit", "debit", "refund"],
-            "default": "debit"
+            "default": "debit",
+            "indexed": true
         },
         {
             "name": "item_name",
@@ -43,6 +44,17 @@
                 "message_delivered",
                 "response_to_query"
             ]
+        },
+        {
+            "name": "campaign_id",
+            "type": "text",
+            "indexed": true,
+            "default": "inbound"
+        },
+        {
+            "name": "channel",
+            "type": "text",
+            "indexed": true
         },
         {
             "name": "item_description",
@@ -271,7 +283,19 @@
         },
         {
             "name": "credit_balance_after",
-            "type": "number"
+            "type": "number",
+            "default": {
+                "function": "subtract_attributes",
+                "args": [
+                    "credit_balance_before",
+                    "item_total"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": [
+                "credit_balance_before",
+                "item_total"
+            ]
         },
         {
             "name": "gst_number",

@@ -113,7 +113,6 @@
                 "bengali",
                 "marathi",
                 "gujarati",
-                "bengali",
                 "assamese",
                 "punjabi",
                 "spanish",
@@ -411,6 +410,8 @@
             "name": "dealer_status",
             "type": "text",
             "default": "lead",
+            "placeholder": "Once have verified otp, then change to signed_up, once the docs are verified, change to verified, once they purchase credits, change to active, if zero credits or no campaigns for 30 days, change to inactive, if balance is negative, change to suspended"
+            ,
             "options": [
                 "lead",
                 "otp_verified",

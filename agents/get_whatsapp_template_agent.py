@@ -225,7 +225,7 @@ def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, camp
             attribute_agent = data_attribute_retriever(source=lead_info, logger=logger)
             attribute_list_sets = attribute_agent.run()
 
-            logger.info("attribute list sets",attribute_list_sets)
+            logger.info(f"attribute list sets --{attribute_list_sets}")
 
             if not attribute_list_sets:
                 raise ValueError("No attribute sets extracted by data_attribute_retriever")

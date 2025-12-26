@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
+  output: "export",
+  trailingSlash: true,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -10,10 +11,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  transpilePackages: ['lucide-react'],
+  transpilePackages: ["lucide-react"],
   experimental: {
-    optimizePackageImports: ['lucide-react'],
+    optimizePackageImports: ["lucide-react"],
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;

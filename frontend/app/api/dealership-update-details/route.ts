@@ -1,7 +1,22 @@
 import { NextResponse } from "next/server";
 
-// Use local backend for dealership update details endpoint
-const API_BASE_URL = "http://127.0.0.1:5008";
+// Determine API base URL based on environment
+const getApiBaseUrl = () => {
+  // Check for explicit environment variable override
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+  
+  // Check if we're in development (localhost)
+  if (process.env.NODE_ENV === "development") {
+    return "http://127.0.0.1:5008";
+  }
+  
+  // Production URL
+  return "https://autobot-webapp-dev.gryd.in";
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export async function POST(request: Request) {
   try {
@@ -44,15 +59,23 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       let errorMessage = `Request failed (${res.status})`;
+      let errorData: any = null;
       try {
         const errorText = await res.text();
-        const errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData?.error || errorData?.message || errorText || errorMessage;
-      } catch {
-        // Use default error message
+        console.log(`[Dealership Update Details] Error response:`, errorText);
+        try {
+          errorData = JSON.parse(errorText);
+          errorMessage =
+            errorData?.error || errorData?.message || errorText || errorMessage;
+        } catch {
+          // Not JSON, use as is
+          errorMessage = errorText || errorMessage;
+        }
+      } catch (readError) {
+        console.error("[Dealership Update Details] Failed to read error:", readError);
       }
 
+      console.error(`[Dealership Update Details] Returning error:`, errorMessage);
       return NextResponse.json({ error: errorMessage }, { status: res.status });
     }
 
