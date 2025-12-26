@@ -22,6 +22,7 @@ function main() {
 		gen_aws_creds_file
 	fi
 	source ./start_worker.sh
+        start_default_workers
 	start_workers
 }
 
