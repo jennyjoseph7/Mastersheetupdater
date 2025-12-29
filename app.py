@@ -7,9 +7,13 @@ from db_routes import db_routes
 # from voice.voice.providers.twilio import app as twilio_routes
 # from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_app
 import os
-from flask import request
+from flask import request,jsonify
 from config import *
 import autocrm_validator
+
+import hmac
+import hashlib
+from core.razorpay_service import razorpay_webhook_handler
 
 gryd.SERVICE = f"{AUTOCRM_APP_ENTERPRISE_ID}-app"   
 QM = gryd.set_queue_manager()
@@ -116,6 +120,47 @@ app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
 # app.register_blueprint(twilio_routes)
 # app.register_blueprint(elevanlabs_tatatele_app)
+
+
+
+WEBHOOK_SECRET = "AUTOBOT_DAVEAI_2025"
+
+def verify_webhook_signature(payload_body: bytes, signature: str, secret: str) -> bool:
+    
+    generated_signature = hmac.new(
+        bytes(secret, "utf-8"),
+        msg=payload_body,
+        digestmod=hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(generated_signature, signature)
+
+
+@app.route("/webhook/razorpay", methods=["POST"])
+def razorpay_webhook():
+    payload_body = request.data 
+    signature = request.headers.get("X-Razorpay-Signature", "")
+
+    if not verify_webhook_signature(payload_body, signature, WEBHOOK_SECRET):
+        return jsonify({"status": "error", "message": "Invalid signature"}), 400
+
+    payload = request.json
+
+    try:
+        razorpay_webhook_handler(payload)  
+        return jsonify({"status": "ok"}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+if __name__ == "__main__":
+    app.run(port=5000, debug=True)
+
+
+
+
+
+
+
 if __name__ == "__main__":
 
     app.run(debug=True, host=app_dict['host'], port=app_dict['port'])

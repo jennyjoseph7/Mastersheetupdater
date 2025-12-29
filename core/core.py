@@ -15,11 +15,11 @@ from typing import List, Union, Dict, Any
 import csv
 import requests
 import tempfile
+from razorpay_service import create_credit_purchase, confirm_payment_success, mark_payment_failed, mark_payment_cancelled
 
 gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
-
 
 MIME_TYPES = {
     'aac': 'audio/aac',
@@ -732,6 +732,49 @@ def gryd_task_import_leads_from_csv(
         raise ValueError(f"Failed to create temporary files: {str(e)}") from e
     wind_up(csv_path, error_csv_path)
     return
+
+    
+@gryd.is_a_task(function_name="payment_service")
+def payment_service(*args, **kwargs):
+
+    def validate_kwargs(required_fields, kwargs):
+        missing = [field for field in required_fields if not kwargs.get(field)]
+        if missing:
+            raise ValueError(f"Missing required parameters: {', '.join(missing)}")
+
+    if not args:
+        raise ValueError("service name is required")
+
+    service = args[0]
+
+    if service == "purchase_credit":
+        validate_kwargs(
+            ["dealership_id", "credits"],
+            kwargs
+        )
+
+        return create_credit_purchase(
+            kwargs["dealership_id"],
+            kwargs["credits"]
+        )
+
+    elif service == "verify_payment":
+        validate_kwargs(["payment_data"], kwargs)
+
+        return confirm_payment_success(kwargs["payment_data"])
+    
+    elif service == "payment_failed":
+        validate_kwargs(["order_id"], kwargs)
+
+        return mark_payment_failed(kwargs["order_id"], kwargs["reason"])
+    
+    elif service == "payment_cancelled":
+        validate_kwargs(["order_id"], kwargs)
+
+        return mark_payment_cancelled(kwargs["order_id"])
+    
+    else:
+        raise ValueError(f"Unsupported payment service: {service}")
 
 if __name__ == "__main__":
 
