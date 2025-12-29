@@ -380,28 +380,38 @@ export default function DealerSignup() {
     setError("");
     setErrorDetails(null);
 
-    // Validate website URL if provided
-    if (
-      dealershipDetails.website &&
-      !urlRegex.test(dealershipDetails.website)
-    ) {
+    // Validate business verification - all fields are mandatory
+    if (!dealershipDetails.website || dealershipDetails.website.trim() === "") {
+      setWebsiteError("Website URL is required");
+      setError("Please enter your website URL");
+      return;
+    }
+    if (!urlRegex.test(dealershipDetails.website)) {
       setWebsiteError("Please enter a valid website URL");
       setError("Please enter a valid website URL");
       return;
     }
 
-    // Validate PAN Number if provided
     if (
-      dealershipDetails.panNumber &&
-      !panRegex.test(dealershipDetails.panNumber)
+      !dealershipDetails.panNumber ||
+      dealershipDetails.panNumber.trim() === ""
     ) {
+      setPanError("PAN Number is required");
+      setError("Please enter your PAN Number");
+      return;
+    }
+    if (!panRegex.test(dealershipDetails.panNumber)) {
       setPanError("Please enter a valid PAN number (Format: ABCDE1234F)");
       setError("Please enter a valid PAN number");
       return;
     }
 
-    // Validate GSTIN if provided
-    if (dealershipDetails.gstin && !gstinRegex.test(dealershipDetails.gstin)) {
+    // GSTIN is optional, but if provided, validate format
+    if (
+      dealershipDetails.gstin &&
+      dealershipDetails.gstin.trim() !== "" &&
+      !gstinRegex.test(dealershipDetails.gstin)
+    ) {
       setGstinError("Please enter a valid GSTIN (15 characters)");
       setError("Please enter a valid GSTIN");
       return;
@@ -460,13 +470,10 @@ export default function DealerSignup() {
         kwargs.supported_brands = brandSlugs;
       }
 
-      if (dealershipDetails.panNumber) {
-        kwargs.pan_number = dealershipDetails.panNumber;
-      }
-
-      if (dealershipDetails.website) {
-        kwargs.website = dealershipDetails.website;
-      }
+      // Include all verification fields (all are mandatory)
+      kwargs.website = dealershipDetails.website;
+      kwargs.pan_number = dealershipDetails.panNumber;
+      kwargs.gstin = dealershipDetails.gstin;
 
       // Prepare API request - only send if there's at least one field to update
       if (Object.keys(kwargs).length === 0) {
@@ -1320,14 +1327,20 @@ export default function DealerSignup() {
                     </Label>
                     <RadioGroup
                       value={dealershipDetails.dealershipType}
-                      onValueChange={(value) =>
+                      onValueChange={(value) => {
+                        const newType = value as "Single Brand" | "Multi Brand";
+                        // If switching to Single Brand and multiple brands are selected, keep only the first one
+                        const updatedBrands =
+                          newType === "Single Brand" &&
+                          dealershipDetails.brands.length > 1
+                            ? [dealershipDetails.brands[0]]
+                            : dealershipDetails.brands;
                         setDealershipDetails({
                           ...dealershipDetails,
-                          dealershipType: value as
-                            | "Single Brand"
-                            | "Multi Brand",
-                        })
-                      }
+                          dealershipType: newType,
+                          brands: updatedBrands,
+                        });
+                      }}
                     >
                       <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                         <RadioGroupItem
@@ -1363,24 +1376,52 @@ export default function DealerSignup() {
                   <div className="space-y-3">
                     <Label className="text-base font-semibold">
                       Supported Brands
+                      {dealershipDetails.dealershipType === "Single Brand" && (
+                        <span className="text-sm font-normal text-muted-foreground ml-2">
+                          (Select one brand)
+                        </span>
+                      )}
                     </Label>
                     <div className="space-y-2">
                       <Select
                         value=""
                         onValueChange={(value) => {
-                          if (
-                            value &&
-                            !dealershipDetails.brands.includes(value)
-                          ) {
-                            setDealershipDetails({
-                              ...dealershipDetails,
-                              brands: [...dealershipDetails.brands, value],
-                            });
+                          if (value) {
+                            // If Single Brand is selected, replace existing brand with new one
+                            if (
+                              dealershipDetails.dealershipType ===
+                              "Single Brand"
+                            ) {
+                              setDealershipDetails({
+                                ...dealershipDetails,
+                                brands: [value],
+                              });
+                            } else if (
+                              !dealershipDetails.brands.includes(value)
+                            ) {
+                              // Multi Brand: add if not already selected
+                              setDealershipDetails({
+                                ...dealershipDetails,
+                                brands: [...dealershipDetails.brands, value],
+                              });
+                            }
                           }
                         }}
+                        disabled={
+                          dealershipDetails.dealershipType === "Single Brand" &&
+                          dealershipDetails.brands.length >= 1
+                        }
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a brand to add" />
+                          <SelectValue
+                            placeholder={
+                              dealershipDetails.dealershipType ===
+                                "Single Brand" &&
+                              dealershipDetails.brands.length >= 1
+                                ? "One brand selected (change by selecting another)"
+                                : "Select a brand to add"
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {[
@@ -1545,96 +1586,121 @@ export default function DealerSignup() {
                     )}
                   </div>
 
-                  {/* Website */}
-                  <div className="space-y-2">
-                    <Label htmlFor="website">Website (Optional)</Label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="website"
-                        type="url"
-                        placeholder="https://www.yourdealership.com"
-                        value={dealershipDetails.website}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setDealershipDetails({
-                            ...dealershipDetails,
-                            website: value,
-                          });
-                          if (value && !urlRegex.test(value)) {
-                            setWebsiteError("Please enter a valid website URL");
-                          } else {
-                            setWebsiteError("");
-                          }
-                        }}
-                        className="pl-10"
-                      />
-                    </div>
-                    {websiteError && (
-                      <p className="text-sm text-destructive">{websiteError}</p>
-                    )}
-                  </div>
+                  {/* Business Verification */}
+                  <div className="space-y-4">
+                    <Label className="text-base font-semibold">
+                      Business Verification{" "}
+                      <span className="text-destructive">*</span>
+                    </Label>
 
-                  {/* PAN and GSTIN */}
-                  <div className="grid md:grid-cols-2 gap-4">
+                    {/* Website */}
                     <div className="space-y-2">
-                      <Label htmlFor="panNumber">PAN Number (Optional)</Label>
-                      <Input
-                        id="panNumber"
-                        placeholder="ABCDE1234F"
-                        value={dealershipDetails.panNumber}
-                        onChange={(e) => {
-                          const value = e.target.value
-                            .toUpperCase()
-                            .replace(/[^A-Z0-9]/g, "");
-                          setDealershipDetails({
-                            ...dealershipDetails,
-                            panNumber: value,
-                          });
-                          if (value && !panRegex.test(value)) {
-                            setPanError(
-                              "Please enter a valid PAN number (Format: ABCDE1234F)"
-                            );
-                          } else {
-                            setPanError("");
-                          }
-                        }}
-                        maxLength={10}
-                        className="font-mono uppercase"
-                      />
-                      {panError && (
-                        <p className="text-sm text-destructive">{panError}</p>
+                      <Label htmlFor="website">
+                        Website URL <span className="text-destructive">*</span>
+                      </Label>
+                      <div className="relative">
+                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="website"
+                          type="url"
+                          placeholder="Enter your website URL"
+                          value={dealershipDetails.website}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setDealershipDetails({
+                              ...dealershipDetails,
+                              website: value,
+                            });
+                            if (!value || value.trim() === "") {
+                              setWebsiteError("Website URL is required");
+                            } else if (!urlRegex.test(value)) {
+                              setWebsiteError(
+                                "Please enter a valid website URL"
+                              );
+                            } else {
+                              setWebsiteError("");
+                            }
+                          }}
+                          required
+                          className="pl-10"
+                        />
+                      </div>
+                      {websiteError && (
+                        <p className="text-sm text-destructive">
+                          {websiteError}
+                        </p>
                       )}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="gstin">GSTIN (Optional)</Label>
-                      <Input
-                        id="gstin"
-                        placeholder="22ABCDE1234F1Z5"
-                        value={dealershipDetails.gstin}
-                        onChange={(e) => {
-                          const value = e.target.value
-                            .toUpperCase()
-                            .replace(/[^A-Z0-9]/g, "");
-                          setDealershipDetails({
-                            ...dealershipDetails,
-                            gstin: value,
-                          });
-                          if (value && !gstinRegex.test(value)) {
-                            setGstinError(
-                              "Please enter a valid GSTIN (15 characters)"
-                            );
-                          } else {
-                            setGstinError("");
-                          }
-                        }}
-                        maxLength={15}
-                        className="font-mono uppercase"
-                      />
-                      {gstinError && (
-                        <p className="text-sm text-destructive">{gstinError}</p>
-                      )}
+                    {/* PAN and GSTIN */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="panNumber">
+                          PAN Number <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="panNumber"
+                          placeholder="Enter your PAN Number"
+                          value={dealershipDetails.panNumber}
+                          onChange={(e) => {
+                            const value = e.target.value
+                              .toUpperCase()
+                              .replace(/[^A-Z0-9]/g, "");
+                            setDealershipDetails({
+                              ...dealershipDetails,
+                              panNumber: value,
+                            });
+                            if (!value || value.trim() === "") {
+                              setPanError("PAN Number is required");
+                            } else if (!panRegex.test(value)) {
+                              setPanError(
+                                "Please enter a valid PAN number (Format: ABCDE1234F)"
+                              );
+                            } else {
+                              setPanError("");
+                            }
+                          }}
+                          maxLength={10}
+                          className="font-mono uppercase"
+                          required
+                        />
+                        {panError && (
+                          <p className="text-sm text-destructive">{panError}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="gstin">GSTIN Number (Optional)</Label>
+                        <Input
+                          id="gstin"
+                          placeholder="Enter your GSTIN Number"
+                          value={dealershipDetails.gstin}
+                          onChange={(e) => {
+                            const value = e.target.value
+                              .toUpperCase()
+                              .replace(/[^A-Z0-9]/g, "");
+                            setDealershipDetails({
+                              ...dealershipDetails,
+                              gstin: value,
+                            });
+                            // Only validate format if value is provided
+                            if (value && !gstinRegex.test(value)) {
+                              setGstinError(
+                                "Please enter a valid GSTIN (15 characters)"
+                              );
+                            } else {
+                              setGstinError("");
+                            }
+                          }}
+                          maxLength={15}
+                          className="font-mono uppercase"
+                        />
+                        {gstinError && (
+                          <p className="text-sm text-destructive">
+                            {gstinError}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
