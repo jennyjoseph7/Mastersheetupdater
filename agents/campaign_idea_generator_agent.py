@@ -7,10 +7,11 @@ import os
 from pathlib import Path
 
 class CampaignIdeaGeneratorAgent(BaseAgent):
-    def __init__(self, source, classified_cohort : dict, brochure_url=None, product_website_url=None, model_identifier='azure-gpt-4o'):
+    def __init__(self, source, classified_cohort:dict = None, affinity_score:dict=None, brochure_url=None, product_website_url=None, model_identifier='azure-gpt-4o'):
         self.model_identifier = model_identifier
         self.source = self._load_json(source=source)
         self.classified_cohort = classified_cohort
+        self.affinity_score = affinity_score
         self.llm = lambda messages : ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
 
         self.brochure_url : str = brochure_url
@@ -33,10 +34,11 @@ class CampaignIdeaGeneratorAgent(BaseAgent):
         You will be given:
         1. Customer interaction summary.
         2. The cohort classification output.
-        3. Product brochure content if available.
-        4. Product website content if available.
+        3. Customer affinity score.
+        4. Product brochure content if available.
+        5. Product website content if available.
 
-        Use cohort traits + message tags + user intent to generate:
+        Use cohort traits + message tags + user intent + affinity to generate:
         - 3 campaign message ideas
         - 3 retargeting nudges
         - 3 short hooks
@@ -61,6 +63,9 @@ class CampaignIdeaGeneratorAgent(BaseAgent):
 
         Classified Cohort:
         {json.dumps(self.classified_cohort, indent=2)}
+
+        Affinity Score:
+        {json.dumps(self.affinity_score, indent=2)}
         
         Product Brochure Content:
         {json.dumps(self.brochure_content, indent=2)}

@@ -427,7 +427,8 @@ if st.session_state.get("pipeline_ran", False):
         with st.spinner("Generating campaign ideas..."):
             campaign = CampaignIdeaGeneratorAgent(
                 source=interaction,
-                classified_cohort=selected_user_data["classified_cohort_data"],
+                classified_cohort=st.session_state.selected_user_data["classified_cohort_data"],
+                affinity_score=st.session_state.affinity["affinity_scores"],
                 brochure_url=brochure_url,
                 product_website_url=product_link
             )
