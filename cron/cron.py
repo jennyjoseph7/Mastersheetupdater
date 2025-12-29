@@ -21,6 +21,12 @@ gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
 mlogger.info(f"SERVICE --{gryd.SERVICE}")
+
+def SETUP():
+    """When we are running this worker for the first time in an environment
+    """
+    pass
+
 def clear_otp_cache(logger=None, job=None):
     logger = logger or mlogger
     otp_cache_model = gryd.base_model.Model('otp_cache', AUTOCRM_APP_ENTERPRISE_ID)

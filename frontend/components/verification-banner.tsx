@@ -23,7 +23,7 @@ export function VerificationBanner({ variant = "inline", showDismiss = true }: V
   }
 
   const handleVerifyClick = () => {
-    router.push("/profile/verify")
+    router.push("/dealership/update-details")
   }
 
   if (variant === "compact") {

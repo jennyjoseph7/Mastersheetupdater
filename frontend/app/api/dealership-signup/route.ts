@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 
-// Determine API base URL based on environment
+// Determine API base URL - always use production unless explicitly overridden
 const getApiBaseUrl = () => {
   // Check for explicit environment variable override
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
   }
-  
-  // Check if we're in development (localhost)
-  if (process.env.NODE_ENV === "development") {
-    return "http://127.0.0.1:5008";
-  }
-  
-  // Production URL
+
+  // Always use production URL
   return "https://autobot-webapp-dev.gryd.in";
 };
 
