@@ -47,6 +47,6 @@
     "audience_task",
     "campaign_dashboard",
     "campaign_performance_summary",
-    "overall_campaign_summary",
+    "campaign_summary",
     "template_summary"
 ]

@@ -499,6 +499,7 @@ class BaseWebhookConverter:
             return None
         
         # logger.info(f"PROCESS STATUS CHECK---status --- {message_dict.get('message_status')}---data---{json.dumps(self.default_message_dict,indent=4)}")
+        
         msg_status=message_dict.get("message_status").lower()
         wa_status= WA_TO_DISPOSITION.get(msg_status, None)
         
@@ -506,6 +507,7 @@ class BaseWebhookConverter:
         if wa_status:
             logger.info(f"Received {wa_status} status webhook for {message_dict.get('enterprise_id')} enterprise and mobile number: {message_dict.get('recipientAddress',message_dict.get('mobile_number'))}")
             message_dict["message_status"]=wa_status
+            
             gryd.create_async_task(
                 'post_contact_status',
                 AUTOCRM_COMMUNICATION_SERVICE_NAME,
@@ -885,7 +887,7 @@ class BaseWebhookConverter:
                 **data,
                 "session_live": True,
                 "channel": "whatsapp_chat",
-                "status": "pre-initiated",
+                "status": "interacted",
                 "campaign_type": data.get("campaign_type","inbound"),
                 "campaign_id": data.get("campaign_id",'inbound'),
                 "created": time.time(),
