@@ -836,7 +836,8 @@ def dealership_signup(
     dealership_model = gryd.base_model.Model('dealership', AUTOCRM_APP_ENTERPRISE_ID)
     previous_dealership = dealership_model.list(_as_option=True, _page_size=1, dealer_name=f"~{dealer_name}", region_id=region_id, vehicle_category=vehicle_category)
     if previous_dealership:
-        raise ValueError(f"Dealer with name similar to {dealer_name} ({', '.join(previous_dealership.get('dealer_name'))}), region {region_id}, vehicle category {vehicle_category} already exists.")
+        previous_dealership_names = ', '.join(list(map(lambda x: x.get('dealer_name'), previous_dealership))) 
+        raise ValueError(f"Dealer with name similar to {dealer_name} ({previous_dealership_names}), region {region_id}, vehicle category {vehicle_category} already exists.")
     region_model = gryd.base_model.Model('region', AUTOCRM_APP_ENTERPRISE_ID)
     region = region_model.get(region_id)
     if not region:

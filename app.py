@@ -23,11 +23,11 @@ app = app_dict['app']
 
 
 
-def SETUP(skip_models = False, skip_data = False, start_models_from = None, start_data_from = None, skip_cron = False):
+def SETUP(skip_models = False, skip_data = False, start_models_from = None, start_data_from = None, skip_cron = False, new_db = False, new_environment = False):
     gryd.setup_gryd_enterprise(AUTOCRM_APP_ENTERPRISE_ID, email = AUTOCRM_ADMIN_ID, phone_number = AUTOCRM_ADMIN_PHONE_NUMBER, password = AUTOCRM_ADMIN_PASSWORD)
     enterprise = base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
     load_stored_procedures()
-    if not skip_models:
+    if (not skip_models) or new_db:
         with hp.read_file(DATA_DIR, "model_sequence.json") as model_sequence:
             for model_name in model_sequence:
                 if start_models_from and model_name != start_models_from:
@@ -35,7 +35,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
                     continue
                 start_models_from = None
                 post_autocrm_model(model_name, enterprise = enterprise)
-    if not skip_data:
+    if (not skip_data) or new_db:
         with hp.read_file(BASE_PATH, "seed", "data_sequence.json") as data_sequence:
             for data_name in data_sequence:
                 if start_data_from and data_name != start_data_from:
@@ -43,7 +43,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
                     continue
                 start_data_from = None
                 post_autocrm_data(data_name)
-    if not skip_cron:
+    if (not skip_cron) or new_environment:
         # cron_worker.add_cron_job(AUTOCRM_APP_ENTERPRISE_ID, "clear_otp_cache", "cron", "*/15 * * * *", logger = logger)
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
@@ -60,9 +60,10 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
               kwargs={"inactivity_time": 1440, "only_for_channels":["whatsapp_chat"]},
               add_schedule_to_queue=False
         )
+        cron_worker.add_cron_job(AUTOCRM_APP_ENTERPRISE_ID, "clear_otp_cache", "cron", "*/15 * * * *", logger = logger)
         # add cron jobs here
-        #  also stored procedures.. 
     
+
 
 @app.route("/webhook/<channel>/<channel_provider>", methods = ["GET","POST"])
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>", methods = ["GET","POST"])
