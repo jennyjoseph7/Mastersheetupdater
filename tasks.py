@@ -1,6 +1,6 @@
 from gryd_worker import gryd
 from gryd_worker.gryd_routes import gryd_result
-from utils import GRYD_SERVICE, GRYD_CONFIG, get_logger, upload_file
+from utils import GRYD_SERVICE, GRYD_CONFIG, get_logger, upload_file, load_json
 from typing import Union, Dict, Any, Generator
 import json
 import traceback, os
@@ -957,19 +957,94 @@ def media_extraction_agent(*args, **kwargs):
             "error": str(e).strip()
         }
 
+@gryd.is_a_task()
+def cohort_classification_agent(*args, **kwargs):
+    try:
+        from agents.cohort_classification_agent import CohortClassificationAgent
+        source = kwargs["source"]
+
+        brochure_url = kwargs.get("brochure_url", None)
+        product_website_url = kwargs.get("product_website_url", None)
+
+        source["brochure_url"] = brochure_url
+        source["product_website_url"] = product_website_url
+
+        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+        cohort_classification_agent = CohortClassificationAgent(source=source, model_identifier=model_identifier)
+        output = cohort_classification_agent.run()
+        return {
+            "task": inspect.currentframe().f_code.co_name, 
+            **output
+        }
+    except Exception as e:
+        logger.error(f"Cohort Classification Agent Error: {e}")
+        traceback.print_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip()
+        }
+    
+@gryd.is_a_task()
+def campaign_idea_generation_agent(*args, **kwargs):
+    try:
+        from agents.campaign_idea_generator_agent import CampaignIdeaGeneratorAgent
+        from agents.cohort_classification_agent import CohortClassificationAgent
+        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+
+        if not "source" in kwargs:
+            return {
+                "task": inspect.currentframe().f_code.co_name,
+                "error": "No source provided"
+            }
+        source = load_json(kwargs.get("source"))
+
+        brochure_url = kwargs.get("brochure_url", None)
+        product_page_url = kwargs.get("product_page_url", None)
+
+        if brochure_url:
+            source['brochure_url'] = brochure_url
+        
+        if product_page_url:
+            source["product_page_url"] = product_page_url
+        
+        propensity_agent_result = propensity_agent.execute(source = source)
+        source["propensity"] = propensity_agent_result
+
+        c_agent = CohortClassificationAgent(source = source, model_identifier=model_identifier)
+        cohort_classification_agent_result = c_agent.run()
+        source["cohort_classification"] = cohort_classification_agent_result
+        
+        campaign_idea_generator_agent = CampaignIdeaGeneratorAgent(source=source, model_identifier=model_identifier)
+        output = campaign_idea_generator_agent.run()
+        return {
+            "task": inspect.currentframe().f_code.co_name, 
+            "cohort_classification": cohort_classification_agent_result,
+            **output
+        }
+    except Exception as e:
+        logger.error(f"Campaign Idea Generator Agent Error: {e}")
+        traceback.print_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip()
+        }
+
+
 # ------------------ Global Agents Finish ------------------
 
-a = AgentOrchestrator.AgentOrchestrator()
-agents_list = []
-for agent in a.AGENT_REGISTRY:
-    agents_list.append({
-        "name": agent.name,
-        "description": agent.description,
-        "depends_on": agent.depends_on,
-        "expected_input": agent.expected_input,
-        "expected_output": agent.expected_output
-    })
-print(json.dumps(agents_list, indent=4))
+# This is just to print all the agents registered for orchestration.
+
+# a = AgentOrchestrator.AgentOrchestrator()
+# agents_list = []
+# for agent in a.AGENT_REGISTRY:
+#     agents_list.append({
+#         "name": agent.name,
+#         "description": agent.description,
+#         "depends_on": agent.depends_on,
+#         "expected_input": agent.expected_input,
+#         "expected_output": agent.expected_output
+#     })
+# print(json.dumps(agents_list, indent=4))
 
 
 @gryd.is_a_task()
@@ -984,20 +1059,76 @@ def query_orchestrator(*args, **kwargs):
 
 
 if __name__ == "__main__":
+
+
+
+    # result = campaign_idea_generation_agent(source = fp, brochure_url = "https://cache.industry.siemens.com/dl/files/811/109765811/att_1116928/v1/One-Stop-Shop-en.pdf")
+    # print(json.dumps(result, indent=4, default=str))
+
+    # interaction["campaign_idea"] = campaign_idea
+
+    # assert False
+
+    # agent = ImageGenerationAgent()
+
+    # poster_url = agent.generate_poster(
+    #     car_image_url="https://cdni.autocarindia.com/ExtraImages/20241125025429_20231211041603_Untitled%20design%20_14_.jpg",
+    #     marketing_message="Book a Test Drive Today. Flat 2L OFF Diwali offer!",
+    #     brand="Tata"
+    # )
+
+    # print(poster_url)
+
+    # assert False
+
+    # print(poster_url)
+
+    fp = "/home/shreyasvaishnav/autobot_agents/aem_mock_data/5.json"
+    interaction = json.load(open(fp, "r"))
+    
+    from agents.cohort_generation_agent import CohortGenerationAgent
+    from agents.cohort_classification_agent import CohortClassificationAgent
+    from agents.campaign_idea_generator_agent import CampaignIdeaGeneratorAgent
+    from agents.image_generation_agent import ImageGenerationAgent
+    from agents.affinity_agent import AffinityEngineAgent
+
+    affinity = AffinityEngineAgent().run(interaction)
+    print(json.dumps(affinity, indent=4, default=str))
+
+
+    product_link = "https://auto.mahindra.com/suv/xuv3xo/X3XO.html"
+    product_link = "http://www.dpauto.co.in/new-cars/mahindra-xuv-3xo.html"
+    brochure = "https://auto.mahindra.com/on/demandware.static/-/Sites-amc-Library/default/dw48c7c87f/brochures/X3XO/X3XO_brochure.pdf"
+
+    c = CohortGenerationAgent(product_website_url = product_link, brochure_url = None)
+    cohorts = c.run()
+    print(json.dumps(cohorts, indent=4, default=str))
+
+    
+    cc = CohortClassificationAgent(source = interaction, brochure_url = None, cohorts=cohorts["cohorts"])
+    classified_cohort = cc.run()
+    print(json.dumps(classified_cohort, indent=4, default=str))
+
+    campaign = CampaignIdeaGeneratorAgent(source = interaction, classified_cohort = classified_cohort, brochure_url = None, product_website_url = product_link)
+    final = campaign.run()
+    print(json.dumps(final, indent=4, default=str))
+
+
+
     # r = compute_on_road_price(source = {"state" : "maha", "engine_type" : "ev", "ex_showroom_price" : 950000, "gst_rate" : 18})
     # logger.info(f"Result: {json.dumps(r, indent=4, default=str)}")
 
-    from agents.media_extraction_agent import MediaExtractionAgent
+    # from agents.media_extraction_agent import MediaExtractionAgent
 
-    agent = MediaExtractionAgent("https://cars.tatamotors.com/sierra/ice.html")
-    media = agent.run()
-    print("Images:")
-    for img in media["images"]:
-        print(img)
+    # agent = MediaExtractionAgent("https://cars.tatamotors.com/sierra/ice.html")
+    # media = agent.run()
+    # print("Images:")
+    # for img in media["images"]:
+    #     print(img)
 
-    print("\nVideos:")
-    for vid in media["videos"]:
-        print(vid)
+    # print("\nVideos:")
+    # for vid in media["videos"]:
+    #     print(vid)
 
 
 
