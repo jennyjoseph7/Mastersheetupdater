@@ -104,40 +104,8 @@
       "refers": "parents.dealership.region_level_guardrails"
     },
     {
-      "name": "workshop_name",
-      "refers": "parents.workshop.workshop_name"
-    },
-    {
-      "name": "workshop_full_name",
-      "refers": "parents.workshop.workshop_full_name"
-    },
-    {
-      "name": "workshop_address",
-      "refers": "parents.workshop.address"
-    },
-    {
       "name": "workshop_pincode",
       "refers": "parents.workshop.pincode"
-    },
-    {
-      "name": "workshop_contact_number",
-      "refers": "parents.workshop.contact_number"
-    },
-    {
-      "name": "workshop_email",
-      "refers": "parents.workshop.email"
-    },
-    {
-      "name": "workshop_geolocation",
-      "refers": "parents.workshop.geolocation"
-    },
-    {
-      "name": "workshop_operating_hours",
-      "refers": "parents.workshop.operating_hours"
-    },
-    {
-      "name": "workshop_facilities_available",
-      "refers": "parents.workshop.facilities_available"
     },
     {
       "name": "supported_brands",
