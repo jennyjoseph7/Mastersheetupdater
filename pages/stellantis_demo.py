@@ -34,11 +34,6 @@ def setup_header():
 
 setup_header()
 
-# st.sidebar.image(
-#     "pages/campaign_funnel.drawio.png",
-#     width=280
-# )
-
 st.divider()
 
 DEFAULT_KEYS = ["interaction", "affinity", "cohorts", "classified_cohort", "campaign", "clusters"]
@@ -487,19 +482,23 @@ if st.session_state.get("pipeline_ran", False):
         st.error("Feature coming soon...")
     
     if st.session_state.get("show_chatbot", False) is True:
-        # from agents.media_extraction_agent import MediaExtractionAgent
-        # media_agent = MediaExtractionAgent(url=product_link)
-        # media_extraction_agent_result = media_agent.run()
-        # all_images = media_extraction_agent_result["images"]
-        # all_videos = media_extraction_agent_result["videos"]
-        # image = all_images[0] if len(all_images) > 0 else None
-        # video = all_videos[0] if len(all_videos) > 0 else None
-
         import random
+        from agents.media_extraction_agent import MediaExtractionAgent
+        media_agent = MediaExtractionAgent(url=product_link)
+        media_extraction_agent_result = media_agent.run()
+        all_images = media_extraction_agent_result["images"]
+        all_videos = media_extraction_agent_result["videos"]
+        image = random.choice(all_images).replace(",", "") if len(all_images) > 0 else None
+        video = random.choice(all_videos).replace(",", "") if len(all_videos) > 0 else None
+
+        logger.info(f"image: {image}")
+        logger.info(f"video: {video}")
+
         if st.session_state.campaign is not None:
             wa_msgs = st.session_state.campaign["whatsapp_msgs"]
             random_wa_msg = random.choice(wa_msgs)
             logger.info(f"random_wa_msg: {random_wa_msg}")
+            
             st.markdown("""
                 <style>
                 .chatbot-container {
@@ -556,6 +555,14 @@ if st.session_state.get("pipeline_ran", False):
                     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
                     font-size: 14px;
                     line-height: 1.4;
+                    color: #000000;
+                }
+                
+                .message-bubble img {
+                    max-width: 100%;
+                    border-radius: 8px;
+                    margin-bottom: 8px;
+                    display: block;
                 }
                 
                 .message-time {
@@ -589,6 +596,7 @@ if st.session_state.get("pipeline_ran", False):
                     </div>
                     <div class="chatbot-body">
                         <div class="message-bubble">
+                            """ + (f'<img src="{image}" alt="Product">' if image else '') + """
                             """ + random_wa_msg + """
                             <div class="message-time">Just now ✓✓</div>
                         </div>

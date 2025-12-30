@@ -5,6 +5,10 @@ from agents.base_agent import BaseAgent
 import pandas as pd 
 import os 
 from pathlib import Path
+import time
+from utils import * 
+
+logger = get_logger(__name__)
 
 class CampaignIdeaGeneratorAgent(BaseAgent):
     def __init__(self, source, classified_cohort:dict = None, affinity_score:dict=None, brochure_url=None, product_website_url=None, model_identifier='azure-gpt-4o'):
@@ -27,7 +31,7 @@ class CampaignIdeaGeneratorAgent(BaseAgent):
             self.product_website_content = self.fetch_product_details_from_website(website_url = self.product_website_url)
             
 
-    def generate_campaign_ideas(self):
+    def run(self):
         system_prompt = f"""
         You are a Campaign Idea Generator AI.
 
@@ -78,11 +82,20 @@ class CampaignIdeaGeneratorAgent(BaseAgent):
             {"role": "user", "content": user_input}
         ]
 
-        result = self.llm(messages)
-        try:
-            return self.extract_json_from_llm_response(result)
-        except:
-            return {"error": "LLM returned malformed JSON", "raw": result}
+        MAX_RETRIES = 3
+        BACKOFF = 2
+        last_exception = None
+        for attempt in range(1, MAX_RETRIES+1):
+            try:
+                result = self.llm(messages)
+                response = self.extract_json_from_llm_response(result)
+                return response
+            except Exception as e:
+                last_exception = e
+                logger.exception(
+                f"Attempt {attempt}/{MAX_RETRIES} failed in campaign_idea_generator_agent")
+                if attempt < MAX_RETRIES:
+                    time.sleep(BACKOFF)
+
+        raise RuntimeError("LLM call failed after retries") from last_exception
         
-    def run(self):
-        return self.generate_campaign_ideas()

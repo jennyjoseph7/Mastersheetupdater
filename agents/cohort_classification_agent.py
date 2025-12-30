@@ -15,16 +15,23 @@ import time
 logger = get_logger(__name__)
 
 class CohortClassificationAgent(BaseAgent):
-    def __init__(self, source, brochure_url=None, product_website_url=None, cohorts = [], model_identifier='azure-gpt-4o'):
+    def __init__(self, source, brochure_url=None, product_website_url=None, cohorts = None, model_identifier='azure-gpt-4o'):
         self.model_identifier : str = model_identifier
         self.source : dict = self._load_json(source=source)
         self.llm = lambda messages : ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
         self.brochure_url : str = brochure_url
         self.product_website_url : str = product_website_url
-        self.cohorts_registry : list = cohorts
+        self.cohorts_registry = cohorts
 
-        if isinstance(self.cohorts_registry, dict) and len(self.cohorts_registry) > 0 and "cohorts" in self.cohorts_registry:
-            self.cohorts_registry = self.cohorts_registry["cohorts"]
+        if self.cohorts_registry is not None:
+            if isinstance(self.cohorts_registry, dict) and len(self.cohorts_registry) > 0 and "cohorts" in self.cohorts_registry:
+                self.cohorts_registry = self.cohorts_registry["cohorts"]
+            elif isinstance(self.cohorts_registry, list) and len(self.cohorts_registry) > 0:
+                self.cohorts_registry = self.cohorts_registry
+        else:
+            self.cohorts_registry = []
+            logger.error("Cohort knowledge is not provided.. Setting it to an empty list")
+            logger.info(f"Cohort knowledge: {self.cohorts_registry}")
 
         self.brochure_content : list[dict] = None
         self.product_website_content : list[dict] = None
