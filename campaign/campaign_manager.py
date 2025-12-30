@@ -899,6 +899,4 @@ def get_variable_values(template_variables, lead_data, selected_person=None):
             values[var] = lead_data.get(var)
     return values
 
-def campaign_start(*args,**kwargs):
-    pass
 

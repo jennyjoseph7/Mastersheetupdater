@@ -3,9 +3,9 @@ from os.path import exists as ispath, dirname, basename, join as joinpath, abspa
 import sys
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from connectors.communication_helpers import *
-# from connectors.communication_configs import *
-from config import AUTOCRM_COMMUNICATION_SERVICE_NAME
-from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
+from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID
+from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp,gryd_routes
+
 gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
@@ -90,7 +90,7 @@ def communication_hook(channel, event_name, enterprise_id, recipient=None, reaso
 
 @gryd.is_a_task(function_name="communication_sender")
 def communication_sender(*args, **kwargs):
-    enterprise_id = kwargs.get("enterprise_id") or kwargs.get("ent_id")
+    enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
     comm = Communication(enterprise_id)
     return comm.send(**kwargs)
 
@@ -105,13 +105,25 @@ class Communication:
         self.test = test
         self.user_id = user_id
 
-        try:
-            self.enterprise = fetch_record("core","enterprise",enterprise_id,id_attr="enterprise_id")
-            if isinstance(self.enterprise,tuple):
-                self.enterprise= self.enterprise[0]
-        except Exception as e:
-            logger.error(f"Error while fetching enterprise: {e}")
-            self.enterprise = {}
+        MAX_RETRIES = 2
+        attempt = 0
+        last_exception = None
+
+        while attempt < MAX_RETRIES:
+            try:
+                g_routes=gryd_routes.GrydEnterpriseConnector()
+                self.enterprise = g_routes.get_enterprise_object(enterprise_id)
+                logger.info(f"Loaded enterprise: {self.enterprise}")
+                if not self.enterprise:
+                    raise Exception("Unable to fetch the entprise object")
+                return  # success, exit function
+                
+            except Exception as e:
+                last_exception = e
+                logger.error(f"Attempt {attempt+1}/{MAX_RETRIES} failed fetching enterprise: {e}")
+                attempt += 1
+        logger.info("Unable to load the model retrying to loading via models")
+        return
 
     def get_preferred_channels(self, receiver, channels=None):
         for channel_key, aliases in CHANNEL_ALIASES.items():
@@ -167,9 +179,10 @@ class Communication:
         provider = kwargs.get("provider") or self.enterprise.get("email_provider", "__default__")
         credentials = (
             kwargs.get("credentials") or
-            kwargs.get("_credentials") or
-            self.enterprise.get("email_provider_credentials", {})
+            kwargs.get("_credentials") 
+            # self.enterprise.get("email_provider_credentials", {})
         )
+        logger.info(f"SEND MAIL Credentials: {credentials}")
         communication_ids=[]
         task_ids={}
         for idx, recipient in enumerate(receiver_emails, 1):
@@ -190,8 +203,8 @@ class Communication:
             })
             else:
                 try:
-                    from communication import gryd_connector_mail
-                    task_response=gryd_connector_mail.gryd_start_mail(*args,**task_kwargs)
+                    from communication.connectors.connector_mail import gryd_start_mail
+                    task_response=gryd_start_mail(*args,**task_kwargs)
                     communication_ids.append(
                         {
                             "communication_id":task_kwargs.get("communication_id"),
@@ -222,63 +235,70 @@ class Communication:
 
 
 if __name__=='__main__':
+    
+# SAMPLE FOR AWS_SES MAIL --------------------------------------------------------
+    
     communication_sender(**{
-        "ent_id":"test1",
-        "enterprise_id":"test1",
-        "sender":{
-            "name":"info",
-            "email":"info@iamdave.ai"
-        },
-        "receiver":{
-            "emails":["praveen@iamdave.ai"]
-        },
-        "cc":"ntssahu485@gmail.com",
-        "html_string":"<p>Hi Nitesh THis a test mail</p>",
-        "subject":"TEST EMAIL",
-        "provider":"AwsSender",
-        "files":[
-            ["https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/bde3c8c1-5053-47cf-8b2a-fbe8c1b8dc4f-68e8b8e4_SwiftTechnicalSpecification.pdf"]
-        ],
-        # "_run_async":False
-        
-    },
+            "ent_id":"test1",
+            "enterprise_id":"test1",
+            "sender":{
+                "name":"info",
+                "email":"info@iamdave.ai"
+            },
+            "receiver":{
+                "emails":["praveen@iamdave.ai"]
+            },
+            "cc":"ntssahu485@gmail.com",
+            "html_string":"<p>Hi Nitesh THis a test mail</p>",
+            "subject":"TEST EMAIL",
+            "provider":"AwsSender",
+            "files":[
+                ["https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/bde3c8c1-5053-47cf-8b2a-fbe8c1b8dc4f-68e8b8e4_SwiftTechnicalSpecification.pdf"]
+            ],
+            # "_run_async":False
+        }
     )
 
-    # communication_sender(**{
-    #     "enterprise_id":"test1",
-    #     "sender":{
-    #         "name":"info",
-    #         "email":"nitesh@iamdave.ai"
-    #     },
-    #     "receiver":{
-    #         "emails":["ntssahu485@gmail.com"]
-    #     },
-        
-    #     "html_string":"<p>Thank you for your message. We will get back to you shortly.</p>",
-    #     "subject":"Re: Test drive booking request",
-    #     "provider":'SmtpSender',"credentials":{
-    #         'host': 'smtp.zoho.com',
-    #         'port': 465,
-    #         'username': 'nitesh@iamdave.ai',
-    #         'password': 'VBTQckYNYyrx',
-    #         'use_ssl': True
-    #     },
-    #     "reply_email":{
-    #         "in_reply_to": "cah4jjlvde1+fsmhah95gkzogv12oj1_6xf1e_mmoxjcffxhemw@mail.gmail.com",
-    #         "references": "<CAH4JJLX8X8tg=d5q9W86d-OPpage_25dQoMYJn96p9tfGe4XzQ@mail.gmail.com>\r\n <196af921e5d.10f68b4d61099910.8029631709341991170@iamdave.ai>\r\n <CAH4JJLVsZxVc7d=nO+5RyTwaEGW-0tYsg8LRAT9eMkjPh4Tz5Q@mail.gmail.com> <196b133587f.cbef08381298526.3362301239191577867@iamdave.ai>"
 
+# SAMPLE FOR SMTP MAIL --------------------------------------------------------
+    # communication_sender(**{
+    #         "enterprise_id":"test1",
+    #         "sender":{
+    #             "name":"info",
+    #             "email":"nitesh@iamdave.ai"
+    #         },
+    #         "receiver":{
+    #             "emails":["ntssahu485@gmail.com"]
+    #         },
+
+    #         "html_string":"<p>Thank you for your message. We will get back to you shortly.</p>",
+    #         "subject":"Re: Test drive booking request",
+    #         "provider":'SmtpSender',"credentials":{
+    #             'host': 'smtp.zoho.com',
+    #             'port': 465,
+    #             'username': 'nitesh@iamdave.ai',
+    #             'password': 'VBTQckYNYyrx',
+    #             'use_ssl': True
+    #         },
+    #         "reply_email":{
+    #             "in_reply_to": "cah4jjlvde1+fsmhah95gkzogv12oj1_6xf1e_mmoxjcffxhemw@mail.gmail.com",
+    #             "references": "<CAH4JJLX8X8tg=d5q9W86d-OPpage_25dQoMYJn96p9tfGe4XzQ@mail.gmail.com>\r\n <196af921e5d.10f68b4d61099910.8029631709341991170@iamdave.ai>\r\n <CAH4JJLVsZxVc7d=nO+5RyTwaEGW-0tYsg8LRAT9eMkjPh4Tz5Q@mail.gmail.com> <196b133587f.cbef08381298526.3362301239191577867@iamdave.ai>"
+
+    #         }
     #     }
-    # },
     # )
+    
+    
+    
     # {
-#             "from_email": "nitesh@iamdave.ai",
-#             "to_email": "nitesh sahu <ntssahu485@gmail.com>",
-#             "cc": [],
-#             "subject": "Re: Test drive booking request",
-#             "body": "Thank you for your message. We will get back to you shortly.",
-#             "in_reply_to": "cah4jjlvde1+fsmhah95gkzogv12oj1_6xf1e_mmoxjcffxhemw@mail.gmail.com",
-#             "references": "<CAH4JJLX8X8tg=d5q9W86d-OPpage_25dQoMYJn96p9tfGe4XzQ@mail.gmail.com>\r\n <196af921e5d.10f68b4d61099910.8029631709341991170@iamdave.ai>\r\n <CAH4JJLVsZxVc7d=nO+5RyTwaEGW-0tYsg8LRAT9eMkjPh4Tz5Q@mail.gmail.com> <196b133587f.cbef08381298526.3362301239191577867@iamdave.ai>"
-#         }
+    #     "from_email": "nitesh@iamdave.ai",
+    #     "to_email": "nitesh sahu <ntssahu485@gmail.com>",
+    #     "cc": [],
+    #     "subject": "Re: Test drive booking request",
+    #     "body": "Thank you for your message. We will get back to you shortly.",
+    #     "in_reply_to": "cah4jjlvde1+fsmhah95gkzogv12oj1_6xf1e_mmoxjcffxhemw@mail.gmail.com",
+    #     "references": "<CAH4JJLX8X8tg=d5q9W86d-OPpage_25dQoMYJn96p9tfGe4XzQ@mail.gmail.com>\r\n <196af921e5d.10f68b4d61099910.8029631709341991170@iamdave.ai>\r\n <CAH4JJLVsZxVc7d=nO+5RyTwaEGW-0tYsg8LRAT9eMkjPh4Tz5Q@mail.gmail.com> <196b133587f.cbef08381298526.3362301239191577867@iamdave.ai>"
+    # }
 
     pass
 
