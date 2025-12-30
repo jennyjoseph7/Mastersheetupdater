@@ -250,7 +250,7 @@ class BaseCampaignCreater:
             f"Updated campaign user {lead_id} with patch: {patch_user_data}"
         )
         
-        
+        # logger.info(f"CAMPAIGN MESSAGE STATUS-----: {campaign_details} ,campaign_user_data --{campaign_user_data} ")
         msg_status=WA_TO_DISPOSITION.get(patch_user_data.get("message_status"), None)
         if msg_status:
             logger.info(f"TEST MESSAGE_STATUS ------{msg_status} response--{response}")
@@ -261,6 +261,7 @@ class BaseCampaignCreater:
                     "campaign_type":campaign_details.get("campaign_type"),
                     "campaign_model":campaign_details.get("campaign_model"),
                     "phone_number":mobile_number,
+                    "dealership_id":campaign_details.get("dealership_id"),
                     "message_id":response.get("message_id",None),
                     "provider_status":msg_status,
                     "channel_provider":whatsapp_provider,
@@ -743,6 +744,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
             # campaign_objective= [
             #     "Service Reminder"
             # ],
+            # dealership_id = lead_data.get("dealership_id"), //for later
             lead_info={}
         )
         if not template_data:

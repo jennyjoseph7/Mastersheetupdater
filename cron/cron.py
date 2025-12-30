@@ -21,26 +21,153 @@ gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
 mlogger.info(f"SERVICE --{gryd.SERVICE}")
+
+def SETUP():
+    """When we are running this worker for the first time in an environment
+    """
+    pass
+
 def clear_otp_cache(logger=None, job=None):
     logger = logger or mlogger
     otp_cache_model = gryd.base_model.Model('otp_cache', AUTOCRM_APP_ENTERPRISE_ID)
     otp_cache_model.delete_many({"expiry": f",{hp.epoch() - 3600}"})
 
-@gryd.is_a_task(function_name="run_campaign_summary")
-def run_campaign_summary():
-    
+@gryd.is_a_task(function_name="overall_campaign_summary")
+def overall_campaign_summary():
     with get_pg_connector() as pg:
+
+        # Time before execution
+        before = list(
+            pg.yield_results(
+                "SELECT EXTRACT(EPOCH FROM NOW()) * 1000 AS ts"
+            )
+        )[0][0]
+        # mlogger.info(f"-----before---{before}")
+
         pg.execute_write(
             "CALL update_overall_campaign_summary();",
             _fetch=False
         )
+
+        # Count updated rows
+        updated_rows = list(
+            pg.yield_results(
+                """
+                SELECT COUNT(*)
+                FROM campaign_summary
+                WHERE updated >= to_timestamp(%s / 1000.0)
+                """,
+                (before,)
+            )
+        )[0][0]
+
+        total_rows = list(
+            pg.yield_results(
+                "SELECT COUNT(*) FROM campaign_summary"
+            )
+        )[0][0]
+
+        if updated_rows > 0:
+            mlogger.info(
+                f"[CRON] Campaign Summary Updated | "
+                f"Rows Updated: {updated_rows} | Total Rows: {total_rows}"
+            )
+        else:
+            mlogger.info(
+                "[CRON] No campaign changes detected. Skipping update."
+            )
+
+        return {
+            "updated_rows": updated_rows,
+            "total_rows": total_rows
+        }
+
+
+@gryd.is_a_task(function_name="template_summary")
+def template_summary():
+    with get_pg_connector() as pg:
+        pg.execute_write(
+            "CALL update_template_summary();",
+            _fetch=False
+        )
         rows = list(
             pg.yield_results(
-                "SELECT COUNT(*) FROM overall_campaign_summary;"
+                "SELECT COUNT(*) FROM template_summary;"
             )
         )
-        mlogger.info(f"[CRON] update_total_campaign_summary row count = {rows}")
+        print(f"[CRON] update_template_summary row count = {rows}")
         return rows
+
+# @gryd.is_a_task(function_name="performance_summary")
+# def performance_summary():
+#     with get_pg_connector() as pg:
+#         pg.execute_write(
+#             "CALL run_campaign_performance_summary();",
+#             _fetch=False
+#         )
+#         rows = list(
+#             pg.yield_results(
+#                 "SELECT COUNT(*) FROM campaign_performance_summary;"
+#             )
+#         )
+#         print(f"[CRON] update_campaign_performance_summary row count = {rows}")
+#         return rows
+
+@gryd.is_a_task(function_name="performance_summary")
+def performance_summary():
+    
+    """
+    This task checks for campaigns which require an update to their performance summary.
+    It does this by checking for campaigns which have a newer updated timestamp than the
+    latest updated timestamp in the campaign_performance_summary table.
+
+    It then executes a stored procedure to update the campaign_performance_summary table
+    with the latest data from the campaigns.
+
+    :return: The number of campaigns which required an update to their performance summary.
+    :rtype: int
+    """
+    with get_pg_connector() as pg:
+        mlogger.info("[CRON] Checking campaigns needing performance update...")
+
+        counts = list(pg.yield_results("""
+            SELECT SUM(total) FROM (
+                SELECT COUNT(*) AS total
+                FROM pre_sales_campaign c
+                LEFT JOIN campaign_performance_summary s
+                  ON s.campaign_performance_summary_id =
+                     c.dict->>'campaign_id' || '-pre-sales'
+                WHERE
+                    s.campaign_performance_summary_id IS NULL
+                    OR c.updated > TO_TIMESTAMP((s.dict->>'updated')::BIGINT / 1000)
+
+                UNION ALL
+
+                SELECT COUNT(*) AS total
+                FROM post_sales_campaign c
+                LEFT JOIN campaign_performance_summary s
+                  ON s.campaign_performance_summary_id =
+                     c.dict->>'campaign_id' || '-post-sales'
+                WHERE
+                    s.campaign_performance_summary_id IS NULL
+                    OR c.updated > TO_TIMESTAMP((s.dict->>'updated')::BIGINT / 1000)
+            ) t;
+        """))
+
+        update_count = counts[0][0] if counts else 0
+
+        if update_count == 0:
+            mlogger.info("[CRON] No campaign updates detected. Skipping execution.")
+            return 0
+
+        mlogger.info(f"[CRON] {update_count} campaigns require update. Running procedure...")
+
+        pg.execute_write("CALL run_campaign_performance_summary();", _fetch=False)
+
+        mlogger.info(f"[CRON] Campaign performance update completed. Updated rows: {update_count}")
+
+        return update_count
+
 
 @gryd.is_a_task(function_name="check_inactive_sessions")
 def check_inactive_sessions(*args, **kwargs):

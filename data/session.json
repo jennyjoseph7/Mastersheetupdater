@@ -251,6 +251,7 @@
                 "delivered",
                 "read",
                 "initiated",
+                "interacted",
                 "engaged",
                 "converted",
                 "queued",

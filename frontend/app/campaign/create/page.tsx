@@ -466,7 +466,7 @@ function CampaignCreateContent() {
             channels: mapChannels(selectedChannels),
             languages: [mapLanguage(language)],
             campaign_offer: campaignData?.campaignOffer || campaignDescription,
-            urgency_hook: [campaignData?.urgencyHook || ""],
+            urgency_hook: campaignData?.urgencyHook || "",
             ctas: [callToAction],
             number_targeted: 0,
             budget_allocated: 0,
@@ -475,8 +475,8 @@ function CampaignCreateContent() {
                     ? customObjective
                     : selectedObjectiveData?.title || selectedObjective,
             campaign_sub_type: selectedObjectiveData?.campaignSubType || "General",
-            created: Math.floor(Date.now() / 1000),
-            updated: Math.floor(Date.now() / 1000),
+            // created: Math.floor(Date.now() / 1000),
+            // updated: Math.floor(Date.now() / 1000),
             campaign_user_source: "file",
         };
         console.log("Common Payload:", commonPayload);

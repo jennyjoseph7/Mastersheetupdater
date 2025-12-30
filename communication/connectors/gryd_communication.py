@@ -4,8 +4,11 @@ import sys
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from connectors.communication_helpers import *
 # from connectors.communication_configs import *
-from gryd_worker import gryd
-logger=gryd.logger
+from config import AUTOCRM_COMMUNICATION_SERVICE_NAME
+from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
+gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
+gryd.set_queue_manager()
+logger = gryd.hp.get_logger(gryd.SERVICE)
 START_MAIL_TASK="gryd_start_mail"
 CHANNEL_ALIASES = {
     "email": {"email", "mail"},
@@ -227,7 +230,7 @@ if __name__=='__main__':
             "email":"info@iamdave.ai"
         },
         "receiver":{
-            "emails":["nitesh@iamdave.ai"]
+            "emails":["praveen@iamdave.ai"]
         },
         "cc":"ntssahu485@gmail.com",
         "html_string":"<p>Hi Nitesh THis a test mail</p>",

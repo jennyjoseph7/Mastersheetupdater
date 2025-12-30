@@ -1,0 +1,35 @@
+{
+  "sender": "917795030574",
+  "status": "approved",
+  "buttons": [
+    {
+      "text": "Explore Services",
+      "type": "QUICK_REPLY"
+    },
+    {
+      "text": "Request a Call Back",
+      "type": "QUICK_REPLY"
+    }
+  ],
+  "channel": "whatsapp_chat",
+  "created": 1765535704.226374,
+  "updated": 1765535704.2274334,
+  "language": "english",
+  "dealer_name": "DaveAI",
+  "region_name": "South India",
+  "template_id": "01kbcqawsxd9n3xfre657xv7gw",
+  "campaign_type": "post-sales",
+  "provider_name": "Airtel",
+  "template_name": "Autobot_Reactivation_generic_v2",
+  "template_type": "text",
+  "template_message": "Hello, We would love to welcome you back! Check out our services, offers, and support options to stay connected.",
+  "campaign_objective": [
+    "Re-activation of inactive customer"
+  ],
+  "template_variables": [],
+  "template_button_payloads": [
+    "autobot_reactivation_generic_v2-explore_services",
+    "autobot_reactivation_generic_v2-request_a_callback"
+  ],
+  "communication_credentials_id": "airtel-917795030574"
+}

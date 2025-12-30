@@ -359,16 +359,9 @@
             }
         },
         {
-            "type": "list",
-            "name": "urgency_hook",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "urgency_hook"
-                ]
-            }
+            "type": "text",
+            "name": "urgency_hook"
+           
         },
         {
             "name": "why_user_should_avail_this",

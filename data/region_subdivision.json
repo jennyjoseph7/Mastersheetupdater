@@ -37,7 +37,7 @@
         },
         {
             "name": "subdivision_parent_id",
-            "refers": "parents.region_subdivision.subdivision_id"
+           "type": "text"
         },
         {
           "name": "languages",

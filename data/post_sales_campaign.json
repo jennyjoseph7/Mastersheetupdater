@@ -56,38 +56,6 @@
       "refers": "parents.dealership.dealership_description"
     },
     {
-      "name": "workshop_name",
-      "refers": "parents.workshop.workshop_name"
-    },
-    {
-      "name": "workshop_full_name",
-      "refers": "parents.workshop.workshop_full_name"
-    },
-    {
-      "name": "workshop_address",
-      "refers": "parents.workshop.address"
-    },
-    {
-      "name": "workshop_contact_number",
-      "refers": "parents.workshop.contact_number"
-    },
-    {
-      "name": "workshop_email",
-      "refers": "parents.workshop.email"
-    },
-    {
-      "name": "workshop_geolocation",
-      "refers": "parents.workshop.geolocation"
-    },
-    {
-      "name": "workshop_operating_hours",
-      "refers": "parents.workshop.operating_hours"
-    },
-    {
-      "name": "workshop_facilities_available",
-      "refers": "parents.workshop.facilities_available"
-    },
-    {
       "name": "region_id",
       "refers": "parents.dealership.region_id"
     },
@@ -295,17 +263,10 @@
     
     {
       "name": "urgency_hook",
-      "type": "list",
-      "list_type": "text",
-      "title": "Urgency Hooks",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "urgency_hook"
-        ]
-      }
+      "type": "text",
+      
+      "title": "Urgency Hooks"
+      
     },
     {
       "name": "why_user_should_avail_this",
