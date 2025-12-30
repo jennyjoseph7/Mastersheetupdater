@@ -273,7 +273,7 @@ def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = 
     logger = logger or mlogger
     logger.info(f"Processing pre-sales lead row: {row}")
     missing_reason = missing_reason or []
-    data = {}
+    data = row
     for k in [
         "phone_number",
         "email",
@@ -284,14 +284,17 @@ def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = 
     ]:
         if is_valid_value(row, k):
             data[k] = row.get(k)
+        else:
+            data[k] = None
+
     lead = models['lead_model'].post(data)
-    return lead.get('lead_id')
+    return lead, ""
 
 def process_dealership_lead_row(row, models, missing_reason = None, rooftop_id = None, logger = None):
     logger = logger or mlogger
     logger.info(f"Processing dealership lead row: {row}")
     missing_reason = missing_reason or []
-    data = {}
+    data = row
     for k in [
         "dealership_id",
         "dealer_name",
@@ -920,11 +923,11 @@ def dealership_update_details(
     dealership_id:str,
     supported_brands:list[str],
     dealership_type:str,
-    languages:list[str],
-    aliases:list[str],
-    pan_number:str,
-    gstin:str,
-    website:str,
+    languages:list[str] = None,
+    aliases:list[str] = None,
+    pan_number:str = None,
+    gstin:str = None,
+    website:str = None,
     vehicle_category:str = None,
     logger = None,
     job = None,
@@ -1007,7 +1010,7 @@ def dealership_update_details(
         'gstin': gstin,
         'website': website
     })
-    dealership = dealership_model.update(dealership_id, kwargs)
+    dealership = dealership_model.update(dealership_id, {k: v for k, v in kwargs.items() if v is not None})
     logger.info(f"Dealership details updated: {dealership}")
     return dealership
 
@@ -1127,7 +1130,7 @@ def gryd_task_import_leads_from_csv(
     return
 
 @gryd.is_a_task()
-def post_billing(dealership_id, transaction_type, item_name, item_description, transaction_date, item_quantity, item_price, item_unit, currency, campaign_id, channel):
+def post_billing(dealership_id, transaction_type, item_name, item_description, transaction_date, item_quantity, item_price, item_unit, currency, campaign_id, channel,**kwarg):
     """
     Post a billing transaction to the database to debit credits from dealership and create billing object. 
 
@@ -1162,8 +1165,11 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
         if not dealership:
             raise ValueError("Post Billing called without dealership_id")
         current_balance = float(dealership.get('credits_balance',0))
-        deductable = -1*item_quantity
+        deductable=item_quantity
+        if transaction_type == "debit":
+            deductable = -1*item_quantity
         db.iadd("dealership","dealership_id", dealership_id, "credits_balance", deductable)
+    
     new_balance = current_balance - item_quantity
     if new_balance <= 0:
         logger.info(f"Dealership {dealership_id} has no credits left")
