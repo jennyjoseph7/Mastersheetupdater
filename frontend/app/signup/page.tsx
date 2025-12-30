@@ -21,6 +21,15 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   ArrowLeft,
   Mail,
   Lock,
@@ -45,6 +54,8 @@ import {
   Store,
   Languages,
   Award,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +66,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
 import {
   dealershipSignup,
   dealershipUpdateDetails,
@@ -88,6 +105,10 @@ export default function DealerSignup() {
   const [isGeneratingOtp, setIsGeneratingOtp] = useState(false);
   const [isGeneratingEmailOtp, setIsGeneratingEmailOtp] = useState(false);
   const [otpError, setOtpError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [successDealershipId, setSuccessDealershipId] = useState("");
 
   // Get reCAPTCHA site key from environment
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
@@ -109,7 +130,6 @@ export default function DealerSignup() {
     dealershipType: "Multi Brand" as "Single Brand" | "Multi Brand",
     languages: [] as string[],
     brands: [] as string[],
-    aliases: [] as string[],
     panNumber: "",
     gstin: "",
     website: "",
@@ -130,8 +150,9 @@ export default function DealerSignup() {
 
     setIsGeneratingOtp(true);
     setOtpError("");
-    setPhoneOtpToken(null);
-    setEmailOtpToken(null);
+    // Don't clear tokens immediately - keep forms visible while generating
+    // setPhoneOtpToken(null);
+    // setEmailOtpToken(null);
 
     try {
       // Generate phone OTP
@@ -141,6 +162,8 @@ export default function DealerSignup() {
       );
       if (!phoneResponse.token) {
         setOtpError("Failed to generate phone OTP. Please try again.");
+        setPhoneOtpToken(null);
+        setEmailOtpToken(null);
         return;
       }
       setPhoneOtpToken(phoneResponse.token);
@@ -154,6 +177,7 @@ export default function DealerSignup() {
         if (!emailResponse.token) {
           setOtpError("Failed to generate email OTP. Please try again.");
           setPhoneOtpToken(null);
+          setEmailOtpToken(null);
           return;
         }
         setEmailOtpToken(emailResponse.token);
@@ -161,6 +185,7 @@ export default function DealerSignup() {
         // If email OTP fails, clear phone OTP token and show error
         console.error("Failed to generate email OTP:", emailErr);
         setPhoneOtpToken(null);
+        setEmailOtpToken(null);
         const errorMessage =
           emailErr instanceof ApiError
             ? emailErr.message
@@ -176,6 +201,8 @@ export default function DealerSignup() {
           ? err.message
           : "Failed to generate OTP. Please try again.";
       setOtpError(errorMessage);
+      setPhoneOtpToken(null);
+      setEmailOtpToken(null);
     } finally {
       setIsGeneratingOtp(false);
     }
@@ -286,8 +313,9 @@ export default function DealerSignup() {
         setRecaptchaToken(null);
       }
 
-      // On success, go to success page
-      setPhase("success");
+      // Show success dialog with dealership ID
+      setSuccessDealershipId(dealershipId);
+      setShowSuccessDialog(true);
     } catch (err) {
       // Reset reCAPTCHA on error
       if (isRecaptchaEnabled) {
@@ -518,7 +546,7 @@ export default function DealerSignup() {
                             inputClassName="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             countrySelectorStyleProps={{
                               buttonClassName:
-                                "flex h-10 items-center rounded-l-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                                "flex h-10 items-center justify-center rounded-l-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
                             }}
                           />
                         </div>
@@ -531,71 +559,114 @@ export default function DealerSignup() {
                           {isGeneratingOtp ? "Generating..." : "Generate OTP"}
                         </Button>
                       </div>
-                      {otpError && (
-                        <p className="text-sm text-destructive">{otpError}</p>
-                      )}
-                      {phoneOtpToken && emailOtpToken && (
-                        <p className="text-sm text-green-600">
-                          OTPs sent successfully! Please check your phone and
-                          email.
-                        </p>
-                      )}
                     </div>
                   </div>
 
-                  {/* Phone OTP Input */}
-                  {phoneOtpToken && (
-                    <div className="space-y-2">
-                      <Label htmlFor="phoneOtp">
-                        Phone OTP <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="phoneOtp"
-                        type="text"
-                        placeholder="Enter OTP"
-                        value={phoneOtp}
-                        onChange={(e) => {
-                          // Only allow numbers and limit to 6 digits
-                          const value = e.target.value
-                            .replace(/\D/g, "")
-                            .slice(0, 6);
-                          setPhoneOtp(value);
-                        }}
-                        maxLength={6}
-                        className="font-mono text-center text-lg tracking-widest"
-                        required
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Enter the 6-digit OTP sent to your phone number
-                      </p>
-                    </div>
+                  {/* OTP Status Alerts - Full Width */}
+                  {otpError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{otpError}</AlertDescription>
+                    </Alert>
+                  )}
+                  {phoneOtpToken && emailOtpToken && (
+                    <Alert className="border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800/50">
+                      <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <AlertDescription className="text-green-800 dark:text-green-200">
+                        <div className="flex items-start gap-2">
+                          <span className="font-medium">
+                            OTPs sent successfully!
+                          </span>
+                          <span className="text-sm">
+                            Please check your phone and email for the
+                            verification codes.
+                          </span>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
                   )}
 
-                  {/* Email OTP Input */}
-                  {emailOtpToken && (
-                    <div className="space-y-2">
-                      <Label htmlFor="emailOtp">
-                        Email OTP <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        id="emailOtp"
-                        type="text"
-                        placeholder="Enter OTP"
-                        value={emailOtp}
-                        onChange={(e) => {
-                          // Only allow numbers and limit to 6 digits
-                          const value = e.target.value
-                            .replace(/\D/g, "")
-                            .slice(0, 6);
-                          setEmailOtp(value);
-                        }}
-                        maxLength={6}
-                        className="font-mono text-center text-lg tracking-widest"
-                        required
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Enter the 6-digit OTP sent to your email address
-                      </p>
+                  {/* OTP Inputs - Phone and Email in a single row */}
+                  {/* Show forms immediately when Generate OTP is clicked or when tokens exist */}
+                  {(isGeneratingOtp || phoneOtpToken || emailOtpToken) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Email OTP */}
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="emailOtp"
+                          className="flex items-center gap-2"
+                        >
+                          <Mail className="h-4 w-4" />
+                          Email OTP <span className="text-destructive">*</span>
+                          {isGeneratingOtp && !emailOtpToken && (
+                            <span className="text-xs text-muted-foreground ml-auto">
+                              Sending...
+                            </span>
+                          )}
+                        </Label>
+                        <div className="flex flex-col gap-2">
+                          <InputOTP
+                            maxLength={6}
+                            pattern={REGEXP_ONLY_DIGITS}
+                            value={emailOtp}
+                            onChange={(value) => setEmailOtp(value)}
+                            disabled={isGeneratingOtp && !emailOtpToken}
+                          >
+                            <InputOTPGroup>
+                              <InputOTPSlot index={0} />
+                              <InputOTPSlot index={1} />
+                              <InputOTPSlot index={2} />
+                              <InputOTPSlot index={3} />
+                              <InputOTPSlot index={4} />
+                              <InputOTPSlot index={5} />
+                            </InputOTPGroup>
+                          </InputOTP>
+                          <p className="text-xs text-muted-foreground">
+                            {isGeneratingOtp && !emailOtpToken
+                              ? "Generating OTP..."
+                              : "Enter the 6-digit OTP sent to your email address"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Phone OTP */}
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="phoneOtp"
+                          className="flex items-center gap-2"
+                        >
+                          <Phone className="h-4 w-4" />
+                          Phone OTP <span className="text-destructive">*</span>
+                          {isGeneratingOtp && !phoneOtpToken && (
+                            <span className="text-xs text-muted-foreground ml-auto">
+                              Sending...
+                            </span>
+                          )}
+                        </Label>
+                        <div className="flex flex-col gap-2">
+                          <InputOTP
+                            maxLength={6}
+                            pattern={REGEXP_ONLY_DIGITS}
+                            value={phoneOtp}
+                            onChange={(value) => setPhoneOtp(value)}
+                            disabled={isGeneratingOtp && !phoneOtpToken}
+                          >
+                            <InputOTPGroup>
+                              <InputOTPSlot index={0} />
+                              <InputOTPSlot index={1} />
+                              <InputOTPSlot index={2} />
+                              <InputOTPSlot index={3} />
+                              <InputOTPSlot index={4} />
+                              <InputOTPSlot index={5} />
+                            </InputOTPGroup>
+                          </InputOTP>
+                          <p className="text-xs text-muted-foreground">
+                            {isGeneratingOtp && !phoneOtpToken
+                              ? "Generating OTP..."
+                              : "Enter the 6-digit OTP sent to your phone number"}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -636,7 +707,7 @@ export default function DealerSignup() {
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="password"
-                          type="password"
+                          type={showPassword ? "text" : "password"}
                           placeholder="Create password"
                           value={registrationData.password}
                           onChange={(e) =>
@@ -645,10 +716,24 @@ export default function DealerSignup() {
                               password: e.target.value,
                             })
                           }
-                          className="pl-10"
+                          className="pl-10 pr-10"
                           required
                           minLength={8}
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label={
+                            showPassword ? "Hide password" : "Show password"
+                          }
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
                       </div>
                       <p className="text-xs text-muted-foreground">
                         Password must be at least 8 characters and contain at
@@ -665,7 +750,7 @@ export default function DealerSignup() {
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           id="confirmPassword"
-                          type="password"
+                          type={showConfirmPassword ? "text" : "password"}
                           placeholder="Confirm password"
                           value={registrationData.confirmPassword}
                           onChange={(e) =>
@@ -674,10 +759,28 @@ export default function DealerSignup() {
                               confirmPassword: e.target.value,
                             })
                           }
-                          className="pl-10"
+                          className="pl-10 pr-10"
                           required
                           minLength={8}
                         />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                          }
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label={
+                            showConfirmPassword
+                              ? "Hide password"
+                              : "Show password"
+                          }
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -941,26 +1044,6 @@ export default function DealerSignup() {
                       </div>
                     </div>
                   )}
-
-                {/* Aliases */}
-                {signupResponse.aliases &&
-                  signupResponse.aliases.length > 0 && (
-                    <div className="pt-4 border-t">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Award className="h-5 w-5 text-muted-foreground" />
-                        <p className="text-sm font-medium">Aliases</p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {signupResponse.aliases.map(
-                          (alias: string, idx: number) => (
-                            <Badge key={idx} variant="outline">
-                              {alias}
-                            </Badge>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  )}
               </CardContent>
             </Card>
 
@@ -1189,6 +1272,43 @@ export default function DealerSignup() {
           </p>
         </div>
       </div>
+
+      {/* Success Dialog */}
+      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+            <AlertDialogTitle className="text-center text-2xl">
+              Dealer Registered Successfully!
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center pt-4">
+              <div className="space-y-2">
+                <p className="text-base font-medium text-foreground">
+                  Dealership ID:
+                </p>
+                <p className="text-lg font-mono font-semibold text-primary">
+                  {successDealershipId}
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center">
+            <AlertDialogAction
+              onClick={() => {
+                setShowSuccessDialog(false);
+                router.push("/");
+              }}
+              className="w-full sm:w-auto"
+            >
+              Go to Home
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -42,8 +42,7 @@ import {
 import { ProtectedRoute } from "@/components/protected-route";
 import { useAuth } from "@/lib/auth-context";
 
-const urlRegex =
-  /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+const urlRegex = /^(https?:\/\/)?.+\..+/;
 const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
@@ -60,7 +59,6 @@ export default function DealershipUpdateDetails() {
     dealershipType: "Multi Brand" as "Single Brand" | "Multi Brand",
     languages: [] as string[],
     brands: [] as string[],
-    aliases: [] as string[],
     panNumber: "",
     gstin: "",
     website: "",
@@ -70,38 +68,35 @@ export default function DealershipUpdateDetails() {
     e.preventDefault();
     setError("");
 
-    // Validate business verification - all fields are mandatory
-    if (!dealershipDetails.website || dealershipDetails.website.trim() === "") {
-      setWebsiteError("Website URL is required");
-      setError("Please enter your website URL");
+    // Validate business verification - at least one field must be provided
+    const hasWebsite =
+      dealershipDetails.website && dealershipDetails.website.trim() !== "";
+    const hasPan =
+      dealershipDetails.panNumber && dealershipDetails.panNumber.trim() !== "";
+    const hasGstin =
+      dealershipDetails.gstin && dealershipDetails.gstin.trim() !== "";
+
+    if (!hasWebsite && !hasPan && !hasGstin) {
+      setError(
+        "Please provide at least one business verification detail (Website URL, PAN Number, or GSTIN)"
+      );
       return;
     }
-    if (!urlRegex.test(dealershipDetails.website)) {
+
+    // Validate format only if field is provided
+    if (hasWebsite && !urlRegex.test(dealershipDetails.website)) {
       setWebsiteError("Please enter a valid website URL");
       setError("Please enter a valid website URL");
       return;
     }
 
-    if (
-      !dealershipDetails.panNumber ||
-      dealershipDetails.panNumber.trim() === ""
-    ) {
-      setPanError("PAN Number is required");
-      setError("Please enter your PAN Number");
-      return;
-    }
-    if (!panRegex.test(dealershipDetails.panNumber)) {
+    if (hasPan && !panRegex.test(dealershipDetails.panNumber)) {
       setPanError("Please enter a valid PAN number (Format: ABCDE1234F)");
       setError("Please enter a valid PAN number");
       return;
     }
 
-    // GSTIN is optional, but if provided, validate format
-    if (
-      dealershipDetails.gstin &&
-      dealershipDetails.gstin.trim() !== "" &&
-      !gstinRegex.test(dealershipDetails.gstin)
-    ) {
+    if (hasGstin && !gstinRegex.test(dealershipDetails.gstin)) {
       setGstinError("Please enter a valid GSTIN (15 characters)");
       setError("Please enter a valid GSTIN");
       return;
@@ -143,11 +138,7 @@ export default function DealershipUpdateDetails() {
         .filter(Boolean);
 
       // Build kwargs object
-      const kwargs: Record<string, any> = {
-        aliases:
-          dealershipDetails.aliases.length > 0 ? dealershipDetails.aliases : [],
-        gstin: dealershipDetails.gstin || "",
-      };
+      const kwargs: Record<string, any> = {};
 
       if (dealershipDetails.dealershipType) {
         kwargs.dealership_type = dealershipDetails.dealershipType;
@@ -161,10 +152,22 @@ export default function DealershipUpdateDetails() {
         kwargs.supported_brands = brandSlugs;
       }
 
-      // Include all verification fields
-      kwargs.website = dealershipDetails.website;
-      kwargs.pan_number = dealershipDetails.panNumber;
-      kwargs.gstin = dealershipDetails.gstin;
+      // Include verification fields only if provided
+      if (
+        dealershipDetails.website &&
+        dealershipDetails.website.trim() !== ""
+      ) {
+        kwargs.website = dealershipDetails.website;
+      }
+      if (
+        dealershipDetails.panNumber &&
+        dealershipDetails.panNumber.trim() !== ""
+      ) {
+        kwargs.pan_number = dealershipDetails.panNumber;
+      }
+      if (dealershipDetails.gstin && dealershipDetails.gstin.trim() !== "") {
+        kwargs.gstin = dealershipDetails.gstin;
+      }
 
       const updateRequest: DealershipUpdateDetailsRequest = {
         args: [dealershipId],
@@ -236,9 +239,7 @@ export default function DealershipUpdateDetails() {
           <Card className="mb-6 border-primary/50">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">
-                  Onboarding Progress
-                </span>
+                <span className="text-sm font-medium">Onboarding Progress</span>
                 <span className="text-sm text-muted-foreground">
                   Step 2 of 2
                 </span>
@@ -286,10 +287,7 @@ export default function DealershipUpdateDetails() {
                     }}
                   >
                     <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                      <RadioGroupItem
-                        value="Single Brand"
-                        id="single-brand"
-                      />
+                      <RadioGroupItem value="Single Brand" id="single-brand" />
                       <Label
                         htmlFor="single-brand"
                         className="flex-1 cursor-pointer"
@@ -380,8 +378,7 @@ export default function DealershipUpdateDetails() {
                           "Volkswagen",
                         ]
                           .filter(
-                            (brand) =>
-                              !dealershipDetails.brands.includes(brand)
+                            (brand) => !dealershipDetails.brands.includes(brand)
                           )
                           .map((brand) => (
                             <SelectItem key={brand} value={brand}>
@@ -460,10 +457,7 @@ export default function DealershipUpdateDetails() {
                           } else {
                             setDealershipDetails({
                               ...dealershipDetails,
-                              languages: [
-                                ...dealershipDetails.languages,
-                                lang,
-                              ],
+                              languages: [...dealershipDetails.languages, lang],
                             });
                           }
                         }}
@@ -477,69 +471,18 @@ export default function DealershipUpdateDetails() {
                   </div>
                 </div>
 
-                {/* Aliases */}
-                <div className="space-y-2">
-                  <Label htmlFor="alias">Aliases (Optional)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="alias"
-                      placeholder="Enter alias name"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          const input = e.currentTarget;
-                          const value = input.value.trim();
-                          if (
-                            value &&
-                            !dealershipDetails.aliases.includes(value)
-                          ) {
-                            setDealershipDetails({
-                              ...dealershipDetails,
-                              aliases: [...dealershipDetails.aliases, value],
-                            });
-                            input.value = "";
-                          }
-                        }
-                      }}
-                    />
-                  </div>
-                  {dealershipDetails.aliases.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {dealershipDetails.aliases.map((alias) => (
-                        <Badge key={alias} variant="outline">
-                          {alias}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDealershipDetails({
-                                ...dealershipDetails,
-                                aliases: dealershipDetails.aliases.filter(
-                                  (a) => a !== alias
-                                ),
-                              });
-                            }}
-                            className="ml-2"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 {/* Business Verification */}
                 <div className="space-y-4">
                   <Label className="text-base font-semibold">
                     Business Verification{" "}
-                    <span className="text-destructive">*</span>
+                    <span className="text-sm font-normal text-muted-foreground">
+                      (At least one field is required)
+                    </span>
                   </Label>
 
                   {/* Website */}
                   <div className="space-y-2">
-                    <Label htmlFor="website">
-                      Website URL <span className="text-destructive">*</span>
-                    </Label>
+                    <Label htmlFor="website">Website URL (Optional)</Label>
                     <div className="relative">
                       <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -553,33 +496,29 @@ export default function DealershipUpdateDetails() {
                             ...dealershipDetails,
                             website: value,
                           });
-                          if (!value || value.trim() === "") {
-                            setWebsiteError("Website URL is required");
-                          } else if (!urlRegex.test(value)) {
-                            setWebsiteError(
-                              "Please enter a valid website URL"
-                            );
+                          // Only validate format if value is provided
+                          if (
+                            value &&
+                            value.trim() !== "" &&
+                            !urlRegex.test(value)
+                          ) {
+                            setWebsiteError("Please enter a valid website URL");
                           } else {
                             setWebsiteError("");
                           }
                         }}
-                        required
                         className="pl-10"
                       />
                     </div>
                     {websiteError && (
-                      <p className="text-sm text-destructive">
-                        {websiteError}
-                      </p>
+                      <p className="text-sm text-destructive">{websiteError}</p>
                     )}
                   </div>
 
                   {/* PAN and GSTIN */}
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="panNumber">
-                        PAN Number <span className="text-destructive">*</span>
-                      </Label>
+                      <Label htmlFor="panNumber">PAN Number (Optional)</Label>
                       <Input
                         id="panNumber"
                         placeholder="Enter your PAN Number"
@@ -592,9 +531,12 @@ export default function DealershipUpdateDetails() {
                             ...dealershipDetails,
                             panNumber: value,
                           });
-                          if (!value || value.trim() === "") {
-                            setPanError("PAN Number is required");
-                          } else if (!panRegex.test(value)) {
+                          // Only validate format if value is provided
+                          if (
+                            value &&
+                            value.trim() !== "" &&
+                            !panRegex.test(value)
+                          ) {
                             setPanError(
                               "Please enter a valid PAN number (Format: ABCDE1234F)"
                             );
@@ -604,7 +546,6 @@ export default function DealershipUpdateDetails() {
                         }}
                         maxLength={10}
                         className="font-mono uppercase"
-                        required
                       />
                       {panError && (
                         <p className="text-sm text-destructive">{panError}</p>
@@ -638,9 +579,7 @@ export default function DealershipUpdateDetails() {
                         className="font-mono uppercase"
                       />
                       {gstinError && (
-                        <p className="text-sm text-destructive">
-                          {gstinError}
-                        </p>
+                        <p className="text-sm text-destructive">{gstinError}</p>
                       )}
                     </div>
                   </div>
@@ -674,4 +613,3 @@ export default function DealershipUpdateDetails() {
     </ProtectedRoute>
   );
 }
-
