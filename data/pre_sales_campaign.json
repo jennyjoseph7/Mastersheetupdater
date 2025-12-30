@@ -432,6 +432,7 @@
       "name": "campaign_status",
       "type": "text",
       "options": [
+        "Drafted",
         "Planned",
         "Draft",
         "Active",

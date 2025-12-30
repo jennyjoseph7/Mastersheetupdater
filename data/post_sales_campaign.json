@@ -168,7 +168,7 @@
         "budget based",
         "roi target"
       ],
-      "default": ["lead_volume"]
+      "default": ["lead volume"]
     },
     {
       "name": "campaign_objective_description",
@@ -465,6 +465,7 @@
       "name": "campaign_status",
       "type": "text",
       "options": [
+        "Drafted",
         "Planned",
         "Active",
         "Completed",
