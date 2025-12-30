@@ -3,6 +3,8 @@ import traceback
 import logging
 import time
 import requests
+from typing import *
+import json
 
 def get_logger(name, log_level = "info"):
     log_level = log_level.upper()
@@ -57,3 +59,32 @@ def upload_file(image_byte, additional_payload = {}):
     else:
         logger.info(f"Failed to upload file. Status code: {response.status_code}, Response: {response.text}")
         raise GrydFileSysError(str(response.json()))
+
+
+def load_json(source : Union[Dict[str, Any], str]) -> Dict[str, Any]:
+    import requests
+    from urllib.parse import urlparse
+    """Load JSON from a dict, local path, or URL."""
+    if isinstance(source, (dict, list)):
+        return source 
+
+    if isinstance(source, str):
+        parsed = urlparse(source)
+        if parsed.scheme in ("http", "https"):
+            response = requests.get(source)
+            response.raise_for_status()
+            return response.json()
+        elif os.path.isfile(source):
+            with open(source, 'r') as f:
+                return json.load(f)
+
+    raise ValueError(f"Invalid JSON source: {source}")
+
+
+def generate_id_using_string(string : str = None) -> str:
+    import hashlib
+    if string is None:
+        string = ""
+    sha256_hash = hashlib.sha256(string.encode()).hexdigest()
+    truncated_hash = sha256_hash[:12]
+    return truncated_hash.upper()
