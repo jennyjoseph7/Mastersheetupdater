@@ -102,7 +102,6 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
         return gryd_routes.jsonify({"status": "error", "message": "Invalid channel"}), 400, {"Access-Control-Allow-Origin": "*"}
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
 
-
 @app.route("/webhook/ses-status", methods=["POST", "GET"])
 def handle_ses_webhook():
     logger.info(f"SES Webhook received")
@@ -128,6 +127,33 @@ def test_voice_agent(provider, session_id):
     return gryd_routes.jsonify(response), 200, {"Access-Control-Allow-Origin": "*"}
 
 
+@app.route('/dealership_signup', methods = ["POST"])
+@gryd_routes.signup_decorator
+def dealership_signup(**params):
+    timeout = params.pop('_timeout', 60)
+    try:
+        r, e = gryd.await_result('dealership_signup', AUTOCRM_CORE_SERVICE_NAME, args = params.pop('args', []), kwargs = params.pop('kwargs', {}), compile_results = lambda x, y, z: (hp.make_single(y), hp.make_single(z)), timeout = timeout, **params)
+        if e:
+            raise hp.GrydError(str(e))
+        return r
+    except gryd.TaskTimeout as e:
+        raise gryd_routes.TimeOutError(str(e))
+
+@app.route('/get-dealership-details/<agent_user_id>', methods = ["GET"])
+@gryd_routes.payload_decorator()
+def get_dealership_details(agent_user_id, *args, **kwargs):
+    ha = AutocrmModel("human_agent")
+    aid = ha.get(agent_user_id)
+    if not aid:
+        raise ValueError("No such user id: %s for enterprise %s", agent_user_id, AUTOCRM_APP_ENTERPRISE_ID) 
+    dealership_id = aid.get('dealership_id')
+    if not dealership_id:
+        raise ValueError("Dealership is mis-configured for user id: %s", agent_user_id)
+    dm = AutocrmModel("dealership")
+    dealership = dm.get(dealership_id)
+    if not dealership:
+        raise ValueError("Dealership is mis-configured for user id: %s", agent_user_id)
+    return dealership
 
 
 

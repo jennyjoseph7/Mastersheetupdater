@@ -859,6 +859,9 @@ def dealership_signup(
     human_agent_model = gryd.base_model.Model('human_agent', AUTOCRM_APP_ENTERPRISE_ID)
     primary_contact_email = verify_email(primary_contact_email, human_agent_model, logger = logger, job = job)
     primary_contact_phone = verify_phone_number(primary_contact_phone, region_codes = region.get('country_phone_code'), human_agent_model = human_agent_model, logger = logger, job = job)
+    kwargs['primary_contact_name'] = primary_contact_name
+    kwargs['primary_contact_email'] = primary_contact_email
+    kwargs['primary_contact_phone'] = primary_contact_phone
     with human_agent_model.objects._db._transaction() as db_transaction:
         dealership = dealership_model.post(kwargs)
         human_agent = human_agent_model.post({
