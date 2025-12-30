@@ -956,21 +956,72 @@ def media_extraction_agent(*args, **kwargs):
             "task": inspect.currentframe().f_code.co_name,
             "error": str(e).strip()
         }
+    
+@gryd.is_a_task()
+def affinity_score_agent(*args, **kwargs):
+    try:
+        from agents.affinity_agent  import AffinityEngineAgent
+        source = kwargs["source"]
+        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+        affinity_score_agent = AffinityEngineAgent()
+        output = affinity_score_agent.run(interaction_json=source)
+        return {
+            "task": inspect.currentframe().f_code.co_name, 
+            **output
+        }
+    except Exception as e:
+        logger.error(f"Affinity Score Agent Error: {e}")
+        traceback.print_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip()
+        }
+    
+@gryd.is_a_task()
+def cohort_generation_agent(*args, **kwargs):
+    try:
+        from agents.cohort_generation_agent import CohortGenerationAgent
+
+        brochure_url = kwargs.get("brochure_url", None)
+        product_website_url = kwargs.get("product_website_url", None)
+        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+
+        cohort_generation_agent = CohortGenerationAgent(
+            brochure_url=brochure_url, 
+            product_website_url=product_website_url, 
+            model_identifier=model_identifier
+            )
+        output = cohort_generation_agent.run()
+        return {
+            "task": inspect.currentframe().f_code.co_name, 
+            **output
+        }
+    except Exception as e:
+        logger.error(f"Cohort Generation Agent Error: {e}")
+        traceback.print_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip()
+        }
 
 @gryd.is_a_task()
 def cohort_classification_agent(*args, **kwargs):
     try:
         from agents.cohort_classification_agent import CohortClassificationAgent
-        source = kwargs["source"]
 
-        brochure_url = kwargs.get("brochure_url", None)
-        product_website_url = kwargs.get("product_website_url", None)
-
-        source["brochure_url"] = brochure_url
-        source["product_website_url"] = product_website_url
-
+        source = kwargs["source"] # Custom Interaction Data in Dict
+        brochure_url = kwargs.get("brochure_url", None) # Brochure URL
+        product_website_url = kwargs.get("product_website_url", None) # Product Website URL
+        cohorts = kwargs.get("cohorts", None)
         model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-        cohort_classification_agent = CohortClassificationAgent(source=source, model_identifier=model_identifier)
+
+        cohort_classification_agent = CohortClassificationAgent(
+            source=source, 
+            brochure_url=brochure_url, 
+            product_website_url=product_website_url, 
+            cohorts=cohorts, 
+            model_identifier=model_identifier
+            )
         output = cohort_classification_agent.run()
         return {
             "task": inspect.currentframe().f_code.co_name, 
@@ -988,41 +1039,27 @@ def cohort_classification_agent(*args, **kwargs):
 def campaign_idea_generation_agent(*args, **kwargs):
     try:
         from agents.campaign_idea_generator_agent import CampaignIdeaGeneratorAgent
-        from agents.cohort_classification_agent import CohortClassificationAgent
+
+        source = kwargs.get("source") # Custom Interaction Data in Dict
+        classified_cohort = kwargs.get("classified_cohort") # Cohort Classification Result 
+        affinity_score = kwargs.get("affinity_score") # Custom Affinity Score Result
+        brochure_url = kwargs.get("brochure_url", None) # Brochure URL
+        product_website_url = kwargs.get("product_website_url", None) # Product Website URL
         model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-
-        if not "source" in kwargs:
-            return {
-                "task": inspect.currentframe().f_code.co_name,
-                "error": "No source provided"
-            }
-        source = load_json(kwargs.get("source"))
-
-        brochure_url = kwargs.get("brochure_url", None)
-        product_page_url = kwargs.get("product_page_url", None)
-
-        if brochure_url:
-            source['brochure_url'] = brochure_url
-        
-        if product_page_url:
-            source["product_page_url"] = product_page_url
-        
-        propensity_agent_result = propensity_agent.execute(source = source)
-        source["propensity"] = propensity_agent_result
-
-        c_agent = CohortClassificationAgent(source = source, model_identifier=model_identifier)
-        cohort_classification_agent_result = c_agent.run()
-        source["cohort_classification"] = cohort_classification_agent_result
-        
-        campaign_idea_generator_agent = CampaignIdeaGeneratorAgent(source=source, model_identifier=model_identifier)
-        output = campaign_idea_generator_agent.run()
+        campaign_idea_generation_agent = CampaignIdeaGeneratorAgent(
+            source=source, 
+            classified_cohort=classified_cohort, 
+            affinity_score=affinity_score,
+            brochure_url=brochure_url,
+            product_website_url=product_website_url,
+            model_identifier=model_identifier)
+        output = campaign_idea_generation_agent.run()
         return {
             "task": inspect.currentframe().f_code.co_name, 
-            "cohort_classification": cohort_classification_agent_result,
             **output
         }
     except Exception as e:
-        logger.error(f"Campaign Idea Generator Agent Error: {e}")
+        logger.error(f"Campaign Idea Generation Agent Error: {e}")
         traceback.print_exc()
         return {
             "task": inspect.currentframe().f_code.co_name,
