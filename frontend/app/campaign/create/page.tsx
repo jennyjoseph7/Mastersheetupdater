@@ -460,7 +460,7 @@ function CampaignCreateContent() {
         const commonPayload = {
             campaign_name: campaignName,
             campaign_description: campaignDescription,
-            campaign_status: "Draft",
+            campaign_status: "Drafted",
             start_date: toEpoch(duration.start),
             end_date: toEpoch(duration.end),
             channels: mapChannels(selectedChannels),

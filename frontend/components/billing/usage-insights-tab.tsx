@@ -40,7 +40,7 @@ const campaignData = [
     objective: "Newsletter",
     channels: ["Email"],
     creditsSpent: 320,
-    status: "Draft",
+    status: "Drafted",
   },
   {
     name: "Monsoon Campaign",
