@@ -33,5 +33,9 @@ WHATSAPP_PROVIDER_NUMBER="917795030574"
 VOICE_PROVIDER_NAME ="tata"
 BASE_DIR = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_DIR, "data")
+
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET")
+
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
