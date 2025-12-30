@@ -11,7 +11,6 @@ import requests
 import mimetypes
 import smtplib
 import boto3
-import pdfkit
 from pathlib import Path
 import orjson
 from dateutil.relativedelta import relativedelta 

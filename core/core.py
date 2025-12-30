@@ -923,11 +923,11 @@ def dealership_update_details(
     dealership_id:str,
     supported_brands:list[str],
     dealership_type:str,
-    languages:list[str],
-    aliases:list[str],
-    pan_number:str,
-    gstin:str,
-    website:str,
+    languages:list[str] = None,
+    aliases:list[str] = None,
+    pan_number:str = None,
+    gstin:str = None,
+    website:str = None,
     vehicle_category:str = None,
     logger = None,
     job = None,
@@ -1010,7 +1010,7 @@ def dealership_update_details(
         'gstin': gstin,
         'website': website
     })
-    dealership = dealership_model.update(dealership_id, kwargs)
+    dealership = dealership_model.update(dealership_id, {k: v for k, v in kwargs.items() if v is not None})
     logger.info(f"Dealership details updated: {dealership}")
     return dealership
 

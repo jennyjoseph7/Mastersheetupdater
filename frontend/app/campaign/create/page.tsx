@@ -312,7 +312,7 @@ function CampaignCreateContent() {
                     return {
                         id: id,
                         title: title,
-                        campaignSubType: obj.campaign_sub_type || "General",
+                        campaignSubType: obj.campaign_sub_type || "other",
                         icon: getObjectiveIcon(id, title),
                         fullData: obj,
                     };
@@ -474,7 +474,7 @@ function CampaignCreateContent() {
                 selectedObjective === "custom"
                     ? customObjective
                     : selectedObjectiveData?.title || selectedObjective,
-            campaign_sub_type: selectedObjectiveData?.campaignSubType || "General",
+            campaign_sub_type: selectedObjectiveData?.campaignSubType || "other",
             // created: Math.floor(Date.now() / 1000),
             // updated: Math.floor(Date.now() / 1000),
             campaign_user_source: "file",
@@ -708,7 +708,7 @@ function CampaignCreateContent() {
                                                     <span>/</span>
                                                     <span>
                                                         {selectedObjectiveData.campaign_sub_type ||
-                                                            "General"}
+                                                            "other"}
                                                     </span>
                                                 </div>
                                             </div>

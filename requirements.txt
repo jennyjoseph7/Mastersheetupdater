@@ -2,3 +2,4 @@ db_routes @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-pyth
 python-dotenv==1.2.1
 twilio==9.6.4
 elevenlabs==2.6.0
+pdfkit==1.0.0
