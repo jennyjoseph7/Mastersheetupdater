@@ -25,7 +25,7 @@ from communication.connectors.connector_mail import *
 def WARM_UP():
     logger.info("WARM_UP CALLED")
     with get_pg_connector() as pg:
-        load_providers(provider_name=WHATSAPP_PROVIDER_NAME)
+        load_providers(["whatsapp","email"])
         pass    
     return
 
