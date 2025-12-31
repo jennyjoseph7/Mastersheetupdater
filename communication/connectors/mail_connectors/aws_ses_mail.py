@@ -1,5 +1,5 @@
 from communication.connectors.mail_connectors.source_connector import *
-
+from config import EMAIL_PROVIDER_REGION
 class AwsSender(Mailsender):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -12,7 +12,8 @@ class AwsSender(Mailsender):
         # logger.info(f"Identities: {response}")
         self.provider = self.__class__.__name__
 
-    DEFAULT_REGION = "ap-south-1" #fetch it from credentails model
+    DEFAULT_REGION = EMAIL_PROVIDER_REGION 
+    
     def _merge_credentials(self, creds):
         defaults = {
             'region_name': self.DEFAULT_REGION,

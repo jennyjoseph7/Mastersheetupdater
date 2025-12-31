@@ -5,7 +5,7 @@ import pdfkit
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from communication.connectors.communication_helpers import *
 from communication.connectors.mail_connectors.source_connector import MailSourceFactory
-from config import AUTOCRM_COMMUNICATION_SERVICE_NAME
+from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AUTOCRM_APP_ENTERPRISE_ID
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.set_queue_manager()
@@ -115,6 +115,8 @@ def gryd_start_mail(
             **kwargs
         )
         logger.info(" Email sent. Response: %s", response)
+        
+        # TODO: call contact_status 
 
     except Exception as e:
         logger.error("Failed to send email: %s", e)
@@ -139,7 +141,25 @@ def gryd_start_mail(
         "response": response
     }
 
+def send_email_otp(*args, **kwargs):
+    """
+    Sends OTP email using configured email provider.
+    """
 
+    to_email=kwargs.get("to_email")
+    otp=kwargs.get("otp")
+    message=kwargs.get("message")
+    if not to_email or not otp:
+        raise ValueError("to_email and otp are required")
+    
+    try:
+        if not message:
+            message = f"Your OTP for Login is {otp}"
+
+        return gryd_start_mail(to_email, "OTP Verification", message, EMAIL_SENDER_NAME, "transaction", AUTOCRM_APP_ENTERPRISE_ID, pdf=False, provider=EMAIL_PROVIDER_NAME)
+
+    except Exception as e:
+        logger.info(f"Failed to send OTP email | to={to_email} | error={str(e)}")
 
 if __name__=="__main__":
     gryd_start_mail(

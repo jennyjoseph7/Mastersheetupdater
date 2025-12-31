@@ -22,7 +22,8 @@ from communication.connectors.communication_helpers import _wait_for_next_minute
 
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 from agents.get_whatsapp_template_agent import get_whatsapp_template
-from config import AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,WHATSAPP_PROVIDER_NAME
+from communication.connectors.email_communication import communication_sender
+from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,WHATSAPP_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
@@ -380,7 +381,7 @@ class BaseCustomCampaignManager:
                         enterprise_id,
                         count
                     ],enterprise_id=enterprise_id)
-            if channel.upper()=="VOICE_PHONE":
+            elif channel.upper()=="VOICE_PHONE":
                 logger.info("Sending Voice campaign---")
                 logger.info(f"[{count}] Sent {channel} message for phone_number:{campaign_data.get('mobile_number')}, campaign_id:{campaign_data.get('campaign_id')}, lead_id:{user.get('lead_id')}")
                 # logger.info(f"[voice_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
@@ -389,7 +390,14 @@ class BaseCustomCampaignManager:
                 # send_voice_campaign_message(campaign_user_data.get("mobile_number"),campaign_user_data,campaign_details_data,VOICE_CAMPAIGN_BASE_URL)
                 # TODO call nikit task for voice
                 pass
-
+            elif channel.upper()=="EMAIL":
+                logger.info("Sending Email campaign---")
+                # logger.info(f"[email_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
+                email_p=format_email_payload(campaign_data,campaign_users[0])
+                communication_sender(**email_p)
+            else:
+                logger.error(f"Unsupported channel: {channel}")
+                continue
             processed_users.append(campaign_users[0].get("lead_id"))
     
         logger.info(f"Finished processing {len(processed_users or [])} users for campaign_id={campaign_id}, channel={channel}")
@@ -415,7 +423,7 @@ class BaseCustomCampaignManager:
         )
         return start_date, end_date
     
-    
+
     # ============================================================
     # Function: run_custom_campaign
     # Description: Main orchestrator that executes custom campaigns
@@ -456,7 +464,7 @@ class BaseCustomCampaignManager:
                 - `campaign_user_source` : dict
                 Configuration details of the user source.
                 - `channel` : str
-                Communication channel (e.g., `"WHATSAPP_CHAT"`, `"VOICE_PHONE"`).
+                Communication channel (e.g., `"WHATSAPP_CHAT"`, `"VOICE_PHONE"` , `"EMAIL"`).
         campaign_id : str, optional
             Campaign identifier (used if not specified in `campaign_details_data`).
         campaign_status_check_id : str, optional
@@ -508,7 +516,7 @@ class BaseCustomCampaignManager:
             channel = kwargs.get("channel", "").upper()
 
             if kwargs.get("retry_failed"):
-                if campaign_users and channel in ["WHATSAPP_CHAT", "VOICE_PHONE"]:
+                if campaign_users and channel in ["WHATSAPP_CHAT", "VOICE_PHONE", "EMAIL"]:
                     self.process_campaign_users_generic(
                         enterprise_id=enterprise_id, 
                         campaign_id=campaign_id, 
@@ -541,7 +549,7 @@ class BaseCustomCampaignManager:
 
                 logger.info(f"campaign_users----{campaign_users}---and channel----{channel}")
                 # Process users based on channel
-                if campaign_users and channel in ["WHATSAPP_CHAT", "VOICE_PHONE"]:
+                if campaign_users and channel in ["WHATSAPP_CHAT", "VOICE_PHONE", "EMAIL"]:
                     self.process_campaign_users_generic(
                         enterprise_id=enterprise_id, 
                         campaign_id=campaign_id, 
@@ -690,7 +698,13 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         A dictionary containing the status of the campaign and any errors that occurred.
     """
     logger.info("----- In process_single_lead task -----")
-
+    
+    provider_name = None
+    template_data = None
+    sender_name = None
+    template_message = None
+    buttons = None
+    
     if campaign_type == "pre-sales":
         campaign_table = "pre_sales_campaign"
         lead_table = "pre_sales_lead"
@@ -708,7 +722,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         return
 
     campaign_details = campaign_details[0]
-    logger.info(f"Campaign details: {json.dumps(campaign_details,indent=4)}")
+    # logger.info(f"Campaign details: {json.dumps(campaign_details,indent=4)}")
     if isinstance(lead, dict):
         lead_data = lead
         lead_id = lead.get(lead_id_field)
@@ -730,12 +744,22 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
     if not channel:
         channel = get_channel(lead_data, campaign_details)
 
-    provider_name = None
-    template_data = None
-
     if channel == "voice_phone":
         provider_name = VOICE_PROVIDER_NAME
-
+    elif channel == "email":
+        # email_cred=pg.list("communication_credentials", {"channel": "email"})
+        # email_cred=email_cred[0] if email_cred else None
+        # if not email_cred:
+        #     yield {"status": "Error", "error_description": "No email credentials found"}
+        #     return
+        # sender_name=email_cred.get("sender_name")
+        sender_name=EMAIL_SENDER_NAME
+        provider_name = EMAIL_PROVIDER_NAME
+        #TODO:call prince task to get the email message and suitable subject.
+        template_data={
+            "subject": "Service Reminder",
+            "message": "This is a service reminder. Please visit your nearest service centre or contact us for assistance."
+        }
     elif channel in ("whatsapp_chat", "sms", "rcs"):
         template_data = get_whatsapp_template(
             lead_id=lead_id,
@@ -788,29 +812,23 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         **variable_mapping
     }
 
-   
-    template_message = None
-    buttons = None
-
-    if template_data:
+    if template_data and channel == "whatsapp_chat":
         buttons = template_data.pop("buttons", None)
         template_vars = template_data.get("template_variables", [])
         render_data = {v: template_data.get(v, "") for v in template_vars}
         template_message = template_data.get("template_message", "").format(**render_data)
 
-   
     if channel == "web_chat":
         yield {"placeholder": template_message, "buttons": buttons}
         return
 
-   
     final_payload = {
         **campaign_details,
         **(template_data or {}),
         "enterprise_id": campaign_details.get("enterprise_id"),
         "campaign_id": campaign_details.get("campaign_id"),
         "channel": channel,
-        "sender": template_data.get("sender") if template_data else None,
+        "sender": sender_name or (template_data.get("sender") if template_data else None),
         "provider_name": provider_name or (template_data.get("provider_name").lower() if template_data else None),
         "template_message": template_message,
         "campaign_user_source": {
@@ -830,7 +848,6 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
             }
         }
     }
-
     run_async = campaign_details.get("run_async", True)
     is_testing = campaign_details.get("_is_testing", False)
 
@@ -899,4 +916,36 @@ def get_variable_values(template_variables, lead_data, selected_person=None):
             values[var] = lead_data.get(var)
     return values
 
+def format_email_payload(campaign_data,campaign_user):
+    """
+    Format email payload for communication_sender function.
 
+    Parameters:
+    campaign_data (dict): Campaign data object
+    campaign_user (dict): Campaign user data object
+
+    Returns:
+    dict: Formatted email payload
+    """
+    p={
+        "ent_id":AUTOCRM_APP_ENTERPRISE_ID,
+        "enterprise_id":AUTOCRM_APP_ENTERPRISE_ID,
+        "sender":{
+            "name":"info",
+            "email": EMAIL_SENDER_NAME or campaign_data.get("sender"),
+        },
+        "receiver":{
+            # "emails": [campaign_user.get("email")] TODO: Later get this from campaign_user
+            "emails": ["praveen@iamdave.ai"]
+            
+        },
+        "html_string": campaign_data.get("message"),
+        "subject": campaign_data.get("subject"),
+        "provider": EMAIL_PROVIDER_NAME or campaign_data.get("provider_name"),
+        "files": [
+            campaign_data.get("files") or None
+            ]
+    }
+    p_filters = {k: v for k, v in p.items() if v not in [None ,[],[None]]}
+    
+    return p_filters
