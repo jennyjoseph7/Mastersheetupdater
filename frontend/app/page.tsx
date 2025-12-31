@@ -367,7 +367,7 @@ export default function CampaignDashboard() {
           ? "live"
           : campaign.start_date
           ? "scheduled"
-          : "draft");
+          : "Drafted");
 
       const matchesStatus =
         statusFilter === "all" || campaignStatus === statusFilter;
@@ -471,7 +471,7 @@ export default function CampaignDashboard() {
         duplicateData.campaign_name = `${
           campaignData.campaign_name ?? "Campaign"
         } (Copy)`;
-        duplicateData.campaign_status = "draft";
+        duplicateData.campaign_status = "Drafted";
 
         // In a real implementation, you would POST this to create a new campaign
         // For now, navigate to create page with the duplicate data
@@ -704,7 +704,7 @@ export default function CampaignDashboard() {
                         All
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => setStatusFilter("draft")}
+                        onClick={() => setStatusFilter("Drafted")}
                       >
                         Draft
                       </DropdownMenuItem>
@@ -946,7 +946,7 @@ export default function CampaignDashboard() {
                                     >
                                       <Pause className="mr-2 h-4 w-4" /> Pause
                                     </DropdownMenuItem>
-                                  ) : campaign.campaign_status === "draft" ||
+                                  ) : campaign.campaign_status === "Drafted" ||
                                     campaign.campaign_status === "scheduled" ? (
                                     <DropdownMenuItem
                                       onClick={() =>

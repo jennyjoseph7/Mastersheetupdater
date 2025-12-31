@@ -218,3 +218,53 @@
   background-color: hsl(var(--accent)) !important;
   color: hsl(var(--accent-foreground)) !important;
 }
+
+/* Center align flag in country selector button */
+.react-international-phone-country-selector-button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+}
+
+/* Make button-content div properly aligned */
+.react-international-phone-country-selector-button__button-content {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  width: 100% !important;
+  height: 100% !important;
+  flex: 1 1 auto !important;
+  padding-left: 8px !important;
+}
+
+/* Ensure all direct children of button-content are properly aligned */
+.react-international-phone-country-selector-button__button-content > * {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+/* Fix flag emoji/image alignment */
+.react-international-phone-flag-emoji,
+.react-international-phone-country-selector-button__flag-emoji,
+.react-international-phone-country-selector-button img {
+  display: block !important;
+  margin: 0 !important;
+  align-self: center !important;
+  flex-shrink: 0 !important;
+  object-fit: contain !important;
+}
+
+/* Align dropdown arrow if present */
+.react-international-phone-country-selector-button svg,
+.react-international-phone-country-selector-button [class*="arrow"],
+.react-international-phone-country-selector-button [class*="chevron"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  align-self: center !important;
+}
