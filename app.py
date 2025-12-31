@@ -8,10 +8,12 @@ from db_routes import db_routes, ai_service_app
 # from voice.voice.providers.twilio import app as twilio_routes
 # from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_app
 import os
-from flask import request
+from flask import request,jsonify, send_file
 from config import *
 import autocrm_validator
-
+import io
+import json
+import requests
 
 gryd.SERVICE = SERVICE
 gryd.BASE_PATH = BASE_PATH
@@ -97,6 +99,12 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
     else:
         return gryd_routes.jsonify({"status": "error", "message": "Invalid channel"}), 400, {"Access-Control-Allow-Origin": "*"}
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
+
+
+@app.route("/webhook/ses-status", methods=["POST", "GET"])
+def handle_ses_webhook():
+    logger.info(f"SES Webhook received")
+    return 
 
 
 @app.route('/test_voice_agent/<provider>/<session_id>', methods = ["POST"])
