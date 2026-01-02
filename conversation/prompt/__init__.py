@@ -322,7 +322,8 @@ def get_purpose_and_steps(*args, **kwargs):
         steps = ["- Full Name \n- Interested Model\n- Date & Time "]
     if campaign_type == "inbound":
         return "Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy."
-    return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n The current date for your reference is {hp.time()}.You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user isnt already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy."
+    date_now = hp.datetime.now().strftime("%A, %B %d, %Y")
+    return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user isnt already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy.\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
 def get_cta_options(*args, **kwargs):
     ctas = kwargs.get("campaign_data").get("ctas")
     if not ctas:
