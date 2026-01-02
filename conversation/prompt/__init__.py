@@ -345,7 +345,8 @@ def get_cta_options(*args, **kwargs):
     }
     cta_rules = []
     for cta in ctas:
-        cta_rules.append(cta_dict.get(cta))
+        if cta in cta_dict:
+            cta_rules.append(cta_dict.get(cta))
     return cta_rules
     
 
