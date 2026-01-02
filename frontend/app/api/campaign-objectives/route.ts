@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "https://autobot-webapp-dev.gryd.in";
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "https://autobot-webapp-dev.gryd.in/gryd/db/objects";
 
 export async function GET(request: Request) {
   try {
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
       "X-GRYD-ROLE": "admin",
     };
 
-    const url = `${API_BASE_URL}/gryd/db/objects/campaign_objective?campaign_type=${campaignType}`;
+    const url = `${API_BASE_URL}/campaign_objective?campaign_type=${campaignType}`;
     console.log("[API Route] Fetching from:", url);
 
     const res = await fetch(url, {

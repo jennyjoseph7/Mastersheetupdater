@@ -9,7 +9,7 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
-
+mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
 class data_attribute_retriever(BaseAgent):
     """This agent collects the data of the campaign uploaded by the dealership for the particular campaign based on campaign id from pre and post sales lead model and will give all the distinct types of attribute list"""
@@ -23,13 +23,17 @@ class data_attribute_retriever(BaseAgent):
         
         self.source = source
         self.id = source.get("id")
-        self.campaign_type = source.get("campaign_type")
+        self.campaign_type = source.get("campaign_type","")
+        self.campaign_objective_id = source.get("campaign_objective_id")
+        
 
     def get_data_from_model(self):
+        logger = mlogger
 
         records = []  # ensure variable always exists
 
-        if self.campaign_type in ["pre-sales", "pre_sale", "pre_sales"]:
+
+        if self.id is not None and self.campaign_type in ["pre-sale","pre-sales", "pre_sale", "pre_sales"]:
             try:
                 records = list(pg.list(
                     table_name="pre_sales_lead",
@@ -37,12 +41,30 @@ class data_attribute_retriever(BaseAgent):
                 ))
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the pre sales lead model: {e}")
+            
+        elif self.campaign_objective_id is not None and self.campaign_type in ["pre-sale","pre-sales", "pre_sale", "pre_sales"]:
+            try:
+                records = list(pg.list(
+                    table_name="pre_sales_lead",
+                    where={"campaign_objective_id": self.campaign_objective_id}
+                ))
+            except Exception as e:
+                raise ValueError(f"Could not retrieve data from the pre sales lead model: {e}")
 
-        elif self.campaign_type in ["post-sales", "post_sale", "post_sales"]:
+        elif self.id is not None and self.campaign_type in ["post-sales", "post_sale", "post_sales"]:
             try:
                 records = list(pg.list(
                     table_name="post_sales_lead",
                     where={"post_sales_lead_id": self.id}
+                ))
+            except Exception as e:
+                raise ValueError(f"Could not retrieve data from the post sales lead model: {e}")
+            
+        elif self.campaign_objective_id is not None and self.campaign_type in ["post-sales", "post_sale", "post_sales"]:
+            try:
+                records = list(pg.list(
+                    table_name="post_sales_lead",
+                    where={"campaign_objective_id": self.campaign_objective_id}
                 ))
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the post sales lead model: {e}")
@@ -51,23 +73,37 @@ class data_attribute_retriever(BaseAgent):
             raise ValueError(f"Invalid campaign_type: {self.campaign_type}")
 
         if not records:
-            raise ValueError("No records found for given ID and campaign type.")
+            raise logger.info("No records found for given ID and campaign type.")
 
         return records
 
     
     
-    def get_data_attributes(self,records):
+    def get_data_attributes(self, records:list):
         seen = set()
         distinct_sets = []
 
         for record in records:
-            attrs = tuple(sorted(record.keys()))  # sorted so ordering doesn't affect uniqueness
-            if attrs not in seen:
-                seen.add(attrs)
-                distinct_sets.append(list(attrs))
+            # Start with top-level keys
+            attrs = set(record.keys())
+
+            #Add person_name if inside persons_involved
+            persons = record.get("persons_involved", [])
+            if isinstance(persons, list):
+                for person in persons:
+                    if isinstance(person, dict) and "person_name" in person:
+                        attrs.add("person_name")
+                        break
+
+            # Convert to sorted tuple for uniqueness
+            attrs_tuple = tuple(sorted(attrs))
+
+            if attrs_tuple not in seen:
+                seen.add(attrs_tuple)
+                distinct_sets.append(list(attrs_tuple))
 
         return distinct_sets
+
     
     def remove_unwanted_attributes(self, distinct_sets):
         """

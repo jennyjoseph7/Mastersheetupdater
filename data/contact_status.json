@@ -94,9 +94,14 @@
                 "args": [
                     "campaign_workflow",
                     "campaign_workflow_id",
-                    "campaign_id"
+                    "dealership_id"
                 ]
             }
+        },
+        {
+            "name":"dealership_id",
+            "type": "text",
+            "indexed": true
         },
         {
             "name": "campaign_type",
@@ -157,6 +162,17 @@
             ],
             "option_others": true,
             "default": "initiated"
+        },
+        {
+          "name": "failure_reason",
+          "type": "text",
+          "options": [
+            "Message not delivered",
+            "Spam",
+            "Not reachable",
+            "Didn't pick up",
+            "Rejected"
+          ]
         },
         {
             "name": "contact_status_id",

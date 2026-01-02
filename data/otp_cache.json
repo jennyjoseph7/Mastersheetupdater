@@ -1,0 +1,50 @@
+{
+    "name": "otp_cache",
+    "attributes": [
+        {
+            "name": "otp",
+            "type": "text",
+            "required": true
+        },
+        {
+            "name": "expiry",
+            "type": "number"
+        },
+        {
+            "name": "otp_cache_id",
+            "type": "uid",
+            "id": true,
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "otp"
+                ]
+            }
+        },
+        {
+            "name": "max_attempts",
+            "type": "number",
+            "default": 3
+        },
+        {
+            "name": "remaining_attempts",
+            "type": "number",
+            "default": {
+                "function": "copy_attribute",
+                "args": ["max_attempts"]
+            }
+        },
+        {
+            "name": "last_attempt_time",
+            "type": "number"
+        },
+        {
+            "name": "identifier",
+            "type": "text"
+        },
+        {
+            "name": "channel",
+            "type": "text"
+        }
+    ]
+}

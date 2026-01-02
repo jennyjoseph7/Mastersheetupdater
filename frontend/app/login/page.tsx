@@ -2,9 +2,10 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import ReCAPTCHA from "react-google-recaptcha";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,10 +40,35 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
   const [validationErrors, setValidationErrors] = useState<{
     email?: string;
     password?: string;
+    recaptcha?: string;
   }>({});
+
+  // Get reCAPTCHA site key from environment
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
+  const isRecaptchaEnabled = Boolean(recaptchaSiteKey);
+
+  // Debug: Log the site key status (remove in production)
+  useEffect(() => {
+    if (isRecaptchaEnabled) {
+      console.log(
+        "[reCAPTCHA] Site key loaded:",
+        recaptchaSiteKey.substring(0, 10) + "..."
+      );
+      console.log(
+        "[reCAPTCHA] Current domain:",
+        typeof window !== "undefined" ? window.location.hostname : "server"
+      );
+    } else {
+      console.warn(
+        "[reCAPTCHA] Site key not found. Add NEXT_PUBLIC_RECAPTCHA_SITE_KEY to .env.local"
+      );
+    }
+  }, [recaptchaSiteKey, isRecaptchaEnabled]);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -50,7 +76,8 @@ export default function LoginPage() {
   };
 
   const validateForm = () => {
-    const errors: { email?: string; password?: string } = {};
+    const errors: { email?: string; password?: string; recaptcha?: string } =
+      {};
 
     if (!email) {
       errors.email = "Email is required";
@@ -62,6 +89,11 @@ export default function LoginPage() {
       errors.password = "Password is required";
     } else if (password.length < 6) {
       errors.password = "Password must be at least 6 characters";
+    }
+
+    // Only validate reCAPTCHA if it's enabled
+    if (isRecaptchaEnabled && !recaptchaToken) {
+      errors.recaptcha = "Please complete the reCAPTCHA verification";
     }
 
     setValidationErrors(errors);
@@ -80,15 +112,32 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
+      // Reset reCAPTCHA on successful login
+      if (isRecaptchaEnabled) {
+        recaptchaRef.current?.reset();
+        setRecaptchaToken(null);
+      }
       router.push("/");
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Invalid email or password. Please try again.",
+          : "Invalid email or password. Please try again."
       );
+      // Reset reCAPTCHA on error
+      if (isRecaptchaEnabled) {
+        recaptchaRef.current?.reset();
+        setRecaptchaToken(null);
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRecaptchaChange = (token: string | null) => {
+    setRecaptchaToken(token);
+    if (token && validationErrors.recaptcha) {
+      setValidationErrors((prev) => ({ ...prev, recaptcha: undefined }));
     }
   };
 
@@ -114,11 +163,11 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <Image
-              src="https://www.iamdave.ai/wp-content/uploads/2025/09/DaveAI_Logo.svg"
-              alt="DaveAI Logo"
-              width={180}
-              height={36}
-              className="w-auto h-8"
+              src="images/logo.png"
+              alt="autoNgage Logo"
+              width={230}
+              height={56}
+              className="w-auto h-10 dark:invert dark:brightness-200 dark:contrast-200 dark:drop-shadow-[0_0_8px_rgba(139,92,246,0.5),0_0_16px_rgba(255,255,255,0.3)] dark:filter"
             />
           </div>
           <h1 className="text-3xl font-bold text-foreground">Welcome back</h1>
@@ -161,7 +210,11 @@ export default function LoginPage() {
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => handleFieldChange("email", e.target.value)}
-                    className={`pl-10 ${validationErrors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    className={`pl-10 ${
+                      validationErrors.email
+                        ? "border-destructive focus-visible:ring-destructive"
+                        : ""
+                    }`}
                     disabled={isLoading}
                     autoComplete="email"
                   />
@@ -196,7 +249,11 @@ export default function LoginPage() {
                     onChange={(e) =>
                       handleFieldChange("password", e.target.value)
                     }
-                    className={`pl-10 pr-10 ${validationErrors.password ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    className={`pl-10 pr-10 ${
+                      validationErrors.password
+                        ? "border-destructive focus-visible:ring-destructive"
+                        : ""
+                    }`}
                     disabled={isLoading}
                     autoComplete="current-password"
                   />
@@ -216,6 +273,22 @@ export default function LoginPage() {
                 {validationErrors.password && (
                   <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
                     {validationErrors.password}
+                  </p>
+                )}
+              </div>
+
+              {/* reCAPTCHA */}
+              <div className="space-y-2">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""}
+                  onChange={handleRecaptchaChange}
+                  theme="light"
+                  size="normal"
+                />
+                {validationErrors.recaptcha && (
+                  <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+                    {validationErrors.recaptcha}
                   </p>
                 )}
               </div>
@@ -294,6 +367,22 @@ export default function LoginPage() {
             Privacy Policy
           </Link>
         </p>
+        
+        {/* Made by Dave AI */}
+        <div className="text-center mt-8">
+          <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
+            Made by{" "}
+            <a
+              href="https://www.iamdave.ai/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-foreground hover:text-primary transition-colors"
+            >
+              Dave AI
+            </a>{" "}
+            with <span className="text-red-500">♥</span>
+          </p>
+        </div>
       </div>
     </div>
   );

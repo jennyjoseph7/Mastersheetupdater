@@ -27,28 +27,40 @@
 	],
 	"workers" : [
 		{
-			"name" : "communication",
-			"entry_point" : "communication_worker.py",
-			"parallel_threads" : 2,
-			"shutdown_time" : 0
+		"name": "communication",
+		"entry_point": "communication_worker.py",
+		"parallel_threads": 2,
+		"shutdown_time": 0
 		},
 		{
-			"name" : "core",
-			"entry_point" : "core.py",
-			"parallel_threads" : 2,
-			"shutdown_time" : 0
+		"name": "core",
+		"entry_point": "core.py",
+		"parallel_threads": 2,
+		"shutdown_time": 0
 		},
 		{
-			"name" : "campaign",
-			"entry_point" : "campaign_worker.py",
-			"parallel_threads" : 2,
-			"shutdown_time" : 0
- 		},
+		"name": "cron",
+		"entry_point": "cron.py",
+		"parallel_threads": 2,
+		"shutdown_time": 0
+		},
 		{
-			"name" : "conversation",
-			"entry_point" : "converse.py",
-			"parallel_threads" : 2,
-			"shutdown_time" : 0
+		"name": "campaign",
+		"entry_point": "campaign_worker.py",
+		"parallel_threads": 2,
+		"shutdown_time": 0
+		},
+		{
+		"name": "conversation",
+		"entry_point": "converse.py",
+		"parallel_threads": 2,
+		"shutdown_time": 0
+		},
+		{
+		"name": "conversation",
+		"entry_point": "lead_post_processing.py",
+		"parallel_threads": 1,
+		"shutdown_time": 0
 		}
-	]
+  ]
 }

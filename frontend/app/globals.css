@@ -155,3 +155,66 @@
     font-weight: 600;
   }
 }
+
+/* React International Phone dropdown dark mode styling */
+.dark .react-international-phone-country-selector-dropdown {
+  background-color: #000000 !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .react-international-phone-country-selector-dropdown-item {
+  background-color: transparent !important;
+  color: #ffffff !important;
+}
+
+.dark .react-international-phone-country-selector-dropdown-item:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: #ffffff !important;
+}
+
+.dark
+  .react-international-phone-country-selector-dropdown-item[data-focused="true"] {
+  background-color: hsl(var(--accent)) !important;
+  color: #ffffff !important;
+}
+
+/* Ensure all text elements in dropdown are white */
+.dark .react-international-phone-country-selector-dropdown-item * {
+  color: #ffffff !important;
+}
+
+.dark .react-international-phone-country-selector-dropdown-item span {
+  color: #ffffff !important;
+}
+
+.dark .react-international-phone-country-selector-dropdown-item div {
+  color: #ffffff !important;
+}
+
+/* React International Phone input field dark mode styling */
+.dark .react-international-phone-input {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--input)) !important;
+}
+
+.dark .react-international-phone-input::placeholder {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .react-international-phone-input:focus {
+  border-color: hsl(var(--ring)) !important;
+  outline: none !important;
+}
+
+/* Country selector button dark mode styling */
+.dark .react-international-phone-country-selector-button {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--input)) !important;
+}
+
+.dark .react-international-phone-country-selector-button:hover {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}

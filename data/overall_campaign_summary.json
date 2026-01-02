@@ -1,0 +1,61 @@
+{
+    "name":"overall_campaign_summary",
+    "model_type":"default",
+    "attributes":[
+      {
+        "name": "created",
+        "type": "number",
+        "auto_updater": true,
+        "default": {
+          "function": "now_ctime"
+        }
+      },
+      {
+        "name": "updated",
+        "type": "number",
+        "auto_updater": true,
+        "force_update": true,
+        "default": {
+          "function": "now_ctime"
+        }
+      },
+      {
+        "name":"campaign_type",
+        "type": "text"
+      },
+      {
+        "name": "active_count",
+        "type": "number"
+      },
+      {
+        "name": "total_count",
+        "type": "number"
+      },
+      {
+        "name": "total_reach",
+        "type": "number"
+      },
+      {
+        "name": "conversation_rate",
+        "type": "number"
+      },
+      {
+        "name":"dealership_id",
+        "type": "text"
+      },
+      {
+        "name": "campaign_summary_id",
+        "type": "text",
+        "id": true,
+        "default": {
+          "args": ["dealership_id", "campaign_type"],
+          "function": "name_to_id",
+          "kwargs": {
+            "attribute_join": "-",
+            "is_unique": true,
+            "separator": "-"
+          }
+        }
+      }
+    ]
+}

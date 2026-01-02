@@ -1,115 +1,44 @@
-from os.path import (
-    exists as ispath,
-    dirname,
-    abspath,
-    basename,
-    join as joinpath,
-    split as pathsplit,
-    splitext,
-    sep as dirsep,
-    isfile
-)
-import sys
-
-# --- Local & Gryd modules ---
-from models import model as mod, action as _act, validators as val
-from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
-
-# --- Optional modules ---
-# try:
-#     from gryd_worker import gryd_helpers as ghp
-# except ImportError:
-#     ghp = None  # fallback if needed
-
-# --- Logger ---
-def get_logger(name=None,**kwargs):
-    return hp.get_logger(name or __name__,**kwargs)
-logger=get_logger()
-
-sys.path.insert(0, dirname(dirname(abspath(__file__))))
-
-
-# --- Gryd configuration ---
-from AppConfig.gryd_config import DynamicConfig
-# from AppConfig.i2ceHeaders import Headers,DEFAULT_ENTERPRISE_HEADERS
-cfg = DynamicConfig()
-# try:
-#     ENTERPRISE_HEADERS = Headers()
-#     if not ENTERPRISE_HEADERS:
-#         logger.warning("ENTERPRISE_HEADERS not found — attempting reload.")
-
-#         # Retry loading headers up to 2 times
-#         for attempt in range(2):
-#             Headers.reload_all()
-#             ENTERPRISE_HEADERS = Headers()
-#             if ENTERPRISE_HEADERS:
-#                 logger.info(f"ENTERPRISE_HEADERS successfully loaded on retry {attempt + 1}")
-#                 break
-
-#     # Final fallback
-#     if not ENTERPRISE_HEADERS:
-#         logger.warning("ENTERPRISE_HEADERS still not available after retries. Loading default headers.")
-#         ENTERPRISE_HEADERS = DEFAULT_ENTERPRISE_HEADERS
-# except Exception as e:
-#     logger.exception(f"Failed to initialize ENTERPRISE_HEADERS: {e}")
-#     ENTERPRISE_HEADERS = DEFAULT_ENTERPRISE_HEADERS
-
-
-# # CONVERATION HEADERS
-# ConverseHeader=ENTERPRISE_HEADERS
-
-
-# Worker ENVIRONMENT 
-ENVIRONMENT= cfg.ENVIRONMENT
-BASE_URL = cfg.CONVERSATION_BASE_URL 
-
+# ENVIRONMENT= cfg.ENVIRONMENT
+BASE_URL = "https://test.iamdave.ai"
 
 # Communication Services
-GRYD_COMMUNICATION_SERVICE = cfg.gryd_communication_service
-GRYD_COMMUNICATION_BROKER = cfg.gryd_communication_broker
-GRYD_COMMUNICATION_TIMEOUT = cfg.gryd_communication_timeout
-GRYD_COMMUNICATION_SHUTDOWN_TIMEOUT = cfg.gryd_communication_shutdown_timeout
-
-
+GRYD_COMMUNICATION_SERVICE = "autocrm-communication"
+GRYD_COMMUNICATION_BROKER = "sqs"
+GRYD_COMMUNICATION_TIMEOUT = 10
+GRYD_COMMUNICATION_SHUTDOWN_TIMEOUT = 43200
 
 # Conversation Service
-CONVERS_SERVICE_NAME = cfg.convers_service_name
-CONVERS_TASK_NAME = cfg.convers_task_name
-
-
+CONVERS_SERVICE_NAME = "autocrm-conversation"
+CONVERS_TASK_NAME = "converse"
 
 # Campaign / Messaging
-WHATSAPP_MESSAGE_SPLIT_LENGTH = cfg.whatsapp_message_split_length
-CAMPAIGN_MAX_BATCH_SIZE = cfg.campaign_max_batch_size
-CAMPAIGN_MAX_TRIGGER = cfg.campaign_max_trigger
-CAMPAIGN_BATCH_SLEEP_TIME = cfg.campaign_batch_sleep_time
-MAX_MODEL_CONN_RETRY = cfg.max_model_conn_retry
-VOICE_CAMPAIGN_BASE_URL=cfg.voice_campaign_base_url
+WHATSAPP_MESSAGE_SPLIT_LENGTH = 4000
+CAMPAIGN_MAX_BATCH_SIZE = 100
+CAMPAIGN_MAX_TRIGGER = 10000
+CAMPAIGN_BATCH_SLEEP_TIME = 100
+MAX_MODEL_CONN_RETRY = 5
+VOICE_CAMPAIGN_BASE_URL="https://ambal.loca.lt"
+
 # Keep a sleep time of N sec before sending whatsapp message
-SLEEP_OVER_MESSAGE = cfg.sleep_over_message
+SLEEP_OVER_MESSAGE = 0.5
 
 # Misc
-DB_TIMEZONE = cfg.db_timezone
-FILE_CHUNK_SIZE = cfg.file_chunk_size
-
+DB_TIMEZONE = "Asia/Kolkata"
+FILE_CHUNK_SIZE = 1024 * 1024
 
 # campaign_configs for sending message as per limit
-WHATSAPP_MAX_MESSAGE_PER_DAY=cfg.WHATSAPP_MAX_MESSAGE_PER_DAY
-EMAIL_MAX_MESSAGE_PER_DAY=cfg.EMAIL_MAX_MESSAGE_PER_DAY
-VOICE_MAX_MESSAGE_PER_DAY=cfg.VOICE_MAX_MESSAGE_PER_DAY
+WHATSAPP_MAX_MESSAGE_PER_DAY=100000
+EMAIL_MAX_MESSAGE_PER_DAY=100000
+VOICE_MAX_MESSAGE_PER_DAY=20000
 
 # TO Send WEBHOOK to Worker
-GRYD_COMMUNICATION_WEBHOOK_ASYNC=cfg.gryd_communication_webhook_async
-
+GRYD_COMMUNICATION_WEBHOOK_ASYNC= True
 
 # whatsapp configs
-
-
 INBOUND = "INBOUND"
 IGNORED_STATUSES = {"ACK"}
 
 TRACKABLE_STATUSES = {"READ", "RECEIVED", "SENT", "DELIVERED", "INITIATED","FAILED"}
-
 
 WA_TO_DISPOSITION = {
     "read": "contacted",
@@ -119,7 +48,6 @@ WA_TO_DISPOSITION = {
     "failed": "failed",
     "interacted":"engaged"
 }
-
 
 NONE_TEMPLATE_TYPES= ["buttons","images","url","image","document","documents","video","videos","audios"]
 PROVIDER_CONFIG = {

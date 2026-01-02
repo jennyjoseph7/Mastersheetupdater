@@ -359,16 +359,9 @@
             }
         },
         {
-            "type": "list",
-            "name": "urgency_hook",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "post_sales_campaign",
-                    "campaign_id",
-                    "urgency_hook"
-                ]
-            }
+            "type": "text",
+            "name": "urgency_hook"
+           
         },
         {
             "name": "why_user_should_avail_this",
@@ -1479,6 +1472,72 @@
             "force_update": "workshop_id"
         },
         {
+            "name": "region_subdivision_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "region_subdivision_id"
+                ]
+            },
+            "force_update": "workshop_id",
+            "type": "text"
+        },
+        {
+            "name": "subdivision_name",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "subdivision_name"
+                ]
+            },
+            "force_update": "workshop_id",
+            "type": "text"
+        },
+        {
+            "name": "languages",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "languages"
+                ]
+            },
+            "type": "list",
+            "list_type": "text",
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "subdivision_level_guidelines",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "subdivision_level_guidelines"
+                ]
+            },
+            "type": "text",
+            "force_update": "workshop_id"
+        },
+        {
+            "name": "subdivision_level_guardrails",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "subdivision_level_guardrails"
+                ]
+            },
+            "force_update": "workshop_id",
+            "type": "text"
+        },
+        {
             "name": "workshop_level_guidelines",
             "type": "text",
             "default": {
@@ -1657,6 +1716,7 @@
                 "Has moved to another location",
                 "Cannot make decision on servicing",
                 "Will call workshop themselves",
+                "Requested Callback",
                 "Looking for a discount",
                 "Language barrier",
                 "Has serviced car in another dealership",

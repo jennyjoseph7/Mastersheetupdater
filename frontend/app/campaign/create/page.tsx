@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api, API_BASE_URL } from "@/lib/api";
+
+// Imports
+import { fetchAudienceTasks } from "@/utils/api";
+import { api } from "@/lib/api";
+
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,648 +21,154 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ObjectiveCard } from "@/components/campaign/objective-card";
 import { PreviouslyUsedCampaigns } from "@/components/campaign/previously-used-campaigns";
+import { AddDataSourceDialog } from "@/components/audience/add-data-source-dialog";
 import { ProtectedRoute } from "@/components/protected-route";
 import {
-  MessageSquare,
-  Mail,
-  Phone,
-  Facebook,
-  Instagram,
-  Sparkles,
-  PartyPopper,
-  Tag,
-  Car,
-  Wrench,
-  Sun,
-  Edit3,
-  Check,
-  Target,
-  Users,
-  Rocket,
-  X,
-  TrendingUp,
-  Heart,
-  Gift,
-  AlertCircle,
-  RefreshCw,
-  Image as ImageIcon,
-  Info,
+    MessageSquare,
+    Mail,
+    Phone,
+    Sparkles,
+    PartyPopper,
+    Tag,
+    Car,
+    Wrench,
+    Sun,
+    Edit3,
+    Check,
+    Target,
+    Users,
+    Rocket,
+    X,
+    TrendingUp,
+    Heart,
+    Gift,
+    AlertCircle,
+    RefreshCw,
+    Image as ImageIcon,
+    Info,
+    ArrowRight,
+    Upload,
+    Database,
+    FileText,
+    Calendar,
+    CreditCard,
+    CalendarClock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AILoader } from "@/components/ui/ai-loader";
 
-// Helper function to get icon for objective
-const getObjectiveIcon = (objectiveId: string, title: string) => {
-  const id = objectiveId.toLowerCase();
-  const titleLower = title.toLowerCase();
+// --- HELPERS & CONSTANTS ---
 
-  if (
-    id.includes("car") ||
-    id.includes("launch") ||
-    titleLower.includes("car") ||
-    titleLower.includes("launch")
-  ) {
-    return <Car className="h-6 w-6" />;
-  }
-  if (
-    id.includes("festive") ||
-    id.includes("sale") ||
-    titleLower.includes("festive") ||
-    titleLower.includes("sale")
-  ) {
-    return <PartyPopper className="h-6 w-6" />;
-  }
-  if (
-    id.includes("stock") ||
-    id.includes("clearance") ||
-    titleLower.includes("stock") ||
-    titleLower.includes("clearance")
-  ) {
-    return <Tag className="h-6 w-6" />;
-  }
-  if (
-    id.includes("test") ||
-    id.includes("drive") ||
-    titleLower.includes("test") ||
-    titleLower.includes("drive")
-  ) {
-    return <TrendingUp className="h-6 w-6" />;
-  }
-  if (id === "custom" || titleLower.includes("custom")) {
-    return <Edit3 className="h-6 w-6" />;
-  }
-  return <Target className="h-6 w-6" />;
+const getObjectiveIcon = (objectiveId: string, title: string) => {
+    const id = objectiveId?.toLowerCase() || "";
+    const titleLower = title?.toLowerCase() || "";
+
+    if (
+        id.includes("car") ||
+        id.includes("launch") ||
+        titleLower.includes("car") ||
+        titleLower.includes("launch")
+    )
+        return <Car className="h-6 w-6" />;
+    if (
+        id.includes("festive") ||
+        id.includes("sale") ||
+        titleLower.includes("festive") ||
+        titleLower.includes("sale")
+    )
+        return <PartyPopper className="h-6 w-6" />;
+    if (
+        id.includes("stock") ||
+        id.includes("clearance") ||
+        titleLower.includes("stock") ||
+        titleLower.includes("clearance")
+    )
+        return <Tag className="h-6 w-6" />;
+    if (
+        id.includes("test") ||
+        id.includes("drive") ||
+        titleLower.includes("test") ||
+        titleLower.includes("drive")
+    )
+        return <TrendingUp className="h-6 w-6" />;
+    if (
+        id.includes("service") ||
+        titleLower.includes("service") ||
+        titleLower.includes("maintenance")
+    )
+        return <Wrench className="h-6 w-6" />;
+    if (id.includes("warranty") || titleLower.includes("warranty"))
+        return <ShieldCheck className="h-6 w-6" />;
+    if (id.includes("insurance") || titleLower.includes("insurance"))
+        return <FileText className="h-6 w-6" />;
+    if (id === "custom" || titleLower.includes("custom"))
+        return <Edit3 className="h-6 w-6" />;
+    return <Target className="h-6 w-6" />;
 };
 
-// Default pre-sales objectives
-const defaultPreSalesObjectives = [
-  {
-    id: "new-car-launch",
-    title: "New Car Launch",
-    campaignSubType: undefined,
-    icon: <Car className="h-6 w-6" />,
-  },
-  {
-    id: "festive-sale",
-    title: "Festive Sale",
-    campaignSubType: undefined,
-    icon: <PartyPopper className="h-6 w-6" />,
-  },
-  {
-    id: "stock-clearance",
-    title: "Stock Clearance",
-    campaignSubType: undefined,
-    icon: <Tag className="h-6 w-6" />,
-  },
-  {
-    id: "test-drive",
-    title: "Test Drive Campaign",
-    campaignSubType: undefined,
-    icon: <TrendingUp className="h-6 w-6" />,
-  },
-  {
-    id: "custom",
-    title: "Custom Objective",
-    campaignSubType: undefined,
-    icon: <Edit3 className="h-6 w-6" />,
-  },
-];
-
-const postSalesObjectives = [
-  {
-    id: "service-reminder",
-    title: "Service Reminder",
-    campaignSubType: undefined,
-    icon: <Wrench className="h-6 w-6" />,
-  },
-  {
-    id: "seasonal-service",
-    title: "Seasonal Service",
-    campaignSubType: undefined,
-    icon: <Sun className="h-6 w-6" />,
-  },
-  {
-    id: "loyalty-reward",
-    title: "Loyalty Rewards",
-    campaignSubType: undefined,
-    icon: <Heart className="h-6 w-6" />,
-  },
-  {
-    id: "referral",
-    title: "Referral Program",
-    campaignSubType: undefined,
-    icon: <Gift className="h-6 w-6" />,
-  },
-  {
-    id: "custom",
-    title: "Custom Objective",
-    icon: <Edit3 className="h-6 w-6" />,
-  },
-];
+const ShieldCheck = (props: any) => (
+    <svg
+        {...props}
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    >
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+        <path d="m9 12 2 2 4-4" />
+    </svg>
+);
 
 const channels = [
-  {
-    id: "whatsapp",
-    name: "WhatsApp",
-    icon: <MessageSquare className="h-6 w-6" />,
-  },
-  { id: "email", name: "Email", icon: <Mail className="h-6 w-6" /> },
-  { id: "voice", name: "Voice", icon: <Phone className="h-6 w-6" /> },
-  { id: "facebook", name: "Facebook", icon: <Facebook className="h-6 w-6" /> },
-  {
-    id: "instagram",
-    name: "Instagram",
-    icon: <Instagram className="h-6 w-6" />,
-  },
-];
-
-const audienceSegments = [
-  { value: "high-intent", label: "High Intent Leads", size: 1500 },
-  { value: "new-customers", label: "New Customers", size: 3000 },
-  { value: "active", label: "Active Customers", size: 8500 },
-  { value: "premium", label: "Premium Customers", size: 500 },
-  { value: "inactive", label: "Inactive Customers", size: 2200 },
+    {
+        id: "whatsapp",
+        name: "WhatsApp",
+        icon: <MessageSquare className="h-6 w-6" />,
+    },
+    { id: "email", name: "Email", icon: <Mail className="h-6 w-6" /> },
+    { id: "voice", name: "Voice", icon: <Phone className="h-6 w-6" /> },
 ];
 
 const languageOptions = [
-  { value: "en", label: "English" },
-  { value: "hi", label: "Hindi" },
-  { value: "mr", label: "Marathi" },
-  { value: "ta", label: "Tamil" },
-  { value: "te", label: "Telugu" },
-  { value: "kn", label: "Kannada" },
-  { value: "bn", label: "Bengali" },
-  { value: "gu", label: "Gujarati" },
+    { value: "en", label: "English" },
+    { value: "hi", label: "Hindi" },
+    { value: "mr", label: "Marathi" },
+    { value: "ta", label: "Tamil" },
+    { value: "te", label: "Telugu" },
+    { value: "kn", label: "Kannada" },
+    { value: "bn", label: "Bengali" },
+    { value: "gu", label: "Gujarati" },
 ];
 
-function CampaignCreateContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+const toEpoch = (dateStr: string) =>
+    dateStr ? Math.floor(new Date(dateStr).getTime() / 1000) : 0;
 
-  const [campaignType, setCampaignType] = useState<
-    "presales" | "postsales" | ""
-  >("");
-  const [isLaunchSuccessOpen, setIsLaunchSuccessOpen] = useState(false);
-  const [launchStatus, setLaunchStatus] = useState("");
-  const [isLaunchError, setIsLaunchError] = useState(false);
-  const [selectedObjective, setSelectedObjective] = useState("");
-  const [selectedObjectiveData, setSelectedObjectiveData] = useState<any>(null);
-  const [customObjective, setCustomObjective] = useState("");
-
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [campaignData, setCampaignData] = useState<any>(null);
-
-  const [campaignName, setCampaignName] = useState("");
-  const [campaignDescription, setCampaignDescription] = useState("");
-  const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
-  const [duration, setDuration] = useState({ start: "", end: "" });
-  const [campaignTitle, setCampaignTitle] = useState("");
-  const [tone, setTone] = useState("");
-  const [callToAction, setCallToAction] = useState("");
-  const [language, setLanguage] = useState("en");
-  const [targetAudience, setTargetAudience] = useState<string[]>([]);
-  const [customAudience, setCustomAudience] = useState<{
-    region: string[];
-    vehicleType: string[];
-    customerStatus: string[];
-  }>({ region: [], vehicleType: [], customerStatus: [] });
-
-  // Car details for specific objectives
-  const [carModel, setCarModel] = useState("");
-  const [launchDate, setLaunchDate] = useState("");
-  const [activeTab, setActiveTab] = useState("setup");
-  const [preSalesObjectives, setPreSalesObjectives] = useState(
-    defaultPreSalesObjectives
-  );
-  const [fetchedPostSalesObjectives, setFetchedPostSalesObjectives] =
-    useState(postSalesObjectives);
-  const [isLoadingObjectives, setIsLoadingObjectives] = useState(false);
-
-  // New state to control the objective details dialog
-  const [isObjectiveDetailsOpen, setIsObjectiveDetailsOpen] = useState(false);
-
-  useEffect(() => {
-    const isNew = searchParams.get("new");
-    if (isNew === "true") {
-      localStorage.removeItem("campaignFormData");
-      router.replace("/campaign/create", { scroll: false });
-    }
-  }, [searchParams, router]);
-
-  useEffect(() => {
-    const formData = {
-      campaignType,
-      selectedObjective,
-      customObjective,
-      campaignData,
-      campaignName,
-      campaignDescription,
-      selectedChannels,
-      duration,
-      campaignTitle,
-      tone,
-      callToAction,
-      language,
-      targetAudience,
-      customAudience,
-      carModel,
-      launchDate,
-    };
-    localStorage.setItem("campaignFormData", JSON.stringify(formData));
-  }, [
-    campaignType,
-    selectedObjective,
-    customObjective,
-    campaignData,
-    campaignName,
-    campaignDescription,
-    selectedChannels,
-    duration,
-    campaignTitle,
-    tone,
-    callToAction,
-    language,
-    targetAudience,
-    customAudience,
-    carModel,
-    launchDate,
-  ]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("campaignFormData");
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        setCampaignType(data.campaignType || "");
-        setSelectedObjective(""); // Reset selection to force fresh flow
-        setCustomObjective(data.customObjective || "");
-        setCampaignData(data.campaignData || null);
-        setCampaignName(data.campaignName || "");
-        setCampaignDescription(data.campaignDescription || "");
-        setSelectedChannels(data.selectedChannels || []);
-        setDuration(data.duration || { start: "", end: "" });
-        setCampaignTitle(data.campaignTitle || "");
-        setTone(data.tone || "");
-        setCallToAction(data.callToAction || "");
-        setLanguage(data.language || "en");
-        setTargetAudience(data.targetAudience || []);
-        setCustomAudience(
-          data.customAudience || {
-            region: [],
-            vehicleType: [],
-            customerStatus: [],
-          }
-        );
-        setCarModel(data.carModel || "");
-        setLaunchDate(data.launchDate || "");
-      } catch (error) {
-        console.error("Error restoring form data:", error);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    setSelectedObjective("");
-    setCustomObjective("");
-    setCampaignData(null);
-  }, [campaignType]);
-
-  // Fetch pre-sales objectives
-  useEffect(() => {
-    const fetchPreSalesObjectives = async () => {
-      if (campaignType === "presales") {
-        setIsLoadingObjectives(true);
-        try {
-          const response = await api(
-            "/gryd/db/objects/campaign_objective?campaign_type=pre-sales",
-            "GET",
-            undefined,
-            { "X-GRYD-ROLE": "admin" }
-          );
-
-          if (Array.isArray(response)) {
-            const usedIds = new Set<string>();
-            const mappedObjectives = response.map((obj: any, index: number) => {
-              let id = obj.id || obj.objective_id;
-              if (!id || id === "") {
-                const baseId = (obj.name || obj.title || obj.objective_name || `objective-${index}`)
-                  .toLowerCase()
-                  .replace(/\s+/g, "-")
-                  .replace(/[^a-z0-9-]/g, "");
-                id = baseId;
-                let counter = 0;
-                while (usedIds.has(id)) { id = `${baseId}-${counter}`; counter++; }
-              }
-              if (!id || id === "") { id = `objective-${index}`; }
-              usedIds.add(id);
-
-              const title = obj.title || obj.name || obj.objective_name || "";
-              const campaignSubType = obj.campaign_sub_type || obj.campaignSubType || "";
-              return {
-                id,
-                title,
-                campaignSubType,
-                icon: getObjectiveIcon(id, title),
-                fullData: obj,
-              };
-            });
-            mappedObjectives.push({
-              id: "custom",
-              title: "Custom Objective",
-              campaignSubType: undefined,
-              icon: <Edit3 className="h-6 w-6" />,
-              fullData: null,
-            });
-            setPreSalesObjectives(mappedObjectives);
-          } else if (response.data && Array.isArray(response.data)) {
-            const usedIds = new Set<string>();
-            const mappedObjectives = response.data.map((obj: any, index: number) => {
-              let id = obj.id || obj.objective_id;
-              if (!id || id === "") {
-                const baseId = (obj.name || obj.title || obj.objective_name || `objective-${index}`)
-                  .toLowerCase()
-                  .replace(/\s+/g, "-")
-                  .replace(/[^a-z0-9-]/g, "");
-                id = baseId;
-                let counter = 0;
-                while (usedIds.has(id)) { id = `${baseId}-${counter}`; counter++; }
-              }
-              if (!id || id === "") { id = `objective-${index}`; }
-              usedIds.add(id);
-
-              const title = obj.title || obj.name || obj.objective_name || "";
-              const campaignSubType = obj.campaign_sub_type || obj.campaignSubType || "";
-              return {
-                id,
-                title,
-                campaignSubType,
-                icon: getObjectiveIcon(id, title),
-                fullData: obj,
-              };
-            });
-            mappedObjectives.push({
-              id: "custom",
-              title: "Custom Objective",
-              campaignSubType: undefined,
-              icon: <Edit3 className="h-6 w-6" />,
-            });
-            setPreSalesObjectives(mappedObjectives);
-          }
-        } catch (error) {
-          console.error("Error fetching campaign objectives:", error);
-          setPreSalesObjectives(defaultPreSalesObjectives);
-        } finally {
-          setIsLoadingObjectives(false);
-        }
-      } else {
-        setPreSalesObjectives(defaultPreSalesObjectives);
-      }
-    };
-    fetchPreSalesObjectives();
-  }, [campaignType]);
-
-  // Fetch post-sales objectives
-  useEffect(() => {
-    const fetchPostSalesObjectives = async () => {
-      if (campaignType === "postsales") {
-        setIsLoadingObjectives(true);
-        try {
-          const apiUrl = `/api/campaign-objectives?campaign_type=post-sales`;
-          const response = await fetch(apiUrl, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            cache: "no-store",
-          });
-
-          if (!response.ok) throw new Error(`API Error: ${response.status}`);
-          const responseData = await response.json();
-          const objectivesArray = Array.isArray(responseData)
-            ? responseData
-            : responseData.data && Array.isArray(responseData.data)
-            ? responseData.data
-            : [];
-
-          if (objectivesArray.length > 0) {
-            const usedIds = new Set<string>();
-            const mappedObjectives = objectivesArray.map((obj: any, index: number) => {
-              let id = obj.campaign_objective_id || obj.id || obj.objective_id;
-              if (!id || id === "") {
-                const baseId = (obj.campaign_objective_name || obj.name || obj.title || obj.objective_name || `objective-${index}`)
-                  .toLowerCase()
-                  .replace(/\s+/g, "-")
-                  .replace(/[^a-z0-9-]/g, "");
-                id = baseId;
-                let counter = 0;
-                while (usedIds.has(id)) { id = `${baseId}-${counter}`; counter++; }
-              }
-              if (!id || id === "") { id = `objective-${index}`; }
-              usedIds.add(id);
-
-              const title = obj.campaign_objective_name || obj.title || obj.name || obj.objective_name || "";
-              const campaignSubType = obj.campaign_sub_type || obj.campaignSubType || "";
-              return {
-                id,
-                title,
-                campaignSubType,
-                icon: getObjectiveIcon(id, title),
-                fullData: obj,
-              };
-            });
-            mappedObjectives.push({
-              id: "custom",
-              title: "Custom Objective",
-              campaignSubType: undefined,
-              icon: <Edit3 className="h-6 w-6" />,
-              fullData: null,
-            });
-            setFetchedPostSalesObjectives(mappedObjectives);
-          } else {
-            setFetchedPostSalesObjectives(postSalesObjectives);
-          }
-        } catch (error) {
-          console.error("Error fetching post-sales campaign objectives:", error);
-          setFetchedPostSalesObjectives(postSalesObjectives);
-        } finally {
-          setIsLoadingObjectives(false);
-        }
-      } else {
-        setFetchedPostSalesObjectives(postSalesObjectives);
-      }
-    };
-    fetchPostSalesObjectives();
-  }, [campaignType]);
-
-  // Handle generating campaign
-  const handleGenerateCampaign = async () => {
-    // Basic validation
-    if (!selectedObjective && !customObjective) return;
-    
-    setIsGenerating(true);
-
-    try {
-      const objectiveText = selectedObjective === "custom"
-          ? customObjective
-          : [...preSalesObjectives, ...fetchedPostSalesObjectives].find(o => o.id === selectedObjective)?.title || "";
-
-      let enhancedObjectiveText = objectiveText;
-      // Add standard car details to objective text if needed, mostly for logging/reference
-      if (carModel && selectedObjective === "new-car-launch") {
-          enhancedObjectiveText = `${objectiveText} for ${carModel}`;
-      }
-
-      // Prepare Custom Objects
-      const customObjects: Record<string, any> = {};
-
-      // 1. Add attributes from the selected objective data (dynamic fields)
-      if (selectedObjectiveData?.custom_attributes && Array.isArray(selectedObjectiveData.custom_attributes)) {
-          selectedObjectiveData.custom_attributes.forEach((attr: any) => {
-              if (attr.attribute_name && attr.attribute_value) {
-                  customObjects[attr.attribute_name] = attr.attribute_value;
-              }
-          });
-      }
-
-      // 2. Add specific fields captured in the UI
-      if (carModel) customObjects["Car Model"] = carModel;
-      if (launchDate) customObjects["Launch Date"] = launchDate;
-
-      // 3. Construct Campaign Offer text
-      let offerText = campaignDescription || "Exclusive offers and rewards await!";
-      if (selectedObjectiveData) {
-          if (selectedObjectiveData.campaign_objective_description) {
-              offerText = selectedObjectiveData.campaign_objective_description;
-          }
-          if (selectedObjectiveData.why_user_should_avail_this) {
-              offerText += `\n\nValue Proposition: ${selectedObjectiveData.why_user_should_avail_this}`;
-          }
-      }
-
-      // Payload Construction
-      const payload = {
-        args: [
-          campaignType === "presales" ? "pre-sale" : "post-sale",
-          enhancedObjectiveText,
-        ],
-        kwargs: {
-          dealership_idea: {
-            languages: [
-              languageOptions.find((l) => l.value === language)?.label || "English",
-            ],
-            campaign_offer: offerText,
-            custom_objects: customObjects,
-          },
-        },
-      };
-
-      console.log("Generating campaign with payload:", JSON.stringify(payload, null, 2));
-
-      const data = await api(
-        "/gryd/api/autocrm-agent/generate_campaign_idea",
-        "POST",
-        payload
-      );
-      
-      console.log("Generated campaign idea", data);
-
-      const generated = {
-        name: data.campaign_name,
-        description: data.campaign_description,
-        campaignTitle: data.campaign_tagline,
-        tone: data.campaign_tone,
-        callToAction: data.ctas?.[0] || "Learn More",
-        language: data.languages?.[0] || "English",
-        selectedChannels: data.channels?.map((ch: string) => ch.replace("_chat", "")) || [],
-        campaignOffer: data.campaign_offer,
-        urgencyHook: data.urgency_hook,
-        campaignObjective: data.campaign_objective,
-      };
-
-      setCampaignData(generated);
-      setCampaignName(generated.name);
-      setCampaignDescription(generated.description);
-      setSelectedChannels(generated.selectedChannels);
-      setCampaignTitle(generated.campaignTitle);
-      setTone(generated.tone);
-      setCallToAction(generated.callToAction);
-      setLanguage(generated.language);
-    } catch (error) {
-      console.error("Error generating campaign:", error);
-      alert("Failed to generate campaign. Please try again.");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleRegenerate = async () => {
-    setCampaignData(null);
-    await handleGenerateCampaign();
-  };
-
-  const toggleChannel = (channelId: string) => {
-    setSelectedChannels((prev) =>
-      prev.includes(channelId)
-        ? prev.filter((id) => id !== channelId)
-        : [...prev, channelId]
-    );
-  };
-
-  const toggleAudience = (audienceId: string) => {
-    setTargetAudience((prev) =>
-      prev.includes(audienceId)
-        ? prev.filter((id) => id !== audienceId)
-        : [...prev, audienceId]
-    );
-  };
-
-  const calculateCredits = () => {
-    const totalAudience = audienceSegments
-      .filter((seg) => targetAudience.includes(seg.value))
-      .reduce((sum, seg) => sum + seg.size, 0);
-
-    const whatsappCredits = selectedChannels.includes("whatsapp") ? totalAudience * 5 : 0;
-    const emailCredits = selectedChannels.includes("email") ? totalAudience * 1 : 0;
-    const voiceCredits = selectedChannels.includes("voice") ? totalAudience * 10 : 0;
-
-    return whatsappCredits + emailCredits + voiceCredits;
-  };
-
- const handleLaunch = async () => {
-    // 1. Validation
-    if (!campaignName || !duration.start || !duration.end) {
-      alert("Please fill in all required fields (Name, Start Date, End Date)");
-      return;
-    }
-
-    // 2. Helpers
-    const toEpoch = (dateStr: string) => Math.floor(new Date(dateStr).getTime() / 1000);
-    
-    const mapChannels = (channels: string[]) => {
-      const map: Record<string, string> = {
+const mapChannels = (selectedIds: string[]) => {
+    const map: Record<string, string> = {
         whatsapp: "whatsapp_chat",
         email: "email",
         voice: "voice_phone",
-        facebook: "facebook",
-        instagram: "instagram",
-        web: "web_chat",
-      };
-      return channels.map((c) => map[c] || c);
     };
+    return selectedIds.map((c) => map[c] || c);
+};
 
-    const mapLanguage = (code: string) => {
-      const map: Record<string, string> = {
+const mapLanguage = (code: string) => {
+    const map: Record<string, string> = {
         en: "english",
         hi: "hindi",
         mr: "marathi",
@@ -667,1109 +177,1221 @@ function CampaignCreateContent() {
         kn: "kannada",
         bn: "bengali",
         gu: "gujarati",
-      };
-      return map[code] || "english";
     };
+    return map[code] || "english";
+};
 
-    // 3. Prepare Payloads
-    const commonPayload = {
-      campaign_name: campaignName,
-      campaign_description: campaignDescription,
-      campaign_status: "Active",
-      start_date: toEpoch(duration.start),
-      end_date: toEpoch(duration.end),
-      channels: mapChannels(selectedChannels),
-      languages: [mapLanguage(language)],
-      campaign_offer: campaignData?.campaignOffer || campaignDescription,
-      urgency_hook: [campaignData?.urgencyHook || ""],
-      ctas: [callToAction],
-      number_targeted: totalAudienceSize,
-      budget_allocated: calculateCredits(),
-      campaign_objective: selectedObjective === "custom" ? customObjective : selectedObjectiveData?.title || selectedObjective,
-      campaign_sub_type: selectedObjectiveData?.campaignSubType || "General",
-      
-      // Defaults
-      cost_per_lead: 0,
-      actual_spent: 0,
-      number_engaged: 0,
-      number_reached: 0,
-      number_contacted: 0,
-      number_converted: 0,
-      conversion_rate_percent: 0,
-       campaign_user_source: "file",
+// --- MAIN COMPONENT ---
 
-      
-    };
+function CampaignCreateContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
 
-    // --- START MODAL & LOADING STATE ---
-    setIsLaunchSuccessOpen(true);
-    setIsLaunchError(false);
-    setLaunchStatus("Creating campaign records...");
+    // Steps & Data
+    const [creationStep, setCreationStep] = useState<"details" | "audience">(
+        "details"
+    );
+    const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(
+        null
+    );
+    const [campaignType, setCampaignType] = useState<
+        "presales" | "postsales" | ""
+    >("");
 
-    try {
-      let createEndpoint = "";
-      let createPayload = {};
-      let taskCampaignType = ""; 
+    // Objectives
+    const [selectedObjective, setSelectedObjective] = useState("");
+    const [selectedObjectiveData, setSelectedObjectiveData] = useState<any>(null);
+    const [customObjective, setCustomObjective] = useState("");
+    const [preSalesObjectives, setPreSalesObjectives] = useState<any[]>([]);
+    const [fetchedPostSalesObjectives, setFetchedPostSalesObjectives] = useState<
+        any[]
+    >([]);
 
-      if (campaignType === "presales") {
-        createEndpoint = "/gryd/db/object/pre_sales_campaign";
-        taskCampaignType = "pre-sales";
-        createPayload = {
-          ...commonPayload,
-          campaign_type: "pre-sales",
-          dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
-          region_id: "north-india",
-          dealer_name: "NEXA Delhi South",
-          supported_brands: ["NEXA"],
-        };
-      } else {
-        createEndpoint = "/gryd/db/object/post_sales_campaign";
-        taskCampaignType = "post-sales";
-        createPayload = {
-          ...commonPayload,
-          campaign_type: "post_sales",
-          workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
-          dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
-          campaign_objective_type: ["lead volume"],
-        };
-      }
+    // Campaign Details
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [isPostingCampaign, setIsPostingCampaign] = useState(false);
+    const [campaignData, setCampaignData] = useState<any>(null);
+    const [campaignName, setCampaignName] = useState("");
+    const [campaignDescription, setCampaignDescription] = useState("");
+    const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+    const [duration, setDuration] = useState({ start: "", end: "" });
+    const [campaignTitle, setCampaignTitle] = useState("");
+    const [tone, setTone] = useState("");
+    const [callToAction, setCallToAction] = useState("");
+    const [language, setLanguage] = useState("en");
 
-      // --- STEP 1: CREATE CAMPAIGN IN DB ---
-      const createResponse = await api(createEndpoint, "POST", createPayload);
-      
-      const newCampaignId = createResponse?.data?.id || createResponse?.id || createResponse?.campaign_id;
+    // Audience Data
+    const [targetAudience, setTargetAudience] = useState<string[]>([]);
+    const [audienceTasks, setAudienceTasks] = useState<any[]>([]);
+    const [isLoadingAudience, setIsLoadingAudience] = useState(false);
+    const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
-      if (!newCampaignId) {
-        throw new Error("Campaign created but ID was not returned.");
-      }
+    // Custom Attributes
+    const [carModel, setCarModel] = useState("");
+    const [launchDate, setLaunchDate] = useState("");
 
-      // --- STEP 2: TRIGGER TASK ---
-      setLaunchStatus("Triggering campaign engine...");
-      
-      const triggerPayload = {
-        args: [],
-        kwargs: {
-          campaign_type: taskCampaignType,
-          campaign_id: newCampaignId
+    // UI States
+    const [activeTab, setActiveTab] = useState("setup");
+    const [isLoadingObjectives, setIsLoadingObjectives] = useState(false);
+    const [isObjectiveDetailsOpen, setIsObjectiveDetailsOpen] = useState(false);
+    const [isLaunchSuccessOpen, setIsLaunchSuccessOpen] = useState(false);
+    const [launchStatus, setLaunchStatus] = useState("");
+    const [isLaunchError, setIsLaunchError] = useState(false);
+
+    // --- Computed State for Scheduling ---
+    
+    // Check if the campaign start date is in the future
+    const isScheduledCampaign = useMemo(() => {
+        if (!duration.start) return false;
+        const d = new Date();
+        const offset = d.getTimezoneOffset();
+        const localToday = new Date(d.getTime() - offset * 60 * 1000).toISOString().split("T")[0];
+        
+        return duration.start > localToday;
+    }, [duration.start]);
+
+    // --- Initialization ---
+
+    useEffect(() => {
+        const isNew = searchParams.get("new");
+        if (isNew === "true") {
+            localStorage.removeItem("campaignFormData");
+            setCampaignType("");
+            setCreatedCampaignId(null);
+            setCreationStep("details");
+            router.replace("/campaign/create", { scroll: false });
         }
-      };
+    }, [searchParams, router]);
 
-      await api(
-        "/gryd/task/autocrm-campaign/trigger_campaign",
-        "POST",
-        triggerPayload
-      );
+    useEffect(() => {
+        setSelectedObjective("");
+        setCustomObjective("");
+        setCampaignData(null);
+        setCreatedCampaignId(null);
+        setCreationStep("details");
+        setTargetAudience([]);
+        setAudienceTasks([]);
+    }, [campaignType]);
 
-      // --- FINISH ---
-      setLaunchStatus("Campaign launched successfully!");
-      
-      // Cleanup local storage after success
-      setTimeout(() => {
-        localStorage.removeItem("campaignFormData");
-      }, 500);
+    // Fetch Audience Tasks
+    const loadAudienceData = async () => {
+        setIsLoadingAudience(true);
+        try {
+            const res = await fetchAudienceTasks();
+            setAudienceTasks(res.items || []);
+        } catch (e) {
+            console.error("Failed to fetch audience", e);
+        } finally {
+            setIsLoadingAudience(false);
+        }
+    };
 
-    } catch (error) {
-      console.error("Launch Failed:", error);
-      setIsLaunchError(true);
-      setLaunchStatus("Launch failed. Please try again.");
-    }
-  };
+    useEffect(() => {
+        if (creationStep === "audience") {
+            loadAudienceData();
+        }
+    }, [creationStep]);
 
-  const objectives = campaignType === "presales" ? preSalesObjectives : fetchedPostSalesObjectives;
-  const totalAudienceSize = audienceSegments
-    .filter((seg) => targetAudience.includes(seg.value))
-    .reduce((sum, seg) => sum + seg.size, 0);
+    // Fetch Objectives
+    useEffect(() => {
+        const fetchObjectives = async () => {
+            setIsLoadingObjectives(true);
+            try {
+                const typeParam =
+                    campaignType === "presales" ? "pre-sales" : "post-sales";
+                const response = await api(
+                    `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}`,
+                    "GET"
+                );
+                const data = Array.isArray(response) ? response : response.data || [];
 
-  return (
-    <ProtectedRoute>
-      <div className="pb-24">
-        {/* EDIT CAMPAIGN DETAILS DIALOG */}
-        <Dialog open={isObjectiveDetailsOpen} onOpenChange={setIsObjectiveDetailsOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Edit3 className="h-5 w-5 text-primary" />
-                Review Campaign Details
-              </DialogTitle>
-              <DialogDescription>
-                Confirm objective details and fill in required attributes.
-              </DialogDescription>
-            </DialogHeader>
+                const mapped = data.map((obj: any, idx: number) => {
+                    const id = obj.campaign_objective_id || obj.id || `obj-${idx}`;
+                    const title =
+                        obj.campaign_objective_name || obj.title || obj.name || "Objective";
+                    return {
+                        id: id,
+                        title: title,
+                        campaignSubType: obj.campaign_sub_type || "General",
+                        icon: getObjectiveIcon(id, title),
+                        fullData: obj,
+                    };
+                });
 
-            <div className="space-y-6 py-4">
-              {/* SECTION 1: CAMPAIGN INFO (Read Only) */}
-              {selectedObjectiveData && (
-                 <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
-                    <div className="p-6 space-y-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Info className="h-4 w-4 text-primary" />
-                            <h3 className="font-semibold leading-none tracking-tight">Campaign Information</h3>
+                mapped.push({
+                    id: "custom",
+                    title: "Custom Objective",
+                    campaignSubType: "Flexible",
+                    icon: <Edit3 className="h-6 w-6" />,
+                    fullData: null,
+                });
+
+                if (campaignType === "presales") setPreSalesObjectives(mapped);
+                else setFetchedPostSalesObjectives(mapped);
+            } catch (e) {
+                console.error("Error fetching objectives:", e);
+            } finally {
+                setIsLoadingObjectives(false);
+            }
+        };
+
+        if (campaignType) fetchObjectives();
+    }, [campaignType]);
+
+    // --- Logic ---
+
+    const handleGenerateCampaign = async () => {
+        setIsGenerating(true);
+        try {
+            const objectivesList =
+                campaignType === "presales"
+                    ? preSalesObjectives
+                    : fetchedPostSalesObjectives;
+            const objectiveText =
+                selectedObjective === "custom"
+                    ? customObjective
+                    : objectivesList.find((o) => o.id === selectedObjective)?.title || "";
+
+            let enhancedText = objectiveText;
+            if (carModel && selectedObjective.includes("launch"))
+                enhancedText += ` for ${carModel}`;
+
+            const customObjects: Record<string, any> = {};
+            selectedObjectiveData?.custom_campaign_attributes?.forEach(
+                (attr: any) => {
+                    if (attr.attribute_name && attr.attribute_value)
+                        customObjects[attr.attribute_name] = attr.attribute_value;
+                }
+            );
+            if (carModel) customObjects["Car Model"] = carModel;
+            if (launchDate) customObjects["Launch Date"] = launchDate;
+
+            const payload = {
+                args: [
+                    campaignType === "presales" ? "pre-sale" : "post-sale",
+                    enhancedText,
+                ],
+                kwargs: {
+                    dealership_idea: {
+                        languages: [
+                            languageOptions.find((l) => l.value === language)?.label ||
+                            "English",
+                        ],
+                        campaign_offer: campaignDescription,
+                        custom_objects: customObjects,
+                    },
+                },
+            };
+
+            const data = await api(
+                "/gryd/api/autocrm-agent/generate_campaign_idea",
+                "POST",
+                payload
+            );
+
+            const today = new Date();
+            const nextWeek = new Date(today);
+            nextWeek.setDate(today.getDate() + 7);
+            const formatDate = (d: Date) => {
+                const offset = d.getTimezoneOffset();
+                const local = new Date(d.getTime() - offset * 60 * 1000);
+                return local.toISOString().split("T")[0];
+            };
+
+            setCampaignData({
+                name: data.campaign_name,
+                description: data.campaign_description,
+                campaignTitle: data.campaign_tagline,
+                tone: data.campaign_tone,
+                callToAction: data.ctas?.[0] || "Learn More",
+                language: data.languages?.[0] || "English",
+                campaignOffer: data.campaign_offer,
+                urgencyHook: data.urgency_hook,
+            });
+
+            setCampaignName(data.campaign_name);
+            setCampaignDescription(data.campaign_description);
+            setCampaignTitle(data.campaign_tagline);
+            setTone(data.campaign_tone);
+            setCallToAction(data.ctas?.[0] || "Learn More");
+            setLanguage(data.languages?.[0] || "en");
+            setDuration({ start: formatDate(today), end: formatDate(nextWeek) });
+            setSelectedChannels(["voice", "whatsapp", "email"]);
+        } catch (error) {
+            console.error(error);
+            alert("Failed to generate campaign. Check console.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const calculateCredits = () => {
+        const totalAudience = audienceTasks
+            .filter((task) => targetAudience.includes(task.task_id))
+            .reduce((sum, task) => sum + parseInt(task.process_size || 0), 0);
+
+        const whatsappCredits = selectedChannels.includes("whatsapp")
+            ? totalAudience * 5
+            : 0;
+        const emailCredits = selectedChannels.includes("email")
+            ? totalAudience * 1
+            : 0;
+        const voiceCredits = selectedChannels.includes("voice")
+            ? totalAudience * 10
+            : 0;
+
+        return whatsappCredits + emailCredits + voiceCredits;
+    };
+
+    const getTotalReach = () => {
+        return audienceTasks
+            .filter((task) => targetAudience.includes(task.task_id))
+            .reduce((sum, task) => sum + parseInt(task.process_size || 0), 0);
+    };
+
+    const handleProceed = async () => {
+        if (!campaignName || !duration.start || !duration.end) {
+            alert("Please fill in Campaign Name and Duration.");
+            return;
+        }
+
+        setIsPostingCampaign(true);
+
+        const commonPayload = {
+            campaign_name: campaignName,
+            campaign_description: campaignDescription,
+            campaign_status: "Draft",
+            start_date: toEpoch(duration.start),
+            end_date: toEpoch(duration.end),
+            channels: mapChannels(selectedChannels),
+            languages: [mapLanguage(language)],
+            campaign_offer: campaignData?.campaignOffer || campaignDescription,
+            urgency_hook: campaignData?.urgencyHook || "",
+            ctas: [callToAction],
+            number_targeted: 0,
+            budget_allocated: 0,
+            campaign_objective_id:
+                selectedObjective === "custom"
+                    ? customObjective
+                    : selectedObjectiveData?.title || selectedObjective,
+            campaign_sub_type: selectedObjectiveData?.campaignSubType || "General",
+            // created: Math.floor(Date.now() / 1000),
+            // updated: Math.floor(Date.now() / 1000),
+            campaign_user_source: "file",
+        };
+        console.log("Common Payload:", commonPayload);
+        try {
+            let endpoint = "";
+            let finalPayload = {};
+
+            if (campaignType === "presales") {
+                endpoint = "/gryd/db/object/pre_sales_campaign";
+                finalPayload = {
+                    ...commonPayload,
+                    campaign_type: "pre-sales",
+                      workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+                    dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
+                    // dealer_name: "NEXA Delhi South",
+                    // supported_brands: ["NEXA"],
+                };
+            } else {
+                endpoint = "/gryd/db/object/post_sales_campaign";
+                finalPayload = {
+                    ...commonPayload,
+                    campaign_type: "post-sales",
+                    workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+                    dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
+                    // campaign_objective_type: ["lead volume"],
+                };
+            }
+
+            const res = await api(endpoint, "POST", finalPayload);
+            const newId = res?.data?.id || res?.id || res?.campaign_id;
+            if (!newId) throw new Error("ID not returned");
+
+            setCreatedCampaignId(newId);
+            setCreationStep("audience");
+            setTimeout(
+                () =>
+                    window.scrollTo({
+                        top: document.body.scrollHeight,
+                        behavior: "smooth",
+                    }),
+                100
+            );
+        } catch (err) {
+            console.error("Proceed failed", err);
+            alert("Failed to save draft.");
+        } finally {
+            setIsPostingCampaign(false);
+        }
+    };
+
+    const handleLaunch = async () => {
+        if (!createdCampaignId) {
+            alert("Error: Campaign ID missing.");
+            return;
+        }
+        
+        // --- 1. SET UI STATE ---
+        setIsLaunchSuccessOpen(true);
+        setIsLaunchError(false);
+        setLaunchStatus(isScheduledCampaign ? "Scheduling campaign..." : "Finalizing audience data...");
+
+        try {
+            const totalReach = getTotalReach();
+            const budget = calculateCredits();
+            
+            // --- 2. DETERMINE STATUS ---
+            // If future date: "Planned", else "Active"
+            const statusToSet = isScheduledCampaign ? "Planned" : "Active";
+
+            const patchEndpoint =
+                campaignType === "presales"
+                    ? `/gryd/db/object/pre_sales_campaign/${createdCampaignId}`
+                    : `/gryd/db/object/post_sales_campaign/${createdCampaignId}`;
+
+            // --- 3. UPDATE CAMPAIGN RECORD ---
+            await api(patchEndpoint, "PATCH", {
+                number_targeted: totalReach,
+                budget_allocated: budget,
+                campaign_status: statusToSet,
+            });
+
+            // --- 4. CONDITIONALLY TRIGGER TASK ---
+            if (!isScheduledCampaign) {
+                setLaunchStatus("Triggering campaign engine...");
+                const taskType = campaignType === "presales" ? "pre-sales" : "post-sales";
+
+                await api("/gryd/task/autocrm-campaign/trigger_campaign", "POST", {
+                    args: [],
+                    kwargs: { campaign_type: taskType, campaign_id: createdCampaignId },
+                });
+            }
+
+            // --- 5. SUCCESS MESSAGE ---
+            setLaunchStatus(isScheduledCampaign ? "Campaign Scheduled Successfully!" : "Campaign Launched Successfully!");
+            setTimeout(() => localStorage.removeItem("campaignFormData"), 1000);
+        } catch (err) {
+            console.error("Launch error", err);
+            setIsLaunchError(true);
+            setLaunchStatus("Failed to process request. Please retry.");
+        }
+    };
+
+    const objectives =
+        campaignType === "presales"
+            ? preSalesObjectives
+            : fetchedPostSalesObjectives;
+
+    return (
+        <ProtectedRoute>
+            <div className="pb-24">
+                {/* LAUNCH STATUS MODAL */}
+                <Dialog
+                    open={isLaunchSuccessOpen}
+                    onOpenChange={(o) => {
+                        if (
+                            !o &&
+                            !isLaunchError &&
+                            !launchStatus.includes("Successfully")
+                        )
+                            return;
+                        setIsLaunchSuccessOpen(o);
+                    }}
+                >
+                    <DialogContent
+                        className="sm:max-w-md text-center"
+                        onInteractOutside={(e) => {
+                            if (
+                                !isLaunchError &&
+                                !launchStatus.includes("Successfully")
+                            )
+                                e.preventDefault();
+                        }}
+                    >
+                        <DialogHeader>
+                            <div
+                                className={cn(
+                                    "mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full transition-colors",
+                                    isLaunchError ? "bg-red-100" : "bg-green-100"
+                                )}
+                            >
+                                {isLaunchError ? (
+                                    <AlertCircle className="h-6 w-6 text-red-600" />
+                                ) : isScheduledCampaign ? (
+                                    <CalendarClock className="h-6 w-6 text-green-600" />
+                                ) : (
+                                    <Rocket className="h-6 w-6 text-green-600" />
+                                )}
+                            </div>
+                            <DialogTitle className="text-center">
+                                {isLaunchError ? "Error" : isScheduledCampaign ? "Scheduling Campaign" : "Launching Campaign"}
+                            </DialogTitle>
+                            <DialogDescription className="text-center">
+                                {isLaunchError ? "Something went wrong." : launchStatus}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex justify-center py-4">
+                            {isLaunchError ? (
+                                <X className="h-10 w-10 text-red-500 animate-in zoom-in" />
+                            ) : launchStatus.includes("Successfully") ? (
+                                <Check className="h-10 w-10 text-green-500 animate-in zoom-in" />
+                            ) : (
+                                <RefreshCw className="h-10 w-10 text-primary animate-spin" />
+                            )}
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Campaign Name</Label>
-                                <div className="font-medium text-base">{selectedObjectiveData.campaign_objective_name || selectedObjectiveData.title}</div>
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Type / Sub-Type</Label>
-                                <div className="font-medium text-base flex items-center gap-2">
-                                    <Badge variant="outline" className="capitalize">{campaignType}</Badge>
-                                    <span>/</span>
-                                    <span>{selectedObjectiveData.campaign_sub_type || "General"}</span>
-                                </div>
-                            </div>
-                            <div className="space-y-1 md:col-span-2">
-                                <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Description</Label>
-                                <div className="text-sm text-foreground/80 leading-relaxed bg-muted/30 p-3 rounded-md">
-                                    {selectedObjectiveData.campaign_objective_description || "No description available."}
-                                </div>
-                            </div>
-                            {selectedObjectiveData.why_user_should_avail_this && (
-                                <div className="space-y-1 md:col-span-2">
-                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Value Proposition</Label>
-                                    <div className="text-sm text-foreground/80 leading-relaxed bg-emerald-50/50 dark:bg-emerald-900/10 p-3 rounded-md border border-emerald-100 dark:border-emerald-900/20">
-                                        {selectedObjectiveData.why_user_should_avail_this}
+                        <DialogFooter className="sm:justify-center">
+                            {isLaunchError ? (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setIsLaunchSuccessOpen(false)}
+                                >
+                                    Close & Retry
+                                </Button>
+                            ) : (
+                                <Button
+                                    disabled={!launchStatus.includes("Successfully")}
+                                    onClick={() => router.push("/")}
+                                >
+                                    Go to Dashboard
+                                </Button>
+                            )}
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* REVIEW DETAILS DIALOG */}
+                <Dialog
+                    open={isObjectiveDetailsOpen}
+                    onOpenChange={setIsObjectiveDetailsOpen}
+                >
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <Edit3 className="h-5 w-5 text-primary" /> Review Campaign
+                                Details
+                            </DialogTitle>
+                            <DialogDescription>
+                                Confirm objective details and fill in required attributes.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-6 py-4">
+                            {/* CAMPAIGN INFO */}
+                            {selectedObjectiveData && (
+                                <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                                    <div className="p-6 space-y-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Info className="h-4 w-4 text-primary" />
+                                            <h3 className="font-semibold leading-none tracking-tight">
+                                                Campaign Information
+                                            </h3>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-1">
+                                                <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+                                                    Campaign Name
+                                                </Label>
+                                                <div className="font-medium text-base">
+                                                    {selectedObjectiveData.campaign_objective_name ||
+                                                        selectedObjectiveData.title}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+                                                    Type / Sub-Type
+                                                </Label>
+                                                <div className="font-medium text-base flex items-center gap-2">
+                                                    <Badge variant="outline" className="capitalize">
+                                                        {campaignType}
+                                                    </Badge>
+                                                    <span>/</span>
+                                                    <span>
+                                                        {selectedObjectiveData.campaign_sub_type ||
+                                                            "General"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1 md:col-span-2">
+                                                <Label className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+                                                    Description
+                                                </Label>
+                                                <div className="text-sm text-foreground/80 leading-relaxed bg-muted/30 p-3 rounded-md">
+                                                    {selectedObjectiveData.campaign_objective_description ||
+                                                        "No description available."}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             )}
-                        </div>
-                    </div>
-                 </div>
-              )}
-
-              {/* SECTION 2: REQUIRED ATTRIBUTES (Editable) */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                     <Edit3 className="h-4 w-4 text-primary" />
-                     <h3 className="font-semibold leading-none tracking-tight">Required Attributes</h3>
-                </div>
-
-                {/* Special Inputs for New Car Launch */}
-                {selectedObjective === "new-car-launch" && (
-                    <Card className="border-primary/20 bg-primary/5">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <Car className="h-4 w-4" /> Launch Specifics
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="dialog-car">Car Model <span className="text-destructive">*</span></Label>
-                                    <Input 
-                                        id="dialog-car" 
-                                        value={carModel} 
-                                        onChange={(e) => setCarModel(e.target.value)} 
-                                        placeholder="e.g. Vitara Brezza" 
-                                        className="bg-background"
-                                    />
+                            {/* ATTRIBUTES */}
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b">
+                                    <Edit3 className="h-4 w-4 text-primary" />
+                                    <h3 className="font-semibold leading-none tracking-tight">
+                                        Required Attributes
+                                    </h3>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="dialog-date">Launch Date <span className="text-destructive">*</span></Label>
-                                    <Input 
-                                        id="dialog-date" 
-                                        type="date" 
-                                        value={launchDate} 
-                                        onChange={(e) => setLaunchDate(e.target.value)} 
-                                        className="bg-background"
-                                    />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Special Inputs for Stock Clearance */}
-                {selectedObjective === "stock-clearance" && (
-                    <Card className="border-primary/20 bg-primary/5">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <Tag className="h-4 w-4" /> Clearance Specifics
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="dialog-stock">Car Model / Type <span className="text-destructive">*</span></Label>
-                                <Input 
-                                    id="dialog-stock" 
-                                    value={carModel} 
-                                    onChange={(e) => setCarModel(e.target.value)} 
-                                    placeholder="e.g. All 2023 Models" 
-                                    className="bg-background"
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Dynamic Custom Attributes */}
-                {selectedObjectiveData?.custom_attributes &&
-                  Array.isArray(selectedObjectiveData.custom_attributes) &&
-                  selectedObjectiveData.custom_attributes.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-3">
-                        {selectedObjectiveData.custom_attributes.map((attr: any, idx: number) => (
-                            <Card key={idx} className="bg-muted/30 border-dashed hover:border-solid transition-colors">
-                                <CardContent className="p-4">
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between items-center">
-                                            <Label className="text-sm font-medium">
-                                                {attr.attribute_name || `Attribute ${idx + 1}`}
-                                                <span className="text-destructive ml-1">*</span>
-                                            </Label>
-                                            <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">{attr.attribute_type || "text"}</Badge>
+                                {(selectedObjective === "new-car-launch" ||
+                                    selectedObjective.includes("launch")) && (
+                                        <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-md">
+                                            <div className="space-y-2">
+                                                <Label>
+                                                    Car Model <span className="text-destructive">*</span>
+                                                </Label>
+                                                <Input
+                                                    value={carModel}
+                                                    onChange={(e) => setCarModel(e.target.value)}
+                                                    placeholder="e.g. Grand Vitara"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>
+                                                    Launch Date <span className="text-destructive">*</span>
+                                                </Label>
+                                                <Input
+                                                    type="date"
+                                                    value={launchDate}
+                                                    onChange={(e) => setLaunchDate(e.target.value)}
+                                                />
+                                            </div>
                                         </div>
-                                        <Input
-                                            value={attr.attribute_value || ""}
-                                            placeholder={`Enter ${attr.attribute_name}...`}
-                                            onChange={(e) => {
-                                                const updatedAttrs = [...selectedObjectiveData.custom_attributes];
-                                                updatedAttrs[idx] = { ...attr, attribute_value: e.target.value };
-                                                setSelectedObjectiveData({ ...selectedObjectiveData, custom_attributes: updatedAttrs });
-                                            }}
-                                            className="bg-background"
-                                        />
-                                        {attr.attribute_description && (
-                                            <p className="text-xs text-muted-foreground">{attr.attribute_description}</p>
+                                    )}
+                                {selectedObjectiveData?.custom_campaign_attributes?.map(
+                                    (attr: any, idx: number) => (
+                                        <div key={idx} className="space-y-2">
+                                            <Label>{attr.attribute_name}</Label>
+                                            <Input
+                                                placeholder={`Enter ${attr.attribute_name}`}
+                                                value={attr.attribute_value || ""}
+                                                onChange={(e) => {
+                                                    const u = [
+                                                        ...selectedObjectiveData.custom_campaign_attributes,
+                                                    ];
+                                                    u[idx].attribute_value = e.target.value;
+                                                    setSelectedObjectiveData({
+                                                        ...selectedObjectiveData,
+                                                        custom_campaign_attributes: u,
+                                                    });
+                                                }}
+                                            />
+                                        </div>
+                                    )
+                                )}
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsObjectiveDetailsOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    setIsObjectiveDetailsOpen(false);
+                                    handleGenerateCampaign();
+                                }}
+                            >
+                                <Sparkles className="mr-2 h-4 w-4" /> Generate Campaign
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* ADD DATA SOURCE DIALOG - Passed with Prefilled Data */}
+                <AddDataSourceDialog
+                    isOpen={isUploadDialogOpen}
+                    onClose={() => setIsUploadDialogOpen(false)}
+                    prefilledData={{
+                        category: campaignType === "presales" ? "pre_sales" : "post-sales",
+                        objectiveId: selectedObjective,
+                        campaignId: createdCampaignId || undefined,
+                    }}
+                    onSave={(dataSource) => {
+                        loadAudienceData(); // Refresh list
+                        // Auto-select the newly created audience task
+                        if (dataSource.connectionDetails?.taskId) {
+                            setTargetAudience((prev) => [
+                                ...prev,
+                                dataSource.connectionDetails.taskId,
+                            ]);
+                        }
+                    }}
+                />
+
+                <div className="w-full px-4 py-8 md:px-6 lg:px-8">
+                    <div className="mx-auto max-w-5xl space-y-8">
+                        {/* STEP 0: CAMPAIGN TYPE SELECTION */}
+                        {!campaignType && (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                                <div className="text-center space-y-3">
+                                    <h1 className="text-4xl font-bold tracking-tight">
+                                        Create Campaign
+                                    </h1>
+                                    <p className="text-lg text-muted-foreground">
+                                        Choose your campaign type to get started
+                                    </p>
+                                </div>
+                                <Card className="shadow-xl border-2">
+                                    <CardContent className="p-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <Card
+                                                className="cursor-pointer border-2 hover:border-primary p-8 flex flex-col items-center transition-all hover:scale-[1.02]"
+                                                onClick={() => setCampaignType("presales")}
+                                            >
+                                                <div className="p-4 rounded-full bg-primary/10 mb-6">
+                                                    <Target className="h-16 w-16 text-primary" />
+                                                </div>
+                                                <h3 className="text-2xl font-bold mb-2">Pre-Sales</h3>
+                                                <p className="text-center text-muted-foreground">
+                                                    Generate leads and acquire new customers
+                                                </p>
+                                            </Card>
+                                            <Card
+                                                className="cursor-pointer border-2 hover:border-primary p-8 flex flex-col items-center transition-all hover:scale-[1.02]"
+                                                onClick={() => setCampaignType("postsales")}
+                                            >
+                                                <div className="p-4 rounded-full bg-primary/10 mb-6">
+                                                    <Users className="h-16 w-16 text-primary" />
+                                                </div>
+                                                <h3 className="text-2xl font-bold mb-2">Post-Sales</h3>
+                                                <p className="text-center text-muted-foreground">
+                                                    Engage existing customers and drive service
+                                                </p>
+                                            </Card>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+
+                        {/* CAMPAIGN MANAGER */}
+                        {campaignType && (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <h1 className="text-3xl font-bold">Campaign Manager</h1>
+                                        <p className="text-muted-foreground capitalize">
+                                            {campaignType} Campaign
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setCampaignType("")}
+                                        className="gap-2"
+                                    >
+                                        <X className="h-4 w-4" /> Change Type
+                                    </Button>
+                                </div>
+
+                                {/* OBJECTIVES */}
+                                <Card className="shadow-xl border-2 border-l-4 border-l-primary">
+                                    <CardHeader>
+                                        <CardTitle className="text-2xl flex items-center gap-2">
+                                            <Sparkles className="h-5 w-5 text-primary" /> Campaign
+                                            Objective
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Tabs value={activeTab} onValueChange={setActiveTab}>
+                                            <TabsList className="mb-4 w-full justify-start h-auto p-1">
+                                                <TabsTrigger value="setup" className="px-6 py-2">
+                                                    Objectives
+                                                </TabsTrigger>
+                                                <TabsTrigger value="previous" className="px-6 py-2">
+                                                    Previously Used
+                                                </TabsTrigger>
+                                            </TabsList>
+                                            <TabsContent value="setup" className="space-y-4">
+                                                {isLoadingObjectives ? (
+                                                    <div className="flex items-center justify-center py-12">
+                                                        <RefreshCw className="h-8 w-8 animate-spin text-primary mr-2" />
+                                                        <span className="text-muted-foreground text-lg">
+                                                            Loading objectives...
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                                                        {objectives.map((obj) => (
+                                                            <ObjectiveCard
+                                                                key={obj.id}
+                                                                {...obj}
+                                                                selected={selectedObjective === obj.id}
+                                                                onSelect={() => {
+                                                                    setSelectedObjective(obj.id);
+                                                                    setSelectedObjectiveData(
+                                                                        obj.fullData || null
+                                                                    );
+                                                                    setCampaignData(null);
+                                                                    setCreatedCampaignId(null);
+                                                                    setCreationStep("details");
+                                                                    if (obj.id !== "custom")
+                                                                        setIsObjectiveDetailsOpen(true);
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {selectedObjective === "custom" && (
+                                                    <div className="mt-4 flex gap-2">
+                                                        <Input
+                                                            placeholder="Describe your custom objective..."
+                                                            value={customObjective}
+                                                            onChange={(e) =>
+                                                                setCustomObjective(e.target.value)
+                                                            }
+                                                            className="h-12"
+                                                        />
+                                                        <Button
+                                                            onClick={handleGenerateCampaign}
+                                                            className="h-12 px-6"
+                                                        >
+                                                            Generate
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </TabsContent>
+                                            <TabsContent value="previous">
+                                                <PreviouslyUsedCampaigns
+                                                    campaignType={campaignType}
+                                                    onReuseCampaign={() => { }}
+                                                />
+                                            </TabsContent>
+                                        </Tabs>
+                                    </CardContent>
+                                </Card>
+
+                                {isGenerating && (
+                                    <Card className="py-12">
+                                        <AILoader />
+                                    </Card>
+                                )}
+
+                                {!isGenerating && campaignData && (
+                                    <div className="space-y-6 animate-in fade-in duration-500">
+                                        {/* DETAILS FORM */}
+                                        <Card className="shadow-xl border-2 border-l-4 border-l-primary">
+                                            <CardHeader>
+                                                <CardTitle>Campaign Attributes</CardTitle>
+                                                <CardDescription>
+                                                    Review generated content
+                                                </CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="space-y-6">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <Label>Campaign Name</Label>
+                                                        <Input
+                                                            value={campaignName}
+                                                            onChange={(e) => setCampaignName(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Campaign Title</Label>
+                                                        <Input
+                                                            value={campaignTitle}
+                                                            onChange={(e) => setCampaignTitle(e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Description / Offer</Label>
+                                                    <Textarea
+                                                        rows={3}
+                                                        value={campaignDescription}
+                                                        onChange={(e) =>
+                                                            setCampaignDescription(e.target.value)
+                                                        }
+                                                    />
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <Label>Start Date</Label>
+                                                        <Input
+                                                            type="date"
+                                                            value={duration.start}
+                                                            onChange={(e) =>
+                                                                setDuration({
+                                                                    ...duration,
+                                                                    start: e.target.value,
+                                                                })
+                                                            }
+                                                        />
+                                                        {isScheduledCampaign && (
+                                                            <p className="text-xs text-amber-600 font-medium flex items-center gap-1 mt-1">
+                                                                <CalendarClock className="h-3 w-3" /> Future start date: Campaign will be scheduled.
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>End Date</Label>
+                                                        <Input
+                                                            type="date"
+                                                            value={duration.end}
+                                                            onChange={(e) =>
+                                                                setDuration({
+                                                                    ...duration,
+                                                                    end: e.target.value,
+                                                                })
+                                                            }
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <Label>Tone</Label>
+                                                        <Input
+                                                            value={tone}
+                                                            onChange={(e) => setTone(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Call to Action</Label>
+                                                        <Input
+                                                            value={callToAction}
+                                                            onChange={(e) => setCallToAction(e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+
+                                        <Card className="shadow-xl border-2 border-l-4 border-l-primary">
+                                            <CardHeader>
+                                                <CardTitle>Channels</CardTitle>
+                                                <CardDescription>
+                                                    Channels auto-optimized for this campaign
+                                                </CardDescription>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="grid grid-cols-3 gap-4">
+                                                    {channels.map((ch) => (
+                                                        <Card
+                                                            key={ch.id}
+                                                            className={cn(
+                                                                "border-2 transition-all",
+                                                                selectedChannels.includes(ch.id)
+                                                                    ? "border-primary bg-primary/5 shadow-sm"
+                                                                    : "opacity-50"
+                                                            )}
+                                                        >
+                                                            <CardContent className="flex flex-col items-center p-4">
+                                                                <div
+                                                                    className={cn(
+                                                                        "mb-2",
+                                                                        selectedChannels.includes(ch.id)
+                                                                            ? "text-primary"
+                                                                            : "text-muted-foreground"
+                                                                    )}
+                                                                >
+                                                                    {ch.icon}
+                                                                </div>
+                                                                <span className="font-semibold">{ch.name}</span>
+                                                                {selectedChannels.includes(ch.id) && (
+                                                                    <Badge className="mt-2 bg-green-600">
+                                                                        Active
+                                                                    </Badge>
+                                                                )}
+                                                            </CardContent>
+                                                        </Card>
+                                                    ))}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+
+                                        {creationStep === "details" && (
+                                            <div className="flex justify-end pt-4 pb-12">
+                                                <Button
+                                                    size="lg"
+                                                    onClick={handleProceed}
+                                                    disabled={isPostingCampaign}
+                                                    className="gap-2 px-8 text-lg h-14 shadow-lg hover:shadow-xl transition-all animate-pulse hover:scale-105 bg-primary hover:bg-primary-700 hover:animate-none"
+                                                >
+                                                    {isPostingCampaign ? (
+                                                        <>
+                                                            <RefreshCw className="animate-spin h-5 w-5 mr-2" />{" "}
+                                                            Saving Draft...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            Proceed to Audience Selection{" "}
+                                                            <ArrowRight className="w-5 h-5 ml-2" />
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        {/* STEP 2: DYNAMIC AUDIENCE SELECTION */}
+                                        {creationStep === "audience" && (
+                                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                                                <Card className="shadow-xl border-2 border-l-4 border-l-primary">
+                                                    <CardHeader className="flex flex-row items-center justify-between">
+                                                        <div>
+                                                            <CardTitle className="text-2xl  flex items-center gap-2">
+                                                                <Users className="h-6 w-6" /> Select Target
+                                                                Audience
+                                                            </CardTitle>
+                                                            <CardDescription>
+                                                                Select from existing lists or upload a new CSV
+                                                            </CardDescription>
+                                                        </div>
+                                                        <Button
+                                                            onClick={() => setIsUploadDialogOpen(true)}
+                                                            className="gap-2 bg-primary-foreground ring-1 ring-primary hover:bg-primary hover:text-white cursor-pointer text-primary shadow-md"
+                                                        >
+                                                            <Upload className="h-4 w-4" /> Upload New List
+                                                        </Button>
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        {isLoadingAudience ? (
+                                                            <div className="flex justify-center py-12">
+                                                                <div className="text-center">
+                                                                    <RefreshCw className="animate-spin h-8 w-8 text-primary mx-auto mb-2" />
+                                                                    <p className="text-muted-foreground">
+                                                                        Fetching audience lists...
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                                                                {audienceTasks.length === 0 ? (
+                                                                    <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                                                                        <Database className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                                                                        <h3 className="font-semibold text-lg">
+                                                                            No audience lists found
+                                                                        </h3>
+                                                                        <p className="mb-4">
+                                                                            Upload a CSV file to get started.
+                                                                        </p>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            onClick={() =>
+                                                                                setIsUploadDialogOpen(true)
+                                                                            }
+                                                                        >
+                                                                            Upload CSV
+                                                                        </Button>
+                                                                    </div>
+                                                                ) : (
+                                                                    audienceTasks.map((task) => (
+                                                                        <div
+                                                                            key={task.task_id}
+                                                                            className={cn(
+                                                                                "cursor-pointer border-2 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:shadow-md transition-all",
+                                                                                targetAudience.includes(task.task_id)
+                                                                                    ? "border-primary bg-secondary/10 hover:border-primary"
+                                                                                    : "border-muted bg-card hover:border-primary"
+                                                                            )}
+                                                                            onClick={() =>
+                                                                                setTargetAudience((prev) =>
+                                                                                    prev.includes(task.task_id)
+                                                                                        ? prev.filter(
+                                                                                            (p) => p !== task.task_id
+                                                                                        )
+                                                                                        : [...prev, task.task_id]
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            <div className="flex items-start gap-4 mb-3 sm:mb-0">
+                                                                                <div
+                                                                                    className={cn(
+                                                                                        "h-10 w-10 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                                                                                        targetAudience.includes(
+                                                                                            task.task_id
+                                                                                        )
+                                                                                            ? "bg-primary text-white"
+                                                                                            : "bg-slate-100 text-slate-500"
+                                                                                    )}
+                                                                                >
+                                                                                    <FileText className="h-5 w-5" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <p className="font-bold text-lg leading-tight text-foreground">
+                                                                                        {task.source_name ||
+                                                                                            task.audience_name ||
+                                                                                            "Untitled List"}
+                                                                                    </p>
+                                                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                                                        {task.tags &&
+                                                                                            Array.isArray(task.tags) &&
+                                                                                            task.tags.map(
+                                                                                                (tag: string, i: number) => (
+                                                                                                    <Badge
+                                                                                                        key={i}
+                                                                                                        variant="secondary"
+                                                                                                        className="text-xs px-2 py-0.5 bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                                                                                    >
+                                                                                                        {tag}
+                                                                                                    </Badge>
+                                                                                                )
+                                                                                            )}
+                                                                                    </div>
+                                                                                    <p className="text-xs text-muted-foreground mt-1 font-mono">
+                                                                                        ID: {task.task_id}
+                                                                                    </p>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-4 justify-between sm:justify-end w-full sm:w-auto mt-2 sm:mt-0 pl-14 sm:pl-0">
+                                                                                <div className="text-right mr-4">
+                                                                                    <p className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">
+                                                                                        Records
+                                                                                    </p>
+                                                                                    <p className="font-bold text-xl">
+                                                                                        {parseInt(
+                                                                                            task.process_size || 0
+                                                                                        ).toLocaleString()}
+                                                                                    </p>
+                                                                                </div>
+                                                                                {targetAudience.includes(
+                                                                                    task.task_id
+                                                                                ) ? (
+                                                                                    <Badge className="bg-primary hover:bg-primary-700 h-8 text-white px-3 text-sm">
+                                                                                        Selected
+                                                                                    </Badge>
+                                                                                ) : (
+                                                                                    <Badge
+                                                                                        variant="outline"
+                                                                                        className="h-8 px-3 text-sm"
+                                                                                    >
+                                                                                        Select
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        <div className="mt-6 p-6 bg-slate-50 dark:bg-slate-900 rounded-xl border flex flex-col sm:flex-row justify-between items-center gap-4">
+                                                            <div>
+                                                                <p className="text-sm text-muted-foreground uppercase font-bold tracking-wider">
+                                                                    Total Reach
+                                                                </p>
+                                                                <p className="text-3xl font-bold text-primary">
+                                                                    {getTotalReach().toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-sm text-muted-foreground uppercase font-bold tracking-wider">
+                                                                    Est. Cost (Credits)
+                                                                </p>
+                                                                <p className="text-2xl font-bold text-foreground">
+                                                                    {calculateCredits().toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                {/* CAMPAIGN SUMMARY CARD */}
+                                                <Card className="shadow-xl border-2 border-l-4 border-l-green-500 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+                                                    <CardHeader className="pb-2">
+                                                        <CardTitle className="text-xl flex items-center gap-2">
+                                                            <FileText className="h-5 w-5 text-green-600" /> Campaign Summary
+                                                        </CardTitle>
+                                                        <CardDescription>Double-check details before {isScheduledCampaign ? "scheduling" : "launching"}</CardDescription>
+                                                    </CardHeader>
+                                                    <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
+                                                        {/* Column 1: Identity */}
+                                                        <div className="space-y-1">
+                                                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Campaign</p>
+                                                            <p className="font-semibold text-lg truncate" title={campaignName}>{campaignName}</p>
+                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                <Badge variant="outline" className="capitalize">{campaignType}</Badge>
+                                                                <span>•</span>
+                                                                <span className="truncate max-w-[120px]">{selectedObjectiveData?.title || "Custom"}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Column 2: Schedule */}
+                                                        <div className="space-y-1">
+                                                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Schedule</p>
+                                                            <div className="flex flex-col text-sm font-medium">
+                                                                <span className={cn(isScheduledCampaign ? "text-amber-600" : "text-green-600")}>Start: {duration.start}</span>
+                                                                <span className="text-red-500">End: {duration.end}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Column 3: Channels */}
+                                                        <div className="space-y-1">
+                                                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Channels</p>
+                                                            <div className="flex gap-2">
+                                                                {selectedChannels.map(c => {
+                                                                    const ch = channels.find(x => x.id === c);
+                                                                    return (
+                                                                        <div key={c} className="bg-secondary p-1.5 rounded-md text-primary" title={ch?.name}>
+                                                                            {ch?.icon}
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Column 4: Impact */}
+                                                        <div className="space-y-1">
+                                                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Impact</p>
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <div>
+                                                                    <span className="text-xs text-muted-foreground block">Reach</span>
+                                                                    <span className="font-bold text-lg">{getTotalReach().toLocaleString()}</span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-xs text-muted-foreground block">Cost</span>
+                                                                    <span className="font-bold text-lg">{calculateCredits().toLocaleString()}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+
+                                                <div className="flex justify-between pt-4 pb-12">
+                                                    <Button
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            setCreationStep("details");
+                                                            setCreatedCampaignId(null);
+                                                        }}
+                                                        className="text-muted-foreground hover:text-foreground"
+                                                    >
+                                                        Back to Details
+                                                    </Button>
+                                                    <Button
+                                                        size="lg"
+                                                        onClick={handleLaunch}
+                                                        className="gap-2 px-10 bg-primary hover:bg-primary-700 h-14 text-lg shadow-xl shadow-primary-200 dark:shadow-none transition-all animate-pulse hover:scale-105 hover:animate-none"
+                                                    >
+                                                        {isScheduledCampaign ? (
+                                                            <>
+                                                                <CalendarClock className="h-5 w-5" /> Schedule Campaign
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Rocket className="h-5 w-5" /> Launch Campaign Now
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                  ) : (
-                    // Show message if no extra attributes needed and not a special type
-                    (selectedObjective !== "new-car-launch" && selectedObjective !== "stock-clearance") && (
-                        <div className="flex items-center justify-center p-8 border-2 border-dashed rounded-lg text-muted-foreground">
-                            <p>No additional attributes required for this objective.</p>
-                        </div>
-                    )
-                  )}
-              </div>
-            </div>
-            
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsObjectiveDetailsOpen(false)}>Cancel</Button>
-                <Button onClick={() => { setIsObjectiveDetailsOpen(false); handleGenerateCampaign(); }}>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Generate Campaign
-                </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-{/* LAUNCH STATUS MODAL */}
-        <Dialog 
-          open={isLaunchSuccessOpen} 
-          onOpenChange={(open) => {
-            // Prevent closing while loading (only allow close on error or success)
-            if (!open && !isLaunchError && launchStatus !== "Campaign launched successfully!") {
-              return; 
-            }
-            setIsLaunchSuccessOpen(open);
-          }}
-        >
-          <DialogContent className="sm:max-w-md text-center" onInteractOutside={(e) => {
-             // Prevent clicking outside to close while loading
-             if (!isLaunchError && launchStatus !== "Campaign launched successfully!") {
-                e.preventDefault();
-             }
-          }}>
-            <DialogHeader>
-              <div className={cn(
-                "mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full transition-colors duration-300",
-                isLaunchError ? "bg-red-100" : "bg-green-100"
-              )}>
-                {isLaunchError ? (
-                   <AlertCircle className="h-6 w-6 text-red-600" />
-                ) : (
-                   <Rocket className="h-6 w-6 text-green-600" />
-                )}
-              </div>
-              <DialogTitle className="text-center text-xl">
-                {isLaunchError ? "Launch Error" : "Launching Campaign"}
-              </DialogTitle>
-              <DialogDescription className="text-center">
-                {isLaunchError 
-                  ? "We encountered an issue while launching your campaign." 
-                  : "Please wait while we set up your campaign and audience."}
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="py-6 space-y-4">
-              <div className="flex flex-col items-center gap-4">
-                {isLaunchError ? (
-                   <X className="h-10 w-10 text-red-500 animate-in zoom-in duration-300" />
-                ) : launchStatus === "Campaign launched successfully!" ? (
-                   <Check className="h-10 w-10 text-green-500 animate-in zoom-in duration-300" />
-                ) : (
-                   <RefreshCw className="h-10 w-10 text-primary animate-spin" />
-                )}
-                
-                <p className={cn(
-                  "text-sm font-medium transition-colors",
-                  isLaunchError ? "text-red-600" : "text-muted-foreground"
-                )}>
-                  {launchStatus}
-                </p>
-              </div>
-            </div>
-
-            <DialogFooter className="sm:justify-center gap-2">
-              {isLaunchError ? (
-                <Button 
-                   variant="outline"
-                   onClick={() => setIsLaunchSuccessOpen(false)}
-                >
-                  Close & Retry
-                </Button>
-              ) : (
-                <Button 
-                  className="w-full sm:w-auto min-w-[140px]" 
-                  onClick={() => router.push("/")}
-                  disabled={launchStatus !== "Campaign launched successfully!"}
-                >
-                  {launchStatus === "Campaign launched successfully!" ? "Go to Dashboard" : "Processing..."}
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <div className="w-full px-4 py-8 md:px-6 lg:px-8">
-          <div className="mx-auto max-w-5xl space-y-8">
-            {!campaignType && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="text-center space-y-3">
-                  <h1 className="text-4xl font-bold tracking-tight">
-                    Create Campaign
-                  </h1>
-                  <p className="text-lg text-muted-foreground">
-                    Step 1: Choose your campaign type to get started
-                  </p>
-                </div>
-
-                <Card className="shadow-xl border-2">
-                  <CardHeader>
-                    <CardTitle className="text-2xl">
-                      Select Campaign Type
-                    </CardTitle>
-                    <CardDescription className="text-base">
-                      Are you targeting new customers or engaging existing ones?
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <Card
-                        className="cursor-pointer transition-all hover:shadow-xl hover:scale-[1.02] duration-300 border-2 hover:border-primary/50"
-                        onClick={() => setCampaignType("presales")}
-                      >
-                        <CardContent className="flex flex-col items-center justify-center p-12">
-                          <div className="mb-6 p-5 rounded-full bg-primary/10">
-                            <Target className="h-20 w-20 text-primary" />
-                          </div>
-                          <h3 className="font-bold text-2xl mb-3">Pre-Sales</h3>
-                          <p className="text-muted-foreground text-center leading-relaxed">
-                            Generate leads, launch new products, and drive
-                            customer acquisition
-                          </p>
-                        </CardContent>
-                      </Card>
-
-                      <Card
-                        className="cursor-pointer transition-all hover:shadow-xl hover:scale-[1.02] duration-300 border-2 hover:border-primary/50"
-                        onClick={() => {
-                          setCampaignType("postsales");
-                        }}
-                      >
-                        <CardContent className="flex flex-col items-center justify-center p-12">
-                          <div className="mb-6 p-5 rounded-full bg-primary/10">
-                            <Users className="h-20 w-20 text-primary" />
-                          </div>
-                          <h3 className="font-bold text-2xl mb-3">
-                            Post-Sales
-                          </h3>
-                          <p className="text-muted-foreground text-center leading-relaxed">
-                            Retain customers, increase loyalty, and boost repeat
-                            business
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {campaignType && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-700">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h1 className="text-4xl font-bold tracking-tight">
-                      Campaign Manager
-                    </h1>
-                    <p className="text-lg text-muted-foreground capitalize">
-                      Step 2: {campaignType} Campaign Objective
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => setCampaignType("")}
-                    className="gap-2"
-                  >
-                    <X className="h-4 w-4" />
-                    Change Type
-                  </Button>
-                </div>
-
-                <Card className="shadow-xl border-2 border-l-4 border-l-primary">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-full bg-primary/10">
-                          <Sparkles className="h-7 w-7 text-primary" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-2xl">
-                            Campaign Objective
-                          </CardTitle>
-                          <CardDescription className="text-base">
-                            Select your goal - AI will generate everything
-                            automatically
-                          </CardDescription>
-                        </div>
-                      </div>
-                      {campaignData && (
-                        <Button
-                          variant="outline"
-                          onClick={handleRegenerate}
-                          className="gap-2 bg-transparent"
-                          disabled={isGenerating}
-                        >
-                          <RefreshCw
-                            className={cn(
-                              "h-4 w-4",
-                              isGenerating && "animate-spin"
-                            )}
-                          />
-                          Regenerate
-                        </Button>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <Tabs
-                      value={activeTab}
-                      onValueChange={setActiveTab}
-                      className="w-full"
-                    >
-                      <TabsList className="grid w-full grid-cols-2 mb-6 h-12 bg-muted/50">
-                        <TabsTrigger
-                          value="setup"
-                          className="text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                        >
-                          <Target className="h-4 w-4 mr-2" />
-                          Campaign Objectives
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="previous"
-                          className="text-base font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                        >
-                          <ImageIcon className="h-4 w-4 mr-2" />
-                          Previously Used Campaigns
-                        </TabsTrigger>
-                      </TabsList>
-
-                      {/* Tab 1: Campaign Objectives */}
-                      <TabsContent value="setup" className="space-y-6 mt-0">
-                        <div className="space-y-4">
-                          <div>
-                            <Label className="text-base font-semibold">
-                              Choose Your Campaign Objective
-                            </Label>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Select an objective to configure details
-                            </p>
-                          </div>
-                          {isLoadingObjectives &&
-                          (campaignType === "presales" ||
-                            campaignType === "postsales") ? (
-                            <div className="flex items-center justify-center py-8">
-                              <RefreshCw className="h-6 w-6 animate-spin text-primary mr-2" />
-                              <span className="text-muted-foreground">
-                                Loading objectives...
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                              {objectives.map((objective, index) => {
-                                const objectiveId = objective.id || `objective-${index}`;
-                                const isSelected = selectedObjective !== "" && selectedObjective === objectiveId;
-
-                                return (
-                                  <ObjectiveCard
-                                    key={`${objectiveId}-${index}`}
-                                    icon={objective.icon}
-                                    title={objective.title}
-                                    campaignSubType={objective.campaignSubType}
-                                    selected={isSelected}
-                                    onSelect={() => {
-                                      // INTERCEPT SELECTION: Open Dialog instead of generating
-                                      setSelectedObjective(objectiveId);
-                                      
-                                      if ((objective as any).fullData) {
-                                        setSelectedObjectiveData((objective as any).fullData);
-                                        // Open dialog for everything except "custom"
-                                        if (objectiveId !== "custom") {
-                                            setIsObjectiveDetailsOpen(true);
-                                        }
-                                      } else {
-                                        setSelectedObjectiveData(null);
-                                        // Still open dialog for standard ones like new-car-launch that might not have fullData but have local handlers
-                                        if (objectiveId !== "custom") {
-                                            setIsObjectiveDetailsOpen(true);
-                                        }
-                                      }
-                                      
-                                      if (objectiveId !== "custom") {
-                                        setCustomObjective("");
-                                      }
-                                      setCampaignData(null);
-                                      // Reset car details unless sticking to same objective
-                                      if (
-                                        objectiveId !== "new-car-launch" &&
-                                        objectiveId !== "stock-clearance"
-                                      ) {
-                                        setCarModel("");
-                                        setLaunchDate("");
-                                      }
-                                    }}
-                                  />
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Custom Objective Input - Stays Inline */}
-                        {selectedObjective === "custom" && (
-                          <Card className="border-2 border-primary/20 bg-primary/5">
-                            <CardContent className="p-4">
-                              <div className="space-y-2">
-                                <Label className="text-base font-semibold">
-                                  Enter Your Custom Objective
-                                </Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                    placeholder="e.g., Special promotion for premium customers..."
-                                    value={customObjective}
-                                    onChange={(e) => {
-                                        setCustomObjective(e.target.value);
-                                        setCampaignData(null);
-                                    }}
-                                    className="h-12 text-base"
-                                    />
-                                    <Button size="lg" className="h-12" onClick={handleGenerateCampaign} disabled={!customObjective.trim()}>Generate</Button>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
-                      </TabsContent>
-
-                      {/* Tab 2: Previously Used Campaigns */}
-                      <TabsContent value="previous" className="mt-0">
-                        <PreviouslyUsedCampaigns
-                          campaignType={campaignType}
-                          onReuseCampaign={(campaign) => {
-                            if (campaign.campaignData) {
-                              const data = campaign.campaignData;
-                              if (data.selectedObjective) setSelectedObjective(data.selectedObjective);
-                              if (data.customObjective) setCustomObjective(data.customObjective);
-                              if ((data as any).carModel) setCarModel((data as any).carModel);
-                              if ((data as any).launchDate) setLaunchDate((data as any).launchDate);
-                              if (data.campaignName) setCampaignName(data.campaignName);
-                              if (data.campaignDescription) setCampaignDescription(data.campaignDescription);
-                              if (data.campaignTitle) setCampaignTitle(data.campaignTitle);
-                              if (data.tone) setTone(data.tone);
-                              if (data.callToAction) setCallToAction(data.callToAction);
-                              if (data.language) setLanguage(data.language);
-                              if (data.selectedChannels) setSelectedChannels(data.selectedChannels);
-                              if (data.duration) setDuration(data.duration);
-                              if (data.targetAudience) setTargetAudience(data.targetAudience);
-
-                              setCampaignData({
-                                name: data.campaignName || campaign.name,
-                                description: data.campaignDescription,
-                                campaignTitle: data.campaignTitle,
-                                tone: data.tone,
-                                callToAction: data.callToAction,
-                                language: data.language,
-                                selectedChannels: data.selectedChannels || campaign.channels,
-                              });
-
-                              setActiveTab("setup");
-                            }
-                          }}
-                        />
-                      </TabsContent>
-                    </Tabs>
-                  </CardContent>
-                </Card>
-
-                {isGenerating && (
-                  <Card className="shadow-xl border-primary/20 animate-in fade-in duration-500">
-                    <CardContent className="py-20">
-                      <AILoader
-                        quotes={[
-                          "AI is analyzing your campaign objective...",
-                          "Personalized campaigns increase engagement by 50%",
-                          "Machine learning optimizes targeting in real-time",
-                          "Multi-channel strategies boost ROI by 300%",
-                          "Data-driven insights lead to better conversions",
-                        ]}
-                        facts={[
-                          "Did you know? Segmented campaigns see 14% higher click rates",
-                          "Fun fact: Personalized emails have 26% higher open rates",
-                          "Interesting: AI can predict customer behavior with 85% accuracy",
-                          "Cool fact: Automated campaigns save 80% of manual time",
-                          "Amazing: Dynamic content increases conversion by 202%",
-                        ]}
-                      />
-                      <div className="mt-8 text-center space-y-2">
-                        <p className="text-2xl font-bold text-primary">
-                          Generating Your Campaign
-                        </p>
-                        <p className="text-muted-foreground">
-                          Creating optimized content and recommendations...
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {!isGenerating && campaignData && (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <Card className="shadow-xl border-2 border-l-4 border-l-primary">
-                      <CardHeader>
-                        <CardTitle className="text-2xl flex items-center gap-2">
-                          <Check className="h-6 w-6 text-emerald-500" />
-                          Campaign Attributes
-                        </CardTitle>
-                        <CardDescription className="text-base">
-                          Review and modify as needed
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <Label className="text-base font-semibold">
-                              Campaign Name
-                            </Label>
-                            <Input
-                              value={campaignName}
-                              onChange={(e) => setCampaignName(e.target.value)}
-                              className="h-11"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-base font-semibold">
-                              Campaign Title
-                            </Label>
-                            <Input
-                              value={campaignTitle}
-                              onChange={(e) => setCampaignTitle(e.target.value)}
-                              className="h-11"
-                              placeholder="Enter campaign title"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-base font-semibold">
-                            Description
-                          </Label>
-                          <Textarea
-                            value={campaignDescription}
-                            onChange={(e) =>
-                              setCampaignDescription(e.target.value)
-                            }
-                            rows={4}
-                            className="resize-none"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <Label className="text-base font-semibold">
-                              Start Date
-                            </Label>
-                            <Input
-                              type="date"
-                              value={duration.start}
-                              onChange={(e) =>
-                                setDuration({
-                                  ...duration,
-                                  start: e.target.value,
-                                })
-                              }
-                              className="h-11"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-base font-semibold">
-                              End Date
-                            </Label>
-                            <Input
-                              type="date"
-                              value={duration.end}
-                              onChange={(e) =>
-                                setDuration({
-                                  ...duration,
-                                  end: e.target.value,
-                                })
-                              }
-                              className="h-11"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <Label className="text-base font-semibold">
-                              Tone of Voice
-                            </Label>
-                            <Input
-                              value={tone}
-                              onChange={(e) => setTone(e.target.value)}
-                              className="h-11"
-                              placeholder="e.g., Professional, Friendly, Urgent"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-base font-semibold">
-                              Call to Action
-                            </Label>
-                            <Input
-                              value={callToAction}
-                              onChange={(e) => setCallToAction(e.target.value)}
-                              className="h-11"
-                              placeholder="e.g., Book Now, Learn More, Get Started"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-base font-semibold">
-                            Language
-                          </Label>
-                          <select
-                            value={language}
-                            onChange={(e) => setLanguage(e.target.value)}
-                            className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {languageOptions.map((lang) => (
-                              <option key={lang.value} value={lang.value}>
-                                {lang.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="shadow-xl border-2 border-l-4 border-l-primary">
-                      <CardHeader>
-                        <CardTitle className="text-2xl">
-                          Campaign Channels
-                        </CardTitle>
-                        <CardDescription className="text-base">
-                          Add or remove platforms
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                          {channels.map((channel) => (
-                            <Card
-                              key={channel.id}
-                              className={cn(
-                                "cursor-pointer transition-all hover:shadow-lg hover:scale-[1.05] duration-300",
-                                selectedChannels.includes(channel.id) &&
-                                  "border-primary ring-2 ring-primary ring-offset-2 bg-primary/5"
-                              )}
-                              onClick={() => toggleChannel(channel.id)}
-                            >
-                              <CardContent className="flex flex-col items-center justify-center p-6 relative">
-                                {selectedChannels.includes(channel.id) && (
-                                  <div className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                                    <Check className="h-4 w-4" />
-                                  </div>
                                 )}
-                                <div
-                                  className={cn(
-                                    "mb-3 transition-colors",
-                                    selectedChannels.includes(channel.id)
-                                      ? "text-primary"
-                                      : "text-muted-foreground"
-                                  )}
-                                >
-                                  {channel.icon}
-                                </div>
-                                <p
-                                  className={cn(
-                                    "font-semibold text-sm",
-                                    selectedChannels.includes(channel.id) &&
-                                      "text-primary"
-                                  )}
-                                >
-                                  {channel.name}
-                                </p>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="shadow-xl border-2 border-l-4 border-l-primary">
-                      <CardHeader>
-                        <CardTitle className="text-2xl">
-                          Target Audience
-                        </CardTitle>
-                        <CardDescription className="text-base">
-                          Select and refine your audience segments
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-6">
-                        <div className="space-y-4">
-                          {audienceSegments.map((segment) => (
-                            <Card
-                              key={segment.value}
-                              className={cn(
-                                "cursor-pointer transition-all hover:shadow-md duration-300",
-                                targetAudience.includes(segment.value) &&
-                                  "border-primary bg-primary/5"
-                              )}
-                              onClick={() => toggleAudience(segment.value)}
-                            >
-                              <CardContent className="flex items-center justify-between p-6">
-                                <div className="flex items-center gap-4">
-                                  <div
-                                    className={cn(
-                                      "h-10 w-10 rounded-full flex items-center justify-center",
-                                      targetAudience.includes(segment.value)
-                                        ? "bg-primary text-primary-foreground"
-                                        : "bg-muted"
-                                    )}
-                                  >
-                                    {targetAudience.includes(segment.value) ? (
-                                      <Check className="h-5 w-5" />
-                                    ) : (
-                                      <Users className="h-5 w-5" />
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="font-semibold text-base">
-                                      {segment.label}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {segment.size.toLocaleString()} contacts
-                                    </p>
-                                  </div>
-                                </div>
-                                <Badge
-                                  variant={
-                                    targetAudience.includes(segment.value)
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                >
-                                  {targetAudience.includes(segment.value)
-                                    ? "Selected"
-                                    : "Available"}
-                                </Badge>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-
-                        <Alert className="border-primary/20 bg-primary/5">
-                          <AlertCircle className="h-5 w-5 text-primary" />
-                          <AlertDescription>
-                            <span className="font-semibold">Total Reach: </span>
-                            {totalAudienceSize.toLocaleString()} contacts
-                          </AlertDescription>
-                        </Alert>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="shadow-xl border-2 border-primary/50 bg-gradient-to-br from-primary/5 to-transparent">
-                      <CardHeader>
-                        <CardTitle className="text-2xl flex items-center gap-2">
-                          <Rocket className="h-6 w-6 text-primary" />
-                          Campaign Summary
-                        </CardTitle>
-                        <CardDescription className="text-base">
-                          Review before launching
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-3">
-                            <div className="flex justify-between">
-                              <span className="font-medium">Campaign:</span>
-                              <span className="text-muted-foreground">
-                                {campaignName}
-                              </span>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="font-medium">Type:</span>
-                              <span className="text-muted-foreground capitalize">
-                                {campaignType}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="font-medium">Objective:</span>
-                              <span className="text-muted-foreground">
-                                {objectives.find(
-                                  (o) => o.id === selectedObjective
-                                )?.title || customObjective}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="font-medium">Duration:</span>
-                              <span className="text-muted-foreground">
-                                {duration.start && duration.end
-                                  ? `${Math.ceil(
-                                      (new Date(duration.end).getTime() -
-                                        new Date(duration.start).getTime()) /
-                                        (1000 * 60 * 60 * 24)
-                                    )} days`
-                                  : "Not set"}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="font-medium">Tone:</span>
-                              <span className="text-muted-foreground">
-                                {tone}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="space-y-3">
-                            <div className="flex justify-between">
-                              <span className="font-medium">Channels:</span>
-                              <span className="text-muted-foreground">
-                                {selectedChannels.length}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="font-medium">Audience:</span>
-                              <span className="text-muted-foreground">
-                                {totalAudienceSize.toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="font-medium">Language:</span>
-                              <span className="text-muted-foreground">
-                                {
-                                  languageOptions.find(
-                                    (l) => l.value === language
-                                  )?.label
-                                }
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="font-medium">
-                                Call to Action:
-                              </span>
-                              <span className="text-muted-foreground">
-                                {callToAction}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="font-medium">
-                                Campaign Title:
-                              </span>
-                              <span className="text-muted-foreground">
-                                {campaignTitle}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium">
-                                Credits Required:
-                              </span>
-                              <span className="text-xl font-bold text-primary">
-                                {calculateCredits().toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="pt-4 border-t">
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            <span className="font-medium">
-                              Selected Channels:
-                            </span>
-                            {selectedChannels.map((channelId) => {
-                              const channel = channels.find(
-                                (c) => c.id === channelId
-                              );
-                              return (
-                                <Badge key={channelId} className="bg-primary">
-                                  {channel?.name}
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <span className="font-medium">
-                              Audience Segments:
-                            </span>
-                            {targetAudience.map((audienceId) => {
-                              const segment = audienceSegments.find(
-                                (s) => s.value === audienceId
-                              );
-                              return (
-                                <Badge key={audienceId} variant="outline">
-                                  {segment?.label}
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <div className="flex justify-between items-center pt-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => router.push("/")}
-                        className="gap-2 h-12 px-6"
-                      >
-                        Save as Draft
-                      </Button>
-                      <Button
-                        onClick={handleLaunch}
-                        size="lg"
-                        className="gap-2 h-12 px-8 text-base"
-                      >
-                        <Rocket className="h-5 w-5" />
-                        Launch Campaign
-                      </Button>
+                        )}
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </ProtectedRoute>
-  );
+                </div>
+            </div>
+        </ProtectedRoute>
+    );
 }
 
 export default function CampaignCreatePage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <CampaignCreateContent />
-    </Suspense>
-  );
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <CampaignCreateContent />
+        </Suspense>
+    );
 }

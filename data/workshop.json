@@ -258,6 +258,27 @@
       "refers": "parents.dealership.supported_brands_guidelines"
     },
     {
+      "name": "region_subdivision_id",
+      "refers": "parents.region_subdivision.subdivision_id",
+      "options": "/options/region_subdivision/subdivision_name?region_id={region_id}"
+    },
+    {
+      "name": "subdivision_name",
+      "refers": "parents.region_subdivision.subdivision_name"
+    },
+    {
+      "name": "languages",
+      "refers": "parents.region_subdivision.languages"
+    },
+    {
+      "name": "subdivision_level_guidelines",
+      "refers": "parents.region_subdivision.subdivision_level_guidelines"
+    },
+    {
+      "name": "subdivision_level_guardrails",
+      "refers": "parents.region_subdivision.subdivision_level_guardrails"
+    },
+    {
       "name": "workshop_level_guidelines",
       "type": "text"
     },
@@ -287,5 +308,5 @@
       "id": true
     }
   ],
-  "parents": ["dealership"]
+  "parents": ["dealership", "region_subdivision"]
 }

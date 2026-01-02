@@ -89,14 +89,12 @@ class GEMINIAPI:
         self.process_timeout = timeout
         self.audio_type: str = voice_params.get("audio_type", "pcm")
         self.sample_rate: int = int(voice_params.get("sample_rate", RECEIVE_SAMPLE_RATE))
-        self.chunk_size: int = int(voice_params.get("chunk_size", 15000))
+        self.chunk_size: int = int(voice_params.get("chunk_size", 320))
         self.voice_id: str = voice_params.get("voice_id", "Aoede")
         self.prompt = prompt
 
-        self.client = genai.Client(
-            api_key = env.GOOGLE_API_KEY
-        )
-        self.model_name: str = voice_params.get("model_name", "gemini-live-2.5-flash-preview")
+        self.client = genai.Client(api_key = env.GOOGLE_API_KEY)
+        self.model_name: str = voice_params.get("model_name", "gemini-2.5-flash-native-audio-preview-12-2025") # gemini-live-2.5-flash-preview
         self.response_channel: str = voice_params.get("response_channel", voice_params.get("response", "AUDIO"),).strip().upper()
 
         self.input_queue = input_queue
@@ -275,7 +273,7 @@ class GEMINIAPI:
         sent_keys_q: asyncio.Queue = session.setdefault("sent_keys", asyncio.Queue())
         session.setdefault("last_seq_key", None)
         
-        logger.info(f'inside session worker')
+        # logger.info(f'inside session worker')
         try:
             loop = asyncio.get_running_loop()
         except Exception:
@@ -284,9 +282,9 @@ class GEMINIAPI:
         worker_error: Optional[BaseException] = None
 
         try:
-            logger.info('before creating client session')
+            # logger.info('before creating client session')
             async with client_connection as async_session:
-                logger.info('client session started...')
+                # logger.info('client session started...')
                 session["async_session"] = async_session
 
                 async def sender() -> None:
@@ -307,7 +305,7 @@ class GEMINIAPI:
                             if data is None:
                                 # logger.info(f'[{session_id}] Closing request acknowlegded')
                                 continue
-                            logger.info(f'Received data in input_queue of type {type(data)}')
+                            # logger.info(f'Received data in input_queue of type {type(data)}')
                             
                             message_id = data.get('message_id')
                             recieved_session_id = data.get('session_id')
@@ -316,8 +314,8 @@ class GEMINIAPI:
                             if not audio_bytes:
                                 logger.info('skippig none byte receuved')
                                 continue
-                            else:
-                                logger.info(f'received {type(audio_bytes)}')
+                            # else:
+                            #     logger.info(f'received {type(audio_bytes)}')
                             
                             self.provider_metadata = data.get('metadata',{})
                             message_type = data.get('message_type', 'start_stream')
@@ -383,7 +381,7 @@ class GEMINIAPI:
                                 continue
                                 
                             except StopAsyncIteration:
-                                logger.info(f"[{session_id}] StopAsyncIteration - turn complete, restarting")
+                                # logger.info(f"[{session_id}] StopAsyncIteration - restarting")
                                 agen = async_session.receive().__aiter__()
                                 continue
                                 
@@ -433,7 +431,7 @@ class GEMINIAPI:
                                             "message_type": "audio_output",
                                             "metadata": metadata,
                                         }
-                                        logger.info(f'Puting payload to output queue: {payload}')
+                                        # logger.info(f'Puting payload to output queue: {payload}')
                                         output_queue.put(payload)
 
                                 if server_content.output_transcription:
@@ -506,4 +504,4 @@ class GEMINIAPI:
                 pass
 
             SessionRegistry.remove_session(session_id)
-            # logger.info("Worker for session %s has exited and cleaned up", session_id)
+            # logger.info("Worker for session %s has exiteyd and cleaned up", session_id)

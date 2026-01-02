@@ -27,7 +27,7 @@
     },
     {
       "name": "campaign_type",
-      "type": "list",
+      "type": "text",
       "options": [
         "pre-sales",
         "post-sales",

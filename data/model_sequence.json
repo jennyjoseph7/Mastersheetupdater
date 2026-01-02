@@ -5,6 +5,7 @@
     "communication_provider",
     "document",
     "region",
+    "region_subdivision",
     "session",
     "session_data_cache",
     "message",
@@ -41,5 +42,11 @@
     "review",
     "paragraph",
     "billing",
-    "billing_report"
+    "billing_report",
+    "otp_cache",
+    "audience_task",
+    "campaign_dashboard",
+    "campaign_performance_summary",
+    "campaign_summary",
+    "template_summary"
 ]

@@ -197,4 +197,15 @@ run setup.sh
 worker -m campaign/campaign_worker.py
 
 
+------------------------------------------------------------------
+
+# VOICEBOT -
+
+We are using API from nikit.
+
+--------------------------------------------------------------
+
+# EMAIL -
+
+We have mail_connectors which has AWS_SES_MAIL and SMTP_MAIL.
 

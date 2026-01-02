@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 
-// Determine API base URL based on environment
-// For local development, use localhost:5008, otherwise use env var or default
+// Determine API base URL - always use production unless explicitly overridden
 const getApiBaseUrl = () => {
+  // Check for explicit environment variable override
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
   }
-  // Default to local backend for development
-  return "http://127.0.0.1:5008";
+
+  // Always use production URL
+  return "https://autobot-webapp-dev.gryd.in";
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -15,6 +16,17 @@ const API_BASE_URL = getApiBaseUrl();
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+
+    // Log the request body for debugging
+    console.log(
+      `[Dealership Signup] Request body:`,
+      JSON.stringify(body, null, 2)
+    );
+    console.log(`[Dealership Signup] API Base URL:`, API_BASE_URL);
+    console.log(
+      `[Dealership Signup] Full URL:`,
+      `${API_BASE_URL}/gryd/api/autocrm-core/dealership_signup`
+    );
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",

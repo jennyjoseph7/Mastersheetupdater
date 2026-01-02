@@ -57,11 +57,11 @@ export default function TopNavigation() {
         <div className="container flex h-16 items-center justify-between px-4 md:px-6">
           <Link href="/" className="flex items-center gap-2 group">
             <Image
-              src="https://www.iamdave.ai/wp-content/uploads/2025/09/DaveAI_Logo.svg"
+              src="images/logo.png"
               alt="DaveAI Logo"
               width={120}
               height={24}
-              className="w-auto h-6 transition-transform group-hover:scale-105"
+              className="w-auto h-6 transition-transform group-hover:scale-105 dark:invert dark:brightness-200 dark:contrast-200 dark:drop-shadow-[0_0_8px_rgba(139,92,246,0.5),0_0_16px_rgba(255,255,255,0.3)] dark:filter"
             />
           </Link>
           <div className="flex items-center gap-3">
@@ -87,11 +87,11 @@ export default function TopNavigation() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group shrink-0">
             <Image
-              src="https://www.iamdave.ai/wp-content/uploads/2025/09/DaveAI_Logo.svg"
+              src="images/logo.png"
               alt="DaveAI Logo"
               width={120}
               height={24}
-              className="w-auto h-6 transition-transform group-hover:scale-105"
+              className="w-auto h-6 transition-transform group-hover:scale-105 dark:invert dark:brightness-200 dark:contrast-200 dark:drop-shadow-[0_0_8px_rgba(139,92,246,0.5),0_0_16px_rgba(255,255,255,0.3)] dark:filter"
             />
           </Link>
 

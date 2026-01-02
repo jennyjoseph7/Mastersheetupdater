@@ -26,7 +26,7 @@ async function fetchAPIData(modelName, queryParams = {}) {
     return {
       items: json?.data ?? [],
       // Handle both 'total' and 'total_number' based on your API response example
-      total: json?.total ?? json?.total_number ?? 0, 
+      total: json?.total ?? json?.total_number ?? 0,
     };
   } catch (error) {
     console.error("API fetch error:", error);
@@ -38,7 +38,7 @@ async function deleteAPIData(modelName, id) {
   try {
     // Assuming DELETE endpoint uses singular object path
     const url = `${APP_BASE_URL}/gryd/db/delete/${modelName}/${id}`;
-    
+
     const response = await fetch(url, {
       method: "DELETE",
       headers: HEADERS,
@@ -48,7 +48,7 @@ async function deleteAPIData(modelName, id) {
       const text = await response.text();
       throw new Error(`Delete failed: ${text}`);
     }
-    
+
     return true;
   } catch (error) {
     console.error("Delete error:", error);
@@ -114,7 +114,7 @@ async function extractCsvHeadersAPI(fileUrl) {
         args: [fileUrl],
         kwargs: {},
       }),
-    },
+    }
   );
 
   if (!response.ok) {
@@ -125,6 +125,46 @@ async function extractCsvHeadersAPI(fileUrl) {
 }
 
 // Start Import Task ---
+// async function startImportTask(
+//   category,
+//   audienceName,
+//   fileUrl,
+//   tags = [],
+//   sourceName = "",
+//   fieldMapping = {},
+//   campaignObjectiveId = ""
+// ) {
+//   const response = await fetch(
+//     `${APP_BASE_URL}/gryd/task/autocrm-core/import_leads_from_csv`,
+//     {
+//       method: "POST",
+//       headers: HEADERS,
+//       body: JSON.stringify({
+//         args: [category || "post-sales", "ambal-auto-south-india", fileUrl],
+//         kwargs: {
+//           // campaign_id: campaignObjectiveId, // <--- Passing the selected objective ID to the task
+//           campaign_objective_id: campaignObjectiveId, // <--- Also passing here for clarity if backend expects specific key
+//           audience_name: audienceName,
+//           // campaign_name: audienceName,
+//           workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+//           source: "csv",
+//           tags: tags,
+//           source_name: sourceName || "Uploaded via csv",
+//           mapping: fieldMapping,
+//         },
+//         runtime_limit: 3600,
+//         cancellable: true,
+//       }),
+//     },
+//   );
+
+//   if (!response.ok) {
+//     const errorBody = await response.text();
+//     throw new Error(`Task start failed: ${errorBody}`);
+//   }
+
+//   return response.json();
+// }
 async function startImportTask(
   category,
   audienceName,
@@ -132,7 +172,34 @@ async function startImportTask(
   tags = [],
   sourceName = "",
   fieldMapping = {},
+  campaignIdOrObjectiveId = "" // Accepts either ID
 ) {
+  // 1. Base kwargs
+  const kwargs = {
+    audience_name: audienceName,
+    workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+    source: "csv",
+    tags: tags,
+    source_name: sourceName || "Uploaded via csv",
+    mapping: fieldMapping,
+  };
+
+  // 2. Determine which ID key to use
+  if (campaignIdOrObjectiveId) {
+    // Check if UUID (Campaign ID)
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        campaignIdOrObjectiveId
+      );
+
+    if (isUuid) {
+      kwargs.campaign_id = campaignIdOrObjectiveId;
+    } else {
+      // Assume slug (Campaign Objective ID)
+      kwargs.campaign_objective_id = campaignIdOrObjectiveId;
+    }
+  }
+
   const response = await fetch(
     `${APP_BASE_URL}/gryd/task/autocrm-core/import_leads_from_csv`,
     {
@@ -140,19 +207,11 @@ async function startImportTask(
       headers: HEADERS,
       body: JSON.stringify({
         args: [category || "post-sales", "ambal-auto-south-india", fileUrl],
-        kwargs: {
-          campaign_id: "626952a0-1ac7-3a7c-85aa-c46d30897ea4",
-          campaign_objective_id: "626952a0-1ac7-3a7c-85aa-c46d30897ea4",
-          workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
-          source: "csv",
-          tags: tags,
-          source_name: sourceName || "Uploaded via csv",
-          mapping: fieldMapping,
-        },
+        kwargs: kwargs,
         runtime_limit: 3600,
         cancellable: true,
       }),
-    },
+    }
   );
 
   if (!response.ok) {
@@ -162,17 +221,13 @@ async function startImportTask(
 
   return response.json();
 }
-
 // 6. Create Audience Task Record (DB) ---
 async function createAudienceTask(taskData) {
-  const response = await fetch(
-    `${APP_BASE_URL}/gryd/db/object/audience_task`,
-    {
-      method: "POST",
-      headers: HEADERS,
-      body: JSON.stringify(taskData),
-    },
-  );
+  const response = await fetch(`${APP_BASE_URL}/gryd/db/object/audience_task`, {
+    method: "POST",
+    headers: HEADERS,
+    body: JSON.stringify(taskData),
+  });
 
   if (!response.ok) {
     const errorBody = await response.text();
@@ -187,7 +242,7 @@ async function updateAudienceTask(taskId, updateData) {
   const url = new URL(`${APP_BASE_URL}/gryd/db/object/audience_task/${taskId}`);
 
   const response = await fetch(url.toString(), {
-    method: "PATCH", 
+    method: "PATCH",
     headers: HEADERS,
     body: JSON.stringify(updateData),
   });
@@ -223,13 +278,128 @@ async function getTaskResult(taskId) {
   if (!response.ok) {
     throw new Error(`Failed to fetch result: ${response.statusText}`);
   }
-
+  updateAudienceTask(taskId, { fetched_result: true }).catch((err) =>
+    console.error("Error updating fetched_result:", err)
+  );
   return response.json();
 }
 
 //  Fetch Audience List (For Table) ---
 async function fetchAudienceTasks() {
   return fetchAPIData("audience_task");
+}
+
+// --- NEW: Fetch Campaign Objectives ---
+async function fetchCampaignObjectives(campaignType) {
+  // Convert 'pre_sales' to 'pre-sales' to match API expectation
+  const type = campaignType ? campaignType.replace(/_/g, "-") : "";
+  return fetchAPIData("campaign_objective", { campaign_type: type });
+}
+
+// Fetch Pre-Sales Campaigns ---
+async function fetchPreSalesCampaigns(page = 1, pageSize = 50) {
+  try {
+    const adminHeaders = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
+      "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
+      "X-GRYD-ROLE": "admin",
+    };
+
+    const baseUrl =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1")
+        ? "http://127.0.0.1:5008"
+        : APP_BASE_URL;
+
+    const url = `${baseUrl}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}`;
+
+    let response = await fetch(url, {
+      method: "GET",
+      headers: adminHeaders,
+    });
+
+    if (!response.ok && response.status === 405) {
+      response = await fetch(url, {
+        method: "POST",
+        headers: adminHeaders,
+        body: "",
+      });
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.status} ${errorText}`);
+    }
+
+    const json = await response.json();
+    const items = json?.data ?? [];
+    const total = json?.total_number ?? 0;
+
+    return {
+      items,
+      total,
+    };
+  } catch (error) {
+    console.error("[fetchPreSalesCampaigns] Fetch error:", error);
+    return { items: [], total: 0 };
+  }
+}
+
+// Fetch Post-Sales Campaigns ---
+async function fetchPostSalesCampaigns(page = 1, pageSize = 50) {
+  try {
+    const adminHeaders = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
+      "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
+      "X-GRYD-ROLE": "admin",
+    };
+
+    const baseUrl =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1")
+        ? "http://127.0.0.1:5008"
+        : APP_BASE_URL;
+
+    const url = `${baseUrl}/gryd/db/objects/post_sales_campaign?page_number=${page}&page_size=${pageSize}`;
+
+    let response = await fetch(url, {
+      method: "GET",
+      headers: adminHeaders,
+    });
+
+    if (!response.ok && response.status === 405) {
+      response = await fetch(url, {
+        method: "POST",
+        headers: adminHeaders,
+        body: "",
+      });
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.status} ${errorText}`);
+    }
+
+    const json = await response.json();
+    const items = json?.data ?? [];
+    const total = json?.total_number ?? 0;
+
+    return {
+      items,
+      total,
+    };
+  } catch (error) {
+    console.error("[fetchPostSalesCampaigns] Fetch error:", error);
+    return { items: [], total: 0 };
+  }
 }
 
 // Fetch Dealership Campaigns ---
@@ -252,7 +422,7 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
         : APP_BASE_URL;
 
     const url = `${baseUrl}/gryd/db/objects/dealership_campaign`;
-    
+
     let response = await fetch(url, {
       method: "GET",
       headers: adminHeaders,
@@ -262,7 +432,7 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
       response = await fetch(url, {
         method: "POST",
         headers: adminHeaders,
-        body: "", 
+        body: "",
       });
     }
 
@@ -282,6 +452,84 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
   } catch (error) {
     console.error("[fetchDealershipCampaigns] Fetch error:", error);
     return { items: [], total: 0 };
+  }
+}
+
+// Fetch Overall Campaign Summary ---
+async function fetchCampaignSummary() {
+  try {
+    const url = `${APP_BASE_URL}/gryd/db/objects/overall_campaign_summary`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: HEADERS,
+    });
+
+    if (!response.ok && response.status === 405) {
+      const retryResponse = await fetch(url, {
+        method: "POST",
+        headers: HEADERS,
+        body: "",
+      });
+      if (!retryResponse.ok) {
+        const errorText = await retryResponse.text();
+        throw new Error(`API Error: ${retryResponse.status} ${errorText}`);
+      }
+      const json = await retryResponse.json();
+      return json?.data ?? [];
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.status} ${errorText}`);
+    }
+
+    const json = await response.json();
+    return json?.data ?? [];
+  } catch (error) {
+    console.error("[fetchCampaignSummary] Fetch error:", error);
+    return [];
+  }
+}
+
+// Fetch Campaign Performance Summary ---
+async function fetchCampaignPerformanceSummary(campaignId) {
+  try {
+    const url = `${APP_BASE_URL}/gryd/db/objects/campaign_performance_summary${campaignId ? `?campaign_id=${campaignId}` : ''}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: HEADERS,
+    });
+
+    if (!response.ok && response.status === 405) {
+      const retryResponse = await fetch(url, {
+        method: "POST",
+        headers: HEADERS,
+        body: "",
+      });
+      if (!retryResponse.ok) {
+        const errorText = await retryResponse.text();
+        throw new Error(`API Error: ${retryResponse.status} ${errorText}`);
+      }
+      const json = await retryResponse.json();
+      return json?.data ?? [];
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.status} ${errorText}`);
+    }
+
+    const json = await response.json();
+    // If campaignId is provided, return the matching campaign, otherwise return all
+    if (campaignId && json?.data) {
+      return json.data.find((item) => item.campaign_id === campaignId) || null;
+    }
+    return json?.data ?? [];
+  } catch (error) {
+    console.error("[fetchCampaignPerformanceSummary] Fetch error:", error);
+    return null;
   }
 }
 
@@ -319,7 +567,12 @@ export {
   getTaskStatus,
   getTaskResult,
   fetchAudienceTasks,
+  fetchPreSalesCampaigns,
+  fetchPostSalesCampaigns,
   fetchDealershipCampaigns,
+  fetchCampaignObjectives,
+  fetchCampaignSummary,
+  fetchCampaignPerformanceSummary,
   epochToIST,
   capitalize,
 };

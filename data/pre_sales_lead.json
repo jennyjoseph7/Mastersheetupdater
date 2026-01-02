@@ -377,14 +377,7 @@
         },
         {
             "name": "urgency_hook",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "pre_sales_campaign",
-                    "campaign_id",
-                    "urgency_hook"
-                ]
-            }
+            "type": "text"
         },
         {
             "name": "why_user_should_avail_this",
@@ -661,7 +654,8 @@
                 "commercial",
                 "personal"
             ],
-            "required": true
+             
+            "required": false
         },
         {
             "name": "preference_remark",
@@ -784,8 +778,8 @@
                 "Insurance Partner",
                 "Used Car Exchange",
                 "Others"
-            ],
-            "required": true
+            ]
+            
         },
         {
             "name": "lead_type",
@@ -797,13 +791,13 @@
                 "no_buying_intent",
                 "purchased_elsewhere",
                 "converted"
-            ],
-            "required": true
+            ]
+            
         },
         {
             "name": "finance_required",
             "type": "bool",
-            "default": "false"
+            "default": false
         },
         {
             "name": "finance_remark",
@@ -812,7 +806,7 @@
         {
             "type": "bool",
             "name": "qualified_lead",
-            "required": true
+            "required": false
         },
         {
             "name": "engangement_events",
@@ -878,6 +872,7 @@
             "default": {
                 "function": "get_from_model_map",
                 "args": [
+                    "pre_sales_lead",
                     "previous_interaction_ids"
                 ]
             },
@@ -1021,17 +1016,17 @@
         },
         {
             "name": "showroom_days_open",
-            "type": "nested_object",
-            "option_others": true,
-            "options": [
-                "Sunday",
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday"
-            ]
+            "force_update": "showroom_id",
+            "type": "list",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "days_open"
+                ]
+            }
+            
         },
         {
             "name": "showroom_facilities_available",
@@ -1046,6 +1041,72 @@
                     "facilities_available"
                 ]
             }
+        },
+        {
+            "name": "region_subdivision_id",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "region_subdivision_id"
+                ]
+            },
+            "type": "text"
+        },
+        {
+            "name": "subdivision_name",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "region_subdivision",
+                    "region_subdivision_id",
+                    "subdivision_name"
+                ]
+            },
+            "type": "text"
+        },
+        {
+            "name": "languages",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "region_subdivision",
+                    "region_subdivision_id",
+                    "languages"
+                ]
+            },
+            "type": "list",
+            "list_type": "text"
+        },
+        {
+            "name": "subdivision_level_guidelines",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "region_subdivision",
+                    "region_subdivision_id",
+                    "subdivision_level_guidelines"
+                ]
+            },
+            "type": "text"
+        },
+        {
+            "name": "subdivision_level_guardrails",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "region_subdivision",
+                    "region_subdivision_id",
+                    "subdivision_level_guardrails"
+                ]
+            },
+            "type": "text"
         },
         {
             "name": "showroom_level_guidelines",
@@ -1234,6 +1295,7 @@
                 "No buying intent",
                 "Just Exploring",
                 "Will call showroom themselves",
+                "Requested Callback",
                 "Purchased elsewhere",
                 "Converted",
                 "Enquired for Pricing",
