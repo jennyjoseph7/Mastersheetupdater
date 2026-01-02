@@ -7,3 +7,8 @@ plotly
 matplotlib
 kaleido
 ai-service @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/ai_service/ai_service-0.0.6-py3-none-any.whl
+langchain
+validators
+cleantext
+langchain-community
+chardet
