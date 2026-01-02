@@ -24,11 +24,11 @@ from communication.connectors.whatsapp_connectors.source_connectors import BaseW
 from communication.connectors.whatsapp_connectors.airtel_connector import *
 import autocrm_validator
 
+from razorpay_service import create_credit_purchase, confirm_payment_success, mark_payment_failed, mark_payment_cancelled
 
 gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
-
 
 MIME_TYPES = {
     'aac': 'audio/aac',
@@ -859,6 +859,9 @@ def dealership_signup(
     human_agent_model = gryd.base_model.Model('human_agent', AUTOCRM_APP_ENTERPRISE_ID)
     primary_contact_email = verify_email(primary_contact_email, human_agent_model, logger = logger, job = job)
     primary_contact_phone = verify_phone_number(primary_contact_phone, region_codes = region.get('country_phone_code'), human_agent_model = human_agent_model, logger = logger, job = job)
+    kwargs['primary_contact_name'] = primary_contact_name
+    kwargs['primary_contact_email'] = primary_contact_email
+    kwargs['primary_contact_phone'] = primary_contact_phone
     with human_agent_model.objects._db._transaction() as db_transaction:
         dealership = dealership_model.post(kwargs)
         human_agent = human_agent_model.post({
@@ -1170,12 +1173,28 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
             deductable = -1*item_quantity
         db.iadd("dealership","dealership_id", dealership_id, "credits_balance", deductable)
     
+    
+    
+    m = AutocrmModel("billing", logger = logger)
+
+    if transaction_type == "credit":        
+        update_data = {
+            "status" : "success",
+            "razorpay_order_id": kwarg.get("razorpay_order_id"),
+            "razorpay_payment_id": kwarg.get("razorpay_payment_id"),
+            "razorpay_signature": kwarg.get("razorpay_signature"),
+            "raw_razorpay_payload": kwarg.get("raw_razorpay_payload"),       
+            "credit_balance_before" : current_balance,
+            "credit_balance_after" : current_balance + item_quantity,
+        }
+
+        m.update(kwarg.get("billing_id"),update_data)
+        return
+
     new_balance = current_balance - item_quantity
     if new_balance <= 0:
         logger.info(f"Dealership {dealership_id} has no credits left")
         ##TODO maybe send email or some action here.
-
-    m = AutocrmModel("billing", logger = logger)
 
     postable = {
         "transaction_date" : tme,
@@ -1194,7 +1213,51 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
         "campaing_id" : campaign_id or "inbound",
         "channel" : channel
     }
+    
     m.post(postable)
+
+    
+@gryd.is_a_task(function_name="payment_service")
+def payment_service(*args, **kwargs):
+
+    def validate_kwargs(required_fields, kwargs):
+        missing = [field for field in required_fields if not kwargs.get(field)]
+        if missing:
+            raise ValueError(f"Missing required parameters: {', '.join(missing)}")
+
+    if not args:
+        raise ValueError("service name is required")
+
+    service = args[0]
+
+    if service == "purchase_credit":
+        validate_kwargs(
+            ["dealership_id", "credits"],
+            kwargs
+        )
+
+        return create_credit_purchase(
+            kwargs["dealership_id"],
+            kwargs["credits"]
+        )
+
+    elif service == "verify_payment":
+        validate_kwargs(["payment_data"], kwargs)
+
+        return confirm_payment_success(kwargs["payment_data"])
+    
+    elif service == "payment_failed":
+        validate_kwargs(["order_id"], kwargs)
+
+        return mark_payment_failed(kwargs["order_id"], kwargs["reason"])
+    
+    elif service == "payment_cancelled":
+        validate_kwargs(["order_id"], kwargs)
+
+        return mark_payment_cancelled(kwargs["order_id"])
+    
+    else:
+        raise ValueError(f"Unsupported payment service: {service}")
 
 if __name__ == "__main__":
 

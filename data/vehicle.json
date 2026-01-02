@@ -315,7 +315,7 @@
         },
         {
             "name": "next_service_due",
-            "type": "number"
+            "type": "text"
         },
         {
             "name": "service_feedback",

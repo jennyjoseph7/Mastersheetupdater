@@ -45,6 +45,10 @@ OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe"
 SESSION_MODEL_NAME = "session"
 BILLING_MODEL_NAME = "billing"
 
+#razorpay
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET")
+
 BASE_PATH = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_PATH, "data")
 SERVICE = os.environ.get("SERVICE", "autocrm-app")

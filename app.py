@@ -14,9 +14,11 @@ import autocrm_validator
 import io
 import json
 import requests
+import hmac
+import hashlib
+from core.razorpay_service import razorpay_webhook_handler
 
-gryd.SERVICE = SERVICE
-gryd.BASE_PATH = BASE_PATH
+gryd.SERVICE = f"{AUTOCRM_APP_ENTERPRISE_ID}-app"   
 QM = gryd.set_queue_manager()
 logger = gryd.hp.get_logger(AUTOCRM_APP_ENTERPRISE_ID)
 app_dict = gryd_routes.make_app(__name__, current_module = __name__)                                                                 
@@ -100,7 +102,6 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
         return gryd_routes.jsonify({"status": "error", "message": "Invalid channel"}), 400, {"Access-Control-Allow-Origin": "*"}
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
 
-
 @app.route("/webhook/ses-status", methods=["POST", "GET"])
 def handle_ses_webhook():
     logger.info(f"SES Webhook received")
@@ -125,14 +126,71 @@ def test_voice_agent(provider, session_id):
     }
     return gryd_routes.jsonify(response), 200, {"Access-Control-Allow-Origin": "*"}
 
+@app.route('/dealership_signup', methods = ["POST"])
+@gryd_routes.signup_decorator
+def dealership_signup(**params):
+    timeout = params.pop('_timeout', 60)
+    try:
+        r, e = gryd.await_result('dealership_signup', AUTOCRM_CORE_SERVICE_NAME, args = params.pop('args', []), kwargs = params.pop('kwargs', {}), compile_results = lambda x, y, z: (hp.make_single(y), hp.make_single(z)), timeout = timeout, **params)
+        if e:
+            raise hp.GrydError(str(e))
+        return r
+    except gryd.TaskTimeout as e:
+        raise gryd_routes.TimeOutError(str(e))
 
-
+@app.route('/get-dealership-details/<agent_user_id>', methods = ["GET"])
+@gryd_routes.payload_decorator()
+def get_dealership_details(agent_user_id, *args, **kwargs):
+    ha = AutocrmModel("human_agent")
+    aid = ha.get(agent_user_id)
+    if not aid:
+        raise ValueError("No such user id: %s for enterprise %s", agent_user_id, AUTOCRM_APP_ENTERPRISE_ID) 
+    dealership_id = aid.get('dealership_id')
+    if not dealership_id:
+        raise ValueError("Dealership is mis-configured for user id: %s", agent_user_id)
+    dm = AutocrmModel("dealership")
+    dealership = dm.get(dealership_id)
+    if not dealership:
+        raise ValueError("Dealership is mis-configured for user id: %s", agent_user_id)
+    return dealership
 
 
 app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
 # app.register_blueprint(twilio_routes)
 # app.register_blueprint(elevanlabs_tatatele_app)
+
+
+
+WEBHOOK_SECRET = "AUTOBOT_DAVEAI_2025"
+
+def verify_webhook_signature(payload_body: bytes, signature: str, secret: str) -> bool:
+    
+    generated_signature = hmac.new(
+        bytes(secret, "utf-8"),
+        msg=payload_body,
+        digestmod=hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(generated_signature, signature)
+
+
+@app.route("/webhook/razorpay", methods=["POST"])
+def razorpay_webhook():
+    payload_body = request.data 
+    signature = request.headers.get("X-Razorpay-Signature", "")
+
+    if not verify_webhook_signature(payload_body, signature, WEBHOOK_SECRET):
+        return jsonify({"status": "error", "message": "Invalid signature"}), 400
+
+    payload = request.json
+
+    try:
+        razorpay_webhook_handler(payload)  
+        return jsonify({"status": "ok"}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
 if __name__ == "__main__":
 
     app.run(debug=True, host=app_dict['host'], port=app_dict['port'])
