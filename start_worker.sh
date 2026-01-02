@@ -91,8 +91,8 @@ function start_default_workers() {
 			nohup execute-cron-continuous 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 		fi
 
-		if [ "$a" == "cron-executor" ];then
-			nohup execute-cron 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+		if [ "$a" == "cron_worker" ];then
+			nohup cron_worker 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 		fi
 
 	done
