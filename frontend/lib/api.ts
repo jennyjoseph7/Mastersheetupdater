@@ -436,3 +436,80 @@ export async function dealershipUpdateDetails(
   console.log("[Dealership Update Details] Response:", responseData);
   return responseData;
 }
+
+export interface DealerLoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface DealerLoginResponse {
+  role: string;
+  token: string;
+  expiry: number;
+  user_id: string;
+  enterprise_id: string;
+  application_id: string;
+  session_id: string;
+}
+
+export async function dealerLogin(
+  data: DealerLoginRequest
+): Promise<DealerLoginResponse> {
+  // Use production API for dealer login
+  const loginApiUrl = "https://autobot-webapp-dev.gryd.in/gryd/login";
+
+  // Transform the request to match API requirements
+  const requestBody = {
+    user_id: data.email,
+    password: data.password,
+    role: "human_agent",
+    attribute: "email",
+    application_id: "autocrm",
+  };
+
+  console.log("[Dealer Login] Calling login API:", loginApiUrl);
+  console.log(
+    "[Dealer Login] Request body:",
+    JSON.stringify(requestBody, null, 2)
+  );
+
+  const res = await fetch(loginApiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
+    },
+    body: JSON.stringify(requestBody),
+    cache: "no-store",
+  });
+
+  console.log(`[Dealer Login] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    let errorMessage = `Login failed (${res.status})`;
+    try {
+      const errorText = await res.text();
+      console.log(`[Dealer Login] Error response text:`, errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage =
+          errorData?.error || errorData?.message || errorText || errorMessage;
+      } catch {
+        // Not JSON, use as is
+        errorMessage = errorText || errorMessage;
+      }
+    } catch (readError) {
+      console.error("[Dealer Login] Failed to read error:", readError);
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Dealer Login] Response:", responseData);
+  return responseData;
+}
