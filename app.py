@@ -126,7 +126,6 @@ def test_voice_agent(provider, session_id):
     }
     return gryd_routes.jsonify(response), 200, {"Access-Control-Allow-Origin": "*"}
 
-
 @app.route('/dealership_signup', methods = ["POST"])
 @gryd_routes.signup_decorator
 def dealership_signup(**params):
@@ -154,7 +153,6 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
     if not dealership:
         raise ValueError("Dealership is mis-configured for user id: %s", agent_user_id)
     return dealership
-
 
 
 app.register_blueprint(ai_service_app.ai_service_routes)

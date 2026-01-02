@@ -1,8 +1,8 @@
 {
-    "name" : "human_agent",
-    "timezone" : "Asia/Kolkata",
+    "name": "human_agent",
+    "timezone": "Asia/Kolkata",
     "model_type": "default",
-    "attributes" : [
+    "attributes": [
         {
             "name": "created",
             "type": "number",
@@ -21,10 +21,10 @@
             }
         },
         {
-            "name" : "agent_name",
-            "type" : "text",
+            "name": "agent_name",
+            "type": "text",
             "required": true,
-            "indexed" : true
+            "indexed": true
         },
         {
             "name": "phone_number",
@@ -35,8 +35,8 @@
             "indexed": true
         },
         {
-            "name" : "email",
-            "type" : "text",
+            "name": "email",
+            "type": "text",
             "required": true,
             "default": "noreply@setemailofuser.com",
             "constraint": {
@@ -83,8 +83,8 @@
             }
         },
         {
-            "name" : "role",
-            "type" : "text",
+            "name": "role",
+            "type": "text",
             "options": [
                 "Dealership Admin",
                 "Workshop Manager",
@@ -98,24 +98,32 @@
             "option_others": true
         },
         {
-            "name" : "active",
-            "type" : "bool",
+            "name": "active",
+            "type": "bool",
             "default": true
         },
         {
-            "name" : "engaged",
-            "type" : "bool",
-            "default" : false
+            "name": "engaged",
+            "type": "bool",
+            "default": false
         },
         {
-            "name" : "availability",
-            "type" : "nested_object",
-            "dict_keys": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            "name": "availability",
+            "type": "nested_object",
+            "dict_keys": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ]
         },
         {
-            "name" : "channels",
-            "type" : "string_list",
-            "options" : [
+            "name": "channels",
+            "type": "string_list",
+            "options": [
                 "rcs",
                 "email",
                 "web_chat",
@@ -144,12 +152,36 @@
             }
         },
         {
-            "name" : "human_agent_id",
-            "type" : "uid",
-            "id" : true,
-            "auto_updater":true,
-            "default" : {
-                "function" : "make_uuid3",
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id"
+        },
+        {
+            "name": "dealer_name",
+            "refers": "parents.dealership.dealer_name"
+        },
+        {
+            "name": "dealer_name",
+            "refers": "parents.dealership.dealer_name"
+        },
+        {
+            "name": "dealer_group_id",
+            "refers": "parents.dealership.dealer_group_id"
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.dealership.region_id"
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.dealership.region_name"
+        },
+        {
+            "name": "human_agent_id",
+            "type": "uid",
+            "id": true,
+            "auto_updater": true,
+            "default": {
+                "function": "make_uuid3",
                 "args": [
                     "agent_name",
                     "dealership_id",
@@ -159,7 +191,7 @@
             }
         }
     ],
-    "parents" : [
+    "parents": [
         "dealership"
     ],
     "has_login": true
