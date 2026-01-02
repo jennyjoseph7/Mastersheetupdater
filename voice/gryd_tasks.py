@@ -10,6 +10,7 @@ import config
 import datetime
 import pytz
 import voice.utils as vhp
+from conversation import converse
 
 logger = hp.get_logger(__name__)
 
@@ -69,8 +70,20 @@ def trigger_voice_call(*args, **kwargs):
         
     }
     session_data = session_model.post(session_obj)
+
+    for x in converse.get_primary_prompt(*args, **{
+        "session_id" : session_data['session_id'],
+        "session_data" : session_data
+    }):
+        if x.get('prompt'):
+            session_data["prompt"] = x.get('prompt')
+            break
+
+
     logger.info(f"Session for Voice Call: {session_data}")
     provider = user_data.get("provider", "tatatele")
+
+
 
     response = providers.make_call(provider, session_data, *args, **kwargs)
 
@@ -110,8 +123,8 @@ def post_billing_object(status, session_id, duration = 1, *args, **kwargs):
         "dealership_id" : session_data.get("dealership_id"),
         "currency" : config.AUTOCRM_CURRENCY,
         "status" : "success",
-        "campaign_id":,
-        "channel": ,
+        "campaign_id": session_data.get('campaign_id'),
+        "channel": session_data.get('channel', 'voice_phone'),
     }
     
     x = {}
@@ -133,8 +146,24 @@ def post_billing_object(status, session_id, duration = 1, *args, **kwargs):
         }
 
     obj.update(x)
-    m = gryd.base_model.Model(config.BILLING_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
-    return m.post(obj)
+    
+    gryd.create_async_task(
+        "post_billing",
+        config.AUTOCRM_CORE_SERVICE_NAME,
+        args = [
+            obj["dealership_id"],
+            obj["transaction_type"],
+            obj["item_name"],
+            obj["item_description"],
+            obj["transaction_date"],
+            obj["item_quantity"],
+            obj["item_price"],
+            obj["item_unit"],
+            obj["currency"]
+        ]
+    )
+    # m = gryd.base_model.Model(config.BILLING_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
+    # return m.post(obj)
 
 def format_transcript(transcript, start_time_unix):
     #praveen gave this format but i think this deosnt make sense as timestamps will be diff for user and agent

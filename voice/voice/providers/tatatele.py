@@ -23,13 +23,13 @@ class CloudPhoneAPI:
             "Authorization": f"Bearer {TATATELE_API_TOKEN}"
         }
 
-    def click_to_call(self, agent_number, customer_number, caller_id, custom_id=None, timeout=1200):
+    def click_to_call(self, agent_number, customer_number, caller_id = None, custom_id=None, timeout=1200):
         #first make call to agent then connect to customer - need voice packets first
         url = f"{self.TATATELE_BASE_URL}/click_to_call"
         body = {
             "agent_number":agent_number,
             "destination_number": customer_number,
-            "caller_id": caller_id,
+            "caller_id": caller_id or agent_number,
             "async": 1,
             "custom_identifier": custom_id,
             "call_timeout": timeout,
