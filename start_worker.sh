@@ -92,7 +92,7 @@ function start_default_workers() {
 		fi
 
 		if [ "$a" == "cron_worker" ];then
-			nohup cron_worker 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+			nohup cron_worker --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 		fi
 
 	done
