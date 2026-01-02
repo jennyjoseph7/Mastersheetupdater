@@ -22,6 +22,7 @@ from communication.connectors.communication_helpers import _wait_for_next_minute
 
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 from agents.get_whatsapp_template_agent import get_whatsapp_template
+from agents.get_email_template_agent import get_email_template
 from communication.connectors.email_communication import communication_sender
 from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,WHATSAPP_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
@@ -740,7 +741,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         return
 
     logger.info(f"Lead found for lead_id={lead_id}")
-
+    logger.info(f"campaign objective--{campaign_details.get('campaign_objective')}")
     if not channel:
         channel = get_channel(lead_data, campaign_details)
 
@@ -756,10 +757,24 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         sender_name=EMAIL_SENDER_NAME
         provider_name = EMAIL_PROVIDER_NAME
         #TODO:call prince task to get the email message and suitable subject.
-        template_data={
-            "subject": "Service Reminder",
-            "message": "This is a service reminder. Please visit your nearest service centre or contact us for assistance."
-        }
+        template_data=get_email_template(
+            lead_id=lead_id,
+            campaign_type=campaign_type,
+            campaign_objective=campaign_details.get("campaign_objective"),
+            # campaign_objective= [
+            #     "Free Service Due Reminder"
+            # ],
+            lead_info={}
+        )
+        
+        logger.info(f"EMAIL TEMPLATE DATA---{template_data}")
+        if not template_data:
+            logger.info(f"Since the template data was empty. We are setting a default email template..")
+            template_data={
+                "subject": "Test Mail",
+                "message": "This is a default email template for testing.."
+            }
+            
     elif channel in ("whatsapp_chat", "sms", "rcs"):
         template_data = get_whatsapp_template(
             lead_id=lead_id,
