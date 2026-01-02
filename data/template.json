@@ -100,6 +100,16 @@
       "type": "nested_object"
     },
     {
+      "name": "email_subject",
+      "type": "text",
+      "required":false
+    },
+    {
+      "name":"email_body",
+      "type":"text",
+      "required": false
+    },
+    {
       "name": "language",
       "type": "text",
       "default": "english",

@@ -49,12 +49,17 @@ async def user_session(**user_data):
         tag = "input_client"
     )
 
+    t = time.time()
     output_client = ws.MessagingClient(
         session_id,
         tag = "output_client"
     )
 
     provider = providers.get_provider(user_data.get('provider', 'twilio'))
+    tp = time.time() - t
+    tracker = utils.matrics.get_latency_tracker()
+
+    tracker.track("inpsfkds", 1000*tp)
 
     from voice.voice.providers.twilio import MessageHandler, call
     IM = InputManager(
@@ -88,7 +93,7 @@ async def user_session(**user_data):
     session_id,
     input_queue,
     output_queue,
-    "You are a helful assistant.",
+    user_data.get('prompt', 'You are a useful assistant.'),
     10)
 
     await VB.create_session()

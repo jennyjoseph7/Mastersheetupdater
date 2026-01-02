@@ -265,14 +265,14 @@ class CallSession:
             }))
 
             # Send buffered media immediately - not sure why jay added?.
-            for chunk in self.media_buffer:
-                logger.info(f"[{self.call_id}] FLUSHING buffered chunk (len={len(chunk)})")
-                try:
-                    await self.dave_ws.send(json.dumps({"user_audio_chunk": chunk}))
-                    logger.info(f"[{self.call_id}] -> FLUSHED buffered chunk")
-                except:
-                    pass
-            self.media_buffer.clear()
+            # for chunk in self.media_buffer:
+            #     logger.info(f"[{self.call_id}] FLUSHING buffered chunk (len={len(chunk)})")
+            #     try:
+            #         await self.dave_ws.send(json.dumps({"user_audio_chunk": chunk}))
+            #         logger.info(f"[{self.call_id}] -> FLUSHED buffered chunk")
+            #     except:
+            #         pass
+            # self.media_buffer.clear()
 
             # Start parallel readers
             async def tatatele_reader():
@@ -616,12 +616,12 @@ def make_call_tatatele(session_data, *args, **kwargs):
 
         return True
 
-    if session_id and not session_started:
-        session_started = start_session(session_id)
+    # if session_id and not session_started:
+    #     session_started = start_session(session_id)
 
     try:
         logger.info("Originate call to %s via tatatele", customer_number)
-        response = tatatele_client.click_to_call_support(
+        response = tatatele_client.click_to_call(
             caller_id,
             customer_number,
             custom_id= session_id #custom_identifier
@@ -629,9 +629,9 @@ def make_call_tatatele(session_data, *args, **kwargs):
 
         logger.info(f"Tatatele originate response: {response}")
         call_id = response.get('ref_id')
-        if call_id and not session_started:
-            logger.info(f"No session id provider starting session with call_id: {call_id}")
-            start_session(call_id)
+        # if call_id and not session_started:
+        #     logger.info(f"No session id provider starting session with call_id: {call_id}")
+        #     start_session(call_id)
 
         if not session_started:
             response["error_message"] = f"Session was not started for call_id: {call_id}"
@@ -642,6 +642,25 @@ def make_call_tatatele(session_data, *args, **kwargs):
     except Exception as exc:
         logger.exception("Tatatele call initiation failed")
         return {"error": str(exc)}
+
+#delete this after testing
+def start_session(call_id, session_data):  
+        if call_id not in call_sessions:
+            session = CallSession(call_id)
+            session.session_data = session_data
+            call_sessions[call_id] = session
+
+            logger.info(f"[{call_id}] Starting Connection to websocket bridge")
+            external_wss = f"{config.AUTOCRM_WEBSOCKET_BASE_URL}/tatatele/user/{session_data['room_id']}"
+
+            async def start_bridge():
+                await session.connect_external_websocket(external_wss)
+
+            run_async_in_thread(start_bridge())
+        else:
+            logger.info(f"[{call_id}] Session already exists, bridge likely running")
+
+        return True
 
 # ---------- Flask endpoints ----------
 
@@ -657,7 +676,7 @@ def outbound_call(*args, **kwargs):
     number = data.get("number")
     if not number:
         return jsonify({"error": "Phone number is required"}), 400
-    response = make_call_tatatele(number, session_data = data)
+    response = make_call_tatatele(data)
     if  response.get("error"):
         logger.exception(f"Tatatele originate failed: {response}")
         return jsonify(response), 500
@@ -666,7 +685,7 @@ def outbound_call(*args, **kwargs):
 
 @app.route("/smartflo/webhook", methods=["POST"])
 def smartflo_webhook():
-    import gryd_tasks
+    #from voice import gryd_tasks
     raw = request.get_data()
     payload = tatatele_status_map(raw)
 
@@ -680,7 +699,8 @@ def smartflo_webhook():
 
     logger.info(f"[{call_id}] Incoming payload: {json.dumps(payload, indent=4)}")
 
-    if status in ["contacted"]:
+    if  payload ["status"] in ["Answered by customer"]:
+        start_session(call_id, {"room_id":"ambal_auto"})
         #patch the statuss
         #gryd_tasks.post_billing_object(status, session_id)
         pass

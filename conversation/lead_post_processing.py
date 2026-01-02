@@ -103,12 +103,21 @@ def post_session_process(*args, **kwargs):
     user_or_vehicle_data = get_extra_data(session_id,session_data)
     mlogger.info("user_or_vehicle_data == {}".format(user_or_vehicle_data))
     
+    summary_updated = get_summary(session_id,session_data)
+    mlogger.info("summary_update == {}".format(summary_updated))
+
+    updated_lead_data["lead_summary"] = summary_updated
     
-    if campaign_type == "post-sales":
+    if campaign_type == "post_sales":
+        if user_or_vehicle_data.get("vehicle_persona_summary"):
+            updated_lead_data["vehicle_persona_summary"] = user_or_vehicle_data.get("vehicle_persona_summary")
+    
+    if campaign_type == "post_sales":
         with get_pg_connector() as pg:
+            mlogger.info("updating vehicle == {}".format(user_or_vehicle_data))
             pg.update("vehicle","vehicle_id",session_data.get("user_data").get("vehicle_id"),user_or_vehicle_data)
     
-    if campaign_type == "pre-sales":
+    if campaign_type == "pre_sales":
         with get_pg_connector() as pg:
             pg.update("person","user_id",session_data.get("user_data").get("user_id"),user_or_vehicle_data)
 
@@ -116,6 +125,28 @@ def post_session_process(*args, **kwargs):
         pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
         pg.update("session","session_id",session_id,session_update_data)
     
+def get_summary(session_id,session_data):
+    messages = session_data.get("messages")
+
+    existing_summary = session_data.get("user_data").get("lead_summary")
+    if not messages:
+        return existing_summary if existing_summary else ""
+    if existing_summary:
+        prompt = f"""
+            You are a summariser agent. I will provide you with the summary from the previous session. You are to update the existing summary using the current session history. Keep the overall summary brief. Try to maintain all pertinent information about their sessions in the summary. 
+            Previous session summary - {existing_summary}
+            Current session history - {messages}
+            Provide the new updated summary.
+        """
+    else:
+        prompt = f"""
+            You are a summariser agent. You are to create a brief summary using the current session history. 
+            Current session history - {messages}
+            Provide the Summary.
+        """
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    mlogger.info("get_appt_date_time_purpose prompt response ======= {}".format(resp))
+    return resp
 def get_lead_variables(campaign_type):
     """
         Get the list of lead variables for the given campaign type.
@@ -554,11 +585,6 @@ def get_lead_variables(campaign_type):
             ]
         },
         {
-            "name": "profile_summary",
-            "title": "Profile Summary",
-            "type": "text"
-        },
-        {
             "name": "preferred_communication_channel",
             "title": "Preferred Communication Channel",
             "type": "text",
@@ -841,7 +867,34 @@ def get_extra_data(session_id,session_data_cache):
     """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
     mlogger.info("got extra data response as ===== {}".format(resp))
-    return hp.json.loads(resp)
+
+    updated_dict = hp.json.loads(resp)
+    mlogger.info("getting extra data summary for campaign_type {} and updated_dict {}".format(campaign_type,updated_dict))
+    if campaign_type == "post-sales":
+        current_summary = lead_data.get("vehicle_persona_summary")
+        mlogger.info("current_summary == {}".format(current_summary))
+        if not current_summary:
+            prompt = f"""
+                You are a summariser agent. You are to create a brief summary of the information aboout the vehicle that is mentioned in the conversation history provided below. Only keep the relevent information about the vehicle itself.
+
+                Conversation history - {message_history}
+                Provide the Summary.
+
+            """
+        else:
+            prompt = f"""
+            You are a summariser agent. You are to update the summary of the vehicle that is mentioned in the conversation history provided below. Only keep the relevent information about the vehicle itself. Use the previous summary as a starting point. Add more information to it based on the conversation history.
+
+            Previous summary - {current_summary}
+            Conversation history - {message_history}
+            Provide the updated summary.
+            """
+        mlogger.info("vehicle summary prompt == {}".format(prompt))
+        resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+        mlogger.info("got vehicle summary response as ===== {}".format(resp))
+        updated_dict["vehicle_persona_summary"] = resp
+
+    return updated_dict
 
 
 

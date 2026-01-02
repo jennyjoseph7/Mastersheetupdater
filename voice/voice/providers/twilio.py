@@ -46,7 +46,19 @@ twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if TWILIO_ACCOUNT_
 
 
 
-def call(number, session_id):
+def make_call_twilio(session_data, *args, **kwargs):
+    number = session_data.get("phone_number", "918850988794") #for test
+    session_id = session_data.get('session_id')
+    user_id = session_data.get('user_id')
+
+    from ..core.voice_app import run_async_session
+    thread = Thread(
+        target=run_async_session,
+        kwargs=session_data,
+        daemon=True
+    )
+    thread.start()
+
     try:
         call = twilio_client.calls.create(
             status_callback=f"https://{request.headers.get('host')}/twilio-callback-events",
@@ -65,10 +77,12 @@ def call(number, session_id):
             url=f"https://{request.headers.get('host')}/outbound-call-twiml?session_id={session_id}"
         )
         logger.info(f"Twilio call initiated with SID: {call.sid}")
-        return call
+        return call.__dict__
     except TwilioRestException as exc:
         logger.error(f"Twilio error: {exc.msg} (code: {exc.code})")           
-        return
+        return {
+            "error": exc.msg
+        }
 
 
 
@@ -89,16 +103,16 @@ def outbound_call():
     #temp for now
     # Start the user session in a background thread
     # Import here to avoid circular import
-    from ..core.voice_app import run_async_session
-    thread = Thread(
-        target=run_async_session,
-        kwargs=data,
-        daemon=True
-    )
-    thread.start()
+    # from ..core.voice_app import run_async_session
+    # thread = Thread(
+    #     target=run_async_session,
+    #     kwargs=data,
+    #     daemon=True
+    # )
+    # thread.start()
 
     # Initiate the Twilio call
-    response = call(number, session_id)
+    response = make_call_twilio(data)
 
     return jsonify({"success": True, "message": "Call initiated", "callSid": response.sid})
 

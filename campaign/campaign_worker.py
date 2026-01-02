@@ -20,13 +20,13 @@ gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
 logger.info(f"GRYD SERVICE---{gryd.SERVICE}")
-from communication.connectors.whatsapp_connectors.load_providers import load_providers
+from communication.connectors.load_providers import load_providers
 # from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 
 def WARM_UP():
     logger.info("WARM_UP CALLED")
     with get_pg_connector() as pg:
-        load_providers(provider_name=WHATSAPP_PROVIDER_NAME)
+        load_providers(["whatsapp","email"])
         pass    
     return
 
