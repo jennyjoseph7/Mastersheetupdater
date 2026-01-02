@@ -455,6 +455,84 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
   }
 }
 
+// Fetch Overall Campaign Summary ---
+async function fetchCampaignSummary() {
+  try {
+    const url = `${APP_BASE_URL}/gryd/db/objects/overall_campaign_summary`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: HEADERS,
+    });
+
+    if (!response.ok && response.status === 405) {
+      const retryResponse = await fetch(url, {
+        method: "POST",
+        headers: HEADERS,
+        body: "",
+      });
+      if (!retryResponse.ok) {
+        const errorText = await retryResponse.text();
+        throw new Error(`API Error: ${retryResponse.status} ${errorText}`);
+      }
+      const json = await retryResponse.json();
+      return json?.data ?? [];
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.status} ${errorText}`);
+    }
+
+    const json = await response.json();
+    return json?.data ?? [];
+  } catch (error) {
+    console.error("[fetchCampaignSummary] Fetch error:", error);
+    return [];
+  }
+}
+
+// Fetch Campaign Performance Summary ---
+async function fetchCampaignPerformanceSummary(campaignId) {
+  try {
+    const url = `${APP_BASE_URL}/gryd/db/objects/campaign_performance_summary${campaignId ? `?campaign_id=${campaignId}` : ''}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: HEADERS,
+    });
+
+    if (!response.ok && response.status === 405) {
+      const retryResponse = await fetch(url, {
+        method: "POST",
+        headers: HEADERS,
+        body: "",
+      });
+      if (!retryResponse.ok) {
+        const errorText = await retryResponse.text();
+        throw new Error(`API Error: ${retryResponse.status} ${errorText}`);
+      }
+      const json = await retryResponse.json();
+      return json?.data ?? [];
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.status} ${errorText}`);
+    }
+
+    const json = await response.json();
+    // If campaignId is provided, return the matching campaign, otherwise return all
+    if (campaignId && json?.data) {
+      return json.data.find((item) => item.campaign_id === campaignId) || null;
+    }
+    return json?.data ?? [];
+  } catch (error) {
+    console.error("[fetchCampaignPerformanceSummary] Fetch error:", error);
+    return null;
+  }
+}
+
 // --- Helpers ---
 function epochToIST(epochTime) {
   if (!epochTime) return "";
@@ -493,6 +571,8 @@ export {
   fetchPostSalesCampaigns,
   fetchDealershipCampaigns,
   fetchCampaignObjectives,
+  fetchCampaignSummary,
+  fetchCampaignPerformanceSummary,
   epochToIST,
   capitalize,
 };

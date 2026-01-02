@@ -3,7 +3,7 @@ export interface Campaign {
   name: string
   createdOn: string
   channelsUsed: string[]
-  status: "Live" | "Completed" | "Paused" | "Draft"
+  status: "Live" | "Completed" | "Paused" | "Drafted"
   totalLeads?: number
   conversions?: number
   budget?: number

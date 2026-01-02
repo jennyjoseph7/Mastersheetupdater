@@ -51,6 +51,10 @@
       "refers": "parents.communication_credential.region_name"
     },
     {
+      "name":"dealership_id",
+      "refers": "parents.communication_credential.dealership_id"
+    },
+    {
       "name": "dealer_name",
       "refers": "parents.communication_credential.dealer_name"
     },

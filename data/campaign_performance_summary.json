@@ -44,6 +44,10 @@
         "type": "nested_object"
       },
       {
+        "name":"intent_distribution_by_channel",
+        "type":"nested_object"
+      },
+      {
         "name": "campaign_performance_summary_id",
         "type": "uid",
         "id": true,

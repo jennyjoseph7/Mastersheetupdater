@@ -13,12 +13,982 @@
       }
     ],
     "channel": "whatsapp_chat",
+    "created": 1765535465.9555242,
+    "updated": 1766733999.7312648,
+    "language": "english",
+    "lead_tags": ["service-due"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_service_followup_8to14days text english post-sales general service due reminder service followup service reminder repeat service booking hey your service for vehicle_model is due on service_due_date . you mentioned you will decide within 8 to 14 days. please let us know whenever you need assistance with the booking.",
+    "template_id": "01kazbg0459bx91tgdvtge6rsq",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_Service_FollowUp_8to14Days",
+    "template_type": "text",
+    "disposition_tags": ["reached", "will-decide-8-14-days"],
+    "template_message": "Hey, your service for {{vehicle_model}} is due on {{service_due_date}}. You mentioned you will decide within 8 to 14 days. Please let us know whenever you need assistance with the booking.",
+    "campaign_objective": [
+      "General Service Due Reminder",
+      "Service Followup",
+      "Service Reminder",
+      "repeat service booking"
+    ],
+    "template_variables": ["vehicle_model", "service_due_date"],
+    "template_button_payloads": [
+      "autobot_service_followup_8to14days-book_a_service",
+      "autobot_service_followup_8to14days-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book Free Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535639.3129823,
+    "updated": 1766734039.5176342,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_freeservice_generic_v1 text english post-sales free service reminder hello your complimentary vehicle service is available. visit the nearest workshop to redeem your free service.",
+    "template_id": "01kbcp8rfn233zsyca59mr09db",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_FreeService_generic_v1",
+    "template_type": "text",
+    "template_message": "Hello, Your complimentary vehicle service is available. Visit the nearest workshop to redeem your free service.",
+    "campaign_objective": ["Free service reminder"],
+    "template_variables": [],
+    "template_button_payloads": [
+      "autobot_freeservice_generic_v1-book_free_service",
+      "autobot_freeservice_generic_v1-request_a_callback"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Schedule a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535347.3803873,
+    "updated": 1766734005.1942406,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "warranty_expiry_alert_offer text english post-sales increase insurance warranty renewals warranty expiry offer extended warranty offer hey there your vehicle_model s warranty is expiring on warranty_expiry_date . don t miss out on our special campaign_offer . contact dealer_name today",
+    "template_id": "01kaxa87v6q0sb6b87gt6wc6nx",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "warranty_expiry_alert_offer",
+    "template_type": "text",
+    "template_message": "Hey there! Your {'vehicle_model'}'s warranty is expiring on {'warranty_expiry_date'}. Don't miss out on our special {'campaign_offer'}. Contact {'dealer_name'} today!",
+    "campaign_objective": [
+      "Increase Insurance & Warranty Renewals",
+      "Warranty Expiry Offer",
+      "Extended Warranty Offer"
+    ],
+    "template_variables": [
+      "dealer_name",
+      "campaign_offer",
+      "warranty_expiry_date",
+      "vehicle_model"
+    ],
+    "template_button_payloads": [
+      "warranty_expiry_alert_offer-schedule_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "pending",
+    "buttons": [
+      {
+        "text": "Insurance Renewal",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766380230.5997906,
+    "updated": 1766734007.8305585,
+    "language": "english",
+    "lead_tags": ["insurance-renewal", "new-buyer", "high-intent"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_insurance_renewal_reminder_01 text english post-sales insurance renewal reminder hello person_name your vehicle with registration number reg_number has an insurance renewal coming up soon. don t miss out on protecting your ride renew now to stay covered and safe on the road.",
+    "template_id": "01kd27aacqyh7taeacgr147gm5",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_insurance_renewal_reminder_01",
+    "template_type": "text",
+    "template_message": "Hello {{person_name}}, your vehicle with registration number {{reg_number}} has an insurance renewal coming up soon. Don't miss out on protecting your ride! Renew now to stay covered and safe on the road.",
+    "campaign_objective": ["Insurance Renewal Reminder"],
+    "template_variables": ["person_name", "reg_number"],
+    "template_button_payloads": [
+      "autobot_insurance_renewal_reminder_01-insurance_renewal",
+      "autobot_insurance_renewal_reminder_01-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Get a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766054643.9197686,
+    "updated": 1766734043.2962346,
+    "language": "english",
+    "lead_tags": ["ccp-campaign", "vehicle-owner", "high-intent"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_ccp_regnumber_followup text english post-sales ccp hello we have some exclusive offers tailored for your vehicle with registration number reg_number . don t miss the chance to upgrade or service your car with special benefits. reach out now to know more and enhance your driving experience",
+    "template_id": "01kcrgyeadc37x3kz64qh7gkt2",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_ccp_regnumber_followup",
+    "template_type": "text",
+    "template_message": "Hello! We have some exclusive offers tailored for your vehicle with registration number {{reg_number}}. Don't miss the chance to upgrade or service your car with special benefits. Reach out now to know more and enhance your driving experience!",
+    "campaign_objective": ["CCP"],
+    "template_variables": ["reg_number"],
+    "template_button_payloads": [
+      "autobot_ccp_regnumber_followup-get_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766126105.4019728,
+    "updated": 1766734013.2025564,
+    "language": "english",
+    "lead_tags": ["service-overdue", "regular-customer", "high-intent"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_service_overdue_reminder_001 text english post-sales service overdue dear customer our records show your vehicle service is overdue. ensure your car stays in top condition by booking a service with us today. we re here to assist you for a smooth experience. please choose an option below to proceed.",
+    "template_id": "01kctn399nzh40gqnbtc8gkg9x",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_service_overdue_reminder_001",
+    "template_type": "text",
+    "template_message": "Dear Customer, our records show your vehicle service is overdue. Ensure your car stays in top condition by booking a service with us today. We're here to assist you for a smooth experience. Please choose an option below to proceed.",
+    "campaign_objective": ["Service Overdue"],
+    "template_variables": [],
+    "template_button_payloads": [
+      "autobot_service_overdue_reminder_001-book_a_service",
+      "autobot_service_overdue_reminder_001-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book Free Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766134824.6714137,
+    "updated": 1766734015.767696,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_free_service_notification_reg_number text english post-sales free service due reminder free service reminder good news your vehicle no 1 is eligible for a free service. complete it to keep your vehicle in top condition. would you like to book your free service now",
+    "template_id": "01kcr1z34m7an59wj5gm87kq1z",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_Free_Service_Notification_Reg_Number",
+    "template_type": "text",
+    "template_message": "Good news! Your vehicle no: {{1}} is eligible for a free service. Complete it to keep your vehicle in top condition. Would you like to book your free service now?",
+    "campaign_objective": [
+      "Free Service Due Reminder",
+      "Free Service Reminder"
+    ],
+    "template_variables": [],
+    "template_button_payloads": [
+      "autobot_free_service_notification_reg_number-book_free_service",
+      "autobot_free_service_notification_reg_number-request_a_callback"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Insurance Renewal",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766127871.8297842,
+    "updated": 1766734050.5594378,
+    "language": "english",
+    "lead_tags": ["insurance-renewal", "renewal-reminder"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_insurancerenewal_reminder1 text english post-sales insurance renewal reminder hello just a friendly reminder to renew your vehicle insurance soon and stay protected. if you have any questions or need assistance with the renewal process we’re here to help. don’t wait secure your coverage today",
+    "template_id": "01kctppassv7atf3s94h11r5ej",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_insurancerenewal_reminder1",
+    "template_type": "text",
+    "template_message": "Hello! Just a friendly reminder to renew your vehicle insurance soon and stay protected. If you have any questions or need assistance with the renewal process, we’re here to help. Don’t wait, secure your coverage today!",
+    "campaign_objective": ["Insurance Renewal Reminder"],
+    "template_variables": [],
+    "template_button_payloads": [
+      "autobot_insurancerenewal_reminder1-insurance_renewal",
+      "autobot_insurancerenewal_reminder1-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Get a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766054623.4460456,
+    "updated": 1766734021.2297127,
+    "language": "english",
+    "lead_tags": ["insurance-renewal", "policy-due", "customer-followup"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_insurance_renewal_reminder text english post-sales insurance renewal reminder hello your vehicle with registration number reg_number is due for insurance renewal soon. don t miss out on continued coverage. we re here to assist you with the renewal process for a hassle-free experience.",
+    "template_id": "01kcrgxv787s79pxkd178xb1g5",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_insurance_renewal_reminder",
+    "template_type": "text",
+    "template_message": "Hello, your vehicle with registration number {{reg_number}} is due for insurance renewal soon. Don't miss out on continued coverage. We're here to assist you with the renewal process for a hassle-free experience.",
+    "campaign_objective": ["Insurance Renewal Reminder"],
+    "template_variables": ["reg_number"],
+    "template_button_payloads": [
+      "autobot_insurance_renewal_reminder-get_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766058753.5902784,
+    "updated": 1766734055.7994153,
+    "language": "english",
+    "lead_tags": ["service-due", "regular-customer"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_free_service_due_reminder_regnumber text english post-sales free service due remindergeneral service due reminder hello just a reminder that your vehicle with registration number reg_number is due for its free service soon. keeping up with your service ensures peak performance and safety. schedule your service today and keep your drive smooth",
+    "template_id": "01kcrmqgtcxfpv8prdfkebm7nw",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_free_service_due_reminder_regnumber",
+    "template_type": "text",
+    "template_message": "Hello! Just a reminder that your vehicle with registration number {{reg_number}} is due for its free service soon. Keeping up with your service ensures peak performance and safety. Schedule your service today and keep your drive smooth!",
+    "campaign_objective": [
+      "Free Service Due ReminderGeneral Service Due Reminder"
+    ],
+    "template_variables": ["reg_number"],
+    "template_button_payloads": [
+      "autobot_free_service_due_reminder_regnumber-book_a_service",
+      "autobot_free_service_due_reminder_regnumber-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535576.4405253,
+    "updated": 1766734031.7001579,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_first_service_reminder text english post-sales first-service reminder hello this is a reminder that your vehicle_model is due for its first service around service_due_date . you may schedule a convenient slot at workshop_name .",
+    "template id": "01kaznjb9rgt2tjwvdvnzeb04x",
+    "template_id": "MTc2NTUzNTU4MyA3MTA1NTg3",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_First_Service_Reminder",
+    "template_type": "text",
+    "template_message": "Hello, this is a reminder that your {{vehicle_model}} is due for its first service around {{service_due_date}}. You may schedule a convenient slot at {{workshop_name}}.",
+    "campaign_objective": ["First-Service Reminder"],
+    "template_variables": [
+      "workshop_name",
+      "vehicle_model",
+      "service_due_date"
+    ],
+    "template_button_payloads": [
+      "autobot_first_service_reminder-request_a_call_back",
+      "autobot_first_service_reminder-book_a_service"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book Free Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535651.2927816,
+    "updated": 1766734034.2541747,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_freeservice_generic_v2 text english post-sales free service reminder hello you are eligible for a free vehicle service. make sure to avail it before the offer expires.",
+    "template_id": "01kbcpcmqgpgkqtjfxqny4nbgd",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_FreeService_generic_v2",
+    "template_type": "text",
+    "template_message": "Hello, You are eligible for a free vehicle service. Make sure to avail it before the offer expires.",
+    "campaign_objective": ["Free service reminder"],
+    "template_variables": [],
+    "template_button_payloads": [
+      "autobot_freeservice_generic_v2-book_free_service",
+      "autobot_freeservice_generic_v2-request_a_callback"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "View Available Slots",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535565.89419,
+    "updated": 1766734058.4508505,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_inactive_customer_reactivation text english post-sales inactive customer reactivation cold list activation inactive customer retention hi we noticed that your vehicle_model has not visited workshop_name for servicing for a long time. we would be happy to assist with a routine checkup or service whenever convenient. would you like us to share available service slots",
+    "template_id": "01kazjr9gz98qgndg65p9k7myk",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_Inactive_Customer_Reactivation",
+    "template_type": "text",
+    "template_message": "Hi, we noticed that your {{vehicle_model}} has not visited {{workshop_name}} for servicing for a long time. We would be happy to assist with a routine checkup or service whenever convenient. Would you like us to share available service slots?",
+    "campaign_objective": [
+      "Inactive Customer Reactivation",
+      "Cold List Activation",
+      "Inactive Customer Retention"
+    ],
+    "template_variables": ["vehicle_model", "workshop_name"],
+    "template_button_payloads": [
+      "autobot_inactive_customer_reactivation-view_available_slots",
+      "autobot_inactive_customer_reactivation-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535515.1056175,
+    "updated": 1766734036.8820267,
+    "language": "english",
+    "lead_tags": ["service_due"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_service_followup_after90days text english post-sales service followup service reminder repeat service booking hi your vehicle_model service due was on service_due_date . since you will decide after 90 days regarding the service of your vehicle_model we want to remind you that please complete your vehicle service timely to ensure good health of your vehicle for a long run.",
+    "template_id": "01kazbz6c24fktnmvz7gnc5b2w",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_Service_FollowUp_After90Days",
+    "template_type": "text",
+    "disposition_tags": ["reached", "will-decide-after-90-days"],
+    "template_message": "Hi, your {{vehicle_model}} service due was on {{service_due_date}}. Since you will decide after 90 days regarding the service of your {{vehicle_model}}, we want to remind you that please complete your vehicle service timely to ensure good health of your vehicle for a long run.",
+    "campaign_objective": [
+      "Service Followup",
+      "Service Reminder",
+      "repeat service booking"
+    ],
+    "template_variables": ["service_due_date", "vehicle_model"],
+    "template_button_payloads": [
+      "autobot_service_followup_after90days-book_a_service",
+      "autobot_service_followup_after90days-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Get a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766054601.8413372,
+    "updated": 1766734047.8456428,
+    "language": "english",
+    "lead_tags": ["inactive-customer", "early-engagement", "service-offer"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_reactivate_inactive_customer_regnumber text english post-sales inactive customer reactivation hello we noticed your vehicle with registration number reg_number has been inactive for a while. we’re here to assist you with exclusive offers and services to get you back on the road smoothly. ready to reconnect",
+    "template_id": "01kcrgx6xedw70cjf3w3ns85we",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_reactivate_inactive_customer_regnumber",
+    "template_type": "text",
+    "template_message": "Hello! We noticed your vehicle with registration number {{reg_number}} has been inactive for a while. We’re here to assist you with exclusive offers and services to get you back on the road smoothly. Ready to reconnect?",
+    "campaign_objective": ["Inactive Customer Reactivation"],
+    "template_variables": ["reg_number"],
+    "template_button_payloads": [
+      "autobot_reactivate_inactive_customer_regnumber-get_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Insurance Renewal",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766128348.7624052,
+    "updated": 1766734063.7075083,
+    "language": "english",
+    "lead_tags": ["insurance-renewal", "high-intent", "service-due"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_insurance_renewal_reminder_01 text english post-sales insurance renewal reminder hello your vehicle s insurance is due for renewal soon. to keep yourself protected and enjoy uninterrupted benefits consider renewing your insurance today. our team is here to assist you with any queries or help you renew easily. feel free to reach out anytime",
+    "template_id": "01kctq3q9ft06sqczzj4aamq82",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_insurance_renewal_reminder_01",
+    "template_type": "text",
+    "template_message": "Hello! Your vehicle's insurance is due for renewal soon. To keep yourself protected and enjoy uninterrupted benefits, consider renewing your insurance today. Our team is here to assist you with any queries or help you renew easily. Feel free to reach out anytime!",
+    "campaign_objective": ["Insurance Renewal Reminder"],
+    "template_variables": [],
+    "template_button_payloads": [
+      "autobot_insurance_renewal_reminder_01-insurance_renewal",
+      "autobot_insurance_renewal_reminder_01-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Get a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766054590.3834157,
+    "updated": 1766734053.0996838,
+    "language": "english",
+    "lead_tags": ["service-due", "regular-customer"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_free_service_due_reminder_regnumber text english post-sales free service due remindergeneral service due reminder hello your vehicle with registration number reg_number is due for its free service. keep your car running smoothly and avoid unexpected issues. schedule your service at your convenience. we re here to help",
+    "template_id": "01kcrgrg0p6bd0cc9yyh3ffkdv",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_free_service_due_reminder_regnumber",
+    "template_type": "text",
+    "template_message": "Hello, your vehicle with registration number {{reg_number}} is due for its free service. Keep your car running smoothly and avoid unexpected issues. Schedule your service at your convenience. We're here to help!",
+    "campaign_objective": [
+      "Free Service Due ReminderGeneral Service Due Reminder"
+    ],
+    "template_variables": ["reg_number"],
+    "template_button_payloads": [
+      "autobot_free_service_due_reminder_regnumber-get_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Check Offers",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535429.6053731,
+    "updated": 1766733980.800219,
+    "language": "english",
+    "lead_tags": ["service-due", "retention"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_service_discount_enquiry text english post-sales service discount service booking hello we noticed you were exploring service options for your vehicle_model . while discounts vary by workshop we can help you check the best available offer at workshop_name . your service is due on service_due_date . would you any need assistance",
+    "template_id": "01kazax15650cy6d1ycw10qj1v",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_Service_Discount_Enquiry",
+    "template_type": "text",
+    "disposition_tags": ["reached", "looking-for-a-discount"],
+    "template_message": "Hello, we noticed you were exploring service options for your {{vehicle_model}}. While discounts vary by workshop, we can help you check the best available offer at {{workshop_name}}. Your service is due on {{service_due_date}}. Would you any need assistance?",
+    "campaign_objective": ["Service Discount", "Service Booking"],
+    "template_variables": [
+      "vehicle_model",
+      "workshop_name",
+      "service_due_date"
+    ],
+    "template_button_payloads": [
+      "autobot_service_discount_enquiry-check_offers",
+      "autobot_service_discount_enquiry-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535676.9888027,
+    "updated": 1766734061.0322351,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_regularservice_generic_v2 text english post-sales regular service hello regular vehicle servicing helps maintain performance and safety. book your routine service at your convenience.",
+    "template_id": "01kbcppgrd3f89tfnq0jeh1xtv",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_RegularService_generic_v2",
+    "template_type": "text",
+    "template_message": "Hello, regular vehicle servicing helps maintain performance and safety. Book your routine service at your convenience.",
+    "campaign_objective": ["Regular service"],
+    "template_variables": [],
+    "template_button_payloads": [
+      "autobot_regularservice_generic_v2-book_a_service",
+      "autobot_regularservice_generic_v2-request_a_callback"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Schedule a Call",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535527.8035586,
+    "updated": 1766734074.4143064,
+    "language": "english",
+    "lead_tags": ["service_due"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_service_selfcall_reminder text english post-sales service self call reminder service followup service reminder repeat service booking hello noted that you will call workshop_name directly for the service of your vehicle_model . but we noticed that the call is not completed yet. if you need any assistance or want us to schedule it for you feel free to reply here.",
+    "template_id": "01kazc203gj2wqw1hxgdcfs831",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_Service_SelfCall_Reminder",
+    "template_type": "text",
+    "disposition_tags": ["reached", "will-call-workshop"],
+    "template_message": "Hello, noted that you will call {{workshop_name}} directly for the service of your {{vehicle_model}}. But we noticed that the call is not completed yet. If you need any assistance or want us to schedule it for you, feel free to reply here.",
+    "campaign_objective": [
+      "Service Self Call Reminder",
+      "Service Followup",
+      "Service Reminder",
+      "repeat service booking"
+    ],
+    "template_variables": ["vehicle_model", "workshop_name"],
+    "template_button_payloads": [
+      "autobot_service_selfcall_reminder-request_a_call_back",
+      "autobot_service_selfcall_reminder-schedule_a_call"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766126096.8643506,
+    "updated": 1766734002.3792486,
+    "language": "english",
+    "lead_tags": ["inactive-customer", "service-due", "regular-customer"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_inactive_customer_reactivation_001 text english post-sales inactive customer reactivation hi we noticed it s been a while since your last visit. we re here to help keep your vehicle running smoothly. schedule a service at your convenience and enjoy a seamless drive again. we re just a message away",
+    "template_id": "01kctn32v9y8em46vezp6xzybv",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_inactive_customer_reactivation_001",
+    "template_type": "text",
+    "template_message": "Hi! We noticed it's been a while since your last visit. We're here to help keep your vehicle running smoothly. Schedule a service at your convenience and enjoy a seamless drive again. We're just a message away!",
+    "campaign_objective": ["Inactive Customer Reactivation"],
+    "template_variables": [],
+    "template_button_payloads": [
+      "autobot_inactive_customer_reactivation_001-book_a_service",
+      "autobot_inactive_customer_reactivation_001-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535477.2186236,
+    "updated": 1766734066.3431487,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_service_followup_15to30days text english post-sales service followup service reminder repeat service booking hi we hope your vehicle_model is running well. your next service is due on service_due_date . you mentioned you will decide within 15 to 30 days. we are here if you need any assistance. please complete your vehicle service timely.",
+    "template_id": "01kazbk48j4cw885nfjt37258m",
+    "audience_tags": ["service-due"],
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_Service_FollowUp_15to30Days",
+    "template_type": "text",
+    "disposition_tags": ["reached", "will-decide-15-30-days"],
+    "template_message": "Hi, we hope your {{vehicle_model}} is running well. Your next service is due on {{service_due_date}}. You mentioned you will decide within 15 to 30 days. We are here if you need any assistance. Please complete your vehicle service timely.",
+    "campaign_objective": [
+      "Service Followup",
+      "Service Reminder",
+      "repeat service booking"
+    ],
+    "template_variables": ["vehicle_model", "service_due_date"],
+    "template_button_payloads": [
+      "autobot_service_followup_15to30days-book_a_service",
+      "autobot_service_followup_15to30days-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535625.4895408,
+    "updated": 1766734010.5148876,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_servicereminder_generic_v2 text english post-sales service reminder general service due reminder hello your vehicle service is pending. kindly take a moment to book your appointment and keep your car in peak condition.",
+    "template_id": "01kbcp1bg51zzk34vbv81arhsq",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_ServiceReminder_generic_v2",
+    "template_type": "text",
+    "template_message": "Hello, Your vehicle service is pending. Kindly take a moment to book your appointment and keep your car in peak condition.",
+    "campaign_objective": ["Service Reminder", "General Service Due Reminder"],
+    "template_variables": [],
+    "template_button_payloads": [
+      "autobot_servicereminder_generic_v2-book_a_service",
+      "autobot_servicereminder_generic_v2-request_a_callback"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "pending",
+    "buttons": [
+      {
+        "text": "Explore Services",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765918867.996233,
+    "updated": 1766734069.1885722,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "test_pending_reactivation_generic_v2 text english post-sales inactive customer reactivation re-activation of inactive customer hello we would love to welcome you back check out our services offers and support options to stay connected.",
+    "template_id": "01kbcqawsxd9n3xfre657xv7gw5645454",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "test_pending_Reactivation_generic_v2",
+    "template_type": "text",
+    "template_message": "Hello, We would love to welcome you back! Check out our services, offers, and support options to stay connected.",
+    "campaign_objective": [
+      "Inactive Customer Reactivation",
+      "Re-activation of inactive customer"
+    ],
+    "template_variables": [],
+    "template_button_payloads": [
+      "test_pendingvation_generic_v2-explore_services",
+      "test_pendingon_generic_v2-request_a_callback"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766058766.5923119,
+    "updated": 1766734071.820512,
+    "language": "english",
+    "lead_tags": ["service-due", "inactive-customer", "high-intent"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_inactive_customer_reactivation_regnumber text english post-sales inactive customer reactivation hi we noticed it s been a while since your last visit regarding your vehicle with registration number reg_number . we re here to help you with any service or upgrade needs. let s get your car back on the road in top shape",
+    "template_id": "01kcrmw91rnfnvxydd73v3wcxj",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_inactive_customer_reactivation_regnumber",
+    "template_type": "text",
+    "template_message": "Hi! We noticed it's been a while since your last visit regarding your vehicle with registration number {{reg_number}}. We're here to help you with any service or upgrade needs. Let's get your car back on the road in top shape!",
+    "campaign_objective": ["Inactive Customer Reactivation"],
+    "template_variables": ["reg_number"],
+    "template_button_payloads": [
+      "autobot_inactive_customer_reactivation_regnumber-book_a_service",
+      "autobot_inactive_customer_reactivation_regnumber-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535442.3012471,
+    "updated": 1766734079.67983,
+    "language": "english",
+    "lead_tags": ["service-due"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_service_followup_tomorrow text english post-sales general service due reminder service followup service reminder repeat service booking hi as discussed earlier your service for vehicle_model at workshop_name is due soon. you mentioned you will decide by tomorrow. let us know if you need help with booking.",
+    "template_id": "01kazb2xesq96z1zh9tx94f39z",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_Service_FollowUp_Tomorrow",
+    "template_type": "text",
+    "disposition_tags": ["reached", "will-decide-tomorrow"],
+    "template_message": "Hi, as discussed earlier, your service for {{vehicle_model}} at {{workshop_name}} is due soon. You mentioned you will decide by tomorrow. Let us know if you need help with booking.",
+    "campaign_objective": [
+      "General Service Due Reminder",
+      "Service Followup",
+      "Service Reminder",
+      "repeat service booking"
+    ],
+    "template_variables": ["vehicle_model", "workshop_name"],
+    "template_button_payloads": [
+      "autobot_service_followup_decide_tomorrow-book_a_service",
+      "autobot_service_followup_decide_tomorrow-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535418.0346158,
+    "updated": 1766734018.4125593,
     "language": "english",
     "dealer_name": "DaveAI",
     "region_name": "South India",
     "search_term": "autobot_service_reminder_message text english post-sales repeat service booking service booking reminder service booking hello this is a reminder that your vehicle_model is due for service on service_due_date at workshop_name . regular service keeps your vehicle running smoothly and ensures safety. would you like to book a service slot",
     "template_id": "01kazdn1a2w0d797m937k7jwxs",
     "campaign_type": "post-sales",
+    "dealership_id": "daveai",
     "provider_name": "Airtel",
     "template_name": "Autobot_Service_Reminder_Message",
     "template_type": "text",
@@ -45,228 +1015,6 @@
     "status": "approved",
     "buttons": [
       {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_free_service_reminder_regnum text english post-sales first service reminder free service reminder hello your vehicle with registration number reg_number has a pending free service. you may get it done at workshop_name of dealer_name at your convenience.",
-    "template_id": "01kb52hzx170wqea4zfwptq1eb",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_Free_Service_Reminder_Regnum",
-    "template_type": "text",
-    "template_message": "Hello, your vehicle with registration number {{reg_number}} has a pending free service. You may get it done at {{workshop_name}} of {{dealer_name}} at your convenience.",
-    "campaign_objective": [
-      "Free Service Reminder",
-      "Free Service Due Reminder"
-    ],
-    "template_variables": [
-      "reg_number",
-      "workshop_name",
-      "dealer_name"
-    ],
-    "template_button_payloads": [
-      "autobot_free_service_regnum-book_a_service",
-      "autobot_free_service_regnum-request_a_callback"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book Free Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_freeservice_generic_v2 text english post-sales free service hello you are eligible for a free vehicle service. make sure to avail it before the offer expires.",
-    "template_id": "01kbcpcmqgpgkqtjfxqny4nbgd",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_FreeService_generic_v2",
-    "template_type": "text",
-    "template_message": "Hello, You are eligible for a free vehicle service. Make sure to avail it before the offer expires.",
-    "campaign_objective": [
-      "Free service reminder"
-    ],
-    "template_variables": [],
-    "template_button_payloads": [
-      "autobot_freeservice_generic_v2-book_free_service",
-      "autobot_freeservice_generic_v2-request_a_callback"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book Free Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_freeservice_generic_v1 text english post-sales free service hello your complimentary vehicle service is available. visit the nearest workshop to redeem your free service.",
-    "template_id": "01kbcp8rfn233zsyca59mr09db",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_FreeService_generic_v1",
-    "template_type": "text",
-    "template_message": "Hello, Your complimentary vehicle service is available. Visit the nearest workshop to redeem your free service.",
-    "campaign_objective": [
-      "Free service reminder"
-    ],
-    "template_variables": [],
-    "template_button_payloads": [
-      "autobot_freeservice_generic_v1-book_free_service",
-      "autobot_freeservice_generic_v1-request_a_callback"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_servicereminder_generic_v2 text english post-sales service reminder hello your vehicle service is pending. kindly take a moment to book your appointment and keep your car in peak condition.",
-    "template_id": "01kbcp1bg51zzk34vbv81arhsq",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_ServiceReminder_generic_v2",
-    "template_type": "text",
-    "template_message": "Hello, Your vehicle service is pending. Kindly take a moment to book your appointment and keep your car in peak condition.",
-    "campaign_objective": [
-      "Service Reminder", "General Service Due Reminder"
-    ],
-    "template_variables": [],
-    "template_button_payloads": [
-      "autobot_servicereminder_generic_v2-book_a_service",
-      "autobot_servicereminder_generic_v2-request_a_callback"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Check Offers",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "lead_tags": [
-      "service-due",
-      "retention"
-    ],
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_service_discount_enquiry text english post-sales service discount service booking hello we noticed you were exploring service options for your vehicle_model . while discounts vary by workshop we can help you check the best available offer at workshop_name . your service is due on service_due_date . would you any need assistance",
-    "template_id": "01kazax15650cy6d1ycw10qj1v",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_Service_Discount_Enquiry",
-    "template_type": "text",
-    "disposition_tags": [
-      "reached",
-      "looking-for-a-discount"
-    ],
-    "template_message": "Hello, we noticed you were exploring service options for your {{vehicle_model}}. While discounts vary by workshop, we can help you check the best available offer at {{workshop_name}}. Your service is due on {{service_due_date}}. Would you any need assistance?",
-    "campaign_objective": [
-      "Service Discount",
-      "Service Booking"
-    ],
-    "template_variables": [
-      "vehicle_model",
-      "workshop_name",
-      "service_due_date"
-    ],
-    "template_button_payloads": [
-      "autobot_service_discount_enquiry-check_offers",
-      "autobot_service_discount_enquiry-request_a_call_back"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_regularservice_generic_v2 text english post-sales regular service hello regular vehicle servicing helps maintain performance and safety. book your routine service at your convenience.",
-    "template_id": "01kbcppgrd3f89tfnq0jeh1xtv",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_RegularService_generic_v2",
-    "template_type": "text",
-    "template_message": "Hello, regular vehicle servicing helps maintain performance and safety. Book your routine service at your convenience.",
-    "campaign_objective": [
-      "Regular service"
-    ],
-    "template_variables": [],
-    "template_button_payloads": [
-      "autobot_regularservice_generic_v2-book_a_service",
-      "autobot_regularservice_generic_v2-request_a_callback"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "pending",
-    "buttons": [
-      {
         "text": "Explore Services",
         "type": "QUICK_REPLY"
       },
@@ -276,272 +1024,22 @@
       }
     ],
     "channel": "whatsapp_chat",
+    "created": 1765918697.279505,
+    "updated": 1766734077.03717,
     "language": "english",
     "dealer_name": "DaveAI",
     "region_name": "South India",
-    "search_term": "test_pending_reactivation_generic_v2 text english post-sales re-activation of inactive customer hello we would love to welcome you back check out our services offers and support options to stay connected.",
-    "template_id": "01kbcqawsxd9n3xfre657xv7gw5645454",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "test_pending_Reactivation_generic_v2",
-    "template_type": "text",
-    "template_message": "Hello, We would love to welcome you back! Check out our services, offers, and support options to stay connected.",
-    "campaign_objective": [
-      "Inactive Customer Reactivation","Re-activation of inactive customer"
-    ],
-    "template_variables": [],
-    "template_button_payloads": [
-      "test_pendingvation_generic_v2-explore_services",
-      "test_pendingon_generic_v2-request_a_callback"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Schedule a Call",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "lead_tags": [
-      "service_due"
-    ],
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_service_selfcall_reminder text english post-sales scheduled service reminder service self call reminder service followup service reminder repeat service booking hello noted that you will call workshop_name directly for the service of your vehicle_model . but we noticed that the call is not completed yet. if you need any assistance or want us to schedule it for you feel free to reply here.",
-    "template_id": "01kazc203gj2wqw1hxgdcfs831",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_Service_SelfCall_Reminder",
-    "template_type": "text",
-    "disposition_tags": [
-      "reached",
-      "will-call-workshop"
-    ],
-    "template_message": "Hello, noted that you will call {{workshop_name}} directly for the service of your {{vehicle_model}}. But we noticed that the call is not completed yet. If you need any assistance or want us to schedule it for you, feel free to reply here.",
-    "campaign_objective": [
-      "Service Self Call Reminder",
-      "Service Followup",
-      "Service Reminder",
-      "repeat service booking"
-    ],
-    "template_variables": [
-      "vehicle_model",
-      "workshop_name"
-    ],
-    "template_button_payloads": [
-      "autobot_service_selfcall_reminder-request_a_call_back",
-      "autobot_service_selfcall_reminder-schedule_a_call"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "lead_tags": [
-      "service_due"
-    ],
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_service_followup_61to90days text english post-sales scheduled service reminder service followup service reminder repeat service booking hello your vehicle_model service due was on service_due_date . since you plan to decide within 61 to 90 days. please ensure timely service of your vehicle for a good health and long run. click on book a service to book your service slot.",
-    "template_id": "01kazbvsp8kbncswa2w30ymqf7",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_Service_FollowUp_61to90Days",
-    "template_type": "text",
-    "disposition_tags": [
-      "reached",
-      "will-decide-61-90-days"
-    ],
-    "template_message": "Hello, your {{vehicle_model}} service due was on {{service_due_date}}. Since you plan to decide within 61 to 90 days. Please ensure timely service of your vehicle for a good health and long run. Click on book a service to book your service slot.",
-    "campaign_objective": [
-      "Service Followup",
-      "Service Reminder",
-      "repeat service booking"
-    ],
-    "template_variables": [
-      "service_due_date",
-      "vehicle_model"
-    ],
-    "template_button_payloads": [
-      "autobot_service_followup_61to90days-book_a_service",
-      "autobot_service_followup_61to90days-request_a_call_back"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Schedule a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "warranty_expiry_alert_offer text english post-sales increase insurance warranty renewals warranty expiry offer hey there your vehicle_model s warranty is expiring on warranty_expiry_date . don t miss out on our special campaign_offer . contact dealer_name today",
-    "template_id": "01kaxa87v6q0sb6b87gt6wc6nx",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "warranty_expiry_alert_offer",
-    "template_type": "text",
-    "template_message": "Hey there! Your {'vehicle_model'}'s warranty is expiring on {'warranty_expiry_date'}. Don't miss out on our special {'campaign_offer'}. Contact {'dealer_name'} today!",
-    "campaign_objective": [
-      "Increase Insurance & Warranty Renewals",
-      "Warranty Expiry Offer", "Extended Warranty Offer"
-    ],
-    "template_variables": [
-      "dealer_name",
-      "campaign_offer",
-      "warranty_expiry_date",
-      "vehicle_model"
-    ],
-    "template_button_payloads": [
-      "warranty_expiry_alert_offer-schedule_a_call_back"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "lead_tags": [
-      "service_due"
-    ],
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_service_followup_after90days text english post-sales scheduled service reminder service followup service reminder repeat service booking hi your vehicle_model service due was on service_due_date . since you will decide after 90 days regarding the service of your vehicle_model we want to remind you that please complete your vehicle service timely to ensure good health of your vehicle for a long run.",
-    "template_id": "01kazbz6c24fktnmvz7gnc5b2w",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_Service_FollowUp_After90Days",
-    "template_type": "text",
-    "disposition_tags": [
-      "reached",
-      "will-decide-after-90-days"
-    ],
-    "template_message": "Hi, your {{vehicle_model}} service due was on {{service_due_date}}. Since you will decide after 90 days regarding the service of your {{vehicle_model}}, we want to remind you that please complete your vehicle service timely to ensure good health of your vehicle for a long run.",
-    "campaign_objective": [
-      "Service Followup",
-      "Service Reminder",
-      "repeat service booking"
-    ],
-    "template_variables": [
-      "service_due_date",
-      "vehicle_model"
-    ],
-    "template_button_payloads": [
-      "autobot_service_followup_after90days-book_a_service",
-      "autobot_service_followup_after90days-request_a_call_back"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "lead_tags": [
-      "service-due"
-    ],
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_service_followup_4to7days text english post-sales scheduled service reminder service followup service reminder repeat service booking hello this is a reminder that service for your vehicle_model is due soon. you had planned to decide within 4 to 7 days. we can share available slots at workshop_name whenever you are ready.",
-    "template_id": "01kazbac2yr4yz4gcs0dt1nyh8",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_Service_FollowUp_4to7Days",
-    "template_type": "text",
-    "disposition_tags": [
-      "reached",
-      "will-decide-4-7-days"
-    ],
-    "template_message": "Hello, this is a reminder that service for your {{vehicle_model}} is due soon. You had planned to decide within 4 to 7 days. We can share available slots at {{workshop_name}} whenever you are ready.",
-    "campaign_objective": [
-      "Service Followup",
-      "Service Reminder",
-      "repeat service booking"
-    ],
-    "template_variables": [
-      "vehicle_model",
-      "workshop_name"
-    ],
-    "template_button_payloads": [
-      "autobot_service_followup_4to7days-book_a_service",
-      "autobot_service_followup_4to7days-request_a_call_back"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Explore Services",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_reactivation_generic_v2 text english post-sales re-activation of inactive customer hello we would love to welcome you back check out our services offers and support options to stay connected.",
+    "search_term": "autobot_reactivation_generic_v2 text english post-sales re-activation of inactive customer inactive customer reactivation hello we would love to welcome you back check out our services offers and support options to stay connected.",
     "template_id": "01kbcqawsxd9n3xfre657xv7gw",
     "campaign_type": "post-sales",
+    "dealership_id": "daveai",
     "provider_name": "Airtel",
     "template_name": "Autobot_Reactivation_generic_v2",
     "template_type": "text",
     "template_message": "Hello, We would love to welcome you back! Check out our services, offers, and support options to stay connected.",
     "campaign_objective": [
-      "Re-activation of inactive customer","Inactive Customer Reactivation"
+      "Re-activation of inactive customer",
+      "Inactive Customer Reactivation"
     ],
     "template_variables": [],
     "template_button_payloads": [
@@ -555,6 +1053,37 @@
     "status": "approved",
     "buttons": [
       {
+        "text": "Get a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766054632.866624,
+    "updated": 1766734082.4215953,
+    "language": "english",
+    "lead_tags": ["extended-warranty", "reg_number", "service-due"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_extended_warranty_offer_regnumber text english post-sales extended warranty offer hello your vehicle with registration number reg_number is eligible for an exclusive extended warranty offer. protect your investment and drive with confidence. want to know more we re here to help",
+    "template_id": "01kcrgy4xktekebgqs0285wn3y",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_extended_warranty_offer_regnumber",
+    "template_type": "text",
+    "template_message": "Hello! Your vehicle with registration number {{reg_number}} is eligible for an exclusive extended warranty offer. Protect your investment and drive with confidence. Want to know more? We're here to help!",
+    "campaign_objective": ["Extended Warranty Offer"],
+    "template_variables": ["reg_number"],
+    "template_button_payloads": [
+      "autobot_extended_warranty_offer_regnumber-get_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
         "text": "Book a Service",
         "type": "QUICK_REPLY"
       },
@@ -564,12 +1093,201 @@
       }
     ],
     "channel": "whatsapp_chat",
+    "created": 1765535613.0982373,
+    "updated": 1766733872.8361669,
     "language": "english",
     "dealer_name": "DaveAI",
     "region_name": "South India",
-    "search_term": "autobot_regular_service_reminder text english post-sales repeat service booking service booking scheduled service reminder service reminder hello this is a reminder that your vehicle_model is due for regular service on service_due_date at workshop_name . timely service ensures smooth performance and safety. would you like to book a slot",
+    "search_term": "autobot_servicereminder_generic_v1 text english post-sales general service due reminder service reminder hello this is a reminder that your vehicle service is due. please visit your nearest service centre or contact us for assistance.",
+    "template_id": "01kbcnnpysqfjm5rzgder2cz3k",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_ServiceReminder_generic_v1",
+    "template_type": "text",
+    "template_message": "Hello, This is a reminder that your vehicle service is due. Please visit your nearest service centre or contact us for assistance.",
+    "campaign_objective": ["General Service Due Reminder", "Service Reminder"],
+    "template_variables": [],
+    "template_button_payloads": [
+      "autobot_servicereminder_generic_v1-book_a_service",
+      "autobot_servicereminder_generic_v1-request_a_callback"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "rejected",
+    "buttons": [
+      {
+        "text": "Insurance Renewal",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766130988.9432473,
+    "updated": 1766734023.874368,
+    "language": "english",
+    "lead_tags": ["insurance-renewal", "high-intent", "premium-seeker"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_insurance_renewal_reminder text english post-sales insurance renewal reminder hello this is a friendly reminder to renew your vehicle insurance to stay protected on the road. don t wait until the last moment choose insurance renewal now or request a call back for assistance. we re here to help you secure your peace of mind.",
+    "template_id": "01kctskyn0n6t3vajf4brdp6c0",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_insurance_renewal_reminder",
+    "template_type": "text",
+    "template_message": "Hello, this is a friendly reminder to renew your vehicle insurance to stay protected on the road. Don't wait until the last moment! Choose {{Insurance Renewal}} now or {{Request a Call Back}} for assistance. We're here to help you secure your peace of mind.",
+    "campaign_objective": ["Insurance Renewal Reminder"],
+    "template_variables": [],
+    "template_button_payloads": [
+      "autobot_insurance_renewal_reminder-insurance_renewal",
+      "autobot_insurance_renewal_reminder-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766132085.5873,
+    "updated": 1766733832.1676393,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_service_reminder_reg_number text english post-sales general service due reminder service booking reminder hello this is a reminder that your vehicle no reg_number is due for service. timely service helps maintain performance and safety. would you like to schedule a service appointment",
+    "template_id": "01kcr1saj183gwpgg6c051ffw0",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_Service_Reminder_Reg_Number",
+    "template_type": "text",
+    "template_message": "Hello! This is a reminder that your vehicle no: {{reg_number}} is due for service. Timely service helps maintain performance and safety. Would you like to schedule a service appointment?",
+    "campaign_objective": [
+      "General Service Due Reminder",
+      "service booking reminder"
+    ],
+    "template_variables": ["reg_number"],
+    "template_button_payloads": [
+      "autobot_service_reminder_reg_number-book_a_service",
+      "autobot_service_reminder_reg_number-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535540.8078935,
+    "updated": 1766134772.2417417,
+    "language": "english",
+    "lead_tags": ["inactive-user"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_service_lowusage_vehiclenotrun text english post-sales inactive customer reactivation improve customer retention after service cold list activation hello we noticed your vehicle_model has been used less recently. if you would like we can assist with a routine check or service at workshop_name . please select an option below.",
+    "template_id": "01kazkyh3p7jzedtw6sqqbqbat",
+    "campaign_type": "post-sales",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_Service_LowUsage_VehicleNotRun",
+    "template_type": "text",
+    "disposition_tags": ["vehicle-not-run"],
+    "template_message": "Hello, we noticed your {{vehicle_model}} has been used less recently. If you would like, we can assist with a routine check or service at {{workshop_name}}. Please select an option below.",
+    "campaign_objective": [
+      "Inactive Customer Reactivation",
+      "Improve Customer Retention After Service",
+      "Cold List Activation"
+    ],
+    "template_variables": ["vehicle_model", "workshop_name"],
+    "template_button_payloads": [
+      "autobot_service_lowusage_vehicle_not_run-book_a_service",
+      "autobot_service_lowusage_vehicle_not_run-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766125923.7250466,
+    "updated": 1766125923.727179,
+    "language": "english",
+    "lead_tags": ["service-due", "regular-customer"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_free_service_due_reminder_regnumber text english post-sales free service due remindergeneral service due reminder hello your vehicle with registration number reg_number is due for a free service soon. keep it running smoothly and safely by scheduling your appointment today. we re here to assist you with the process.",
+    "template_id": "01kctmthwsb2ycrkjsbjrg587x",
+    "campaign_type": "post-sales",
+    "provider_name": "Airtel",
+    "template_name": "autobot_free_service_due_reminder_regnumber",
+    "template_type": "text",
+    "template_message": "Hello! Your vehicle with registration number {{reg_number}} is due for a free service soon. Keep it running smoothly and safely by scheduling your appointment today. We're here to assist you with the process.",
+    "campaign_objective": [
+      "Free Service Due ReminderGeneral Service Due Reminder"
+    ],
+    "template_variables": ["reg_number"],
+    "template_button_payloads": [
+      "autobot_free_service_due_reminder_regnumber-book_a_service",
+      "autobot_free_service_due_reminder_regnumber-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535553.7087986,
+    "updated": 1766733875.4196231,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_regular_service_reminder text english post-sales repeat service booking general service due reminder service reminder hello this is a reminder that your vehicle_model is due for regular service on service_due_date at workshop_name . timely service ensures smooth performance and safety. would you like to book a slot",
     "template_id": "01kazg6x56t2na5b25f2qpdbhv",
     "campaign_type": "post-sales",
+    "dealership_id": "daveai",
     "provider_name": "Airtel",
     "template_name": "Autobot_Regular_Service_Reminder",
     "template_type": "text",
@@ -604,36 +1322,30 @@
       }
     ],
     "channel": "whatsapp_chat",
+    "created": 1765535454.4864333,
+    "updated": 1766734026.5126991,
     "language": "english",
-    "lead_tags": [
-      "service-due"
-    ],
+    "lead_tags": ["service-due"],
     "dealer_name": "DaveAI",
     "region_name": "South India",
-    "search_term": "autobot_service_followup_8to14days text english post-sales scheduled service reminder service followup service reminder repeat service booking hey your service for vehicle_model is due on service_due_date . you mentioned you will decide within 8 to 14 days. please let us know whenever you need assistance with the booking.",
-    "template_id": "01kazbg0459bx91tgdvtge6rsq",
+    "search_term": "autobot_service_followup_4to7days text english post-sales service followup service reminder repeat service booking hello this is a reminder that service for your vehicle_model is due soon. you had planned to decide within 4 to 7 days. we can share available slots at workshop_name whenever you are ready.",
+    "template_id": "01kazbac2yr4yz4gcs0dt1nyh8",
     "campaign_type": "post-sales",
+    "dealership_id": "daveai",
     "provider_name": "Airtel",
-    "template_name": "Autobot_Service_FollowUp_8to14Days",
+    "template_name": "Autobot_Service_FollowUp_4to7Days",
     "template_type": "text",
-    "disposition_tags": [
-      "reached",
-      "will-decide-8-14-days"
-    ],
-    "template_message": "Hey, your service for {{vehicle_model}} is due on {{service_due_date}}. You mentioned you will decide within 8 to 14 days. Please let us know whenever you need assistance with the booking.",
-    "campaign_objective": [ 
-      "General Service Due Reminder",
+    "disposition_tags": ["reached", "will-decide-4-7-days"],
+    "template_message": "Hello, this is a reminder that service for your {{vehicle_model}} is due soon. You had planned to decide within 4 to 7 days. We can share available slots at {{workshop_name}} whenever you are ready.",
+    "campaign_objective": [
       "Service Followup",
       "Service Reminder",
       "repeat service booking"
     ],
-    "template_variables": [
-      "vehicle_model",
-      "service_due_date"
-    ],
+    "template_variables": ["vehicle_model", "workshop_name"],
     "template_button_payloads": [
-      "autobot_service_followup_8to14days-book_a_service",
-      "autobot_service_followup_8to14days-request_a_call_back"
+      "autobot_service_followup_4to7days-book_a_service",
+      "autobot_service_followup_4to7days-request_a_call_back"
     ],
     "communication_credentials_id": "airtel-917795030574"
   },
@@ -651,280 +1363,30 @@
       }
     ],
     "channel": "whatsapp_chat",
+    "created": 1765535502.7165394,
+    "updated": 1766733834.9118555,
     "language": "english",
-    "lead_tags": [
-      "service-due"
-    ],
+    "lead_tags": ["service_due"],
     "dealer_name": "DaveAI",
     "region_name": "South India",
-    "search_term": "autobot_service_followup_tomorrow text english post-sales scheduled service reminder service followup service reminder repeat service booking hi as discussed earlier your service for vehicle_model at workshop_name is due soon. you mentioned you will decide by tomorrow. let us know if you need help with booking.",
-    "template_id": "01kazb2xesq96z1zh9tx94f39z",
+    "search_term": "autobot_service_followup_61to90days text english post-sales service followup service reminder repeat service booking hello your vehicle_model service due was on service_due_date . since you plan to decide within 61 to 90 days. please ensure timely service of your vehicle for a good health and long run. click on book a service to book your service slot.",
+    "template_id": "01kazbvsp8kbncswa2w30ymqf7",
     "campaign_type": "post-sales",
+    "dealership_id": "daveai",
     "provider_name": "Airtel",
-    "template_name": "Autobot_Service_FollowUp_Tomorrow",
+    "template_name": "Autobot_Service_FollowUp_61to90Days",
     "template_type": "text",
-    "disposition_tags": [
-      "reached",
-      "will-decide-tomorrow"
-    ],
-    "template_message": "Hi, as discussed earlier, your service for {{vehicle_model}} at {{workshop_name}} is due soon. You mentioned you will decide by tomorrow. Let us know if you need help with booking.",
+    "disposition_tags": ["reached", "will-decide-61-90-days"],
+    "template_message": "Hello, your {{vehicle_model}} service due was on {{service_due_date}}. Since you plan to decide within 61 to 90 days. Please ensure timely service of your vehicle for a good health and long run. Click on book a service to book your service slot.",
     "campaign_objective": [
-      "General Service Due Reminder",
       "Service Followup",
       "Service Reminder",
       "repeat service booking"
     ],
-    "template_variables": [
-      "vehicle_model",
-      "workshop_name"
-    ],
+    "template_variables": ["service_due_date", "vehicle_model"],
     "template_button_payloads": [
-      "autobot_service_followup_decide_tomorrow-book_a_service",
-      "autobot_service_followup_decide_tomorrow-request_a_call_back"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "View Available Slots",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_inactive_customer_reactivation text english post-sales cold list activation inactive customer retention hi we noticed that your vehicle_model has not visited workshop_name for servicing for a long time. we would be happy to assist with a routine checkup or service whenever convenient. would you like us to share available service slots",
-    "template_id": "01kazjr9gz98qgndg65p9k7myk",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_Inactive_Customer_Reactivation",
-    "template_type": "text",
-    "template_message": "Hi, we noticed that your {{vehicle_model}} has not visited {{workshop_name}} for servicing for a long time. We would be happy to assist with a routine checkup or service whenever convenient. Would you like us to share available service slots?",
-    "campaign_objective": [
-      "Inactive Customer Reactivation",
-      "Cold List Activation",
-      "Inactive Customer Retention"
-    ],
-    "template_variables": [
-      "vehicle_model",
-      "workshop_name"
-    ],
-    "template_button_payloads": [
-      "autobot_inactive_customer_reactivation-view_available_slots",
-      "autobot_inactive_customer_reactivation-request_a_call_back"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_first_service_reminder text english post-sales first-service reminder hello this is a reminder that your vehicle_model is due for its first service around service_due_date . you may schedule a convenient slot at workshop_name .",
-    "template id": "01kaznjb9rgt2tjwvdvnzeb04x",
-    "template_id": "MTc2NTUzNTU4MyA3MTA1NTg3",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_First_Service_Reminder",
-    "template_type": "text",
-    "template_message": "Hello, this is a reminder that your {{vehicle_model}} is due for its first service around {{service_due_date}}. You may schedule a convenient slot at {{workshop_name}}.",
-    "campaign_objective": [
-      "First-Service Reminder"
-    ],
-    "template_variables": [
-      "workshop_name",
-      "vehicle_model",
-      "service_due_date"
-    ],
-    "template_button_payloads": [
-      "autobot_first_service_reminder-request_a_call_back",
-      "autobot_first_service_reminder-book_a_service"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "lead_tags": [
-      "inactive-user"
-    ],
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_service_lowusage_vehiclenotrun text english post-sales improve customer retention after service cold list activation hello we noticed your vehicle_model has been used less recently. if you would like we can assist with a routine check or service at workshop_name . please select an option below.",
-    "template_id": "01kazkyh3p7jzedtw6sqqbqbat",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_Service_LowUsage_VehicleNotRun",
-    "template_type": "text",
-    "disposition_tags": [
-      "vehicle-not-run"
-    ],
-    "template_message": "Hello, we noticed your {{vehicle_model}} has been used less recently. If you would like, we can assist with a routine check or service at {{workshop_name}}. Please select an option below.",
-    "campaign_objective": [
-      "Inactive Customer Reactivation",
-      "Improve Customer Retention After Service",
-      "Cold List Activation"
-    ],
-    "template_variables": [
-      "vehicle_model",
-      "workshop_name"
-    ],
-    "template_button_payloads": [
-      "autobot_service_lowusage_vehicle_not_run-book_a_service",
-      "autobot_service_lowusage_vehicle_not_run-request_a_call_back"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_service_followup_15to30days text english post-sales scheduled service reminder service followup service reminder repeat service booking hi we hope your vehicle_model is running well. your next service is due on service_due_date . you mentioned you will decide within 15 to 30 days. we are here if you need any assistance. please complete your vehicle service timely.",
-    "template_id": "01kazbk48j4cw885nfjt37258m",
-    "audience_tags": [
-      "service-due"
-    ],
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_Service_FollowUp_15to30Days",
-    "template_type": "text",
-    "disposition_tags": [
-      "reached",
-      "will-decide-15-30-days"
-    ],
-    "template_message": "Hi, we hope your {{vehicle_model}} is running well. Your next service is due on {{service_due_date}}. You mentioned you will decide within 15 to 30 days. We are here if you need any assistance. Please complete your vehicle service timely.",
-    "campaign_objective": [
-    
-      "Service Followup",
-      "Service Reminder",
-      "repeat service booking"
-    ],
-    "template_variables": [
-      "vehicle_model",
-      "service_due_date"
-    ],
-    "template_button_payloads": [
-      "autobot_service_followup_15to30days-book_a_service",
-      "autobot_service_followup_15to30days-request_a_call_back"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_servicereminder_generic_v1 text english post-sales service reminder hello this is a reminder that your vehicle service is due. please visit your nearest service centre or contact us for assistance.",
-    "template_id": "01kbcnnpysqfjm5rzgder2cz3k",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_ServiceReminder_generic_v1",
-    "template_type": "text",
-    "template_message": "Hello, This is a reminder that your vehicle service is due. Please visit your nearest service centre or contact us for assistance.",
-    "campaign_objective": [
-      "General Service Due Reminder",
-      "Service Reminder"
-    ],
-    "template_variables": [],
-    "template_button_payloads": [
-      "autobot_servicereminder_generic_v1-book_a_service",
-      "autobot_servicereminder_generic_v1-request_a_callback"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
-  {
-    "sender": "917795030574",
-    "status": "rejected",
-    "buttons": [
-      {
-        "text": "Explore Services",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "test_failed_reactivation_generic_v2 text english post-sales re-activation of inactive customer hello we would love to welcome you back check out our services offers and support options to stay connected.",
-    "template_id": "01kbcqawsxd9n3xfre657xv7gw56565",
-    "campaign_type": "post-sales",
-    "provider_name": "Airtel",
-    "template_name": "test_failed_Reactivation_generic_v2",
-    "template_type": "text",
-    "template_message": "Hello, We would love to welcome you back! Check out our services, offers, and support options to stay connected.",
-    "campaign_objective": [
-      "Inactive Customer Reactivation",
-      "Re-activation of inactive customer"
-    ],
-    "template_variables": [],
-    "template_button_payloads": [
-      "test_failedivation_generic_v2-explore_services",
-      "test_failedvation_generic_v2-request_a_callback"
+      "autobot_service_followup_61to90days-book_a_service",
+      "autobot_service_followup_61to90days-request_a_call_back"
     ],
     "communication_credentials_id": "airtel-917795030574"
   },
@@ -942,10 +1404,12 @@
       }
     ],
     "channel": "whatsapp_chat",
+    "created": 1765918881.0817049,
+    "updated": 1766134796.305916,
     "language": "english",
     "dealer_name": "DaveAI",
     "region_name": "South India",
-    "search_term": "test_pendin45g_reactivation_generic_v2 text english post-sales re-activation of inactive customer hello we would love to welcome you back check out our services offers and support options to stay connected.",
+    "search_term": "test_pendin45g_reactivation_generic_v2 text english post-sales inactive customer reactivation re-activation of inactive customer hello we would love to welcome you back check out our services offers and support options to stay connected.",
     "template_id": "01kbcqawsxd9n3xfre657xv7gw56454545454",
     "campaign_type": "post-sales",
     "provider_name": "Airtel",
@@ -977,22 +1441,166 @@
       }
     ],
     "channel": "whatsapp_chat",
+    "created": 1766125933.1714797,
+    "updated": 1766125933.1732314,
     "language": "english",
-    "lead_tags": [
-      "service_due"
-    ],
+    "lead_tags": ["inactive-customer", "service-due"],
     "dealer_name": "DaveAI",
     "region_name": "South India",
-    "search_term": "autobot_service_followup_31to60days text english post-sales scheduled service reminder service followup service reminder repeat service booking hello your vehicle_model was due for service on service_due_date . since you plan to decide within 31 to 60 days we can help find a suitable slot at workshop_name whenever you are ready.",
+    "search_term": "autobot_inactive_customer_reactivation_01 text english post-sales inactive customer reactivation hello we noticed your vehicle with registration number reg_number hasn t visited us recently. to keep it in top shape it s a great time to schedule a service. let us help you get back on the road smoothly",
+    "template_id": "01kctmy2m7ztknc0qhv6he0dyx",
+    "campaign_type": "post-sales",
+    "provider_name": "Airtel",
+    "template_name": "autobot_inactive_customer_reactivation_01",
+    "template_type": "text",
+    "template_message": "Hello! We noticed your vehicle with registration number {{reg_number}} hasn't visited us recently. To keep it in top shape, it's a great time to schedule a service. Let us help you get back on the road smoothly!",
+    "campaign_objective": ["Inactive Customer Reactivation"],
+    "template_variables": ["reg_number"],
+    "template_button_payloads": [
+      "autobot_inactive_customer_reactivation_01-book_a_service",
+      "autobot_inactive_customer_reactivation_01-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "rejected",
+    "buttons": [
+      {
+        "text": "Explore Services",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765918823.5934951,
+    "updated": 1766733878.0532873,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "test_failed_reactivation_generic_v2 text english post-sales inactive customer reactivation re-activation of inactive customer hello we would love to welcome you back check out our services offers and support options to stay connected.",
+    "template_id": "01kbcqawsxd9n3xfre657xv7gw56565",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "test_failed_Reactivation_generic_v2",
+    "template_type": "text",
+    "template_message": "Hello, We would love to welcome you back! Check out our services, offers, and support options to stay connected.",
+    "campaign_objective": [
+      "Inactive Customer Reactivation",
+      "Re-activation of inactive customer"
+    ],
+    "template_variables": [],
+    "template_button_payloads": [
+      "test_failedivation_generic_v2-explore_services",
+      "test_failedvation_generic_v2-request_a_callback"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535600.299961,
+    "updated": 1766734029.1044168,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_free_service_reminder_regnum text english post-sales free service reminder free service due reminder hello your vehicle with registration number reg_number has a pending free service. you may get it done at workshop_name of dealer_name at your convenience.",
+    "template_id": "01kb52hzx170wqea4zfwptq1eb",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_Free_Service_Reminder_Regnum",
+    "template_type": "text",
+    "template_message": "Hello, your vehicle with registration number {{reg_number}} has a pending free service. You may get it done at {{workshop_name}} of {{dealer_name}} at your convenience.",
+    "campaign_objective": [
+      "Free Service Reminder",
+      "Free Service Due Reminder"
+    ],
+    "template_variables": ["reg_number", "workshop_name", "dealer_name"],
+    "template_button_payloads": [
+      "autobot_free_service_regnum-book_a_service",
+      "autobot_free_service_regnum-request_a_callback"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766058777.550573,
+    "updated": 1766733880.6864836,
+    "language": "english",
+    "lead_tags": ["service-due", "regular-customer", "maintenance-reminder"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_service_overdue_reminder_regnumber text english post-sales service overdue hello your vehicle with registration number reg_number is due for its scheduled service. regular maintenance ensures your car runs smoothly and safely. book your service appointment today and keep your ride in top shape.",
+    "template_id": "01kcrmwmbzkqcknptrbeycjj39",
+    "campaign_type": "post-sales",
+    "dealership_id": "daveai",
+    "provider_name": "Airtel",
+    "template_name": "autobot_service_overdue_reminder_regnumber",
+    "template_type": "text",
+    "template_message": "Hello! Your vehicle with registration number {{reg_number}} is due for its scheduled service. Regular maintenance ensures your car runs smoothly and safely. Book your service appointment today and keep your ride in top shape.",
+    "campaign_objective": ["Scheduled Service Reminder"],
+    "template_variables": ["reg_number"],
+    "template_button_payloads": [
+      "autobot_service_overdue_reminder_regnumber-book_a_service",
+      "autobot_service_overdue_reminder_regnumber-request_a_call_back"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1765535489.7126243,
+    "updated": 1766134802.5525637,
+    "language": "english",
+    "lead_tags": ["service_due"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_service_followup_31to60days text english post-sales general service due reminder service followup service reminder repeat service booking hello your vehicle_model was due for service on service_due_date . since you plan to decide within 31 to 60 days we can help find a suitable slot at workshop_name whenever you are ready.",
     "template_id": "01kazn1mjjm7w21q4k4m2aht9b",
     "campaign_type": "post-sales",
     "provider_name": "Airtel",
     "template_name": "Autobot_Service_FollowUp_31to60Days",
     "template_type": "text",
-    "disposition_tags": [
-      "reached",
-      "will-decide-31-60-days"
-    ],
+    "disposition_tags": ["reached", "will-decide-31-60-days"],
     "template_message": "Hello, your {{vehicle_model}} was due for service on {{service_due_date}}. Since you plan to decide within 31 to 60 days, we can help find a suitable slot at {{workshop_name}} whenever you are ready.",
     "campaign_objective": [
       "General Service Due Reminder",
@@ -1025,6 +1633,8 @@
       }
     ],
     "channel": "whatsapp_chat",
+    "created": 1765535663.6824713,
+    "updated": 1766134808.0822246,
     "language": "english",
     "dealer_name": "DaveAI",
     "region_name": "South India",
@@ -1035,13 +1645,46 @@
     "template_name": "Autobot_RegularService_generic_v1",
     "template_type": "text",
     "template_message": "Hello, Your vehicle is due for regular maintenance. Ensure optimal performance by booking your service today.",
-    "campaign_objective": [
-      "Regular service"
-    ],
+    "campaign_objective": ["Regular service"],
     "template_variables": [],
     "template_button_payloads": [
       "autobot_regularservice_generic_v1-book_a_service",
       "autobot_regularservice_generic_v1-request_a_callback"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766125940.377894,
+    "updated": 1766125940.3800933,
+    "language": "english",
+    "lead_tags": ["service-overdue", "regular-customer", "high-intent"],
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_service_overdue_regnumber_reminder text english post-sales service overdue dear customer your vehicle with registration number reg_number is overdue for its scheduled service. we recommend booking your service at the earliest to maintain performance and safety. please choose an option below to proceed.",
+    "template_id": "01kctmy9wnzfqrdbqfsq79fnrh",
+    "campaign_type": "post-sales",
+    "provider_name": "Airtel",
+    "template_name": "autobot_service_overdue_regnumber_reminder",
+    "template_type": "text",
+    "template_message": "Dear Customer, your vehicle with registration number {{reg_number}} is overdue for its scheduled service. We recommend booking your service at the earliest to maintain performance and safety. Please choose an option below to proceed.",
+    "campaign_objective": ["Service Overdue"],
+    "template_variables": ["reg_number"],
+    "template_button_payloads": [
+      "autobot_service_overdue_regnumber_reminder-book_a_service",
+      "autobot_service_overdue_regnumber_reminder-request_a_call_back"
     ],
     "communication_credentials_id": "airtel-917795030574"
   },
@@ -1059,19 +1702,59 @@
       }
     ],
     "channel": "whatsapp_chat",
+    "created": 1765535588.3186834,
+    "updated": 1765963320.785951,
     "language": "english",
     "dealer_name": "DaveAI",
     "region_name": "South India",
     "search_term": "autobot_first_service_reminder_post_sales text english post-sales first-service reminder hello this is a reminder that your vehicle_model is due for its first service around service_due_date . you may schedule a convenient slot at workshop_name . click below to schedule a service",
     "template id": "01kbc3m6bh29v8yp4x6e1s7gz2",
+    "template_id": "MTc2NTUzNTU5NCA1NTkwMzc0",
     "campaign_type": "post-sales",
     "provider_name": "Airtel",
     "template_name": "Autobot_first_service_reminder_post_sales",
     "template_type": "text",
     "template_message": "Hello, this is a reminder that your {{vehicle_model}} is due for its first service around {{service_due_date}}. You may schedule a convenient slot at {{workshop_name}}. Click below to schedule a service",
-    "campaign_objective": [
-      "First-Service Reminder"
+    "campaign_objective": ["First-Service Reminder"],
+    "template_variables": [
+      "workshop_name",
+      "vehicle_model",
+      "service_due_date"
     ],
+    "template_button_payloads": [
+      "autobot_first_service_reminder_post_sales-request_a_call_back",
+      "autobot_first_service_reminder_post_sales-book_a_service"
+    ],
+    "communication_credentials_id": "airtel-917795030574"
+  },
+  {
+    "sender": "917795030574",
+    "status": "approved",
+    "buttons": [
+      {
+        "text": "Request a Call Back",
+        "type": "QUICK_REPLY"
+      },
+      {
+        "text": "Book a Service",
+        "type": "QUICK_REPLY"
+      }
+    ],
+    "channel": "whatsapp_chat",
+    "created": 1766134812.4838226,
+    "updated": 1766134812.4850454,
+    "language": "english",
+    "dealer_name": "DaveAI",
+    "region_name": "South India",
+    "search_term": "autobot_first_service_reminder_post_sales text english post-sales first-service reminder hello this is a reminder that your vehicle_model is due for its first service around service_due_date . you may schedule a convenient slot at workshop_name . click below to schedule a service",
+    "template id": "01kbc3m6bh29v8yp4x6e1s7gz2",
+    "template_id": "MTc2NjEzNDgxMiA0OTE1MTE2",
+    "campaign_type": "post-sales",
+    "provider_name": "Airtel",
+    "template_name": "Autobot_first_service_reminder_post_sales",
+    "template_type": "text",
+    "template_message": "Hello, this is a reminder that your {{vehicle_model}} is due for its first service around {{service_due_date}}. You may schedule a convenient slot at {{workshop_name}}. Click below to schedule a service",
+    "campaign_objective": ["First-Service Reminder"],
     "template_variables": [
       "workshop_name",
       "vehicle_model",
@@ -1101,10 +1784,12 @@
       }
     ],
     "channel": "whatsapp_chat",
+    "created": 1765535689.5888994,
+    "updated": 1766134818.3221095,
     "language": "english",
     "dealer_name": "DaveAI",
     "region_name": "South India",
-    "search_term": "autobot_reactivation_generic_v1 text english post-sales re-activation of inactive customer hello we noticed you haven t connected with us in a while. we re here to assist you with service bookings offers and updates anytime.",
+    "search_term": "autobot_reactivation_generic_v1 text english post-sales inactive customer reactivation re-activation of inactive customer hello we noticed you haven t connected with us in a while. we re here to assist you with service bookings offers and updates anytime.",
     "template_id": "01kbcpzn378fsmer1226j80ap2",
     "campaign_type": "post-sales",
     "provider_name": "Airtel",
@@ -1123,12 +1808,12 @@
     ],
     "communication_credentials_id": "airtel-917795030574"
   },
-   {
+  {
     "sender": "917795030574",
     "status": "approved",
     "buttons": [
       {
-        "text": "Book Free Service",
+        "text": "Book a Service",
         "type": "QUICK_REPLY"
       },
       {
@@ -1137,26 +1822,27 @@
       }
     ],
     "channel": "whatsapp_chat",
+    "created": 1766126089.1796002,
+    "updated": 1766126089.181512,
     "language": "english",
+    "lead_tags": ["service-due", "regular-customer"],
     "dealer_name": "DaveAI",
     "region_name": "South India",
-    "template_id": "01kcr1z34m7an59wj5gm87kq1z",
+    "search_term": "autobot_free_service_due_reminder_01 text english post-sales free service due remindergeneral service due reminder hello it s time for your vehicle s free service check to keep it running smoothly. book your appointment now to enjoy hassle-free servicing and maintain your car s performance. we re here to assist you whenever you re ready to schedule.",
+    "template_id": "01kctmzxj8670051p29qbvdapj",
     "campaign_type": "post-sales",
     "provider_name": "Airtel",
-    "template_name": "Autobot_Free_Service_Notification_Reg_Number",
+    "template_name": "autobot_free_service_due_reminder_01",
     "template_type": "text",
-    "template_message": "Good news! Your vehicle no: {{1}} is eligible for a free service. Complete it to keep your vehicle in top condition. Would you like to book your free service now?",
+    "template_message": "Hello, it's time for your vehicle's free service check to keep it running smoothly. Book your appointment now to enjoy hassle-free servicing and maintain your car's performance. We're here to assist you whenever you're ready to schedule.",
     "campaign_objective": [
-      "Free Service Due Reminder",
-      "Free Service Reminder"
+      "Free Service Due ReminderGeneral Service Due Reminder"
     ],
     "template_variables": [],
     "template_button_payloads": [
-      "autobot_free_service_notification_reg_number-book_free_service",
-      "autobot_free_service_notification_reg_number-request_a_callback"
+      "autobot_free_service_due_reminder_01-book_a_service",
+      "autobot_free_service_due_reminder_01-request_a_call_back"
     ],
     "communication_credentials_id": "airtel-917795030574"
   }
-
-
 ]

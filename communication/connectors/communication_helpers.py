@@ -8,13 +8,23 @@ import uuid
 import base64
 import pprint
 import requests
+import mimetypes
+import smtplib
+import boto3
+from pathlib import Path
 import orjson
 from dateutil.relativedelta import relativedelta 
+from tempfile import NamedTemporaryFile
 from decimal import Decimal
 from uuid import UUID
 from datetime import datetime, timedelta
+from email.message import EmailMessage
+from email.utils import make_msgid
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 from typing import Optional, Dict, Any, List, Union, Callable,Tuple,Generator
-# from urllib.parse import urlparse
+from urllib.parse import urlparse
 from os.path import (
     exists as ispath,
     dirname,
@@ -27,7 +37,7 @@ from os.path import (
     isfile
 )
 
-#TEST from validate_email import validate_email
+from validate_email import validate_email
 
 # --- Set import path for internal modules ---
 sys.path.insert(0, dirname(dirname(abspath(__file__))))

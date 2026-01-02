@@ -38,7 +38,6 @@
       },
       "required": true
     },
-    
     {
       "name": "dealership_name",
       "refers": "parents.dealership.dealer_name"
@@ -119,13 +118,7 @@
     {
       "name": "audience_task_ids",
       "type": "string_list",
-      "list_type": "text",
-      "ui_element": "tags",
-      "options": [
-        "Active Customers",
-        "Premium Leads",
-        "Test Audience"
-      ]
+      "list_type": "text"
     },
     {
       "name": "campaign_name",
@@ -139,8 +132,14 @@
     },
     {
       "name": "campaign_user_source",
-      "type": "nested_object",
-      "required": true
+      "type": "text",
+      "required": true,
+      "option_others": true,
+      "options": [
+        "auto_generated",
+        "file",
+        "crm"
+      ]
     },
     {
       "name": "campaign_objective_id",
@@ -250,7 +249,9 @@
     },
     {
       "name": "urgency_hook",
-      "type": "text"
+      "type": "text",
+      "title": "Urgency Hooks"
+      
     },
     {
       "name": "why_user_should_avail_this",
@@ -316,14 +317,13 @@
     {
       "name": "vehicle_category",
       "type": "text",
-      "required": true,
+      "required": false,
       "default": {
         "function": "get_from_model",
         "args": [
           "dealership",
           "dealership_id",
-          "vehicle_category",
-          "Passenger vehicles"
+          "vehicle_category"
         ]
       },
       "option_others": true,
@@ -432,7 +432,9 @@
       "name": "campaign_status",
       "type": "text",
       "options": [
+        "Drafted",
         "Planned",
+        "Draft",
         "Active",
         "Completed",
         "On Hold",

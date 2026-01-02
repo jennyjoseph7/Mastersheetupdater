@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // Imports
@@ -61,7 +61,8 @@ import {
     Database,
     FileText,
     Calendar,
-    CreditCard
+    CreditCard,
+    CalendarClock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AILoader } from "@/components/ui/ai-loader";
@@ -237,6 +238,18 @@ function CampaignCreateContent() {
     const [launchStatus, setLaunchStatus] = useState("");
     const [isLaunchError, setIsLaunchError] = useState(false);
 
+    // --- Computed State for Scheduling ---
+    
+    // Check if the campaign start date is in the future
+    const isScheduledCampaign = useMemo(() => {
+        if (!duration.start) return false;
+        const d = new Date();
+        const offset = d.getTimezoneOffset();
+        const localToday = new Date(d.getTime() - offset * 60 * 1000).toISOString().split("T")[0];
+        
+        return duration.start > localToday;
+    }, [duration.start]);
+
     // --- Initialization ---
 
     useEffect(() => {
@@ -299,7 +312,7 @@ function CampaignCreateContent() {
                     return {
                         id: id,
                         title: title,
-                        campaignSubType: obj.campaign_sub_type || "General",
+                        campaignSubType: obj.campaign_sub_type || "other",
                         icon: getObjectiveIcon(id, title),
                         fullData: obj,
                     };
@@ -368,6 +381,7 @@ function CampaignCreateContent() {
                         custom_objects: customObjects,
                     },
                 },
+                _timeout : 120,
             };
 
             const data = await api(
@@ -447,13 +461,13 @@ function CampaignCreateContent() {
         const commonPayload = {
             campaign_name: campaignName,
             campaign_description: campaignDescription,
-            campaign_status: "Draft",
+            campaign_status: "Drafted",
             start_date: toEpoch(duration.start),
             end_date: toEpoch(duration.end),
             channels: mapChannels(selectedChannels),
             languages: [mapLanguage(language)],
             campaign_offer: campaignData?.campaignOffer || campaignDescription,
-            urgency_hook: [campaignData?.urgencyHook || ""],
+            urgency_hook: campaignData?.urgencyHook || "",
             ctas: [callToAction],
             number_targeted: 0,
             budget_allocated: 0,
@@ -461,9 +475,9 @@ function CampaignCreateContent() {
                 selectedObjective === "custom"
                     ? customObjective
                     : selectedObjectiveData?.title || selectedObjective,
-            campaign_sub_type: selectedObjectiveData?.campaignSubType || "General",
-            created: Math.floor(Date.now() / 1000),
-            updated: Math.floor(Date.now() / 1000),
+            campaign_sub_type: selectedObjectiveData?.campaignSubType || "other",
+            // created: Math.floor(Date.now() / 1000),
+            // updated: Math.floor(Date.now() / 1000),
             campaign_user_source: "file",
         };
         console.log("Common Payload:", commonPayload);
@@ -476,10 +490,10 @@ function CampaignCreateContent() {
                 finalPayload = {
                     ...commonPayload,
                     campaign_type: "pre-sales",
+                      workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
                     dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
-                    region_id: "north-india",
-                    dealer_name: "NEXA Delhi South",
-                    supported_brands: ["NEXA"],
+                    // dealer_name: "NEXA Delhi South",
+                    // supported_brands: ["NEXA"],
                 };
             } else {
                 endpoint = "/gryd/db/object/post_sales_campaign";
@@ -488,7 +502,7 @@ function CampaignCreateContent() {
                     campaign_type: "post-sales",
                     workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
                     dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
-                    campaign_objective_type: ["lead volume"],
+                    // campaign_objective_type: ["lead volume"],
                 };
             }
 
@@ -519,39 +533,50 @@ function CampaignCreateContent() {
             alert("Error: Campaign ID missing.");
             return;
         }
+        
+        // --- 1. SET UI STATE ---
         setIsLaunchSuccessOpen(true);
         setIsLaunchError(false);
-        setLaunchStatus("Finalizing audience data...");
+        setLaunchStatus(isScheduledCampaign ? "Scheduling campaign..." : "Finalizing audience data...");
 
         try {
             const totalReach = getTotalReach();
             const budget = calculateCredits();
+            
+            // --- 2. DETERMINE STATUS ---
+            // If future date: "Planned", else "Active"
+            const statusToSet = isScheduledCampaign ? "Planned" : "Active";
 
             const patchEndpoint =
                 campaignType === "presales"
                     ? `/gryd/db/object/pre_sales_campaign/${createdCampaignId}`
                     : `/gryd/db/object/post_sales_campaign/${createdCampaignId}`;
 
+            // --- 3. UPDATE CAMPAIGN RECORD ---
             await api(patchEndpoint, "PATCH", {
                 number_targeted: totalReach,
                 budget_allocated: budget,
-                campaign_status: "Active",
+                campaign_status: statusToSet,
             });
 
-            setLaunchStatus("Triggering campaign engine...");
-            const taskType = campaignType === "presales" ? "pre-sales" : "post-sales";
+            // --- 4. CONDITIONALLY TRIGGER TASK ---
+            if (!isScheduledCampaign) {
+                setLaunchStatus("Triggering campaign engine...");
+                const taskType = campaignType === "presales" ? "pre-sales" : "post-sales";
 
-            await api("/gryd/task/autocrm-campaign/trigger_campaign", "POST", {
-                args: [],
-                kwargs: { campaign_type: taskType, campaign_id: createdCampaignId },
-            });
+                await api("/gryd/task/autocrm-campaign/trigger_campaign", "POST", {
+                    args: [],
+                    kwargs: { campaign_type: taskType, campaign_id: createdCampaignId },
+                });
+            }
 
-            setLaunchStatus("Campaign launched successfully!");
+            // --- 5. SUCCESS MESSAGE ---
+            setLaunchStatus(isScheduledCampaign ? "Campaign Scheduled Successfully!" : "Campaign Launched Successfully!");
             setTimeout(() => localStorage.removeItem("campaignFormData"), 1000);
         } catch (err) {
             console.error("Launch error", err);
             setIsLaunchError(true);
-            setLaunchStatus("Failed to launch. Please retry.");
+            setLaunchStatus("Failed to process request. Please retry.");
         }
     };
 
@@ -570,7 +595,7 @@ function CampaignCreateContent() {
                         if (
                             !o &&
                             !isLaunchError &&
-                            launchStatus !== "Campaign launched successfully!"
+                            !launchStatus.includes("Successfully")
                         )
                             return;
                         setIsLaunchSuccessOpen(o);
@@ -581,7 +606,7 @@ function CampaignCreateContent() {
                         onInteractOutside={(e) => {
                             if (
                                 !isLaunchError &&
-                                launchStatus !== "Campaign launched successfully!"
+                                !launchStatus.includes("Successfully")
                             )
                                 e.preventDefault();
                         }}
@@ -595,12 +620,14 @@ function CampaignCreateContent() {
                             >
                                 {isLaunchError ? (
                                     <AlertCircle className="h-6 w-6 text-red-600" />
+                                ) : isScheduledCampaign ? (
+                                    <CalendarClock className="h-6 w-6 text-green-600" />
                                 ) : (
                                     <Rocket className="h-6 w-6 text-green-600" />
                                 )}
                             </div>
                             <DialogTitle className="text-center">
-                                {isLaunchError ? "Error" : "Launching Campaign"}
+                                {isLaunchError ? "Error" : isScheduledCampaign ? "Scheduling Campaign" : "Launching Campaign"}
                             </DialogTitle>
                             <DialogDescription className="text-center">
                                 {isLaunchError ? "Something went wrong." : launchStatus}
@@ -609,7 +636,7 @@ function CampaignCreateContent() {
                         <div className="flex justify-center py-4">
                             {isLaunchError ? (
                                 <X className="h-10 w-10 text-red-500 animate-in zoom-in" />
-                            ) : launchStatus.includes("success") ? (
+                            ) : launchStatus.includes("Successfully") ? (
                                 <Check className="h-10 w-10 text-green-500 animate-in zoom-in" />
                             ) : (
                                 <RefreshCw className="h-10 w-10 text-primary animate-spin" />
@@ -625,7 +652,7 @@ function CampaignCreateContent() {
                                 </Button>
                             ) : (
                                 <Button
-                                    disabled={!launchStatus.includes("success")}
+                                    disabled={!launchStatus.includes("Successfully")}
                                     onClick={() => router.push("/")}
                                 >
                                     Go to Dashboard
@@ -682,7 +709,7 @@ function CampaignCreateContent() {
                                                     <span>/</span>
                                                     <span>
                                                         {selectedObjectiveData.campaign_sub_type ||
-                                                            "General"}
+                                                            "other"}
                                                     </span>
                                                 </div>
                                             </div>
@@ -993,6 +1020,11 @@ function CampaignCreateContent() {
                                                                 })
                                                             }
                                                         />
+                                                        {isScheduledCampaign && (
+                                                            <p className="text-xs text-amber-600 font-medium flex items-center gap-1 mt-1">
+                                                                <CalendarClock className="h-3 w-3" /> Future start date: Campaign will be scheduled.
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label>End Date</Label>
@@ -1256,13 +1288,13 @@ function CampaignCreateContent() {
                                                     </CardContent>
                                                 </Card>
 
-                                                {/* NEW: CAMPAIGN SUMMARY CARD */}
+                                                {/* CAMPAIGN SUMMARY CARD */}
                                                 <Card className="shadow-xl border-2 border-l-4 border-l-green-500 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
                                                     <CardHeader className="pb-2">
                                                         <CardTitle className="text-xl flex items-center gap-2">
                                                             <FileText className="h-5 w-5 text-green-600" /> Campaign Summary
                                                         </CardTitle>
-                                                        <CardDescription>Double-check details before launching</CardDescription>
+                                                        <CardDescription>Double-check details before {isScheduledCampaign ? "scheduling" : "launching"}</CardDescription>
                                                     </CardHeader>
                                                     <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
                                                         {/* Column 1: Identity */}
@@ -1280,7 +1312,7 @@ function CampaignCreateContent() {
                                                         <div className="space-y-1">
                                                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Schedule</p>
                                                             <div className="flex flex-col text-sm font-medium">
-                                                                <span className="text-green-600">Start: {duration.start}</span>
+                                                                <span className={cn(isScheduledCampaign ? "text-amber-600" : "text-green-600")}>Start: {duration.start}</span>
                                                                 <span className="text-red-500">End: {duration.end}</span>
                                                             </div>
                                                         </div>
@@ -1333,7 +1365,15 @@ function CampaignCreateContent() {
                                                         onClick={handleLaunch}
                                                         className="gap-2 px-10 bg-primary hover:bg-primary-700 h-14 text-lg shadow-xl shadow-primary-200 dark:shadow-none transition-all animate-pulse hover:scale-105 hover:animate-none"
                                                     >
-                                                        <Rocket className="h-5 w-5" /> Launch Campaign Now
+                                                        {isScheduledCampaign ? (
+                                                            <>
+                                                                <CalendarClock className="h-5 w-5" /> Schedule Campaign
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Rocket className="h-5 w-5" /> Launch Campaign Now
+                                                            </>
+                                                        )}
                                                     </Button>
                                                 </div>
                                             </div>

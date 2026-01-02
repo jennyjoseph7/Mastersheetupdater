@@ -1,15 +1,19 @@
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as dbhp, beats as cron_worker
 from gryd_worker.gryd_routes import payload_decorator, signup_decorator
 from models import model as base_model
+from analytics.loader import load_stored_procedures
+from ai_service import ai_service_app
 # from communication.connectors.connector_whatsapp import process_forwarded_webhook
 from db_routes import db_routes, ai_service_app
 # from voice.voice.providers.twilio import app as twilio_routes
 # from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_app
 import os
-from flask import request
+from flask import request,jsonify, send_file
 from config import *
 import autocrm_validator
-
+import io
+import json
+import requests
 
 gryd.SERVICE = SERVICE
 gryd.BASE_PATH = BASE_PATH
@@ -19,48 +23,12 @@ app_dict = gryd_routes.make_app(__name__, current_module = __name__)
 app = app_dict['app']
 
 
-def load_autocrm_models():
-    models = {}
-    with hp.read_file(DATA_DIR, "model_sequence.json") as model_sequence:
-        for model_name in model_sequence:
-            models[model_name] = gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
-            logger.info(f"Loaded model: {model_name}")
-    return models
-
-def post_autocrm_model(model_name, enterprise = None):
-    enterprise = enterprise or base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
-    with hp.read_file(DATA_DIR, f"{model_name}.json") as model_json:
-        logger.info(f"Posting model: {model_name}")
-        try:
-            enterprise.post_model(model_name, model = model_json)
-            return gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
-        except Exception as e:
-            logger.error(f"Error posting model: {model_name}")
-            raise
-        logger.info(f"Model posted successfully: {model_name}")
-
-def post_autocrm_data(data_name):
-    filename = hp.joinpath(BASE_PATH, "seed", f"{data_name}s.json")
-    logger.info(f"Posting data: {data_name} from filename: {filename}")
-    if not hp.isfile(filename):
-        logger.error(f"File: {filename} not found")
-        raise FileNotFoundError(f"File: {filename} not found")
-    try:
-        m = gryd.base_model.Model(data_name, AUTOCRM_APP_ENTERPRISE_ID)
-        with hp.read_file(filename) as data_json:
-            for data in data_json:
-                m.post(data)
-        return m
-    except Exception as e:
-        logger.error(f"Error posting data for: {data_name} from filename: {filename}")
-        raise
-    logger.info(f"Data posted successfully: {data_name}")
 
 
-def SETUP(skip_models = False, skip_data = False, start_models_from = None, start_data_from = None, skip_cron = False):
+def SETUP(skip_models = False, skip_data = False, start_models_from = None, start_data_from = None, skip_cron = False, skip_sp = False, new_db = False, new_environment = False):
     gryd.setup_gryd_enterprise(AUTOCRM_APP_ENTERPRISE_ID, email = AUTOCRM_ADMIN_ID, phone_number = AUTOCRM_ADMIN_PHONE_NUMBER, password = AUTOCRM_ADMIN_PASSWORD)
     enterprise = base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
-    if not skip_models:
+    if (not skip_models) or new_db:
         with hp.read_file(DATA_DIR, "model_sequence.json") as model_sequence:
             for model_name in model_sequence:
                 if start_models_from and model_name != start_models_from:
@@ -68,7 +36,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
                     continue
                 start_models_from = None
                 post_autocrm_model(model_name, enterprise = enterprise)
-    if not skip_data:
+    if (not skip_data) or new_db:
         with hp.read_file(BASE_PATH, "seed", "data_sequence.json") as data_sequence:
             for data_name in data_sequence:
                 if start_data_from and data_name != start_data_from:
@@ -76,10 +44,42 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
                     continue
                 start_data_from = None
                 post_autocrm_data(data_name)
-    if not skip_cron:
-        cron_worker.add_cron_job(AUTOCRM_APP_ENTERPRISE_ID, "clear_otp_cache", "cron", "*/15 * * * *", logger = logger)
-
-
+    if not skip_sp:
+        load_stored_procedures()
+    if (not skip_cron) or new_environment:
+        # cron_worker.add_cron_job(AUTOCRM_APP_ENTERPRISE_ID, "clear_otp_cache", "cron", "*/15 * * * *", logger = logger)
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="overall_campaign_summary",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule = "*/20 * * * *",
+              add_schedule_to_queue=False
+            )
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="check_inactive_sessions",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule = "*/15 * * * *",
+              kwargs={"inactivity_time": 1440, "only_for_channels":["whatsapp_chat"]},
+              add_schedule_to_queue=False
+        )
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="template_approval",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule = "*/20 * * * *",
+              add_schedule_to_queue=False
+        )
+        
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="performance_summary",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule = "*/20 * * * *",
+              add_schedule_to_queue=False
+        )
+        
+        
 @app.route("/webhook/<channel>/<channel_provider>", methods = ["GET","POST"])
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>", methods = ["GET","POST"])
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>/<conversation_id>", methods = ["GET","POST"])
@@ -99,6 +99,12 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
     else:
         return gryd_routes.jsonify({"status": "error", "message": "Invalid channel"}), 400, {"Access-Control-Allow-Origin": "*"}
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
+
+
+@app.route("/webhook/ses-status", methods=["POST", "GET"])
+def handle_ses_webhook():
+    logger.info(f"SES Webhook received")
+    return 
 
 
 @app.route('/test_voice_agent/<provider>/<session_id>', methods = ["POST"])

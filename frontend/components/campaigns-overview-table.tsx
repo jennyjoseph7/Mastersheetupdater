@@ -34,7 +34,7 @@ export function CampaignsOverviewTable({
         return "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400";
       case "Paused":
         return "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400";
-      case "Draft":
+      case "Drafted":
         return "bg-gray-100 text-gray-700 dark:bg-gray-950 dark:text-gray-400";
       default:
         return "bg-gray-100 text-gray-700";

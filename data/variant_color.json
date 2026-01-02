@@ -94,7 +94,7 @@
     },
     {
       "name": "oem_name",
-      "refers": "parents.variant.oem_id"
+      "refers": "parents.variant.oem_name"
     },
     {
       "name": "oem_brand_awareness",
@@ -103,10 +103,6 @@
     {
       "name": "oem_country_of_origin",
       "refers": "parents.variant.oem_country_of_origin"
-    },
-    {
-      "name": "oem_brand_awareness",
-      "refers": "parents.variant.oem_brand_awareness"
     },
     {
       "name": "oem_wiki_description",
@@ -147,10 +143,6 @@
     {
       "name": "engine_type",
       "refers": "parents.variant.engine_type"
-    },
-    {
-      "name": "transmission",
-      "refers": "parents.variant.transmission"
     },
     {
       "name": "drivetrain",

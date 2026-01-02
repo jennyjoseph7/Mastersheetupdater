@@ -273,7 +273,7 @@ def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = 
     logger = logger or mlogger
     logger.info(f"Processing pre-sales lead row: {row}")
     missing_reason = missing_reason or []
-    data = {}
+    data = row
     for k in [
         "phone_number",
         "email",
@@ -284,14 +284,17 @@ def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = 
     ]:
         if is_valid_value(row, k):
             data[k] = row.get(k)
+        else:
+            data[k] = None
+
     lead = models['lead_model'].post(data)
-    return lead.get('lead_id')
+    return lead, ""
 
 def process_dealership_lead_row(row, models, missing_reason = None, rooftop_id = None, logger = None):
     logger = logger or mlogger
     logger.info(f"Processing dealership lead row: {row}")
     missing_reason = missing_reason or []
-    data = {}
+    data = row
     for k in [
         "dealership_id",
         "dealer_name",
@@ -836,7 +839,8 @@ def dealership_signup(
     dealership_model = gryd.base_model.Model('dealership', AUTOCRM_APP_ENTERPRISE_ID)
     previous_dealership = dealership_model.list(_as_option=True, _page_size=1, dealer_name=f"~{dealer_name}", region_id=region_id, vehicle_category=vehicle_category)
     if previous_dealership:
-        raise ValueError(f"Dealer with name similar to {dealer_name} ({', '.join(previous_dealership.get('dealer_name'))}), region {region_id}, vehicle category {vehicle_category} already exists.")
+        previous_dealership_names = ', '.join(list(map(lambda x: x.get('dealer_name'), previous_dealership))) 
+        raise ValueError(f"Dealer with name similar to {dealer_name} ({previous_dealership_names}), region {region_id}, vehicle category {vehicle_category} already exists.")
     region_model = gryd.base_model.Model('region', AUTOCRM_APP_ENTERPRISE_ID)
     region = region_model.get(region_id)
     if not region:
@@ -919,11 +923,11 @@ def dealership_update_details(
     dealership_id:str,
     supported_brands:list[str],
     dealership_type:str,
-    languages:list[str],
-    aliases:list[str],
-    pan_number:str,
-    gstin:str,
-    website:str,
+    languages:list[str] = None,
+    aliases:list[str] = None,
+    pan_number:str = None,
+    gstin:str = None,
+    website:str = None,
     vehicle_category:str = None,
     logger = None,
     job = None,
@@ -1006,7 +1010,7 @@ def dealership_update_details(
         'gstin': gstin,
         'website': website
     })
-    dealership = dealership_model.update(dealership_id, kwargs)
+    dealership = dealership_model.update(dealership_id, {k: v for k, v in kwargs.items() if v is not None})
     logger.info(f"Dealership details updated: {dealership}")
     return dealership
 
@@ -1126,7 +1130,7 @@ def gryd_task_import_leads_from_csv(
     return
 
 @gryd.is_a_task()
-def post_billing(dealership_id, transaction_type, item_name, item_description, transaction_date, item_quantity, item_price, item_unit, currency):
+def post_billing(dealership_id, transaction_type, item_name, item_description, transaction_date, item_quantity, item_price, item_unit, currency, campaign_id, channel,**kwarg):
     """
     Post a billing transaction to the database to debit credits from dealership and create billing object. 
 
@@ -1140,7 +1144,8 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
     item_price (float): The price of the item per credit cost.
     item_unit (str): The unit of the item (e.g. credits).
     currency (str): The currency of the transaction - example - ["credits", "INR", "USD", "EUR", "GBP", "AED", "SAR", "JPY"].
-
+    campaign_id (str): The campaign ID if applicable else 'inbound'.
+    channel (str): The channel of the transaction (e.g. "rcs","email", "web_chat", "web_chat_voice","fb_chat","insta_chat","twitter_chat","voice_phone","whatsapp_chat","whatsapp_voice_note","whatsapp_voice_call","zoom_bot","ms_teams").
     Returns:
     None
     """
@@ -1160,8 +1165,11 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
         if not dealership:
             raise ValueError("Post Billing called without dealership_id")
         current_balance = float(dealership.get('credits_balance',0))
-        deductable = -1*item_quantity
+        deductable=item_quantity
+        if transaction_type == "debit":
+            deductable = -1*item_quantity
         db.iadd("dealership","dealership_id", dealership_id, "credits_balance", deductable)
+    
     new_balance = current_balance - item_quantity
     if new_balance <= 0:
         logger.info(f"Dealership {dealership_id} has no credits left")
@@ -1182,7 +1190,9 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
         "dealership_id" : dealership_id,
         "status" : "success",
         "credit_balance_before" : current_balance,
-        "credit_balance_after" : new_balance
+        "credit_balance_after" : new_balance,
+        "campaing_id" : campaign_id or "inbound",
+        "channel" : channel
     }
     m.post(postable)
 

@@ -139,7 +139,6 @@ def converse(*args, **kargs):
     return
 
 def post_billing_data(customer_response, out_put_text, campaign_data, dealership_id, channel, request_data):
-    ###TODO update the post call to do pg call, move to post session worker
     in_length = len(customer_response)
     out_length = len(out_put_text)
     total_length = in_length + out_length
@@ -151,38 +150,18 @@ def post_billing_data(customer_response, out_put_text, campaign_data, dealership
     campaign_objective = campaign_data.get("campaign_objective")
     campaign_name = campaign_data.get("campaign_name")
     
-    provider = request_data.get("provider") or "airtel" ##TODO update from request data
-    contact = request_data.get("contact") or "9999999999" ##TODO update from request data
+    provider = request_data.get("provider") or "unknown"
+    contact = request_data.get("contact") or "unknown"
     transaction_type = "debit"
     currency = TOKEN_COST_CURRENCY
     item_desc =  f"{campaign_type} - {campaign_objective} - {campaign_name} - {channel} - {provider} - {contact}"
-    # post_billing(dealership_id, transaction_type, "conversation", item_desc, tme, credits, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, currency)
     return {
         "_job":{
             "task": "post_billing",
             "service" : AUTOCRM_CORE_SERVICE_NAME,
-
             "args": [dealership_id, transaction_type, "conversation", item_desc, tme, credits, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, currency]
         }
     }
-    # postable = {
-    #     "created" : timmm,
-    #     "updated" : timmm,
-    #     "transaction_date" : tme,
-    #     "transaction_type" : "debit",
-    #     "item_name" : "conversation",
-    #     "item_description" : f"{campaign_type} - {campaign_objective} - {campaign_name} - {channel} - {provider} - {contact}",
-    #     "item_quantity" : credits,
-    #     "item_price" : AUTOCRM_RESPONSE_PROVIDED_PRICE,
-    #     "item_total" : credits*AUTOCRM_RESPONSE_PROVIDED_PRICE,
-    #     "item_units" : AUTOCRM_RESPONSE_PROVIDED_UNITS,
-    #     "currency" : TOKEN_COST_CURRENCY,
-    #     "dealership_id" : dealership_id,
-    #     "status" : "success"
-    # }
-    # m = gryd.base_model.Model("billing", AUTOCRM_APP_ENTERPRISE_ID)
-    # xx = m.post(postable)
-    # mlogger.info("posted data == {}".format(xx))
 
 @gryd.is_a_task()
 def post_all_messages_for_session(*args, **pass_kwargs):
