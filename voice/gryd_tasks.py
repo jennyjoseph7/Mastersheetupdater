@@ -52,10 +52,10 @@ def trigger_voice_call(*args, **kwargs):
     user_data = kwargs.get("user_data", {})
     logger.info(f"Triggering voice call with user data: {user_data}")
 
-    if not all (k in user_data for k in ("session_id", "campaign_id", "campaign_type", "mobile_number")):
-        logger.error("Missing required user data fields: 'session_id', 'campaign_id', 'campaign_type'")
+    if not all (k in user_data for k in ("campaign_id", "campaign_type", "mobile_number")):
+        logger.error("Missing required user data fields: 'campaign_id', 'campaign_type', 'mobile_number'")
         yield {
-            "error": "Missing required user data fields: 'session_id', 'campaign_id', 'campaign_type'"
+            "error": "Missing required user data fields: 'campaign_id', 'campaign_type', 'mobile_number'"
         }
 
     session_model = base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
@@ -81,9 +81,7 @@ def trigger_voice_call(*args, **kwargs):
 
 
     logger.info(f"Session for Voice Call: {session_data}")
-    provider = user_data.get("provider", "tatatele")
-
-
+    provider = user_data.get("provider_name", "tatatele")
 
     response = providers.make_call(provider, session_data, *args, **kwargs)
 

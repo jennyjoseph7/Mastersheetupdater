@@ -122,9 +122,9 @@ class InputManager:
         in_payload = self.provider.receive_message(raw_data)
         # logger.info(f'recieved data in input queue: {type(in_payload.get("audio_data"))}')
 
-        if in_payload.get('audio_data')[:10] == self.buffer_identifier.value:
-            # logger.info('Looks like messaage from output manager ignoring...')
-            return
+        # if in_payload.get('audio_data')[:10] == self.buffer_identifier.value:
+        #     # logger.info('Looks like messaage from output manager ignoring...')
+        #     return
 
         if in_payload.get('message_type','') == 'stream_start':
             session_id = in_payload.get('metadata',{}).get('custom_params', {}).get('session_id')
