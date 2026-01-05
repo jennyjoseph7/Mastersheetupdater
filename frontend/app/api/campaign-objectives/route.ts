@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "https://autobot-webapp-dev.gryd.in/gryd/db/objects";
+const getApiBaseUrl = () => {
+  // Check for explicit environment variable override
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
 
+  // Always use production URL
+  return "https://autobot-webapp-dev.gryd.in";
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

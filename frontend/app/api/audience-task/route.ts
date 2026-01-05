@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
+const getApiBaseUrl = () => {
+  // Check for explicit environment variable override
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:5008";
+  // Always use production URL
+  return "https://autobot-webapp-dev.gryd.in";
+};
 
+export const API_BASE_URL = getApiBaseUrl();
+ 
 export async function GET() {
   try {
     const headers: Record<string, string> = {
