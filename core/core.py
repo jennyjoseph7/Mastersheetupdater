@@ -14,14 +14,18 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CORE_SERVICE_NAME, \
     DEFAULT_OTP, \
     ALLOWED_COUNTRY_CODES, \
     OTP_TEMPLATE_ID, \
-    AutocrmModel
+    AutocrmModel, \
+    csv
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
-import csv
 import requests
 import tempfile
+from communication.connectors.load_providers import load_providers
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
-from communication.connectors.whatsapp_connectors.airtel_connector import *
+from communication.connectors.connector_mail import send_email_otp
+
+load_providers(["whatsapp", "email"])
+
 import autocrm_validator
 THIS_DIR = dirname(abspath(__file__))
 if THIS_DIR not in sys.path:
@@ -571,9 +575,10 @@ def generate_otp(phone_number_or_email:str, channel:str = 'whatsapp', region_id:
     expiry = hp.epoch() + 10 * 60 # 10 minutes
     if channel == 'whatsapp':
         phone_number = verify_phone_number(phone_number_or_email, region_codes = region_codes, human_agent_model = human_agent_model, signup = signup, logger = logger, job = job)
-        BaseWebhookConverter().send_otp_template(**{"template_id":OTP_TEMPLATE_ID,"mobile_number":phone_number,"otp":otp})
+        BaseWebhookConverter.send_otp_template(**{"template_id":OTP_TEMPLATE_ID,"mobile_number":phone_number,"otp":otp})
     elif channel == 'email':
         email = verify_email(phone_number_or_email, human_agent_model = human_agent_model, signup = signup, logger = logger, job = job)
+        send_email_otp(**{"to_email": email, "otp": otp, "message": f"Your OTP for autoNgage is {otp}"})
         # TODO: Send email OTP
     with get_pg_connector() as db:
         otp_cache_id = str(hp.make_uuid3(otp, expiry))
