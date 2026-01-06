@@ -23,7 +23,9 @@ import tempfile
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 from communication.connectors.whatsapp_connectors.airtel_connector import *
 import autocrm_validator
-
+THIS_DIR = dirname(abspath(__file__))
+if THIS_DIR not in sys.path:
+    sys.path.append(THIS_DIR)
 from razorpay_service import create_credit_purchase, confirm_payment_success, mark_payment_failed, mark_payment_cancelled
 
 gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME

@@ -17,6 +17,7 @@ import requests
 import hmac
 import hashlib
 from core.razorpay_service import razorpay_webhook_handler
+from core.core import generate_otp, dealership_signup, reset_password
 
 gryd.SERVICE = f"{AUTOCRM_APP_ENTERPRISE_ID}-app"   
 QM = gryd.set_queue_manager()
@@ -128,15 +129,18 @@ def test_voice_agent(provider, session_id):
 
 @app.route('/dealership_signup', methods = ["POST"])
 @gryd_routes.signup_decorator
-def dealership_signup(**params):
-    timeout = params.pop('_timeout', 60)
-    try:
-        r, e = gryd.await_result('dealership_signup', AUTOCRM_CORE_SERVICE_NAME, args = params.pop('args', []), kwargs = params.pop('kwargs', {}), compile_results = lambda x, y, z: (hp.make_single(y), hp.make_single(z)), timeout = timeout, **params)
-        if e:
-            raise hp.GrydError(str(e))
-        return r
-    except gryd.TaskTimeout as e:
-        raise gryd_routes.TimeOutError(str(e))
+def dealership_signup_api(**params):
+    return dealership_signup(*params.pop('args', []), **params.pop('kwargs', {}))
+
+@app.route('/generate_otp', methods = ["POST"])
+@gryd_routes.signup_decorator
+def generate_otp_api(**params):
+    return generate_otp(*params.pop('args', []), **params.pop('kwargs', {}))
+
+@app.route('/reset_password', methods = ["POST"])
+@gryd_routes.signup_decorator
+def reset_password_api(**params):
+    return reset_password(*params.pop('args', []), **params.pop('kwargs', {}))
 
 @app.route('/get-dealership-details/<agent_user_id>', methods = ["GET"])
 @gryd_routes.payload_decorator()
