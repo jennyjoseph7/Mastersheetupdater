@@ -8,12 +8,10 @@ from db_routes import db_routes, ai_service_app
 # from voice.voice.providers.twilio import app as twilio_routes
 # from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_app
 import os
-from flask import request,jsonify, send_file
+from flask import Flask,request,jsonify
 from config import *
 import autocrm_validator
-import io
 import json
-import requests
 import hmac
 import hashlib
 from core.razorpay_service import razorpay_webhook_handler
@@ -23,9 +21,6 @@ QM = gryd.set_queue_manager()
 logger = gryd.hp.get_logger(AUTOCRM_APP_ENTERPRISE_ID)
 app_dict = gryd_routes.make_app(__name__, current_module = __name__)                                                                 
 app = app_dict['app']
-
-
-
 
 def SETUP(skip_models = False, skip_data = False, start_models_from = None, start_data_from = None, skip_cron = False, skip_sp = False, new_db = False, new_environment = False):
     gryd.setup_gryd_enterprise(AUTOCRM_APP_ENTERPRISE_ID, email = AUTOCRM_ADMIN_ID, phone_number = AUTOCRM_ADMIN_PHONE_NUMBER, password = AUTOCRM_ADMIN_PASSWORD)
@@ -103,12 +98,6 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
 
 
-@app.route("/webhook/ses-status", methods=["POST", "GET"])
-def handle_ses_webhook():
-    logger.info(f"SES Webhook received")
-    return 
-
-
 @app.route('/test_voice_agent/<provider>/<session_id>', methods = ["POST"])
 def test_voice_agent(provider, session_id):
     import voice
@@ -138,33 +127,34 @@ app.register_blueprint(db_routes)
 
 
 
-WEBHOOK_SECRET = "AUTOBOT_DAVEAI_2025"
-
 def verify_webhook_signature(payload_body: bytes, signature: str, secret: str) -> bool:
-    
     generated_signature = hmac.new(
-        bytes(secret, "utf-8"),
-        msg=payload_body,
-        digestmod=hashlib.sha256
+        secret.encode("utf-8"),
+        payload_body,
+        hashlib.sha256
     ).hexdigest()
+
     return hmac.compare_digest(generated_signature, signature)
 
 
-@app.route("/webhook/razorpay", methods=["POST"])
+@app.route("/razorpay/webhook", methods=["POST"])
 def razorpay_webhook():
-    payload_body = request.data 
+    payload_body = request.get_data(as_text=False)
     signature = request.headers.get("X-Razorpay-Signature", "")
+    logger.info(payload_body)
+    if not verify_webhook_signature(payload_body, signature, RAZORPAY_WEBHOOK_SECRET):
+        return jsonify({"status": "error : razorpay webhook signature verification failed"}), 400
 
-    if not verify_webhook_signature(payload_body, signature, WEBHOOK_SECRET):
-        return jsonify({"status": "error", "message": "Invalid signature"}), 400
-
-    payload = request.json
+    payload = json.loads(payload_body)
+    response = jsonify({"status": "ok"}), 200
 
     try:
-        razorpay_webhook_handler(payload)  
-        return jsonify({"status": "ok"}), 200
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        razorpay_webhook_handler(payload)
+    except Exception:
+        logger.exception("Webhook processing failed")
+
+    return response
+
 
 
 if __name__ == "__main__":
