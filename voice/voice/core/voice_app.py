@@ -57,11 +57,12 @@ async def user_session(**user_data):
 
     provider = providers.get_provider(user_data.get('provider', 'twilio'))
     tp = time.time() - t
-    tracker = utils.matrics.get_latency_tracker()
 
-    tracker.track("inpsfkds", 1000*tp)
-
-    from voice.voice.providers.twilio import MessageHandler, call
+    try:
+        from voice.voice.providers.twilio import MessageHandler
+    except:
+        from voice.providers.twilio import MessageHandler
+        
     IM = InputManager(
         session_id,
         input_client,

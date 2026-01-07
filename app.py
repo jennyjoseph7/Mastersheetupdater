@@ -15,6 +15,7 @@ import json
 import hmac
 import hashlib
 from core.razorpay_service import razorpay_webhook_handler
+from core.core import generate_otp, dealership_signup, reset_password
 
 gryd.SERVICE = f"{AUTOCRM_APP_ENTERPRISE_ID}-app"   
 QM = gryd.set_queue_manager()
@@ -97,6 +98,11 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
         return gryd_routes.jsonify({"status": "error", "message": "Invalid channel"}), 400, {"Access-Control-Allow-Origin": "*"}
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
 
+@app.route("/webhook/ses-status", methods=["POST", "GET"])
+def handle_ses_webhook():
+    logger.info(f"SES Webhook received")
+    return 
+
 
 @app.route('/test_voice_agent/<provider>/<session_id>', methods = ["POST"])
 def test_voice_agent(provider, session_id):
@@ -116,8 +122,36 @@ def test_voice_agent(provider, session_id):
     }
     return gryd_routes.jsonify(response), 200, {"Access-Control-Allow-Origin": "*"}
 
+@app.route('/dealership_signup', methods = ["POST"])
+@gryd_routes.signup_decorator
+def dealership_signup_api(**params):
+    return dealership_signup(*params.pop('args', []), **params.pop('kwargs', {}))
 
+@app.route('/generate_otp', methods = ["POST"])
+@gryd_routes.signup_decorator
+def generate_otp_api(**params):
+    return generate_otp(*params.pop('args', []), **params.pop('kwargs', {}))
 
+@app.route('/reset_password', methods = ["POST"])
+@gryd_routes.signup_decorator
+def reset_password_api(**params):
+    return reset_password(*params.pop('args', []), **params.pop('kwargs', {}))
+
+@app.route('/get-dealership-details/<agent_user_id>', methods = ["GET"])
+@gryd_routes.payload_decorator()
+def get_dealership_details(agent_user_id, *args, **kwargs):
+    ha = AutocrmModel("human_agent")
+    aid = ha.get(agent_user_id)
+    if not aid:
+        raise ValueError("No such user id: %s for enterprise %s", agent_user_id, AUTOCRM_APP_ENTERPRISE_ID) 
+    dealership_id = aid.get('dealership_id')
+    if not dealership_id:
+        raise ValueError("Dealership is mis-configured for user id: %s", agent_user_id)
+    dm = AutocrmModel("dealership")
+    dealership = dm.get(dealership_id)
+    if not dealership:
+        raise ValueError("Dealership is mis-configured for user id: %s", agent_user_id)
+    return dealership
 
 
 app.register_blueprint(ai_service_app.ai_service_routes)

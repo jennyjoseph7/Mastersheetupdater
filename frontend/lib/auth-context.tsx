@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { dealerLogin, type DealerLoginResponse } from "@/lib/api";
 
 interface User {
   id: string;
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkSession = async () => {
       const token = localStorage.getItem("auth_token");
       const userData = localStorage.getItem("user_data");
+      const authData = localStorage.getItem("auth_data");
 
       if (token && userData) {
         try {
@@ -50,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("[autoNgage] Failed to parse user data:", error);
           localStorage.removeItem("auth_token");
           localStorage.removeItem("user_data");
+          localStorage.removeItem("auth_data");
         }
       }
       setIsLoading(false);
@@ -61,29 +64,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     console.log("Attempting login with:", { email });
 
-    // Client-side authentication for static export compatibility
-    // In production, this should point to your backend API
-    if (email === "user@iamdave.ai" && password === "12345678") {
+    try {
+      // Call the dealer login API
+      const response: DealerLoginResponse = await dealerLogin({
+        email,
+        password,
+      });
+
+      // Extract name from email (part before @)
+      const nameFromEmail = email.split("@")[0].replace(/[.+]/g, " ");
+
+      // Create user object from API response
       const user = {
-        id: "dealer_001",
-        email: "user@iamdave.ai",
-        name: "Dave AI Dealer",
-        credits: 5000,
+        id: response.user_id || response.session_id,
+        email: response.user_id,
+        name: nameFromEmail || "Dealer",
+        credits: 5000, // Default credits, can be updated later
         isVerified: false,
         verificationStatus: "pending" as const,
       };
 
-      const token = `token_${Date.now()}_${Math.random()
-        .toString(36)
-        .substring(7)}`;
-
       console.log("Login successful, user:", user);
+      console.log("Auth response:", response);
 
-      localStorage.setItem("auth_token", token);
+      // Store authentication data
+      localStorage.setItem("auth_token", response.token);
       localStorage.setItem("user_data", JSON.stringify(user));
+      localStorage.setItem(
+        "auth_data",
+        JSON.stringify({
+          role: response.role,
+          token: response.token,
+          expiry: response.expiry,
+          user_id: response.user_id,
+          enterprise_id: response.enterprise_id,
+          application_id: response.application_id,
+          session_id: response.session_id,
+        })
+      );
 
       setUser(user);
-    } else {
+    } catch (error) {
+      console.error("Login error:", error);
+      if (error instanceof Error) {
+        throw error;
+      }
       throw new Error("Invalid email or password");
     }
   };
@@ -91,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user_data");
+    localStorage.removeItem("auth_data");
 
     setUser(null);
 
