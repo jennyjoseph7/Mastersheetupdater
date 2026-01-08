@@ -760,9 +760,9 @@ export async function createWorkshop(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - include X-GRYD-APPLICATION-ID to ensure backend uses "autocrm"
-  // The backend may be deriving application_id from token/session (which might be "gryd")
-  // so we explicitly send "autocrm" to override it
+  // Call backend directly - matching Postman curl exactly (no X-GRYD-APPLICATION-ID header)
+  // NOTE: X-GRYD-APPLICATION-ID header causes CORS errors - backend must derive from token/session
+  // If you get "Unauthorized user for application_id gryd!" error, ensure you logged in with application_id "autocrm"
   const backendUrl = `${API_BASE_URL}/gryd/db/object/workshop`;
 
   const headers = {
@@ -772,7 +772,6 @@ export async function createWorkshop(
     "X-GRYD-SESSION-ID": sessionId,
     Accept: "application/json",
     "X-GRYD-ROLE": "agent",
-    "X-GRYD-APPLICATION-ID": "autocrm",
   };
 
   console.log("[Create Workshop] Calling backend directly:", backendUrl);
@@ -812,20 +811,16 @@ export async function createWorkshop(
           "[Create Workshop] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
         );
         console.error(
-          "[Create Workshop] We are sending X-GRYD-APPLICATION-ID: autocrm header"
-        );
-        console.error("[Create Workshop] If this error persists, check:");
-        console.error(
-          "[Create Workshop] 1. Browser Network tab - is X-GRYD-APPLICATION-ID header actually being sent?"
+          "[Create Workshop] The backend derives application_id from your token/session."
         );
         console.error(
-          "[Create Workshop] 2. Backend CORS config - does it allow 'x-gryd-application-id' header?"
+          "[Create Workshop] This means your login session was created with application_id 'gryd'."
         );
         console.error(
-          "[Create Workshop] 3. Backend may be ignoring the header and using token/session application_id"
+          "[Create Workshop] SOLUTION: Log out and log in again, ensuring login uses application_id 'autocrm'."
         );
         errorMessage =
-          "Backend received wrong application_id 'gryd' instead of 'autocrm'. Check Network tab to verify X-GRYD-APPLICATION-ID header is being sent. Backend CORS may need to allow this header, or backend may need to use the header value instead of deriving from token/session.";
+          "Backend received wrong application_id 'gryd' instead of 'autocrm'. This means your login session was created with application_id 'gryd'. Please log out and log in again, ensuring the login uses application_id 'autocrm'. The backend derives application_id from your token/session.";
       }
 
       try {
@@ -861,9 +856,8 @@ export async function getWorkshopsForDealership(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - include X-GRYD-APPLICATION-ID to ensure backend uses "autocrm"
-  // The backend may be deriving application_id from token/session (which might be "gryd")
-  // so we explicitly send "autocrm" to override it
+  // Call backend directly - matching Postman curl exactly (no X-GRYD-APPLICATION-ID header)
+  // NOTE: X-GRYD-APPLICATION-ID header causes CORS errors - backend must derive from token/session
   const backendUrl = `${API_BASE_URL}/gryd/db/object/workshop?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
@@ -874,7 +868,6 @@ export async function getWorkshopsForDealership(
     "X-GRYD-TOKEN": token,
     "X-GRYD-SESSION-ID": sessionId,
     "X-GRYD-ROLE": "agent",
-    "X-GRYD-APPLICATION-ID": "autocrm",
   };
 
   console.log("[Get Workshops] Calling backend directly:", backendUrl);
@@ -914,13 +907,16 @@ export async function getWorkshopsForDealership(
           "[Get Workshops] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
         );
         console.error(
-          "[Get Workshops] The backend may need to derive application_id from token/session"
+          "[Get Workshops] The backend derives application_id from your token/session."
         );
         console.error(
-          "[Get Workshops] Or backend CORS must allow 'x-gryd-application-id' header"
+          "[Get Workshops] This means your login session was created with application_id 'gryd'."
+        );
+        console.error(
+          "[Get Workshops] SOLUTION: Log out and log in again, ensuring login uses application_id 'autocrm'."
         );
         errorMessage =
-          "Backend received wrong application_id 'gryd' instead of 'autocrm'. Check Network tab to verify X-GRYD-APPLICATION-ID header is being sent. Backend CORS may need to allow this header, or backend may need to use the header value instead of deriving from token/session.";
+          "Backend received wrong application_id 'gryd' instead of 'autocrm'. This means your login session was created with application_id 'gryd'. Please log out and log in again, ensuring the login uses application_id 'autocrm'. The backend derives application_id from your token/session.";
       }
 
       try {
@@ -995,9 +991,8 @@ export async function createShowroom(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - include X-GRYD-APPLICATION-ID to ensure backend uses "autocrm"
-  // The backend may be deriving application_id from token/session (which might be "gryd")
-  // so we explicitly send "autocrm" to override it
+  // Call backend directly - matching Postman curl exactly (no X-GRYD-APPLICATION-ID header)
+  // NOTE: X-GRYD-APPLICATION-ID header causes CORS errors - backend must derive from token/session
   const backendUrl = `${API_BASE_URL}/gryd/db/object/showroom`;
 
   const headers = {
@@ -1007,7 +1002,6 @@ export async function createShowroom(
     "X-GRYD-SESSION-ID": sessionId,
     Accept: "application/json",
     "X-GRYD-ROLE": "agent",
-    "X-GRYD-APPLICATION-ID": "autocrm",
   };
 
   console.log("[Create Showroom] Calling backend directly:", backendUrl);
@@ -1045,13 +1039,16 @@ export async function createShowroom(
           "[Create Showroom] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
         );
         console.error(
-          "[Create Showroom] The backend may need to derive application_id from token/session"
+          "[Create Showroom] The backend derives application_id from your token/session."
         );
         console.error(
-          "[Create Showroom] Or backend CORS must allow 'x-gryd-application-id' header"
+          "[Create Showroom] This means your login session was created with application_id 'gryd'."
+        );
+        console.error(
+          "[Create Showroom] SOLUTION: Log out and log in again, ensuring login uses application_id 'autocrm'."
         );
         errorMessage =
-          "Backend received wrong application_id 'gryd' instead of 'autocrm'. Check Network tab to verify X-GRYD-APPLICATION-ID header is being sent. Backend CORS may need to allow this header, or backend may need to use the header value instead of deriving from token/session.";
+          "Backend received wrong application_id 'gryd' instead of 'autocrm'. This means your login session was created with application_id 'gryd'. Please log out and log in again, ensuring the login uses application_id 'autocrm'. The backend derives application_id from your token/session.";
       }
 
       try {
@@ -1086,9 +1083,8 @@ export async function getShowroomsForDealership(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - include X-GRYD-APPLICATION-ID to ensure backend uses "autocrm"
-  // The backend may be deriving application_id from token/session (which might be "gryd")
-  // so we explicitly send "autocrm" to override it
+  // Call backend directly - matching Postman curl exactly (no X-GRYD-APPLICATION-ID header)
+  // NOTE: X-GRYD-APPLICATION-ID header causes CORS errors - backend must derive from token/session
   const backendUrl = `${API_BASE_URL}/gryd/db/object/showroom?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
@@ -1099,7 +1095,6 @@ export async function getShowroomsForDealership(
     "X-GRYD-TOKEN": token,
     "X-GRYD-SESSION-ID": sessionId,
     "X-GRYD-ROLE": "agent",
-    "X-GRYD-APPLICATION-ID": "autocrm",
   };
 
   console.log("[Get Showrooms] Calling backend directly:", backendUrl);
@@ -1138,13 +1133,16 @@ export async function getShowroomsForDealership(
           "[Get Showrooms] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
         );
         console.error(
-          "[Get Showrooms] The backend may need to derive application_id from token/session"
+          "[Get Showrooms] The backend derives application_id from your token/session."
         );
         console.error(
-          "[Get Showrooms] Or backend CORS must allow 'x-gryd-application-id' header"
+          "[Get Showrooms] This means your login session was created with application_id 'gryd'."
+        );
+        console.error(
+          "[Get Showrooms] SOLUTION: Log out and log in again, ensuring login uses application_id 'autocrm'."
         );
         errorMessage =
-          "Backend received wrong application_id 'gryd' instead of 'autocrm'. Check Network tab to verify X-GRYD-APPLICATION-ID header is being sent. Backend CORS may need to allow this header, or backend may need to use the header value instead of deriving from token/session.";
+          "Backend received wrong application_id 'gryd' instead of 'autocrm'. This means your login session was created with application_id 'gryd'. Please log out and log in again, ensuring the login uses application_id 'autocrm'. The backend derives application_id from your token/session.";
       }
 
       try {
@@ -1212,9 +1210,8 @@ export async function createBuybackCenter(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - include X-GRYD-APPLICATION-ID to ensure backend uses "autocrm"
-  // The backend may be deriving application_id from token/session (which might be "gryd")
-  // so we explicitly send "autocrm" to override it
+  // Call backend directly - matching Postman curl exactly (no X-GRYD-APPLICATION-ID header)
+  // NOTE: X-GRYD-APPLICATION-ID header causes CORS errors - backend must derive from token/session
   const backendUrl = `${API_BASE_URL}/gryd/db/object/buyback_center`;
 
   const headers = {
@@ -1224,7 +1221,6 @@ export async function createBuybackCenter(
     "X-GRYD-SESSION-ID": sessionId,
     Accept: "application/json",
     "X-GRYD-ROLE": "agent",
-    "X-GRYD-APPLICATION-ID": "autocrm",
   };
 
   console.log("[Create Buyback Center] Calling backend directly:", backendUrl);
@@ -1265,13 +1261,16 @@ export async function createBuybackCenter(
           "[Create Buyback Center] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
         );
         console.error(
-          "[Create Buyback Center] The backend may need to derive application_id from token/session"
+          "[Create Buyback Center] The backend derives application_id from your token/session."
         );
         console.error(
-          "[Create Buyback Center] Or backend CORS must allow 'x-gryd-application-id' header"
+          "[Create Buyback Center] This means your login session was created with application_id 'gryd'."
+        );
+        console.error(
+          "[Create Buyback Center] SOLUTION: Log out and log in again, ensuring login uses application_id 'autocrm'."
         );
         errorMessage =
-          "Backend received wrong application_id 'gryd' instead of 'autocrm'. Check Network tab to verify X-GRYD-APPLICATION-ID header is being sent. Backend CORS may need to allow this header, or backend may need to use the header value instead of deriving from token/session.";
+          "Backend received wrong application_id 'gryd' instead of 'autocrm'. This means your login session was created with application_id 'gryd'. Please log out and log in again, ensuring the login uses application_id 'autocrm'. The backend derives application_id from your token/session.";
       }
 
       try {
@@ -1306,9 +1305,8 @@ export async function getBuybackCentersForDealership(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - include X-GRYD-APPLICATION-ID to ensure backend uses "autocrm"
-  // The backend may be deriving application_id from token/session (which might be "gryd")
-  // so we explicitly send "autocrm" to override it
+  // Call backend directly - matching Postman curl exactly (no X-GRYD-APPLICATION-ID header)
+  // NOTE: X-GRYD-APPLICATION-ID header causes CORS errors - backend must derive from token/session
   const backendUrl = `${API_BASE_URL}/gryd/db/object/buyback_center?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
@@ -1318,7 +1316,6 @@ export async function getBuybackCentersForDealership(
     "X-GRYD-ENTERPRISE-ID": "autocrm",
     "X-GRYD-TOKEN": token,
     "X-GRYD-SESSION-ID": sessionId,
-    "X-GRYD-APPLICATION-ID": "autocrm",
     "X-GRYD-ROLE": "agent",
   };
 
@@ -1358,13 +1355,16 @@ export async function getBuybackCentersForDealership(
           "[Get Buyback Centers] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
         );
         console.error(
-          "[Get Buyback Centers] The backend may need to derive application_id from token/session"
+          "[Get Buyback Centers] The backend derives application_id from your token/session."
         );
         console.error(
-          "[Get Buyback Centers] Or backend CORS must allow 'x-gryd-application-id' header"
+          "[Get Buyback Centers] This means your login session was created with application_id 'gryd'."
+        );
+        console.error(
+          "[Get Buyback Centers] SOLUTION: Log out and log in again, ensuring login uses application_id 'autocrm'."
         );
         errorMessage =
-          "Backend received wrong application_id 'gryd' instead of 'autocrm'. Check Network tab to verify X-GRYD-APPLICATION-ID header is being sent. Backend CORS may need to allow this header, or backend may need to use the header value instead of deriving from token/session.";
+          "Backend received wrong application_id 'gryd' instead of 'autocrm'. This means your login session was created with application_id 'gryd'. Please log out and log in again, ensuring the login uses application_id 'autocrm'. The backend derives application_id from your token/session.";
       }
 
       try {
