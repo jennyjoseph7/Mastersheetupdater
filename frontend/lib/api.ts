@@ -276,6 +276,7 @@ export async function dealershipSignup(data: DealershipSignupRequest) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
     },
