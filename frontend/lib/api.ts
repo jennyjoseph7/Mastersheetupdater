@@ -752,37 +752,20 @@ export interface CreateWorkshopRequest {
 export async function createWorkshop(
   data: CreateWorkshopRequest
 ): Promise<any> {
-  // Get credentials from cookies
-  const token = getCookieFromDocument("gryd_token");
-  const sessionId = getCookieFromDocument("gryd_session_id");
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = "/api/workshop";
 
-  if (!token || !sessionId) {
-    throw new ApiError(401, "Authentication required. Please login again.");
-  }
-
-  // Call backend directly - matching provided curl exactly
-  // NOTE: Backend must allow CORS from your frontend domain
-  const backendUrl = `${API_BASE_URL}/gryd/db/object/workshop`;
-
-  const headers = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-    "X-GRYD-ENTERPRISE-ID": "autocrm",
-    "X-GRYD-TOKEN": token,
-    "X-GRYD-SESSION-ID": sessionId,
-    "X-GRYD-APPLICATION-ID": "autocrm",
-  };
-
-  console.log("[Create Workshop] Calling backend directly:", backendUrl);
+  console.log("[Create Workshop] Calling API route:", apiRouteUrl);
   console.log("[Create Workshop] Request body:", JSON.stringify(data, null, 2));
 
-  const res = await fetch(backendUrl, {
+  const res = await fetch(apiRouteUrl, {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(data),
     cache: "no-store",
-    mode: "cors",
-    credentials: "omit",
   });
 
   console.log(`[Create Workshop] Response status: ${res.status}`);
@@ -790,17 +773,11 @@ export async function createWorkshop(
   if (!res.ok) {
     let errorMessage = `Failed to create workshop (${res.status})`;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-      console.error(`[Create Workshop] Error response text:`, errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData?.error || errorData?.message || errorText || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-    } catch (readError) {
-      console.error("[Create Workshop] Failed to read error:", readError);
+      errorMessage = errorText || errorMessage;
     }
 
     errorMessage =
@@ -816,36 +793,17 @@ export async function createWorkshop(
 export async function getWorkshopsForDealership(
   dealershipId: string
 ): Promise<any[]> {
-  // Get credentials from cookies
-  const token = getCookieFromDocument("gryd_token");
-  const sessionId = getCookieFromDocument("gryd_session_id");
-
-  if (!token || !sessionId) {
-    throw new ApiError(401, "Authentication required. Please login again.");
-  }
-
-  // Call backend directly - matching provided curl pattern
-  // NOTE: Backend must allow CORS from your frontend domain
-  const backendUrl = `${API_BASE_URL}/gryd/db/object/workshop?dealership_id=${encodeURIComponent(
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = `/api/workshop?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
-  const headers = {
-    Accept: "application/json",
-    "X-GRYD-ENTERPRISE-ID": "autocrm",
-    "X-GRYD-TOKEN": token,
-    "X-GRYD-SESSION-ID": sessionId,
-    "X-GRYD-APPLICATION-ID": "autocrm",
-  };
+  console.log("[Get Workshops] Calling API route:", apiRouteUrl);
 
-  console.log("[Get Workshops] Calling backend directly:", backendUrl);
-
-  const res = await fetch(backendUrl, {
+  const res = await fetch(apiRouteUrl, {
     method: "GET",
-    headers,
     cache: "no-store",
-    mode: "cors",
-    credentials: "omit",
   });
 
   console.log(`[Get Workshops] Response status: ${res.status}`);
@@ -857,17 +815,11 @@ export async function getWorkshopsForDealership(
     }
     let errorMessage = `Failed to fetch workshops (${res.status})`;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-      console.error(`[Get Workshops] Error response text:`, errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData?.error || errorData?.message || errorText || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-    } catch (readError) {
-      console.error("[Get Workshops] Failed to read error:", readError);
+      errorMessage = errorText || errorMessage;
     }
 
     errorMessage =
@@ -923,38 +875,20 @@ export interface CreateShowroomRequest {
 export async function createShowroom(
   data: CreateShowroomRequest
 ): Promise<any> {
-  // Get credentials from cookies
-  const token = getCookieFromDocument("gryd_token");
-  const sessionId = getCookieFromDocument("gryd_session_id");
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = "/api/showroom";
 
-  if (!token || !sessionId) {
-    throw new ApiError(401, "Authentication required. Please login again.");
-  }
-
-  // Call backend directly - matching provided curl pattern
-  // NOTE: Backend must allow CORS from your frontend domain
-  const backendUrl = `${API_BASE_URL}/gryd/db/object/showroom`;
-
-  const headers = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-    "X-GRYD-ENTERPRISE-ID": "autocrm",
-    "X-GRYD-TOKEN": token,
-    "X-GRYD-SESSION-ID": sessionId,
-    "X-GRYD-ROLE": "agent",
-    "X-GRYD-APPLICATION-ID": "autocrm",
-  };
-
-  console.log("[Create Showroom] Calling backend directly:", backendUrl);
+  console.log("[Create Showroom] Calling API route:", apiRouteUrl);
   console.log("[Create Showroom] Request body:", JSON.stringify(data, null, 2));
 
-  const res = await fetch(backendUrl, {
+  const res = await fetch(apiRouteUrl, {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(data),
     cache: "no-store",
-    mode: "cors",
-    credentials: "omit",
   });
 
   console.log(`[Create Showroom] Response status: ${res.status}`);
@@ -962,17 +896,11 @@ export async function createShowroom(
   if (!res.ok) {
     let errorMessage = `Failed to create showroom (${res.status})`;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-      console.error(`[Create Showroom] Error response text:`, errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData?.error || errorData?.message || errorText || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-    } catch (readError) {
-      console.error("[Create Showroom] Failed to read error:", readError);
+      errorMessage = errorText || errorMessage;
     }
 
     errorMessage =
@@ -988,37 +916,17 @@ export async function createShowroom(
 export async function getShowroomsForDealership(
   dealershipId: string
 ): Promise<any[]> {
-  // Get credentials from cookies
-  const token = getCookieFromDocument("gryd_token");
-  const sessionId = getCookieFromDocument("gryd_session_id");
-
-  if (!token || !sessionId) {
-    throw new ApiError(401, "Authentication required. Please login again.");
-  }
-
-  // Call backend directly - matching provided curl pattern
-  // NOTE: Backend must allow CORS from your frontend domain
-  const backendUrl = `${API_BASE_URL}/gryd/db/object/showroom?dealership_id=${encodeURIComponent(
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = `/api/showroom?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
-  const headers = {
-    Accept: "application/json",
-    "X-GRYD-ENTERPRISE-ID": "autocrm",
-    "X-GRYD-TOKEN": token,
-    "X-GRYD-SESSION-ID": sessionId,
-    "X-GRYD-ROLE": "agent",
-    "X-GRYD-APPLICATION-ID": "autocrm",
-  };
+  console.log("[Get Showrooms] Calling API route:", apiRouteUrl);
 
-  console.log("[Get Showrooms] Calling backend directly:", backendUrl);
-
-  const res = await fetch(backendUrl, {
+  const res = await fetch(apiRouteUrl, {
     method: "GET",
-    headers,
     cache: "no-store",
-    mode: "cors",
-    credentials: "omit",
   });
 
   console.log(`[Get Showrooms] Response status: ${res.status}`);
@@ -1029,17 +937,11 @@ export async function getShowroomsForDealership(
     }
     let errorMessage = `Failed to fetch showrooms (${res.status})`;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-      console.error(`[Get Showrooms] Error response text:`, errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData?.error || errorData?.message || errorText || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-    } catch (readError) {
-      console.error("[Get Showrooms] Failed to read error:", readError);
+      errorMessage = errorText || errorMessage;
     }
 
     errorMessage =
@@ -1088,41 +990,23 @@ export interface CreateBuybackCenterRequest {
 export async function createBuybackCenter(
   data: CreateBuybackCenterRequest
 ): Promise<any> {
-  // Get credentials from cookies
-  const token = getCookieFromDocument("gryd_token");
-  const sessionId = getCookieFromDocument("gryd_session_id");
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = "/api/buyback-center";
 
-  if (!token || !sessionId) {
-    throw new ApiError(401, "Authentication required. Please login again.");
-  }
-
-  // Call backend directly - matching provided curl pattern
-  // NOTE: Backend must allow CORS from your frontend domain
-  const backendUrl = `${API_BASE_URL}/gryd/db/object/buyback_center`;
-
-  const headers = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-    "X-GRYD-ENTERPRISE-ID": "autocrm",
-    "X-GRYD-TOKEN": token,
-    "X-GRYD-SESSION-ID": sessionId,
-    "X-GRYD-ROLE": "agent",
-    "X-GRYD-APPLICATION-ID": "autocrm",
-  };
-
-  console.log("[Create Buyback Center] Calling backend directly:", backendUrl);
+  console.log("[Create Buyback Center] Calling API route:", apiRouteUrl);
   console.log(
     "[Create Buyback Center] Request body:",
     JSON.stringify(data, null, 2)
   );
 
-  const res = await fetch(backendUrl, {
+  const res = await fetch(apiRouteUrl, {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(data),
     cache: "no-store",
-    mode: "cors",
-    credentials: "omit",
   });
 
   console.log(`[Create Buyback Center] Response status: ${res.status}`);
@@ -1130,17 +1014,11 @@ export async function createBuybackCenter(
   if (!res.ok) {
     let errorMessage = `Failed to create buyback center (${res.status})`;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-      console.error(`[Create Buyback Center] Error response text:`, errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData?.error || errorData?.message || errorText || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-    } catch (readError) {
-      console.error("[Create Buyback Center] Failed to read error:", readError);
+      errorMessage = errorText || errorMessage;
     }
 
     errorMessage =
@@ -1156,37 +1034,17 @@ export async function createBuybackCenter(
 export async function getBuybackCentersForDealership(
   dealershipId: string
 ): Promise<any[]> {
-  // Get credentials from cookies
-  const token = getCookieFromDocument("gryd_token");
-  const sessionId = getCookieFromDocument("gryd_session_id");
-
-  if (!token || !sessionId) {
-    throw new ApiError(401, "Authentication required. Please login again.");
-  }
-
-  // Call backend directly - matching provided curl pattern
-  // NOTE: Backend must allow CORS from your frontend domain
-  const backendUrl = `${API_BASE_URL}/gryd/db/object/buyback_center?dealership_id=${encodeURIComponent(
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = `/api/buyback-center?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
-  const headers = {
-    Accept: "application/json",
-    "X-GRYD-ENTERPRISE-ID": "autocrm",
-    "X-GRYD-TOKEN": token,
-    "X-GRYD-SESSION-ID": sessionId,
-    "X-GRYD-ROLE": "agent",
-    "X-GRYD-APPLICATION-ID": "autocrm",
-  };
+  console.log("[Get Buyback Centers] Calling API route:", apiRouteUrl);
 
-  console.log("[Get Buyback Centers] Calling backend directly:", backendUrl);
-
-  const res = await fetch(backendUrl, {
+  const res = await fetch(apiRouteUrl, {
     method: "GET",
-    headers,
     cache: "no-store",
-    mode: "cors",
-    credentials: "omit",
   });
 
   console.log(`[Get Buyback Centers] Response status: ${res.status}`);
@@ -1197,17 +1055,11 @@ export async function getBuybackCentersForDealership(
     }
     let errorMessage = `Failed to fetch buyback centers (${res.status})`;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-      console.error(`[Get Buyback Centers] Error response text:`, errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData?.error || errorData?.message || errorText || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-    } catch (readError) {
-      console.error("[Get Buyback Centers] Failed to read error:", readError);
+      errorMessage = errorText || errorMessage;
     }
 
     errorMessage =
