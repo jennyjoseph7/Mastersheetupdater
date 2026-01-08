@@ -464,7 +464,7 @@ function CampaignCreateContent() {
       };
 
       const data = await api(
-        "/gryd/api/short-run-agent/generate_campaign_idea",
+        "/gryd/api/autocrm-short-run-agent/generate_campaign_idea",
         "POST",
         payload
       );
