@@ -62,3 +62,7 @@ Thumbs.db
 setup.sh
 *.sw*
 AWSCLIV2.pkg
+
+
+core/testBillModel.py
+core/rezorpay_fe_test.html

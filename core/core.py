@@ -35,7 +35,7 @@ from razorpay_service import create_credit_purchase, confirm_payment_success, ma
 gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
-
+logger = mlogger
 MIME_TYPES = {
     'aac': 'audio/aac',
     'flac': 'audio/flac',
@@ -1226,6 +1226,81 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
     
 @gryd.is_a_task(function_name="payment_service")
 def payment_service(*args, **kwargs):
+    """
+    Unified payment service dispatcher.
+
+    This function routes payment-related actions to the appropriate handler
+    based on the provided service name.
+
+    Usage:
+        payment_service(service_name, **kwargs)
+
+    Parameters:
+        service_name (str):
+            The payment service to execute. Must be provided as the first
+            positional argument.
+
+    Supported services:
+
+    1. "purchase_credit"
+        Creates a credit purchase for a dealership.
+        This function creates purches order for the dealership with amount of provided credits and returns order id which need to be used for initiating payment on razopay.
+
+        Required kwargs:
+            - dealership_id: ID of the dealership purchasing credits
+            - credits: Number of credits to purchase
+
+        Example:
+            payment_service(
+                "purchase_credit",
+                dealership_id=daveai,
+                credits=50
+            )
+
+    2. "verify_payment"
+        Verifies and confirms a successful payment transaction.
+
+        Required kwargs:
+            - payment_data: Payment gateway response or payload
+
+        Example:
+            payment_service(
+                "verify_payment",
+                payment_data=payment_payload
+            )
+
+    3. "payment_failed"
+        Marks a payment as failed and records the failure reason.
+
+        Required kwargs:
+            - order_id: Identifier of the payment order
+            - reason: Reason for payment failure
+
+        Example:
+            payment_service(
+                "payment_failed",
+                order_id="ORD123",
+                reason="Card declined"
+            )
+
+    4. "payment_cancelled"
+        Marks a payment order as cancelled.
+
+        Required kwargs:
+            - order_id: Identifier of the payment order
+
+        Example:
+            payment_service(
+                "payment_cancelled",
+                order_id="ORD123"
+            )
+
+    Raises:
+        ValueError:
+            - If service name is missing or unsupported
+            - If required parameters are not provided
+    """
+
 
     def validate_kwargs(required_fields, kwargs):
         missing = [field for field in required_fields if not kwargs.get(field)]
