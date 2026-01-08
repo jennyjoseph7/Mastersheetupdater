@@ -1,0 +1,50 @@
+{
+    "region": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "region_subdivision": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "dealer_group": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "dealership": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "workshop": [
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true,
+            "delete_access": true
+        }
+    ],
+    "showroom": [
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true,
+            "delete_access": true
+        }
+    ],
+    "buyback": [
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true,
+            "delete_access": true
+        }
+    ]
+}
