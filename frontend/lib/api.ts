@@ -264,41 +264,16 @@ Check browser console and Network tab for more details.`
 
 export async function dealershipSignup(data: DealershipSignupRequest) {
   // Call backend directly instead of using Next.js API route
-  // Explicitly use the correct base URL to avoid deployment issues
-  // Never use relative URLs - always use absolute URL to the backend
-  let baseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    "https://autobot-webapp-dev.gryd.in";
+  // HARDCODE the backend URL to avoid any build-time environment variable issues
+  // This ensures we always hit the correct endpoint regardless of build configuration
+  const backendUrl = "https://autobot-webapp-dev.gryd.in/dealership_signup";
 
-  // Ensure we're using the correct backend domain, not the frontend domain
-  // If environment variable points to frontend domain, override to backend domain
-  if (
-    baseUrl.includes("autobot-dev.gryd.in") &&
-    !baseUrl.includes("autobot-webapp-dev.gryd.in")
-  ) {
-    console.warn(
-      "[Dealership Signup] Warning: Base URL points to frontend domain, overriding to backend domain"
-    );
-    baseUrl = "https://autobot-webapp-dev.gryd.in";
-  }
-
-  const backendUrl = `${baseUrl}/dealership_signup`;
-
-  // Validate URL is absolute and correct
-  if (!backendUrl.startsWith("http")) {
-    throw new Error(
-      `Invalid backend URL: ${backendUrl}. Must be an absolute URL starting with http:// or https://`
-    );
-  }
-
-  if (!backendUrl.includes("autobot-webapp-dev.gryd.in")) {
-    console.warn(
-      `[Dealership Signup] Warning: Backend URL does not contain expected domain: ${backendUrl}`
-    );
-  }
-
+  // Log for debugging - this will help verify the correct URL is being used
   console.log("[Dealership Signup] Calling backend directly:", backendUrl);
-  console.log("[Dealership Signup] Base URL:", baseUrl);
+  console.log(
+    "[Dealership Signup] Environment check - NEXT_PUBLIC_API_BASE_URL:",
+    process.env.NEXT_PUBLIC_API_BASE_URL
+  );
   console.log(
     "[Dealership Signup] Request body:",
     JSON.stringify(data, null, 2)
