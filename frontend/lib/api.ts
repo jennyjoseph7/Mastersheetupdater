@@ -499,8 +499,6 @@ export async function dealershipUpdateDetails(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Accept: "application/json",
-      "Content-Type": "application/json",
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
@@ -779,19 +777,18 @@ export async function createWorkshop(
   console.log("[Create Workshop] Headers (matching Postman curl):", JSON.stringify(headers, null, 2));
   console.log("[Create Workshop] Request body:", JSON.stringify(data, null, 2));
 
-  try {
-    const res = await fetch(backendUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(data),
-      cache: "no-store",
-      mode: "cors",
-      credentials: "omit",
-    });
-    
-    // Log the actual request URL that was called (from response)
-    console.log("[Create Workshop] Actual request URL:", res.url || backendUrl);
-    console.log(`[Create Workshop] Response status: ${res.status}`);
+  const res = await fetch(backendUrl, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(data),
+    cache: "no-store",
+    mode: "cors",
+    credentials: "omit",
+  });
+  
+  // Log the actual request URL that was called (from response)
+  console.log("[Create Workshop] Actual request URL:", res.url || backendUrl);
+  console.log(`[Create Workshop] Response status: ${res.status}`);
   console.log(
     `[Create Workshop] Response headers:`,
     Object.fromEntries(res.headers.entries())
