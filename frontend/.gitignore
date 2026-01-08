@@ -7,6 +7,9 @@ out/
 dist/
 build/
 
+# Temporary API routes directory (used during build)
+.api-temp/
+
 # Environment variables
 # .env
 # .env.local
