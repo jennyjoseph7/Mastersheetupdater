@@ -316,6 +316,9 @@ export default function DealerSignup() {
       // Show success dialog with dealership ID
       setSuccessDealershipId(dealershipId);
       setShowSuccessDialog(true);
+      
+      // After successful signup, redirect to login page
+      // The success dialog will handle the redirect when user clicks "Go to Login"
     } catch (err) {
       // Reset reCAPTCHA on error
       if (isRecaptchaEnabled) {
@@ -1242,14 +1245,14 @@ export default function DealerSignup() {
                     You're all set! Start creating campaigns and managing your
                     dealership.
                   </p>
-                  <Button
-                    size="lg"
-                    onClick={() => router.push("/")}
-                    className="w-full md:w-auto"
-                  >
-                    Go to Dashboard
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                    <Button
+                      size="lg"
+                      onClick={() => router.push("/login")}
+                      className="w-full md:w-auto"
+                    >
+                      Go to Login
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
                 </div>
               </CardContent>
             </Card>
@@ -1300,11 +1303,11 @@ export default function DealerSignup() {
             <AlertDialogAction
               onClick={() => {
                 setShowSuccessDialog(false);
-                router.push("/");
+                router.push("/login");
               }}
               className="w-full sm:w-auto"
             >
-              Go to Home
+              Go to Login
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

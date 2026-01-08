@@ -117,6 +117,8 @@ export default function LoginPage() {
         recaptchaRef.current?.reset();
         setRecaptchaToken(null);
       }
+      // Redirect to dashboard - modal will be shown there if setup is incomplete
+      // The dashboard will check setup status and show modal automatically
       router.push("/");
     } catch (err) {
       setError(
@@ -367,7 +369,7 @@ export default function LoginPage() {
             Privacy Policy
           </Link>
         </p>
-        
+
         {/* Made by Dave AI */}
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">

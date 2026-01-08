@@ -1,4 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
+// Helper function to get cookie from request headers
+function getCookieFromRequest(
+  request: NextRequest,
+  name: string
+): string | null {
+  const cookieHeader = request.headers.get("cookie");
+  if (!cookieHeader) return null;
+
+  const cookies = cookieHeader.split(";").reduce((acc, cookie) => {
+    const [key, value] = cookie.trim().split("=");
+    acc[key] = decodeURIComponent(value);
+    return acc;
+  }, {} as Record<string, string>);
+
+  return cookies[name] || null;
+}
 
 // Determine API base URL
 const getApiBaseUrl = () => {
@@ -13,8 +30,20 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Get credentials from cookies (set during login)
+    const token = getCookieFromRequest(request, "gryd_token");
+    const sessionId = getCookieFromRequest(request, "gryd_session_id");
+    const applicationId = getCookieFromRequest(request, "gryd_application_id");
+
+    if (!token || !sessionId) {
+      return NextResponse.json(
+        { error: "Authentication required. Please login again." },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
     const backendUrl = `${API_BASE_URL}/gryd/api/autocrm-core/dealership_update_details`;
@@ -23,9 +52,10 @@ export async function POST(request: Request) {
       "Content-Type": "application/json",
       Accept: "application/json",
       "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
-      "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
       "X-GRYD-ROLE": "agent",
+      "X-GRYD-APPLICATION-ID": applicationId || "autocrm",
     };
 
     // Enhanced logging for debugging
