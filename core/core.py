@@ -1388,18 +1388,18 @@ def calculate_currency_rate(target_currency, logger = None, job = None, auth = N
         resp = requests.get(f"{EXCHANGE_RATE_HOST_BASE_URL}/convert?from=INR&to={currency}&amount=1&access_key={EXCHANGE_RATE_HOST_API_KEY}", timeout=5)
         resp.raise_for_status()
         data = resp.json()
-        logger.info(f"Currency rate data: {data}")
+        logger.debug(f"Currency rate data: {data}")
         if not "result" in data:
-            raise ValueError(f"Invalid or unavailable rate for currency: {currency}")
+            raise ValueError(f"Unable to get rate for currency: {currency}. Response: {data}")
         rate = data["result"]
         if not rate or rate <= 0:
             raise ValueError(f"Invalid or unavailable rate for currency: {currency}")
     except Exception as e:
-        raise RuntimeError(f"Currency lookup failed: {e}")
-    logger.info(f"Currency rate for {currency}: {rate}")
+        raise ValueError(f"Invalid or unavailable rate for currency: {currency}")
+    logger.debug(f"Currency rate for {currency}: {rate}")
     # Add a 5% conversion margin
     margin_rate = rate * 1.05
-    logger.info(f"Currency rate with margin for {currency}: {margin_rate}")
+    logger.debug(f"Currency rate with margin for {currency}: {margin_rate}")
 
     # Round up to the nearest significant number
     # - if <1, round up to 2 decimals
@@ -1411,7 +1411,7 @@ def calculate_currency_rate(target_currency, logger = None, job = None, auth = N
     else:
         # For larger rates, round up to next whole number
         rounded_rate = math.ceil(margin_rate)
-    logger.info(f"Currency rate rounded for {currency}: {rounded_rate}")
+    logger.debug(f"Currency rate rounded for {currency}: {rounded_rate}")
     return {
         "currency": currency,
         "rate": rounded_rate
