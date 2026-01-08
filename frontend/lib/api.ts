@@ -761,3 +761,272 @@ export async function getWorkshopsForDealership(
 
   return [];
 }
+
+// Showroom interfaces and functions
+export interface CreateShowroomRequest {
+  showroom_id: string;
+  showroom_name: string;
+  showroom_full_name: string;
+  showroom_type: string;
+  showroom_status: string;
+  dealership_id: string;
+  dealership_name: string;
+  manager_name: string;
+  email: string;
+  contact_number: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  region_name?: string;
+  geolocation: [number, number];
+  operating_hours: {
+    opening_time: string;
+    closing_time: string;
+  };
+  days_open: string[];
+  supported_brands: string[];
+  parking_capacity: number;
+  daily_walkin_capacity: number;
+  display_vehicle_count: number;
+  total_sales_executives: number;
+}
+
+export async function createShowroom(
+  data: CreateShowroomRequest
+): Promise<any> {
+  const apiUrl = `/api/showroom`;
+
+  console.log("[Create Showroom] Calling API route:", apiUrl);
+  console.log("[Create Showroom] Request body:", JSON.stringify(data, null, 2));
+
+  const res = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(data),
+    cache: "no-store",
+    credentials: "include",
+  });
+
+  console.log(`[Create Showroom] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    let errorMessage = `Failed to create showroom (${res.status})`;
+    try {
+      const errorText = await res.text();
+      console.error(`[Create Showroom] Error response text:`, errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage =
+          errorData?.error || errorData?.message || errorText || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+    } catch (readError) {
+      console.error("[Create Showroom] Failed to read error:", readError);
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Create Showroom] Response:", responseData);
+  return responseData;
+}
+
+export async function getShowroomsForDealership(
+  dealershipId: string
+): Promise<any[]> {
+  const apiUrl = `/api/showroom?dealership_id=${encodeURIComponent(
+    dealershipId
+  )}`;
+
+  console.log("[Get Showrooms] Calling API route:", apiUrl);
+
+  const res = await fetch(apiUrl, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    cache: "no-store",
+    credentials: "include",
+  });
+
+  console.log(`[Get Showrooms] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      return [];
+    }
+    let errorMessage = `Failed to fetch showrooms (${res.status})`;
+    try {
+      const errorText = await res.text();
+      console.error(`[Get Showrooms] Error response text:`, errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage =
+          errorData?.error || errorData?.message || errorText || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+    } catch (readError) {
+      console.error("[Get Showrooms] Failed to read error:", readError);
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Get Showrooms] Response:", responseData);
+
+  if (Array.isArray(responseData)) {
+    return responseData;
+  } else if (responseData && Array.isArray(responseData.data)) {
+    return responseData.data;
+  } else if (responseData && Array.isArray(responseData.showrooms)) {
+    return responseData.showrooms;
+  }
+
+  return [];
+}
+
+// Buyback Center interfaces and functions
+export interface CreateBuybackCenterRequest {
+  buyback_center_id: string;
+  dealership_id: string;
+  dealership_name: string;
+  manager_name: string;
+  email: string;
+  contact_number: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  geolocation: [number, number];
+  operating_hours: {
+    opening_time: string;
+    closing_time: string;
+  };
+  days_open: Record<string, any> | string[];
+  parking_capacity: number;
+  daily_walkin_capacity: number;
+  display_vehicle_count: number;
+  total_sales_executives: number;
+}
+
+export async function createBuybackCenter(
+  data: CreateBuybackCenterRequest
+): Promise<any> {
+  const apiUrl = `/api/buyback-center`;
+
+  console.log("[Create Buyback Center] Calling API route:", apiUrl);
+  console.log(
+    "[Create Buyback Center] Request body:",
+    JSON.stringify(data, null, 2)
+  );
+
+  const res = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(data),
+    cache: "no-store",
+    credentials: "include",
+  });
+
+  console.log(`[Create Buyback Center] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    let errorMessage = `Failed to create buyback center (${res.status})`;
+    try {
+      const errorText = await res.text();
+      console.error(`[Create Buyback Center] Error response text:`, errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage =
+          errorData?.error || errorData?.message || errorText || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+    } catch (readError) {
+      console.error("[Create Buyback Center] Failed to read error:", readError);
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Create Buyback Center] Response:", responseData);
+  return responseData;
+}
+
+export async function getBuybackCentersForDealership(
+  dealershipId: string
+): Promise<any[]> {
+  const apiUrl = `/api/buyback-center?dealership_id=${encodeURIComponent(
+    dealershipId
+  )}`;
+
+  console.log("[Get Buyback Centers] Calling API route:", apiUrl);
+
+  const res = await fetch(apiUrl, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    cache: "no-store",
+    credentials: "include",
+  });
+
+  console.log(`[Get Buyback Centers] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      return [];
+    }
+    let errorMessage = `Failed to fetch buyback centers (${res.status})`;
+    try {
+      const errorText = await res.text();
+      console.error(`[Get Buyback Centers] Error response text:`, errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage =
+          errorData?.error || errorData?.message || errorText || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+    } catch (readError) {
+      console.error("[Get Buyback Centers] Failed to read error:", readError);
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Get Buyback Centers] Response:", responseData);
+
+  if (Array.isArray(responseData)) {
+    return responseData;
+  } else if (responseData && Array.isArray(responseData.data)) {
+    return responseData.data;
+  } else if (responseData && Array.isArray(responseData.buyback_centers)) {
+    return responseData.buyback_centers;
+  }
+
+  return [];
+}

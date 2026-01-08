@@ -667,7 +667,7 @@ function CampaignCreateContent() {
   return (
     <ProtectedRoute>
       {/* TOP HEADER */}
-      <div className="sticky top-0 z-30 w-full bg-white border-b px-8 py-4 flex items-center justify-between shadow-sm">
+      <div className="sticky top-0 z-30 w-full bg-background border-b px-8 py-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
           {creationStep === "audience" ? (
             <Button
@@ -688,7 +688,7 @@ function CampaignCreateContent() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-          <h1 className="text-xl font-bold text-gray-900">Create Campaign</h1>
+          <h1 className="text-xl font-bold text-foreground">Create Campaign</h1>
         </div>
         <div className="text-sm font-medium text-muted-foreground">
           {creationStep === "details"
@@ -697,7 +697,7 @@ function CampaignCreateContent() {
         </div>
       </div>
 
-      <div className="pb-24 w-full px-4 py-8 md:px-6 lg:px-8 bg-slate-50/50 min-h-screen">
+      <div className="pb-24 w-full px-4 py-8 md:px-6 lg:px-8 bg-background min-h-screen">
         {/* LAUNCH STATUS MODAL */}
         <Dialog
           open={isLaunchSuccessOpen}

@@ -3,16 +3,19 @@ import { NextRequest, NextResponse } from "next/server";
 // Helper function to get cookie from request headers
 function getCookieFromRequest(
   request: NextRequest,
-  name: string
+  name: string,
 ): string | null {
   const cookieHeader = request.headers.get("cookie");
   if (!cookieHeader) return null;
 
-  const cookies = cookieHeader.split(";").reduce((acc, cookie) => {
-    const [key, value] = cookie.trim().split("=");
-    acc[key] = decodeURIComponent(value);
-    return acc;
-  }, {} as Record<string, string>);
+  const cookies = cookieHeader.split(";").reduce(
+    (acc, cookie) => {
+      const [key, value] = cookie.trim().split("=");
+      acc[key] = decodeURIComponent(value);
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
 
   return cookies[name] || null;
 }
@@ -25,77 +28,75 @@ export async function POST(request: NextRequest) {
     const token = getCookieFromRequest(request, "gryd_token");
     const sessionId = getCookieFromRequest(request, "gryd_session_id");
 
-    // Require authentication - no fallback to hardcoded credentials
+    // Require authentication
     if (!token || !sessionId) {
-      console.error("[Create Workshop API] Missing authentication credentials");
+      console.error(
+        "[Create Buyback Center API] Missing authentication credentials",
+      );
       return NextResponse.json(
         { error: "Authentication required. Please login again." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
-    console.log("[Create Workshop API] Using user credentials from cookies");
+    console.log(
+      "[Create Buyback Center API] Using user credentials from cookies",
+    );
 
     // Proxy the request to the backend
-    // URL matches the curl command exactly
-    const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/db/object/workshop`;
+    const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/db/object/buyback_center`;
 
-    // Headers must match the curl exactly, including X-GRYD-APPLICATION-ID
+    // Headers must include X-GRYD-APPLICATION-ID to prevent backend defaulting to "gryd"
+    // Postman curl doesn't show it, but backend requires it to avoid "Unauthorized user for application_id gryd!" error
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-ROLE": "agent",
       "X-GRYD-APPLICATION-ID": "autocrm",
     };
 
     console.log("=".repeat(80));
-    console.log("[Create Workshop API] ===== REQUEST START =====");
-    console.log("[Create Workshop API] Backend URL:", backendUrl);
-    console.log("[Create Workshop API] Method: POST");
+    console.log("[Create Buyback Center API] ===== REQUEST START =====");
+    console.log("[Create Buyback Center API] Backend URL:", backendUrl);
+    console.log("[Create Buyback Center API] Method: POST");
     console.log(
-      "[Create Workshop API] Headers:",
-      JSON.stringify(headers, null, 2)
+      "[Create Buyback Center API] Headers:",
+      JSON.stringify(headers, null, 2),
     );
-    console.log("[Create Workshop API] Token:", token);
-    console.log("[Create Workshop API] Session ID:", sessionId);
     console.log(
-      "[Create Workshop API] Request body:",
-      JSON.stringify(body, null, 2)
+      "[Create Buyback Center API] Request body:",
+      JSON.stringify(body, null, 2),
     );
-    console.log("[Create Workshop API] ===== REQUEST END =====");
+    console.log("[Create Buyback Center API] ===== REQUEST END =====");
     console.log("=".repeat(80));
 
-    // Create fetch options matching curl exactly
-    const fetchOptions: RequestInit = {
+    const res = await fetch(backendUrl, {
       method: "POST",
       headers: headers,
       body: JSON.stringify(body),
       cache: "no-store",
-      // Ensure no extra headers or options are added
       redirect: "follow",
-    };
-
-    const res = await fetch(backendUrl, fetchOptions);
+    });
 
     console.log("=".repeat(80));
-    console.log("[Create Workshop API] ===== RESPONSE START =====");
+    console.log("[Create Buyback Center API] ===== RESPONSE START =====");
     console.log(
-      `[Create Workshop API] Response status: ${res.status} ${res.statusText}`
-    );
-    console.log(
-      `[Create Workshop API] Response headers:`,
-      JSON.stringify(Object.fromEntries(res.headers.entries()), null, 2)
+      `[Create Buyback Center API] Response status: ${res.status} ${res.statusText}`,
     );
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error(`[Create Workshop API] Error response text:`, errorText);
-      console.log("[Create Workshop API] ===== RESPONSE END =====");
+      console.error(
+        `[Create Buyback Center API] Error response text:`,
+        errorText,
+      );
+      console.log("[Create Buyback Center API] ===== RESPONSE END =====");
       console.log("=".repeat(80));
 
-      let errorMessage = `Failed to create workshop (${res.status})`;
+      let errorMessage = `Failed to create buyback center (${res.status})`;
       try {
         const errorData = JSON.parse(errorText);
         errorMessage =
@@ -107,31 +108,34 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await res.json();
-    console.log("[Create Workshop API] Response:", data);
+    console.log("[Create Buyback Center API] Response:", data);
+    console.log("[Create Buyback Center API] ===== RESPONSE END =====");
+    console.log("=".repeat(80));
     return NextResponse.json(data);
   } catch (error) {
-    console.error("[Create Workshop API] Error:", error);
+    console.error("[Create Buyback Center API] Error:", error);
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Failed to create workshop",
+          error instanceof Error
+            ? error.message
+            : "Failed to create buyback center",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // Get credentials from cookies (set during login)
+    // Get credentials from cookies
     const token = getCookieFromRequest(request, "gryd_token");
     const sessionId = getCookieFromRequest(request, "gryd_session_id");
-    const applicationId = getCookieFromRequest(request, "gryd_application_id");
 
     if (!token || !sessionId) {
       return NextResponse.json(
         { error: "Authentication required. Please login again." },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -142,16 +146,16 @@ export async function GET(request: NextRequest) {
     if (!dealershipId) {
       return NextResponse.json(
         { error: "dealership_id query parameter is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Proxy the request to the backend
-    const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/db/objects/workshop?dealership_id=${encodeURIComponent(
-      dealershipId
+    const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/db/objects/buyback_center?dealership_id=${encodeURIComponent(
+      dealershipId,
     )}`;
 
-    console.log("[Get Workshops API] Calling backend:", backendUrl);
+    console.log("[Get Buyback Centers API] Calling backend:", backendUrl);
 
     const res = await fetch(backendUrl, {
       method: "GET",
@@ -161,21 +165,20 @@ export async function GET(request: NextRequest) {
         "X-GRYD-TOKEN": token,
         "X-GRYD-SESSION-ID": sessionId,
         "X-GRYD-ROLE": "agent",
-        "X-GRYD-APPLICATION-ID": applicationId || "autocrm",
+        "X-GRYD-APPLICATION-ID": "autocrm",
       },
       cache: "no-store",
     });
 
-    console.log(`[Get Workshops API] Response status: ${res.status}`);
+    console.log(`[Get Buyback Centers API] Response status: ${res.status}`);
 
     if (!res.ok) {
-      // If 404, return empty array (no workshops found)
       if (res.status === 404) {
         return NextResponse.json([]);
       }
       const errorText = await res.text();
-      console.error(`[Get Workshops API] Error response:`, errorText);
-      let errorMessage = `Failed to fetch workshops (${res.status})`;
+      console.error(`[Get Buyback Centers API] Error response:`, errorText);
+      let errorMessage = `Failed to fetch buyback centers (${res.status})`;
       try {
         const errorData = JSON.parse(errorText);
         errorMessage =
@@ -187,26 +190,28 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await res.json();
-    console.log("[Get Workshops API] Response:", data);
+    console.log("[Get Buyback Centers API] Response:", data);
 
     // Handle both array and object responses
     if (Array.isArray(data)) {
       return NextResponse.json(data);
     } else if (data && Array.isArray(data.data)) {
       return NextResponse.json(data.data);
-    } else if (data && Array.isArray(data.workshops)) {
-      return NextResponse.json(data.workshops);
+    } else if (data && Array.isArray(data.buyback_centers)) {
+      return NextResponse.json(data.buyback_centers);
     }
 
     return NextResponse.json([]);
   } catch (error) {
-    console.error("[Get Workshops API] Error:", error);
+    console.error("[Get Buyback Centers API] Error:", error);
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Failed to fetch workshops",
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch buyback centers",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
