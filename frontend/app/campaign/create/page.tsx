@@ -149,34 +149,36 @@ const ShieldCheck = (props: any) => (
 
 // Updated Channel Definitions with calculated cost factors
 const channels = [
-  {
-    id: "whatsapp",
-    name: "WhatsApp",
-    icon: <MessageSquare className="h-6 w-6" />,
-    // Formula: ((4 * 0.75) + (0.9 * 0.175))
-    costPerUnit: 3.1575,
-  },
-  {
-    id: "email",
-    name: "Email",
-    icon: <Mail className="h-6 w-6" />,
-    // Formula: ((4 * 0.009) + (0.909 * 0.175))
-    costPerUnit: 0.195075,
-  },
-  {
-    id: "voice",
-    name: "Voice",
-    icon: <Phone className="h-6 w-6" />,
-    // Formula: ((4 * 2 * 0.5) + (0.175 * 10 * 2))
-    costPerUnit: 7.5,
-  },
-  {
-    id: "rcs",
-    name: "RCS",
-    icon: <MessageSquareText className="h-6 w-6" />,
-    // Formula: ((4 * 0.2) + (1.1 * 0.175))
-    costPerUnit: 0.9925,
-  },
+    {
+        id: "whatsapp",
+        name: "WhatsApp",
+        icon: <MessageSquare className="h-6 w-6" />,
+        // Formula: ((4 * 0.86 * 0.7) + (0.9 * 0.175))
+        // Formula: (( Max_contact/lead * Message Cost * Delivery Rate ) + (Response cost * Response Rate))
+        costPerUnit: 2.5655,
+    },
+    {
+        id: "email",
+        name: "Email",
+        icon: <Mail className="h-6 w-6" />,
+        // Formula: ((4 * 0.009) + ((0.9 + 0.009) * 0.175))
+        // Formula: (( Max_contact/lead * Email Cost ) + ((Response cost + Email Cost) * Response Rate))
+        costPerUnit: 0.195,
+    },
+    {
+        id: "voice",
+        icon: <Phone className="h-6 w-6" />,
+        // Formula: ((4 * 0.56 * 0.25) + ( 8 * 2 * 0.5))
+        // Formula: (( Max_contact/lead * Connect Cost * Pickup Rate ) + (Call cost * Avg Call Minutes * Response Rate)
+        costPerUnit: 8.56,
+    },
+    {
+        id: "rcs",
+        icon: <MessageSquareText className="h-6 w-6" />,
+        // Formula: ((4 * 0.2 * 0.95) + ((0.9 + 0.2) * 0.175))
+        // Formula: (( Max_contact/lead * Messgae Cost * Delivery Rate ) + ((Response cost + Message Cost) * Response Rate))
+        costPerUnit: 0.9525,
+    },
 ];
 
 const languageOptions = [
@@ -462,7 +464,7 @@ function CampaignCreateContent() {
       };
 
       const data = await api(
-        "/gryd/api/short-run-agent/generate_campaign_idea",
+        "/gryd/api/autocrm-short-run-agent/generate_campaign_idea",
         "POST",
         payload
       );
