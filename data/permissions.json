@@ -1,4 +1,17 @@
 {
+    "campaign_objective": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "audience_task": [
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true
+        }
+    ],
     "region": [
         {
             "read_access": true,
@@ -39,7 +52,7 @@
             "delete_access": true
         }
     ],
-    "buyback": [
+    "buyback_center": [
         {
             "read_access": true,
             "role": "human_agent",
