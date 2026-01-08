@@ -504,6 +504,7 @@ export async function dealershipUpdateDetails(
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
       "X-GRYD-ROLE": "agent",
+      "X-GRYD-APPLICATION-ID": applicationId || "autocrm", // Required to prevent backend defaulting to "gryd"
     },
     body: JSON.stringify(data),
     cache: "no-store",
@@ -682,6 +683,7 @@ export async function getDealershipDetails(): Promise<DealershipDetailsResponse>
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": "autocrm", // Required to prevent backend defaulting to "gryd"
     },
     cache: "no-store",
     mode: "cors",
@@ -759,22 +761,31 @@ export async function createWorkshop(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
+  // Get application_id from cookies if available, otherwise use "autocrm"
+  const applicationId =
+    getCookieFromDocument("gryd_application_id") || "autocrm";
+
   // Call backend directly - same pattern as generateOTP
   const backendUrl = `${API_BASE_URL}/gryd/db/object/workshop`;
 
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "X-GRYD-ENTERPRISE-ID": "autocrm",
+    "X-GRYD-TOKEN": token,
+    "X-GRYD-SESSION-ID": sessionId,
+    "X-GRYD-APPLICATION-ID": applicationId, // Required to prevent backend defaulting to "gryd"
+  };
+
   console.log("[Create Workshop] Calling backend directly:", backendUrl);
   console.log("[Create Workshop] API_BASE_URL:", API_BASE_URL);
+  console.log("[Create Workshop] Headers:", JSON.stringify(headers, null, 2));
+  console.log("[Create Workshop] Application ID:", applicationId);
   console.log("[Create Workshop] Request body:", JSON.stringify(data, null, 2));
 
   const res = await fetch(backendUrl, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": token,
-      "X-GRYD-SESSION-ID": sessionId,
-    },
+    headers,
     body: JSON.stringify(data),
     cache: "no-store",
     mode: "cors",
@@ -782,12 +793,35 @@ export async function createWorkshop(
   });
 
   console.log(`[Create Workshop] Response status: ${res.status}`);
+  console.log(
+    `[Create Workshop] Response headers:`,
+    Object.fromEntries(res.headers.entries())
+  );
 
   if (!res.ok) {
     let errorMessage = `Failed to create workshop (${res.status})`;
     try {
       const errorText = await res.text();
       console.error(`[Create Workshop] Error response text:`, errorText);
+
+      // Check if error is about application_id
+      if (errorText.includes("application_id gryd")) {
+        console.error(
+          "[Create Workshop] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
+        );
+        console.error(
+          "[Create Workshop] This means X-GRYD-APPLICATION-ID header was not received by backend"
+        );
+        console.error(
+          "[Create Workshop] Check browser Network tab to verify header is being sent"
+        );
+        console.error(
+          "[Create Workshop] Backend CORS must allow 'x-gryd-application-id' in Access-Control-Allow-Headers"
+        );
+        errorMessage =
+          "Backend received wrong application_id. The X-GRYD-APPLICATION-ID header may be blocked by CORS. Please check backend CORS configuration.";
+      }
+
       try {
         const errorData = JSON.parse(errorText);
         errorMessage =
@@ -821,29 +855,42 @@ export async function getWorkshopsForDealership(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
+  // Get application_id from cookies if available, otherwise use "autocrm"
+  const applicationId =
+    getCookieFromDocument("gryd_application_id") || "autocrm";
+
   // Call backend directly - same pattern as generateOTP
   const backendUrl = `${API_BASE_URL}/gryd/db/object/workshop?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "X-GRYD-ENTERPRISE-ID": "autocrm",
+    "X-GRYD-TOKEN": token,
+    "X-GRYD-SESSION-ID": sessionId,
+    "X-GRYD-APPLICATION-ID": applicationId, // Required to prevent backend defaulting to "gryd"
+  };
+
   console.log("[Get Workshops] Calling backend directly:", backendUrl);
   console.log("[Get Workshops] API_BASE_URL:", API_BASE_URL);
+  console.log("[Get Workshops] Headers:", JSON.stringify(headers, null, 2));
+  console.log("[Get Workshops] Application ID:", applicationId);
 
   const res = await fetch(backendUrl, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": token,
-      "X-GRYD-SESSION-ID": sessionId,
-    },
+    headers,
     cache: "no-store",
     mode: "cors",
     credentials: "omit",
   });
 
   console.log(`[Get Workshops] Response status: ${res.status}`);
+  console.log(
+    `[Get Workshops] Response headers:`,
+    Object.fromEntries(res.headers.entries())
+  );
 
   if (!res.ok) {
     // If 404, return empty array (no workshops found)
@@ -854,6 +901,25 @@ export async function getWorkshopsForDealership(
     try {
       const errorText = await res.text();
       console.error(`[Get Workshops] Error response text:`, errorText);
+
+      // Check if error is about application_id
+      if (errorText.includes("application_id gryd")) {
+        console.error(
+          "[Get Workshops] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
+        );
+        console.error(
+          "[Get Workshops] This means X-GRYD-APPLICATION-ID header was not received by backend"
+        );
+        console.error(
+          "[Get Workshops] Check browser Network tab to verify header is being sent"
+        );
+        console.error(
+          "[Get Workshops] Backend CORS must allow 'x-gryd-application-id' in Access-Control-Allow-Headers"
+        );
+        errorMessage =
+          "Backend received wrong application_id. The X-GRYD-APPLICATION-ID header may be blocked by CORS. Please check backend CORS configuration.";
+      }
+
       try {
         const errorData = JSON.parse(errorText);
         errorMessage =
@@ -926,23 +992,32 @@ export async function createShowroom(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
+  // Get application_id from cookies if available, otherwise use "autocrm"
+  const applicationId =
+    getCookieFromDocument("gryd_application_id") || "autocrm";
+
   // Call backend directly - same pattern as generateOTP
   const backendUrl = `${API_BASE_URL}/gryd/db/object/showroom`;
 
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "X-GRYD-ENTERPRISE-ID": "autocrm",
+    "X-GRYD-TOKEN": token,
+    "X-GRYD-SESSION-ID": sessionId,
+    "X-GRYD-ROLE": "agent",
+    "X-GRYD-APPLICATION-ID": applicationId, // Required to prevent backend defaulting to "gryd"
+  };
+
   console.log("[Create Showroom] Calling backend directly:", backendUrl);
   console.log("[Create Showroom] API_BASE_URL:", API_BASE_URL);
+  console.log("[Create Showroom] Headers:", JSON.stringify(headers, null, 2));
+  console.log("[Create Showroom] Application ID:", applicationId);
   console.log("[Create Showroom] Request body:", JSON.stringify(data, null, 2));
 
   const res = await fetch(backendUrl, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": token,
-      "X-GRYD-SESSION-ID": sessionId,
-      "X-GRYD-ROLE": "agent",
-    },
+    headers,
     body: JSON.stringify(data),
     cache: "no-store",
     mode: "cors",
@@ -950,12 +1025,35 @@ export async function createShowroom(
   });
 
   console.log(`[Create Showroom] Response status: ${res.status}`);
+  console.log(
+    `[Create Showroom] Response headers:`,
+    Object.fromEntries(res.headers.entries())
+  );
 
   if (!res.ok) {
     let errorMessage = `Failed to create showroom (${res.status})`;
     try {
       const errorText = await res.text();
       console.error(`[Create Showroom] Error response text:`, errorText);
+
+      // Check if error is about application_id
+      if (errorText.includes("application_id gryd")) {
+        console.error(
+          "[Create Showroom] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
+        );
+        console.error(
+          "[Create Showroom] This means X-GRYD-APPLICATION-ID header was not received by backend"
+        );
+        console.error(
+          "[Create Showroom] Check browser Network tab to verify header is being sent"
+        );
+        console.error(
+          "[Create Showroom] Backend CORS must allow 'x-gryd-application-id' in Access-Control-Allow-Headers"
+        );
+        errorMessage =
+          "Backend received wrong application_id. The X-GRYD-APPLICATION-ID header may be blocked by CORS. Please check backend CORS configuration.";
+      }
+
       try {
         const errorData = JSON.parse(errorText);
         errorMessage =
@@ -988,29 +1086,42 @@ export async function getShowroomsForDealership(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
+  // Get application_id from cookies if available, otherwise use "autocrm"
+  const applicationId =
+    getCookieFromDocument("gryd_application_id") || "autocrm";
+
   // Call backend directly - same pattern as generateOTP
   const backendUrl = `${API_BASE_URL}/gryd/db/object/showroom?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "X-GRYD-ENTERPRISE-ID": "autocrm",
+    "X-GRYD-TOKEN": token,
+    "X-GRYD-SESSION-ID": sessionId,
+    "X-GRYD-APPLICATION-ID": applicationId, // Required to prevent backend defaulting to "gryd"
+  };
+
   console.log("[Get Showrooms] Calling backend directly:", backendUrl);
   console.log("[Get Showrooms] API_BASE_URL:", API_BASE_URL);
+  console.log("[Get Showrooms] Headers:", JSON.stringify(headers, null, 2));
+  console.log("[Get Showrooms] Application ID:", applicationId);
 
   const res = await fetch(backendUrl, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": token,
-      "X-GRYD-SESSION-ID": sessionId,
-    },
+    headers,
     cache: "no-store",
     mode: "cors",
     credentials: "omit",
   });
 
   console.log(`[Get Showrooms] Response status: ${res.status}`);
+  console.log(
+    `[Get Showrooms] Response headers:`,
+    Object.fromEntries(res.headers.entries())
+  );
 
   if (!res.ok) {
     if (res.status === 404) {
@@ -1020,6 +1131,25 @@ export async function getShowroomsForDealership(
     try {
       const errorText = await res.text();
       console.error(`[Get Showrooms] Error response text:`, errorText);
+
+      // Check if error is about application_id
+      if (errorText.includes("application_id gryd")) {
+        console.error(
+          "[Get Showrooms] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
+        );
+        console.error(
+          "[Get Showrooms] This means X-GRYD-APPLICATION-ID header was not received by backend"
+        );
+        console.error(
+          "[Get Showrooms] Check browser Network tab to verify header is being sent"
+        );
+        console.error(
+          "[Get Showrooms] Backend CORS must allow 'x-gryd-application-id' in Access-Control-Allow-Headers"
+        );
+        errorMessage =
+          "Backend received wrong application_id. The X-GRYD-APPLICATION-ID header may be blocked by CORS. Please check backend CORS configuration.";
+      }
+
       try {
         const errorData = JSON.parse(errorText);
         errorMessage =
@@ -1085,11 +1215,30 @@ export async function createBuybackCenter(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
+  // Get application_id from cookies if available, otherwise use "autocrm"
+  const applicationId =
+    getCookieFromDocument("gryd_application_id") || "autocrm";
+
   // Call backend directly - same pattern as generateOTP
   const backendUrl = `${API_BASE_URL}/gryd/db/object/buyback_center`;
 
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "X-GRYD-ENTERPRISE-ID": "autocrm",
+    "X-GRYD-TOKEN": token,
+    "X-GRYD-SESSION-ID": sessionId,
+    "X-GRYD-ROLE": "agent",
+    "X-GRYD-APPLICATION-ID": applicationId, // Required to prevent backend defaulting to "gryd"
+  };
+
   console.log("[Create Buyback Center] Calling backend directly:", backendUrl);
   console.log("[Create Buyback Center] API_BASE_URL:", API_BASE_URL);
+  console.log(
+    "[Create Buyback Center] Headers:",
+    JSON.stringify(headers, null, 2)
+  );
+  console.log("[Create Buyback Center] Application ID:", applicationId);
   console.log(
     "[Create Buyback Center] Request body:",
     JSON.stringify(data, null, 2)
@@ -1097,14 +1246,7 @@ export async function createBuybackCenter(
 
   const res = await fetch(backendUrl, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": token,
-      "X-GRYD-SESSION-ID": sessionId,
-      "X-GRYD-ROLE": "agent",
-    },
+    headers,
     body: JSON.stringify(data),
     cache: "no-store",
     mode: "cors",
@@ -1112,12 +1254,35 @@ export async function createBuybackCenter(
   });
 
   console.log(`[Create Buyback Center] Response status: ${res.status}`);
+  console.log(
+    `[Create Buyback Center] Response headers:`,
+    Object.fromEntries(res.headers.entries())
+  );
 
   if (!res.ok) {
     let errorMessage = `Failed to create buyback center (${res.status})`;
     try {
       const errorText = await res.text();
       console.error(`[Create Buyback Center] Error response text:`, errorText);
+
+      // Check if error is about application_id
+      if (errorText.includes("application_id gryd")) {
+        console.error(
+          "[Create Buyback Center] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
+        );
+        console.error(
+          "[Create Buyback Center] This means X-GRYD-APPLICATION-ID header was not received by backend"
+        );
+        console.error(
+          "[Create Buyback Center] Check browser Network tab to verify header is being sent"
+        );
+        console.error(
+          "[Create Buyback Center] Backend CORS must allow 'x-gryd-application-id' in Access-Control-Allow-Headers"
+        );
+        errorMessage =
+          "Backend received wrong application_id. The X-GRYD-APPLICATION-ID header may be blocked by CORS. Please check backend CORS configuration.";
+      }
+
       try {
         const errorData = JSON.parse(errorText);
         errorMessage =
@@ -1150,29 +1315,45 @@ export async function getBuybackCentersForDealership(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
+  // Get application_id from cookies if available, otherwise use "autocrm"
+  const applicationId =
+    getCookieFromDocument("gryd_application_id") || "autocrm";
+
   // Call backend directly - same pattern as generateOTP
   const backendUrl = `${API_BASE_URL}/gryd/db/object/buyback_center?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "X-GRYD-ENTERPRISE-ID": "autocrm",
+    "X-GRYD-TOKEN": token,
+    "X-GRYD-SESSION-ID": sessionId,
+    "X-GRYD-APPLICATION-ID": applicationId, // Required to prevent backend defaulting to "gryd"
+  };
+
   console.log("[Get Buyback Centers] Calling backend directly:", backendUrl);
   console.log("[Get Buyback Centers] API_BASE_URL:", API_BASE_URL);
+  console.log(
+    "[Get Buyback Centers] Headers:",
+    JSON.stringify(headers, null, 2)
+  );
+  console.log("[Get Buyback Centers] Application ID:", applicationId);
 
   const res = await fetch(backendUrl, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": token,
-      "X-GRYD-SESSION-ID": sessionId,
-    },
+    headers,
     cache: "no-store",
     mode: "cors",
     credentials: "omit",
   });
 
   console.log(`[Get Buyback Centers] Response status: ${res.status}`);
+  console.log(
+    `[Get Buyback Centers] Response headers:`,
+    Object.fromEntries(res.headers.entries())
+  );
 
   if (!res.ok) {
     if (res.status === 404) {
@@ -1182,6 +1363,25 @@ export async function getBuybackCentersForDealership(
     try {
       const errorText = await res.text();
       console.error(`[Get Buyback Centers] Error response text:`, errorText);
+
+      // Check if error is about application_id
+      if (errorText.includes("application_id gryd")) {
+        console.error(
+          "[Get Buyback Centers] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
+        );
+        console.error(
+          "[Get Buyback Centers] This means X-GRYD-APPLICATION-ID header was not received by backend"
+        );
+        console.error(
+          "[Get Buyback Centers] Check browser Network tab to verify header is being sent"
+        );
+        console.error(
+          "[Get Buyback Centers] Backend CORS must allow 'x-gryd-application-id' in Access-Control-Allow-Headers"
+        );
+        errorMessage =
+          "Backend received wrong application_id. The X-GRYD-APPLICATION-ID header may be blocked by CORS. Please check backend CORS configuration.";
+      }
+
       try {
         const errorData = JSON.parse(errorText);
         errorMessage =
