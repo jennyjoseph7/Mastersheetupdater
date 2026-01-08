@@ -151,7 +151,7 @@ const ShieldCheck = (props: any) => (
 const channels = [
     {
         id: "whatsapp",
-          name: "WhatsApp",
+        name: "WhatsApp",
         icon: <MessageSquare className="h-6 w-6" />,
         // Formula: ((4 * 0.86 * 0.7) + (0.9 * 0.175))
         // Formula: (( Max_contact/lead * Message Cost * Delivery Rate ) + (Response cost * Response Rate))
@@ -159,7 +159,7 @@ const channels = [
     },
     {
         id: "email",
-       name: "Email",
+        name: "Email",
         icon: <Mail className="h-6 w-6" />,
         // Formula: ((4 * 0.009) + ((0.9 + 0.009) * 0.175))
         // Formula: (( Max_contact/lead * Email Cost ) + ((Response cost + Email Cost) * Response Rate))
@@ -174,7 +174,7 @@ const channels = [
     },
     {
         id: "rcs",
-       icon: <MessageSquareText className="h-6 w-6" />,
+        icon: <MessageSquareText className="h-6 w-6" />,
         // Formula: ((4 * 0.2 * 0.95) + ((0.9 + 0.2) * 0.175))
         // Formula: (( Max_contact/lead * Messgae Cost * Delivery Rate ) + ((Response cost + Message Cost) * Response Rate))
         costPerUnit: 0.9525,
