@@ -129,12 +129,17 @@ def load_autocrm_models(logger = None):
 def post_autocrm_model(model_name, enterprise = None, logger = None):
     logger = logger or clogger
     enterprise = enterprise or gryd.base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
+    with hp.read_file(DATA_DIR, f"permissions.json") as pj:
+        permissions = pj.get(model_name, [])
     with hp.read_file(DATA_DIR, f"{model_name}.json") as model_json:
         logger.info(f"Posting model: {model_name}")
         try:
             enterprise.post_model(model_name, model = model_json)
             logger.info(f"Model posted successfully: {model_name}")
-            return gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
+            r = gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
+            if permissions:
+                r._update_permissions(permissions)
+            return r
         except Exception as e:
             logger.error(f"Error posting model: {model_name}")
             raise
