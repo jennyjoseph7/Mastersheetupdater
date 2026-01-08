@@ -11,6 +11,45 @@ const getApiBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
+// Helper function to get authentication headers from cookies
+function getAuthHeaders(): Record<string, string> {
+  if (typeof document === "undefined") {
+    return {};
+  }
+
+  const getCookie = (name: string): string | null => {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(";");
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) === " ") c = c.substring(1, c.length);
+      if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+  };
+
+  const token = getCookie("gryd_token");
+  const sessionId = getCookie("gryd_session_id");
+  const applicationId = getCookie("gryd_application_id");
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "X-GRYD-ENTERPRISE-ID": "autocrm",
+    "X-GRYD-APPLICATION-ID": applicationId || "autocrm",
+  };
+
+  if (token) {
+    headers["X-GRYD-TOKEN"] = token;
+  }
+  if (sessionId) {
+    headers["X-GRYD-SESSION-ID"] = sessionId;
+  }
+  headers["X-GRYD-ROLE"] = "agent";
+
+  return headers;
+}
+
 const DEFAULT_HEADERS = {
   "Content-Type": "application/json",
   Accept: "application/json",
@@ -263,27 +302,29 @@ Check browser console and Network tab for more details.`
 }
 
 export async function dealershipSignup(data: DealershipSignupRequest) {
-  // Use Next.js API route as proxy to avoid CORS issues
-  const apiUrl = `/api/dealership-signup`;
+  // Call backend directly to avoid CloudFront blocking POST requests to API routes
+  const backendUrl = `${API_BASE_URL}/dealership_signup`;
 
-  console.log("[Dealership Signup] Calling API route:", apiUrl);
-  console.log(
-    "[Dealership Signup] Backend URL: https://autobot-webapp-dev.gryd.in/dealership_signup"
-  );
+  console.log("[Dealership Signup] Calling backend directly:", backendUrl);
   console.log(
     "[Dealership Signup] Request body:",
     JSON.stringify(data, null, 2)
   );
 
-  const res = await fetch(apiUrl, {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "X-GRYD-ENTERPRISE-ID": "autocrm",
+    "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
+  };
+
+  const res = await fetch(backendUrl, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+    headers,
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include",
+    mode: "cors",
+    credentials: "omit",
   });
 
   console.log(`[Dealership Signup] Response status: ${res.status}`);
@@ -394,24 +435,30 @@ export interface DealershipUpdateDetailsRequest {
 export async function dealershipUpdateDetails(
   data: DealershipUpdateDetailsRequest
 ) {
-  // Use Next.js API route as proxy to avoid CORS issues
-  const apiUrl = `/api/dealership-update-details`;
+  // Call backend directly to avoid CloudFront blocking POST requests to API routes
+  const backendUrl = `${API_BASE_URL}/gryd/api/autocrm-core/dealership_update_details`;
 
-  console.log("[Dealership Update Details] Calling API route:", apiUrl);
+  console.log(
+    "[Dealership Update Details] Calling backend directly:",
+    backendUrl
+  );
   console.log(
     "[Dealership Update Details] Request body:",
     JSON.stringify(data, null, 2)
   );
 
-  const res = await fetch(apiUrl, {
+  const headers = getAuthHeaders();
+  if (!headers["X-GRYD-TOKEN"] || !headers["X-GRYD-SESSION-ID"]) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  const res = await fetch(backendUrl, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+    headers,
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include", // Include cookies so API route can read them
+    mode: "cors",
+    credentials: "omit",
   });
 
   console.log(`[Dealership Update Details] Response status: ${res.status}`);
@@ -570,25 +617,29 @@ export async function getDealershipDetails(): Promise<DealershipDetailsResponse>
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Use Next.js API route as proxy to avoid CORS issues
-  // The API route will call the backend server-to-server
-  const apiUrl = `/api/dealership-details`;
+  // Call backend directly to avoid CloudFront blocking GET requests to API routes
+  const backendUrl = `${API_BASE_URL}/get-dealership-details/${userId}`;
 
-  console.log("[Get Dealership Details] Calling API route:", apiUrl);
-  console.log(
-    "[Get Dealership Details] Backend URL: https://autobot-webapp-dev.gryd.in/get-dealership-details/" +
-      userId
-  );
+  console.log("[Get Dealership Details] Calling backend directly:", backendUrl);
   console.log("[Get Dealership Details] Using user_id:", userId);
 
-  const res = await fetch(apiUrl, {
+  const headers = getAuthHeaders();
+  if (!headers["X-GRYD-TOKEN"] || !headers["X-GRYD-SESSION-ID"]) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  const res = await fetch(backendUrl, {
     method: "GET",
     headers: {
-      "Content-Type": "application/json",
       Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": headers["X-GRYD-TOKEN"],
+      "X-GRYD-SESSION-ID": headers["X-GRYD-SESSION-ID"],
+      "X-GRYD-APPLICATION-ID": headers["X-GRYD-APPLICATION-ID"],
     },
     cache: "no-store",
-    credentials: "include", // Include cookies so API route can read them
+    mode: "cors",
+    credentials: "omit",
   });
 
   console.log(`[Get Dealership Details] Response status: ${res.status}`);
@@ -654,21 +705,24 @@ export interface CreateWorkshopRequest {
 export async function createWorkshop(
   data: CreateWorkshopRequest
 ): Promise<any> {
-  // Use Next.js API route as proxy to avoid CORS issues
-  const apiUrl = `/api/workshop`;
+  // Call backend directly to avoid CloudFront blocking POST requests to API routes
+  const backendUrl = `${API_BASE_URL}/gryd/db/object/workshop`;
 
-  console.log("[Create Workshop] Calling API route:", apiUrl);
+  console.log("[Create Workshop] Calling backend directly:", backendUrl);
   console.log("[Create Workshop] Request body:", JSON.stringify(data, null, 2));
 
-  const res = await fetch(apiUrl, {
+  const headers = getAuthHeaders();
+  if (!headers["X-GRYD-TOKEN"] || !headers["X-GRYD-SESSION-ID"]) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  const res = await fetch(backendUrl, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+    headers,
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include", // Include cookies so API route can read them
+    mode: "cors",
+    credentials: "omit",
   });
 
   console.log(`[Create Workshop] Response status: ${res.status}`);
@@ -703,21 +757,31 @@ export async function createWorkshop(
 export async function getWorkshopsForDealership(
   dealershipId: string
 ): Promise<any[]> {
-  // Use Next.js API route as proxy to avoid CORS issues
-  const apiUrl = `/api/workshop?dealership_id=${encodeURIComponent(
+  // Call backend directly to avoid CloudFront blocking GET requests to API routes
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/workshop?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
-  console.log("[Get Workshops] Calling API route:", apiUrl);
+  console.log("[Get Workshops] Calling backend directly:", backendUrl);
 
-  const res = await fetch(apiUrl, {
+  const headers = getAuthHeaders();
+  if (!headers["X-GRYD-TOKEN"] || !headers["X-GRYD-SESSION-ID"]) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  const res = await fetch(backendUrl, {
     method: "GET",
     headers: {
-      "Content-Type": "application/json",
       Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": headers["X-GRYD-TOKEN"],
+      "X-GRYD-SESSION-ID": headers["X-GRYD-SESSION-ID"],
+      "X-GRYD-ROLE": "agent",
+      "X-GRYD-APPLICATION-ID": headers["X-GRYD-APPLICATION-ID"],
     },
     cache: "no-store",
-    credentials: "include", // Include cookies so API route can read them
+    mode: "cors",
+    credentials: "omit",
   });
 
   console.log(`[Get Workshops] Response status: ${res.status}`);
@@ -795,20 +859,24 @@ export interface CreateShowroomRequest {
 export async function createShowroom(
   data: CreateShowroomRequest
 ): Promise<any> {
-  const apiUrl = `/api/showroom`;
+  // Call backend directly to avoid CloudFront blocking POST requests to API routes
+  const backendUrl = `${API_BASE_URL}/gryd/db/object/showroom`;
 
-  console.log("[Create Showroom] Calling API route:", apiUrl);
+  console.log("[Create Showroom] Calling backend directly:", backendUrl);
   console.log("[Create Showroom] Request body:", JSON.stringify(data, null, 2));
 
-  const res = await fetch(apiUrl, {
+  const headers = getAuthHeaders();
+  if (!headers["X-GRYD-TOKEN"] || !headers["X-GRYD-SESSION-ID"]) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  const res = await fetch(backendUrl, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+    headers,
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include",
+    mode: "cors",
+    credentials: "omit",
   });
 
   console.log(`[Create Showroom] Response status: ${res.status}`);
@@ -842,20 +910,31 @@ export async function createShowroom(
 export async function getShowroomsForDealership(
   dealershipId: string
 ): Promise<any[]> {
-  const apiUrl = `/api/showroom?dealership_id=${encodeURIComponent(
+  // Call backend directly to avoid CloudFront blocking GET requests to API routes
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/showroom?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
-  console.log("[Get Showrooms] Calling API route:", apiUrl);
+  console.log("[Get Showrooms] Calling backend directly:", backendUrl);
 
-  const res = await fetch(apiUrl, {
+  const headers = getAuthHeaders();
+  if (!headers["X-GRYD-TOKEN"] || !headers["X-GRYD-SESSION-ID"]) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  const res = await fetch(backendUrl, {
     method: "GET",
     headers: {
-      "Content-Type": "application/json",
       Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": headers["X-GRYD-TOKEN"],
+      "X-GRYD-SESSION-ID": headers["X-GRYD-SESSION-ID"],
+      "X-GRYD-ROLE": "agent",
+      "X-GRYD-APPLICATION-ID": headers["X-GRYD-APPLICATION-ID"],
     },
     cache: "no-store",
-    credentials: "include",
+    mode: "cors",
+    credentials: "omit",
   });
 
   console.log(`[Get Showrooms] Response status: ${res.status}`);
@@ -925,23 +1004,27 @@ export interface CreateBuybackCenterRequest {
 export async function createBuybackCenter(
   data: CreateBuybackCenterRequest
 ): Promise<any> {
-  const apiUrl = `/api/buyback-center`;
+  // Call backend directly to avoid CloudFront blocking POST requests to API routes
+  const backendUrl = `${API_BASE_URL}/gryd/db/object/buyback_center`;
 
-  console.log("[Create Buyback Center] Calling API route:", apiUrl);
+  console.log("[Create Buyback Center] Calling backend directly:", backendUrl);
   console.log(
     "[Create Buyback Center] Request body:",
     JSON.stringify(data, null, 2)
   );
 
-  const res = await fetch(apiUrl, {
+  const headers = getAuthHeaders();
+  if (!headers["X-GRYD-TOKEN"] || !headers["X-GRYD-SESSION-ID"]) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  const res = await fetch(backendUrl, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+    headers,
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include",
+    mode: "cors",
+    credentials: "omit",
   });
 
   console.log(`[Create Buyback Center] Response status: ${res.status}`);
@@ -975,20 +1058,31 @@ export async function createBuybackCenter(
 export async function getBuybackCentersForDealership(
   dealershipId: string
 ): Promise<any[]> {
-  const apiUrl = `/api/buyback-center?dealership_id=${encodeURIComponent(
+  // Call backend directly to avoid CloudFront blocking GET requests to API routes
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/buyback_center?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
-  console.log("[Get Buyback Centers] Calling API route:", apiUrl);
+  console.log("[Get Buyback Centers] Calling backend directly:", backendUrl);
 
-  const res = await fetch(apiUrl, {
+  const headers = getAuthHeaders();
+  if (!headers["X-GRYD-TOKEN"] || !headers["X-GRYD-SESSION-ID"]) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  const res = await fetch(backendUrl, {
     method: "GET",
     headers: {
-      "Content-Type": "application/json",
       Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": headers["X-GRYD-TOKEN"],
+      "X-GRYD-SESSION-ID": headers["X-GRYD-SESSION-ID"],
+      "X-GRYD-ROLE": "agent",
+      "X-GRYD-APPLICATION-ID": headers["X-GRYD-APPLICATION-ID"],
     },
     cache: "no-store",
-    credentials: "include",
+    mode: "cors",
+    credentials: "omit",
   });
 
   console.log(`[Get Buyback Centers] Response status: ${res.status}`);
