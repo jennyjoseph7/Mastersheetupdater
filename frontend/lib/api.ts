@@ -264,9 +264,41 @@ Check browser console and Network tab for more details.`
 
 export async function dealershipSignup(data: DealershipSignupRequest) {
   // Call backend directly instead of using Next.js API route
-  const backendUrl = `${API_BASE_URL}/dealership_signup`;
+  // Explicitly use the correct base URL to avoid deployment issues
+  // Never use relative URLs - always use absolute URL to the backend
+  let baseUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    "https://autobot-webapp-dev.gryd.in";
+
+  // Ensure we're using the correct backend domain, not the frontend domain
+  // If environment variable points to frontend domain, override to backend domain
+  if (
+    baseUrl.includes("autobot-dev.gryd.in") &&
+    !baseUrl.includes("autobot-webapp-dev.gryd.in")
+  ) {
+    console.warn(
+      "[Dealership Signup] Warning: Base URL points to frontend domain, overriding to backend domain"
+    );
+    baseUrl = "https://autobot-webapp-dev.gryd.in";
+  }
+
+  const backendUrl = `${baseUrl}/dealership_signup`;
+
+  // Validate URL is absolute and correct
+  if (!backendUrl.startsWith("http")) {
+    throw new Error(
+      `Invalid backend URL: ${backendUrl}. Must be an absolute URL starting with http:// or https://`
+    );
+  }
+
+  if (!backendUrl.includes("autobot-webapp-dev.gryd.in")) {
+    console.warn(
+      `[Dealership Signup] Warning: Backend URL does not contain expected domain: ${backendUrl}`
+    );
+  }
 
   console.log("[Dealership Signup] Calling backend directly:", backendUrl);
+  console.log("[Dealership Signup] Base URL:", baseUrl);
   console.log(
     "[Dealership Signup] Request body:",
     JSON.stringify(data, null, 2)
@@ -298,8 +330,20 @@ export async function dealershipSignup(data: DealershipSignupRequest) {
 
   if (!res.ok) {
     let errorMessage = `Request failed (${res.status})`;
+    let errorData: any = null;
+
     try {
       const errorText = await res.text();
+
+      console.log(
+        `[Dealership Signup] Error response content-type: ${contentType}`
+      );
+      console.log(
+        `[Dealership Signup] Error response body: ${errorText.substring(
+          0,
+          500
+        )}`
+      );
 
       // If response is HTML, it's likely a CORS error or redirect
       if (
@@ -316,45 +360,52 @@ export async function dealershipSignup(data: DealershipSignupRequest) {
         console.error("Response preview:", errorText.substring(0, 500));
         errorMessage = `Server returned HTML instead of JSON (Status: ${res.status}). This usually indicates a CORS issue or the endpoint doesn't exist. Check browser console for details.`;
       } else {
-        // Try to parse as JSON
-        try {
-          const errorData = JSON.parse(errorText);
+        // Try to parse JSON error response
+        if (errorText && errorText.trim()) {
+          try {
+            errorData = JSON.parse(errorText);
 
-          // Extract error message from various possible formats
-          if (errorData && typeof errorData === "object") {
-            if (errorData.error) {
-              errorMessage = String(errorData.error);
-            } else if (errorData.message) {
-              errorMessage = String(errorData.message);
-            } else if (errorData.detail) {
-              errorMessage = String(errorData.detail);
-            } else {
-              // If it's an object but no standard error field, try to extract useful info
-              const errorStr = JSON.stringify(errorData);
-              // Check if it contains the Python error message
-              if (
-                errorStr.includes("'NoneType' object has no attribute 'get'")
-              ) {
-                // This is a backend bug - try to extract the original error if available
-                errorMessage =
-                  "An error occurred while processing your request. Please check if the dealership already exists or try again.";
+            // Extract error message from various possible formats
+            if (errorData && typeof errorData === "object") {
+              if (errorData.error) {
+                errorMessage = String(errorData.error);
+              } else if (errorData.message) {
+                errorMessage = String(errorData.message);
+              } else if (errorData.detail) {
+                errorMessage = String(errorData.detail);
               } else {
-                errorMessage = errorStr;
+                // If it's an object but no standard error field, try to extract useful info
+                const errorStr = JSON.stringify(errorData);
+                // Check if it contains the Python error message
+                if (
+                  errorStr.includes("'NoneType' object has no attribute 'get'")
+                ) {
+                  // This is a backend bug - try to extract the original error if available
+                  errorMessage =
+                    "An error occurred while processing your request. Please check if the dealership already exists or try again.";
+                } else {
+                  errorMessage = errorStr;
+                }
               }
+            } else if (typeof errorData === "string") {
+              errorMessage = errorData;
             }
-          } else if (typeof errorData === "string") {
-            errorMessage = errorData;
+          } catch (parseError) {
+            // Not JSON, use errorText as is
+            console.log(
+              `[Dealership Signup] Error response is not JSON, using raw text`
+            );
+            errorMessage = errorText || errorMessage;
           }
-        } catch {
-          // Not JSON, use text as is
-          errorMessage = errorText || errorMessage;
         }
       }
     } catch (readError) {
+      // Failed to read response, use default message
       console.error(
         "[Dealership Signup] Failed to read error response:",
         readError
       );
+      errorMessage = `Request failed (${res.status})`;
     }
 
     // Clean up any "API Error:" prefixes
@@ -376,7 +427,6 @@ export async function dealershipSignup(data: DealershipSignupRequest) {
   }
 
   // Check if successful response is also HTML (shouldn't happen, but handle it)
-  // Clone the response to read it without consuming it
   const responseClone = res.clone();
   const responseText = await responseClone.text();
 
