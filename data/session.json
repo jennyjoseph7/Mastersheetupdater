@@ -154,6 +154,11 @@
             }
         },
         {
+            "name":"dealership_id",
+            "type":"text",
+            "required":false
+        },
+        {
             "name": "origin",
             "type": "text",
             "required": false
