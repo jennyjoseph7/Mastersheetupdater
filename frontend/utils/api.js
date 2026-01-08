@@ -308,12 +308,7 @@ async function fetchPreSalesCampaigns(page = 1, pageSize = 50) {
       "X-GRYD-ROLE": "admin",
     };
 
-    const baseUrl =
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1")
-        ? "http://127.0.0.1:5008"
-        : APP_BASE_URL;
+    const baseUrl = APP_BASE_URL;
 
     const url = `${baseUrl}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}`;
 
@@ -350,35 +345,34 @@ async function fetchPreSalesCampaigns(page = 1, pageSize = 50) {
 }
 
 // Fetch Post-Sales Campaigns ---
-async function fetchPostSalesCampaigns(page = 1, pageSize = 50) {
+async function fetchPostSalesCampaigns(dealershipId = null) {
   try {
-    const adminHeaders = {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
-      "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
-      "X-GRYD-ROLE": "admin",
-    };
+    // Get dealership_id from parameter or localStorage
+    const finalDealershipId =
+      dealershipId ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem("dealership_id")
+        : null);
 
-    const baseUrl =
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1")
-        ? "http://127.0.0.1:5008"
-        : APP_BASE_URL;
+    if (!finalDealershipId) {
+      console.warn(
+        "[fetchPostSalesCampaigns] No dealership_id provided or found in localStorage"
+      );
+      return { items: [], total: 0 };
+    }
 
-    const url = `${baseUrl}/gryd/db/objects/post_sales_campaign?page_number=${page}&page_size=${pageSize}`;
+    const baseUrl = APP_BASE_URL;
+    const url = `${baseUrl}/gryd/db/objects/post_sales_campaign?dealership_id=${encodeURIComponent(finalDealershipId)}`;
 
     let response = await fetch(url, {
       method: "GET",
-      headers: adminHeaders,
+      headers: HEADERS,
     });
 
     if (!response.ok && response.status === 405) {
       response = await fetch(url, {
         method: "POST",
-        headers: adminHeaders,
+        headers: HEADERS,
         body: "",
       });
     }
@@ -414,12 +408,7 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
       "X-GRYD-ROLE": "admin",
     };
 
-    const baseUrl =
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1")
-        ? "http://127.0.0.1:5008"
-        : APP_BASE_URL;
+    const baseUrl = APP_BASE_URL;
 
     const url = `${baseUrl}/gryd/db/objects/dealership_campaign`;
 
@@ -456,9 +445,14 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
 }
 
 // Fetch Overall Campaign Summary ---
-async function fetchCampaignSummary() {
+async function fetchCampaignSummary(dealershipId = null) {
   try {
-    const url = `${APP_BASE_URL}/gryd/db/objects/overall_campaign_summary`;
+    let url = `${APP_BASE_URL}/gryd/db/objects/campaign_summary`;
+    
+    // Add dealership_id query parameter if provided
+    if (dealershipId) {
+      url += `?dealership_id=${encodeURIComponent(dealershipId)}`;
+    }
 
     const response = await fetch(url, {
       method: "GET",

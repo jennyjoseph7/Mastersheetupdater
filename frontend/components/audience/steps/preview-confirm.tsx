@@ -25,15 +25,7 @@ import type { DataSourceFormData } from "../add-data-source-dialog";
 import { APP_BASE_URL } from "@/utils/headers";
 
 // Configuration (Move to env or constants in real app)
-// const BASE_URL = "http://127.0.0.1:5008";
- const baseUrl =
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1")
-        ? "http://127.0.0.1:5008"
-        : APP_BASE_URL;
-
-const BASE_URL = baseUrl;
+const BASE_URL = APP_BASE_URL;
 
 const API_HEADERS = {
   "Content-Type": "application/json",
