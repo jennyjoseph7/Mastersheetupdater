@@ -760,7 +760,9 @@ export async function createWorkshop(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - matching Postman curl exactly (no X-GRYD-APPLICATION-ID header)
+  // Call backend directly - include X-GRYD-APPLICATION-ID to ensure backend uses "autocrm"
+  // The backend may be deriving application_id from token/session (which might be "gryd")
+  // so we explicitly send "autocrm" to override it
   const backendUrl = `${API_BASE_URL}/gryd/db/object/workshop`;
 
   const headers = {
@@ -770,11 +772,15 @@ export async function createWorkshop(
     "X-GRYD-SESSION-ID": sessionId,
     Accept: "application/json",
     "X-GRYD-ROLE": "agent",
+    "X-GRYD-APPLICATION-ID": "autocrm",
   };
 
   console.log("[Create Workshop] Calling backend directly:", backendUrl);
   console.log("[Create Workshop] API_BASE_URL:", API_BASE_URL);
-  console.log("[Create Workshop] Headers (matching Postman curl):", JSON.stringify(headers, null, 2));
+  console.log(
+    "[Create Workshop] Headers (matching Postman curl):",
+    JSON.stringify(headers, null, 2)
+  );
   console.log("[Create Workshop] Request body:", JSON.stringify(data, null, 2));
 
   const res = await fetch(backendUrl, {
@@ -785,7 +791,7 @@ export async function createWorkshop(
     mode: "cors",
     credentials: "omit",
   });
-  
+
   // Log the actual request URL that was called (from response)
   console.log("[Create Workshop] Actual request URL:", res.url || backendUrl);
   console.log(`[Create Workshop] Response status: ${res.status}`);
@@ -806,13 +812,20 @@ export async function createWorkshop(
           "[Create Workshop] ⚠️ CRITICAL: Backend received 'gryd' instead of 'autocrm'"
         );
         console.error(
-          "[Create Workshop] The backend may need to derive application_id from token/session"
+          "[Create Workshop] We are sending X-GRYD-APPLICATION-ID: autocrm header"
+        );
+        console.error("[Create Workshop] If this error persists, check:");
+        console.error(
+          "[Create Workshop] 1. Browser Network tab - is X-GRYD-APPLICATION-ID header actually being sent?"
         );
         console.error(
-          "[Create Workshop] Or backend CORS must allow 'x-gryd-application-id' header"
+          "[Create Workshop] 2. Backend CORS config - does it allow 'x-gryd-application-id' header?"
+        );
+        console.error(
+          "[Create Workshop] 3. Backend may be ignoring the header and using token/session application_id"
         );
         errorMessage =
-          "Backend received wrong application_id. The backend should derive application_id from the token/session, or CORS must allow 'x-gryd-application-id' header.";
+          "Backend received wrong application_id 'gryd' instead of 'autocrm'. Check Network tab to verify X-GRYD-APPLICATION-ID header is being sent. Backend CORS may need to allow this header, or backend may need to use the header value instead of deriving from token/session.";
       }
 
       try {
@@ -848,7 +861,9 @@ export async function getWorkshopsForDealership(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - matching Postman curl exactly (no X-GRYD-APPLICATION-ID header)
+  // Call backend directly - include X-GRYD-APPLICATION-ID to ensure backend uses "autocrm"
+  // The backend may be deriving application_id from token/session (which might be "gryd")
+  // so we explicitly send "autocrm" to override it
   const backendUrl = `${API_BASE_URL}/gryd/db/object/workshop?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
@@ -859,11 +874,15 @@ export async function getWorkshopsForDealership(
     "X-GRYD-TOKEN": token,
     "X-GRYD-SESSION-ID": sessionId,
     "X-GRYD-ROLE": "agent",
+    "X-GRYD-APPLICATION-ID": "autocrm",
   };
 
   console.log("[Get Workshops] Calling backend directly:", backendUrl);
   console.log("[Get Workshops] API_BASE_URL:", API_BASE_URL);
-  console.log("[Get Workshops] Headers (matching Postman curl):", JSON.stringify(headers, null, 2));
+  console.log(
+    "[Get Workshops] Headers (matching Postman curl):",
+    JSON.stringify(headers, null, 2)
+  );
 
   const res = await fetch(backendUrl, {
     method: "GET",
@@ -901,7 +920,7 @@ export async function getWorkshopsForDealership(
           "[Get Workshops] Or backend CORS must allow 'x-gryd-application-id' header"
         );
         errorMessage =
-          "Backend received wrong application_id. The backend should derive application_id from the token/session, or CORS must allow 'x-gryd-application-id' header.";
+          "Backend received wrong application_id 'gryd' instead of 'autocrm'. Check Network tab to verify X-GRYD-APPLICATION-ID header is being sent. Backend CORS may need to allow this header, or backend may need to use the header value instead of deriving from token/session.";
       }
 
       try {
@@ -976,7 +995,9 @@ export async function createShowroom(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - matching Postman curl exactly (no X-GRYD-APPLICATION-ID header)
+  // Call backend directly - include X-GRYD-APPLICATION-ID to ensure backend uses "autocrm"
+  // The backend may be deriving application_id from token/session (which might be "gryd")
+  // so we explicitly send "autocrm" to override it
   const backendUrl = `${API_BASE_URL}/gryd/db/object/showroom`;
 
   const headers = {
@@ -986,11 +1007,15 @@ export async function createShowroom(
     "X-GRYD-SESSION-ID": sessionId,
     Accept: "application/json",
     "X-GRYD-ROLE": "agent",
+    "X-GRYD-APPLICATION-ID": "autocrm",
   };
 
   console.log("[Create Showroom] Calling backend directly:", backendUrl);
   console.log("[Create Showroom] API_BASE_URL:", API_BASE_URL);
-  console.log("[Create Showroom] Headers (matching Postman curl):", JSON.stringify(headers, null, 2));
+  console.log(
+    "[Create Showroom] Headers (matching Postman curl):",
+    JSON.stringify(headers, null, 2)
+  );
   console.log("[Create Showroom] Request body:", JSON.stringify(data, null, 2));
 
   const res = await fetch(backendUrl, {
@@ -1026,7 +1051,7 @@ export async function createShowroom(
           "[Create Showroom] Or backend CORS must allow 'x-gryd-application-id' header"
         );
         errorMessage =
-          "Backend received wrong application_id. The backend should derive application_id from the token/session, or CORS must allow 'x-gryd-application-id' header.";
+          "Backend received wrong application_id 'gryd' instead of 'autocrm'. Check Network tab to verify X-GRYD-APPLICATION-ID header is being sent. Backend CORS may need to allow this header, or backend may need to use the header value instead of deriving from token/session.";
       }
 
       try {
@@ -1061,7 +1086,9 @@ export async function getShowroomsForDealership(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - matching Postman curl exactly (no X-GRYD-APPLICATION-ID header)
+  // Call backend directly - include X-GRYD-APPLICATION-ID to ensure backend uses "autocrm"
+  // The backend may be deriving application_id from token/session (which might be "gryd")
+  // so we explicitly send "autocrm" to override it
   const backendUrl = `${API_BASE_URL}/gryd/db/object/showroom?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
@@ -1072,11 +1099,15 @@ export async function getShowroomsForDealership(
     "X-GRYD-TOKEN": token,
     "X-GRYD-SESSION-ID": sessionId,
     "X-GRYD-ROLE": "agent",
+    "X-GRYD-APPLICATION-ID": "autocrm",
   };
 
   console.log("[Get Showrooms] Calling backend directly:", backendUrl);
   console.log("[Get Showrooms] API_BASE_URL:", API_BASE_URL);
-  console.log("[Get Showrooms] Headers (matching Postman curl):", JSON.stringify(headers, null, 2));
+  console.log(
+    "[Get Showrooms] Headers (matching Postman curl):",
+    JSON.stringify(headers, null, 2)
+  );
 
   const res = await fetch(backendUrl, {
     method: "GET",
@@ -1113,7 +1144,7 @@ export async function getShowroomsForDealership(
           "[Get Showrooms] Or backend CORS must allow 'x-gryd-application-id' header"
         );
         errorMessage =
-          "Backend received wrong application_id. The backend should derive application_id from the token/session, or CORS must allow 'x-gryd-application-id' header.";
+          "Backend received wrong application_id 'gryd' instead of 'autocrm'. Check Network tab to verify X-GRYD-APPLICATION-ID header is being sent. Backend CORS may need to allow this header, or backend may need to use the header value instead of deriving from token/session.";
       }
 
       try {
@@ -1181,7 +1212,9 @@ export async function createBuybackCenter(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - matching Postman curl exactly (no X-GRYD-APPLICATION-ID header)
+  // Call backend directly - include X-GRYD-APPLICATION-ID to ensure backend uses "autocrm"
+  // The backend may be deriving application_id from token/session (which might be "gryd")
+  // so we explicitly send "autocrm" to override it
   const backendUrl = `${API_BASE_URL}/gryd/db/object/buyback_center`;
 
   const headers = {
@@ -1191,11 +1224,15 @@ export async function createBuybackCenter(
     "X-GRYD-SESSION-ID": sessionId,
     Accept: "application/json",
     "X-GRYD-ROLE": "agent",
+    "X-GRYD-APPLICATION-ID": "autocrm",
   };
 
   console.log("[Create Buyback Center] Calling backend directly:", backendUrl);
   console.log("[Create Buyback Center] API_BASE_URL:", API_BASE_URL);
-  console.log("[Create Buyback Center] Headers (matching Postman curl):", JSON.stringify(headers, null, 2));
+  console.log(
+    "[Create Buyback Center] Headers (matching Postman curl):",
+    JSON.stringify(headers, null, 2)
+  );
   console.log(
     "[Create Buyback Center] Request body:",
     JSON.stringify(data, null, 2)
@@ -1234,7 +1271,7 @@ export async function createBuybackCenter(
           "[Create Buyback Center] Or backend CORS must allow 'x-gryd-application-id' header"
         );
         errorMessage =
-          "Backend received wrong application_id. The backend should derive application_id from the token/session, or CORS must allow 'x-gryd-application-id' header.";
+          "Backend received wrong application_id 'gryd' instead of 'autocrm'. Check Network tab to verify X-GRYD-APPLICATION-ID header is being sent. Backend CORS may need to allow this header, or backend may need to use the header value instead of deriving from token/session.";
       }
 
       try {
@@ -1269,7 +1306,9 @@ export async function getBuybackCentersForDealership(
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - matching Postman curl exactly (no X-GRYD-APPLICATION-ID header)
+  // Call backend directly - include X-GRYD-APPLICATION-ID to ensure backend uses "autocrm"
+  // The backend may be deriving application_id from token/session (which might be "gryd")
+  // so we explicitly send "autocrm" to override it
   const backendUrl = `${API_BASE_URL}/gryd/db/object/buyback_center?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
@@ -1279,12 +1318,16 @@ export async function getBuybackCentersForDealership(
     "X-GRYD-ENTERPRISE-ID": "autocrm",
     "X-GRYD-TOKEN": token,
     "X-GRYD-SESSION-ID": sessionId,
+    "X-GRYD-APPLICATION-ID": "autocrm",
     "X-GRYD-ROLE": "agent",
   };
 
   console.log("[Get Buyback Centers] Calling backend directly:", backendUrl);
   console.log("[Get Buyback Centers] API_BASE_URL:", API_BASE_URL);
-  console.log("[Get Buyback Centers] Headers (matching Postman curl):", JSON.stringify(headers, null, 2));
+  console.log(
+    "[Get Buyback Centers] Headers (matching Postman curl):",
+    JSON.stringify(headers, null, 2)
+  );
 
   const res = await fetch(backendUrl, {
     method: "GET",
@@ -1321,7 +1364,7 @@ export async function getBuybackCentersForDealership(
           "[Get Buyback Centers] Or backend CORS must allow 'x-gryd-application-id' header"
         );
         errorMessage =
-          "Backend received wrong application_id. The backend should derive application_id from the token/session, or CORS must allow 'x-gryd-application-id' header.";
+          "Backend received wrong application_id 'gryd' instead of 'autocrm'. Check Network tab to verify X-GRYD-APPLICATION-ID header is being sent. Backend CORS may need to allow this header, or backend may need to use the header value instead of deriving from token/session.";
       }
 
       try {
