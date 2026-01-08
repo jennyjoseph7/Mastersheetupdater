@@ -263,17 +263,23 @@ Check browser console and Network tab for more details.`
 }
 
 export async function dealershipSignup(data: DealershipSignupRequest) {
-  // Call backend directly instead of using Next.js API route
-  // HARDCODE the backend URL to avoid any build-time environment variable issues
-  // This ensures we always hit the correct endpoint regardless of build configuration
-  const backendUrl = "https://autobot-webapp-dev.gryd.in/dealership_signup";
+  // Call backend directly - same pattern as generateOTP which works
+  const backendUrl = `${API_BASE_URL}/dealership_signup`;
 
-  // Log for debugging - this will help verify the correct URL is being used
+  // Runtime safety check - ensure URL is absolute (starts with http)
+  if (!backendUrl.startsWith("http://") && !backendUrl.startsWith("https://")) {
+    console.error(
+      "[Dealership Signup] ERROR: URL is not absolute:",
+      backendUrl
+    );
+    console.error("[Dealership Signup] API_BASE_URL value:", API_BASE_URL);
+    throw new Error(
+      `Invalid backend URL: ${backendUrl}. Expected absolute URL starting with http:// or https://`
+    );
+  }
+
   console.log("[Dealership Signup] Calling backend directly:", backendUrl);
-  console.log(
-    "[Dealership Signup] Environment check - NEXT_PUBLIC_API_BASE_URL:",
-    process.env.NEXT_PUBLIC_API_BASE_URL
-  );
+  console.log("[Dealership Signup] API_BASE_URL:", API_BASE_URL);
   console.log(
     "[Dealership Signup] Request body:",
     JSON.stringify(data, null, 2)
@@ -283,7 +289,6 @@ export async function dealershipSignup(data: DealershipSignupRequest) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Accept: "application/json",
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
     },
