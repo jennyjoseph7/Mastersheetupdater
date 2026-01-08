@@ -33,9 +33,11 @@ const API_BASE_URL = getApiBaseUrl();
 export async function POST(request: NextRequest) {
   try {
     // Get credentials from cookies (set during login)
-    const token = getCookieFromRequest(request, "gryd_token");
+       const token = getCookieFromRequest(request, "gryd_token");
     const sessionId = getCookieFromRequest(request, "gryd_session_id");
-    const applicationId = getCookieFromRequest(request, "gryd_application_id");
+    const application_id = getCookieFromRequest(request, "gryd_application_id");
+
+     
 
     if (!token || !sessionId) {
       return NextResponse.json(
@@ -54,8 +56,9 @@ export async function POST(request: NextRequest) {
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": application_id || "autocrm",
       "X-GRYD-ROLE": "agent",
-      "X-GRYD-APPLICATION-ID": applicationId || "autocrm",
+      
     };
 
     // Enhanced logging for debugging

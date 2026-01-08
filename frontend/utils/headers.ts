@@ -2,7 +2,7 @@
 
 // Always use production URL
 const getAppBaseUrl = () => {
-  const url = "https://autobot-webapp-dev.gryd.in/";
+  const url = "https://autobot-webapp-dev.gryd.in";
   console.log(`[APP_ENV] Using production URL -> ${url}`);
   return url;
 };
@@ -23,6 +23,7 @@ const getCookie = (name: string) => {
 // Read cookies (browser-safe)
 let token = getCookie("gryd_token");
 let sessionId = getCookie("gryd_session_id");
+let applicationId = getCookie("gryd_application_id");
 
 // Fallback (curl-tested credentials)
 if (!token || !sessionId) {
@@ -38,6 +39,7 @@ const HEADERS = {
   "X-GRYD-ENTERPRISE-ID": "autocrm",
   "X-GRYD-TOKEN": token,
   "X-GRYD-SESSION-ID": sessionId,
+  "X-GRYD-APPLICATION-ID": applicationId || "autocrm",
   "X-GRYD-ROLE": "agent",
 };
 

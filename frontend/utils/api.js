@@ -319,6 +319,7 @@ async function fetchPreSalesCampaigns(page = 1, pageSize = 50) {
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": application_id || "autocrm",
       "X-GRYD-ROLE": "admin",
     };
 
@@ -419,6 +420,7 @@ async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": application_id || "autocrm",
       "X-GRYD-ROLE": "admin",
     };
 

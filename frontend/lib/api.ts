@@ -502,6 +502,7 @@ export async function dealershipUpdateDetails(
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId || "",
       Accept: "application/json",
       "X-GRYD-ROLE": "agent",
     },
@@ -662,6 +663,7 @@ export async function getDealershipDetails(): Promise<DealershipDetailsResponse>
   const token = getCookieFromDocument("gryd_token");
   const sessionId = getCookieFromDocument("gryd_session_id");
   const userId = getCookieFromDocument("gryd_user_id");
+  const application_id = getCookieFromDocument("gryd_application_id");
 
   if (!token || !sessionId || !userId) {
     throw new ApiError(401, "Authentication required. Please login again.");
@@ -683,6 +685,7 @@ export async function getDealershipDetails(): Promise<DealershipDetailsResponse>
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": application_id || "autocrm",
     },
     cache: "no-store",
     mode: "cors",

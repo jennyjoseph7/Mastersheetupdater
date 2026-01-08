@@ -29,6 +29,7 @@ export async function GET(request: Request) {
   // Get credentials from cookies (set during login)
     let token = cookies().get("gryd_token")?.value;
     let sessionId = cookies().get("gryd_session_id")?.value;
+    let application_id = cookies().get("gryd_application_id")?.value;
 
     // Fallback to hardcoded credentials if user credentials not available
     // These match the curl that works successfully
@@ -45,6 +46,7 @@ const headers: Record<string, string> = {
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": application_id || "autocrm",
       "X-GRYD-ROLE": "admin",
     };
 

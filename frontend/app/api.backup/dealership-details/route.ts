@@ -22,8 +22,10 @@ function getCookieFromRequest(
 export async function GET(request: NextRequest) {
   try {
     // Get cookies from the request headers
-    const token = getCookieFromRequest(request, "gryd_token");
+       const token = getCookieFromRequest(request, "gryd_token");
     const sessionId = getCookieFromRequest(request, "gryd_session_id");
+    const application_id = getCookieFromRequest(request, "gryd_application_id");
+
     const userId = getCookieFromRequest(request, "gryd_user_id");
 
     if (!token || !sessionId || !userId) {

@@ -24,8 +24,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Get credentials from cookies (set during login)
-    const token = getCookieFromRequest(request, "gryd_token");
+       const token = getCookieFromRequest(request, "gryd_token");
     const sessionId = getCookieFromRequest(request, "gryd_session_id");
+    const application_id = getCookieFromRequest(request, "gryd_application_id");
+
 
     // Require authentication
     if (!token || !sessionId) {
@@ -48,6 +50,7 @@ export async function POST(request: NextRequest) {
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": application_id || "autocrm",
       "X-GRYD-ROLE": "agent",
       "X-GRYD-APPLICATION-ID": "autocrm",
     };
@@ -118,8 +121,10 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     // Get credentials from cookies
-    const token = getCookieFromRequest(request, "gryd_token");
+       const token = getCookieFromRequest(request, "gryd_token");
     const sessionId = getCookieFromRequest(request, "gryd_session_id");
+    const application_id = getCookieFromRequest(request, "gryd_application_id");
+
 
     if (!token || !sessionId) {
       return NextResponse.json(
