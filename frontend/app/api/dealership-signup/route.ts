@@ -23,29 +23,21 @@ export async function POST(request: Request) {
       JSON.stringify(body, null, 2)
     );
     console.log(`[Dealership Signup] API Base URL:`, API_BASE_URL);
-    console.log(
-      `[Dealership Signup] Full URL:`,
-      `${API_BASE_URL}/gryd/api/autocrm-core/dealership_signup`
-    );
+    const backendUrl = `${API_BASE_URL}/dealership_signup`;
+    console.log(`[Dealership Signup] Full URL:`, backendUrl);
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      Accept: "application/json",
       "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
-      "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
-      "X-GRYD-ROLE": "agent",
+      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
     };
 
-    const res = await fetch(
-      `${API_BASE_URL}/gryd/api/autocrm-core/dealership_signup`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body),
-        cache: "no-store",
-      }
-    );
+    const res = await fetch(backendUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
 
     // Log response status for debugging
     console.log(`[Dealership Signup] Backend response status: ${res.status}`);

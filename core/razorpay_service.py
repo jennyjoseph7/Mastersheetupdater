@@ -1,7 +1,6 @@
 import datetime
 import razorpay
 import autocrm_validator
-import core
 
 from config import (
     RAZORPAY_KEY_ID,
@@ -24,7 +23,7 @@ def get_billing_by_order_id(order_id: str):
     BillingModel = get_billing_model()
 
     result = BillingModel.list(
-        razorpay_order_id=order_id,
+        razorpay_order_id=str(order_id),
         _as_option=True
     )
 
@@ -89,49 +88,50 @@ def verify_payment_signature(data: dict) -> bool:
         logger.error(f"[SECURITY] Signature verification failed | {e}")
         return False
 
-def confirm_payment_success(data: dict):
+def confirm_payment_success(data: dict, webhook=False):
     order_id = data["razorpay_order_id"]
 
-    if not verify_payment_signature(data):
-        raise Exception("Invalid payment signature")
+    if not webhook:
+        if not verify_payment_signature(data):
+            raise Exception("Invalid payment signature")
+        payment = client.payment.fetch(data["razorpay_payment_id"])
+    else:
+        payment = data["payment"]
 
-    payment = client.payment.fetch(data["razorpay_payment_id"])
-
-    if payment["status"] != "captured":
-        raise Exception(f"Payment not captured | status={payment['status']}")
-
-    if payment["currency"] != "INR":
-        raise Exception("Currency mismatch")
-
+    if payment["status"] != "authorized" and payment["status"] != "captured":
+        return  
+    
     billing = get_billing_by_order_id(order_id)
 
     if billing["status"] == "success":
-        logger.warning(
-            f"[PAYMENT] Duplicate ignored | billing_id={billing['billing_id']}"
-        )
         return
 
     if payment["amount"] != billing["amount_paise"]:
         raise Exception("Amount mismatch")
+    
+    gryd.create_async_task(
+            "post_billing",
+            "autocrm-core",
+            kwargs = {
+                "dealership_id": billing["dealership_id"],
+                "transaction_type": "credit",
+                "item_name": billing["item_name"],
+                "item_description": billing.get("item_description"),
+                "transaction_date": datetime.date.today().isoformat(),
+                "item_quantity": billing["item_quantity"],
+                "item_price": billing["item_price"],
+                "item_unit": "credits",
+                "currency": "credits",
+                "campaign_id": "inbound",
+                "channel": "razorpay",
 
-    core.post_billing(
-        dealership_id=billing["dealership_id"],
-        transaction_type="credit",
-        item_name=billing["item_name"],
-        item_description=billing.get("item_description"),
-        transaction_date=datetime.date.today().isoformat(),
-        item_quantity=billing["item_quantity"],
-        item_price=billing["item_price"],
-        item_unit="credits",
-        currency="credits",
-        campaign_id="inbound",
-        channel="razorpay",
-        billing_id = billing["billing_id"],
-        razorpay_order_id=order_id,
-        razorpay_payment_id=payment["id"],
-        razorpay_signature=data["razorpay_signature"],
-        raw_razorpay_payload=payment
-    )
+                "billing_id": billing["billing_id"],
+                "razorpay_order_id": order_id,
+                "razorpay_payment_id": payment["id"],
+                "razorpay_signature": data["razorpay_signature"],
+                "raw_razorpay_payload": payment,
+            }
+        )
 
     logger.info(
         f"[CREDITS] Credited | dealership={billing['dealership_id']} "
@@ -178,6 +178,7 @@ def mark_payment_cancelled(order_id: str):
 
 def razorpay_webhook_handler(payload: dict):
     event = payload.get("event")
+    payment = payload["payload"]["payment"]["entity"]
     entity = payload["payload"]["payment"]["entity"]
     order_id = entity["order_id"]
 
@@ -185,8 +186,9 @@ def razorpay_webhook_handler(payload: dict):
         confirm_payment_success({
             "razorpay_order_id": order_id,
             "razorpay_payment_id": entity["id"],
-            "razorpay_signature": payload.get("signature", "")
-        })
+            "razorpay_signature": payload.get("signature", ""),
+            "payment" : payment
+        }, webhook = True)
 
     elif event == "payment.failed":
         mark_payment_failed(order_id, entity.get("error_description", ""))
