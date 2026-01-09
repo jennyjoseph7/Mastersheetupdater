@@ -263,37 +263,56 @@ Check browser console and Network tab for more details.`
 }
 
 export async function dealershipSignup(data: DealershipSignupRequest) {
-  // Use Next.js API route as proxy to avoid CORS issues
-  const apiUrl = `/api/dealership-signup`;
+  // Call backend directly - same pattern as generateOTP which works
+  const backendUrl = `${API_BASE_URL}/dealership_signup`;
 
-  console.log("[Dealership Signup] Calling API route:", apiUrl);
-  console.log(
-    "[Dealership Signup] Backend URL: https://autobot-webapp-dev.gryd.in/dealership_signup"
-  );
+  // Runtime safety check - ensure URL is absolute (starts with http)
+  if (!backendUrl.startsWith("http://") && !backendUrl.startsWith("https://")) {
+    console.error(
+      "[Dealership Signup] ERROR: URL is not absolute:",
+      backendUrl
+    );
+    console.error("[Dealership Signup] API_BASE_URL value:", API_BASE_URL);
+    throw new Error(
+      `Invalid backend URL: ${backendUrl}. Expected absolute URL starting with http:// or https://`
+    );
+  }
+
+  console.log("[Dealership Signup] Calling backend directly:", backendUrl);
+  console.log("[Dealership Signup] API_BASE_URL:", API_BASE_URL);
   console.log(
     "[Dealership Signup] Request body:",
     JSON.stringify(data, null, 2)
   );
 
-  const res = await fetch(apiUrl, {
+  const res = await fetch(backendUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
     },
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include",
+    mode: "cors",
+    credentials: "omit",
   });
 
   console.log(`[Dealership Signup] Response status: ${res.status}`);
+  console.log(
+    `[Dealership Signup] Response headers:`,
+    Object.fromEntries(res.headers.entries())
+  );
+
+  // Check content-type to detect HTML responses
+  const contentType = res.headers.get("content-type") || "";
+  const isHTML = contentType.includes("text/html");
 
   if (!res.ok) {
     let errorMessage = `Request failed (${res.status})`;
     let errorData: any = null;
 
     try {
-      const contentType = res.headers.get("content-type");
       const errorText = await res.text();
 
       console.log(
@@ -306,42 +325,58 @@ export async function dealershipSignup(data: DealershipSignupRequest) {
         )}`
       );
 
-      // Try to parse JSON error response
-      if (errorText && errorText.trim()) {
-        try {
-          errorData = JSON.parse(errorText);
+      // If response is HTML, it's likely a CORS error or redirect
+      if (
+        isHTML ||
+        errorText.trim().startsWith("<!DOCTYPE") ||
+        errorText.trim().startsWith("<html")
+      ) {
+        console.error(
+          "[Dealership Signup] Received HTML response instead of JSON. This usually indicates:"
+        );
+        console.error("  1. CORS is not properly configured on the backend");
+        console.error("  2. The endpoint is redirecting to an HTML page");
+        console.error("  3. The endpoint doesn't exist (404 HTML page)");
+        console.error("Response preview:", errorText.substring(0, 500));
+        errorMessage = `Server returned HTML instead of JSON (Status: ${res.status}). This usually indicates a CORS issue or the endpoint doesn't exist. Check browser console for details.`;
+      } else {
+        // Try to parse JSON error response
+        if (errorText && errorText.trim()) {
+          try {
+            errorData = JSON.parse(errorText);
 
-          // Extract error message from various possible formats
-          if (errorData && typeof errorData === "object") {
-            if (errorData.error) {
-              errorMessage = String(errorData.error);
-            } else if (errorData.message) {
-              errorMessage = String(errorData.message);
-            } else if (errorData.detail) {
-              errorMessage = String(errorData.detail);
-            } else {
-              // If it's an object but no standard error field, try to extract useful info
-              const errorStr = JSON.stringify(errorData);
-              // Check if it contains the Python error message
-              if (
-                errorStr.includes("'NoneType' object has no attribute 'get'")
-              ) {
-                // This is a backend bug - try to extract the original error if available
-                errorMessage =
-                  "An error occurred while processing your request. Please check if the dealership already exists or try again.";
+            // Extract error message from various possible formats
+            if (errorData && typeof errorData === "object") {
+              if (errorData.error) {
+                errorMessage = String(errorData.error);
+              } else if (errorData.message) {
+                errorMessage = String(errorData.message);
+              } else if (errorData.detail) {
+                errorMessage = String(errorData.detail);
               } else {
-                errorMessage = errorStr;
+                // If it's an object but no standard error field, try to extract useful info
+                const errorStr = JSON.stringify(errorData);
+                // Check if it contains the Python error message
+                if (
+                  errorStr.includes("'NoneType' object has no attribute 'get'")
+                ) {
+                  // This is a backend bug - try to extract the original error if available
+                  errorMessage =
+                    "An error occurred while processing your request. Please check if the dealership already exists or try again.";
+                } else {
+                  errorMessage = errorStr;
+                }
               }
+            } else if (typeof errorData === "string") {
+              errorMessage = errorData;
             }
-          } else if (typeof errorData === "string") {
-            errorMessage = errorData;
+          } catch (parseError) {
+            // Not JSON, use errorText as is
+            console.log(
+              `[Dealership Signup] Error response is not JSON, using raw text`
+            );
+            errorMessage = errorText || errorMessage;
           }
-        } catch (parseError) {
-          // Not JSON, use errorText as is
-          console.log(
-            `[Dealership Signup] Error response is not JSON, using raw text`
-          );
-          errorMessage = errorText || errorMessage;
         }
       }
     } catch (readError) {
@@ -371,7 +406,51 @@ export async function dealershipSignup(data: DealershipSignupRequest) {
     throw new ApiError(res.status, errorMessage);
   }
 
-  const responseData = await res.json();
+  // Check if successful response is also HTML (shouldn't happen, but handle it)
+  const responseClone = res.clone();
+  const responseText = await responseClone.text();
+
+  if (
+    isHTML ||
+    responseText.trim().startsWith("<!DOCTYPE") ||
+    responseText.trim().startsWith("<html")
+  ) {
+    console.error(
+      "[Dealership Signup] Received HTML response for successful request!"
+    );
+    console.error("Response status:", res.status);
+    console.error("Response URL:", res.url);
+    console.error(
+      "Response headers:",
+      Object.fromEntries(res.headers.entries())
+    );
+    console.error("Response preview:", responseText.substring(0, 1000));
+    throw new ApiError(
+      500,
+      `Server returned HTML instead of JSON (Status: ${res.status}). This usually indicates:
+1. CORS is not properly configured on the backend
+2. The endpoint URL is incorrect
+3. The backend is redirecting to an HTML page
+Check browser console and Network tab for more details.`
+    );
+  }
+
+  // Try to parse as JSON
+  let responseData;
+  try {
+    responseData = JSON.parse(responseText);
+  } catch (parseError) {
+    console.error("[Dealership Signup] Failed to parse response as JSON");
+    console.error("Response text:", responseText.substring(0, 500));
+    throw new ApiError(
+      500,
+      `Server returned invalid JSON. Response preview: ${responseText.substring(
+        0,
+        200
+      )}...`
+    );
+  }
+
   console.log("[Dealership Signup] Response:", responseData);
   return responseData;
 }
@@ -394,24 +473,43 @@ export interface DealershipUpdateDetailsRequest {
 export async function dealershipUpdateDetails(
   data: DealershipUpdateDetailsRequest
 ) {
-  // Use Next.js API route as proxy to avoid CORS issues
-  const apiUrl = `/api/dealership-update-details`;
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  const applicationId = getCookieFromDocument("gryd_application_id");
 
-  console.log("[Dealership Update Details] Calling API route:", apiUrl);
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - same pattern as generateOTP
+  const backendUrl = `${API_BASE_URL}/gryd/api/autocrm-core/dealership_update_details`;
+
+  console.log(
+    "[Dealership Update Details] Calling backend directly:",
+    backendUrl
+  );
+  console.log("[Dealership Update Details] API_BASE_URL:", API_BASE_URL);
   console.log(
     "[Dealership Update Details] Request body:",
     JSON.stringify(data, null, 2)
   );
 
-  const res = await fetch(apiUrl, {
+  const res = await fetch(backendUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId || "",
       Accept: "application/json",
+      "X-GRYD-ROLE": "agent",
     },
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include", // Include cookies so API route can read them
+    mode: "cors",
+    credentials: "omit",
   });
 
   console.log(`[Dealership Update Details] Response status: ${res.status}`);
@@ -565,30 +663,33 @@ export async function getDealershipDetails(): Promise<DealershipDetailsResponse>
   const token = getCookieFromDocument("gryd_token");
   const sessionId = getCookieFromDocument("gryd_session_id");
   const userId = getCookieFromDocument("gryd_user_id");
+  const application_id = getCookieFromDocument("gryd_application_id");
 
   if (!token || !sessionId || !userId) {
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Use Next.js API route as proxy to avoid CORS issues
-  // The API route will call the backend server-to-server
-  const apiUrl = `/api/dealership-details`;
+  // Call backend directly - same pattern as generateOTP
+  const backendUrl = `${API_BASE_URL}/get-dealership-details/${userId}`;
 
-  console.log("[Get Dealership Details] Calling API route:", apiUrl);
-  console.log(
-    "[Get Dealership Details] Backend URL: https://autobot-webapp-dev.gryd.in/get-dealership-details/" +
-      userId
-  );
+  console.log("[Get Dealership Details] Calling backend directly:", backendUrl);
+  console.log("[Get Dealership Details] API_BASE_URL:", API_BASE_URL);
   console.log("[Get Dealership Details] Using user_id:", userId);
 
-  const res = await fetch(apiUrl, {
+  // Matching Postman curl - backend should derive application_id from token/session
+  const res = await fetch(backendUrl, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": application_id || "autocrm",
     },
     cache: "no-store",
-    credentials: "include", // Include cookies so API route can read them
+    mode: "cors",
+    credentials: "omit",
   });
 
   console.log(`[Get Dealership Details] Response status: ${res.status}`);
@@ -654,21 +755,20 @@ export interface CreateWorkshopRequest {
 export async function createWorkshop(
   data: CreateWorkshopRequest
 ): Promise<any> {
-  // Use Next.js API route as proxy to avoid CORS issues
-  const apiUrl = `/api/workshop`;
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = "/api/workshop";
 
-  console.log("[Create Workshop] Calling API route:", apiUrl);
+  console.log("[Create Workshop] Calling API route:", apiRouteUrl);
   console.log("[Create Workshop] Request body:", JSON.stringify(data, null, 2));
 
-  const res = await fetch(apiUrl, {
+  const res = await fetch(apiRouteUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Accept: "application/json",
     },
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include", // Include cookies so API route can read them
   });
 
   console.log(`[Create Workshop] Response status: ${res.status}`);
@@ -676,18 +776,11 @@ export async function createWorkshop(
   if (!res.ok) {
     let errorMessage = `Failed to create workshop (${res.status})`;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-      console.error(`[Create Workshop] Error response text:`, errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData?.error || errorData?.message || errorText || errorMessage;
-      } catch {
-        // Not JSON, use as is
-        errorMessage = errorText || errorMessage;
-      }
-    } catch (readError) {
-      console.error("[Create Workshop] Failed to read error:", readError);
+      errorMessage = errorText || errorMessage;
     }
 
     errorMessage =
@@ -703,21 +796,17 @@ export async function createWorkshop(
 export async function getWorkshopsForDealership(
   dealershipId: string
 ): Promise<any[]> {
-  // Use Next.js API route as proxy to avoid CORS issues
-  const apiUrl = `/api/workshop?dealership_id=${encodeURIComponent(
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = `/api/workshop?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
-  console.log("[Get Workshops] Calling API route:", apiUrl);
+  console.log("[Get Workshops] Calling API route:", apiRouteUrl);
 
-  const res = await fetch(apiUrl, {
+  const res = await fetch(apiRouteUrl, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
     cache: "no-store",
-    credentials: "include", // Include cookies so API route can read them
   });
 
   console.log(`[Get Workshops] Response status: ${res.status}`);
@@ -729,17 +818,11 @@ export async function getWorkshopsForDealership(
     }
     let errorMessage = `Failed to fetch workshops (${res.status})`;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-      console.error(`[Get Workshops] Error response text:`, errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData?.error || errorData?.message || errorText || errorMessage;
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-    } catch (readError) {
-      console.error("[Get Workshops] Failed to read error:", readError);
+      errorMessage = errorText || errorMessage;
     }
 
     errorMessage =
@@ -757,6 +840,245 @@ export async function getWorkshopsForDealership(
     return responseData.data;
   } else if (responseData && Array.isArray(responseData.workshops)) {
     return responseData.workshops;
+  }
+
+  return [];
+}
+
+// Showroom interfaces and functions
+export interface CreateShowroomRequest {
+  showroom_id: string;
+  showroom_name: string;
+  showroom_full_name: string;
+  showroom_type: string;
+  showroom_status: string;
+  dealership_id: string;
+  dealership_name: string;
+  manager_name: string;
+  email: string;
+  contact_number: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  region_name?: string;
+  geolocation: [number, number];
+  operating_hours: {
+    opening_time: string;
+    closing_time: string;
+  };
+  days_open: string[];
+  supported_brands: string[];
+  parking_capacity: number;
+  daily_walkin_capacity: number;
+  display_vehicle_count: number;
+  total_sales_executives: number;
+}
+
+export async function createShowroom(
+  data: CreateShowroomRequest
+): Promise<any> {
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = "/api/showroom";
+
+  console.log("[Create Showroom] Calling API route:", apiRouteUrl);
+  console.log("[Create Showroom] Request body:", JSON.stringify(data, null, 2));
+
+  const res = await fetch(apiRouteUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+    cache: "no-store",
+  });
+
+  console.log(`[Create Showroom] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    let errorMessage = `Failed to create showroom (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Create Showroom] Response:", responseData);
+  return responseData;
+}
+
+export async function getShowroomsForDealership(
+  dealershipId: string
+): Promise<any[]> {
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = `/api/showroom?dealership_id=${encodeURIComponent(
+    dealershipId
+  )}`;
+
+  console.log("[Get Showrooms] Calling API route:", apiRouteUrl);
+
+  const res = await fetch(apiRouteUrl, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  console.log(`[Get Showrooms] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      return [];
+    }
+    let errorMessage = `Failed to fetch showrooms (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Get Showrooms] Response:", responseData);
+
+  if (Array.isArray(responseData)) {
+    return responseData;
+  } else if (responseData && Array.isArray(responseData.data)) {
+    return responseData.data;
+  } else if (responseData && Array.isArray(responseData.showrooms)) {
+    return responseData.showrooms;
+  }
+
+  return [];
+}
+
+// Buyback Center interfaces and functions
+export interface CreateBuybackCenterRequest {
+  buyback_center_id: string;
+  dealership_id: string;
+  dealership_name: string;
+  manager_name: string;
+  email: string;
+  contact_number: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  geolocation: [number, number];
+  operating_hours: {
+    opening_time: string;
+    closing_time: string;
+  };
+  days_open: Record<string, any> | string[];
+  parking_capacity: number;
+  daily_walkin_capacity: number;
+  display_vehicle_count: number;
+  total_sales_executives: number;
+}
+
+export async function createBuybackCenter(
+  data: CreateBuybackCenterRequest
+): Promise<any> {
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = "/api/buyback-center";
+
+  console.log("[Create Buyback Center] Calling API route:", apiRouteUrl);
+  console.log(
+    "[Create Buyback Center] Request body:",
+    JSON.stringify(data, null, 2)
+  );
+
+  const res = await fetch(apiRouteUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+    cache: "no-store",
+  });
+
+  console.log(`[Create Buyback Center] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    let errorMessage = `Failed to create buyback center (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Create Buyback Center] Response:", responseData);
+  return responseData;
+}
+
+export async function getBuybackCentersForDealership(
+  dealershipId: string
+): Promise<any[]> {
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = `/api/buyback-center?dealership_id=${encodeURIComponent(
+    dealershipId
+  )}`;
+
+  console.log("[Get Buyback Centers] Calling API route:", apiRouteUrl);
+
+  const res = await fetch(apiRouteUrl, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  console.log(`[Get Buyback Centers] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      return [];
+    }
+    let errorMessage = `Failed to fetch buyback centers (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Get Buyback Centers] Response:", responseData);
+
+  if (Array.isArray(responseData)) {
+    return responseData;
+  } else if (responseData && Array.isArray(responseData.data)) {
+    return responseData.data;
+  } else if (responseData && Array.isArray(responseData.buyback_centers)) {
+    return responseData.buyback_centers;
   }
 
   return [];

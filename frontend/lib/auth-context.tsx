@@ -194,10 +194,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
 
       // Store session_id, token, user_id, and application_id in cookies
+      // IMPORTANT: Always use "autocrm" for application_id, even if backend returns "gryd"
+      const applicationId = response.application_id === "autocrm" 
+        ? "autocrm" 
+        : "autocrm"; // Force "autocrm" to prevent "gryd" errors
+      
       setCookie("gryd_session_id", response.session_id, 7);
       setCookie("gryd_token", response.token, 7);
       setCookie("gryd_user_id", response.user_id, 7);
-      setCookie("gryd_application_id", response.application_id, 7);
+      setCookie("gryd_application_id", applicationId, 7);
+      
+      console.log("[Auth] Setting application_id cookie:", applicationId);
+      console.log("[Auth] Login response application_id:", response.application_id);
 
       setUser(user);
 

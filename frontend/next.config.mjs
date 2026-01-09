@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "export",
+  // Removed "output: export" to enable API routes
+  // API routes fix CORS by proxying requests server-to-server
   trailingSlash: true,
   eslint: {
     ignoreDuringBuilds: true,
