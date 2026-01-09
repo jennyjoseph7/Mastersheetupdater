@@ -1,11 +1,8 @@
-// Determine API base URL - always use production unless explicitly overridden
 const getApiBaseUrl = () => {
-  // Check for explicit environment variable override
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
   }
 
-  // Always use production URL
   return "https://autobot-webapp-dev.gryd.in";
 };
 
@@ -34,8 +31,6 @@ export async function api(
     ...customHeaders,
   };
 
-  // For GET requests without body, don't include Content-Type
-  // Some servers reject GET requests with Content-Type header
   if (method === "GET" && !body) {
     delete headers["Content-Type"];
   }
@@ -105,7 +100,7 @@ export async function fetchPersonObjects() {
   const res = await fetch(backendUrl, {
     method: "GET",
     headers: {
-      "Content-Type": "application/json",
+      // Don't include Content-Type for GET requests to avoid CORS preflight
       Accept: "application/json",
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": finalToken,
@@ -114,8 +109,9 @@ export async function fetchPersonObjects() {
       "X-GRYD-ROLE": "admin",
     },
     cache: "no-store",
-    credentials: "include",
-    mode: "cors",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors", // Explicitly set CORS mode
   });
 
   console.log(`[Fetch Person Objects] Response status: ${res.status}`);
@@ -206,7 +202,8 @@ export async function generateOTP(contact: string, type: "whatsapp" | "email") {
     },
     body: JSON.stringify(requestBody),
     cache: "no-store",
-    credentials: "include",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
     mode: "cors",
   });
 
@@ -251,7 +248,8 @@ export async function dealershipSignup(data: DealershipSignupRequest) {
     },
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
     mode: "cors",
   });
 
@@ -351,7 +349,8 @@ export async function dealershipUpdateDetails(
     },
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
     mode: "cors",
   });
 
@@ -423,6 +422,9 @@ export async function dealerLogin(
     },
     body: JSON.stringify(requestBody),
     cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors", // Explicitly set CORS mode
   });
 
   console.log(`[Dealer Login] Response status: ${res.status}`);
@@ -516,7 +518,8 @@ export async function getDealershipDetails(): Promise<DealershipDetailsResponse>
       "X-GRYD-ROLE": "agent",
     },
     cache: "no-store",
-    credentials: "include",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
     mode: "cors",
   });
 
@@ -606,7 +609,8 @@ export async function createWorkshop(
     },
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include", // Include cookies for CORS
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
     mode: "cors", // Explicitly set CORS mode
   });
 
@@ -668,7 +672,8 @@ export async function getWorkshopsForDealership(
       "X-GRYD-ROLE": "agent",
     },
     cache: "no-store",
-    credentials: "include", // Include cookies for CORS
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
     mode: "cors", // Explicitly set CORS mode
   });
 
@@ -774,7 +779,8 @@ export async function createShowroom(
     },
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include", // Include cookies for CORS
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
     mode: "cors", // Explicitly set CORS mode
   });
 
@@ -836,7 +842,8 @@ export async function getShowroomsForDealership(
       "X-GRYD-ROLE": "agent",
     },
     cache: "no-store",
-    credentials: "include", // Include cookies for CORS
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
     mode: "cors", // Explicitly set CORS mode
   });
 
@@ -937,7 +944,8 @@ export async function createBuybackCenter(
     },
     body: JSON.stringify(data),
     cache: "no-store",
-    credentials: "include", // Include cookies for CORS
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
     mode: "cors", // Explicitly set CORS mode
   });
 
@@ -999,7 +1007,8 @@ export async function getBuybackCentersForDealership(
       "X-GRYD-ROLE": "agent",
     },
     cache: "no-store",
-    credentials: "include", // Include cookies for CORS
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
     mode: "cors", // Explicitly set CORS mode
   });
 
