@@ -82,9 +82,34 @@ export async function api(
 }
 
 export async function fetchPersonObjects() {
-  return api("/gryd/db/objects/person", "GET", undefined, {
-    "X-GRYD-ROLE": "admin",
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = "/api/person-objects";
+
+  console.log("[Fetch Person Objects] Calling API route:", apiRouteUrl);
+
+  const res = await fetch(apiRouteUrl, {
+    method: "GET",
+    cache: "no-store",
   });
+
+  console.log(`[Fetch Person Objects] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    let errorMessage = `Failed to fetch person objects (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const data = await res.json();
+  console.log("[Fetch Person Objects] Response:", data);
+  return data;
 }
 
 export class ApiError extends Error {
@@ -135,76 +160,38 @@ export async function generateOTP(contact: string, type: "whatsapp" | "email") {
     throw new ApiError(400, "Type must be 'whatsapp' or 'email'");
   }
 
-  // Call backend directly to see full URL in network tab
-  const backendUrl = `${API_BASE_URL}/generate_otp`;
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = "/api/generate-otp";
+
   const requestBody = {
-    args: [contact, type],
-    kwargs: {},
+    contact,
+    type,
   };
 
-  console.log("[Generate OTP] Calling backend directly:", backendUrl);
+  console.log("[Generate OTP] Calling API route:", apiRouteUrl);
   console.log("[Generate OTP] Contact:", contact);
   console.log("[Generate OTP] Type:", type);
-  console.log(
-    "[Generate OTP] Request body:",
-    JSON.stringify(requestBody, null, 2)
-  );
 
-  const res = await fetch(backendUrl, {
+  const res = await fetch(apiRouteUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
     },
     body: JSON.stringify(requestBody),
     cache: "no-store",
-    mode: "cors",
-    credentials: "omit",
   });
 
   console.log(`[Generate OTP] Response status: ${res.status}`);
-  console.log(
-    `[Generate OTP] Response headers:`,
-    Object.fromEntries(res.headers.entries())
-  );
-
-  // Check content-type to detect HTML responses
-  const contentType = res.headers.get("content-type") || "";
-  const isHTML = contentType.includes("text/html");
 
   if (!res.ok) {
     let errorMessage = `Request failed (${res.status})`;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-
-      // If response is HTML, it's likely a CORS error or redirect
-      if (
-        isHTML ||
-        errorText.trim().startsWith("<!DOCTYPE") ||
-        errorText.trim().startsWith("<html")
-      ) {
-        console.error(
-          "[Generate OTP] Received HTML response instead of JSON. This usually indicates:"
-        );
-        console.error("  1. CORS is not properly configured on the backend");
-        console.error("  2. The endpoint is redirecting to an HTML page");
-        console.error("  3. The endpoint doesn't exist (404 HTML page)");
-        console.error("Response preview:", errorText.substring(0, 500));
-        errorMessage = `Server returned HTML instead of JSON (Status: ${res.status}). This usually indicates a CORS issue or the endpoint doesn't exist. Check browser console for details.`;
-      } else {
-        // Try to parse as JSON
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage =
-            errorData?.error || errorData?.message || errorText || errorMessage;
-        } catch {
-          // Not JSON, use text as is
-          errorMessage = errorText || errorMessage;
-        }
-      }
-    } catch (readError) {
-      console.error("[Generate OTP] Failed to read error response:", readError);
+      errorMessage = errorText || errorMessage;
     }
 
     errorMessage =
@@ -212,180 +199,41 @@ export async function generateOTP(contact: string, type: "whatsapp" | "email") {
     throw new ApiError(res.status, errorMessage);
   }
 
-  // Check if successful response is also HTML (shouldn't happen, but handle it)
-  // Clone the response to read it without consuming it
-  const responseClone = res.clone();
-  const responseText = await responseClone.text();
-
-  if (
-    isHTML ||
-    responseText.trim().startsWith("<!DOCTYPE") ||
-    responseText.trim().startsWith("<html")
-  ) {
-    console.error(
-      "[Generate OTP] Received HTML response for successful request!"
-    );
-    console.error("Response status:", res.status);
-    console.error("Response URL:", res.url);
-    console.error(
-      "Response headers:",
-      Object.fromEntries(res.headers.entries())
-    );
-    console.error("Response preview:", responseText.substring(0, 1000));
-    throw new ApiError(
-      500,
-      `Server returned HTML instead of JSON (Status: ${res.status}). This usually indicates:
-1. CORS is not properly configured on the backend
-2. The endpoint URL is incorrect
-3. The backend is redirecting to an HTML page
-Check browser console and Network tab for more details.`
-    );
-  }
-
-  // Try to parse as JSON
-  let data;
-  try {
-    data = JSON.parse(responseText);
-  } catch (parseError) {
-    console.error("[Generate OTP] Failed to parse response as JSON");
-    console.error("Response text:", responseText.substring(0, 500));
-    throw new ApiError(
-      500,
-      `Server returned invalid JSON. Response preview: ${responseText.substring(
-        0,
-        200
-      )}...`
-    );
-  }
-
+  const data = await res.json();
   console.log("[Generate OTP] Response:", data);
   return data;
 }
 
 export async function dealershipSignup(data: DealershipSignupRequest) {
-  // Call backend directly - same pattern as generateOTP which works
-  const backendUrl = `${API_BASE_URL}/dealership_signup`;
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = "/api/dealership-signup";
 
-  // Runtime safety check - ensure URL is absolute (starts with http)
-  if (!backendUrl.startsWith("http://") && !backendUrl.startsWith("https://")) {
-    console.error(
-      "[Dealership Signup] ERROR: URL is not absolute:",
-      backendUrl
-    );
-    console.error("[Dealership Signup] API_BASE_URL value:", API_BASE_URL);
-    throw new Error(
-      `Invalid backend URL: ${backendUrl}. Expected absolute URL starting with http:// or https://`
-    );
-  }
-
-  console.log("[Dealership Signup] Calling backend directly:", backendUrl);
-  console.log("[Dealership Signup] API_BASE_URL:", API_BASE_URL);
+  console.log("[Dealership Signup] Calling API route:", apiRouteUrl);
   console.log(
     "[Dealership Signup] Request body:",
     JSON.stringify(data, null, 2)
   );
 
-  const res = await fetch(backendUrl, {
+  const res = await fetch(apiRouteUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
     },
     body: JSON.stringify(data),
     cache: "no-store",
-    mode: "cors",
-    credentials: "omit",
   });
 
   console.log(`[Dealership Signup] Response status: ${res.status}`);
-  console.log(
-    `[Dealership Signup] Response headers:`,
-    Object.fromEntries(res.headers.entries())
-  );
-
-  // Check content-type to detect HTML responses
-  const contentType = res.headers.get("content-type") || "";
-  const isHTML = contentType.includes("text/html");
 
   if (!res.ok) {
     let errorMessage = `Request failed (${res.status})`;
-    let errorData: any = null;
-
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-
-      console.log(
-        `[Dealership Signup] Error response content-type: ${contentType}`
-      );
-      console.log(
-        `[Dealership Signup] Error response body: ${errorText.substring(
-          0,
-          500
-        )}`
-      );
-
-      // If response is HTML, it's likely a CORS error or redirect
-      if (
-        isHTML ||
-        errorText.trim().startsWith("<!DOCTYPE") ||
-        errorText.trim().startsWith("<html")
-      ) {
-        console.error(
-          "[Dealership Signup] Received HTML response instead of JSON. This usually indicates:"
-        );
-        console.error("  1. CORS is not properly configured on the backend");
-        console.error("  2. The endpoint is redirecting to an HTML page");
-        console.error("  3. The endpoint doesn't exist (404 HTML page)");
-        console.error("Response preview:", errorText.substring(0, 500));
-        errorMessage = `Server returned HTML instead of JSON (Status: ${res.status}). This usually indicates a CORS issue or the endpoint doesn't exist. Check browser console for details.`;
-      } else {
-        // Try to parse JSON error response
-        if (errorText && errorText.trim()) {
-          try {
-            errorData = JSON.parse(errorText);
-
-            // Extract error message from various possible formats
-            if (errorData && typeof errorData === "object") {
-              if (errorData.error) {
-                errorMessage = String(errorData.error);
-              } else if (errorData.message) {
-                errorMessage = String(errorData.message);
-              } else if (errorData.detail) {
-                errorMessage = String(errorData.detail);
-              } else {
-                // If it's an object but no standard error field, try to extract useful info
-                const errorStr = JSON.stringify(errorData);
-                // Check if it contains the Python error message
-                if (
-                  errorStr.includes("'NoneType' object has no attribute 'get'")
-                ) {
-                  // This is a backend bug - try to extract the original error if available
-                  errorMessage =
-                    "An error occurred while processing your request. Please check if the dealership already exists or try again.";
-                } else {
-                  errorMessage = errorStr;
-                }
-              }
-            } else if (typeof errorData === "string") {
-              errorMessage = errorData;
-            }
-          } catch (parseError) {
-            // Not JSON, use errorText as is
-            console.log(
-              `[Dealership Signup] Error response is not JSON, using raw text`
-            );
-            errorMessage = errorText || errorMessage;
-          }
-        }
-      }
-    } catch (readError) {
-      // Failed to read response, use default message
-      console.error(
-        "[Dealership Signup] Failed to read error response:",
-        readError
-      );
-      errorMessage = `Request failed (${res.status})`;
+      errorMessage = errorText || errorMessage;
     }
 
     // Clean up any "API Error:" prefixes
@@ -406,51 +254,7 @@ export async function dealershipSignup(data: DealershipSignupRequest) {
     throw new ApiError(res.status, errorMessage);
   }
 
-  // Check if successful response is also HTML (shouldn't happen, but handle it)
-  const responseClone = res.clone();
-  const responseText = await responseClone.text();
-
-  if (
-    isHTML ||
-    responseText.trim().startsWith("<!DOCTYPE") ||
-    responseText.trim().startsWith("<html")
-  ) {
-    console.error(
-      "[Dealership Signup] Received HTML response for successful request!"
-    );
-    console.error("Response status:", res.status);
-    console.error("Response URL:", res.url);
-    console.error(
-      "Response headers:",
-      Object.fromEntries(res.headers.entries())
-    );
-    console.error("Response preview:", responseText.substring(0, 1000));
-    throw new ApiError(
-      500,
-      `Server returned HTML instead of JSON (Status: ${res.status}). This usually indicates:
-1. CORS is not properly configured on the backend
-2. The endpoint URL is incorrect
-3. The backend is redirecting to an HTML page
-Check browser console and Network tab for more details.`
-    );
-  }
-
-  // Try to parse as JSON
-  let responseData;
-  try {
-    responseData = JSON.parse(responseText);
-  } catch (parseError) {
-    console.error("[Dealership Signup] Failed to parse response as JSON");
-    console.error("Response text:", responseText.substring(0, 500));
-    throw new ApiError(
-      500,
-      `Server returned invalid JSON. Response preview: ${responseText.substring(
-        0,
-        200
-      )}...`
-    );
-  }
-
+  const responseData = await res.json();
   console.log("[Dealership Signup] Response:", responseData);
   return responseData;
 }
@@ -473,79 +277,37 @@ export interface DealershipUpdateDetailsRequest {
 export async function dealershipUpdateDetails(
   data: DealershipUpdateDetailsRequest
 ) {
-  // Get credentials from cookies
-  const token = getCookieFromDocument("gryd_token");
-  const sessionId = getCookieFromDocument("gryd_session_id");
-  const applicationId = getCookieFromDocument("gryd_application_id");
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = "/api/dealership-update-details";
 
-  if (!token || !sessionId) {
-    throw new ApiError(401, "Authentication required. Please login again.");
-  }
-
-  // Call backend directly - same pattern as generateOTP
-  const backendUrl = `${API_BASE_URL}/gryd/api/autocrm-core/dealership_update_details`;
-
-  console.log(
-    "[Dealership Update Details] Calling backend directly:",
-    backendUrl
-  );
-  console.log("[Dealership Update Details] API_BASE_URL:", API_BASE_URL);
+  console.log("[Dealership Update Details] Calling API route:", apiRouteUrl);
   console.log(
     "[Dealership Update Details] Request body:",
     JSON.stringify(data, null, 2)
   );
 
-  const res = await fetch(backendUrl, {
+  const res = await fetch(apiRouteUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": token,
-      "X-GRYD-SESSION-ID": sessionId,
-      "X-GRYD-APPLICATION-ID": applicationId || "",
-      Accept: "application/json",
-      "X-GRYD-ROLE": "agent",
     },
     body: JSON.stringify(data),
     cache: "no-store",
-    mode: "cors",
-    credentials: "omit",
   });
 
   console.log(`[Dealership Update Details] Response status: ${res.status}`);
 
   if (!res.ok) {
     let errorMessage = `Request failed (${res.status})`;
-    let errorData: any = null;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-      console.log(
-        `[Dealership Update Details] Error response text:`,
-        errorText
-      );
-      try {
-        errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData?.error || errorData?.message || errorText || errorMessage;
-        console.log(
-          `[Dealership Update Details] Parsed error data:`,
-          JSON.stringify(errorData, null, 2)
-        );
-      } catch {
-        // Not JSON, use as is
-        errorMessage = errorText || errorMessage;
-      }
-    } catch (readError) {
-      console.error(
-        "[Dealership Update Details] Failed to read error:",
-        readError
-      );
+      errorMessage = errorText || errorMessage;
     }
 
-    console.error(
-      `[Dealership Update Details] Returning error response:`,
-      errorMessage
-    );
     errorMessage =
       errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
     throw new ApiError(res.status, errorMessage);
@@ -659,37 +421,23 @@ function getCookieFromDocument(name: string): string | null {
 }
 
 export async function getDealershipDetails(): Promise<DealershipDetailsResponse> {
-  // Get token, session_id, and user_id from cookies
-  const token = getCookieFromDocument("gryd_token");
-  const sessionId = getCookieFromDocument("gryd_session_id");
+  // Get user_id from cookies (needed for API route)
   const userId = getCookieFromDocument("gryd_user_id");
-  const application_id = getCookieFromDocument("gryd_application_id");
 
-  if (!token || !sessionId || !userId) {
+  if (!userId) {
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Call backend directly - same pattern as generateOTP
-  const backendUrl = `${API_BASE_URL}/get-dealership-details/${userId}`;
+  // Use Next.js API route to avoid CORS issues
+  // The API route proxies the request to the backend (server-to-server, no CORS)
+  const apiRouteUrl = `/api/dealership-details?user_id=${encodeURIComponent(userId)}`;
 
-  console.log("[Get Dealership Details] Calling backend directly:", backendUrl);
-  console.log("[Get Dealership Details] API_BASE_URL:", API_BASE_URL);
+  console.log("[Get Dealership Details] Calling API route:", apiRouteUrl);
   console.log("[Get Dealership Details] Using user_id:", userId);
 
-  // Matching Postman curl - backend should derive application_id from token/session
-  const res = await fetch(backendUrl, {
+  const res = await fetch(apiRouteUrl, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": token,
-      "X-GRYD-SESSION-ID": sessionId,
-      "X-GRYD-APPLICATION-ID": application_id || "autocrm",
-    },
     cache: "no-store",
-    mode: "cors",
-    credentials: "omit",
   });
 
   console.log(`[Get Dealership Details] Response status: ${res.status}`);
@@ -697,21 +445,11 @@ export async function getDealershipDetails(): Promise<DealershipDetailsResponse>
   if (!res.ok) {
     let errorMessage = `Failed to fetch dealership details (${res.status})`;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-      console.error(`[Get Dealership Details] Error response text:`, errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData?.error || errorData?.message || errorText || errorMessage;
-      } catch {
-        // Not JSON, use as is
-        errorMessage = errorText || errorMessage;
-      }
-    } catch (readError) {
-      console.error(
-        "[Get Dealership Details] Failed to read error:",
-        readError
-      );
+      errorMessage = errorText || errorMessage;
     }
 
     errorMessage =

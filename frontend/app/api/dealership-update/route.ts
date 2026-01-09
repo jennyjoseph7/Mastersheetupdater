@@ -20,10 +20,15 @@ function getCookieFromRequest(
 export async function POST(request: NextRequest) {
   try {
     // Get cookies from the request headers
-       const token = getCookieFromRequest(request, "gryd_token");
+    const token = getCookieFromRequest(request, "gryd_token");
     const sessionId = getCookieFromRequest(request, "gryd_session_id");
-    const application_id = getCookieFromRequest(request, "gryd_application_id");
+    let applicationId = getCookieFromRequest(request, "gryd_application_id");
 
+    // CRITICAL FIX: Always use "autocrm", never "gryd"
+    // Backend returns "gryd" sometimes, but we need "autocrm"
+    if (applicationId === "gryd" || !applicationId) {
+      applicationId = "autocrm";
+    }
 
     if (!token || !sessionId) {
       return NextResponse.json(
@@ -47,14 +52,16 @@ export async function POST(request: NextRequest) {
       token.substring(0, 20) + "..."
     );
     console.log("[Dealership Update API] Using session_id:", sessionId);
+    console.log("[Dealership Update API] Application ID (fixed):", applicationId);
 
     const res = await fetch(backendUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-GRYD-ENTERPRISE-ID": "autocrm",
-        "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
-        "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
+        "X-GRYD-TOKEN": token,
+        "X-GRYD-SESSION-ID": sessionId,
+        "X-GRYD-APPLICATION-ID": applicationId,
         Accept: "application/json",
         "X-GRYD-ROLE": "agent",
       },
