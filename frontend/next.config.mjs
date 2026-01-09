@@ -18,6 +18,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
+  productionBrowserSourceMaps: true,
 };
 
 export default nextConfig;
