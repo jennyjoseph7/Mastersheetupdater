@@ -1,7 +1,6 @@
 import {
   APP_BASE_URL,
   HEADERS,
-  cookies,
   FILE_UPLOAD_URL,
   FILE_UPLOAD_HEADERS,
 } from "./headers";
