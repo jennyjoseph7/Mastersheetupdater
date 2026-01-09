@@ -82,15 +82,40 @@ export async function api(
 }
 
 export async function fetchPersonObjects() {
-  // Use Next.js API route to avoid CORS issues
-  // The API route proxies the request to the backend (server-to-server, no CORS)
-  const apiRouteUrl = "/api/person-objects";
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
 
-  console.log("[Fetch Person Objects] Calling API route:", apiRouteUrl);
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
 
-  const res = await fetch(apiRouteUrl, {
+  // Fallback to hardcoded credentials if user credentials not available
+  const finalToken = token || "53014452-7df1-351c-9b79-af13d3d6b92f";
+  const finalSessionId = sessionId || "94b970d4-5c2b-3762-bf65-272901d0ad53";
+
+  // Call backend directly
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/person`;
+
+  console.log("[Fetch Person Objects] Calling backend directly:", backendUrl);
+  console.log("[Fetch Person Objects] Application ID (fixed):", applicationId);
+
+  const res = await fetch(backendUrl, {
     method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": finalToken,
+      "X-GRYD-SESSION-ID": finalSessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "admin",
+    },
     cache: "no-store",
+    credentials: "include",
+    mode: "cors",
   });
 
   console.log(`[Fetch Person Objects] Response status: ${res.status}`);
@@ -160,26 +185,29 @@ export async function generateOTP(contact: string, type: "whatsapp" | "email") {
     throw new ApiError(400, "Type must be 'whatsapp' or 'email'");
   }
 
-  // Use Next.js API route to avoid CORS issues
-  // The API route proxies the request to the backend (server-to-server, no CORS)
-  const apiRouteUrl = "/api/generate-otp";
+  // Call backend directly - matches Postman curl pattern
+  const backendUrl = `${API_BASE_URL}/generate_otp`;
 
   const requestBody = {
-    contact,
-    type,
+    args: [contact, type],
+    kwargs: {},
   };
 
-  console.log("[Generate OTP] Calling API route:", apiRouteUrl);
+  console.log("[Generate OTP] Calling backend directly:", backendUrl);
   console.log("[Generate OTP] Contact:", contact);
   console.log("[Generate OTP] Type:", type);
 
-  const res = await fetch(apiRouteUrl, {
+  const res = await fetch(backendUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
     },
     body: JSON.stringify(requestBody),
     cache: "no-store",
+    credentials: "include",
+    mode: "cors",
   });
 
   console.log(`[Generate OTP] Response status: ${res.status}`);
@@ -205,23 +233,26 @@ export async function generateOTP(contact: string, type: "whatsapp" | "email") {
 }
 
 export async function dealershipSignup(data: DealershipSignupRequest) {
-  // Use Next.js API route to avoid CORS issues
-  // The API route proxies the request to the backend (server-to-server, no CORS)
-  const apiRouteUrl = "/api/dealership-signup";
+  // Call backend directly - matches Postman curl pattern
+  const backendUrl = `${API_BASE_URL}/dealership_signup`;
 
-  console.log("[Dealership Signup] Calling API route:", apiRouteUrl);
+  console.log("[Dealership Signup] Calling backend directly:", backendUrl);
   console.log(
     "[Dealership Signup] Request body:",
     JSON.stringify(data, null, 2)
   );
 
-  const res = await fetch(apiRouteUrl, {
+  const res = await fetch(backendUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
     },
     body: JSON.stringify(data),
     cache: "no-store",
+    credentials: "include",
+    mode: "cors",
   });
 
   console.log(`[Dealership Signup] Response status: ${res.status}`);
@@ -277,23 +308,51 @@ export interface DealershipUpdateDetailsRequest {
 export async function dealershipUpdateDetails(
   data: DealershipUpdateDetailsRequest
 ) {
-  // Use Next.js API route to avoid CORS issues
-  // The API route proxies the request to the backend (server-to-server, no CORS)
-  const apiRouteUrl = "/api/dealership-update-details";
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
 
-  console.log("[Dealership Update Details] Calling API route:", apiRouteUrl);
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly
+  const backendUrl = `${API_BASE_URL}/gryd/api/autocrm-core/dealership_update_details`;
+
+  console.log(
+    "[Dealership Update Details] Calling backend directly:",
+    backendUrl
+  );
   console.log(
     "[Dealership Update Details] Request body:",
     JSON.stringify(data, null, 2)
   );
+  console.log(
+    "[Dealership Update Details] Application ID (fixed):",
+    applicationId
+  );
 
-  const res = await fetch(apiRouteUrl, {
+  const res = await fetch(backendUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "agent",
     },
     body: JSON.stringify(data),
     cache: "no-store",
+    credentials: "include",
+    mode: "cors",
   });
 
   console.log(`[Dealership Update Details] Response status: ${res.status}`);
@@ -421,23 +480,44 @@ function getCookieFromDocument(name: string): string | null {
 }
 
 export async function getDealershipDetails(): Promise<DealershipDetailsResponse> {
-  // Get user_id from cookies (needed for API route)
+  // Get credentials from cookies
   const userId = getCookieFromDocument("gryd_user_id");
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
 
-  if (!userId) {
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!userId || !token || !sessionId) {
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
-  // Use Next.js API route to avoid CORS issues
-  // The API route proxies the request to the backend (server-to-server, no CORS)
-  const apiRouteUrl = `/api/dealership-details?user_id=${encodeURIComponent(userId)}`;
+  // Call backend directly
+  const backendUrl = `${API_BASE_URL}/get-dealership-details/${userId}`;
 
-  console.log("[Get Dealership Details] Calling API route:", apiRouteUrl);
+  console.log("[Get Dealership Details] Calling backend directly:", backendUrl);
   console.log("[Get Dealership Details] Using user_id:", userId);
+  console.log(
+    "[Get Dealership Details] Application ID (fixed):",
+    applicationId
+  );
 
-  const res = await fetch(apiRouteUrl, {
+  const res = await fetch(backendUrl, {
     method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "agent",
+    },
     cache: "no-store",
+    credentials: "include",
+    mode: "cors",
   });
 
   console.log(`[Get Dealership Details] Response status: ${res.status}`);
@@ -493,20 +573,41 @@ export interface CreateWorkshopRequest {
 export async function createWorkshop(
   data: CreateWorkshopRequest
 ): Promise<any> {
-  // Use Next.js API route to avoid CORS issues
-  // The API route proxies the request to the backend (server-to-server, no CORS)
-  const apiRouteUrl = "/api/workshop";
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
 
-  console.log("[Create Workshop] Calling API route:", apiRouteUrl);
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - matches Postman curl exactly
+  const backendUrl = `${API_BASE_URL}/gryd/db/object/workshop`;
+
+  console.log("[Create Workshop] Calling backend directly:", backendUrl);
   console.log("[Create Workshop] Request body:", JSON.stringify(data, null, 2));
+  console.log("[Create Workshop] Application ID (fixed):", applicationId);
 
-  const res = await fetch(apiRouteUrl, {
+  const res = await fetch(backendUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
     },
     body: JSON.stringify(data),
     cache: "no-store",
+    credentials: "include", // Include cookies for CORS
+    mode: "cors", // Explicitly set CORS mode
   });
 
   console.log(`[Create Workshop] Response status: ${res.status}`);
@@ -534,17 +635,41 @@ export async function createWorkshop(
 export async function getWorkshopsForDealership(
   dealershipId: string
 ): Promise<any[]> {
-  // Use Next.js API route to avoid CORS issues
-  // The API route proxies the request to the backend (server-to-server, no CORS)
-  const apiRouteUrl = `/api/workshop?dealership_id=${encodeURIComponent(
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - matches Postman curl pattern
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/workshop?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
-  console.log("[Get Workshops] Calling API route:", apiRouteUrl);
+  console.log("[Get Workshops] Calling backend directly:", backendUrl);
+  console.log("[Get Workshops] Application ID (fixed):", applicationId);
 
-  const res = await fetch(apiRouteUrl, {
+  const res = await fetch(backendUrl, {
     method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "agent",
+    },
     cache: "no-store",
+    credentials: "include", // Include cookies for CORS
+    mode: "cors", // Explicitly set CORS mode
   });
 
   console.log(`[Get Workshops] Response status: ${res.status}`);
@@ -616,20 +741,41 @@ export interface CreateShowroomRequest {
 export async function createShowroom(
   data: CreateShowroomRequest
 ): Promise<any> {
-  // Use Next.js API route to avoid CORS issues
-  // The API route proxies the request to the backend (server-to-server, no CORS)
-  const apiRouteUrl = "/api/showroom";
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
 
-  console.log("[Create Showroom] Calling API route:", apiRouteUrl);
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - matches Postman curl exactly
+  const backendUrl = `${API_BASE_URL}/gryd/db/object/showroom`;
+
+  console.log("[Create Showroom] Calling backend directly:", backendUrl);
   console.log("[Create Showroom] Request body:", JSON.stringify(data, null, 2));
+  console.log("[Create Showroom] Application ID (fixed):", applicationId);
 
-  const res = await fetch(apiRouteUrl, {
+  const res = await fetch(backendUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
     },
     body: JSON.stringify(data),
     cache: "no-store",
+    credentials: "include", // Include cookies for CORS
+    mode: "cors", // Explicitly set CORS mode
   });
 
   console.log(`[Create Showroom] Response status: ${res.status}`);
@@ -657,17 +803,41 @@ export async function createShowroom(
 export async function getShowroomsForDealership(
   dealershipId: string
 ): Promise<any[]> {
-  // Use Next.js API route to avoid CORS issues
-  // The API route proxies the request to the backend (server-to-server, no CORS)
-  const apiRouteUrl = `/api/showroom?dealership_id=${encodeURIComponent(
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - matches Postman curl pattern
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/showroom?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
-  console.log("[Get Showrooms] Calling API route:", apiRouteUrl);
+  console.log("[Get Showrooms] Calling backend directly:", backendUrl);
+  console.log("[Get Showrooms] Application ID (fixed):", applicationId);
 
-  const res = await fetch(apiRouteUrl, {
+  const res = await fetch(backendUrl, {
     method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "agent",
+    },
     cache: "no-store",
+    credentials: "include", // Include cookies for CORS
+    mode: "cors", // Explicitly set CORS mode
   });
 
   console.log(`[Get Showrooms] Response status: ${res.status}`);
@@ -731,23 +901,44 @@ export interface CreateBuybackCenterRequest {
 export async function createBuybackCenter(
   data: CreateBuybackCenterRequest
 ): Promise<any> {
-  // Use Next.js API route to avoid CORS issues
-  // The API route proxies the request to the backend (server-to-server, no CORS)
-  const apiRouteUrl = "/api/buyback-center";
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
 
-  console.log("[Create Buyback Center] Calling API route:", apiRouteUrl);
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - matches Postman curl exactly
+  const backendUrl = `${API_BASE_URL}/gryd/db/object/buyback_center`;
+
+  console.log("[Create Buyback Center] Calling backend directly:", backendUrl);
   console.log(
     "[Create Buyback Center] Request body:",
     JSON.stringify(data, null, 2)
   );
+  console.log("[Create Buyback Center] Application ID (fixed):", applicationId);
 
-  const res = await fetch(apiRouteUrl, {
+  const res = await fetch(backendUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
     },
     body: JSON.stringify(data),
     cache: "no-store",
+    credentials: "include", // Include cookies for CORS
+    mode: "cors", // Explicitly set CORS mode
   });
 
   console.log(`[Create Buyback Center] Response status: ${res.status}`);
@@ -775,17 +966,41 @@ export async function createBuybackCenter(
 export async function getBuybackCentersForDealership(
   dealershipId: string
 ): Promise<any[]> {
-  // Use Next.js API route to avoid CORS issues
-  // The API route proxies the request to the backend (server-to-server, no CORS)
-  const apiRouteUrl = `/api/buyback-center?dealership_id=${encodeURIComponent(
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - matches Postman curl pattern
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/buyback_center?dealership_id=${encodeURIComponent(
     dealershipId
   )}`;
 
-  console.log("[Get Buyback Centers] Calling API route:", apiRouteUrl);
+  console.log("[Get Buyback Centers] Calling backend directly:", backendUrl);
+  console.log("[Get Buyback Centers] Application ID (fixed):", applicationId);
 
-  const res = await fetch(apiRouteUrl, {
+  const res = await fetch(backendUrl, {
     method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "agent",
+    },
     cache: "no-store",
+    credentials: "include", // Include cookies for CORS
+    mode: "cors", // Explicitly set CORS mode
   });
 
   console.log(`[Get Buyback Centers] Response status: ${res.status}`);
