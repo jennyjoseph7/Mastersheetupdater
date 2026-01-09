@@ -32,15 +32,16 @@ AUTOCRM_RESPONSE_PROVIDED_UNITS = "500_characters"
 AUTOCRM_RESPONSE_PROVIDED_ITEM = "response_to_query"
 WHATSAPP_PROVIDER_NAME="airtel"
 WHATSAPP_PROVIDER_NUMBER="917795030574"
-EMAIL_PROVIDER_NAME="AwsSender"
-EMAIL_SENDER_NAME="info@iamdave.ai"
-EMAIL_PROVIDER_REGION="ap-south-1"
+EMAIL_PROVIDER_REGION = "ap-south-1"
+EMAIL_PROVIDER_NAME = "AwsSender"
+EMAIL_SENDER_NAME = "info@iamdave.ai"
 VOICE_PROVIDER_NAME ="tata-tele"
 MAX_AUDIENCE_ERRORS = os.environ.get("MAX_AUDIENCE_ERRORS", 10)
 DEFAULT_OTP = os.environ.get("DEFAULT_OTP", "560102")
 ALLOWED_COUNTRY_CODES = list(map(str.strip, os.environ.get("ALLOWED_COUNTRY_CODES", "+971,+966,+62,+63,+91,+1").split(",")))
 OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe")
-
+EXCHANGE_RATE_HOST_API_KEY = os.environ.get("EXCHANGE_RATE_HOST_API_KEY")
+EXCHANGE_RATE_HOST_BASE_URL = os.environ.get("EXCHANGE_RATE_HOST_BASE_URL", "https://api.exchangerate.host")
 #model names
 SESSION_MODEL_NAME = "session"
 BILLING_MODEL_NAME = "billing"
@@ -48,6 +49,7 @@ BILLING_MODEL_NAME = "billing"
 #razorpay
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET")
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET")
 
 BASE_PATH = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_PATH, "data")
@@ -131,12 +133,17 @@ def load_autocrm_models(logger = None):
 def post_autocrm_model(model_name, enterprise = None, logger = None):
     logger = logger or clogger
     enterprise = enterprise or gryd.base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
+    with hp.read_file(DATA_DIR, f"permissions.json") as pj:
+        permissions = pj.get(model_name, [])
     with hp.read_file(DATA_DIR, f"{model_name}.json") as model_json:
         logger.info(f"Posting model: {model_name}")
         try:
             enterprise.post_model(model_name, model = model_json)
             logger.info(f"Model posted successfully: {model_name}")
-            return gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
+            r = gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
+            if permissions:
+                r._update_permissions(permissions)
+            return r
         except Exception as e:
             logger.error(f"Error posting model: {model_name}")
             raise

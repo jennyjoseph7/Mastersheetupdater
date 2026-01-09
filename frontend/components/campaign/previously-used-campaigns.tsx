@@ -310,7 +310,7 @@ export function PreviouslyUsedCampaigns({
         // For post-sales campaigns, fetch from API
         if (campaignType === "postsales") {
           try {
-            const apiResponse = await fetchPostSalesCampaigns(1, 10);
+            const apiResponse = await fetchPostSalesCampaigns();
             const apiCampaigns = apiResponse?.items ?? [];
             
             if (apiCampaigns.length > 0) {

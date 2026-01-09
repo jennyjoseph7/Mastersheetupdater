@@ -6,11 +6,29 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Sparkles, ArrowRight, Home } from "lucide-react";
 import { ProtectedRoute } from "@/components/protected-route";
+import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
 
 export default function DealershipUpdateSuccess() {
   const router = useRouter();
+  const { checkDealershipSetup } = useAuth();
   const [countdown, setCountdown] = useState(5);
+
+  // Refresh setup status when page loads
+  useEffect(() => {
+    const refreshStatus = async () => {
+      console.log("[Success Page] Refreshing setup status...");
+      // Set flag to indicate we just completed setup (for dashboard refresh)
+      sessionStorage.setItem("just_completed_setup", "true");
+      // Clear any modal dismissal flag since setup might be complete now
+      sessionStorage.removeItem("setup_modal_dismissed");
+      await checkDealershipSetup();
+      // Wait for state to update
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      console.log("[Success Page] Setup status refreshed");
+    };
+    refreshStatus();
+  }, [checkDealershipSetup]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -42,7 +60,8 @@ export default function DealershipUpdateSuccess() {
                 Dealership Details Updated!
               </h1>
               <p className="text-lg text-muted-foreground max-w-md mx-auto">
-                Your dealership information has been successfully updated and verified.
+                Your dealership information has been successfully updated and
+                verified.
               </p>
             </div>
 
@@ -67,7 +86,11 @@ export default function DealershipUpdateSuccess() {
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-              <Button size="lg" onClick={() => router.push("/")} className="gap-2">
+              <Button
+                size="lg"
+                onClick={() => router.push("/")}
+                className="gap-2"
+              >
                 <Home className="h-5 w-5" />
                 Go to Dashboard
                 <ArrowRight className="h-5 w-5" />
@@ -84,4 +107,3 @@ export default function DealershipUpdateSuccess() {
     </ProtectedRoute>
   );
 }
-

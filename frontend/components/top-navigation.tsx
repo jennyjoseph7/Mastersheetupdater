@@ -32,11 +32,33 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import ThemeSwitcher from "@/components/theme-switcher";
-import VerificationBanner from "@/components/verification-banner";
+import { useEffect, useState } from "react";
+import { getDealershipDetails } from "@/lib/api";
 
 export default function TopNavigation() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [dealershipId, setDealershipId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDealershipId = async () => {
+      if (user) {
+        try {
+          const data = await getDealershipDetails();
+          if (data?.dealership_id) {
+            setDealershipId(data.dealership_id);
+          }
+        } catch (error) {
+          console.error(
+            "[TopNavigation] Failed to fetch dealership ID:",
+            error
+          );
+        }
+      }
+    };
+
+    fetchDealershipId();
+  }, [user]);
 
   const isActive = (path: string) => {
     return pathname === path;
@@ -181,7 +203,7 @@ export default function TopNavigation() {
                       {user.name}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
+                      {dealershipId || user.email}
                     </p>
                     <Badge variant="secondary" className="w-fit mt-1">
                       <Coins className="mr-1 h-3 w-3" />
@@ -231,11 +253,6 @@ export default function TopNavigation() {
         </div>
       </header>
 
-      {user && !user.isVerified && pathname !== "/profile/verify" && (
-        <div className="w-full px-4 md:px-6 pt-3 pb-3 bg-background/95 backdrop-blur-sm border-b border-border/40">
-          <VerificationBanner variant="compact" showDismiss={false} />
-        </div>
-      )}
     </>
   );
 }

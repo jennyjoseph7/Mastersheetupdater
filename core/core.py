@@ -15,16 +15,20 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CORE_SERVICE_NAME, \
     ALLOWED_COUNTRY_CODES, \
     OTP_TEMPLATE_ID, \
     AutocrmModel, \
+    EXCHANGE_RATE_HOST_API_KEY, \
+    EXCHANGE_RATE_HOST_BASE_URL, \
     csv
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 import requests
 import tempfile
+import math
+import requests
 from communication.connectors.load_providers import load_providers
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 from communication.connectors.connector_mail import send_email_otp
 
-load_providers(["whatsapp", "email"])
+CHANNEL_LOADED = {}
 
 import autocrm_validator
 THIS_DIR = dirname(abspath(__file__))
@@ -35,7 +39,7 @@ from razorpay_service import create_credit_purchase, confirm_payment_success, ma
 gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
-
+logger = mlogger
 MIME_TYPES = {
     'aac': 'audio/aac',
     'flac': 'audio/flac',
@@ -563,6 +567,9 @@ def generate_otp(phone_number_or_email:str, channel:str = 'whatsapp', region_id:
     if channel not in ['whatsapp', 'email']:
         raise ValueError(f"Invalid channel: {channel}. Allowed channels are: whatsapp, email")
     logger.info(f"Generating OTP for {channel}: {phone_number_or_email}")
+    if channel not in CHANNEL_LOADED:
+        load_providers([channel])
+        CHANNEL_LOADED[channel] = True
     region_codes = ALLOWED_COUNTRY_CODES or ['+91']
     if region_id:
         region = gryd.base_model.Model('region', AUTOCRM_APP_ENTERPRISE_ID).get(region_id)
@@ -1226,6 +1233,81 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
     
 @gryd.is_a_task(function_name="payment_service")
 def payment_service(*args, **kwargs):
+    """
+    Unified payment service dispatcher.
+
+    This function routes payment-related actions to the appropriate handler
+    based on the provided service name.
+
+    Usage:
+        payment_service(service_name, **kwargs)
+
+    Parameters:
+        service_name (str):
+            The payment service to execute. Must be provided as the first
+            positional argument.
+
+    Supported services:
+
+    1. "purchase_credit"
+        Creates a credit purchase for a dealership.
+        This function creates purches order for the dealership with amount of provided credits and returns order id which need to be used for initiating payment on razopay.
+
+        Required kwargs:
+            - dealership_id: ID of the dealership purchasing credits
+            - credits: Number of credits to purchase
+
+        Example:
+            payment_service(
+                "purchase_credit",
+                dealership_id=daveai,
+                credits=50
+            )
+
+    2. "verify_payment"
+        Verifies and confirms a successful payment transaction.
+
+        Required kwargs:
+            - payment_data: Payment gateway response or payload
+
+        Example:
+            payment_service(
+                "verify_payment",
+                payment_data=payment_payload
+            )
+
+    3. "payment_failed"
+        Marks a payment as failed and records the failure reason.
+
+        Required kwargs:
+            - order_id: Identifier of the payment order
+            - reason: Reason for payment failure
+
+        Example:
+            payment_service(
+                "payment_failed",
+                order_id="ORD123",
+                reason="Card declined"
+            )
+
+    4. "payment_cancelled"
+        Marks a payment order as cancelled.
+
+        Required kwargs:
+            - order_id: Identifier of the payment order
+
+        Example:
+            payment_service(
+                "payment_cancelled",
+                order_id="ORD123"
+            )
+
+    Raises:
+        ValueError:
+            - If service name is missing or unsupported
+            - If required parameters are not provided
+    """
+
 
     def validate_kwargs(required_fields, kwargs):
         missing = [field for field in required_fields if not kwargs.get(field)]
@@ -1265,6 +1347,563 @@ def payment_service(*args, **kwargs):
     
     else:
         raise ValueError(f"Unsupported payment service: {service}")
+
+
+@gryd.is_a_task(function_name="calculate_currency_rate", logger_param='logger', job_param='job', auth_param='auth')
+def calculate_currency_rate(target_currency, logger = None, job = None, auth = None):
+    """
+    Calculates the cost of 1 INR in the target currency, using a public FX API,
+    adding a 5% conversion margin, and rounding up to the nearest significant number.
+
+    Args:
+        target_currency (str): The ISO currency code, e.g. "USD", "EUR"
+
+    Returns:
+        dict:
+        {
+            "currency": str,
+            "rate": float
+        }
+        The currency and rate of the target currency.
+        The currency is the ISO currency code of the target currency.
+
+    Example Usage:
+        usd_rate = calculate_currency_rate("USD")
+        eur_rate = calculate_currency_rate("EUR")
+    """
+    # Normalize input
+    logger = logger or mlogger
+    if not EXCHANGE_RATE_HOST_API_KEY:
+        raise ValueError("EXCHANGE_RATE_HOST_API_KEY is not set")
+    if not isinstance(target_currency, str):
+        raise ValueError("target_currency must be a string")
+    currency = target_currency.upper()
+    if currency == "INR":
+        return {
+            "currency": "INR",
+            "rate": 1.0
+        }
+    try:
+        # Use a free public API with no key required (exchangerate-api, frankfurter, etc.)
+        resp = requests.get(f"{EXCHANGE_RATE_HOST_BASE_URL}/convert?from=INR&to={currency}&amount=1&access_key={EXCHANGE_RATE_HOST_API_KEY}", timeout=5)
+        resp.raise_for_status()
+        data = resp.json()
+        logger.debug(f"Currency rate data: {data}")
+        if not "result" in data:
+            raise ValueError(f"Unable to get rate for currency: {currency}. Response: {data}")
+        rate = data["result"]
+        if not rate or rate <= 0:
+            raise ValueError(f"Invalid or unavailable rate for currency: {currency}")
+    except Exception as e:
+        raise ValueError(f"Invalid or unavailable rate for currency: {currency}")
+    logger.debug(f"Currency rate for {currency}: {rate}")
+    # Add a 5% conversion margin
+    margin_rate = rate * 1.05
+    logger.debug(f"Currency rate with margin for {currency}: {margin_rate}")
+
+    # Round up to the nearest significant number
+    # - if <1, round up to 2 decimals
+    # - if >=1, round up to next 0.1 (1 digit after decimal)
+    if margin_rate < 1:
+        rounded_rate = math.ceil(margin_rate * 100) / 100
+    elif margin_rate < 10:
+        rounded_rate = math.ceil(margin_rate * 10) / 10
+    else:
+        # For larger rates, round up to next whole number
+        rounded_rate = math.ceil(margin_rate)
+    logger.debug(f"Currency rate rounded for {currency}: {rounded_rate}")
+    return {
+        "currency": currency,
+        "rate": rounded_rate
+    }
+
+
+
+class VATCalculator:
+
+    GLOBAL_HSN_CODE = "8316"
+
+    def __init__(self, region):
+        """
+        This class is used to calculate the VAT/GST/VAT/GST for the item based on the region and subdivision.
+
+        Args:
+            region (str): The region of the item.
+
+        Returns:
+            VATCalculator: The VATCalculator object.
+        Example Usage:
+            vat_calculator = VATCalculator("india")
+            vat_calculator.calculate(1, 100, 0)
+
+            vat_calculator = VATCalculator("usa")
+            vat_calculator.calculate(1, 100, 0, "alabama")
+        """
+        self.region = region.lower().replace(" ", "_")
+        self._region_method = getattr(self, f"_calc_{self.region}", self._calc_default)
+
+    def calculate(
+        self, item_quantity, item_price,
+        discount_percentage=0, region_subdivision=None
+    ):
+        """
+        This method is used to calculate the VAT/GST/VAT/GST for the item based on the region and subdivision.
+
+        Args:
+            item_quantity (int): The quantity of the item.
+            item_price (float): The price of the item.
+            discount_percentage (float): The discount percentage of the item.
+            region_subdivision (str): The subdivision of the item.
+        Returns:
+            dict:
+            {
+                "item_final_price": float,
+                "discount_amount": float,
+                "item_total": float,
+                "item_final_total": float,
+                "hsn_code": str,
+                "vat_percentage": float,
+                "vat_amount": float,
+                "sgst_percentage": float, # Only for India
+                "sgst_amount": float,
+                "cgst_percentage": float, # Only for India
+                "cgst_amount": float,
+                "gst_percentage": float, # Only for Canada
+                "gst_amount": float,
+                "total_tax_percentage": float,
+                "total_tax_amount": float,
+                "total_amount": float
+            }:
+            The VAT/GST/VAT/GST for the item.
+            If the region is not supported, the method will return the default VAT/GST/VAT/GST for the item.
+        """
+        return self._region_method(
+            item_quantity, item_price, discount_percentage, region_subdivision
+        )
+
+    def _calc_default(self, item_quantity, item_price, discount_percentage=0, **kwargs):
+        b = self._base_amounts(item_quantity, item_price, discount_percentage)
+        # No VAT or country info
+        return {
+            "item_final_price": round(b['item_final_price'], 2),
+            "discount_amount": round(b['discount_amount'], 2),
+            "item_total": round(b['item_total'], 2),
+            "item_final_total": round(b['item_final_total'], 2),
+            "hsn_code": None,
+            "vat_percentage": 0,
+            "vat_amount": 0,
+            "total_tax_percentage": 0,
+            "total_tax_amount": 0,
+            "total_amount": round(b['item_final_total'], 2)
+        }
+
+    def _calc_india(self, item_quantity, item_price, discount_percentage=0, **kwargs):
+        # For SaaS/software, HSN code = 998315; Typical GST 18% (CGST 9% + SGST 9%)
+        HSN_SAAS = "998315"
+        CGST_PCT = 9.0
+        SGST_PCT = 9.0
+        GST_PCT = CGST_PCT + SGST_PCT
+        b = self._base_amounts(item_quantity, item_price, discount_percentage)
+
+        cgst_amount = b['item_final_total'] * CGST_PCT / 100.0
+        sgst_amount = b['item_final_total'] * SGST_PCT / 100.0
+        gst_amount = cgst_amount + sgst_amount
+
+        return {
+            "item_final_price": round(b['item_final_price'], 2),
+            "discount_amount": round(b['discount_amount'], 2),
+            "item_total": round(b['item_total'], 2),
+            "item_final_total": round(b['item_final_total'], 2),
+            "hsn_code": HSN_SAAS,
+            "cgst_percentage": CGST_PCT,
+            "cgst_amount": round(cgst_amount, 2),
+            "sgst_percentage": SGST_PCT,
+            "sgst_amount": round(sgst_amount, 2),
+            "gst_amount": round(gst_amount, 2),
+        }
+
+    def _calc_saudi_arabia(self, item_quantity, item_price, discount_percentage=0):
+        # VAT is 15%, HSN for SAAS: 998439
+        VAT_PCT = 15.0
+        HSN_SAAS = "998439"
+        b = self._base_amounts(item_quantity, item_price, discount_percentage)
+        vat_amount = b['item_final_total'] * VAT_PCT / 100.0
+        total_amount = b['item_final_total'] + vat_amount
+        return {
+            "item_final_price": round(b['item_final_price'], 2),
+            "discount_amount": round(b['discount_amount'], 2),
+            "item_total": round(b['item_total'], 2),
+            "item_final_total": round(b['item_final_total'], 2),
+            "hsn_code": HSN_SAAS,
+            "vat_percentage": VAT_PCT,
+            "vat_amount": round(vat_amount, 2),
+            "total_tax_percentage": VAT_PCT,
+            "total_tax_amount": round(vat_amount, 2),
+            "total_amount": round(total_amount, 2),
+        }
+
+    def _calc_usa(self, item_quantity, item_price, discount_percentage=0, region_subdivision=None, **kwargs):
+        # Generally, no VAT, or state-specific sales tax (here assume none for SaaS); HSN N/A
+        HSN_SAAS = self.GLOBAL_HSN_CODE
+        DEFAULT_SAAS_TAX = 0.0
+        US_SAAS_TAX = {
+            "alabama": {
+                "rate": 4.00,
+                "aliases": ["AL", "Ala"]
+            },
+            "arizona": {
+                "taxable": True,
+                "rate": 5.60,
+                "aliases": ["AZ", "Ariz"]
+            },
+            "arkansas": {
+                "taxable": True,
+                "rate": 6.50,
+                "aliases": ["AR", "Ark"]
+            },
+            "connecticut": {
+                "taxable": True,
+                "rate": 6.35,
+                "aliases": ["CT", "Conn"]
+            },
+            "hawaii": {
+                "taxable": True,
+                "rate": 4.00,   # GET
+                "aliases": ["HI"]
+            },
+            "illinois": {
+                "taxable": True,
+                "rate": 6.25,
+                "aliases": ["IL", "Ill"]
+            },
+            "indiana": {
+                "taxable": True,
+                "rate": 7.00,
+                "aliases": ["IN", "Ind"]
+            },
+            "iowa": {
+                "taxable": True,
+                "rate": 6.00,
+                "aliases": ["IA"]
+            },
+            "kansas": {
+                "taxable": True,
+                "rate": 6.50,
+                "aliases": ["KS", "Kans"]
+            },
+            "kentucky": {
+                "taxable": True,
+                "rate": 6.00,
+                "aliases": ["KY"]
+            },
+            "louisiana": {
+                "taxable": True,
+                "rate": 4.45,
+                "aliases": ["LA"]
+            },
+            "maryland": {
+                "taxable": True,
+                "rate": 6.00,
+                "aliases": ["MD"]
+            },
+            "massachusetts": {
+                "taxable": True,
+                "rate": 6.25,
+                "aliases": ["MA", "Mass"]
+            },
+            "minnesota": {
+                "taxable": True,
+                "rate": 6.875,
+                "aliases": ["MN", "Minn"]
+            },
+            "mississippi": {
+                "taxable": True,
+                "rate": 7.00,
+                "aliases": ["MS", "Miss"]
+            },
+            "nebraska": {
+                "taxable": True,
+                "rate": 5.50,
+                "aliases": ["NE", "Neb"]
+            },
+            "nevada": {
+                "taxable": True,
+                "rate": 6.85,
+                "aliases": ["NV", "Nev"]
+            },
+            "new_jersey": {
+                "taxable": True,
+                "rate": 6.625,
+                "aliases": ["NJ", "N.J."]
+            },
+            "new_mexico": {
+                "taxable": True,
+                "rate": 5.125,  # GRT
+                "aliases": ["NM", "N.M."]
+            },
+            "new_york": {
+                "taxable": True,
+                "rate": 4.00,
+                "aliases": ["NY", "N.Y."]
+            },
+            "north_carolina": {
+                "taxable": True,
+                "rate": 4.75,
+                "aliases": ["NC", "N.C."]
+            },
+            "north_dakota": {
+                "taxable": True,
+                "rate": 5.00,
+                "aliases": ["ND", "N.D."]
+            },
+            "pennsylvania": {
+                "taxable": True,
+                "rate": 6.00,
+                "aliases": ["PA", "Penn"]
+            },
+            "south_carolina": {
+                "taxable": True,
+                "rate": 6.00,
+                "aliases": ["SC", "S.C."]
+            },
+            "south_dakota": {
+                "taxable": True,
+                "rate": 4.50,
+                "aliases": ["SD", "S.D."]
+            },
+            "tennessee": {
+                "taxable": True,
+                "rate": 7.00,
+                "aliases": ["TN", "Tenn"]
+            },
+            "texas": {
+                "taxable": True,
+                "rate": 6.25,
+                "aliases": ["TX", "Tex"]
+            },
+            "utah": {
+                "taxable": True,
+                "rate": 4.85,
+                "aliases": ["UT"]
+            },
+            "vermont": {
+                "taxable": True,
+                "rate": 6.00,
+                "aliases": ["VT"]
+            },
+            "washington": {
+                "taxable": True,
+                "rate": 6.50,
+                "aliases": ["WA", "Wash"]
+            },
+            "west_virginia": {
+                "taxable": True,
+                "rate": 6.00,
+                "aliases": ["WV", "W.Va"]
+            },
+            "wisconsin": {
+                "taxable": True,
+                "rate": 5.00,
+                "aliases": ["WI", "Wisc"]
+            }
+        }
+        for k, v in US_SAAS_TAX.items():
+            for alias in v['aliases']:
+                alias = alias.lower().replace(" ", "_")
+                US_SAAS_TAX[alias] = v
+        tax = DEFAULT_SAAS_TAX
+        if region_subdivision:
+            region_subdivision = region_subdivision.lower().replace(" ", "_")
+            tax = (US_SAAS_TAX.get(region_subdivision) or {"rate": DEFAULT_SAAS_TAX}).get("rate", DEFAULT_SAAS_TAX)
+        b = self._base_amounts(item_quantity, item_price, discount_percentage)
+        return {
+            "item_final_price": round(b['item_final_price'], 2),
+            "discount_amount": round(b['discount_amount'], 2),
+            "item_total": round(b['item_total'], 2),
+            "item_final_total": round(b['item_final_total'], 2),
+            "hsn_code": HSN_SAAS,
+            "vat_percentage": tax,
+            "vat_amount": round(b['item_final_total'] * tax / 100.0, 2),
+            "total_tax_percentage": tax,
+            "total_tax_amount": round(b['item_final_total'] * tax / 100, 2),
+            "total_amount": round(b['item_final_total'] + (b['item_final_total'] * tax / 100.0), 2),
+        }
+
+    def _calc_canada(self, item_quantity, item_price, discount_percentage=0, region_subdivision=None, **kwargs):
+        # Canada: GST (5%), SaaS HSN N/A
+        GST_PCT = 5.0
+        DEFAULT_GST_PCT = 0.0
+        CANADA_GST_PCT = {
+            "ontario": {
+                "rate": 8.0,
+                "aliases": ["ON", "Ont"]
+            },
+            "new_brunswick": {
+                "rate": 10.0,
+                "aliases": ["NB", "N.B."]
+            },
+            "nova_scotia": {
+                "rate": 10.0,
+                "aliases": ["NS", "N.S."]
+            },
+            "prince_edward_island": {
+                "rate": 10.0,
+                "aliases": ["PE", "PEI", "P.E.I."]
+            },
+            "newfoundland_and_labrador": {
+                "rate": 10.0,
+                "aliases": ["NL", "N.L.", "Newfoundland"]
+            },
+            "quebec": {
+                "rate": 9.975,
+                "aliases": ["QC", "Que", "Québec"]
+            }
+        }
+        for k, v in CANADA_GST_PCT.items():
+            for alias in v['aliases']:
+                alias = alias.lower().replace(" ", "_")
+                CANADA_GST_PCT[alias] = v
+        tax = DEFAULT_GST_PCT
+        if region_subdivision:
+            region_subdivision = region_subdivision.lower().replace(" ", "_")
+            tax = GST_PCT + (CANADA_GST_PCT.get(region_subdivision) or {"rate": DEFAULT_GST_PCT}).get("rate", DEFAULT_GST_PCT)
+        b = self._base_amounts(item_quantity, item_price, discount_percentage)
+        vat_amount = b['item_final_total'] * tax / 100.0
+        total_amount = b['item_final_total'] + vat_amount
+        return {
+            "item_final_price": round(b['item_final_price'], 2),
+            "discount_amount": round(b['discount_amount'], 2),
+            "item_total": round(b['item_total'], 2),
+            "item_final_total": round(b['item_final_total'], 2),
+            "hsn_code": self.GLOBAL_HSN_CODE,
+            "gst_percentage": tax,
+            "gst_amount": round(vat_amount, 2),
+            "total_tax_percentage": tax,
+            "total_tax_amount": round(vat_amount, 2),
+            "total_amount": round(total_amount, 2),
+        }
+
+    def _calc_japan(self, item_quantity, item_price, discount_percentage=0):
+        # Consumption Tax 10%, HSN not relevant: SaaS is taxable
+        VAT_PCT = 10.0
+        HSN_SAAS = self.GLOBAL_HSN_CODE
+        b = self._base_amounts(item_quantity, item_price, discount_percentage)
+        vat_amount = b['item_final_total'] * VAT_PCT / 100.0
+        total_amount = b['item_final_total'] + vat_amount
+        return {
+            "item_final_price": round(b['item_final_price'], 2),
+            "discount_amount": round(b['discount_amount'], 2),
+            "item_total": round(b['item_total'], 2),
+            "item_final_total": round(b['item_final_total'], 2),
+            "hsn_code": HSN_SAAS,
+            "vat_percentage": VAT_PCT,
+            "vat_amount": round(vat_amount, 2),
+            "total_tax_percentage": VAT_PCT,
+            "total_tax_amount": round(vat_amount, 2),
+            "total_amount": round(total_amount, 2),
+        }
+
+    def _calc_uae(self, item_quantity, item_price, discount_percentage=0):
+        # VAT 5%, SaaS is taxable, HSN N/A
+        VAT_PCT = 5.0
+        HSN_SAAS = self.GLOBAL_HSN_CODE
+        b = self._base_amounts(item_quantity, item_price, discount_percentage)
+        vat_amount = b['item_final_total'] * VAT_PCT / 100.0
+        total_amount = b['item_final_total'] + vat_amount
+        return {
+            "item_final_price": round(b['item_final_price'], 2),
+            "discount_amount": round(b['discount_amount'], 2),
+            "item_total": round(b['item_total'], 2),
+            "item_final_total": round(b['item_final_total'], 2),
+            "hsn_code": HSN_SAAS,
+            "vat_percentage": VAT_PCT,
+            "vat_amount": round(vat_amount, 2),
+            "total_tax_percentage": VAT_PCT,
+            "total_tax_amount": round(vat_amount, 2),
+            "total_amount": round(total_amount, 2),
+        }
+
+    def _calc_indonesia(self, item_quantity, item_price, discount_percentage=0):
+        # VAT 11% (2024), SaaS is taxable, HSN: 99836
+        VAT_PCT = 11.0
+        HSN_SAAS = "99836"
+        b = self._base_amounts(item_quantity, item_price, discount_percentage)
+        vat_amount = b['item_final_total'] * VAT_PCT / 100.0
+        total_amount = b['item_final_total'] + vat_amount
+        return {
+            "item_final_price": round(b['item_final_price'], 2),
+            "discount_amount": round(b['discount_amount'], 2),
+            "item_total": round(b['item_total'], 2),
+            "item_final_total": round(b['item_final_total'], 2),
+            "hsn_code": HSN_SAAS,
+            "vat_percentage": VAT_PCT,
+            "vat_amount": round(vat_amount, 2),
+            "total_tax_percentage": VAT_PCT,
+            "total_tax_amount": round(vat_amount, 2),
+            "total_amount": round(total_amount, 2),
+        }
+
+    def _calc_vietnam(self, item_quantity, item_price, discount_percentage=0):
+        # VAT 10%, SaaS taxable, HSN N/A
+        VAT_PCT = 10.0
+        HSN_SAAS = self.GLOBAL_HSN_CODE
+        b = self._base_amounts(item_quantity, item_price, discount_percentage)
+        vat_amount = b['item_final_total'] * VAT_PCT / 100.0
+        total_amount = b['item_final_total'] + vat_amount
+        return {
+            "item_final_price": round(b['item_final_price'], 2),
+            "discount_amount": round(b['discount_amount'], 2),
+            "item_total": round(b['item_total'], 2),
+            "item_final_total": round(b['item_final_total'], 2),
+            "hsn_code": HSN_SAAS,
+            "vat_percentage": VAT_PCT,
+            "vat_amount": round(vat_amount, 2),
+            "total_tax_percentage": VAT_PCT,
+            "total_tax_amount": round(vat_amount, 2),
+            "total_amount": round(total_amount, 2),
+        }
+
+    def _calc_thailand(self, item_quantity, item_price, discount_percentage=0):
+        # VAT 7%, SaaS taxable, HSN N/A
+        VAT_PCT = 7.0
+        HSN_SAAS = self.GLOBAL_HSN_CODE
+        b = self._base_amounts(item_quantity, item_price, discount_percentage)
+        vat_amount = b['item_final_total'] * VAT_PCT / 100.0
+        total_amount = b['item_final_total'] + vat_amount
+        return {
+            "item_final_price": round(b['item_final_price'], 2),
+            "discount_amount": round(b['discount_amount'], 2),
+            "item_total": round(b['item_total'], 2),
+            "item_final_total": round(b['item_final_total'], 2),
+            "hsn_code": HSN_SAAS,
+            "vat_percentage": VAT_PCT,
+            "vat_amount": round(vat_amount, 2),
+            "total_tax_percentage": VAT_PCT,
+            "total_tax_amount": round(vat_amount, 2),
+            "total_amount": round(total_amount, 2),
+        }
+
+    def _calc_sri_lanka(self, item_quantity, item_price, discount_percentage=0):
+        # VAT 15%, HSN N/A, SaaS taxable
+        VAT_PCT = 15.0
+        HSN_SAAS = self.GLOBAL_HSN_CODE
+        b = self._base_amounts(item_quantity, item_price, discount_percentage)
+        vat_amount = b['item_final_total'] * VAT_PCT / 100.0
+        total_amount = b['item_final_total'] + vat_amount
+        return {
+            "item_final_price": round(b['item_final_price'], 2),
+            "discount_amount": round(b['discount_amount'], 2),
+            "item_total": round(b['item_total'], 2),
+            "item_final_total": round(b['item_final_total'], 2),
+            "hsn_code": HSN_SAAS,
+            "vat_percentage": VAT_PCT,
+            "vat_amount": round(vat_amount, 2),
+            "total_tax_percentage": VAT_PCT,
+            "total_tax_amount": round(vat_amount, 2),
+            "total_amount": round(total_amount, 2),
+        }
+
+
 
 if __name__ == "__main__":
 

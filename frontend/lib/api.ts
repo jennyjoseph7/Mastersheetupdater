@@ -1,11 +1,8 @@
-// Determine API base URL - always use production unless explicitly overridden
 const getApiBaseUrl = () => {
-  // Check for explicit environment variable override
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
   }
 
-  // Always use production URL
   return "https://autobot-webapp-dev.gryd.in";
 };
 
@@ -34,8 +31,6 @@ export async function api(
     ...customHeaders,
   };
 
-  // For GET requests without body, don't include Content-Type
-  // Some servers reject GET requests with Content-Type header
   if (method === "GET" && !body) {
     delete headers["Content-Type"];
   }
@@ -82,9 +77,60 @@ export async function api(
 }
 
 export async function fetchPersonObjects() {
-  return api("/gryd/db/objects/person", "GET", undefined, {
-    "X-GRYD-ROLE": "admin",
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  // Fallback to hardcoded credentials if user credentials not available
+  const finalToken = token || "53014452-7df1-351c-9b79-af13d3d6b92f";
+  const finalSessionId = sessionId || "94b970d4-5c2b-3762-bf65-272901d0ad53";
+
+  // Call backend directly
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/person`;
+
+  console.log("[Fetch Person Objects] Calling backend directly:", backendUrl);
+  console.log("[Fetch Person Objects] Application ID (fixed):", applicationId);
+
+  const res = await fetch(backendUrl, {
+    method: "GET",
+    headers: {
+      // Don't include Content-Type for GET requests to avoid CORS preflight
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": finalToken,
+      "X-GRYD-SESSION-ID": finalSessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "admin",
+    },
+    cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors", // Explicitly set CORS mode
   });
+
+  console.log(`[Fetch Person Objects] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    let errorMessage = `Failed to fetch person objects (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const data = await res.json();
+  console.log("[Fetch Person Objects] Response:", data);
+  return data;
 }
 
 export class ApiError extends Error {
@@ -135,66 +181,42 @@ export async function generateOTP(contact: string, type: "whatsapp" | "email") {
     throw new ApiError(400, "Type must be 'whatsapp' or 'email'");
   }
 
-  const backendUrl = `${API_BASE_URL}/gryd/api/autocrm-core/generate_otp`;
+  // Call backend directly - matches Postman curl pattern
+  const backendUrl = `${API_BASE_URL}/generate_otp`;
+
   const requestBody = {
     args: [contact, type],
+    kwargs: {},
   };
 
   console.log("[Generate OTP] Calling backend directly:", backendUrl);
-  console.log(
-    "[Generate OTP] Request body:",
-    JSON.stringify(requestBody, null, 2)
-  );
+  console.log("[Generate OTP] Contact:", contact);
+  console.log("[Generate OTP] Type:", type);
 
   const res = await fetch(backendUrl, {
     method: "POST",
-    headers: DEFAULT_HEADERS,
+    headers: {
+      "Content-Type": "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
+    },
     body: JSON.stringify(requestBody),
     cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors",
   });
 
   console.log(`[Generate OTP] Response status: ${res.status}`);
-  console.log(
-    `[Generate OTP] Response headers:`,
-    Object.fromEntries(res.headers.entries())
-  );
-
-  // Check content-type to detect HTML responses
-  const contentType = res.headers.get("content-type") || "";
-  const isHTML = contentType.includes("text/html");
 
   if (!res.ok) {
     let errorMessage = `Request failed (${res.status})`;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-
-      // If response is HTML, it's likely a CORS error or redirect
-      if (
-        isHTML ||
-        errorText.trim().startsWith("<!DOCTYPE") ||
-        errorText.trim().startsWith("<html")
-      ) {
-        console.error(
-          "[Generate OTP] Received HTML response instead of JSON. This usually indicates:"
-        );
-        console.error("  1. CORS is not properly configured on the backend");
-        console.error("  2. The endpoint is redirecting to an HTML page");
-        console.error("  3. The endpoint doesn't exist (404 HTML page)");
-        console.error("Response preview:", errorText.substring(0, 500));
-        errorMessage = `Server returned HTML instead of JSON (Status: ${res.status}). This usually indicates a CORS issue or the endpoint doesn't exist. Check browser console for details.`;
-      } else {
-        // Try to parse as JSON
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage =
-            errorData?.error || errorData?.message || errorText || errorMessage;
-        } catch {
-          // Not JSON, use text as is
-          errorMessage = errorText || errorMessage;
-        }
-      }
-    } catch (readError) {
-      console.error("[Generate OTP] Failed to read error response:", readError);
+      errorMessage = errorText || errorMessage;
     }
 
     errorMessage =
@@ -202,58 +224,14 @@ export async function generateOTP(contact: string, type: "whatsapp" | "email") {
     throw new ApiError(res.status, errorMessage);
   }
 
-  // Check if successful response is also HTML (shouldn't happen, but handle it)
-  // Clone the response to read it without consuming it
-  const responseClone = res.clone();
-  const responseText = await responseClone.text();
-
-  if (
-    isHTML ||
-    responseText.trim().startsWith("<!DOCTYPE") ||
-    responseText.trim().startsWith("<html")
-  ) {
-    console.error(
-      "[Generate OTP] Received HTML response for successful request!"
-    );
-    console.error("Response status:", res.status);
-    console.error("Response URL:", res.url);
-    console.error(
-      "Response headers:",
-      Object.fromEntries(res.headers.entries())
-    );
-    console.error("Response preview:", responseText.substring(0, 1000));
-    throw new ApiError(
-      500,
-      `Server returned HTML instead of JSON (Status: ${res.status}). This usually indicates:
-1. CORS is not properly configured on the backend
-2. The endpoint URL is incorrect: ${backendUrl}
-3. The backend is redirecting to an HTML page
-Check browser console and Network tab for more details.`
-    );
-  }
-
-  // Try to parse as JSON
-  let data;
-  try {
-    data = JSON.parse(responseText);
-  } catch (parseError) {
-    console.error("[Generate OTP] Failed to parse response as JSON");
-    console.error("Response text:", responseText.substring(0, 500));
-    throw new ApiError(
-      500,
-      `Server returned invalid JSON. Response preview: ${responseText.substring(
-        0,
-        200
-      )}...`
-    );
-  }
-
+  const data = await res.json();
   console.log("[Generate OTP] Response:", data);
   return data;
 }
 
 export async function dealershipSignup(data: DealershipSignupRequest) {
-  const backendUrl = `${API_BASE_URL}/gryd/api/autocrm-core/dealership_signup`;
+  // Call backend directly - matches Postman curl pattern
+  const backendUrl = `${API_BASE_URL}/dealership_signup`;
 
   console.log("[Dealership Signup] Calling backend directly:", backendUrl);
   console.log(
@@ -263,76 +241,28 @@ export async function dealershipSignup(data: DealershipSignupRequest) {
 
   const res = await fetch(backendUrl, {
     method: "POST",
-    headers: DEFAULT_HEADERS,
+    headers: {
+      "Content-Type": "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
+    },
     body: JSON.stringify(data),
     cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors",
   });
 
   console.log(`[Dealership Signup] Response status: ${res.status}`);
 
   if (!res.ok) {
     let errorMessage = `Request failed (${res.status})`;
-    let errorData: any = null;
-
     try {
-      const contentType = res.headers.get("content-type");
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-
-      console.log(
-        `[Dealership Signup] Error response content-type: ${contentType}`
-      );
-      console.log(
-        `[Dealership Signup] Error response body: ${errorText.substring(
-          0,
-          500
-        )}`
-      );
-
-      // Try to parse JSON error response
-      if (errorText && errorText.trim()) {
-        try {
-          errorData = JSON.parse(errorText);
-
-          // Extract error message from various possible formats
-          if (errorData && typeof errorData === "object") {
-            if (errorData.error) {
-              errorMessage = String(errorData.error);
-            } else if (errorData.message) {
-              errorMessage = String(errorData.message);
-            } else if (errorData.detail) {
-              errorMessage = String(errorData.detail);
-            } else {
-              // If it's an object but no standard error field, try to extract useful info
-              const errorStr = JSON.stringify(errorData);
-              // Check if it contains the Python error message
-              if (
-                errorStr.includes("'NoneType' object has no attribute 'get'")
-              ) {
-                // This is a backend bug - try to extract the original error if available
-                errorMessage =
-                  "An error occurred while processing your request. Please check if the dealership already exists or try again.";
-              } else {
-                errorMessage = errorStr;
-              }
-            }
-          } else if (typeof errorData === "string") {
-            errorMessage = errorData;
-          }
-        } catch (parseError) {
-          // Not JSON, use errorText as is
-          console.log(
-            `[Dealership Signup] Error response is not JSON, using raw text`
-          );
-          errorMessage = errorText || errorMessage;
-        }
-      }
-    } catch (readError) {
-      // Failed to read response, use default message
-      console.error(
-        "[Dealership Signup] Failed to read error response:",
-        readError
-      );
-      errorMessage = `Request failed (${res.status})`;
+      errorMessage = errorText || errorMessage;
     }
 
     // Clean up any "API Error:" prefixes
@@ -362,6 +292,7 @@ export interface DealershipUpdateDetailsRequest {
   args: [string]; // dealership_id or dealership slug
   kwargs: {
     dealership_type?: string;
+    dealership_legal_name?: string;
     languages?: string[];
     supported_brands?: string[];
     aliases?: string[];
@@ -375,6 +306,21 @@ export interface DealershipUpdateDetailsRequest {
 export async function dealershipUpdateDetails(
   data: DealershipUpdateDetailsRequest
 ) {
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly
   const backendUrl = `${API_BASE_URL}/gryd/api/autocrm-core/dealership_update_details`;
 
   console.log(
@@ -385,48 +331,41 @@ export async function dealershipUpdateDetails(
     "[Dealership Update Details] Request body:",
     JSON.stringify(data, null, 2)
   );
+  console.log(
+    "[Dealership Update Details] Application ID (fixed):",
+    applicationId
+  );
 
   const res = await fetch(backendUrl, {
     method: "POST",
-    headers: DEFAULT_HEADERS,
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "agent",
+    },
     body: JSON.stringify(data),
     cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors",
   });
 
   console.log(`[Dealership Update Details] Response status: ${res.status}`);
 
   if (!res.ok) {
     let errorMessage = `Request failed (${res.status})`;
-    let errorData: any = null;
     try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
       const errorText = await res.text();
-      console.log(
-        `[Dealership Update Details] Error response text:`,
-        errorText
-      );
-      try {
-        errorData = JSON.parse(errorText);
-        errorMessage =
-          errorData?.error || errorData?.message || errorText || errorMessage;
-        console.log(
-          `[Dealership Update Details] Parsed error data:`,
-          JSON.stringify(errorData, null, 2)
-        );
-      } catch {
-        // Not JSON, use as is
-        errorMessage = errorText || errorMessage;
-      }
-    } catch (readError) {
-      console.error(
-        "[Dealership Update Details] Failed to read error:",
-        readError
-      );
+      errorMessage = errorText || errorMessage;
     }
 
-    console.error(
-      `[Dealership Update Details] Returning error response:`,
-      errorMessage
-    );
     errorMessage =
       errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
     throw new ApiError(res.status, errorMessage);
@@ -483,6 +422,9 @@ export async function dealerLogin(
     },
     body: JSON.stringify(requestBody),
     cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors", // Explicitly set CORS mode
   });
 
   console.log(`[Dealer Login] Response status: ${res.status}`);
@@ -512,4 +454,594 @@ export async function dealerLogin(
   const responseData = await res.json();
   console.log("[Dealer Login] Response:", responseData);
   return responseData;
+}
+
+export interface DealershipDetailsResponse {
+  [key: string]: any; // Dealership data structure may vary
+}
+
+// Helper function to get cookie (for use in non-client contexts)
+function getCookieFromDocument(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(";");
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === " ") c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) {
+      const value = c.substring(nameEQ.length, c.length);
+      // Decode URI component in case cookie was encoded
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    }
+  }
+  return null;
+}
+
+export async function getDealershipDetails(): Promise<DealershipDetailsResponse> {
+  // Get credentials from cookies
+  const userId = getCookieFromDocument("gryd_user_id");
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!userId || !token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly
+  const backendUrl = `${API_BASE_URL}/get-dealership-details/${userId}`;
+
+  console.log("[Get Dealership Details] Calling backend directly:", backendUrl);
+  console.log("[Get Dealership Details] Using user_id:", userId);
+  console.log(
+    "[Get Dealership Details] Application ID (fixed):",
+    applicationId
+  );
+
+  const res = await fetch(backendUrl, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "agent",
+    },
+    cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors",
+  });
+
+  console.log(`[Get Dealership Details] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    let errorMessage = `Failed to fetch dealership details (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Get Dealership Details] Response:", responseData);
+  return responseData;
+}
+
+export interface CreateWorkshopRequest {
+  dealer_name: string;
+  dealership_id: string;
+  workshop_name: string;
+  workshop_type: string;
+  workshop_status?: string;
+  email: string;
+  contact_number: string;
+  manager_name: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  region_id?: string;
+  region_name?: string;
+  geolocation: [number, number]; // [latitude, longitude]
+  operating_hours: {
+    opening_time: string;
+    closing_time: string;
+    days_open: string[];
+  };
+  supported_brands: string[];
+  services_offered: string[];
+  total_technicians: number;
+  total_service_bays: number;
+  daily_service_capacity: number;
+}
+
+export async function createWorkshop(
+  data: CreateWorkshopRequest
+): Promise<any> {
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - matches Postman curl exactly
+  const backendUrl = `${API_BASE_URL}/gryd/db/object/workshop`;
+
+  console.log("[Create Workshop] Calling backend directly:", backendUrl);
+  console.log("[Create Workshop] Request body:", JSON.stringify(data, null, 2));
+  console.log("[Create Workshop] Application ID (fixed):", applicationId);
+
+  const res = await fetch(backendUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+    },
+    body: JSON.stringify(data),
+    cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors", // Explicitly set CORS mode
+  });
+
+  console.log(`[Create Workshop] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    let errorMessage = `Failed to create workshop (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Create Workshop] Response:", responseData);
+  return responseData;
+}
+
+export async function getWorkshopsForDealership(
+  dealershipId: string
+): Promise<any[]> {
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - matches Postman curl pattern
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/workshop?dealership_id=${encodeURIComponent(
+    dealershipId
+  )}`;
+
+  console.log("[Get Workshops] Calling backend directly:", backendUrl);
+  console.log("[Get Workshops] Application ID (fixed):", applicationId);
+
+  const res = await fetch(backendUrl, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "agent",
+    },
+    cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors", // Explicitly set CORS mode
+  });
+
+  console.log(`[Get Workshops] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    // If 404, return empty array (no workshops found)
+    if (res.status === 404) {
+      return [];
+    }
+    let errorMessage = `Failed to fetch workshops (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Get Workshops] Response:", responseData);
+
+  // Handle both array and object responses
+  if (Array.isArray(responseData)) {
+    return responseData;
+  } else if (responseData && Array.isArray(responseData.data)) {
+    return responseData.data;
+  } else if (responseData && Array.isArray(responseData.workshops)) {
+    return responseData.workshops;
+  }
+
+  return [];
+}
+
+// Showroom interfaces and functions
+export interface CreateShowroomRequest {
+  showroom_id: string;
+  showroom_name: string;
+  showroom_full_name: string;
+  showroom_type: string;
+  showroom_status: string;
+  dealership_id: string;
+  dealership_name: string;
+  manager_name: string;
+  email: string;
+  contact_number: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  region_name?: string;
+  geolocation: [number, number];
+  operating_hours: {
+    opening_time: string;
+    closing_time: string;
+  };
+  days_open: string[];
+  supported_brands: string[];
+  parking_capacity: number;
+  daily_walkin_capacity: number;
+  display_vehicle_count: number;
+  total_sales_executives: number;
+}
+
+export async function createShowroom(
+  data: CreateShowroomRequest
+): Promise<any> {
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - matches Postman curl exactly
+  const backendUrl = `${API_BASE_URL}/gryd/db/object/showroom`;
+
+  console.log("[Create Showroom] Calling backend directly:", backendUrl);
+  console.log("[Create Showroom] Request body:", JSON.stringify(data, null, 2));
+  console.log("[Create Showroom] Application ID (fixed):", applicationId);
+
+  const res = await fetch(backendUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+    },
+    body: JSON.stringify(data),
+    cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors", // Explicitly set CORS mode
+  });
+
+  console.log(`[Create Showroom] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    let errorMessage = `Failed to create showroom (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Create Showroom] Response:", responseData);
+  return responseData;
+}
+
+export async function getShowroomsForDealership(
+  dealershipId: string
+): Promise<any[]> {
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - matches Postman curl pattern
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/showroom?dealership_id=${encodeURIComponent(
+    dealershipId
+  )}`;
+
+  console.log("[Get Showrooms] Calling backend directly:", backendUrl);
+  console.log("[Get Showrooms] Application ID (fixed):", applicationId);
+
+  const res = await fetch(backendUrl, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "agent",
+    },
+    cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors", // Explicitly set CORS mode
+  });
+
+  console.log(`[Get Showrooms] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      return [];
+    }
+    let errorMessage = `Failed to fetch showrooms (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Get Showrooms] Response:", responseData);
+
+  if (Array.isArray(responseData)) {
+    return responseData;
+  } else if (responseData && Array.isArray(responseData.data)) {
+    return responseData.data;
+  } else if (responseData && Array.isArray(responseData.showrooms)) {
+    return responseData.showrooms;
+  }
+
+  return [];
+}
+
+// Buyback Center interfaces and functions
+export interface CreateBuybackCenterRequest {
+  buyback_center_id: string;
+  dealership_id: string;
+  dealership_name: string;
+  manager_name: string;
+  email: string;
+  contact_number: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  geolocation: [number, number];
+  operating_hours: {
+    opening_time: string;
+    closing_time: string;
+  };
+  days_open: Record<string, any> | string[];
+  parking_capacity: number;
+  daily_walkin_capacity: number;
+  display_vehicle_count: number;
+  total_sales_executives: number;
+}
+
+export async function createBuybackCenter(
+  data: CreateBuybackCenterRequest
+): Promise<any> {
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - matches Postman curl exactly
+  const backendUrl = `${API_BASE_URL}/gryd/db/object/buyback_center`;
+
+  console.log("[Create Buyback Center] Calling backend directly:", backendUrl);
+  console.log(
+    "[Create Buyback Center] Request body:",
+    JSON.stringify(data, null, 2)
+  );
+  console.log("[Create Buyback Center] Application ID (fixed):", applicationId);
+
+  const res = await fetch(backendUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+    },
+    body: JSON.stringify(data),
+    cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors", // Explicitly set CORS mode
+  });
+
+  console.log(`[Create Buyback Center] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    let errorMessage = `Failed to create buyback center (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Create Buyback Center] Response:", responseData);
+  return responseData;
+}
+
+export async function getBuybackCentersForDealership(
+  dealershipId: string
+): Promise<any[]> {
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly - matches Postman curl pattern
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/buyback_center?dealership_id=${encodeURIComponent(
+    dealershipId
+  )}`;
+
+  console.log("[Get Buyback Centers] Calling backend directly:", backendUrl);
+  console.log("[Get Buyback Centers] Application ID (fixed):", applicationId);
+
+  const res = await fetch(backendUrl, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "agent",
+    },
+    cache: "no-store",
+    // Don't use credentials: "include" - we manually extract cookies and send them as headers
+    // This avoids CORS issues when backend returns Access-Control-Allow-Origin: *
+    mode: "cors", // Explicitly set CORS mode
+  });
+
+  console.log(`[Get Buyback Centers] Response status: ${res.status}`);
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      return [];
+    }
+    let errorMessage = `Failed to fetch buyback centers (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Get Buyback Centers] Response:", responseData);
+
+  if (Array.isArray(responseData)) {
+    return responseData;
+  } else if (responseData && Array.isArray(responseData.data)) {
+    return responseData.data;
+  } else if (responseData && Array.isArray(responseData.buyback_centers)) {
+    return responseData.buyback_centers;
+  }
+
+  return [];
 }

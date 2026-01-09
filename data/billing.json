@@ -96,6 +96,16 @@
             "required": true
         },
         {
+            "name": "discount_percentage",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "item_final_price",
+            "type": "number",
+            "required": true
+        },
+        {
             "name": "item_total",
             "type": "number",
             "default": {
@@ -105,6 +115,16 @@
                     "item_price"
                 ]
             }
+        },
+        {
+            "name": "discount_amount",
+            "type": "number",
+            "required": true
+        },
+        {
+            "name": "item_final_total",
+            "type": "number",
+            "required": true
         },
         {
             "name": "currency",
@@ -318,14 +338,6 @@
         },
         {
             "name": "gst_number",
-            "type": "text"
-        },
-        {
-            "name": "cgst_number",
-            "type": "text"
-        },
-        {
-            "name": "sgst_number",
             "type": "text"
         },
         {
