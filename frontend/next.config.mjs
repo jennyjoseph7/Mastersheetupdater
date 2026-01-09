@@ -1,8 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Removed "output: export" to enable API routes
-  // API routes fix CORS by proxying requests server-to-server
+
   trailingSlash: true,
+  output: "export",
+
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -16,6 +17,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
+  productionBrowserSourceMaps: true,
 };
 
 export default nextConfig;
