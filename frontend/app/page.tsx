@@ -149,7 +149,7 @@ export default function CampaignDashboard() {
     // Handle pre-sales campaigns using the dedicated function
     if (type === "pre-sales" || type === "pre_sales") {
       console.log("[fetchCampaigns] Fetching pre-sales campaigns...");
-      const res = await fetchPreSalesCampaigns(page, ITEMS_PER_PAGE);
+      const res = await fetchPreSalesCampaigns();
       console.log("[fetchCampaigns] Pre-sales campaigns response:", res);
       return {
         merged: res?.items ?? [],
@@ -160,7 +160,7 @@ export default function CampaignDashboard() {
     // Handle post-sales campaigns using the dedicated function
     if (type === "post-sales" || type === "post_sales") {
       console.log("[fetchCampaigns] Fetching post-sales campaigns...");
-      const res = await fetchPostSalesCampaigns(page, ITEMS_PER_PAGE);
+      const res = await fetchPostSalesCampaigns();
       console.log("[fetchCampaigns] Post-sales campaigns response:", res);
       return {
         merged: res?.items ?? [],
