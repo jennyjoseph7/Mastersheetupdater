@@ -13,9 +13,10 @@ import {
   type DealerLoginResponse,
   getDealershipDetails,
 } from "@/lib/api";
-import { setCookie, getCookie, deleteCookie } from "@/lib/cookies";
+import { setCookie } from "@/lib/cookies";
 import { isDealershipSetupComplete as checkDealershipSetupComplete } from "@/lib/dealership-utils";
 
+// --- Types ---
 interface User {
   id: string;
   email: string;
@@ -29,7 +30,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  isDealershipSetupComplete: boolean | null; // null = not checked yet
+  isDealershipSetupComplete: boolean | null;
   checkDealershipSetup: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -39,6 +40,51 @@ interface AuthContextType {
     verificationStatus?: "pending" | "verified" | "rejected"
   ) => void;
 }
+
+// --- 1. SIMPLIFIED LOGOUT HELPER (Run outside React) ---
+
+const clearSessionData = () => {
+  if (typeof window === "undefined") return;
+
+  console.log("[Auth] Clearing session data...");
+
+  // 1. Clear LocalStorage
+  localStorage.removeItem("auth_token");
+  localStorage.removeItem("user_data");
+  localStorage.removeItem("auth_data");
+  localStorage.removeItem("dealership_setup_complete");
+  localStorage.removeItem("dealership_id");
+  localStorage.clear();
+
+  // 2. Clear SessionStorage
+  sessionStorage.clear();
+
+  // 3. Delete Cookies
+  const deleteCookie = (name: string) => {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`;
+  };
+  deleteCookie("gryd_session_id");
+  deleteCookie("gryd_token");
+  deleteCookie("gryd_user_id");
+  deleteCookie("gryd_application_id");
+};
+
+/**
+ * 🚀 GLOBAL LOGOUT TRIGGER
+ * Call this from anywhere (api.ts, components, etc.)
+ * It effectively hard-reloads the app to the login screen.
+ */
+export const triggerGlobalLogout = () => {
+  console.log("🚨 [Auth] Global Logout Triggered - Redirecting...");
+  
+  clearSessionData();
+
+  // Force a hard redirect. This is simpler than state updates 
+  // and guarantees the app resets completely.
+  if (typeof window !== "undefined") {
+    window.location.replace("/login");
+  }
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -50,47 +96,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   >(null);
   const router = useRouter();
 
+  // --- Core Actions ---
+
+  // The internal logout just calls the global one
+  const logout = () => {
+    triggerGlobalLogout();
+  };
+
   const checkDealershipSetup = async (): Promise<void> => {
     try {
-      console.log("[Auth Context] Checking dealership setup status...");
-
-      // Check if we just completed setup - if so, trust localStorage first
-      const justCompleted =
-        sessionStorage.getItem("just_completed_setup") === "true";
+      const justCompleted = sessionStorage.getItem("just_completed_setup") === "true";
       if (justCompleted) {
-        const cachedStatus = localStorage.getItem("dealership_setup_complete");
-        if (cachedStatus === "true") {
-          console.log(
-            "[Auth Context] Just completed setup, using cached true status"
-          );
+        if (localStorage.getItem("dealership_setup_complete") === "true") {
           setIsDealershipSetupComplete(true);
           return;
         }
       }
 
       const setupComplete = await checkDealershipSetupComplete();
-      console.log("[Auth Context] Setup complete status:", setupComplete);
-      // Force update state immediately
       setIsDealershipSetupComplete(setupComplete);
       localStorage.setItem("dealership_setup_complete", String(setupComplete));
-      console.log(
-        "[Auth Context] Updated setup status in state and localStorage:",
-        setupComplete
-      );
     } catch (error) {
-      console.error(
-        "[Auth Context] Failed to check dealership setup status:",
-        error
-      );
-      // On error, check localStorage as fallback
-      const cachedStatus = localStorage.getItem("dealership_setup_complete");
-      if (cachedStatus === "true") {
-        console.log("[Auth Context] Using cached true status due to error");
+      console.error("[Auth] Failed setup check:", error);
+      // Fallback
+      if (localStorage.getItem("dealership_setup_complete") === "true") {
         setIsDealershipSetupComplete(true);
         return;
       }
       setIsDealershipSetupComplete(false);
-      localStorage.setItem("dealership_setup_complete", "false");
     }
   };
 
@@ -98,51 +131,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkSession = async () => {
       const token = localStorage.getItem("auth_token");
       const userData = localStorage.getItem("user_data");
-      const authData = localStorage.getItem("auth_data");
 
       if (token && userData) {
         try {
           setUser(JSON.parse(userData));
 
-          // Fetch dealership_id if not already stored
-          const storedDealershipId = localStorage.getItem("dealership_id");
-          if (!storedDealershipId) {
-            try {
-              const dealershipDetails = await getDealershipDetails();
-              const dealershipId =
-                dealershipDetails?.dealership_id ||
-                dealershipDetails?.dealership_slug;
-              if (dealershipId) {
-                localStorage.setItem("dealership_id", dealershipId);
-                console.log(
-                  "Stored dealership_id from session check:",
-                  dealershipId
-                );
-              }
-            } catch (error) {
-              console.error(
-                "Failed to fetch dealership details in session check:",
-                error
-              );
-              // Don't throw - dealership_id might be available later
-            }
+          // Load dealership ID if missing
+          if (!localStorage.getItem("dealership_id")) {
+            getDealershipDetails()
+              .then((d) => {
+                const id = d?.dealership_id || d?.dealership_slug;
+                if (id) localStorage.setItem("dealership_id", id);
+              })
+              .catch((e) => console.error(e));
           }
 
-          // Check setup status from localStorage first
-          const storedSetupStatus = localStorage.getItem(
-            "dealership_setup_complete"
-          );
-          if (storedSetupStatus !== null) {
-            setIsDealershipSetupComplete(storedSetupStatus === "true");
+          // Check setup status
+          const storedSetup = localStorage.getItem("dealership_setup_complete");
+          if (storedSetup !== null) {
+            setIsDealershipSetupComplete(storedSetup === "true");
           } else {
-            // If not stored, check from API
             await checkDealershipSetup();
           }
         } catch (error) {
-          console.error("[autoNgage] Failed to parse user data:", error);
-          localStorage.removeItem("auth_token");
-          localStorage.removeItem("user_data");
-          localStorage.removeItem("auth_data");
+          console.error("[Auth] Data corrupt, logging out...");
+          triggerGlobalLogout();
         }
       }
       setIsLoading(false);
@@ -152,124 +165,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    console.log("Attempting login with:", { email });
-
     try {
-      // Call the dealer login API
-      const response: DealerLoginResponse = await dealerLogin({
-        email,
-        password,
-      });
+      const response: DealerLoginResponse = await dealerLogin({ email, password });
 
-      // Extract name from email (part before @)
       const nameFromEmail = email.split("@")[0].replace(/[.+]/g, " ");
-
-      // Create user object from API response
       const user = {
         id: response.user_id || response.session_id,
         email: response.user_id,
         name: nameFromEmail || "Dealer",
-        credits: 5000, // Default credits, can be updated later
+        credits: 5000,
         isVerified: false,
         verificationStatus: "pending" as const,
       };
 
-      console.log("Login successful, user:", user);
-      console.log("Auth response:", response);
-
-      // Store authentication data in localStorage
+      // Store Data
       localStorage.setItem("auth_token", response.token);
       localStorage.setItem("user_data", JSON.stringify(user));
-      localStorage.setItem(
-        "auth_data",
-        JSON.stringify({
-          role: response.role,
-          token: response.token,
-          expiry: response.expiry,
-          user_id: response.user_id,
-          enterprise_id: response.enterprise_id,
-          application_id: response.application_id,
-          session_id: response.session_id,
-        })
-      );
+      localStorage.setItem("auth_data", JSON.stringify(response));
 
-      // Store session_id, token, user_id, and application_id in cookies
-      // IMPORTANT: Always use "autocrm" for application_id, even if backend returns "gryd"
-      const applicationId = response.application_id === "autocrm" 
-        ? "autocrm" 
-        : "autocrm"; // Force "autocrm" to prevent "gryd" errors
-      
+      // Store Cookies
+      const appId = response.application_id === "autocrm" ? "autocrm" : "autocrm";
       setCookie("gryd_session_id", response.session_id, 7);
       setCookie("gryd_token", response.token, 7);
       setCookie("gryd_user_id", response.user_id, 7);
-      setCookie("gryd_application_id", applicationId, 7);
-      
-      console.log("[Auth] Setting application_id cookie:", applicationId);
-      console.log("[Auth] Login response application_id:", response.application_id);
+      setCookie("gryd_application_id", appId, 7);
 
       setUser(user);
 
-      // Fetch dealership details to get dealership_id
+      // Post-login checks
       try {
-        const dealershipDetails = await getDealershipDetails();
-        const dealershipId =
-          dealershipDetails?.dealership_id ||
-          dealershipDetails?.dealership_slug;
-        if (dealershipId) {
-          localStorage.setItem("dealership_id", dealershipId);
-          console.log("Stored dealership_id:", dealershipId);
-        }
-      } catch (error) {
-        console.error("Failed to fetch dealership details:", error);
-        // Don't throw - dealership_id might be available later
-      }
-
-      // Check dealership setup status after login
-      try {
-        const setupComplete = await checkDealershipSetupComplete();
-        setIsDealershipSetupComplete(setupComplete);
-        // Store in localStorage for quick access
-        localStorage.setItem(
-          "dealership_setup_complete",
-          String(setupComplete)
-        );
-      } catch (error) {
-        console.error("Failed to check dealership setup status:", error);
-        setIsDealershipSetupComplete(false);
+        const d = await getDealershipDetails();
+        const dId = d?.dealership_id || d?.dealership_slug;
+        if (dId) localStorage.setItem("dealership_id", dId);
+        
+        const setup = await checkDealershipSetupComplete();
+        setIsDealershipSetupComplete(setup);
+        localStorage.setItem("dealership_setup_complete", String(setup));
+      } catch (e) {
+        console.error(e);
       }
     } catch (error) {
       console.error("Login error:", error);
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error("Invalid email or password");
+      throw error;
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user_data");
-    localStorage.removeItem("auth_data");
-    localStorage.removeItem("dealership_setup_complete");
-    localStorage.removeItem("dealership_id");
-
-    // Delete cookies
-    deleteCookie("gryd_session_id");
-    deleteCookie("gryd_token");
-    deleteCookie("gryd_user_id");
-    deleteCookie("gryd_application_id");
-
-    setUser(null);
-    setIsDealershipSetupComplete(null);
-
-    router.push("/login");
   };
 
   const updateCredits = (credits: number) => {
     if (user) {
-      const updatedUser = { ...user, credits };
-      setUser(updatedUser);
-      localStorage.setItem("user_data", JSON.stringify(updatedUser));
+      const u = { ...user, credits };
+      setUser(u);
+      localStorage.setItem("user_data", JSON.stringify(u));
     }
   };
 
@@ -278,9 +223,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     verificationStatus?: "pending" | "verified" | "rejected"
   ) => {
     if (user) {
-      const updatedUser = { ...user, isVerified, verificationStatus };
-      setUser(updatedUser);
-      localStorage.setItem("user_data", JSON.stringify(updatedUser));
+      const u = { ...user, isVerified, verificationStatus };
+      setUser(u);
+      localStorage.setItem("user_data", JSON.stringify(u));
     }
   };
 

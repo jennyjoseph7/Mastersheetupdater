@@ -1,3 +1,5 @@
+import { triggerGlobalLogout } from "@/lib/auth-context";
+
 const getApiBaseUrl = () => {
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -8,12 +10,44 @@ const getApiBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
+// Helper function to get cookie (moved to top for initialization)
+function getCookieFromDocument(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(";");
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === " ") c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) {
+      const value = c.substring(nameEQ.length, c.length);
+      // Decode URI component in case cookie was encoded
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    }
+  }
+  return null;
+}
+
+// Get credentials from cookies for default headers
+const token = getCookieFromDocument("gryd_token");
+const sessionId = getCookieFromDocument("gryd_session_id");
+let applicationId = getCookieFromDocument("gryd_application_id");
+
+// CRITICAL FIX: Always use "autocrm", never "gryd"
+if (applicationId === "gryd" || !applicationId) {
+  applicationId = "autocrm";
+}
+
 const DEFAULT_HEADERS = {
   "Content-Type": "application/json",
   Accept: "application/json",
   "X-GRYD-ENTERPRISE-ID": "autocrm",
-  "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
-  "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
+  "X-GRYD-TOKEN": token || "", // Removed hardcoded fallback
+  "X-GRYD-SESSION-ID": sessionId || "", // Removed hardcoded fallback
+  "X-GRYD-APPLICATION-ID": applicationId,
   "X-GRYD-ROLE": "agent",
 };
 
@@ -25,9 +59,26 @@ export async function api(
 ) {
   const fullUrl = `${API_BASE_URL}${endpoint}`;
 
+  // Re-fetch cookies to ensure headers are fresh on every request (fixes SPA navigation issues)
+  const freshToken = getCookieFromDocument("gryd_token");
+  const freshSessionId = getCookieFromDocument("gryd_session_id");
+  let freshAppId = getCookieFromDocument("gryd_application_id");
+  if (freshAppId === "gryd" || !freshAppId) freshAppId = "autocrm";
+
+  // --- MISSING COOKIE CHECK ---
+  if (!freshToken || !freshSessionId) {
+    console.warn(`[API] Missing credentials for ${fullUrl}. Triggering logout...`);
+    triggerGlobalLogout();
+    throw new Error("Authentication required");
+  }
+  // ----------------------------
+
   // Merge headers - customHeaders override DEFAULT_HEADERS
   const headers: Record<string, string> = {
     ...DEFAULT_HEADERS,
+    "X-GRYD-TOKEN": freshToken,
+    "X-GRYD-SESSION-ID": freshSessionId,
+    "X-GRYD-APPLICATION-ID": freshAppId,
     ...customHeaders,
   };
 
@@ -59,6 +110,13 @@ export async function api(
     Object.fromEntries(res.headers.entries())
   );
 
+  // --- AUTO-LOGOUT CHECK ---
+  if (res.status === 401) {
+    console.warn(`[API] 401 detected at ${fullUrl}. Triggering logout...`);
+    triggerGlobalLogout();
+  }
+  // -------------------------
+
   if (!res.ok) {
     const errorText = await res.text();
     console.error(`[API] Error response (${res.status}):`, errorText);
@@ -87,9 +145,16 @@ export async function fetchPersonObjects() {
     applicationId = "autocrm";
   }
 
-  // Fallback to hardcoded credentials if user credentials not available
-  const finalToken = token || "53014452-7df1-351c-9b79-af13d3d6b92f";
-  const finalSessionId = sessionId || "94b970d4-5c2b-3762-bf65-272901d0ad53";
+  // --- MISSING COOKIE CHECK ---
+  if (!token || !sessionId) {
+    console.warn("[Fetch Person Objects] Missing credentials. Triggering logout...");
+    triggerGlobalLogout();
+    throw new ApiError(401, "Authentication required");
+  }
+  // ----------------------------
+
+  const finalToken = token;
+  const finalSessionId = sessionId;
 
   // Call backend directly
   const backendUrl = `${API_BASE_URL}/gryd/db/objects/person`;
@@ -115,6 +180,12 @@ export async function fetchPersonObjects() {
   });
 
   console.log(`[Fetch Person Objects] Response status: ${res.status}`);
+
+  // --- AUTO-LOGOUT CHECK ---
+  if (res.status === 401) {
+    triggerGlobalLogout();
+  }
+  // -------------------------
 
   if (!res.ok) {
     let errorMessage = `Failed to fetch person objects (${res.status})`;
@@ -317,6 +388,7 @@ export async function dealershipUpdateDetails(
   }
 
   if (!token || !sessionId) {
+    triggerGlobalLogout(); // Added auto-logout
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
@@ -355,6 +427,12 @@ export async function dealershipUpdateDetails(
   });
 
   console.log(`[Dealership Update Details] Response status: ${res.status}`);
+
+  // --- AUTO-LOGOUT CHECK ---
+  if (res.status === 401) {
+    triggerGlobalLogout();
+  }
+  // -------------------------
 
   if (!res.ok) {
     let errorMessage = `Request failed (${res.status})`;
@@ -460,27 +538,6 @@ export interface DealershipDetailsResponse {
   [key: string]: any; // Dealership data structure may vary
 }
 
-// Helper function to get cookie (for use in non-client contexts)
-function getCookieFromDocument(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const nameEQ = name + "=";
-  const ca = document.cookie.split(";");
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i];
-    while (c.charAt(0) === " ") c = c.substring(1, c.length);
-    if (c.indexOf(nameEQ) === 0) {
-      const value = c.substring(nameEQ.length, c.length);
-      // Decode URI component in case cookie was encoded
-      try {
-        return decodeURIComponent(value);
-      } catch {
-        return value;
-      }
-    }
-  }
-  return null;
-}
-
 export async function getDealershipDetails(): Promise<DealershipDetailsResponse> {
   // Get credentials from cookies
   const userId = getCookieFromDocument("gryd_user_id");
@@ -494,6 +551,7 @@ export async function getDealershipDetails(): Promise<DealershipDetailsResponse>
   }
 
   if (!userId || !token || !sessionId) {
+    triggerGlobalLogout(); // Added auto-logout
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
@@ -524,6 +582,12 @@ export async function getDealershipDetails(): Promise<DealershipDetailsResponse>
   });
 
   console.log(`[Get Dealership Details] Response status: ${res.status}`);
+
+  // --- AUTO-LOGOUT CHECK ---
+  if (res.status === 401) {
+    triggerGlobalLogout();
+  }
+  // -------------------------
 
   if (!res.ok) {
     let errorMessage = `Failed to fetch dealership details (${res.status})`;
@@ -587,6 +651,7 @@ export async function createWorkshop(
   }
 
   if (!token || !sessionId) {
+    triggerGlobalLogout(); // Added auto-logout
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
@@ -615,6 +680,12 @@ export async function createWorkshop(
   });
 
   console.log(`[Create Workshop] Response status: ${res.status}`);
+
+  // --- AUTO-LOGOUT CHECK ---
+  if (res.status === 401) {
+    triggerGlobalLogout();
+  }
+  // -------------------------
 
   if (!res.ok) {
     let errorMessage = `Failed to create workshop (${res.status})`;
@@ -650,6 +721,7 @@ export async function getWorkshopsForDealership(
   }
 
   if (!token || !sessionId) {
+    triggerGlobalLogout(); // Added auto-logout
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
@@ -678,6 +750,12 @@ export async function getWorkshopsForDealership(
   });
 
   console.log(`[Get Workshops] Response status: ${res.status}`);
+
+  // --- AUTO-LOGOUT CHECK ---
+  if (res.status === 401) {
+    triggerGlobalLogout();
+  }
+  // -------------------------
 
   if (!res.ok) {
     // If 404, return empty array (no workshops found)
@@ -757,6 +835,7 @@ export async function createShowroom(
   }
 
   if (!token || !sessionId) {
+    triggerGlobalLogout(); // Added auto-logout
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
@@ -785,6 +864,12 @@ export async function createShowroom(
   });
 
   console.log(`[Create Showroom] Response status: ${res.status}`);
+
+  // --- AUTO-LOGOUT CHECK ---
+  if (res.status === 401) {
+    triggerGlobalLogout();
+  }
+  // -------------------------
 
   if (!res.ok) {
     let errorMessage = `Failed to create showroom (${res.status})`;
@@ -820,6 +905,7 @@ export async function getShowroomsForDealership(
   }
 
   if (!token || !sessionId) {
+    triggerGlobalLogout(); // Added auto-logout
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
@@ -848,6 +934,12 @@ export async function getShowroomsForDealership(
   });
 
   console.log(`[Get Showrooms] Response status: ${res.status}`);
+
+  // --- AUTO-LOGOUT CHECK ---
+  if (res.status === 401) {
+    triggerGlobalLogout();
+  }
+  // -------------------------
 
   if (!res.ok) {
     if (res.status === 404) {
@@ -919,6 +1011,7 @@ export async function createBuybackCenter(
   }
 
   if (!token || !sessionId) {
+    triggerGlobalLogout(); // Added auto-logout
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
@@ -950,6 +1043,12 @@ export async function createBuybackCenter(
   });
 
   console.log(`[Create Buyback Center] Response status: ${res.status}`);
+
+  // --- AUTO-LOGOUT CHECK ---
+  if (res.status === 401) {
+    triggerGlobalLogout();
+  }
+  // -------------------------
 
   if (!res.ok) {
     let errorMessage = `Failed to create buyback center (${res.status})`;
@@ -985,6 +1084,7 @@ export async function getBuybackCentersForDealership(
   }
 
   if (!token || !sessionId) {
+    triggerGlobalLogout(); // Added auto-logout
     throw new ApiError(401, "Authentication required. Please login again.");
   }
 
@@ -1013,6 +1113,12 @@ export async function getBuybackCentersForDealership(
   });
 
   console.log(`[Get Buyback Centers] Response status: ${res.status}`);
+
+  // --- AUTO-LOGOUT CHECK ---
+  if (res.status === 401) {
+    triggerGlobalLogout();
+  }
+  // -------------------------
 
   if (!res.ok) {
     if (res.status === 404) {

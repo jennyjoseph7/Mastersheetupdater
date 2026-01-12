@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+// Import shared logic
+import { APP_BASE_URL, createApiHeaders } from "@/utils/headers"; // Adjust path to where header.ts is located
 
 const getApiBaseUrl = () => {
   // Check for explicit environment variable override
@@ -12,49 +14,39 @@ const getApiBaseUrl = () => {
 };
 
 export const API_BASE_URL = getApiBaseUrl();
-export async function GET(request: Request) {
+ export async function GET() {
+  const cookieStore = cookies();
+  
+ // 1. Get credentials from Server Cookies
+  let token = cookieStore.get("gryd_token")?.value;
+  let sessionId = cookieStore.get("gryd_session_id")?.value;
+  let applicationId = cookieStore.get("gryd_application_id")?.value;
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+   
+  if (!token || !sessionId) {
+    console.warn("[Audience Task API] Missing credentials. Returning 401.");
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 }
+    );
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
-    const campaignType = searchParams.get("campaign_type");
+    // 3. Generate Headers using the shared helper
+    // Note: We override role to 'admin' as per your original requirement
+    const headers = createApiHeaders({
+      token,
+      sessionId,
+      applicationId,
+      role: "admin", 
+    });
 
-    if (!campaignType) {
-      return NextResponse.json(
-        { error: "campaign_type parameter is required" },
-        { status: 400 }
-      );
-    }
-    // Get credentials from cookies (set during login)
-    let token = cookies().get("gryd_token")?.value;
-    let sessionId = cookies().get("gryd_session_id")?.value;
-    let applicationId = cookies().get("gryd_application_id")?.value;
-
-    // CRITICAL FIX: Always use "autocrm", never "gryd"
-    // Backend returns "gryd" sometimes, but we need "autocrm"
-    if (applicationId === "gryd" || !applicationId) {
-      applicationId = "autocrm";
-    }
-
-    // Fallback to hardcoded credentials if user credentials not available
-    // These match the curl that works successfully
-    if (!token || !sessionId) {
-      console.log("[Campaign Objectives API] Using fallback hardcoded credentials");
-      token = "53014452-7df1-351c-9b79-af13d3d6b92f";
-      sessionId = "94b970d4-5c2b-3762-bf65-272901d0ad53";
-    } else {
-      console.log("[Campaign Objectives API] Using user credentials from cookies");
-    }
-    
-    console.log("[Campaign Objectives API] Application ID (fixed):", applicationId);
-    
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": token,
-      "X-GRYD-SESSION-ID": sessionId,
-      "X-GRYD-APPLICATION-ID": applicationId,
-      "X-GRYD-ROLE": "admin",
-    };
+    console.log("[Audience Task API] Application ID used:", headers["X-GRYD-APPLICATION-ID"]);
 
     const url = `${API_BASE_URL}/campaign_objective?campaign_type=${campaignType}`;
     console.log("[API Route] Fetching from:", url);
