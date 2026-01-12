@@ -267,10 +267,12 @@ async function getTaskResult(taskId) {
 }
 
 //  Fetch Audience List (For Table) ---
-async function fetchAudienceTasks() {
-  return fetchAPIData("audience_task");
+async function fetchAudienceTasks(page = 1, pageSize = 50) {
+  return fetchAPIData("audience_task", { 
+    page_number: page, 
+    page_size: pageSize 
+  });
 }
-
 // --- NEW: Fetch Campaign Objectives ---
 async function fetchCampaignObjectives(campaignType) {
   const type = campaignType ? campaignType.replace(/_/g, "-") : "";
