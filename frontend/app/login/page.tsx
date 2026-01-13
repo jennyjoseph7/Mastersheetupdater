@@ -57,11 +57,11 @@ export default function LoginPage() {
     if (isRecaptchaEnabled) {
       console.log(
         // "[reCAPTCHA] Site key loaded:",
-        recaptchaSiteKey.substring(0, 10) + "..."
+        // recaptchaSiteKey.substring(0, 10) + "..."
       );
       console.log(
         // "[reCAPTCHA] Current domain:",
-        typeof window !== "undefined" ? window.location.hostname : "server"
+        // typeof window !== "undefined" ? window.location.hostname : "server"
       );
     } else {
       console.warn(
