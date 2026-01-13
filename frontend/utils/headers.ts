@@ -1,59 +1,119 @@
-// lib/api.ts
+import { triggerGlobalLogout } from "@/lib/auth-context";
 
-// Always use production URL
+// 1. Centralized Base URL Logic (Environment Aware)
 const getAppBaseUrl = () => {
+  // Allow environment override if needed, otherwise default to prod
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+  
   const url = "https://autobot-webapp-dev.gryd.in";
   console.log(`[APP_ENV] Using production URL -> ${url}`);
   return url;
 };
 
-const APP_BASE_URL = getAppBaseUrl();
+export const APP_BASE_URL = getAppBaseUrl();
+
+// 2. Types for the Header Helper
+interface HeaderParams {
+  token: string | null | undefined;
+  sessionId: string | null | undefined;
+  applicationId: string | null | undefined;
+  role?: string; // Optional, defaults to "agent"
+}
+
+// 3. Reusable Header Generator (Works on Server & Client)
+export const createApiHeaders = ({
+  token,
+  sessionId,
+  applicationId,
+  role = "agent", // Default role
+}: HeaderParams) => {
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  // logic moved here to be shared across the app
+  const finalAppId = (!applicationId || applicationId === "gryd") 
+    ? "autocrm" 
+    : applicationId;
+
+  return {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "X-GRYD-ENTERPRISE-ID": "autocrm",
+    "X-GRYD-TOKEN": token || "",
+    "X-GRYD-SESSION-ID": sessionId || "",
+    "X-GRYD-APPLICATION-ID": finalAppId,
+    "X-GRYD-ROLE": role,
+  };
+};
+
+// ------------------------------------------------------------------
+// CLIENT-SIDE SPECIFIC LOGIC (Legacy support for existing imports)
+// ------------------------------------------------------------------
 
 // Helper: read cookie safely in browser
 const getCookie = (name: string) => {
   if (typeof document === "undefined") return null;
-
-  const match = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith(name + "="));
-
+  const match = document.cookie.split("; ").find((row) => row.startsWith(name + "="));
   return match ? match.split("=")[1] : null;
 };
 
 // Read cookies (browser-safe)
-let token = getCookie("gryd_token");
-let sessionId = getCookie("gryd_session_id");
-let applicationId = getCookie("gryd_application_id");
+const clientToken = getCookie("gryd_token");
+const clientSessionId = getCookie("gryd_session_id");
+const clientAppId = getCookie("gryd_application_id");
 
-// Fallback (curl-tested credentials)
-if (!token || !sessionId) {
-  console.log("[Create Workshop API] Using fallback hardcoded credentials");
-  token = "53014452-7df1-351c-9b79-af13d3d6b92f";
-  sessionId = "94b970d4-5c2b-3762-bf65-272901d0ad53";
-} else {
-  console.log("[Create Workshop API] Using user credentials from cookies");
+// Auto-Logout Logic (Client Side Only)
+if (typeof document !== "undefined" && (!clientToken || !clientSessionId)) {
+  console.warn("[API] Missing credentials in cookies. Triggering auto-logout...");
+  triggerGlobalLogout();
 }
 
-const HEADERS = {
-  "Content-Type": "application/json",
-  "X-GRYD-ENTERPRISE-ID": "autocrm",
-  "X-GRYD-TOKEN": token,
-  "X-GRYD-SESSION-ID": sessionId,
-  "X-GRYD-APPLICATION-ID": applicationId || "autocrm",
-  "X-GRYD-ROLE": "agent",
-};
+// Export static HEADERS for existing client-side code
+export const HEADERS = createApiHeaders({
+  token: clientToken,
+  sessionId: clientSessionId,
+  applicationId: clientAppId,
+  role: "agent"
+});
 
-const FILE_UPLOAD_URL = "https://file-prod.gryd.in/media/document";
+export const FILE_UPLOAD_URL = "https://file-prod.gryd.in/media/document";
 
-const FILE_UPLOAD_HEADERS = {
+export const FILE_UPLOAD_HEADERS = {
   "X-I2CE-ENTERPRISE-ID": "gryd_file_system",
   "X-I2CE-USER-ID": "abhishek+file-gryd@iamdave.ai",
   "X-I2CE-API-KEY": "4bd3fe53-02bf-3918-8e27-53095dd0e32b",
 };
 
-export {
-  APP_BASE_URL,
-  HEADERS,
-  FILE_UPLOAD_URL,
-  FILE_UPLOAD_HEADERS,
+// Wrapper to handle 401s on individual requests
+export const authenticatedFetch = async (
+  endpoint: string,
+  options: RequestInit = {}
+) => {
+  const freshToken = getCookie("gryd_token") || clientToken;
+  const freshSessionId = getCookie("gryd_session_id") || clientSessionId;
+
+  // Use the shared helper to generate headers with fresh cookies
+  const dynamicHeaders = {
+    ...createApiHeaders({
+      token: freshToken,
+      sessionId: freshSessionId,
+      applicationId: getCookie("gryd_application_id"),
+      role: "agent"
+    }),
+    ...(options.headers || {}),
+  };
+
+  const url = endpoint.startsWith("http") ? endpoint : `${APP_BASE_URL}${endpoint}`;
+
+  const response = await fetch(url, {
+    ...options,
+    headers: dynamicHeaders as HeadersInit,
+  });
+
+  if (response.status === 401) {
+    console.warn("[API] 401 Unauthorized detected. Triggering logout...");
+    triggerGlobalLogout();
+  }
+
+  return response;
 };
