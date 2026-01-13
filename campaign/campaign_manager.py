@@ -22,6 +22,7 @@ from communication.connectors.communication_helpers import _wait_for_next_minute
 
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 from agents.get_whatsapp_template_agent import get_whatsapp_template
+from agents.get_email_template_agent import get_email_template
 from communication.connectors.email_communication import communication_sender
 from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,WHATSAPP_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
@@ -389,11 +390,11 @@ class BaseCustomCampaignManager:
                 gryd.create_async_task('trigger_voice_call', AUTOCRM_VOICE_SERVICE_NAME, args=[],kwargs={"user_data":d})
                 # send_voice_campaign_message(campaign_user_data.get("mobile_number"),campaign_user_data,campaign_details_data,VOICE_CAMPAIGN_BASE_URL)
                 # TODO call nikit task for voice
-                pass
             elif channel.upper()=="EMAIL":
                 logger.info("Sending Email campaign---")
                 # logger.info(f"[email_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
                 email_p=format_email_payload(campaign_data,campaign_users[0])
+                # logger.info(f"email_p--{json.dumps(email_p,indent=4)}")
                 communication_sender(**email_p)
             else:
                 logger.error(f"Unsupported channel: {channel}")
@@ -755,19 +756,28 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         # sender_name=email_cred.get("sender_name")
         sender_name=EMAIL_SENDER_NAME
         provider_name = EMAIL_PROVIDER_NAME
-        #TODO:call prince task to get the email message and suitable subject.
+        
+        template_data= get_email_template(
+            lead_id=lead_id,
+            campaign_type=campaign_type,
+            campaign_objective= campaign_details.get("campaign_objective") if campaign_details.get("campaign_objective") else ["Free Service Due Reminder"],
+            lead_info={}
+        )
+        if not template_data:
+            yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
+            return
+        template_data = template_data[0]
+        logger.info(f"Template ID for email={lead_data.get('email')}: {template_data.get('template_id')}")
         template_data={
-            "subject": "Service Reminder",
-            "message": "This is a service reminder. Please visit your nearest service centre or contact us for assistance."
+            "subject": template_data.get("email_subject"),
+            "message": template_data.get("email_body")
         }
+        logger.info(f"Template Data: {template_data}")
     elif channel in ("whatsapp_chat", "sms", "rcs"):
         template_data = get_whatsapp_template(
             lead_id=lead_id,
             campaign_type=campaign_type,
-            campaign_objective=campaign_details.get("campaign_objective"),
-            # campaign_objective= [
-            #     "Service Reminder"
-            # ],
+            campaign_objective= campaign_details.get("campaign_objective") if campaign_details.get("campaign_objective") else ["Free Service Reminder"],
             # dealership_id = lead_data.get("dealership_id"), //for later
             lead_info={}
         )
@@ -897,11 +907,11 @@ def get_channel(lead, campaign_details):
         return preferred
 
     # check for Campaign channels and use the first channel.
-    channels = campaign_details.get("channels") or ["voice_phone"]
+    channels = campaign_details.get("channels") or ["whatsapp_chat"]
     if len(channels) > 0:
         return channels[0]
 
-    return "voice_phone"  #fallback
+    return "whatsapp_chat"  #fallback
 
 def get_variable_values(template_variables, lead_data, selected_person=None):
     """
@@ -935,17 +945,28 @@ def format_email_payload(campaign_data,campaign_user):
             "email": EMAIL_SENDER_NAME or campaign_data.get("sender"),
         },
         "receiver":{
-            # "emails": [campaign_user.get("email")] TODO: Later get this from campaign_user
-            "emails": ["praveen@iamdave.ai"]
-            
+            "emails": ["praveen@iamdave.ai"] if not campaign_user.get("email") else [campaign_user.get("email")]
         },
         "html_string": campaign_data.get("message"),
         "subject": campaign_data.get("subject"),
         "provider": EMAIL_PROVIDER_NAME or campaign_data.get("provider_name"),
         "files": [
             campaign_data.get("files") or None
-            ]
+            ],
+        "lead_data":{
+             "lead_id": campaign_user.get("lead_id"),
+        "campaign_id": campaign_data.get("campaign_id"),
+        "campaign_type":campaign_data.get("campaign_type"),
+        "email":campaign_user.get("email"),
+        "dealership_id":campaign_data.get("dealership_id"),
+        "channel_provider":EMAIL_PROVIDER_NAME,
+        "channel":"email" ,
+        "campaign_model": "post_sales_campaign" if campaign_data.get("campaign_type")=="post-sales" else "pre_sales_campaign" 
+                    
+        }
+       
     }
+    
     p_filters = {k: v for k, v in p.items() if v not in [None ,[],[None]]}
     
     return p_filters

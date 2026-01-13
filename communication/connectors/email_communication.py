@@ -166,6 +166,7 @@ class Communication:
         return args, task_kwargs
 
     def send_mail(self, **kwargs):
+        
         receiver_emails = kwargs.get("receiver", {}).get("emails", [])
         if not receiver_emails:
             logger.error("❌ No receiver emails found")
@@ -193,8 +194,10 @@ class Communication:
             logger.info(f"📤 Sending email to: {recipient}")
             logger.debug(f"ARGS: {args}")
             logger.debug(f"KWARGS: {task_kwargs}")
+            d=kwargs.get("lead_data",{})
+            d["email"]=recipient
             if  kwargs.get("_run_async",True):
-                res =gryd.create_async_task(START_MAIL_TASK, GRYD_COMMUNICATION_SERVICE, args=args, kwargs=task_kwargs)
+                res =gryd.create_async_task(START_MAIL_TASK, GRYD_COMMUNICATION_SERVICE, args=args, kwargs={**d,**task_kwargs})
                 communication_ids.append({
                                         "communication_id":task_kwargs.get("communication_id"),
                                         "task_id":res.get("job",{}).get("task_id"),
@@ -204,7 +207,7 @@ class Communication:
             else:
                 try:
                     from communication.connectors.connector_mail import gryd_start_mail
-                    task_response=gryd_start_mail(*args,**task_kwargs)
+                    task_response=gryd_start_mail(*args,kwargs={**d,**task_kwargs})
                     communication_ids.append(
                         {
                             "communication_id":task_kwargs.get("communication_id"),
@@ -217,6 +220,7 @@ class Communication:
         return {"email_status":"Task Placed Successfully" if communication_ids else "Failed To Place Email Task","communication_ids":communication_ids }
 
     def send(self, **kwargs):
+        
         receiver = kwargs.get("receiver") or kwargs.get("recipient") or {}
         logger.info("Receiver: %s", receiver)
         self.files = kwargs.get("files", [])
@@ -229,6 +233,7 @@ class Communication:
 
         for channel in self.get_preferred_channels(receiver, kwargs.get("channels")):
             if channel in {"email", "mail"}:
+                
                 return self.send_mail(**kwargs)
 
 
