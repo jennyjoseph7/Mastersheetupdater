@@ -173,6 +173,12 @@ const channels = [
     icon: <MessageSquareText className="h-6 w-6" />,
     costPerUnit: 0.9525,
   },
+  {
+    id: "sms",
+    name: "SMS",
+    icon: <MessageSquareText className="h-6 w-6" />, // Reusing icon for example
+    costPerUnit: 0.12, // Example cost
+  },
 ];
 
 const languageOptions = [
@@ -195,6 +201,7 @@ const mapChannels = (selectedIds: string[]) => {
     email: "email",
     voice: "voice_phone",
     rcs: "rcs_message",
+    sms: "sms_message",
   };
   return selectedIds.map((c) => map[c] || c);
 };
@@ -295,7 +302,7 @@ function CampaignCreateContent() {
   const [targetAudience, setTargetAudience] = useState<string[]>([]);
   const [selectedAudienceDetails, setSelectedAudienceDetails] = useState<any>(
     null
-  ); // Store selected audience details for display even after pagination
+  ); 
   const [audienceTasks, setAudienceTasks] = useState<any[]>([]);
   const [isLoadingAudience, setIsLoadingAudience] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
@@ -303,7 +310,7 @@ function CampaignCreateContent() {
   // Pagination State
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const ITEMS_PER_PAGE = 10;
+  const ITEMS_PER_PAGE = 5;
 
   // Custom Attributes
   const [carModel, setCarModel] = useState("");
@@ -352,20 +359,34 @@ function CampaignCreateContent() {
     setSelectedAudienceDetails(null);
   }, [campaignType]);
 
-  // Fetch Audience Tasks with Pagination
+  // --- AUDIENCE FETCHING FIX ---
   const loadAudienceData = async (currentPage = 1) => {
     setIsLoadingAudience(true);
+    const fetchcount = 10; // ITEMS_PER_PAGE;
     try {
       // Calling updated API with pagination parameters
-      const res = await fetchAudienceTasks(currentPage, ITEMS_PER_PAGE);
-      setAudienceTasks(res.items || []);
+      const res: any = await fetchAudienceTasks(currentPage, fetchcount);
+      console.log("Fetched Audience Response:", res);
+      // FIX: Robust check for items and total_number based on response structure
+      let items = [];
+      let total = 0;
+
+      if (res.items && Array.isArray(res.items)) {
+         // Case 1: Helper returns mapped object { items: [], total_number: N }
+         items = res.items;
+         total = res.total || 0; 
+      } else if (res.data && Array.isArray(res.data)) {
+         // Case 2: Raw API response { data: [], total_number: N }
+         items = res.data;
+         total = res.total || 0;
+      } else if (Array.isArray(res)) {
+         // Case 3: Just an array (fallback, no total)
+         items = res;
+         
+      }
       
-      // Use type assertion (as any) to access properties that TS doesn't know about yet
-      const responseData = res as any;
-      const total = responseData.total_number || 0;
-      const size = responseData.page_size || ITEMS_PER_PAGE;
-      
-      setTotalPages(Math.ceil(total / size));
+      setAudienceTasks(items);
+      setTotalPages(Math.ceil(total / fetchcount));
       
     } catch (e) {
       console.error("Failed to fetch audience", e);
@@ -1381,7 +1402,7 @@ function CampaignCreateContent() {
                                 <ChevronLeft className="h-4 w-4" />
                               </Button>
                               <span className="text-xs text-muted-foreground font-medium">
-                                Page {page} of {totalPages}
+                                Page {page} of {totalPages || 1}
                               </span>
                               <Button
                                 variant="ghost"
