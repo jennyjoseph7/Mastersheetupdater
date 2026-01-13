@@ -353,7 +353,7 @@ export default function LoginPage() {
         </Card>
 
         {/* Footer */}
-        <p className="text-center text-sm text-muted-foreground mt-6">
+        {/* <p className="text-center text-sm text-muted-foreground mt-6">
           By signing in, you agree to our{" "}
           <Link
             href="/terms"
@@ -368,8 +368,10 @@ export default function LoginPage() {
           >
             Privacy Policy
           </Link>
+        </p> */}
+ <p className="text-center text-sm text-muted-foreground mt-6">
+        By signing in, you agree to our Terms of Service and Privacy Policy
         </p>
-
         {/* Made by Dave AI */}
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
