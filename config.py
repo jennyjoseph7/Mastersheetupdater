@@ -179,9 +179,12 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
     data_name = m.name
     linenum = 0
     list_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('list', 'string_list', 'stringlist', 'number_list', 'numberlist'),  m.attributes.items()))))
-    object_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('nested_object'),  m.attributes.items()))))
-    object_list_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('object_list'),  m.attributes.items()))))
-    bool_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('bool'),  m.attributes.items()))))
+    object_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('nested_object',),  m.attributes.items()))))
+    object_list_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('object_list',),  m.attributes.items()))))
+    bool_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('bool',),  m.attributes.items()))))
+    logger.info("List keys: %s", list_keys)
+    logger.info("Dict keys: %s", object_keys)
+    logger.info("Dict List keys: %s", object_list_keys)
     logger.info(f"Posting data: {data_name} from filename: {filename_csv}")
     try:
         with open(filename_csv, encoding="utf-8") as f:
@@ -201,9 +204,13 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
                         raise ValueError(f"Incorrect boolean value {row[k]}")
                 for k in list_keys:
                     rk = row[k]
-                    row[k] = list(map(lambda x: x.strip(), rk.split(',')))
-                    logger.info("Converting list attribute %s: %s -> %s", k, rk, row[k])
+                    logger.info("Converting list attribute %s: %s", k, rk)
+                    rok = list(map(lambda x: x.strip(), rk.split(',')))
+                    row[k] = list(filter(lambda x: x, rok)) or None
+                    logger.info("Converted list attribute %s: %s -> %s", k, rk, row[k])
                 for k in object_keys:
+                    rk = row[k]
+                    logger.info("Converting dict attribute %s: %s", k, rk)
                     r = {}
                     mr = list(map(lambda x: x.strip(), row[k].split(',')))
                     try:
@@ -211,9 +218,12 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
                     except ValueError as e:
                         raise ValueError(f"Value for for attribute {k} is not parseable into nested_object: {row[k]}")
                     else:
-                        row[k] = r
+                        row[k] = r or None
+                        logger.info("Converted dict attribute %s: %s -> %s", k, rk, row[k])
                 for k in object_list_keys:
+                    rk = row[k]
                     r = []
+                    logger.info("Converting object list attribute %s: %s", k, rk)
                     mrl = list(map(lambda x: x.strip(), row[k].split('|')))
                     for mk in mrl:
                         try:
@@ -222,7 +232,8 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
                             raise ValueError(f"Value for for attribute {k} is not parseable into nested_object: {row[k]}")
                         else:
                             r.append(rk)
-                    row[k] = r
+                    row[k] = r or None
+                    logger.info("Converted object list attribute %s: %s -> ", k, rk, row[k])
                 row = {k:v for k, v in row.items() if v not in (None, '')}
                 m.post(row)
                 logger.info(f"Data posted successfully: {data_name}, linenum {linenum}")
