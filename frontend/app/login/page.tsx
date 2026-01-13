@@ -56,16 +56,16 @@ export default function LoginPage() {
   useEffect(() => {
     if (isRecaptchaEnabled) {
       console.log(
-        "[reCAPTCHA] Site key loaded:",
+        // "[reCAPTCHA] Site key loaded:",
         recaptchaSiteKey.substring(0, 10) + "..."
       );
       console.log(
-        "[reCAPTCHA] Current domain:",
+        // "[reCAPTCHA] Current domain:",
         typeof window !== "undefined" ? window.location.hostname : "server"
       );
     } else {
       console.warn(
-        "[reCAPTCHA] Site key not found. Add NEXT_PUBLIC_RECAPTCHA_SITE_KEY to .env.local"
+        // "[reCAPTCHA] Site key not found. Add NEXT_PUBLIC_RECAPTCHA_SITE_KEY to .env.local"
       );
     }
   }, [recaptchaSiteKey, isRecaptchaEnabled]);
