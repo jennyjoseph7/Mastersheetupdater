@@ -23,16 +23,36 @@ import {
 } from "lucide-react";
 import type { DataSourceFormData } from "../add-data-source-dialog";
 import { APP_BASE_URL } from "@/utils/headers";
+const getCookie = (name: string) => {
+  if (typeof document === "undefined") return null;
+
+  const match = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(name + "="));
+
+  return match ? match.split("=")[1] : null;
+};
 
 // Configuration (Move to env or constants in real app)
 const BASE_URL = APP_BASE_URL;
+  /// Get credentials from browser cookies
+let token = getCookie("gryd_token");
+let sessionId = getCookie("gryd_session_id");
 
+// Fallback to hardcoded credentials
+if (!token || !sessionId) {
+  console.log("[Create Workshop API] Using fallback hardcoded credentials");
+  token = "53014452-7df1-351c-9b79-af13d3d6b92f";
+  sessionId = "94b970d4-5c2b-3762-bf65-272901d0ad53";
+} else {
+  console.log("[Create Workshop API] Using user credentials from cookies");
+}
 const API_HEADERS = {
   "Content-Type": "application/json",
   "Accept": "application/json",
   "X-GRYD-ENTERPRISE-ID": "autocrm",
-  "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
-  "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
+  "X-GRYD-TOKEN": token,
+  "X-GRYD-SESSION-ID": sessionId,
   "X-GRYD-ROLE": "agent",
 };
 

@@ -3,7 +3,20 @@
 export function setCookie(name: string, value: string, days: number = 7) {
   const expires = new Date();
   expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+  
+  // For production, ensure cookies work across subdomains and HTTPS
+  const isProduction = typeof window !== "undefined" && 
+    (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1");
+  
+  // Build cookie string with appropriate settings
+  let cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+  
+  // In production, add Secure flag for HTTPS and don't set domain (allows subdomains)
+  if (isProduction && window.location.protocol === "https:") {
+    cookieString += ";Secure";
+  }
+  
+  document.cookie = cookieString;
 }
 
 export function getCookie(name: string): string | null {

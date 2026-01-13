@@ -1,50 +1,89 @@
 {
-    "region": [
-        {
-            "read_access": true,
-            "role": "human_agent"
-        }
-    ],
-    "region_subdivision": [
-        {
-            "read_access": true,
-            "role": "human_agent"
-        }
-    ],
-    "dealer_group": [
-        {
-            "read_access": true,
-            "role": "human_agent"
-        }
-    ],
-    "dealership": [
-        {
-            "read_access": true,
-            "role": "human_agent"
-        }
-    ],
-    "workshop": [
-        {
-            "read_access": true,
-            "role": "human_agent",
-            "write_access": true,
-            "delete_access": true
-        }
-    ],
-    "showroom": [
-        {
-            "read_access": true,
-            "role": "human_agent",
-            "write_access": true,
-            "delete_access": true
-        }
-    ],
-    "buyback": [
-        {
-            "read_access": true,
-            "role": "human_agent",
-            "write_access": true,
-            "delete_access": true
-        }
-    ]
+  "campaign_objective": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "audience_task": [
+    {
+      "read_access": true,
+      "role": "human_agent",
+      "write_access": true
+    }
+  ],
+  "region": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "region_subdivision": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "dealer_group": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "dealership": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "workshop": [
+    {
+      "read_access": true,
+      "role": "human_agent",
+      "write_access": true,
+      "delete_access": true
+    }
+  ],
+  "showroom": [
+    {
+      "read_access": true,
+      "role": "human_agent",
+      "write_access": true,
+      "delete_access": true
+    }
+  ],
+  "buyback_center": [
+    {
+      "read_access": true,
+      "role": "human_agent",
+      "write_access": true,
+      "delete_access": true
+    }
+  ],
+  "post_sales_campaign": [
+    {
+      "read_access": true,
+       "write_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "campaign_summary": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "pre_sales_campaign": [
+    {
+      "read_access": true,
+       "write_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "template": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ]
 }

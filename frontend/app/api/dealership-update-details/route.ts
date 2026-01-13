@@ -35,7 +35,13 @@ export async function POST(request: NextRequest) {
     // Get credentials from cookies (set during login)
     const token = getCookieFromRequest(request, "gryd_token");
     const sessionId = getCookieFromRequest(request, "gryd_session_id");
-    const applicationId = getCookieFromRequest(request, "gryd_application_id");
+    let applicationId = getCookieFromRequest(request, "gryd_application_id");
+
+    // CRITICAL FIX: Always use "autocrm", never "gryd"
+    // Backend returns "gryd" sometimes, but we need "autocrm"
+    if (applicationId === "gryd" || !applicationId) {
+      applicationId = "autocrm";
+    }
 
     if (!token || !sessionId) {
       return NextResponse.json(
@@ -54,9 +60,11 @@ export async function POST(request: NextRequest) {
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
       "X-GRYD-ROLE": "agent",
-      "X-GRYD-APPLICATION-ID": applicationId || "autocrm",
     };
+
+    console.log("[Dealership Update Details] Application ID (fixed):", applicationId);
 
     // Enhanced logging for debugging
     console.log("=".repeat(80));

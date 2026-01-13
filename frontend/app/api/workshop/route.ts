@@ -22,31 +22,40 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Get credentials from cookies (set during login)
-    let token = getCookieFromRequest(request, "gryd_token");
-    let sessionId = getCookieFromRequest(request, "gryd_session_id");
+    const token = getCookieFromRequest(request, "gryd_token");
+    const sessionId = getCookieFromRequest(request, "gryd_session_id");
+    let applicationId = getCookieFromRequest(request, "gryd_application_id");
 
-    // Fallback to hardcoded credentials if user credentials not available
-    // These match the curl that works successfully
-    if (!token || !sessionId) {
-      console.log("[Create Workshop API] Using fallback hardcoded credentials");
-      token = "53014452-7df1-351c-9b79-af13d3d6b92f";
-      sessionId = "94b970d4-5c2b-3762-bf65-272901d0ad53";
-    } else {
-      console.log("[Create Workshop API] Using user credentials from cookies");
+    // CRITICAL FIX: Always use "autocrm", never "gryd"
+    // Backend returns "gryd" sometimes, but we need "autocrm"
+    if (applicationId === "gryd" || !applicationId) {
+      applicationId = "autocrm";
     }
 
+    // Require authentication - no fallback to hardcoded credentials
+    if (!token || !sessionId) {
+      console.error("[Create Workshop API] Missing authentication credentials");
+      return NextResponse.json(
+        { error: "Authentication required. Please login again." },
+        { status: 401 }
+      );
+    }
+
+    console.log("[Create Workshop API] Using user credentials from cookies");
+    console.log("[Create Workshop API] Application ID (fixed):", applicationId);
+
     // Proxy the request to the backend
-    // Note: URL uses singular "object" not "objects" as per the working curl
+    // URL matches the curl command exactly
     const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/db/object/workshop`;
 
-    // Headers must match the curl exactly
+    // Headers must match the curl exactly, including X-GRYD-APPLICATION-ID
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
       "X-GRYD-ENTERPRISE-ID": "autocrm",
       "X-GRYD-TOKEN": token,
       "X-GRYD-SESSION-ID": sessionId,
-      "X-GRYD-ROLE": "agent",
+      "X-GRYD-APPLICATION-ID": applicationId,
     };
 
     console.log("=".repeat(80));
@@ -125,7 +134,13 @@ export async function GET(request: NextRequest) {
     // Get credentials from cookies (set during login)
     const token = getCookieFromRequest(request, "gryd_token");
     const sessionId = getCookieFromRequest(request, "gryd_session_id");
-    const applicationId = getCookieFromRequest(request, "gryd_application_id");
+    let applicationId = getCookieFromRequest(request, "gryd_application_id");
+
+    // CRITICAL FIX: Always use "autocrm", never "gryd"
+    // Backend returns "gryd" sometimes, but we need "autocrm"
+    if (applicationId === "gryd" || !applicationId) {
+      applicationId = "autocrm";
+    }
 
     if (!token || !sessionId) {
       return NextResponse.json(
@@ -151,6 +166,7 @@ export async function GET(request: NextRequest) {
     )}`;
 
     console.log("[Get Workshops API] Calling backend:", backendUrl);
+    console.log("[Get Workshops API] Application ID (fixed):", applicationId);
 
     const res = await fetch(backendUrl, {
       method: "GET",
@@ -160,7 +176,7 @@ export async function GET(request: NextRequest) {
         "X-GRYD-TOKEN": token,
         "X-GRYD-SESSION-ID": sessionId,
         "X-GRYD-ROLE": "agent",
-        "X-GRYD-APPLICATION-ID": applicationId || "autocrm",
+        "X-GRYD-APPLICATION-ID": applicationId,
       },
       cache: "no-store",
     });

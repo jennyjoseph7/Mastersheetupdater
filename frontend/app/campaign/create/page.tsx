@@ -75,6 +75,8 @@ import {
   ArrowLeft,
   Download,
   MessageSquareText,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AILoader } from "@/components/ui/ai-loader";
@@ -149,36 +151,34 @@ const ShieldCheck = (props: any) => (
 
 // Updated Channel Definitions with calculated cost factors
 const channels = [
-    {
-        id: "whatsapp",
-        name: "WhatsApp",
-        icon: <MessageSquare className="h-6 w-6" />,
-        // Formula: ((4 * 0.86 * 0.7) + (0.9 * 0.175))
-        // Formula: (( Max_contact/lead * Message Cost * Delivery Rate ) + (Response cost * Response Rate))
-        costPerUnit: 2.5655,
-    },
-    {
-        id: "email",
-        name: "Email",
-        icon: <Mail className="h-6 w-6" />,
-        // Formula: ((4 * 0.009) + ((0.9 + 0.009) * 0.175))
-        // Formula: (( Max_contact/lead * Email Cost ) + ((Response cost + Email Cost) * Response Rate))
-        costPerUnit: 0.195,
-    },
-    {
-        id: "voice",
-        icon: <Phone className="h-6 w-6" />,
-        // Formula: ((4 * 0.56 * 0.25) + ( 8 * 2 * 0.5))
-        // Formula: (( Max_contact/lead * Connect Cost * Pickup Rate ) + (Call cost * Avg Call Minutes * Response Rate)
-        costPerUnit: 8.56,
-    },
-    {
-        id: "rcs",
-        icon: <MessageSquareText className="h-6 w-6" />,
-        // Formula: ((4 * 0.2 * 0.95) + ((0.9 + 0.2) * 0.175))
-        // Formula: (( Max_contact/lead * Messgae Cost * Delivery Rate ) + ((Response cost + Message Cost) * Response Rate))
-        costPerUnit: 0.9525,
-    },
+  {
+    id: "whatsapp",
+    name: "WhatsApp",
+    icon: <MessageSquare className="h-6 w-6" />,
+    costPerUnit: 2.5655,
+  },
+  {
+    id: "email",
+    name: "Email",
+    icon: <Mail className="h-6 w-6" />,
+    costPerUnit: 0.195,
+  },
+  {
+    id: "voice",
+    icon: <Phone className="h-6 w-6" />,
+    costPerUnit: 8.56,
+  },
+  {
+    id: "rcs",
+    icon: <MessageSquareText className="h-6 w-6" />,
+    costPerUnit: 0.9525,
+  },
+  {
+    id: "sms",
+    name: "SMS",
+    icon: <MessageSquareText className="h-6 w-6" />, // Reusing icon for example
+    costPerUnit: 0.12, // Example cost
+  },
 ];
 
 const languageOptions = [
@@ -201,6 +201,7 @@ const mapChannels = (selectedIds: string[]) => {
     email: "email",
     voice: "voice_phone",
     rcs: "rcs_message",
+    sms: "sms_message",
   };
   return selectedIds.map((c) => map[c] || c);
 };
@@ -229,12 +230,10 @@ function CampaignCreateContent() {
   // Redirect if dealership setup is not complete
   useEffect(() => {
     if (isDealershipSetupComplete === false) {
-      // Redirect to setup page with a clear message
       router.push("/dealership/update-details");
     }
   }, [isDealershipSetupComplete, router]);
 
-  // Show loading or redirect message if setup not complete
   if (isDealershipSetupComplete === false) {
     return (
       <ProtectedRoute>
@@ -301,9 +300,17 @@ function CampaignCreateContent() {
 
   // Audience Data
   const [targetAudience, setTargetAudience] = useState<string[]>([]);
+  const [selectedAudienceDetails, setSelectedAudienceDetails] = useState<any>(
+    null
+  ); 
   const [audienceTasks, setAudienceTasks] = useState<any[]>([]);
   const [isLoadingAudience, setIsLoadingAudience] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const ITEMS_PER_PAGE = 5;
 
   // Custom Attributes
   const [carModel, setCarModel] = useState("");
@@ -318,7 +325,6 @@ function CampaignCreateContent() {
   const [isLaunchError, setIsLaunchError] = useState(false);
 
   // --- Computed State for Scheduling ---
-
   const isScheduledCampaign = useMemo(() => {
     if (!duration.start) return false;
     const d = new Date();
@@ -350,14 +356,38 @@ function CampaignCreateContent() {
     setCreationStep("details");
     setTargetAudience([]);
     setAudienceTasks([]);
+    setSelectedAudienceDetails(null);
   }, [campaignType]);
 
-  // Fetch Audience Tasks
-  const loadAudienceData = async () => {
+  // --- AUDIENCE FETCHING FIX ---
+  const loadAudienceData = async (currentPage = 1) => {
     setIsLoadingAudience(true);
+    const fetchcount = 10; // ITEMS_PER_PAGE;
     try {
-      const res = await fetchAudienceTasks();
-      setAudienceTasks(res.items || []);
+      // Calling updated API with pagination parameters
+      const res: any = await fetchAudienceTasks(currentPage, fetchcount);
+      console.log("Fetched Audience Response:", res);
+      // FIX: Robust check for items and total_number based on response structure
+      let items = [];
+      let total = 0;
+
+      if (res.items && Array.isArray(res.items)) {
+         // Case 1: Helper returns mapped object { items: [], total_number: N }
+         items = res.items;
+         total = res.total || 0; 
+      } else if (res.data && Array.isArray(res.data)) {
+         // Case 2: Raw API response { data: [], total_number: N }
+         items = res.data;
+         total = res.total || 0;
+      } else if (Array.isArray(res)) {
+         // Case 3: Just an array (fallback, no total)
+         items = res;
+         
+      }
+      
+      setAudienceTasks(items);
+      setTotalPages(Math.ceil(total / fetchcount));
+      
     } catch (e) {
       console.error("Failed to fetch audience", e);
     } finally {
@@ -367,9 +397,9 @@ function CampaignCreateContent() {
 
   useEffect(() => {
     if (creationStep === "audience") {
-      loadAudienceData();
+      loadAudienceData(page);
     }
-  }, [creationStep]);
+  }, [creationStep, page]);
 
   // Fetch Objectives
   useEffect(() => {
@@ -464,7 +494,7 @@ function CampaignCreateContent() {
       };
 
       const data = await api(
-        "/gryd/api/short-run-agent/generate_campaign_idea",
+        "/gryd/api/autocrm-short-run-agent/generate_campaign_idea",
         "POST",
         payload
       );
@@ -506,12 +536,33 @@ function CampaignCreateContent() {
   };
 
   const getAudienceSize = () => {
+    // If we have selected details specifically preserved, use that
+    if (
+      selectedAudienceDetails &&
+      targetAudience.includes(selectedAudienceDetails.task_id)
+    ) {
+      return parseInt(selectedAudienceDetails.process_size || 0);
+    }
+
+    // Fallback to finding in current list (might fail if paginated away)
     return audienceTasks
       .filter((task) => targetAudience.includes(task.task_id))
       .reduce((sum, task) => sum + parseInt(task.process_size || 0), 0);
   };
 
   const getAudienceName = () => {
+    // Priority: Saved Details -> Search in current list -> Fallback
+    if (
+      selectedAudienceDetails &&
+      targetAudience.includes(selectedAudienceDetails.task_id)
+    ) {
+      return (
+        selectedAudienceDetails.source_name ||
+        selectedAudienceDetails.audience_name ||
+        "Untitled Audience"
+      );
+    }
+
     const selectedTasks = audienceTasks.filter((task) =>
       targetAudience.includes(task.task_id)
     );
@@ -560,11 +611,9 @@ function CampaignCreateContent() {
           ? customObjective
           : selectedObjectiveData?.title || selectedObjective,
       campaign_sub_type: selectedObjectiveData?.campaignSubType || "other",
-      // created: Math.floor(Date.now() / 1000),
-      // updated: Math.floor(Date.now() / 1000),
       campaign_user_source: "file",
     };
-    console.log("Common Payload:", commonPayload);
+
     try {
       let endpoint = "";
       let finalPayload = {};
@@ -576,8 +625,6 @@ function CampaignCreateContent() {
           campaign_type: "pre-sales",
           workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
           dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
-          // dealer_name: "NEXA Delhi South",
-          // supported_brands: ["NEXA"],
         };
       } else {
         endpoint = "/gryd/db/object/post_sales_campaign";
@@ -586,7 +633,6 @@ function CampaignCreateContent() {
           campaign_type: "post-sales",
           workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
           dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
-          // campaign_objective_type: ["lead volume"],
         };
       }
 
@@ -596,7 +642,6 @@ function CampaignCreateContent() {
 
       setCreatedCampaignId(newId);
       setCreationStep("audience");
-      // Scroll to top when switching steps
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       console.error("Proceed failed", err);
@@ -669,7 +714,7 @@ function CampaignCreateContent() {
   return (
     <ProtectedRoute>
       {/* TOP HEADER */}
-      <div className="sticky top-0 z-30 w-full bg-white border-b px-8 py-4 flex items-center justify-between shadow-sm">
+      <div className="sticky top-0 z-30 w-full bg-background border-b px-8 py-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-4">
           {creationStep === "audience" ? (
             <Button
@@ -690,7 +735,7 @@ function CampaignCreateContent() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-          <h1 className="text-xl font-bold text-gray-900">Create Campaign</h1>
+          <h1 className="text-xl font-bold text-foreground">Create Campaign</h1>
         </div>
         <div className="text-sm font-medium text-muted-foreground">
           {creationStep === "details"
@@ -699,7 +744,7 @@ function CampaignCreateContent() {
         </div>
       </div>
 
-      <div className="pb-24 w-full px-4 py-8 md:px-6 lg:px-8 bg-slate-50/50 min-h-screen">
+      <div className="pb-24 w-full px-4 py-8 md:px-6 lg:px-8 bg-background min-h-screen">
         {/* LAUNCH STATUS MODAL */}
         <Dialog
           open={isLaunchSuccessOpen}
@@ -716,6 +761,7 @@ function CampaignCreateContent() {
                 e.preventDefault();
             }}
           >
+            {/* ... Modal Content ... */}
             <DialogHeader>
               <div
                 className={cn(
@@ -777,6 +823,7 @@ function CampaignCreateContent() {
           onOpenChange={setIsObjectiveDetailsOpen}
         >
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            {/* ... Objective Details Content ... */}
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Edit3 className="h-5 w-5 text-primary" /> Review Campaign
@@ -786,7 +833,6 @@ function CampaignCreateContent() {
                 Confirm objective details and fill in required attributes.
               </DialogDescription>
             </DialogHeader>
-            {/* ... (Existing dialog content kept same) ... */}
             <div className="space-y-6 py-4">
               {selectedObjectiveData && (
                 <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
@@ -908,7 +954,6 @@ function CampaignCreateContent() {
           </DialogContent>
         </Dialog>
 
-        {/* ADD DATA SOURCE DIALOG */}
         <AddDataSourceDialog
           isOpen={isUploadDialogOpen}
           onClose={() => setIsUploadDialogOpen(false)}
@@ -918,7 +963,7 @@ function CampaignCreateContent() {
             campaignId: createdCampaignId || undefined,
           }}
           onSave={(dataSource) => {
-            loadAudienceData();
+            loadAudienceData(1); // Reload page 1 on upload
             if (dataSource.connectionDetails?.taskId) {
               setTargetAudience((prev) => [
                 ...prev,
@@ -1297,7 +1342,13 @@ function CampaignCreateContent() {
                       Select Audience
                     </Label>
                     <Select
-                      onValueChange={(val) => setTargetAudience([val])}
+                      onValueChange={(val) => {
+                        setTargetAudience([val]);
+                        const task = audienceTasks.find(
+                          (t) => t.task_id === val
+                        );
+                        if (task) setSelectedAudienceDetails(task);
+                      }}
                       value={targetAudience[0] || ""}
                     >
                       <SelectTrigger
@@ -1312,23 +1363,61 @@ function CampaignCreateContent() {
                             Loading...
                           </div>
                         ) : audienceTasks.length > 0 ? (
-                          audienceTasks.map((task) => (
-                            <SelectItem key={task.task_id} value={task.task_id}>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">
-                                  {task.source_name ||
-                                    task.audience_name ||
-                                    "Untitled List"}
-                                </span>
-                                <Badge variant="outline" className="text-xs">
-                                  {parseInt(
-                                    task.process_size || 0
-                                  ).toLocaleString()}{" "}
-                                  Records
-                                </Badge>
-                              </div>
-                            </SelectItem>
-                          ))
+                          <>
+                            {audienceTasks.map((task) => (
+                              <SelectItem
+                                key={task.task_id}
+                                value={task.task_id}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">
+                                    {task.source_name ||
+                                      task.audience_name ||
+                                      "Untitled List"}
+                                  </span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {parseInt(
+                                      task.process_size || 0
+                                    ).toLocaleString()}{" "}
+                                    Records
+                                  </Badge>
+                                </div>
+                              </SelectItem>
+                            ))}
+                            {/* Pagination Controls */}
+                            <div
+                              className="flex items-center justify-between p-2 border-t mt-2 bg-slate-50"
+                              onKeyDown={(e) => e.stopPropagation()}
+                            >
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={page <= 1}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setPage((p) => p - 1);
+                                }}
+                                className="h-8 w-8 p-0"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </Button>
+                              <span className="text-xs text-muted-foreground font-medium">
+                                Page {page} of {totalPages || 1}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={page >= totalPages}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setPage((p) => p + 1);
+                                }}
+                                className="h-8 w-8 p-0"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </>
                         ) : (
                           <div className="p-2 text-sm text-muted-foreground">
                             No lists found.

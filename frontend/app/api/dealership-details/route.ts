@@ -22,7 +22,17 @@ export async function GET(request: NextRequest) {
     // Get cookies from the request headers
     const token = getCookieFromRequest(request, "gryd_token");
     const sessionId = getCookieFromRequest(request, "gryd_session_id");
-    const userId = getCookieFromRequest(request, "gryd_user_id");
+    let applicationId = getCookieFromRequest(request, "gryd_application_id");
+
+    // Get user_id from query params or cookies
+    const { searchParams } = new URL(request.url);
+    let userId = searchParams.get("user_id") || getCookieFromRequest(request, "gryd_user_id");
+
+    // CRITICAL FIX: Always use "autocrm", never "gryd"
+    // Backend returns "gryd" sometimes, but we need "autocrm"
+    if (applicationId === "gryd" || !applicationId) {
+      applicationId = "autocrm";
+    }
 
     if (!token || !sessionId || !userId) {
       return NextResponse.json(
@@ -37,6 +47,7 @@ export async function GET(request: NextRequest) {
 
     console.log("[Dealership Details API] Calling backend:", backendUrl);
     console.log("[Dealership Details API] Using user_id:", userId);
+    console.log("[Dealership Details API] Application ID (fixed):", applicationId);
 
     const res = await fetch(backendUrl, {
       method: "GET",
@@ -46,10 +57,9 @@ export async function GET(request: NextRequest) {
         "X-GRYD-ENTERPRISE-ID": "autocrm",
         "X-GRYD-TOKEN": token,
         "X-GRYD-SESSION-ID": sessionId,
-        "X-GRYD-APPLICATION-ID": "autocrm",
+        "X-GRYD-APPLICATION-ID": applicationId,
       },
       cache: "no-store",
-      mode: "cors",
     });
 
     console.log(`[Dealership Details API] Response status: ${res.status}`);

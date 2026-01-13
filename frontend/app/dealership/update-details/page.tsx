@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PhoneInput } from "react-international-phone";
@@ -28,6 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft,
   Building2,
@@ -41,21 +44,29 @@ import {
   Users,
   Phone,
   Mail,
+  Loader2,
+  Plus,
+  Store,
+  RotateCcw,
 } from "lucide-react";
 import {
   type DealershipUpdateDetailsRequest,
   type CreateWorkshopRequest,
+  type CreateShowroomRequest,
+  type CreateBuybackCenterRequest,
   ApiError,
   createWorkshop,
+  createShowroom,
+  createBuybackCenter,
   getDealershipDetails,
   getWorkshopsForDealership,
+  getShowroomsForDealership,
+  getBuybackCentersForDealership,
   dealershipUpdateDetails,
 } from "@/lib/api";
 import { ProtectedRoute } from "@/components/protected-route";
 import { useAuth } from "@/lib/auth-context";
 import { isDealershipSetupComplete } from "@/lib/dealership-utils";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 
 const urlRegex = /^(https?:\/\/)?.+\..+/;
 const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
@@ -79,33 +90,82 @@ export default function DealershipUpdateDetails() {
     website: "",
   });
 
-  // Workshop form state
-  const [workshopLoading, setWorkshopLoading] = useState(false);
-  const [workshopError, setWorkshopError] = useState("");
-  const [workshopSuccess, setWorkshopSuccess] = useState("");
-  const [showWorkshopForm, setShowWorkshopForm] = useState(false);
-  const [workshopFormData, setWorkshopFormData] = useState({
-    workshop_name: "",
-    workshop_type: "Main Workshop",
-    workshop_status: "Active",
-    manager_name: "",
-    email: "",
-    contact_number: "",
+  // Physical Locations state - unified for all location types
+  type LocationType = "workshop" | "showroom" | "buyback_center";
+  const [selectedLocationTypes, setSelectedLocationTypes] = useState<
+    LocationType[]
+  >([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [locationSuccess, setLocationSuccess] = useState("");
+
+  // Location lists
+  const [workshops, setWorkshops] = useState<any[]>([]);
+  const [showrooms, setShowrooms] = useState<any[]>([]);
+  const [buybackCenters, setBuybackCenters] = useState<any[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  const [dealershipId, setDealershipId] = useState<string>("");
+
+  // Unified Physical Location form data
+  const [locationFormData, setLocationFormData] = useState({
+    locationName: "",
+    contactNumber: "",
+    emailAddress: "",
     address: "",
-    city: "",
-    state: "",
     pincode: "",
-    region_id: "",
-    region_name: "",
-    opening_time: "08:00",
-    closing_time: "18:00",
-    days_open: [] as string[],
-    supported_brands: [] as string[],
-    services_offered: [] as string[],
-    total_technicians: "",
-    total_service_bays: "",
-    daily_service_capacity: "",
+    openingTime: "09:00",
+    closingTime: "18:00",
+    daysOpen: [] as string[],
   });
+
+  // Set dealership ID from localStorage on client side
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedDealershipId = localStorage.getItem("dealership_id");
+      setDealershipId(storedDealershipId || user?.id || "");
+    }
+  }, [user?.id]);
+
+  // Fetch all existing locations on component mount
+  useEffect(() => {
+    const fetchAllLocations = async () => {
+      const storedDealershipId =
+        typeof window !== "undefined"
+          ? localStorage.getItem("dealership_id")
+          : null;
+      const currentDealershipId = storedDealershipId || user?.id || "";
+
+      if (!currentDealershipId) {
+        return;
+      }
+
+      setLoadingLocations(true);
+      try {
+        // Fetch all location types in parallel
+        const [fetchedWorkshops, fetchedShowrooms, fetchedBuybackCenters] =
+          await Promise.all([
+            getWorkshopsForDealership(currentDealershipId).catch(() => []),
+            getShowroomsForDealership(currentDealershipId).catch(() => []),
+            getBuybackCentersForDealership(currentDealershipId).catch(() => []),
+          ]);
+
+        setWorkshops(Array.isArray(fetchedWorkshops) ? fetchedWorkshops : []);
+        setShowrooms(Array.isArray(fetchedShowrooms) ? fetchedShowrooms : []);
+        setBuybackCenters(
+          Array.isArray(fetchedBuybackCenters) ? fetchedBuybackCenters : []
+        );
+      } catch (error) {
+        console.error("[Dealership Update] Error fetching locations:", error);
+        setWorkshops([]);
+        setShowrooms([]);
+        setBuybackCenters([]);
+      } finally {
+        setLoadingLocations(false);
+      }
+    };
+
+    fetchAllLocations();
+  }, [user?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,6 +202,30 @@ export default function DealershipUpdateDetails() {
     if (hasGstin && !gstinRegex.test(dealershipDetails.gstin)) {
       setGstinError("Please enter a valid GSTIN (15 characters)");
       setError("Please enter a valid GSTIN");
+      return;
+    }
+
+    // Validate that at least one physical location exists
+    const hasWorkshop = workshops.length > 0;
+    const hasShowroom = showrooms.length > 0;
+    const hasBuybackCenter = buybackCenters.length > 0;
+
+    if (!hasWorkshop && !hasShowroom && !hasBuybackCenter) {
+      setError(
+        "Please add at least one physical location (workshop, showroom, or buyback center) before saving dealership details."
+      );
+      // Scroll to physical locations section
+      setTimeout(() => {
+        const locationsSection = document.getElementById(
+          "physical-locations-section"
+        );
+        if (locationsSection) {
+          locationsSection.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }
+      }, 100);
       return;
     }
 
@@ -300,30 +384,13 @@ export default function DealershipUpdateDetails() {
         const hasVerification =
           panNumber !== "" || gstin !== "" || website !== "";
 
-        // Check for workshops - BOTH dealership details AND workshops must be complete
-        let hasWorkshop = false;
-        try {
-          if (dealershipId) {
-            const workshops = await getWorkshopsForDealership(dealershipId);
-            hasWorkshop = Array.isArray(workshops) && workshops.length > 0;
-            console.log(
-              "[Dealership Update] Workshops found:",
-              workshops.length
-            );
-          }
-        } catch (workshopError) {
-          console.error(
-            "[Dealership Update] Error checking workshops:",
-            workshopError
-          );
-        }
-
+        // Locations are optional - setup can be complete without them
+        // Dealers can add locations later
         const setupComplete =
           hasDealershipType &&
           hasLanguages &&
           hasSupportedBrands &&
-          hasVerification &&
-          hasWorkshop;
+          hasVerification;
 
         console.log(
           "[Dealership Update] Setup completion check from response:",
@@ -332,7 +399,6 @@ export default function DealershipUpdateDetails() {
             hasLanguages,
             hasSupportedBrands,
             hasVerification,
-            hasWorkshop,
             setupComplete,
           }
         );
@@ -364,20 +430,11 @@ export default function DealershipUpdateDetails() {
             hasLanguages,
             hasSupportedBrands,
             hasVerification,
-            hasWorkshop,
             responseData,
           });
           localStorage.setItem("dealership_setup_complete", "false");
           await checkDealershipSetup(); // Refresh auth context
-
-          // Show message that workshop is still needed
-          if (!hasWorkshop) {
-            setError(
-              "Dealership details saved! Please add workshop details below to complete the setup."
-            );
-            setShowWorkshopForm(true); // Show workshop form
-          }
-          // Don't redirect - stay on page to complete workshop
+          // Don't redirect - stay on page to complete missing details
         }
       } catch (error) {
         console.error(
@@ -413,249 +470,267 @@ export default function DealershipUpdateDetails() {
     }
   };
 
-  const handleWorkshopSubmit = async (e: React.FormEvent) => {
+  // Unified location submit handler - creates all selected location types
+  const handleLocationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setWorkshopError("");
-    setWorkshopSuccess("");
+    setLocationError("");
+    setLocationSuccess("");
+
+    // Validate location types selected
+    if (selectedLocationTypes.length === 0) {
+      setLocationError("Please select at least one location type");
+      return;
+    }
 
     // Validate required fields
-    if (!workshopFormData.workshop_name.trim()) {
-      setWorkshopError("Workshop name is required");
+    if (!locationFormData.locationName.trim()) {
+      setLocationError("Location name is required");
       return;
     }
-    if (!workshopFormData.manager_name.trim()) {
-      setWorkshopError("Manager name is required");
+    if (!locationFormData.contactNumber.trim()) {
+      setLocationError("Contact number is required");
       return;
     }
-    if (!workshopFormData.email.trim()) {
-      setWorkshopError("Email is required");
+    if (!locationFormData.contactNumber.startsWith("+")) {
+      setLocationError("Please select a country code for the phone number");
       return;
     }
-    if (!workshopFormData.contact_number.trim()) {
-      setWorkshopError("Contact number is required");
+    if (!locationFormData.emailAddress.trim()) {
+      setLocationError("Email address is required");
       return;
     }
-
-    // Validate phone number format (PhoneInput provides validated format with country code)
-    // PhoneInput returns phone in E.164 format (e.g., +919876543401)
-    const phoneValue = workshopFormData.contact_number.trim();
-    if (!phoneValue || phoneValue.length < 10) {
-      setWorkshopError("Please enter a valid phone number with country code");
-      return;
-    }
-    // PhoneInput ensures the format is correct, but we can add additional validation
-    if (!phoneValue.startsWith("+")) {
-      setWorkshopError("Please select a country code for the phone number");
-      return;
-    }
-    if (!workshopFormData.address.trim()) {
-      setWorkshopError("Address is required");
-      return;
-    }
-    if (!workshopFormData.city.trim()) {
-      setWorkshopError("City is required");
-      return;
-    }
-    if (!workshopFormData.state.trim()) {
-      setWorkshopError("State is required");
-      return;
-    }
-    if (!workshopFormData.pincode.trim()) {
-      setWorkshopError("Pincode is required");
-      return;
-    }
-    if (workshopFormData.days_open.length === 0) {
-      setWorkshopError("Please select at least one day the workshop is open");
-      return;
-    }
-    if (workshopFormData.supported_brands.length === 0) {
-      setWorkshopError("Please select at least one supported brand");
-      return;
-    }
-    if (workshopFormData.services_offered.length === 0) {
-      setWorkshopError("Please select at least one service offered");
-      return;
-    }
-    if (!workshopFormData.total_technicians.trim()) {
-      setWorkshopError("Total technicians is required");
-      return;
-    }
-    if (!workshopFormData.total_service_bays.trim()) {
-      setWorkshopError("Total service bays is required");
-      return;
-    }
-    if (!workshopFormData.daily_service_capacity.trim()) {
-      setWorkshopError("Daily service capacity is required");
-      return;
-    }
-
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(workshopFormData.email)) {
-      setWorkshopError("Please enter a valid email address");
+    if (!emailRegex.test(locationFormData.emailAddress)) {
+      setLocationError("Please enter a valid email address");
+      return;
+    }
+    if (!locationFormData.address.trim()) {
+      setLocationError("Address is required");
+      return;
+    }
+    if (!locationFormData.pincode.trim()) {
+      setLocationError("Pincode is required");
+      return;
+    }
+    if (locationFormData.pincode.length !== 6) {
+      setLocationError("Pincode must be 6 digits");
+      return;
+    }
+    if (locationFormData.daysOpen.length === 0) {
+      setLocationError("Please select at least one day");
       return;
     }
 
-    setWorkshopLoading(true);
+    setLocationLoading(true);
 
     try {
-      // Get dealership ID and name
       const storedDealershipId = localStorage.getItem("dealership_id");
-      const dealershipId = storedDealershipId || user?.id || "";
+      const currentDealershipId = storedDealershipId || user?.id || "";
 
-      if (!dealershipId) {
+      if (!currentDealershipId) {
         throw new Error(
           "Dealership ID not found. Please ensure you're logged in."
         );
       }
 
-      // Get dealership name - try to extract from dealership_id or use a default
-      let dealerName = dealershipId;
-      // Try to get from dealership details if available
+      // Get dealership details for supported brands
+      let dealerName = currentDealershipId;
+      let supportedBrands: string[] = [];
       try {
         const dealershipDetails = await getDealershipDetails();
         dealerName =
           dealershipDetails.dealership_name ||
           dealershipDetails.dealership_legal_name ||
-          dealershipId;
-      } catch {
-        // Use dealership_id as fallback
-        dealerName = dealershipId;
-      }
-
-      // Extract region info from dealership_id if available
-      let regionId = workshopFormData.region_id;
-      let regionName = workshopFormData.region_name;
-
-      if (!regionId && dealershipId.includes("-")) {
-        const parts = dealershipId.split("-");
-        const potentialRegion = parts[parts.length - 1];
-        const commonRegions = [
-          "north-india",
-          "south-india",
-          "east-india",
-          "west-india",
-          "central-india",
-        ];
-        if (commonRegions.includes(potentialRegion)) {
-          regionId = potentialRegion;
-          regionName = potentialRegion
-            .split("-")
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-            .join(" ");
+          currentDealershipId;
+        if (Array.isArray(dealershipDetails.supported_brands)) {
+          supportedBrands = dealershipDetails.supported_brands;
         }
+      } catch {
+        dealerName = currentDealershipId;
       }
 
-      const workshopData: CreateWorkshopRequest = {
-        dealer_name: dealerName,
-        dealership_id: dealershipId,
-        workshop_name: workshopFormData.workshop_name.trim(),
-        workshop_type: workshopFormData.workshop_type,
-        workshop_status: workshopFormData.workshop_status,
-        email: workshopFormData.email.trim(),
-        contact_number: workshopFormData.contact_number.trim(),
-        manager_name: workshopFormData.manager_name.trim(),
-        address: workshopFormData.address.trim(),
-        city: workshopFormData.city.trim(),
-        state: workshopFormData.state.trim(),
-        pincode: workshopFormData.pincode.trim(),
-        region_id: regionId || "",
-        region_name: regionName || "",
-        geolocation: [0, 0], // Default geolocation - can be updated later
-        operating_hours: {
-          opening_time: workshopFormData.opening_time,
-          closing_time: workshopFormData.closing_time,
-          days_open: workshopFormData.days_open,
-        },
-        supported_brands: workshopFormData.supported_brands,
-        services_offered: workshopFormData.services_offered,
-        total_technicians: parseInt(workshopFormData.total_technicians, 10),
-        total_service_bays: parseInt(workshopFormData.total_service_bays, 10),
-        daily_service_capacity: parseInt(
-          workshopFormData.daily_service_capacity,
-          10
-        ),
-      };
+      // Parse address into city, state (pincode is separate field)
+      const addressParts = locationFormData.address
+        .split(",")
+        .map((s) => s.trim());
+      const city =
+        addressParts.length > 1
+          ? addressParts[addressParts.length - 2] || ""
+          : "";
+      const state =
+        addressParts.length > 0
+          ? addressParts[addressParts.length - 1] || ""
+          : "";
+      const pincode = locationFormData.pincode.trim();
 
-      await createWorkshop(workshopData);
+      // All services for workshop
+      const allServices = [
+        "General Service",
+        "Repair",
+        "Body Shop",
+        "Paint",
+        "Tyre Alignment",
+        "Wheel Balancing",
+        "AC Service",
+        "Battery Service",
+        "Electrical Work",
+        "Detailing",
+        "Car Wash",
+        "Pickup & Drop",
+        "Roadside Assistance",
+      ];
 
-      setWorkshopSuccess("Workshop added successfully!");
+      // Create locations for each selected type
+      const createPromises: Promise<any>[] = [];
 
-      // Check if both dealership details and workshop are now complete
-      // Reuse dealershipId from above
-      // Verify dealership details are also complete
-      let dealershipDetailsComplete = false;
-      try {
-        const details = await getDealershipDetails();
-        const hasDealershipType = Boolean(details.dealership_type);
-        const hasLanguages =
-          Array.isArray(details.languages) && details.languages.length > 0;
-        const hasSupportedBrands =
-          Array.isArray(details.supported_brands) &&
-          details.supported_brands.length > 0;
-        const hasVerification = Boolean(
-          details.pan_number || details.gstin || details.website
-        );
-        dealershipDetailsComplete =
-          hasDealershipType &&
-          hasLanguages &&
-          hasSupportedBrands &&
-          hasVerification;
-      } catch (error) {
-        console.error(
-          "[Workshop Submit] Error checking dealership details:",
-          error
-        );
-      }
-
-      if (dealershipDetailsComplete) {
-        // Both are complete - mark setup as complete
-        localStorage.setItem("dealership_setup_complete", "true");
-        sessionStorage.setItem("just_completed_setup", "true");
-        sessionStorage.removeItem("setup_modal_dismissed");
-
-        // Refresh auth context
-        await checkDealershipSetup();
-
-        // Wait a bit for state propagation
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Redirect to dashboard
-        router.push("/");
-      } else {
-        // Workshop added but dealership details incomplete
-        setWorkshopSuccess(
-          "Workshop added! Please complete dealership details above to finish setup."
-        );
-        setShowWorkshopForm(false);
-
-        // Reset form
-        setWorkshopFormData({
-          workshop_name: "",
+      if (selectedLocationTypes.includes("workshop")) {
+        const workshopData: CreateWorkshopRequest = {
+          dealer_name: dealerName,
+          dealership_id: currentDealershipId,
+          workshop_name: locationFormData.locationName.trim(),
           workshop_type: "Main Workshop",
           workshop_status: "Active",
-          manager_name: "",
-          email: "",
-          contact_number: "",
-          address: "",
-          city: "",
-          state: "",
-          pincode: "",
+          email: locationFormData.emailAddress.trim(),
+          contact_number: locationFormData.contactNumber.trim(),
+          manager_name: "", // Removed from form
+          address: locationFormData.address.trim(),
+          city: city,
+          state: state,
+          pincode: pincode,
           region_id: "",
           region_name: "",
-          opening_time: "08:00",
-          closing_time: "18:00",
-          days_open: [],
-          supported_brands: [],
-          services_offered: [],
-          total_technicians: "",
-          total_service_bays: "",
-          daily_service_capacity: "",
-        });
-
-        // Refresh dealership setup status
-        await checkDealershipSetup();
+          geolocation: [0, 0],
+          operating_hours: {
+            opening_time: locationFormData.openingTime,
+            closing_time: locationFormData.closingTime,
+            days_open: locationFormData.daysOpen,
+          },
+          supported_brands: supportedBrands,
+          services_offered: allServices,
+          total_technicians: 0,
+          total_service_bays: 0,
+          daily_service_capacity: 0,
+        };
+        createPromises.push(createWorkshop(workshopData));
       }
+
+      if (selectedLocationTypes.includes("showroom")) {
+        const showroomId = `${currentDealershipId.replace(
+          /-/g,
+          "_"
+        )}---${locationFormData.locationName
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9-]/g, "")}-${city.toLowerCase()}`;
+
+        const showroomData: CreateShowroomRequest = {
+          showroom_id: showroomId,
+          showroom_name: locationFormData.locationName.trim(),
+          showroom_full_name: locationFormData.locationName.trim(),
+          showroom_type: "Main Showroom",
+          showroom_status: "active",
+          dealership_id: currentDealershipId,
+          dealership_name: dealerName,
+          manager_name: "", // Removed from form
+          email: locationFormData.emailAddress.trim(),
+          contact_number: locationFormData.contactNumber.trim(),
+          address: locationFormData.address.trim(),
+          city: city,
+          state: state,
+          pincode: pincode,
+          region_name: "",
+          geolocation: [0, 0],
+          operating_hours: {
+            opening_time: locationFormData.openingTime,
+            closing_time: locationFormData.closingTime,
+          },
+          days_open: locationFormData.daysOpen,
+          supported_brands: supportedBrands,
+          parking_capacity: 0,
+          daily_walkin_capacity: 0,
+          display_vehicle_count: 0,
+          total_sales_executives: 0,
+        };
+        createPromises.push(createShowroom(showroomData));
+      }
+
+      if (selectedLocationTypes.includes("buyback_center")) {
+        const buybackCenterData: CreateBuybackCenterRequest = {
+          buyback_center_id: locationFormData.locationName
+            .toLowerCase()
+            .replace(/\s+/g, "-"),
+          dealership_id: currentDealershipId,
+          dealership_name: dealerName,
+          manager_name: "", // Removed from form
+          email: locationFormData.emailAddress.trim(),
+          contact_number: locationFormData.contactNumber.trim(),
+          address: locationFormData.address.trim(),
+          city: city,
+          state: state,
+          pincode: pincode,
+          geolocation: [0, 0],
+          operating_hours: {
+            opening_time: locationFormData.openingTime,
+            closing_time: locationFormData.closingTime,
+          },
+          days_open:
+            locationFormData.daysOpen.length > 0
+              ? locationFormData.daysOpen
+              : {},
+          parking_capacity: 0,
+          daily_walkin_capacity: 0,
+          display_vehicle_count: 0,
+          total_sales_executives: 0,
+        };
+        createPromises.push(createBuybackCenter(buybackCenterData));
+      }
+
+      // Create all selected locations
+      await Promise.all(createPromises);
+
+      // Refresh all location lists
+      const [fetchedWorkshops, fetchedShowrooms, fetchedBuybackCenters] =
+        await Promise.all([
+          getWorkshopsForDealership(currentDealershipId).catch(() => []),
+          getShowroomsForDealership(currentDealershipId).catch(() => []),
+          getBuybackCentersForDealership(currentDealershipId).catch(() => []),
+        ]);
+
+      setWorkshops(Array.isArray(fetchedWorkshops) ? fetchedWorkshops : []);
+      setShowrooms(Array.isArray(fetchedShowrooms) ? fetchedShowrooms : []);
+      setBuybackCenters(
+        Array.isArray(fetchedBuybackCenters) ? fetchedBuybackCenters : []
+      );
+
+      const locationTypeNames = selectedLocationTypes
+        .map((type) => {
+          if (type === "buyback_center") return "Buyback Center";
+          return type.charAt(0).toUpperCase() + type.slice(1);
+        })
+        .join(", ");
+
+      setLocationSuccess(
+        `Location "${locationFormData.locationName}" added successfully as ${locationTypeNames}! You can add more locations below.`
+      );
+
+      // Reset form
+      setLocationFormData({
+        locationName: "",
+        contactNumber: "",
+        emailAddress: "",
+        address: "",
+        pincode: "",
+        openingTime: "09:00",
+        closingTime: "18:00",
+        daysOpen: [],
+      });
+      setSelectedLocationTypes([]);
+
+      setTimeout(() => {
+        setLocationSuccess("");
+      }, 5000);
+
+      await checkDealershipSetup();
     } catch (err) {
       if (err instanceof ApiError) {
         let cleanErrorMessage = err.message;
@@ -663,54 +738,29 @@ export default function DealershipUpdateDetails() {
           if (typeof err.error === "string") {
             try {
               const parsed = JSON.parse(err.error);
-              cleanErrorMessage =
-                parsed.error || parsed.message || cleanErrorMessage;
+              cleanErrorMessage = parsed.message || parsed.error || err.message;
             } catch {
               cleanErrorMessage = err.error;
             }
           }
         }
-        setWorkshopError(cleanErrorMessage);
+        setLocationError(cleanErrorMessage);
       } else {
-        setWorkshopError(
+        setLocationError(
           err instanceof Error
             ? err.message
-            : "Failed to create workshop. Please try again."
+            : "Failed to create location(s). Please try again."
         );
       }
     } finally {
-      setWorkshopLoading(false);
+      setLocationLoading(false);
     }
   };
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen py-8">
+      <div className="min-h-screen bg-background py-8">
         <div className="container mx-auto px-4 max-w-2xl">
-          {/* Back Button */}
-          <div className="mb-6">
-            <Link
-              href="/"
-              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Link>
-          </div>
-
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-              <Building2 className="h-8 w-8 text-primary" />
-            </div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">
-              Complete Your Dealership Basic Setup
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Add additional details about your dealership
-            </p>
-          </div>
-
           {/* Progress Indicator */}
           <Card className="mb-6 border-primary/50">
             <CardContent className="pt-6">
@@ -728,15 +778,28 @@ export default function DealershipUpdateDetails() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">
-                    Step 2: Workshop Details
+                  {workshops.length > 0 ||
+                  showrooms.length > 0 ||
+                  buybackCenters.length > 0 ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                  )}
+                  <span
+                    className={
+                      workshops.length > 0 ||
+                      showrooms.length > 0 ||
+                      buybackCenters.length > 0
+                        ? "text-foreground"
+                        : "text-muted-foreground"
+                    }
+                  >
+                    Step 2: Physical Locations (Required - Add at least one)
                   </span>
                 </div>
               </div>
             </CardContent>
           </Card>
-
           <Card className="shadow-xl border-border/50">
             <CardHeader>
               <CardTitle className="text-2xl">Dealership Details</CardTitle>
@@ -1073,656 +1136,708 @@ export default function DealershipUpdateDetails() {
                     </div>
                   </div>
                 </div>
-
-                <div className="pt-4">
-                  <Button
-                    type="submit"
-                    size="lg"
-                    disabled={isLoading}
-                    className="w-full"
-                  >
-                    {isLoading ? (
-                      "Saving..."
-                    ) : (
-                      <>
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                        Save Dealership Details
-                      </>
-                    )}
-                  </Button>
-                  <p className="text-sm text-muted-foreground text-center mt-3">
-                    Note: Both Dealership Details and Workshop Details must be
-                    completed to finish setup.
-                  </p>
-                </div>
               </form>
             </CardContent>
           </Card>
 
-          {/* Workshop Details Section */}
-          <Card className="shadow-xl border-border/50 mt-6">
+          {/* Physical Locations Section */}
+          <Card
+            id="physical-locations-section"
+            className="shadow-xl border-border/50 mt-6"
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-2xl flex items-center gap-2">
-                    <Wrench className="h-6 w-6 text-primary" />
-                    Workshop Details
+                    <MapPin className="h-6 w-6 text-primary" />
+                    Physical Locations
+                    {(workshops.length > 0 ||
+                      showrooms.length > 0 ||
+                      buybackCenters.length > 0) && (
+                      <Badge variant="secondary" className="ml-2">
+                        {workshops.length +
+                          showrooms.length +
+                          buybackCenters.length}{" "}
+                        Total
+                      </Badge>
+                    )}
                   </CardTitle>
                   <CardDescription className="mt-2">
-                    Add workshop information for your dealership
+                    Manage workshops, showrooms, and buyback centers for your
+                    dealership. At least one physical location is required to
+                    save dealership details.
                   </CardDescription>
                 </div>
-                {workshopSuccess && (
-                  <Alert className="border-green-500 bg-green-50">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-800">
-                      {workshopSuccess}
-                    </AlertDescription>
-                  </Alert>
-                )}
               </div>
             </CardHeader>
             <CardContent>
-              {!showWorkshopForm ? (
-                <div className="text-center py-8">
-                  <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">
-                    Add your workshop details to complete the dealership setup
-                  </p>
-                  <Button onClick={() => setShowWorkshopForm(true)} size="lg">
-                    Add Workshop Details
-                  </Button>
+              {/* Success/Error Messages */}
+              {locationSuccess && (
+                <Alert className="mb-6 border-green-500 bg-green-50 dark:bg-green-950/20">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    {locationSuccess}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {locationError && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{locationError}</AlertDescription>
+                </Alert>
+              )}
+
+              {loadingLocations && (
+                <div className="text-center py-4 text-muted-foreground mb-6">
+                  Loading locations...
                 </div>
-              ) : (
-                <form onSubmit={handleWorkshopSubmit} className="space-y-6">
-                  {workshopError && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{workshopError}</AlertDescription>
-                    </Alert>
+              )}
+
+              {/* Display All Existing Locations */}
+              {(workshops.length > 0 ||
+                showrooms.length > 0 ||
+                buybackCenters.length > 0) && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4">
+                    Existing Locations
+                  </h3>
+
+                  {/* Workshops */}
+                  {workshops.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-md font-medium mb-2 flex items-center gap-2">
+                        <Wrench className="h-4 w-4" />
+                        Workshops ({workshops.length})
+                      </h4>
+                      <div className="space-y-3">
+                        {workshops.map((workshop, index) => (
+                          <div
+                            key={workshop.workshop_id || index}
+                            className="p-4 border rounded-lg bg-muted/30"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h4 className="font-semibold text-lg">
+                                    {workshop.workshop_name}
+                                  </h4>
+                                  <Badge variant="outline">
+                                    {workshop.workshop_type}
+                                  </Badge>
+                                  <Badge
+                                    variant={
+                                      workshop.workshop_status === "Active"
+                                        ? "default"
+                                        : "secondary"
+                                    }
+                                  >
+                                    {workshop.workshop_status}
+                                  </Badge>
+                                </div>
+                                <div className="grid md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                                  {workshop.manager_name && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Manager:{" "}
+                                      </span>
+                                      {workshop.manager_name}
+                                    </div>
+                                  )}
+                                  {workshop.email && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Email:{" "}
+                                      </span>
+                                      {workshop.email}
+                                    </div>
+                                  )}
+                                  {workshop.contact_number && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Contact:{" "}
+                                      </span>
+                                      {workshop.contact_number}
+                                    </div>
+                                  )}
+                                  {workshop.city && workshop.state && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Location:{" "}
+                                      </span>
+                                      {workshop.city}, {workshop.state}
+                                    </div>
+                                  )}
+                                </div>
+                                {workshop.supported_brands &&
+                                  workshop.supported_brands.length > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                      {workshop.supported_brands.map(
+                                        (brand: string) => (
+                                          <Badge
+                                            key={brand}
+                                            variant="secondary"
+                                            className="text-xs"
+                                          >
+                                            {brand}
+                                          </Badge>
+                                        )
+                                      )}
+                                    </div>
+                                  )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
 
-                  {/* Auto-filled Dealership Information */}
-                  <div className="space-y-4 p-4 bg-muted/50 rounded-lg border">
-                    <h3 className="text-lg font-semibold">
-                      Dealership Information
-                    </h3>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="dealer_name">Dealer Name</Label>
-                        <Input
-                          id="dealer_name"
-                          value={(() => {
-                            const storedDealershipId =
-                              localStorage.getItem("dealership_id");
-                            const dealershipId =
-                              storedDealershipId || user?.id || "";
-                            // Try to extract dealer name from dealership_id
-                            if (dealershipId.includes("-")) {
-                              const parts = dealershipId.split("-");
-                              return parts
-                                .slice(0, -1)
-                                .join(" ")
-                                .replace(/\b\w/g, (l) => l.toUpperCase());
-                            }
-                            return dealershipId;
-                          })()}
-                          disabled
-                          className="bg-background"
-                        />
+                  {/* Showrooms */}
+                  {showrooms.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-md font-medium mb-2 flex items-center gap-2">
+                        <Store className="h-4 w-4" />
+                        Showrooms ({showrooms.length})
+                      </h4>
+                      <div className="space-y-3">
+                        {showrooms.map((showroom, index) => (
+                          <div
+                            key={showroom.showroom_id || index}
+                            className="p-4 border rounded-lg bg-muted/30"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h4 className="font-semibold text-lg">
+                                    {showroom.showroom_name}
+                                  </h4>
+                                  <Badge variant="outline">
+                                    {showroom.showroom_type}
+                                  </Badge>
+                                  <Badge
+                                    variant={
+                                      showroom.showroom_status === "active"
+                                        ? "default"
+                                        : "secondary"
+                                    }
+                                  >
+                                    {showroom.showroom_status}
+                                  </Badge>
+                                </div>
+                                <div className="grid md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                                  {showroom.manager_name && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Manager:{" "}
+                                      </span>
+                                      {showroom.manager_name}
+                                    </div>
+                                  )}
+                                  {showroom.email && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Email:{" "}
+                                      </span>
+                                      {showroom.email}
+                                    </div>
+                                  )}
+                                  {showroom.contact_number && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Contact:{" "}
+                                      </span>
+                                      {showroom.contact_number}
+                                    </div>
+                                  )}
+                                  {showroom.city && showroom.state && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Location:{" "}
+                                      </span>
+                                      {showroom.city}, {showroom.state}
+                                    </div>
+                                  )}
+                                </div>
+                                {showroom.supported_brands &&
+                                  showroom.supported_brands.length > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                      {showroom.supported_brands.map(
+                                        (brand: string) => (
+                                          <Badge
+                                            key={brand}
+                                            variant="secondary"
+                                            className="text-xs"
+                                          >
+                                            {brand}
+                                          </Badge>
+                                        )
+                                      )}
+                                    </div>
+                                  )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="dealership_id">Dealership ID</Label>
-                        <Input
-                          id="dealership_id"
-                          value={
-                            localStorage.getItem("dealership_id") ||
-                            user?.id ||
-                            ""
+                    </div>
+                  )}
+
+                  {/* Buyback Centers */}
+                  {buybackCenters.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-md font-medium mb-2 flex items-center gap-2">
+                        <RotateCcw className="h-4 w-4" />
+                        Buyback Centers ({buybackCenters.length})
+                      </h4>
+                      <div className="space-y-3">
+                        {buybackCenters.map((center, index) => (
+                          <div
+                            key={center.buyback_center_id || index}
+                            className="p-4 border rounded-lg bg-muted/30"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h4 className="font-semibold text-lg">
+                                    {center.buyback_center_id}
+                                  </h4>
+                                </div>
+                                <div className="grid md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                                  {center.manager_name && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Manager:{" "}
+                                      </span>
+                                      {center.manager_name}
+                                    </div>
+                                  )}
+                                  {center.email && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Email:{" "}
+                                      </span>
+                                      {center.email}
+                                    </div>
+                                  )}
+                                  {center.contact_number && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Contact:{" "}
+                                      </span>
+                                      {center.contact_number}
+                                    </div>
+                                  )}
+                                  {center.city && center.state && (
+                                    <div>
+                                      <span className="font-medium">
+                                        Location:{" "}
+                                      </span>
+                                      {center.city}, {center.state}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Unified Physical Location Form */}
+              <form onSubmit={handleLocationSubmit} className="space-y-6">
+                {locationError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{locationError}</AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Location Type Selection - Horizontal Checkboxes */}
+                <div className="space-y-2">
+                  <Label>
+                    Location Type <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="flex flex-wrap gap-4 p-4 border rounded-md">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="location-type-workshop"
+                        checked={selectedLocationTypes.includes("workshop")}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedLocationTypes([
+                              ...selectedLocationTypes,
+                              "workshop",
+                            ]);
+                          } else {
+                            setSelectedLocationTypes(
+                              selectedLocationTypes.filter(
+                                (t) => t !== "workshop"
+                              )
+                            );
                           }
-                          disabled
-                          className="bg-background font-mono"
-                        />
-                      </div>
+                        }}
+                      />
+                      <Label
+                        htmlFor="location-type-workshop"
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        Workshop
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="location-type-showroom"
+                        checked={selectedLocationTypes.includes("showroom")}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedLocationTypes([
+                              ...selectedLocationTypes,
+                              "showroom",
+                            ]);
+                          } else {
+                            setSelectedLocationTypes(
+                              selectedLocationTypes.filter(
+                                (t) => t !== "showroom"
+                              )
+                            );
+                          }
+                        }}
+                      />
+                      <Label
+                        htmlFor="location-type-showroom"
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        Showroom
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="location-type-buyback"
+                        checked={selectedLocationTypes.includes(
+                          "buyback_center"
+                        )}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedLocationTypes([
+                              ...selectedLocationTypes,
+                              "buyback_center",
+                            ]);
+                          } else {
+                            setSelectedLocationTypes(
+                              selectedLocationTypes.filter(
+                                (t) => t !== "buyback_center"
+                              )
+                            );
+                          }
+                        }}
+                      />
+                      <Label
+                        htmlFor="location-type-buyback"
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        Buyback Center
+                      </Label>
                     </div>
                   </div>
+                </div>
 
-                  {/* Basic Information */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Basic Information</h3>
+                {/* Basic Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Basic Information</h3>
 
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="workshop_name">Workshop Name *</Label>
-                        <Input
-                          id="workshop_name"
-                          placeholder="e.g., NEXA Delhi South - Service Center"
-                          value={workshopFormData.workshop_name}
-                          onChange={(e) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              workshop_name: e.target.value,
-                            })
-                          }
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="workshop_type">Workshop Type *</Label>
-                        <Select
-                          value={workshopFormData.workshop_type}
-                          onValueChange={(value) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              workshop_type: value,
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Main Workshop">
-                              Main Workshop
-                            </SelectItem>
-                            <SelectItem value="Express Service Center">
-                              Express Service Center
-                            </SelectItem>
-                            <SelectItem value="Authorized Service Center">
-                              Authorized Service Center
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="manager_name">Manager Name *</Label>
-                        <Input
-                          id="manager_name"
-                          placeholder="Enter manager name"
-                          value={workshopFormData.manager_name}
-                          onChange={(e) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              manager_name: e.target.value,
-                            })
-                          }
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="workshop_status">Workshop Status</Label>
-                        <Select
-                          value={workshopFormData.workshop_status}
-                          onValueChange={(value) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              workshop_status: value,
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Active">Active</SelectItem>
-                            <SelectItem value="Inactive">Inactive</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="locationName">
+                      Location Name <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="locationName"
+                      placeholder="e.g., Main Showroom"
+                      value={locationFormData.locationName}
+                      onChange={(e) =>
+                        setLocationFormData({
+                          ...locationFormData,
+                          locationName: e.target.value,
+                        })
+                      }
+                      required
+                    />
                   </div>
 
-                  {/* Contact Information */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">
-                      Contact Information
-                    </h3>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="workshop_email"
-                          className="flex items-center gap-2"
-                        >
-                          <Mail className="h-4 w-4" />
-                          Email *
-                        </Label>
-                        <Input
-                          id="workshop_email"
-                          type="email"
-                          placeholder="workshop@example.com"
-                          value={workshopFormData.email}
-                          onChange={(e) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              email: e.target.value,
-                            })
-                          }
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="contact_number"
-                          className="flex items-center gap-2"
-                        >
-                          <Phone className="h-4 w-4" />
-                          Contact Number *
-                        </Label>
-                        <PhoneInput
-                          value={workshopFormData.contact_number}
-                          onChange={(phone) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              contact_number: phone,
-                            })
-                          }
-                          defaultCountry="in"
-                          inputClassName="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          countrySelectorStyleProps={{
-                            buttonClassName:
-                              "flex h-10 items-center justify-center rounded-l-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-                          }}
-                        />
-                      </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contactNumber">
+                        Phone Number <span className="text-destructive">*</span>
+                      </Label>
+                      <PhoneInput
+                        defaultCountry="in"
+                        value={locationFormData.contactNumber}
+                        onChange={(value) =>
+                          setLocationFormData({
+                            ...locationFormData,
+                            contactNumber: value,
+                          })
+                        }
+                        inputClassName="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        countrySelectorStyleProps={{
+                          buttonClassName:
+                            "flex h-10 items-center justify-center rounded-l-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                        }}
+                      />
                     </div>
-                  </div>
-
-                  {/* Address Information */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <MapPin className="h-5 w-5" />
-                      Address Information
-                    </h3>
 
                     <div className="space-y-2">
-                      <Label htmlFor="address">Address *</Label>
-                      <Textarea
-                        id="address"
-                        placeholder="Enter full address"
-                        value={workshopFormData.address}
+                      <Label htmlFor="emailAddress">
+                        Email Address{" "}
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="emailAddress"
+                        type="email"
+                        placeholder="location@dealership.com"
+                        value={locationFormData.emailAddress}
                         onChange={(e) =>
-                          setWorkshopFormData({
-                            ...workshopFormData,
-                            address: e.target.value,
+                          setLocationFormData({
+                            ...locationFormData,
+                            emailAddress: e.target.value,
                           })
                         }
                         required
                       />
                     </div>
-
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="city">City *</Label>
-                        <Input
-                          id="city"
-                          placeholder="City"
-                          value={workshopFormData.city}
-                          onChange={(e) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              city: e.target.value,
-                            })
-                          }
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="state">State *</Label>
-                        <Input
-                          id="state"
-                          placeholder="State"
-                          value={workshopFormData.state}
-                          onChange={(e) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              state: e.target.value,
-                            })
-                          }
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="pincode">Pincode *</Label>
-                        <Input
-                          id="pincode"
-                          placeholder="110001"
-                          value={workshopFormData.pincode}
-                          onChange={(e) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              pincode: e.target.value.replace(/\D/g, ""),
-                            })
-                          }
-                          maxLength={6}
-                          required
-                        />
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Operating Hours */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Clock className="h-5 w-5" />
-                      Operating Hours
-                    </h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="address">
+                      Full Address <span className="text-destructive">*</span>
+                    </Label>
+                    <Textarea
+                      id="address"
+                      placeholder="Street address, area, landmark, city, state"
+                      value={locationFormData.address}
+                      onChange={(e) =>
+                        setLocationFormData({
+                          ...locationFormData,
+                          address: e.target.value,
+                        })
+                      }
+                      rows={3}
+                      required
+                    />
+                  </div>
 
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="opening_time">Opening Time *</Label>
-                        <Input
-                          id="opening_time"
-                          type="time"
-                          value={workshopFormData.opening_time}
-                          onChange={(e) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              opening_time: e.target.value,
-                            })
-                          }
-                          required
-                        />
-                      </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pincode">
+                      Pincode <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="pincode"
+                      placeholder="110001"
+                      value={locationFormData.pincode}
+                      onChange={(e) =>
+                        setLocationFormData({
+                          ...locationFormData,
+                          pincode: e.target.value.replace(/\D/g, ""),
+                        })
+                      }
+                      maxLength={6}
+                      required
+                    />
+                  </div>
+                </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="closing_time">Closing Time *</Label>
-                        <Input
-                          id="closing_time"
-                          type="time"
-                          value={workshopFormData.closing_time}
-                          onChange={(e) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              closing_time: e.target.value,
-                            })
-                          }
-                          required
-                        />
-                      </div>
+                {/* Operating Hours */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Operating Hours</h3>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="openingTime">Open Time</Label>
+                      <Input
+                        id="openingTime"
+                        type="time"
+                        value={locationFormData.openingTime}
+                        onChange={(e) =>
+                          setLocationFormData({
+                            ...locationFormData,
+                            openingTime: e.target.value,
+                          })
+                        }
+                      />
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Days Open *</Label>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {[
-                          "Monday",
-                          "Tuesday",
-                          "Wednesday",
-                          "Thursday",
-                          "Friday",
-                          "Saturday",
-                          "Sunday",
-                        ].map((day) => (
-                          <div
-                            key={day}
-                            className="flex items-center space-x-2"
+                      <Label htmlFor="closingTime">Close Time</Label>
+                      <Input
+                        id="closingTime"
+                        type="time"
+                        value={locationFormData.closingTime}
+                        onChange={(e) =>
+                          setLocationFormData({
+                            ...locationFormData,
+                            closingTime: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>
+                      Days Open <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="flex flex-wrap gap-3 p-3 border rounded-md">
+                      {[
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday",
+                        "Saturday",
+                        "Sunday",
+                      ].map((day) => (
+                        <div
+                          key={day}
+                          className="flex items-center space-x-2 min-w-[100px]"
+                        >
+                          <Checkbox
+                            id={`day-${day}`}
+                            checked={locationFormData.daysOpen.includes(day)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setLocationFormData({
+                                  ...locationFormData,
+                                  daysOpen: [...locationFormData.daysOpen, day],
+                                });
+                              } else {
+                                setLocationFormData({
+                                  ...locationFormData,
+                                  daysOpen: locationFormData.daysOpen.filter(
+                                    (d) => d !== day
+                                  ),
+                                });
+                              }
+                            }}
+                            className="flex-shrink-0"
+                          />
+                          <Label
+                            htmlFor={`day-${day}`}
+                            className="text-sm font-normal cursor-pointer whitespace-nowrap"
                           >
-                            <Checkbox
-                              id={`day-${day}`}
-                              checked={workshopFormData.days_open.includes(day)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setWorkshopFormData({
-                                    ...workshopFormData,
-                                    days_open: [
-                                      ...workshopFormData.days_open,
-                                      day,
-                                    ],
-                                  });
-                                } else {
-                                  setWorkshopFormData({
-                                    ...workshopFormData,
-                                    days_open:
-                                      workshopFormData.days_open.filter(
-                                        (d) => d !== day
-                                      ),
-                                  });
-                                }
-                              }}
-                            />
-                            <Label
-                              htmlFor={`day-${day}`}
-                              className="text-sm font-normal cursor-pointer"
-                            >
-                              {day}
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Supported Brands */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">
-                      Supported Brands *
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        "NEXA",
-                        "Maruti Suzuki",
-                        "Hyundai",
-                        "Toyota",
-                        "Honda",
-                        "Tata Motors",
-                        "Mahindra",
-                        "Kia",
-                        "MG Motor",
-                        "Ford",
-                        "Volkswagen",
-                      ].map((brand) => (
-                        <Badge
-                          key={brand}
-                          variant={
-                            workshopFormData.supported_brands.includes(brand)
-                              ? "default"
-                              : "outline"
-                          }
-                          className="cursor-pointer px-3 py-2 text-sm"
-                          onClick={() => {
-                            if (
-                              workshopFormData.supported_brands.includes(brand)
-                            ) {
-                              setWorkshopFormData({
-                                ...workshopFormData,
-                                supported_brands:
-                                  workshopFormData.supported_brands.filter(
-                                    (b) => b !== brand
-                                  ),
-                              });
-                            } else {
-                              setWorkshopFormData({
-                                ...workshopFormData,
-                                supported_brands: [
-                                  ...workshopFormData.supported_brands,
-                                  brand,
-                                ],
-                              });
-                            }
-                          }}
-                        >
-                          {brand}
-                          {workshopFormData.supported_brands.includes(
-                            brand
-                          ) && <X className="h-3 w-3 ml-2" />}
-                        </Badge>
+                            {day}
+                          </Label>
+                        </div>
                       ))}
                     </div>
                   </div>
+                </div>
 
-                  {/* Services Offered */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">
-                      Services Offered *
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        "General Service",
-                        "Repair",
-                        "Body Shop",
-                        "Car Wash",
-                        "Tire Service",
-                        "Battery Service",
-                        "AC Service",
-                        "Brake Service",
-                      ].map((service) => (
-                        <Badge
-                          key={service}
-                          variant={
-                            workshopFormData.services_offered.includes(service)
-                              ? "default"
-                              : "outline"
-                          }
-                          className="cursor-pointer px-3 py-2 text-sm"
-                          onClick={() => {
-                            if (
-                              workshopFormData.services_offered.includes(
-                                service
-                              )
-                            ) {
-                              setWorkshopFormData({
-                                ...workshopFormData,
-                                services_offered:
-                                  workshopFormData.services_offered.filter(
-                                    (s) => s !== service
-                                  ),
-                              });
-                            } else {
-                              setWorkshopFormData({
-                                ...workshopFormData,
-                                services_offered: [
-                                  ...workshopFormData.services_offered,
-                                  service,
-                                ],
-                              });
-                            }
-                          }}
-                        >
-                          {service}
-                          {workshopFormData.services_offered.includes(
-                            service
-                          ) && <X className="h-3 w-3 ml-2" />}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Capacity Information */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Capacity Information
-                    </h3>
-
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="total_technicians">
-                          Total Technicians *
-                        </Label>
-                        <Input
-                          id="total_technicians"
-                          type="number"
-                          min="1"
-                          placeholder="5"
-                          value={workshopFormData.total_technicians}
-                          onChange={(e) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              total_technicians: e.target.value.replace(
-                                /\D/g,
-                                ""
-                              ),
-                            })
-                          }
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="total_service_bays">
-                          Total Service Bays *
-                        </Label>
-                        <Input
-                          id="total_service_bays"
-                          type="number"
-                          min="1"
-                          placeholder="4"
-                          value={workshopFormData.total_service_bays}
-                          onChange={(e) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              total_service_bays: e.target.value.replace(
-                                /\D/g,
-                                ""
-                              ),
-                            })
-                          }
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="daily_service_capacity">
-                          Daily Service Capacity *
-                        </Label>
-                        <Input
-                          id="daily_service_capacity"
-                          type="number"
-                          min="1"
-                          placeholder="20"
-                          value={workshopFormData.daily_service_capacity}
-                          onChange={(e) =>
-                            setWorkshopFormData({
-                              ...workshopFormData,
-                              daily_service_capacity: e.target.value.replace(
-                                /\D/g,
-                                ""
-                              ),
-                            })
-                          }
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      onClick={() => {
-                        setShowWorkshopForm(false);
-                        setWorkshopError("");
-                        setWorkshopSuccess("");
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit" size="lg" disabled={workshopLoading}>
-                      {workshopLoading ? (
-                        "Creating Workshop..."
-                      ) : (
-                        <>
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
-                          Create Workshop
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              )}
+                {/* Submit Button */}
+                <div className="flex justify-end gap-4 pt-4 border-t">
+                  <Button
+                    type="submit"
+                    disabled={locationLoading}
+                    className="min-w-[120px]"
+                  >
+                    {locationLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Add Location
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
+
+          {/* Sticky Footer with Save Button */}
+          <div className="sticky bottom-0 left-0 right-0 bg-background border-t shadow-lg mt-8 mb-8 z-50">
+            <div className="container mx-auto px-4 max-w-2xl py-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-sm text-muted-foreground text-center sm:text-left">
+                  {workshops.length === 0 &&
+                  showrooms.length === 0 &&
+                  buybackCenters.length === 0 ? (
+                    <span className="text-amber-600 font-medium">
+                      <AlertCircle className="inline h-4 w-4 mr-1" />
+                      Please add at least one physical location to continue
+                    </span>
+                  ) : (
+                    <span>
+                      {workshops.length +
+                        showrooms.length +
+                        buybackCenters.length}{" "}
+                      location(s) added
+                    </span>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  size="lg"
+                  disabled={
+                    isLoading ||
+                    (workshops.length === 0 &&
+                      showrooms.length === 0 &&
+                      buybackCenters.length === 0)
+                  }
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // Create a proper synthetic event for form submission
+                    const form = document.querySelector(
+                      "form"
+                    ) as HTMLFormElement;
+                    if (form) {
+                      const syntheticEvent = {
+                        preventDefault: () => {},
+                        stopPropagation: () => {},
+                        nativeEvent: e.nativeEvent,
+                        currentTarget: form,
+                        target: form,
+                        bubbles: false,
+                        cancelable: false,
+                        defaultPrevented: false,
+                        eventPhase: 0,
+                        isTrusted: false,
+                        timeStamp: Date.now(),
+                        type: "submit",
+                        isDefaultPrevented: () => false,
+                        isPropagationStopped: () => false,
+                        persist: () => {},
+                      } as unknown as React.FormEvent<HTMLFormElement>;
+                      handleSubmit(syntheticEvent);
+                    } else {
+                      // Fallback: call handleSubmit with minimal event
+                      handleSubmit({
+                        preventDefault: () => {},
+                      } as unknown as React.FormEvent);
+                    }
+                  }}
+                  className="w-full sm:w-auto min-w-[200px]"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Save Dealership Details
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </ProtectedRoute>
