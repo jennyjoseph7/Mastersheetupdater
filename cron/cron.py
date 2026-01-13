@@ -36,36 +36,36 @@ def clear_otp_cache(logger=None, job=None):
 def overall_campaign_summary():
     with get_pg_connector() as pg:
 
-        # Time before execution
-        before = list(
+        # Time before execution (force BIGINT -> Python int)
+        before = int(list(
             pg.yield_results(
-                "SELECT EXTRACT(EPOCH FROM NOW()) * 1000 AS ts"
+                "SELECT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT"
             )
-        )[0][0]
-        # mlogger.info(f"-----before---{before}")
+        )[0][0])
 
         pg.execute_write(
             "CALL update_overall_campaign_summary();",
             _fetch=False
         )
 
-        # Count updated rows
-        updated_rows = list(
+        # Count updated rows (force BIGINT)
+        updated_rows = int(list(
             pg.yield_results(
                 """
-                SELECT COUNT(*)
+                SELECT COUNT(*)::BIGINT
                 FROM campaign_summary
                 WHERE updated >= to_timestamp(%s / 1000.0)
                 """,
                 (before,)
             )
-        )[0][0]
+        )[0][0])
 
-        total_rows = list(
+        # Count total rows (force BIGINT)
+        total_rows = int(list(
             pg.yield_results(
-                "SELECT COUNT(*) FROM campaign_summary"
+                "SELECT COUNT(*)::BIGINT FROM campaign_summary"
             )
-        )[0][0]
+        )[0][0])
 
         if updated_rows > 0:
             mlogger.info(
@@ -154,7 +154,7 @@ def performance_summary():
             ) t;
         """))
 
-        update_count = counts[0][0] if counts else 0
+        update_count = int(counts[0][0]) if counts and counts[0][0] is not None else 0
 
         if update_count == 0:
             mlogger.info("[CRON] No campaign updates detected. Skipping execution.")
