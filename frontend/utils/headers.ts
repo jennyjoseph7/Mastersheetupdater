@@ -1,12 +1,28 @@
 import { triggerGlobalLogout } from "@/lib/auth-context";
+// Helper: read cookie safely in browser
+const getCookie = (name: string) => {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.split("; ").find((row) => row.startsWith(name + "="));
+  return match ? match.split("=")[1] : null;
+};
 
+// Read cookies (browser-safe)
+const clientToken = getCookie("gryd_token");
+const clientSessionId = getCookie("gryd_session_id");
+const clientAppId = getCookie("gryd_application_id");
+
+// Auto-Logout Logic (Client Side Only)
+if (typeof document !== "undefined" && (!clientToken || !clientSessionId)) {
+  console.warn("[API] Missing credentials in cookies. Triggering auto-logout...");
+  triggerGlobalLogout();
+}
 // 1. Centralized Base URL Logic (Environment Aware)
 const getAppBaseUrl = () => {
   // Allow environment override if needed, otherwise default to prod
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
   }
-  
+
   const url = "https://autobot-webapp-dev.gryd.in";
   console.log(`[APP_ENV] Using production URL -> ${url}`);
   return url;
@@ -50,23 +66,7 @@ export const createApiHeaders = ({
 // CLIENT-SIDE SPECIFIC LOGIC (Legacy support for existing imports)
 // ------------------------------------------------------------------
 
-// Helper: read cookie safely in browser
-const getCookie = (name: string) => {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.split("; ").find((row) => row.startsWith(name + "="));
-  return match ? match.split("=")[1] : null;
-};
 
-// Read cookies (browser-safe)
-const clientToken = getCookie("gryd_token");
-const clientSessionId = getCookie("gryd_session_id");
-const clientAppId = getCookie("gryd_application_id");
-
-// Auto-Logout Logic (Client Side Only)
-if (typeof document !== "undefined" && (!clientToken || !clientSessionId)) {
-  console.warn("[API] Missing credentials in cookies. Triggering auto-logout...");
-  triggerGlobalLogout();
-}
 
 // Export static HEADERS for existing client-side code
 export const HEADERS = createApiHeaders({
