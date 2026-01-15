@@ -55,7 +55,7 @@ export default function AudiencePage() {
         taskId: item.task_id, 
         sourceName: item.source_name || "Unknown Source",
         audienceName: item.audience_name || "Untitled Audience",
-        type: item.source_type || "File", 
+        type: item.source_type || "csv", 
         audienceSize: item.process_size || item.audience_size_csv || 0,
         lastSynced: item.updated ? new Date(item.updated * 1000).toISOString() : new Date().toISOString(), 
         status: mapBackendStatus(item.csv_status),

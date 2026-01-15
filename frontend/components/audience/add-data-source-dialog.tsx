@@ -41,7 +41,7 @@ export interface FieldMapping {
 }
 
 export interface DataSourceFormData {
-  sourceType: "API" | "File" | null;
+  sourceType: "API" | "csv" | null;
   sourceName: string;
   baseUrl: string;
   authType: string;
