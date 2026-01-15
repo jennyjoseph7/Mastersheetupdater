@@ -280,6 +280,58 @@ async function fetchAudienceTasks(page = 1, pageSize = 50) {
     page_size: pageSize,
   });
 }
+async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
+  try {
+    const response = await authenticatedFetch(
+      `${APP_BASE_URL}/gryd/db/objects/dealership_campaign?page_number=${page}&page_size=${pageSize}`,
+      {
+        headers: {
+          "X-GRYD-ROLE": "admin", // role override only
+        },
+      }
+    );
+
+    const json = await response.json();
+
+    return {
+      items: json?.data ?? [],
+      total: json?.total_number ?? 0,
+    };
+  } catch (error) {
+    console.error("[fetchDealershipCampaigns] Fetch error:", error);
+    return { items: [], total: 0 };
+  }
+}
+async function fetchCampaignPerformanceSummary(campaignId = "") {
+  try {
+    const url = `${APP_BASE_URL}/gryd/db/objects/campaign_performance_summary${
+      campaignId ? `?campaign_id=${encodeURIComponent(campaignId)}` : ""
+    }`;
+
+    const response = await authenticatedFetch(url);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.status} ${errorText}`);
+    }
+
+    const json = await response.json();
+
+    if (campaignId && Array.isArray(json?.data)) {
+      return json.data.find(
+        (item) => item.campaign_id === campaignId
+      ) || null;
+    }
+
+    return json?.data ?? [];
+  } catch (error) {
+    console.error(
+      "[fetchCampaignPerformanceSummary] Fetch error:",
+      error
+    );
+    return null;
+  }
+}
 
 /* ---------------------------------------------------
    Utils
@@ -316,6 +368,8 @@ export {
   fetchPostSalesCampaigns,
   fetchCampaignObjectives,
   fetchCampaignSummary,
+  fetchDealershipCampaigns,
+  fetchCampaignPerformanceSummary,
   epochToIST,
   capitalize,
 };
