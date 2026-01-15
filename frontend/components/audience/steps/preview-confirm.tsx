@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import type { DataSourceFormData } from "../add-data-source-dialog";
 import { APP_BASE_URL } from "@/utils/headers";
+import { triggerGlobalLogout } from "@/lib/auth-context"; // 👈 Import global logout
+
 const getCookie = (name: string) => {
   if (typeof document === "undefined") return null;
 
@@ -33,26 +35,31 @@ const getCookie = (name: string) => {
   return match ? match.split("=")[1] : null;
 };
 
-// Configuration (Move to env or constants in real app)
+// Configuration
 const BASE_URL = APP_BASE_URL;
-  /// Get credentials from browser cookies
+
+// Get credentials from browser cookies
 let token = getCookie("gryd_token");
 let sessionId = getCookie("gryd_session_id");
+let applicationId = getCookie("gryd_application_id");
 
-// Fallback to hardcoded credentials
-if (!token || !sessionId) {
-  console.log("[Create Workshop API] Using fallback hardcoded credentials");
-  token = "53014452-7df1-351c-9b79-af13d3d6b92f";
-  sessionId = "94b970d4-5c2b-3762-bf65-272901d0ad53";
-} else {
-  console.log("[Create Workshop API] Using user credentials from cookies");
+// CRITICAL FIX: Always use "autocrm", never "gryd"
+if (applicationId === "gryd" || !applicationId) {
+  applicationId = "autocrm";
 }
+
+// --- UPDATED: No Hardcoded Fallback ---
+if (!token || !sessionId) {
+  console.warn("[PreviewConfirm] Missing credentials. API calls may fail 401.");
+}
+
 const API_HEADERS = {
   "Content-Type": "application/json",
   "Accept": "application/json",
   "X-GRYD-ENTERPRISE-ID": "autocrm",
-  "X-GRYD-TOKEN": token,
-  "X-GRYD-SESSION-ID": sessionId,
+  "X-GRYD-TOKEN": token || "", // Ensure string
+  "X-GRYD-SESSION-ID": sessionId || "", // Ensure string
+  "X-GRYD-APPLICATION-ID": applicationId || "autocrm",
   "X-GRYD-ROLE": "agent",
 };
 
@@ -65,7 +72,6 @@ export function PreviewConfirm({ formData, updateFormData }: PreviewConfirmProps
   const [pollingStatus, setPollingStatus] = useState<string>("Checking status...");
 
   // Logic to determine if we need to poll
-  // We poll if we have a Task ID but status is NOT completed/success/error yet
   const shouldPoll =
     formData.taskId &&
     formData.taskStatus !== "completed" &&
@@ -79,6 +85,13 @@ export function PreviewConfirm({ formData, updateFormData }: PreviewConfirmProps
       const response = await fetch(`${BASE_URL}/gryd/result/${taskId}`, {
         headers: API_HEADERS,
       });
+
+      // 🚨 Auto-Logout Check
+      if (response.status === 401) {
+        triggerGlobalLogout();
+        return;
+      }
+
       const data = await response.json();
       console.log("Preview Result:", data);
 
@@ -119,6 +132,13 @@ export function PreviewConfirm({ formData, updateFormData }: PreviewConfirmProps
           `${BASE_URL}/gryd/status/${formData.taskId}`,
           { headers: API_HEADERS }
         );
+
+        // 🚨 Auto-Logout Check
+        if (response.status === 401) {
+          triggerGlobalLogout();
+          return;
+        }
+
         const data = await response.json();
 
         if (!isMounted) return;
