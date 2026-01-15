@@ -156,6 +156,7 @@ export function AddDataSourceDialog({
         campaign_type: formData.category,
         campaign_objective_id: formData.campaignObjectiveId, 
         campaign_id: targetCampaignId,
+        campaign_objective_name: "",
         audience_name: formData.audienceName,
         tags: formData.tags || [],
         csv_file_url: formData.fileUrl,
@@ -166,7 +167,7 @@ export function AddDataSourceDialog({
           enabled: m.enabled
         })),
         source_name: formData.sourceName || "Uploaded via csv",
-        source_type: formData.sourceType || "File",
+        source_type: formData.sourceType || "csv",
         csv_status: "pending"
       });
 

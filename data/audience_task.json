@@ -49,7 +49,7 @@
       "name": "campaign_objective_name",
       "type": "text",
       "title": "Campaign Objective Name",
-      "required":"false"
+      "required": false
     },
     {
       "name": "audience_name",
