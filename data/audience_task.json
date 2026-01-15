@@ -117,7 +117,7 @@
       "name": "csv_status",
       "type": "text",
       "title": "Status of the CSV",
-      "options": ["pending", "processing", "completed", "failed", "cancelled","error"],
+      "options": ["pending", "processing", "completed", "failed", "cancelled","error","connected"],
       "ui_element": "select",
       "default": "pending",
       "indexed": true,
