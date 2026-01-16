@@ -260,6 +260,8 @@ async function fetchPostSalesCampaigns(dealershipId) {
 async function fetchCampaignObjectives(campaignType) {
   return fetchAPIData("campaign_objective", {
     campaign_type: campaignType?.replace(/_/g, "-"),
+    sort_by: "created",
+    sort_reverse: true
   });
 }
 
@@ -278,6 +280,8 @@ async function fetchAudienceTasks(page = 1, pageSize = 50) {
   return fetchAPIData("audience_task", {
     page_number: page,
     page_size: pageSize,
+    sort_by: "created",
+    sort_reverse: true
   });
 }
 async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
