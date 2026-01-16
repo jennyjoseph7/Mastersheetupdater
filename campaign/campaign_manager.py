@@ -790,28 +790,33 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         yield {"status": "Error", "error_description": f"Unsupported channel: {channel}"}
         return
 
-    if campaign_type == "pre-sales":
-        mobile = lead_data.get("phone_number")
-        customer_name = lead_data.get("person_name")
-        variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data) if template_data else {}
+    # if campaign_type == "pre-sales":
+    #     mobile = lead_data.get("phone_number")
+    #     customer_name = lead_data.get("person_name")
+    #     variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data) if template_data else {}
 
-    else:
-        persons = lead_data.get("persons_involved") or []
-        selected_person = None
+    # else:
+        # persons = lead_data.get("persons_involved") or []
+        # selected_person = None
 
-        if user_id:
-            selected_person = next((p for p in persons if p.get("user_id") == user_id), None)
-        if not selected_person and persons:
-            selected_person = persons[0]
+        # if user_id:
+        #     selected_person = next((p for p in persons if p.get("user_id") == user_id), None)
+        # if not selected_person and persons:
+        #     selected_person = persons[0]
 
-        if not selected_person:
-            yield {"status": "Error", "error_description": f"No valid person for post-sales lead_id={lead_id}"}
-            return
+        # if not selected_person:
+        #     yield {"status": "Error", "error_description": f"No valid person for post-sales lead_id={lead_id}"}
+        #     return
 
-        mobile = selected_person.get("last_contacted_whatsapp_number")
-        customer_name = selected_person.get("person_name")
-        variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data, selected_person) if template_data else {}
-
+        # mobile = selected_person.get("last_contacted_whatsapp_number")
+        # customer_name = selected_person.get("person_name")
+        # variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data, selected_person) if template_data else {}
+    
+    # not using persons_involved for now...
+    mobile = lead_data.get("phone_number")
+    customer_name = lead_data.get("person_name")
+    variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data) if template_data else {}
+    logger.info(f"Variable Mapping: {variable_mapping}")
     campaign_user = {
         "lead_id": lead_id,
         "mobile_number": mobile,
