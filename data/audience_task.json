@@ -49,7 +49,7 @@
       "name": "campaign_objective_name",
       "type": "text",
       "title": "Campaign Objective Name",
-      "required":"false"
+      "required": false
     },
     {
       "name": "audience_name",
@@ -117,7 +117,7 @@
       "name": "csv_status",
       "type": "text",
       "title": "Status of the CSV",
-      "options": ["pending", "processing", "completed", "failed", "cancelled"],
+      "options": ["pending", "processing", "completed", "failed", "cancelled","error","connected"],
       "ui_element": "select",
       "default": "pending",
       "indexed": true,
