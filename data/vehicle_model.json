@@ -241,6 +241,11 @@
       "name": "year_launched",
       "type": "number"
     },
+
+    {
+      "name" : "feature_summary",
+      "type" : "text"
+    },
     {
       "auto_updater": true,
       "default": {

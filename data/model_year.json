@@ -242,6 +242,18 @@
       "type": "text"
     },
     {
+      "name" : "feature_summary",
+      "type" : "text",
+      "default" : {
+        "function" : "get_from_model",
+        "args" : [
+          "vehicle_model",
+          "vehicle_model_id",
+          "feature_summary"
+        ]
+      }
+    },
+    {
       "auto_updater": true,
       "default": {
         "args": [
