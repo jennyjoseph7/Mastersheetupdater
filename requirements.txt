@@ -9,7 +9,7 @@ razorpay
 
 
 #Voice AI Service
-ai-service @ file:///home/nikit/Downloads/ai_service-0.0.7-py3-none-any.whl#sha256=a57d1eea091ae79e664694ec7b081eb918a45686f08920b5cc4dd02058e382cf
+ai-service @  https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/ai_service/ai_service-0.0.7-py3-none-any.whl
 aiohappyeyeballs==2.6.1
 aiohttp==3.12.13
 aiohttp-retry==2.9.1
