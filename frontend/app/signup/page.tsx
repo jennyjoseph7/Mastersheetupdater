@@ -73,7 +73,7 @@ import {
 } from "@/components/ui/input-otp";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import {
-  dealershipSignup,
+  API_BASE_URL,
   dealershipUpdateDetails,
   generateOTP,
   type DealershipSignupRequest,
@@ -289,8 +289,177 @@ export default function DealerSignup() {
         _timeout: 600,
       };
 
-      // Call the dealership signup API
-      const response = await dealershipSignup(signupRequest);
+      // Call the dealership signup API directly - same pattern as generateOTP
+      const backendUrl = `${API_BASE_URL}/dealership_signup`;
+      
+      console.log("[Signup Page] Calling backend directly:", backendUrl);
+      console.log("[Signup Page] API_BASE_URL:", API_BASE_URL);
+      console.log("[Signup Page] Request body:", JSON.stringify(signupRequest, null, 2));
+
+      const res = await fetch(backendUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-GRYD-ENTERPRISE-ID": "autocrm",
+          "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
+        },
+        body: JSON.stringify(signupRequest),
+        cache: "no-store",
+        mode: "cors",
+        credentials: "omit",
+      });
+
+      console.log(`[Signup Page] Response status: ${res.status}`);
+      console.log(
+        `[Signup Page] Response headers:`,
+        Object.fromEntries(res.headers.entries())
+      );
+
+      // Check content-type to detect HTML responses
+      const contentType = res.headers.get("content-type") || "";
+      const isHTML = contentType.includes("text/html");
+
+      if (!res.ok) {
+        let errorMessage = `Request failed (${res.status})`;
+        let errorData: any = null;
+
+        try {
+          const errorText = await res.text();
+
+          console.log(
+            `[Signup Page] Error response content-type: ${contentType}`
+          );
+          console.log(
+            `[Signup Page] Error response body: ${errorText.substring(0, 500)}`
+          );
+
+          // If response is HTML, it's likely a CORS error or redirect
+          if (
+            isHTML ||
+            errorText.trim().startsWith("<!DOCTYPE") ||
+            errorText.trim().startsWith("<html")
+          ) {
+            console.error(
+              "[Signup Page] Received HTML response instead of JSON. This usually indicates:"
+            );
+            console.error("  1. CORS is not properly configured on the backend");
+            console.error("  2. The endpoint is redirecting to an HTML page");
+            console.error("  3. The endpoint doesn't exist (404 HTML page)");
+            console.error("Response preview:", errorText.substring(0, 500));
+            errorMessage = `Server returned HTML instead of JSON (Status: ${res.status}). This usually indicates a CORS issue or the endpoint doesn't exist. Check browser console for details.`;
+          } else {
+            // Try to parse JSON error response
+            if (errorText && errorText.trim()) {
+              try {
+                errorData = JSON.parse(errorText);
+
+                // Extract error message from various possible formats
+                if (errorData && typeof errorData === "object") {
+                  if (errorData.error) {
+                    errorMessage = String(errorData.error);
+                  } else if (errorData.message) {
+                    errorMessage = String(errorData.message);
+                  } else if (errorData.detail) {
+                    errorMessage = String(errorData.detail);
+                  } else {
+                    // If it's an object but no standard error field, try to extract useful info
+                    const errorStr = JSON.stringify(errorData);
+                    // Check if it contains the Python error message
+                    if (
+                      errorStr.includes("'NoneType' object has no attribute 'get'")
+                    ) {
+                      // This is a backend bug - try to extract the original error if available
+                      errorMessage =
+                        "An error occurred while processing your request. Please check if the dealership already exists or try again.";
+                    } else {
+                      errorMessage = errorStr;
+                    }
+                  }
+                } else if (typeof errorData === "string") {
+                  errorMessage = errorData;
+                }
+              } catch (parseError) {
+                // Not JSON, use errorText as is
+                console.log(
+                  `[Signup Page] Error response is not JSON, using raw text`
+                );
+                errorMessage = errorText || errorMessage;
+              }
+            }
+          }
+        } catch (readError) {
+          // Failed to read response, use default message
+          console.error(
+            "[Signup Page] Failed to read error response:",
+            readError
+          );
+          errorMessage = `Request failed (${res.status})`;
+        }
+
+        // Clean up any "API Error:" prefixes
+        errorMessage = errorMessage.replace(/^API Error:\s*\d*\s*/gi, "").trim();
+
+        // Handle Python traceback errors - replace with user-friendly message
+        if (errorMessage.includes("'NoneType' object has no attribute 'get'")) {
+          errorMessage =
+            "An error occurred while processing your request. The dealership may already exist or there was a server error. Please try again.";
+        }
+
+        // If message is empty after cleanup, use a default
+        if (!errorMessage || errorMessage === "") {
+          errorMessage = `Request failed (${res.status})`;
+        }
+
+        console.log(`[Signup Page] Returning error: ${errorMessage}`);
+        throw new ApiError(res.status, errorMessage);
+      }
+
+      // Check if successful response is also HTML (shouldn't happen, but handle it)
+      const responseClone = res.clone();
+      const responseText = await responseClone.text();
+
+      if (
+        isHTML ||
+        responseText.trim().startsWith("<!DOCTYPE") ||
+        responseText.trim().startsWith("<html")
+      ) {
+        console.error(
+          "[Signup Page] Received HTML response for successful request!"
+        );
+        console.error("Response status:", res.status);
+        console.error("Response URL:", res.url);
+        console.error(
+          "Response headers:",
+          Object.fromEntries(res.headers.entries())
+        );
+        console.error("Response preview:", responseText.substring(0, 1000));
+        throw new ApiError(
+          500,
+          `Server returned HTML instead of JSON (Status: ${res.status}). This usually indicates:
+1. CORS is not properly configured on the backend
+2. The endpoint URL is incorrect
+3. The backend is redirecting to an HTML page
+Check browser console and Network tab for more details.`
+        );
+      }
+
+      // Try to parse as JSON
+      let response;
+      try {
+        response = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("[Signup Page] Failed to parse response as JSON");
+        console.error("Response text:", responseText.substring(0, 500));
+        throw new ApiError(
+          500,
+          `Server returned invalid JSON. Response preview: ${responseText.substring(
+            0,
+            200
+          )}...`
+        );
+      }
+
+      console.log("[Signup Page] Response:", response);
 
       // Store the response data
       setSignupResponse(response);
@@ -316,6 +485,9 @@ export default function DealerSignup() {
       // Show success dialog with dealership ID
       setSuccessDealershipId(dealershipId);
       setShowSuccessDialog(true);
+      
+      // After successful signup, redirect to login page
+      // The success dialog will handle the redirect when user clicks "Go to Login"
     } catch (err) {
       // Reset reCAPTCHA on error
       if (isRecaptchaEnabled) {
@@ -1242,14 +1414,14 @@ export default function DealerSignup() {
                     You're all set! Start creating campaigns and managing your
                     dealership.
                   </p>
-                  <Button
-                    size="lg"
-                    onClick={() => router.push("/")}
-                    className="w-full md:w-auto"
-                  >
-                    Go to Dashboard
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                    <Button
+                      size="lg"
+                      onClick={() => router.push("/login")}
+                      className="w-full md:w-auto"
+                    >
+                      Go to Login
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
                 </div>
               </CardContent>
             </Card>
@@ -1300,11 +1472,11 @@ export default function DealerSignup() {
             <AlertDialogAction
               onClick={() => {
                 setShowSuccessDialog(false);
-                router.push("/");
+                router.push("/login");
               }}
               className="w-full sm:w-auto"
             >
-              Go to Home
+              Go to Login
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
