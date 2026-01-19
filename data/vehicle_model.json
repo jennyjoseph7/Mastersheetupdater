@@ -247,6 +247,10 @@
       "type" : "text"
     },
     {
+      "name" : "competitor_vehicles",
+      "type" : "string_list"
+    },
+    {
       "auto_updater": true,
       "default": {
         "args": [

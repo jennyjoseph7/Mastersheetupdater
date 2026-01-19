@@ -254,6 +254,18 @@
       }
     },
     {
+      "name" : "competitor_vehicles",
+      "type" : "string_list",
+      "default" : {
+        "function" : "get_from_model",
+        "args" : [
+          "vehicle_model",
+          "vehicle_model_id",
+          "competitor_vehicles"
+        ]
+      }
+    },
+    {
       "auto_updater": true,
       "default": {
         "args": [

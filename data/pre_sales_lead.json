@@ -1329,6 +1329,18 @@
             }
         },
         {
+          "name" : "interested_vehicle_competitor_vehicles",
+          "type" : "string_list",
+          "default" : {
+            "function" : "get_from_model",
+            "args" : [
+              "model_year",
+              "interested_vehicle",
+              "competitor_vehicles"
+            ]
+          }
+        },
+        {
             "name" : "interested_vehicle_name",
             "type" : "text",
             "default": {
