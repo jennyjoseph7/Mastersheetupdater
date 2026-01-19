@@ -9,6 +9,7 @@
 node_modules/
 dist/
 autobot_voice.egg-info
+*package-lock.json
 # .env
 .env.local
 .env.*.local
