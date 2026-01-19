@@ -1,7 +1,4 @@
 db_routes @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/i2ce_routes/db_routes-0.0.1-py3-none-any.whl
-python-dotenv==1.2.1
-twilio==9.6.4
-elevenlabs==2.6.0
 pdfkit==1.0.0
 razorpay
 
@@ -9,7 +6,6 @@ razorpay
 
 
 #Voice AI Service
-ai-service @  https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/ai_service/ai_service-0.0.7-py3-none-any.whl
 aiohappyeyeballs==2.6.1
 aiohttp==3.12.13
 aiohttp-retry==2.9.1
@@ -57,7 +53,6 @@ croniter==3.0.3
 cryptography==45.0.5
 ctranslate2==4.6.0
 Cython==3.1.4
-db-routes @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/i2ce_routes/db_routes-0.0.1-py3-none-any.whl#sha256=5a513dc8d5cf38b701ba1de29adaecb6830e715036b9fcbf9c746998335d9dbf
 decorator==5.1.1
 distro==1.9.0
 dtw-python==1.7.2
@@ -94,9 +89,7 @@ googleapis-common-protos==1.68.0
 grpc-google-iam-v1==0.14.0
 grpcio==1.74.0rc1
 grpcio-status==1.71.2
-gryd-worker @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/gryd_worker/gryd_worker-0.5.0-py3-none-any.whl#sha256=ad3271ccc300f95ea2230f716a4c8a33a459fd455c640a8596b164e17d8a8eba
 h11==0.14.0
-helpers @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/helpers/helpers-0.1.7-py3-none-any.whl#sha256=5d42796ecad0ff669e900256e52d02942e8e120f17f9ad1733d9024b0c3ffc23
 hf-xet==1.1.5
 httpcore==1.0.8
 httplib2==0.22.0
@@ -126,7 +119,6 @@ kubernetes==33.1.0
 llvmlite==0.45.1
 MarkupSafe==3.0.2
 matplotlib-inline==0.1.7
-models @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/models/models-1.1.3-py3-none-any.whl#sha256=5de46760db568f07da53b259c2691cc87006d472047dca59d64d99073086c6f5
 more-itertools==10.8.0
 mpmath==1.3.0
 msal==1.32.3
