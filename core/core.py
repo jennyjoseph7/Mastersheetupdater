@@ -336,6 +336,7 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
     person_vehicle_model = models['person_vehicle_model']
     phone = get_valid_value(row, 'phone_number') or get_valid_value(row, 'mobile')
     email = get_valid_value(row, 'email')
+    missing_emails_phones = {}
     if not phone and not email:
         missing_reason.append("Missing phone_number and email, required one of them")
     persons_involved = []
@@ -346,6 +347,8 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
                 persons = person_model.list(_as_option=True, _page_size=1, **{l: f"{phone}^"})
                 if persons:
                     persons_involved.extend(persons)
+                else:
+                    missing_emails_phones[l] = phone
     for k in ["email", "alt_email_2", "alt_email_3", "alt_email_4"]:
         email = get_valid_value(row, k)
         if email:
@@ -353,6 +356,8 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
                 persons = models['person_model'].list(_as_option=True, _page_size=1, **{l: f"{email}^"})
                 if persons:
                     persons_involved.extend(persons)
+                else:
+                    missing_emails_phones[l] = email
     if persons_involved:
         persons_involved = get_unique_persons_involved(persons_involved)
     vehicle_id = get_valid_value(row, 'vehicle_id')
@@ -381,6 +386,24 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
                 missing_reason.append(f"Failed to post person: {str(e)}")
             else:
                 persons_involved.append(person)
+    elif missing_emails_phones:
+        data = {}
+        for k in person_model._model_ref.attr_seq:
+            if is_valid_value(row, k) and not any(_ in k for _ in ('phone', 'email')):
+                data[k] = row.get(k)
+            data.update(missing_emails_phones)
+            try:
+                person = person_model.post(data)
+                if vehicle_id:
+                    person_vehicle = person_vehicle_model.post({
+                        'user_id': person.get('user_id'),
+                        'vehicle_id': vehicle_id
+                    })
+            except Exception as e:
+                missing_reason.append(f"Failed to post person: {str(e)}")
+            else:
+                persons_involved.append(person)
+
     return row, missing_reason
 
 

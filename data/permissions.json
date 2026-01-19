@@ -63,7 +63,7 @@
   "post_sales_campaign": [
     {
       "read_access": true,
-       "write_access": true,
+      "write_access": true,
       "role": "human_agent"
     }
   ],
@@ -76,7 +76,7 @@
   "pre_sales_campaign": [
     {
       "read_access": true,
-       "write_access": true,
+      "write_access": true,
       "role": "human_agent"
     }
   ],

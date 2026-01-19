@@ -34,6 +34,8 @@
     "dealership_lead",
     "pre_sales_lead",
     "post_sales_lead",
+    "phone_number_status",
+    "email_status",
     "template",
     "showroom_visit",
     "service_visit",
