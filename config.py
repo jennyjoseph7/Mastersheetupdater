@@ -182,9 +182,6 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
     object_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('nested_object',),  m.attributes.items()))))
     object_list_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('object_list',),  m.attributes.items()))))
     bool_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('bool',),  m.attributes.items()))))
-    logger.info("List keys: %s", list_keys)
-    logger.info("Dict keys: %s", object_keys)
-    logger.info("Dict List keys: %s", object_list_keys)
     logger.info(f"Posting data: {data_name} from filename: {filename_csv}")
     try:
         with open(filename_csv, encoding="utf-8") as f:
@@ -196,13 +193,16 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
                     continue
                 row = {k.strip(): v.strip() for k, v in row.items()}
                 for k in bool_keys:
+                    logger.info(f"Converting boolean attribute {k}: {row[k]}")
                     if row[k].lower() in ['true', '1', 'yes']:
                         row[k] = True
                     elif row[k].lower() in ['false', '0', 'no']:
                         row[k] = False
                     elif row[k]:
                         raise ValueError(f"Incorrect boolean value {row[k]}")
+                    logger.info(f"Converting boolean attribute {k}: {row[k]} -> {row[k]}")
                 for k in list_keys:
+                    logger.info(f"Converting list attribute {k}: {row[k]}")
                     rk = row[k]
                     logger.info("Converting list attribute %s: %s", k, rk)
                     rok = list(map(lambda x: x.strip(), rk.split(',')))
@@ -233,7 +233,7 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
                         else:
                             r.append(rk)
                     row[k] = r or None
-                    logger.info("Converted object list attribute %s: %s -> ", k, rk, row[k])
+                    logger.info("Converted object list attribute %s: %s -> %s", k, rk, row[k])
                 row = {k:v for k, v in row.items() if v not in (None, '')}
                 m.post(row)
                 logger.info(f"Data posted successfully: {data_name}, linenum {linenum}")

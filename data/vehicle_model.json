@@ -241,6 +241,15 @@
       "name": "year_launched",
       "type": "number"
     },
+
+    {
+      "name" : "feature_summary",
+      "type" : "text"
+    },
+    {
+      "name" : "competitor_vehicles",
+      "type" : "string_list"
+    },
     {
       "auto_updater": true,
       "default": {

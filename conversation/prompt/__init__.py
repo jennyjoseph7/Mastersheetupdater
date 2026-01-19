@@ -12,7 +12,6 @@ mlogger = gryd.hp.get_logger(__name__)
 
 def yield_primary_prompt(*args, **kwargs):
     mlogger.info("yield_primary_prompt called with data \n {} \n\n ---------------".format(kwargs))
-    request_data = kwargs.get("request_data")
 
     ###TODO check prompt template model to find the correct prompt for this user and campaign
     yield {"prompt":setup_primary_prompt(*args, **kwargs)}
@@ -315,14 +314,14 @@ def get_purpose_and_steps(*args, **kwargs):
     ###TODO create a way to detect the flow to push
     flow = "service" if campaign_type == "post-sales" else "either test drive at the showroom or at home"
     urgency_hooks = campaign_data.get("urgency_hook",[])
+    date_now = hp.datetime.now().strftime("%A, %B %d, %Y")
     offer = campaign_data.get("campaign_offerf","No Offer")
     if flow == "service":
         steps = ["- Full Name \n- Car Model \n- Date & Time \n- Service Type"]
     else:
         steps = ["- Full Name \n- Interested Model\n- Date & Time "]
     if campaign_type == "inbound":
-        return "Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy."
-    date_now = hp.datetime.now().strftime("%A, %B %d, %Y")
+        return f"Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy.\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
     return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user isnt already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy.\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
 def get_cta_options(*args, **kwargs):
     ctas = kwargs.get("campaign_data").get("ctas")
@@ -466,6 +465,30 @@ def setup_primary_prompt(*args, **kwargs):
     output_format = get_output_format(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     mlogger.info("my history data == {}".format(conversation_history))
 
+    if campaign_data.get("campaign_type") == "inbound":
+        primary_prompt = f"""
+        Who you are -
+        {who_are_you}
+        Who is the customer -
+        {who_is_the_customer}
+        The purpose of this conversation -
+        {purpose_and_steps}
+        Possible states of the conversation and how to handle -
+        {possible_states_and_solutions}
+        Rules -
+        {rules}
+        Tone and style -
+        {tone_and_style}
+        Dealer description -
+        {showroom_workshop_desc}
+        Documents Data -
+        {doc_data}
+        Conversation History -
+        {conversation_history}
+        Output Format -
+        {output_format}
+        """
+        return primary_prompt
     primary_prompt = f"""
     Who you are -
     {who_are_you}

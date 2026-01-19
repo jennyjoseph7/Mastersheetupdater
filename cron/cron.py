@@ -538,9 +538,15 @@ def create_campaign_templates(logger=None, job=None):
 
 
 
-                dispositions = ["reached", "engaged"]
+                dispositions = ["queued", "attempted", "reached", "engaged"]
 
                 postsales_disposition_detail = {
+                        "queued": [
+                            "User is interested in purchasing a vehicle"
+                        ],
+                        "attempted": [
+                            "Attempted to contact regarding the vehicle",
+                        ],
                         "reached": [
                             "Message Deliverd but didn't seen",
                             "Message sent but not replied"
@@ -561,6 +567,12 @@ def create_campaign_templates(logger=None, job=None):
                     }
 
                 presale_disposition_detail = {
+                        "queued": [
+                            "User is interested in servicing their vehicle"
+                        ],
+                        "attempted": [
+                            "Attempted to contact regarding the servicing of the vehicle",
+                        ],
                         "reached": [
                             "Message Deliverd but didn't seen",
                             "Message sent but not replied"

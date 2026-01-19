@@ -1,0 +1,31 @@
+{
+    "name": "email_status",
+    "attributes": [
+        {
+            "name": "email",
+            "type": "text",
+            "indexed": true,
+            "id": true
+        },
+        {
+            "name": "status",
+            "type": "text",
+            "default": "queued",
+            "options": ["error", "failed", "attempted", "queued", "reached", "contacted", "engaged", "converted"]
+        },
+        {
+            "name": "attempts",
+            "type": "number",
+            "default": 0
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        }
+    ]
+}

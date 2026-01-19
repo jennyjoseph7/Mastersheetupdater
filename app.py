@@ -5,8 +5,8 @@ from analytics.loader import load_stored_procedures
 from ai_service import ai_service_app
 # from communication.connectors.connector_whatsapp import process_forwarded_webhook
 from db_routes import db_routes, ai_service_app
-# from voice.voice.providers.twilio import app as twilio_routes
-# from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_app
+from voice.voice.providers.twilio import app as twilio_routes
+from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_app
 import os
 from flask import Flask,request,jsonify
 from config import *
@@ -154,10 +154,10 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
     return dealership
 
 
-app.register_blueprint(ai_service_app.ai_service_routes)
+# app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
-# app.register_blueprint(twilio_routes)
-# app.register_blueprint(elevanlabs_tatatele_app)
+app.register_blueprint(twilio_routes)
+app.register_blueprint(elevanlabs_tatatele_app)
 
 
 
