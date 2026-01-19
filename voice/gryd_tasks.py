@@ -71,17 +71,20 @@ def trigger_voice_call(*args, **kwargs):
     }
     session_data = session_model.post(session_obj)
 
-    for x in converse.get_primary_prompt(*args, **{
-        "session_id" : session_data['session_id'],
-        "session_data" : session_data
-    }):
-        if x.get('prompt'):
-            session_data["prompt"] = x.get('prompt')
-            break
+    session_data["room_id"] = user_data.get("room_id", "ambal_auto")
 
+    if user_data.get("generate_prompt", True):
+        for x in converse.get_primary_prompt(*args, **{
+            "session_id" : session_data['session_id'],
+            "session_data" : session_data
+        }):
+            if x.get('prompt'):
+                session_data["prompt"] = x.get('prompt')
+                break
 
+    
     logger.info(f"Session for Voice Call: {session_data}")
-    provider = user_data.get("provider_name", "tatatele")
+    provider = user_data.get("provider_name", "tatatele").replace("-", "").strip().lower()
 
     response = providers.make_call(provider, session_data, *args, **kwargs)
 
@@ -222,8 +225,119 @@ def post_actions(session_id):
 
 
 if __name__ == "__main__":
-    pass
-    data =  {'_is_testing': False, 'ctas': ['book-service', 'request-callback'], 'created': 1764835501.0808802, 'remarks': 'Focus on high-value customers with service history', 'updated': 1764835501.0822716, 'channels': ['whatsapp_chat', 'email', 'voice_phone'], 'end_date': 1735689600, 'languages': ['english', 'hindi', 'tamil'], 'region_id': 'south-india', 'start_date': 1704067200, 'campaign_id': '74f260b8-e8dc-3c52-ab8d-31bd0fc49943', 'dealer_name': 'Ambal Auto', 'region_name': 'South India', 'workshop_id': 'ambal-auto - ambal-auto---service-center - coimbatore', 'actual_spent': 35000, 'urgency_hook': ['Your vehicle service is due in 30 days. Book now to avoid last-minute rush!'], 'campaign_name': 'Scheduled Service Reminder', 'campaign_type': 'post-sales', 'cost_per_lead': 0, 'dealership_id': 'ambal-auto-south-india', 'workshop_name': 'Ambal Auto - Service Center', 'campaign_offer': '10% discount on service charges for bookings made within 7 days', 'number_engaged': 200, 'number_reached': 360, 'workshop_email': 'workshop@ambalauto.com', 'campaign_status': 'Active', 'number_targeted': 400, 'budget_allocated': 40000, 'number_contacted': 300, 'number_converted': 100, 'supported_brands': ['maruti-suzuki-arena', 'maruti-suzuki-nexa'], 'workshop_address': 'Ambal Auto, Iyer Hospital Premises, Trichy Rd, Coimbatore, Tamil Nadu 641005', 'workshop_pincode': '641005', 'campaign_sub_type': ['workshop awareness'], 'campaign_objective': ['Service reminder'], 'responsible_person': 'Ramesh Kumar', 'workshop_full_name': 'Ambal Auto Ambal Auto - Service Center', 'campaign_description': 'Remind customers about their upcoming scheduled service appointments', 'campaign_user_source': {'source_type': 'default', 'campaign_users': [{'lead_id': 'tn37dm7087-ambal-auto-scheduled-service-reminder', 'mobile_number': '918850988794', 'customer_name': None, 'contact_channel': 'voice_phone', 'template_id': None, 'template_details': None}], 'field_mapping': {'lead_id': 'lead_id', 'mobile_number': 'mobile_number', 'customer_name': 'customer_name', 'template_id': 'template_id', 'template_details': 'template_details', 'contact_channel': 'contact_channel'}, 'config': {'batch_size': 100, '_skip_sent_message': True}}, 'workshop_geolocation': [11.0168, 76.9558], 'dealership_description': 'Our customers can experience the joy of state-of-the-art technology, reliability, transparency and complete peace of mind.', 'campaign_objective_type': ['lead volume'], 'conversion_rate_percent': 0, 'region_level_guardrails': 'Maintain professional communication standards. Respect regional languages.', 'region_level_guidelines': 'Emphasize technology features and premium quality. Highlight safety ratings.', 'workshop_contact_number': '+91-9876543501', 'workshop_operating_hours': {'closing_time': '18:00', 'opening_time': '09:00'}, 'supported_brands_guidelines': [], 'channel': 'voice_phone', 'sender': None, 'provider_name': 'tata-tele', 'template_message': None, 'lead_id': 'tn37dm7087-ambal-auto-scheduled-service-reminder', 'mobile_number': '919113687241', 'customer_name': None, 'contact_channel': 'voice_phone', 'template_id': None, 'template_details': None}
+    data = {
+    "_is_testing": False,
+    #"mobile_number": "918850988794",
+    "mobile_number": "918870737879",
+    "generate_prompt": False,
+    "user_id": "fccaa5ef133430a0",
+    "campaign_id": "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
+    "campaign_name": "Scheduled Service Reminder",
+    "campaign_type": "post-sales",
+    "campaign_sub_type": ["workshop awareness"],
+    "campaign_objective": ["Service reminder"],
+    "campaign_objective_type": ["lead volume"],
+    "campaign_description": "Remind customers about their upcoming scheduled service appointments",
+    "campaign_status": "Active",
+
+    "created": 1764835501.0808802,
+    "updated": 1764835501.0822716,
+    "start_date": 1704067200,
+    "end_date": 1735689600,
+
+    "dealer_name": "Ambal Auto",
+    "dealership_id": "ambal-auto-south-india",
+    "dealership_description": (
+        "Our customers can experience the joy of state-of-the-art technology, "
+        "reliability, transparency and complete peace of mind."
+    ),
+
+    "region_id": "south-india",
+    "region_name": "South India",
+    "region_level_guardrails": "Maintain professional communication standards. Respect regional languages.",
+    "region_level_guidelines": "Emphasize technology features and premium quality. Highlight safety ratings.",
+
+    "workshop_id": "ambal-auto---service-center---coimbatore",
+    "workshop_name": "Ambal Auto - Service Center",
+    "workshop_full_name": "Ambal Auto Ambal Auto - Service Center",
+    "workshop_address": (
+        "Ambal Auto, Iyer Hospital Premises, Trichy Rd, "
+        "Coimbatore, Tamil Nadu 641005"
+    ),
+    "workshop_pincode": "641005",
+    "workshop_email": "workshop@ambalauto.com",
+    "workshop_contact_number": "+91-9876543501",
+    "workshop_operating_hours": {
+        "opening_time": "09:00",
+        "closing_time": "18:00"
+    },
+    "workshop_geolocation": [11.0168, 76.9558],
+
+    "channels": ["whatsapp_chat", "email", "voice_phone"],
+    "channel": "voice_phone",
+    "provider_name": "tata-tele",
+    "sender": None,
+
+    "languages": ["english", "hindi", "tamil"],
+    "supported_brands": ["maruti-suzuki-arena", "maruti-suzuki-nexa"],
+    "supported_brands_guidelines": [],
+
+    "ctas": ["book-service", "request-callback"],
+    "urgency_hook": [
+        "Your vehicle service is due in 30 days. Book now to avoid last-minute rush!"
+    ],
+    "campaign_offer": "10% discount on service charges for bookings made within 7 days",
+
+    "budget_allocated": 40000,
+    "actual_spent": 35000,
+    "cost_per_lead": 0,
+
+    "number_targeted": 400,
+    "number_reached": 360,
+    "number_contacted": 300,
+    "number_engaged": 200,
+    "number_converted": 100,
+    "conversion_rate_percent": 0,
+
+    "remarks": "Focus on high-value customers with service history",
+    "responsible_person": "Ramesh Kumar",
+
+    "campaign_user_source": {
+        "source_type": "default",
+        "campaign_users": [
+            {
+                "lead_id": "tn37dm7087-ambal-auto-scheduled-service-reminder",
+                "mobile_number": "918438403561",
+                "customer_name": None,
+                "contact_channel": "voice_phone",
+                "template_id": None,
+                "template_details": None
+            }
+        ],
+        "field_mapping": {
+            "lead_id": "lead_id",
+            "mobile_number": "mobile_number",
+            "customer_name": None,
+            "template_id": "template_id",
+            "template_details": "template_details",
+            "contact_channel": "contact_channel"
+        }
+    },
+
+    "config": {
+        "batch_size": 100,
+        "_skip_sent_message": True
+    },
+
+    "lead_id": "tn37dm7087-ambal-auto-scheduled-service-reminder",
+    "customer_name": None,
+    "contact_channel": "voice_phone",
+    "template_id": None,
+    "template_details": None
+}
+
+    trigger_voice_call(**{"user_data":data})
+
     gryd.create_async_task(
         "trigger_voice_call",
         config.AUTOCRM_VOICE_SERVICE_NAME,
@@ -234,5 +348,16 @@ if __name__ == "__main__":
     )
 
 
-    # for x in trigger_voice_call(**{"user_data":data}):
-    #     print(x)
+    for x in trigger_voice_call(**{"user_data":data}):
+        print(x)
+
+    # from gryd_worker import gryd
+    # from communication.connectors.load_providers import load_providers
+        
+    # load_providers(["whatsapp","email"])
+    # gryd.create_async_task(
+    #         "process_single_lead",
+    #         "autocrm-campaign",
+    #         args=["voice_phone", "tn37dm7087-ambal-auto-scheduled-service-reminder","post-sales","74f260b8-e8dc-3c52-ab8d-31bd0fc49943"],
+    #         kwargs={}
+    #     )

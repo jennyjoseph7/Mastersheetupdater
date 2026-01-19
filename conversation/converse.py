@@ -7,7 +7,7 @@ if BASE_DIR not in sys.path:
 from config import AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_ITEM,AUTOCRM_CORE_SERVICE_NAME
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
-from prompt import yield_primary_prompt, run_prompt_sync
+from conversation.prompt import yield_primary_prompt, run_prompt_sync
 from yield_response import yield_result,yield_error, yield_status
 import math
 from datetime import datetime
