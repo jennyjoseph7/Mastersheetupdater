@@ -24,7 +24,7 @@ CHANNELS = 1
 # Default Agent configs
 SEND_SAMPLE_RATE = 24000
 RECEIVE_SAMPLE_RATE = 8000
-CHUNK_SIZE = 1024
+CHUNK_SIZE = 320
 
 class VoiceAgentError(hp.GrydError):
     pass
@@ -113,8 +113,15 @@ class GEMINIAPI:
                     prebuilt_voice_config=types.PrebuiltVoiceConfig(
                         voice_name=voice_id
                     )
-                )
+                ),
+                language_code="en-US",
             ),
+            "realtime_input_config": {
+                "automatic_activity_detection": {
+                    "silence_duration_ms": 400,
+                    "prefix_padding_ms": 100
+                }
+            }
         }
         logger.info(f"Configured voice agent model={model_name}, response_channel={response_channel}, voice_id={voice_id}")
         return self.client.aio.live.connect(model=model_name, config=config_params)
@@ -243,11 +250,11 @@ class GEMINIAPI:
         input_queue = session["input_queue"]
         output_queue = session["output_queue"]
         def _clear():
-            try:
-                while not input_queue.empty():
-                    input_queue.get_nowait()
-            except Exception:
-                pass
+            # try:
+            #     while not input_queue.empty():
+            #         input_queue.get_nowait()
+            # except Exception:
+            #     pass
 
             try:
                 while not output_queue.empty():
@@ -295,12 +302,15 @@ class GEMINIAPI:
                     try:
                         while True:
                             try:
-                                data = await asyncio.to_thread(input_queue.get, timeout=1)
+                                data = input_queue.get_nowait()
                             except pyqueue.Empty:
+                                await asyncio.sleep(0.02)
                                 continue
                             except Exception as e:
                                 logger.warning(f"[{session_id}] unexpected sender error: {str(e)}")
-                                continue
+                                import traceback
+                                traceback.print_exc()
+                                raise e
 
                             if data is None:
                                 # logger.info(f'[{session_id}] Closing request acknowlegded')
@@ -334,11 +344,9 @@ class GEMINIAPI:
                             chunk_count += 1
                             
                             if chunk_count % 20 == 1:
-                                import array
-                                samples = array.array('h', audio_bytes)
-                                max_amp = max(abs(s) for s in samples) if samples else 0
-                                logger.info(f"[{session_id}] Chunk #{chunk_count}: {len(audio_bytes)} bytes, max_amp={max_amp}")
+                                logger.info(f"[{session_id}] Chunk #{chunk_count}: {len(audio_bytes)} bytes")
                             
+                            send_start = hp.time()
                             await async_session.send_realtime_input(
                                 audio = {
                                     "data": audio_bytes,

@@ -329,6 +329,11 @@ def post_contact_status(*args, **data):
         # Bcoz we have initially created the record for queued so skipping it
         if data.get("message_status") not in ["initiated", "queued"]:
             pg.update("contact_status", "contact_status_id", contact_status_id, payload)
+        # updating the disposition in respective lead model..
+        if data.get("campaign_type") == "post-sales":
+            pg.update("post_sales_lead", "post_sales_lead_id", data.get("lead_id"), {"disposition": data.get("provider_status")})
+        else:
+            pg.update("pre_sales_lead", "pre_sales_lead_id", data.get("lead_id"), {"disposition": data.get("provider_status")})
             
         # logger.info(
         #     f"[post_contact_status] contact status={data.get('message_status')} "

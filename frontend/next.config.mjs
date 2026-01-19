@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "export",
+
   trailingSlash: true,
+  output: "export",
+
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -15,6 +17,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
+  productionBrowserSourceMaps: true,
 };
 
 export default nextConfig;

@@ -37,14 +37,12 @@ TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID") or os.environ.get("TWILIO_A
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN") or os.environ.get("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER") or os.environ.get("TWILIO_PHONE_NUMBER")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID") or os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
-
-# Note: Environment variable validation moved to runtime (when functions are called)
-# This allows the module to be imported without raising exceptions
+SERVER_URL = os.environ.get("SERVER_URL", 'https://ambal.loca.lt')
+if SERVER_URL.endswith('/'):
+    SERVER_URL = SERVER_URL[:-1]
 
 app = Blueprint('twilio_routes', __name__)
 twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN else None
-
-
 
 def make_call_twilio(session_data, *args, **kwargs):
     number = session_data.get("phone_number", "918850988794") #for test
@@ -58,10 +56,19 @@ def make_call_twilio(session_data, *args, **kwargs):
         daemon=True
     )
     thread.start()
+    twiml_response = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+    <Response>
+        <Connect>
+            <Stream url=\"wss://autobot-messenger.gryd.in/ws/twilio/{session_id}/{session_id}_input_client\">
+                <Parameter name="session_id" value="{session_id}"></Parameter>
+            </Stream>
+        </Connect>
+    </Response>"""
+    # return Response(twiml_response, mimetype="text/xml")
 
     try:
         call = twilio_client.calls.create(
-            status_callback=f"https://{request.headers.get('host')}/twilio-callback-events",
+            status_callback=f"{SERVER_URL}/twilio-callback-events",
             status_callback_event=[
                             "failed",
                             "no-answer",
@@ -74,7 +81,8 @@ def make_call_twilio(session_data, *args, **kwargs):
                             "completed"],
             from_=TWILIO_PHONE_NUMBER,
             to=number,
-            url=f"https://{request.headers.get('host')}/outbound-call-twiml?session_id={session_id}"
+            twiml= twiml_response
+            # url=f"{SERVER_URL}/outbound-call-twiml?session_id={session_id}"
         )
         logger.info(f"Twilio call initiated with SID: {call.sid}")
         return call.__dict__
@@ -83,7 +91,6 @@ def make_call_twilio(session_data, *args, **kwargs):
         return {
             "error": exc.msg
         }
-
 
 
 
@@ -113,8 +120,7 @@ def outbound_call():
 
     # Initiate the Twilio call
     response = make_call_twilio(data)
-
-    return jsonify({"success": True, "message": "Call initiated", "callSid": response.sid})
+    return jsonify({"success": True, "message": "Call initiated", "callSid": response['sid']})
 
 
 @app.route("/outbound-call-twiml", methods=["GET", "POST"])
@@ -237,11 +243,6 @@ class MessageHandler(ProviderBase):
 
         mulaw_bytes = base64.b64decode(mulaw_b64)
         pcm_bytes = audioop.ulaw2lin(mulaw_bytes, 2)
-        
-        samples = array.array('h', pcm_bytes)
-        if samples:
-            max_amp_before = max(abs(s) for s in samples)
-            avg_amp_before = sum(abs(s) for s in samples) / len(samples)
         
         return pcm_bytes
     

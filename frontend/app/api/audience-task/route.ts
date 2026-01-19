@@ -1,22 +1,46 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:5008";
+// Import shared logic
+import { APP_BASE_URL, createApiHeaders } from "@/utils/headers"; // Adjust path to where header.ts is located
 
 export async function GET() {
-  try {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
-      "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
-      "X-GRYD-ROLE": "admin",
-    };
+  const cookieStore = cookies();
+  
+ // 1. Get credentials from Server Cookies
+  let token = cookieStore.get("gryd_token")?.value;
+  let sessionId = cookieStore.get("gryd_session_id")?.value;
+  let applicationId = cookieStore.get("gryd_application_id")?.value;
 
-    const res = await fetch(`${API_BASE_URL}/gryd/db/objects/audience_task`, {
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+   
+  if (!token || !sessionId) {
+    console.warn("[Audience Task API] Missing credentials. Returning 401.");
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 }
+    );
+  }
+
+  try {
+    // 3. Generate Headers using the shared helper
+    // Note: We override role to 'admin' as per your original requirement
+    const headers = createApiHeaders({
+      token,
+      sessionId,
+      applicationId,
+      role: "admin", 
+    });
+
+    console.log("[Audience Task API] Application ID used:", headers["X-GRYD-APPLICATION-ID"]);
+
+    const res = await fetch(`${APP_BASE_URL}/gryd/db/objects/audience_task`, {
       method: "GET",
-      headers,
+      // We cast to Record<string, string> to satisfy TypeScript fetch definitions if needed
+      headers: headers as Record<string, string>, 
       cache: "no-store",
     });
 

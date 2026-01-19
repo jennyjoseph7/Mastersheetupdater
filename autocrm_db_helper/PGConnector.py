@@ -14,10 +14,17 @@ class AutoCRMPGConnector(db.GrydPGConnector):
     def get(self, table_name, id_attr, id):        
         return super().get(table_name, id, id_attr) 
     
-    def list(self, table_name, where):
-        where  = "WHERE dict @> '{}'".format(json.dumps(where))
-        return super().list(table_name, where)
+    # def list(self, table_name, where):
+    #     where  = "WHERE dict @> '{}'".format(json.dumps(where))
+    #     return super().list(table_name, where)
     
+    def list(self, table_name, where):
+        if isinstance(where, dict):
+            where_clause = "WHERE dict @> '{}'".format(json.dumps(where))
+        else:
+            where_clause = f"WHERE {where}"
+
+        return super().list(table_name, where_clause)
     def list_order_by(self, table_name, where, order_by="created", order="DESC"):
         where_clause = "WHERE dict @> '{}'".format(json.dumps(where))
         order_clause = f"ORDER BY {order_by} {order}"

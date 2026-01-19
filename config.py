@@ -1,5 +1,5 @@
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp
-import os, sys
+import os, sys, csv
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 AUTOCRM_ADMIN_ID = os.environ.get("AUTOCRM_ADMIN_ID", "ananth+autocrm-app@i2ce.in")
 AUTOCRM_ADMIN_PHONE_NUMBER = os.environ.get("AUTOCRM_ADMIN_PHONE_NUMBER", "99980838165")
@@ -32,15 +32,16 @@ AUTOCRM_RESPONSE_PROVIDED_UNITS = "500_characters"
 AUTOCRM_RESPONSE_PROVIDED_ITEM = "response_to_query"
 WHATSAPP_PROVIDER_NAME="airtel"
 WHATSAPP_PROVIDER_NUMBER="917795030574"
-EMAIL_PROVIDER_NAME="AwsSender"
-EMAIL_SENDER_NAME="info@iamdave.ai"
-EMAIL_PROVIDER_REGION="ap-south-1"
+EMAIL_PROVIDER_REGION = "ap-south-1"
+EMAIL_PROVIDER_NAME = "AwsSender"
+EMAIL_SENDER_NAME = "info@iamdave.ai"
 VOICE_PROVIDER_NAME ="tata-tele"
 MAX_AUDIENCE_ERRORS = os.environ.get("MAX_AUDIENCE_ERRORS", 10)
 DEFAULT_OTP = os.environ.get("DEFAULT_OTP", "560102")
 ALLOWED_COUNTRY_CODES = list(map(str.strip, os.environ.get("ALLOWED_COUNTRY_CODES", "+971,+966,+62,+63,+91,+1").split(",")))
 OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe")
-
+EXCHANGE_RATE_HOST_API_KEY = os.environ.get("EXCHANGE_RATE_HOST_API_KEY")
+EXCHANGE_RATE_HOST_BASE_URL = os.environ.get("EXCHANGE_RATE_HOST_BASE_URL", "https://api.exchangerate.host")
 #model names
 SESSION_MODEL_NAME = "session"
 BILLING_MODEL_NAME = "billing"
@@ -48,6 +49,7 @@ BILLING_MODEL_NAME = "billing"
 #razorpay
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET")
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET")
 
 BASE_PATH = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_PATH, "data")
@@ -67,9 +69,17 @@ class AutocrmModel:
 
     def get_model(self):
         return self.model
-    
+   
+    @property
+    def name(self):
+        return self.model.name
+
     def get_attributes(self, *args, **kwargs):
         return self.model.get_attributes(*args, **kwargs)
+
+    @property
+    def attributes(self):
+        return self.model._model_ref.attributes
 
     def post(self, data):
         self.model.post(data)
@@ -123,30 +133,127 @@ def load_autocrm_models(logger = None):
 def post_autocrm_model(model_name, enterprise = None, logger = None):
     logger = logger or clogger
     enterprise = enterprise or gryd.base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
+    with hp.read_file(DATA_DIR, f"permissions.json") as pj:
+        permissions = pj.get(model_name, [])
     with hp.read_file(DATA_DIR, f"{model_name}.json") as model_json:
         logger.info(f"Posting model: {model_name}")
         try:
             enterprise.post_model(model_name, model = model_json)
             logger.info(f"Model posted successfully: {model_name}")
-            return gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
+            r = gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
+            if permissions:
+                r._update_permissions(permissions)
+            return r
         except Exception as e:
             logger.error(f"Error posting model: {model_name}")
             raise
 
-def post_autocrm_data(data_name, logger = None):
+
+def post_json_file(filename_json, autocrm_model, start_from = 0, logger = None):
     logger = logger or clogger
-    filename = hp.joinpath(BASE_PATH, "seed", f"{data_name}s.json")
-    logger.info(f"Posting data: {data_name} from filename: {filename}")
-    if not hp.isfile(filename):
-        logger.error(f"File: {filename} not found")
-        raise FileNotFoundError(f"File: {filename} not found")
+    m = autocrm_model
+    if isinstance(autocrm_model, str):
+        m = AutocrmModel(model_name = autocrm_model, logger = logger)
+    data_name = m.name
+    index = 0
     try:
-        m = AutocrmModel(model_name = data_name, logger = logger)
-        with hp.read_file(filename) as data_json:
+        logger.info(f"Posting data: {data_name} from filename: {filename_json}")
+        with hp.read_file(filename_json) as data_json:
             for data in data_json:
+                if index < start_from:
+                    index += 1
+                    continue
                 m.post(data)
-                logger.info(f"Data posted successfully: {data_name}")
+                logger.info(f"Data posted successfully: {data_name}, index {index}")
+                index += 1
         return m
     except Exception as e:
-        logger.error(f"Error posting data for: {data_name} from filename: {filename}")
+        logger.error(f"{e}\nError posting data for: {data_name} for index {index} in {filename_json}")
         raise
+
+def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
+    logger = logger or clogger
+    m = autocrm_model
+    if isinstance(autocrm_model, str):
+        m = AutocrmModel(model_name = autocrm_model, logger = logger)
+    data_name = m.name
+    linenum = 0
+    list_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('list', 'string_list', 'stringlist', 'number_list', 'numberlist'),  m.attributes.items()))))
+    object_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('nested_object',),  m.attributes.items()))))
+    object_list_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('object_list',),  m.attributes.items()))))
+    bool_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('bool',),  m.attributes.items()))))
+    logger.info(f"Posting data: {data_name} from filename: {filename_csv}")
+    try:
+        with open(filename_csv, encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            headers = reader.fieldnames
+            logger.info(f"Headers for {data_name}: {headers}")
+            for linenum, row in enumerate(reader, 2):
+                if linenum < start_from:
+                    continue
+                row = {k.strip(): v.strip() for k, v in row.items()}
+                for k in bool_keys:
+                    logger.info(f"Converting boolean attribute {k}: {row[k]}")
+                    if row[k].lower() in ['true', '1', 'yes']:
+                        row[k] = True
+                    elif row[k].lower() in ['false', '0', 'no']:
+                        row[k] = False
+                    elif row[k]:
+                        raise ValueError(f"Incorrect boolean value {row[k]}")
+                    logger.info(f"Converting boolean attribute {k}: {row[k]} -> {row[k]}")
+                for k in list_keys:
+                    logger.info(f"Converting list attribute {k}: {row[k]}")
+                    rk = row[k]
+                    logger.info("Converting list attribute %s: %s", k, rk)
+                    rok = list(map(lambda x: x.strip(), rk.split(',')))
+                    row[k] = list(filter(lambda x: x, rok)) or None
+                    logger.info("Converted list attribute %s: %s -> %s", k, rk, row[k])
+                for k in object_keys:
+                    rk = row[k]
+                    logger.info("Converting dict attribute %s: %s", k, rk)
+                    r = {}
+                    mr = list(map(lambda x: x.strip(), row[k].split(',')))
+                    try:
+                        r = {x[0].strip():x[1].strip() for x in mr.split(":")}
+                    except ValueError as e:
+                        raise ValueError(f"Value for for attribute {k} is not parseable into nested_object: {row[k]}")
+                    else:
+                        row[k] = r or None
+                        logger.info("Converted dict attribute %s: %s -> %s", k, rk, row[k])
+                for k in object_list_keys:
+                    rk = row[k]
+                    r = []
+                    logger.info("Converting object list attribute %s: %s", k, rk)
+                    mrl = list(map(lambda x: x.strip(), row[k].split('|')))
+                    for mk in mrl:
+                        try:
+                            rk = {x[0].strip():x[1].strip() for x in mk.split(":")}
+                        except ValueError as e:
+                            raise ValueError(f"Value for for attribute {k} is not parseable into nested_object: {row[k]}")
+                        else:
+                            r.append(rk)
+                    row[k] = r or None
+                    logger.info("Converted object list attribute %s: %s -> %s", k, rk, row[k])
+                row = {k:v for k, v in row.items() if v not in (None, '')}
+                m.post(row)
+                logger.info(f"Data posted successfully: {data_name}, linenum {linenum}")
+    except Exception as e:
+        logger.error(f"{e}\nError posting data for: {data_name} for linenum {linenum} in {filename_csv}")
+        raise
+
+def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0):
+    logger = logger or clogger
+    filename_json = hp.joinpath(BASE_PATH, "seed", f"{data_name}s.json")
+    filename_csv = hp.joinpath(BASE_PATH, "seed", f"{data_name}s.csv")
+    m = AutocrmModel(model_name = data_name, logger = logger)
+    if reseed:
+        m.delete_many()
+    if hp.isfile(filename_csv):
+        post_csv_file(filename_csv, m, start_from = start_from, logger = logger)
+    elif hp.isfile(filename_json):
+        post_json_file(filename_json, m, start_from = start_from, logger = logger)
+    else:
+        logger.error(f"File: {filename_csv} or {filename_json} not found")
+        raise FileNotFoundError(f"Seed file for : {data_name} not found")
+
+

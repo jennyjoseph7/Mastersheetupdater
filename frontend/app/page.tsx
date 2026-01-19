@@ -49,6 +49,9 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ProtectedRoute } from "@/components/protected-route";
+import { VerifyProfileBanner } from "@/components/dealership/verify-profile-banner";
+import { CompleteSetupModal } from "@/components/dealership/complete-setup-modal";
+import { useAuth } from "@/lib/auth-context";
 
 import {
   Plus,
@@ -88,6 +91,8 @@ const ITEMS_PER_PAGE = 5;
 
 export default function CampaignDashboard() {
   const router = useRouter();
+  const { isDealershipSetupComplete, checkDealershipSetup } = useAuth();
+  const [showSetupModal, setShowSetupModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
@@ -144,7 +149,7 @@ export default function CampaignDashboard() {
     // Handle pre-sales campaigns using the dedicated function
     if (type === "pre-sales" || type === "pre_sales") {
       console.log("[fetchCampaigns] Fetching pre-sales campaigns...");
-      const res = await fetchPreSalesCampaigns(page, ITEMS_PER_PAGE);
+      const res = await fetchPreSalesCampaigns();
       console.log("[fetchCampaigns] Pre-sales campaigns response:", res);
       return {
         merged: res?.items ?? [],
@@ -155,7 +160,7 @@ export default function CampaignDashboard() {
     // Handle post-sales campaigns using the dedicated function
     if (type === "post-sales" || type === "post_sales") {
       console.log("[fetchCampaigns] Fetching post-sales campaigns...");
-      const res = await fetchPostSalesCampaigns(page, ITEMS_PER_PAGE);
+      const res = await fetchPostSalesCampaigns();
       console.log("[fetchCampaigns] Post-sales campaigns response:", res);
       return {
         merged: res?.items ?? [],
@@ -194,6 +199,30 @@ export default function CampaignDashboard() {
     fetchCampaignSummary,
     swrOptions
   );
+
+  // Refresh setup status when dashboard loads and on route changes
+  useEffect(() => {
+    // Always refresh setup status when dashboard loads to ensure it's up to date
+    // This is important after completing the setup
+    const refreshStatus = async () => {
+      console.log("[Dashboard] Refreshing setup status...");
+      await checkDealershipSetup();
+      // Wait a bit for state to update
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      console.log("[Dashboard] Setup status refreshed");
+    };
+    refreshStatus();
+  }, [checkDealershipSetup]);
+
+  // Show modal if setup is not complete
+  useEffect(() => {
+    console.log("[Dashboard] Setup status changed:", isDealershipSetupComplete);
+    if (isDealershipSetupComplete === false) {
+      setShowSetupModal(true);
+    } else {
+      setShowSetupModal(false);
+    }
+  }, [isDealershipSetupComplete]);
 
   // Update counts header (total campaigns of current type)
   // Only use this if campaign summary data is not available (fallback)
@@ -573,15 +602,25 @@ export default function CampaignDashboard() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Link href="/campaign/create?new=true">
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" /> Create Campaign
-              </Button>
-            </Link>
+            <Button
+              className="gap-2"
+              onClick={() => {
+                if (isDealershipSetupComplete === false) {
+                  router.push("/dealership/update-details");
+                } else {
+                  router.push("/campaign/create?new=true");
+                }
+              }}
+            >
+              <Plus className="h-4 w-4" /> Create Campaign
+            </Button>
           </div>
         </div>
 
         <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-6 w-full">
+          {/* Verify Profile Banner - Show only if setup not complete */}
+          {isDealershipSetupComplete === false && <VerifyProfileBanner />}
+
           {/* Stats */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="shadow">

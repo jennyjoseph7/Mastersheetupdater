@@ -9,6 +9,7 @@
 node_modules/
 dist/
 autobot_voice.egg-info
+*package-lock.json
 # .env
 .env.local
 .env.*.local
@@ -62,3 +63,8 @@ Thumbs.db
 setup.sh
 *.sw*
 AWSCLIV2.pkg
+
+
+core/testBillModel.py
+core/rezorpay_fe_test.html
+billing.json

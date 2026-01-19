@@ -1,3 +1,4 @@
+// audience/add-data-source-dialog.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -15,7 +16,7 @@ import { MapFields } from "./steps/map-fields";
 import { PreviewConfirm } from "./steps/preview-confirm";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import type { DataSource } from "@/app/audience/page";
-import { startImportTask, createAudienceTask } from "@/utils/api";
+import { startImportTask, createAudienceTask, updateAudienceTask } from "@/utils/api";
 
 // NEW PROP: prefilledData
 interface AddDataSourceDialogProps {
@@ -41,7 +42,7 @@ export interface FieldMapping {
 }
 
 export interface DataSourceFormData {
-  sourceType: "API" | "File" | null;
+  sourceType: "API" | "csv" | null;
   sourceName: string;
   baseUrl: string;
   authType: string;
@@ -54,6 +55,7 @@ export interface DataSourceFormData {
   errorCsvUrl?: string;
   taskId?: string; 
   taskStatus?: string;
+  audienceTaskId?: string; // [Changed] Added to store DB ID
   audienceName: string;
   category: string;
   campaignObjectiveId?: string;
@@ -81,6 +83,7 @@ export function AddDataSourceDialog({
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [isStartingImport, setIsStartingImport] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // [Changed] Added saving state
 
   // Initialize with prefilled data
   const [formData, setFormData] = useState<DataSourceFormData>({
@@ -96,6 +99,7 @@ export function AddDataSourceDialog({
     fieldMappings: [],
     taskId: undefined,
     taskStatus: undefined,
+    audienceTaskId: undefined, // [Changed] Initialize
     errorCsvUrl: undefined,
     audienceName: "",
     category: prefilledData?.category || "",
@@ -137,7 +141,6 @@ export function AddDataSourceDialog({
       // Use the prefilled Draft Campaign ID if available, otherwise fallback to Objective ID
       const targetCampaignId = formData.campaignId || formData.campaignObjectiveId;
       
-
       const data = await startImportTask(
         formData.category,
         formData.audienceName,
@@ -145,17 +148,19 @@ export function AddDataSourceDialog({
         formData.tags,
         formData.sourceName,
         mappingPayload,
-        targetCampaignId // Passing the actual Campaign ID as requested
+        targetCampaignId 
       );
 
       const taskId = data.job?.task_id;
       if (!taskId) throw new Error("No Task ID returned");
 
-      await createAudienceTask({
+      // [Changed] Capture response to get the DB ID
+      const newTask = await createAudienceTask({
         task_id: taskId,
         campaign_type: formData.category,
         campaign_objective_id: formData.campaignObjectiveId, 
         campaign_id: targetCampaignId,
+        campaign_objective_name: "",
         audience_name: formData.audienceName,
         tags: formData.tags || [],
         csv_file_url: formData.fileUrl,
@@ -166,13 +171,15 @@ export function AddDataSourceDialog({
           enabled: m.enabled
         })),
         source_name: formData.sourceName || "Uploaded via csv",
-        source_type: formData.sourceType || "File",
+        source_type: formData.sourceType || "csv",
         csv_status: "pending"
       });
 
+      // [Changed] Store audienceTaskId
       updateFormData({ 
         taskId: taskId, 
-        taskStatus: "started" 
+        taskStatus: "started",
+        audienceTaskId: newTask?.audience_task_id || newTask?._id || newTask?.id
       });
       
       setCompletedSteps([...completedSteps, currentStep]);
@@ -207,7 +214,24 @@ export function AddDataSourceDialog({
     }
   };
 
-  const handleSave = () => {
+  // [Changed] Updated handleSave to call updateAudienceTask
+  const handleSave = async () => {
+    setIsSaving(true);
+    
+    // Update status and size in DB
+    if (formData.audienceTaskId) {
+      try {
+        await updateAudienceTask(formData.audienceTaskId, {
+          csv_status: "connected",
+          audience_size: formData.audienceSize,
+          process_size: formData.processedCount
+        });
+      } catch (error) {
+        console.error("Failed to update audience task status:", error);
+        // Optional: Show an error toast here
+      }
+    }
+
     const dataSource = {
       sourceName: formData.sourceName,
       audienceName: formData.audienceName,
@@ -216,10 +240,12 @@ export function AddDataSourceDialog({
       category: formData.category,
       tags: formData.tags,
       connectionDetails: {
-        taskId: formData.taskId, // Pass taskId back for auto-selection
+        taskId: formData.taskId, 
       },
     };
+    
     onSave(dataSource as any);
+    setIsSaving(false);
     handleClose();
   };
 
@@ -254,7 +280,6 @@ export function AddDataSourceDialog({
     completed: completedSteps.includes(step.number),
   }));
 
-  // Determine if we should hide category/objective inputs based on props
   const isPrefilled = !!(prefilledData?.category && prefilledData?.objectiveId);
 
   return (
@@ -285,7 +310,7 @@ export function AddDataSourceDialog({
             <AssignAudienceDetails
               formData={formData}
               updateFormData={updateFormData}
-              isPrefilled={isPrefilled} // Pass prop to hide UI
+              isPrefilled={isPrefilled} 
             />
           )}
           {currentStep === 2 && (
@@ -312,7 +337,7 @@ export function AddDataSourceDialog({
           <Button
             variant="outline"
             onClick={handlePrevious}
-            disabled={currentStep === 1 || isStartingImport}
+            disabled={currentStep === 1 || isStartingImport || isSaving}
           >
             <ChevronLeft className="h-4 w-4 mr-2" />
             Back
@@ -329,8 +354,11 @@ export function AddDataSourceDialog({
               {!isStartingImport && <ChevronRight className="h-4 w-4 ml-2" />}
             </Button>
           ) : (
-            <Button onClick={handleSave} disabled={formData.taskStatus !== "completed"}>
-              {formData.taskStatus === "completed" ? "Save & Connect" : "Processing..."}
+            <Button onClick={handleSave} disabled={formData.taskStatus !== "completed" || isSaving}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {formData.taskStatus === "completed" 
+                ? (isSaving ? "Saving..." : "Save & Connect") 
+                : "Processing..."}
             </Button>
           )}
         </div>

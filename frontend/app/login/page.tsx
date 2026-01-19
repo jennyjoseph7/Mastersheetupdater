@@ -56,16 +56,16 @@ export default function LoginPage() {
   useEffect(() => {
     if (isRecaptchaEnabled) {
       console.log(
-        "[reCAPTCHA] Site key loaded:",
-        recaptchaSiteKey.substring(0, 10) + "..."
+        // "[reCAPTCHA] Site key loaded:",
+        // recaptchaSiteKey.substring(0, 10) + "..."
       );
       console.log(
-        "[reCAPTCHA] Current domain:",
-        typeof window !== "undefined" ? window.location.hostname : "server"
+        // "[reCAPTCHA] Current domain:",
+        // typeof window !== "undefined" ? window.location.hostname : "server"
       );
     } else {
       console.warn(
-        "[reCAPTCHA] Site key not found. Add NEXT_PUBLIC_RECAPTCHA_SITE_KEY to .env.local"
+        // "[reCAPTCHA] Site key not found. Add NEXT_PUBLIC_RECAPTCHA_SITE_KEY to .env.local"
       );
     }
   }, [recaptchaSiteKey, isRecaptchaEnabled]);
@@ -117,6 +117,8 @@ export default function LoginPage() {
         recaptchaRef.current?.reset();
         setRecaptchaToken(null);
       }
+      // Redirect to dashboard - modal will be shown there if setup is incomplete
+      // The dashboard will check setup status and show modal automatically
       router.push("/");
     } catch (err) {
       setError(
@@ -351,7 +353,7 @@ export default function LoginPage() {
         </Card>
 
         {/* Footer */}
-        <p className="text-center text-sm text-muted-foreground mt-6">
+        {/* <p className="text-center text-sm text-muted-foreground mt-6">
           By signing in, you agree to our{" "}
           <Link
             href="/terms"
@@ -366,8 +368,10 @@ export default function LoginPage() {
           >
             Privacy Policy
           </Link>
+        </p> */}
+ <p className="text-center text-sm text-muted-foreground mt-6">
+        By signing in, you agree to our Terms of Service and Privacy Policy
         </p>
-        
         {/* Made by Dave AI */}
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground flex items-center justify-center gap-1">
