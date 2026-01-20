@@ -220,7 +220,6 @@ class Communication:
         return {"email_status":"Task Placed Successfully" if communication_ids else "Failed To Place Email Task","communication_ids":communication_ids }
 
     def send(self, **kwargs):
-        
         receiver = kwargs.get("receiver") or kwargs.get("recipient") or {}
         logger.info("Receiver: %s", receiver)
         self.files = kwargs.get("files", [])
@@ -233,10 +232,7 @@ class Communication:
 
         for channel in self.get_preferred_channels(receiver, kwargs.get("channels")):
             if channel in {"email", "mail"}:
-                
                 return self.send_mail(**kwargs)
-
-
 
 
 if __name__=='__main__':
