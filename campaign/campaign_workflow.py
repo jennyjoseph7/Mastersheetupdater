@@ -189,7 +189,7 @@ def run_workflow(
 def get_proceed_status(channels: list, lead_detail: dict, max_attempts: int = 3, max_failed: int = 10, logger=None):
     logger = logger or mlogger
     status_model = AutocrmModel('contact_status')
-    for channel in channels:
+    # for channel in channels:
 
 
     channel = lead_detail.get('channel')
