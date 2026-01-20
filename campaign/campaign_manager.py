@@ -675,7 +675,7 @@ def trigger_campaign(*args, **kwargs):
 
 
 @gryd.is_a_task(function_name="process_single_lead")
-def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None):
+def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None):
     
     """
     Process a single lead and send campaign messages for each user.
@@ -748,19 +748,13 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
     if channel == "voice_phone":
         provider_name = VOICE_PROVIDER_NAME
     elif channel == "email":
-        # email_cred=pg.list("communication_credentials", {"channel": "email"})
-        # email_cred=email_cred[0] if email_cred else None
-        # if not email_cred:
-        #     yield {"status": "Error", "error_description": "No email credentials found"}
-        #     return
-        # sender_name=email_cred.get("sender_name")
         sender_name=EMAIL_SENDER_NAME
         provider_name = EMAIL_PROVIDER_NAME
         
         template_data= get_email_template(
             lead_id=lead_id,
             campaign_type=campaign_type,
-            campaign_objective= campaign_details.get("campaign_objective") if campaign_details.get("campaign_objective") else ["Free Service Due Reminder"],
+            campaign_objective= campaign_details.get("campaign_objective_name") if campaign_details.get("campaign_objective_name") else ["Free Service Due Reminder"],
             lead_info={}
         )
         if not template_data:
@@ -768,23 +762,37 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
             return
         template_data = template_data[0]
         logger.info(f"Template ID for email={lead_data.get('email')}: {template_data.get('template_id')}")
+        
+        template_vars = template_data.get("template_variables", [])
+        
+        if template_vars:
+            variable_mapping = {
+                var: lead_data.get(var, "")
+                for var in template_vars
+            }
+            email_body = render_template(template_data.get("email_body"),variable_mapping)
+
+            email_subject = render_template(template_data.get("email_subject"),variable_mapping)
+            
         template_data={
-            "subject": template_data.get("email_subject"),
-            "message": template_data.get("email_body")
+            "subject": email_subject or campaign_details.get("email_subject"),
+            "message": email_body or campaign_details.get("email_body"),
+            "template_variables": template_data.get("template_variables",[])
         }
         logger.info(f"Template Data: {template_data}")
     elif channel in ("whatsapp_chat", "sms", "rcs"):
         template_data = get_whatsapp_template(
             lead_id=lead_id,
             campaign_type=campaign_type,
-            campaign_objective= campaign_details.get("campaign_objective") if campaign_details.get("campaign_objective") else ["Free Service Reminder"],
-            # dealership_id = lead_data.get("dealership_id"), //for later
+            campaign_objective= campaign_details.get("campaign_objective_name") if campaign_details.get("campaign_objective_name") else ["Free Service Reminder"],
+            # dealership_id = lead_data.get("dealership_id"), //for later pass disposition and disposition detail 
             lead_info={}
         )
         if not template_data:
             yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
             return
         template_data = template_data[0]
+        logger.info(f"TEmplate data: {template_data}")
         logger.info(f"Template ID for phone_number={lead_data.get('phone_number')}: {template_data.get('template_id')}")
     else:
         yield {"status": "Error", "error_description": f"Unsupported channel: {channel}"}
@@ -821,18 +829,20 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
         "lead_id": lead_id,
         "mobile_number": mobile,
         "customer_name": customer_name,
+        "email": lead_data.get("email",None),
         "contact_channel": channel,
         "template_id": template_data.get("template_id") if template_data else None,
         "template_details": template_data.get("template_details") if template_data else None,
         **variable_mapping
     }
 
-    if template_data and channel == "whatsapp_chat":
+    if template_data and channel == "whatsapp_chat" or channel== "email":
         buttons = template_data.pop("buttons", None)
         template_vars = template_data.get("template_variables", [])
         render_data = {v: template_data.get(v, "") for v in template_vars}
         template_message = template_data.get("template_message", "").format(**render_data)
 
+    logger.info(f"Template Message: {template_message}")
     if channel == "web_chat":
         yield {"placeholder": template_message, "buttons": buttons}
         return
@@ -856,6 +866,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
                 "template_id": "template_id",
                 "template_details": "template_details",
                 "contact_channel": "contact_channel",
+                "reg_num":"reg_num"
             },
             "config": {
                 "batch_size": 100,
@@ -886,7 +897,12 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None)
 
     yield {"task_response": async_task, "campaign_response": final_payload}
 
-
+def render_template(text: str, variables: dict) -> str:
+    if not text:
+        return text
+    for key, value in variables.items():
+        text = text.replace(f"{{{{{key}}}}}", str(value))
+    return text
 
 def get_channel(lead, campaign_details):
     """
@@ -923,6 +939,7 @@ def get_variable_values(template_variables, lead_data, selected_person=None):
     Extract values for template variables from lead_data or selected_person.
     Priority: selected_person → lead_data → None
     """
+    # logger.info(f"Template Variables: {template_variables}, Lead Data: {lead_data}, Selected Person: {selected_person}")
     values = {}
     for var in template_variables:
         if selected_person and var in selected_person:

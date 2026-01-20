@@ -123,6 +123,7 @@ def gryd_start_mail(
         msg_status=WA_TO_DISPOSITION.get(response.get("status"), None)
         if msg_status:
             payload["message_status"]=msg_status
+            logger.info(f"Message dict: {payload}")
             gryd.create_async_task(
                     "post_contact_status", 
                     AUTOCRM_COMMUNICATION_SERVICE_NAME, 
