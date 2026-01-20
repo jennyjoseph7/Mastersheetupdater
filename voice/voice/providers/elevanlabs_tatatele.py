@@ -29,7 +29,7 @@ logger = utils.get_logger(__name__)
 # ---- Config / env ----
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
-AGENT_ID = os.getenv("AGENT_ID")
+AGENT_ID = os.getenv("AGENT_ID") or "agent_0501k747d7s6e3xv5t3xew1rn217"
 TATATELE_PHONE_NUMBER = os.getenv("TATATELE_PHONE_NUMBER", "918065251305")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
