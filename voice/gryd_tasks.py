@@ -11,7 +11,7 @@ import datetime
 import pytz
 import voice.utils as vhp
 from conversation import converse
-
+from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 logger = hp.get_logger(__name__)
 
 
@@ -57,6 +57,18 @@ def trigger_voice_call(*args, **kwargs):
         yield {
             "error": "Missing required user data fields: 'campaign_id', 'campaign_type', 'mobile_number'"
         }
+
+    #temporary 
+    person_model = base_model.Model("person", config.AUTOCRM_APP_ENTERPRISE_ID)
+
+    person_obj = person_model.list(**{"phone_number":user_data.get("mobile_number")}).get('data',{})[0]
+
+    if not person_obj:
+        logger.error(f"No person found with mobile number: {user_data.get('mobile_number')}")
+        yield {
+            "error": f"No person found with mobile number: {user_data.get('mobile_number')}"
+        }
+    user_data["user_id"] = person_obj.get("user_id")
 
     session_model = base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
     session_obj = {
@@ -361,3 +373,8 @@ if __name__ == "__main__":
     #         args=["voice_phone", "tn37dm7087-ambal-auto-scheduled-service-reminder","post-sales","74f260b8-e8dc-3c52-ab8d-31bd0fc49943"],
     #         kwargs={}
     #     )
+
+
+
+
+
