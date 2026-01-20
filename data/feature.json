@@ -25,8 +25,11 @@
             "type": "text",
             "options": [
                 "general",
+                "interior",
+                "alerts_and_notifications",
                 "branding_and_looks",
-                "safety_and_environment",
+                "safety_and_security",
+                "environment",
                 "comfort_and_convenience",
                 "technology_and_performance",
                 "infotainment_and_connectivity",
