@@ -239,8 +239,8 @@ def post_actions(session_id):
 if __name__ == "__main__":
     data = {
     "_is_testing": False,
-    "mobile_number": "919689108283",
-    # "mobile_number": "918870737879",
+    #"mobile_number": "919689108283",
+    "mobile_number": "918870737879",
     "generate_prompt": False,
     "user_id": "fccaa5ef133430a0",
     "campaign_id": "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
