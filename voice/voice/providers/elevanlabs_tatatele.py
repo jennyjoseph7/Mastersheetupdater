@@ -30,8 +30,8 @@ logger = utils.get_logger(__name__)
 load_dotenv()
 API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_3f302b2e36acc353d040152b3d6c9bc7bf728955483bce75")
 AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_0501k747d7s6e3xv5t3xew1rn217")
-TATATELE_PHONE_NUMBER = os.environ("TATATELE_PHONE_NUMBER", "918065251305")
-PHONE_NUMBER_ID = os.environ("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
+TATATELE_PHONE_NUMBER = os.environ.get("TATATELE_PHONE_NUMBER", "918065251305")
+PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
 # ---- Clients ----
 tatatele_client = CloudPhoneAPI(TATATELE_API_TOKEN, TATATELE_BASE_URL)
