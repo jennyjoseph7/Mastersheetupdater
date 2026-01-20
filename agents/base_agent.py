@@ -18,9 +18,10 @@ class BaseAgent:
 
     def _load_json(self, source : Union[Dict[str, Any], str]) -> Dict[str, Any]:
         """Load JSON from a dict, local path, or URL."""
+        if source is None:
+            return {}
         if isinstance(source, (dict, list)):
             return source 
-
         if isinstance(source, str):
             parsed = urlparse(source)
             if parsed.scheme in ("http", "https"):
@@ -30,10 +31,25 @@ class BaseAgent:
             elif os.path.isfile(source):
                 with open(source, 'r') as f:
                     return json.load(f)
-
         raise ValueError(f"Invalid JSON source: {source}")
     
-    def extract_json_from_llm_response(self, response: str) -> dict:
+    def exec_json_llm_with_retry(self, func, *args, **kwargs):
+        MAX_RETRIES = 3
+        last_exception = None
+        for attempt in range(1, MAX_RETRIES+1):
+            try:
+                func_response = func(*args, **kwargs)
+                logger.info(f"response from {func.__name__}: {func_response}")
+                response = self.extract_json_from_llm_response(func_response)
+                return response
+            except Exception as e:
+                last_exception = e
+                logger.exception(f"Attempt {attempt}/{MAX_RETRIES} failed in {func.__name__}")
+                if attempt < MAX_RETRIES:
+                    time.sleep(2)
+        raise last_exception
+    
+    def __extract_json_from_llm_response(self, response: str):
         stack, start = [], None
         for i, ch in enumerate(response):
             if ch in "{[":
@@ -52,8 +68,35 @@ class BaseAgent:
                         return json.loads(json_str)
                     except Exception:
                         return None
-        return None
+        return None 
     
+    def extract_json_from_llm_response(self, response: str):
+        stack, start = [], None
+        for i, ch in enumerate(response):
+            if ch in "{[":
+                if not stack:
+                    start = i
+                stack.append(ch)
+
+            elif ch in "}]":
+                if not stack:
+                    continue
+
+                opening = stack.pop()
+                if (opening == "{" and ch != "}") or (opening == "[" and ch != "]"):
+                    raise ValueError("Mismatched JSON brackets in response")
+
+                if not stack:
+                    json_str = response[start:i + 1]
+                    try:
+                        return json.loads(json_str)
+                    except Exception as e:
+                        raise ValueError(f"Invalid JSON content: {e}")
+
+        raise ValueError("No valid JSON object found in response")
+
+
+
     def validate_url(self, url:str) -> bool: 
         try:
             if not isinstance(url, str):
@@ -88,6 +131,8 @@ class BaseAgent:
                 logger.error(f"Error downloading brochure PDF: {e}")
                 traceback.print_exc()
                 return None
+        else:
+            return None
 
     def fetch_brochure_content(self, brochure_url : str):
         from file_loaders.pdf_loader import PDFLoader
@@ -121,3 +166,5 @@ class BaseAgent:
                 if temp_pdf_path and os.path.exists(temp_pdf_path):
                     os.remove(temp_pdf_path)
                     logger.info(f"Temporary PDF file deleted: {temp_pdf_path}")
+        else:
+            return None

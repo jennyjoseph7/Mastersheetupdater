@@ -7,6 +7,7 @@ import pandas as pd
 import os, sys, traceback
 import pydeck as pdk
 from streamlit_chat import message
+import uuid
 
 from agents.cohort_generation_agent import CohortGenerationAgent
 from agents.cohort_classification_agent import CohortClassificationAgent
@@ -68,28 +69,22 @@ st.markdown("(Either provide Product URL or Brochure PDF)")
 col1, col2 = st.columns(2)
 
 with col1:
-    product_link = st.text_input(
-        "Product Website URL",
-        placeholder="https://auto.mahindra.com/suv/xuv3xo/X3XO.html"
-    )
+    product_link = st.text_input(label="Product Website URL", placeholder="https://auto.mahindra.com/suv/xuv3xo/X3XO.html")
 
 with col2:
-    brochure_url = st.text_input(
-        "Brochure PDF URL",
-        placeholder="https://auto.mahindra.com/on/demandware.static/-/Sites-amc-Library/default/dw48c7c87f/brochures/X3XO/X3XO_brochure.pdf"
-    )
+    brochure_url = st.text_input(label="Brochure PDF URL", placeholder="https://auto.mahindra.com/on/demandware.static/-/Sites-amc-Library/default/dw48c7c87f/brochures/X3XO/X3XO_brochure.pdf")
 
 if st.button("Generate Cohorts"):
     if not product_link and not brochure_url:
         st.error("Provide either Product URL or Brochure PDF")
     else:
         with st.spinner("Generating cohorts... (this may take a few minutes)"):
-                cga = CohortGenerationAgent(product_website_url = product_link, brochure_url = brochure_url)
-                cohorts = cga.run()['cohorts']
+                cohort_generation_agent:object = CohortGenerationAgent(product_website_url = product_link, brochure_url = brochure_url)
+                cohorts:list = cohort_generation_agent.run()['cohorts']
                 st.session_state.cohorts = cohorts
 
 if st.session_state.cohorts:
-    st.success("✅️ Cohorts Generated. Total Cohorts: {}".format(len(st.session_state.cohorts)))
+    st.success("✅️ {} Cohorts Generated.".format(len(st.session_state.cohorts)))
 
     cohort_rows = []
 
@@ -108,11 +103,11 @@ if st.session_state.cohorts:
             "Intent Level": cohort.get("intent_level"),
             "Priority": cohort.get("priority"),
             "Description": cohort.get("description"),
-            "Behavioral Signals": cohort.get("behavioral_signals", []),     # "| ".join(cohort.get("behavioral_signals", [])),
+            "Behavioral Signals": cohort.get("behavioral_signals", []),      # "| ".join(cohort.get("behavioral_signals", [])),
             "Eligibility Rules": eligibility_str,
-            "Exclusion Rules":  cohort.get("exclusion_rules", []),          # " | ".join(cohort.get("exclusion_rules", [])),
+            "Exclusion Rules":  cohort.get("exclusion_rules", []),           # " | ".join(cohort.get("exclusion_rules", [])),
             "Recommended Channels": cohort.get("recommended_channels", []),  #  " | ".join(cohort.get("recommended_channels", [])),
-            "Message Style Tags": cohort.get("message_style_tags", []),     # " | ".join(cohort.get("message_style_tags", [])" 
+            "Message Style Tags": cohort.get("message_style_tags", []),      # " | ".join(cohort.get("message_style_tags", [])" 
             "Cooldown Days": cohort.get("cooldown_days")
         })
 
@@ -150,7 +145,7 @@ def build_clusters(classified_users):
         clusters[cohort_id].append(u)
     return clusters
 
-def classify_users(users, cohorts : list[dict]):
+def classify_users(users: list[dict], cohorts : list[dict]):
     progress = st.progress(0)
     status = st.empty()
     total = len(users)
@@ -158,23 +153,23 @@ def classify_users(users, cohorts : list[dict]):
     results = []
 
     for idx, interaction in enumerate(users):
-        user_id = interaction.get("user_id", f"user_{idx}")
-        status.markdown(f"**Classifying User {user_id}, Record {idx+1}/{total}**")
-        cc = CohortClassificationAgent(
+        user_id = interaction.get("user_id", f"u_{str(uuid.uuid4())}")
+        status.markdown(f"**Classifying '{user_id}', Record {idx+1}/{total}**")
+        cohort_classification_agent = CohortClassificationAgent(
             source=interaction,
             cohorts=cohorts,
             brochure_url=None,
             product_website_url=None
         )
-        classified = cc.run()
+        classified = cohort_classification_agent.run()
 
         classified_cohort_data = None 
         for cohort in cohorts:
-            if cohort["cohort_id"] == classified["cohort_id"]:
+            if cohort["cohort_id"] == classified.get("cohort_id", classified.get("primary_classified_cohort_id")):
                 classified_cohort_data = cohort
 
         results.append({
-            "user_id": interaction.get("user_id", f"user_{idx}"),
+            "user_id": user_id,
             "interaction": interaction,
             "classified_cohort_data": classified_cohort_data
         })
@@ -198,21 +193,21 @@ def upload_data():
 
     with col1:
         single_json = st.file_uploader(
-            "Single User Interaction (JSON)",
+            label="Single User Interaction (JSON)",
             type=["json"],
             disabled=st.session_state.cohorts is None
         )
 
     with col2:
         bulk_csv = st.file_uploader(
-            "Bulk User Interactions (CSV)",
+            label="Bulk User Interactions (CSV)",
             type=["csv"],
             disabled=st.session_state.cohorts is None
         )
 
     with col3:
         bulk_json = st.file_uploader(
-            "Bulk User Interactions (JSON)",
+            label="Bulk User Interactions (JSON)",
             type=["json"],
             disabled=st.session_state.cohorts is None
         )
@@ -368,56 +363,56 @@ if st.session_state.get("pipeline_ran", False):
             logger.info(f" selected_user_data: {st.session_state.selected_user_data}")
             classified = st.session_state.selected_user_data["classified_cohort_data"]
             st.session_state.classified = classified
-    
-    summary_df = pd.DataFrame([{
-        "Cohort Name": st.session_state.selected_user_data["classified_cohort_data"]["cohort_name"],
-        "Cohort ID": st.session_state.selected_user_data["classified_cohort_data"]["cohort_id"],
-        "Intent Level": st.session_state.selected_user_data["classified_cohort_data"]["intent_level"],
-        "Priority": st.session_state.selected_user_data["classified_cohort_data"]["priority"]
-    }])
-    st.markdown("**Identified Cohort**")
-    st.dataframe(summary_df, hide_index=True, use_container_width=True)
+        
+        with st.expander("Click to expand"):
+            summary_df = pd.DataFrame([{
+                "Cohort Name": st.session_state.selected_user_data["classified_cohort_data"]["cohort_name"],
+                "Cohort ID": st.session_state.selected_user_data["classified_cohort_data"]["cohort_id"],
+                "Intent Level": st.session_state.selected_user_data["classified_cohort_data"]["intent_level"],
+                "Priority": st.session_state.selected_user_data["classified_cohort_data"]["priority"]
+            }])
+            st.markdown("**Identified Cohort**")
+            st.dataframe(summary_df, hide_index=True, use_container_width=True)
 
-    desc_df = pd.DataFrame([{"Description": classified["description"]}])
-    st.markdown("**Cohort Description**")
-    st.dataframe(desc_df, hide_index=True, use_container_width=True)
+            desc_df = pd.DataFrame([{"Description": classified["description"]}])
+            st.markdown("**Cohort Description**")
+            st.dataframe(desc_df, hide_index=True, use_container_width=True)
 
-    signals_df = pd.DataFrame({"Behavioral Signal": classified["behavioral_signals"]})
-    st.markdown("**Cohort Signals**")
-    st.dataframe(signals_df, hide_index=True, use_container_width=True)
-    
-    rules_df = pd.DataFrame(classified["eligibility_rules"]["events"])
-    st.markdown("**Cohort Rules**")
-    st.dataframe(rules_df, hide_index=True, use_container_width=True)
+            signals_df = pd.DataFrame({"Behavioral Signal": classified["behavioral_signals"]})
+            st.markdown("**Cohort Signals**")
+            st.dataframe(signals_df, hide_index=True, use_container_width=True)
+            
+            rules_df = pd.DataFrame(classified["eligibility_rules"]["events"])
+            st.markdown("**Cohort Rules**")
+            st.dataframe(rules_df, hide_index=True, use_container_width=True)
 
-    tags_df = pd.DataFrame({"Message Style Tag": classified["message_style_tags"]})
-    st.markdown("**Cohort Tags**")
-    st.dataframe(tags_df, hide_index=True, use_container_width=True)
+            tags_df = pd.DataFrame({"Message Style Tag": classified["message_style_tags"]})
+            st.markdown("**Cohort Tags**")
+            st.dataframe(tags_df, hide_index=True, use_container_width=True)
 
     # ----------------------------- Display Affinity Engine -----------------------------
     st.divider()
     st.subheader("6️⃣ 🔗 Affinity Engine")
-
     if run_pipeline or st.session_state.affinity is None:
         with st.spinner("Calculating affinity..."):
             affinity = AffinityEngineAgent().run(interaction)
             st.session_state.affinity = affinity
 
-    st.markdown("**Why these affinities?**")
-    st.info(st.session_state.affinity["llm_reasoning"])
-    scores_df = pd.DataFrame(st.session_state.affinity["affinity_scores"].items(), columns=["Dimension", "Score"]).sort_values("Score")
+        with st.expander("Click to expand"):
+            st.markdown("**Why these affinities?**")
+            st.info(st.session_state.affinity["llm_reasoning"])
+            scores_df = pd.DataFrame(st.session_state.affinity["affinity_scores"].items(), columns=["Dimension", "Score"]).sort_values("Score")
 
-    st.markdown("**Affinity Scores**")
-    st.dataframe(scores_df, use_container_width=True, hide_index=True)
+            st.markdown("**Affinity Scores**")
+            st.dataframe(scores_df, use_container_width=True, hide_index=True)
 
-    if "affinity_fig_json" in st.session_state.affinity:
-        fig = pio.from_json(json.dumps(st.session_state.affinity["affinity_fig_json"]))
-        st.plotly_chart(fig, use_container_width=True)
+            fig_json = st.session_state.affinity["affinity_fig_json"]
+            fig = pio.from_json(json.dumps(fig_json))
+            st.plotly_chart(fig, use_container_width=True)
     
     # ----------------------------- Display Campaign Generation -----------------------------
     st.divider()
     st.subheader("7️⃣ 🎯 Campaign Ideas")
-
     if run_pipeline or st.session_state.campaign is None:
         with st.spinner("Generating campaign ideas..."):
             campaign = CampaignIdeaGeneratorAgent(
@@ -429,30 +424,31 @@ if st.session_state.get("pipeline_ran", False):
             )
             campaign_output = campaign.run()
             st.session_state.campaign = campaign_output
-    
-    campaign_df = pd.DataFrame({"Campaign Idea": st.session_state.campaign["campaign_ideas"]})
-    st.markdown("**Campaign Ideas**")
-    st.dataframe(campaign_df, hide_index=True, use_container_width=True)
+        
+        with st.expander("Click to expand"):
+            campaign_df = pd.DataFrame({"Campaign Idea": st.session_state.campaign["campaign_ideas"]})
+            st.markdown("**Campaign Ideas**")
+            st.dataframe(campaign_df, hide_index=True, use_container_width=True)
 
-    nudges_df = pd.DataFrame({"Nudge": st.session_state.campaign["nudges"]})
-    st.markdown("**User Nudges**")
-    st.dataframe(nudges_df, hide_index=True, use_container_width=True)
+            nudges_df = pd.DataFrame({"Nudge": st.session_state.campaign["nudges"]})
+            st.markdown("**User Nudges**")
+            st.dataframe(nudges_df, hide_index=True, use_container_width=True)
 
-    hooks_df = pd.DataFrame({"Hook Copy": st.session_state.campaign["hooks"]})
-    st.markdown("**Hooks**")
-    st.dataframe(hooks_df, hide_index=True, use_container_width=True)
+            hooks_df = pd.DataFrame({"Hook Copy": st.session_state.campaign["hooks"]})
+            st.markdown("**Hooks**")
+            st.dataframe(hooks_df, hide_index=True, use_container_width=True)
 
-    wa_df = pd.DataFrame({"WhatsApp Message": st.session_state.campaign["whatsapp_msgs"]})
-    st.markdown("**💬 Website Bot Messages**")
-    st.dataframe(wa_df, hide_index=True, use_container_width=True)
+            wa_df = pd.DataFrame({"WhatsApp Message": st.session_state.campaign["whatsapp_msgs"]})
+            st.markdown("**💬 Website Bot Messages**")
+            st.dataframe(wa_df, hide_index=True, use_container_width=True)
 
-    value_df = pd.DataFrame({"Value Proposition": st.session_state.campaign["value_props"]})
-    st.markdown("**💰 Value Propositions**")
-    st.dataframe(value_df, hide_index=True, use_container_width=True)
+            value_df = pd.DataFrame({"Value Proposition": st.session_state.campaign["value_props"]})
+            st.markdown("**💰 Value Propositions**")
+            st.dataframe(value_df, hide_index=True, use_container_width=True)
 
-    variant_df = pd.DataFrame({"Variant Recommendation": st.session_state.campaign["variant_recos"]})
-    st.markdown("**Variant Recommendations**")
-    st.dataframe(variant_df, hide_index=True, use_container_width=True)
+            variant_df = pd.DataFrame({"Variant Recommendation": st.session_state.campaign["variant_recos"]})
+            st.markdown("**Variant Recommendations**")
+            st.dataframe(variant_df, hide_index=True, use_container_width=True)
 
     st.divider()
 

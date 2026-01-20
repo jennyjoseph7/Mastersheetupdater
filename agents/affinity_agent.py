@@ -19,13 +19,6 @@ AFFINITY_DIMENSIONS = [
     "community"
 ]
 
-
-class AffinityAgentOutput(BaseModel):
-    affinity_scores: Dict[str, float]
-    llm_reasoning: Dict[str, str]
-    affinity_fig_json: Dict
-
-
 class AffinityEngineAgent(BaseAgent):
     def __init__(self):
         self.llm = lambda messages : ai_service_app.get_llm_response(messages=messages, model_identifier="azure-gpt-4o")
@@ -34,14 +27,17 @@ class AffinityEngineAgent(BaseAgent):
         messages = []
         system_prompt = f"""
         You are an Automotive Affinity Scoring Agent.
+        You will be provided with a JSON, It can be a customer interaction JSON or a Cohort Classification JSON.
 
-        Analyze the following user interaction JSON and assign affinity scores
+        Analyze the provided JSON and assign affinity scores
         between 0 and 1 for each dimension listed below.
 
         Dimensions:
         {", ".join(AFFINITY_DIMENSIONS)}
 
-        Rules:
+        Guidelines:
+        - Understand the provided JSON. (Either a customer interaction JSON or a Cohort Classification JSON). If it is a customer interaction JSON, Please understand the customer's profile, behavior, preferences, and goals. It can be a customer lead information or Interaction JSON or Cohort Classification JSON.
+        - Final affinity scores would be for this customer or cohort only.
         - Scores must be floats between 0 and 1
         - Use ONLY observed interactions
         - Provide a short reasoning for each score
@@ -59,7 +55,7 @@ class AffinityEngineAgent(BaseAgent):
             "achievement": 0.0,
             "community": 0.0
         }},
-        "llm_reasoning": "<your reasoning here in natural language 5 sentences max.>",
+        "llm_reasoning": "<your reasoning here in natural language 5-6 sentences max. Customer/Cohort information reasoning can work better.>",
         }}
 
         Interaction JSON:
@@ -98,8 +94,25 @@ class AffinityEngineAgent(BaseAgent):
 
         return fig.to_plotly_json()
 
-    def run(self, interaction_json: dict) -> AffinityAgentOutput:
+    def run(self, interaction_json: dict, brochure_url = None, product_website_url=None):
         prompt = self._build_prompt(interaction_json)
+
+        
+        add_on = f"""
+        Analyze the Product brochure and website. Understand the Product's features, specifications etc."""
+        if brochure_url:
+            brochure_content = self.fetch_brochure_content(brochure_url = brochure_url)
+            prompt.append({
+                "role": "assistant", 
+                "content": f"Product brochure content: {json.dumps(brochure_content, indent=2)} \n {add_on}"
+                })
+
+        if product_website_url:
+            product_website_content = self.fetch_product_details_from_website(website_url = product_website_url)
+            prompt.append({
+                "role": "assistant", 
+                "content": f" Product website content: {json.dumps(product_website_content, indent=2)} \n {add_on}"
+                })
 
         llm_response = self.llm(prompt)
         parsed = self.extract_json_from_llm_response(llm_response)

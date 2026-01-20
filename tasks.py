@@ -961,10 +961,12 @@ def media_extraction_agent(*args, **kwargs):
 def affinity_score_agent(*args, **kwargs):
     try:
         from agents.affinity_agent  import AffinityEngineAgent
-        source = kwargs["source"]
+        source = kwargs.get("source", None)
+        brochure_url = kwargs.get("brochure_url", None)
+        product_website_url = kwargs.get("product_website_url", None)
         model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
         affinity_score_agent = AffinityEngineAgent()
-        output = affinity_score_agent.run(interaction_json=source)
+        output = affinity_score_agent.run(interaction_json=source, brochure_url=brochure_url, product_website_url=product_website_url)
         return {
             "task": inspect.currentframe().f_code.co_name, 
             **output
@@ -980,13 +982,13 @@ def affinity_score_agent(*args, **kwargs):
 @gryd.is_a_task()
 def cohort_generation_agent(*args, **kwargs):
     try:
-        from agents.cohort_generation_agent import CohortGenerationAgent
+        from agents.cohort_generation_agent import CohortGenerationAgent, ProductCohortGenerationAgent
 
         brochure_url = kwargs.get("brochure_url", None)
         product_website_url = kwargs.get("product_website_url", None)
         model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
 
-        cohort_generation_agent = CohortGenerationAgent(
+        cohort_generation_agent = ProductCohortGenerationAgent(
             brochure_url=brochure_url, 
             product_website_url=product_website_url, 
             model_identifier=model_identifier
@@ -1009,9 +1011,9 @@ def cohort_classification_agent(*args, **kwargs):
     try:
         from agents.cohort_classification_agent import CohortClassificationAgent
 
-        source = kwargs["source"] # Custom Interaction Data in Dict
-        brochure_url = kwargs.get("brochure_url", None) # Brochure URL
-        product_website_url = kwargs.get("product_website_url", None) # Product Website URL
+        source = kwargs.get("source", None)                                      # Custom Interaction Data in Dict
+        brochure_url = kwargs.get("brochure_url", None)                 # Brochure URL
+        product_website_url = kwargs.get("product_website_url", None)   # Product Website URL
         cohorts = kwargs.get("cohorts", None)
         model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
 
@@ -1040,11 +1042,20 @@ def campaign_idea_generation_agent(*args, **kwargs):
     try:
         from agents.campaign_idea_generator_agent import CampaignIdeaGeneratorAgent
 
-        source = kwargs.get("source") # Custom Interaction Data in Dict
-        classified_cohort = kwargs.get("classified_cohort") # Cohort Classification Result 
-        affinity_score = kwargs.get("affinity_score") # Custom Affinity Score Result
-        brochure_url = kwargs.get("brochure_url", None) # Brochure URL
-        product_website_url = kwargs.get("product_website_url", None) # Product Website URL
+        source = kwargs.get("source", None)                                 # Custom Interaction Data in Dict
+        classified_cohort = kwargs.get("classified_cohort", None)           # Cohort Classification Result 
+        affinity_score = kwargs.get("affinity_score", None)                 # Custom Affinity Score Result
+        brochure_url = kwargs.get("brochure_url", None)                     # Brochure URL
+        product_website_url = kwargs.get("product_website_url", None)       # Product Website URL
+        num_of_campaign_ideas = kwargs.get("num_of_campaign_ideas", 5)
+        num_of_campaign_post_sets = kwargs.get("num_of_campaign_post_sets", 5)
+        num_of_hashtags = kwargs.get("num_of_hashtags", 20)
+
+        campaign_theme = kwargs.get("campaign_theme", None)
+        core_message_direction = kwargs.get("core_message_direction", None)
+        campaign_objective = kwargs.get("campaign_objective", None)
+        consumer_insight = kwargs.get("consumer_insight", None)
+
         model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
         campaign_idea_generation_agent = CampaignIdeaGeneratorAgent(
             source=source, 
@@ -1053,10 +1064,18 @@ def campaign_idea_generation_agent(*args, **kwargs):
             brochure_url=brochure_url,
             product_website_url=product_website_url,
             model_identifier=model_identifier)
-        output = campaign_idea_generation_agent.run()
+        output = campaign_idea_generation_agent.run(
+            num_of_campaign_ideas = num_of_campaign_ideas,
+            num_of_campaign_post_sets = num_of_campaign_post_sets, 
+            num_of_hashtags = num_of_hashtags,
+            campaign_theme = campaign_theme,
+            core_message_direction = core_message_direction,
+            campaign_objective = campaign_objective,
+            consumer_insight = consumer_insight
+            )
         return {
             "task": inspect.currentframe().f_code.co_name, 
-            **output
+            "campaign_ideas": output
         }
     except Exception as e:
         logger.error(f"Campaign Idea Generation Agent Error: {e}")
@@ -1123,32 +1142,56 @@ if __name__ == "__main__":
     fp = "/home/shreyasvaishnav/autobot_agents/aem_mock_data/5.json"
     interaction = json.load(open(fp, "r"))
     
-    from agents.cohort_generation_agent import CohortGenerationAgent
+    from agents.cohort_generation_agent import CohortGenerationAgent, ProductCohortGenerationAgent
     from agents.cohort_classification_agent import CohortClassificationAgent
     from agents.campaign_idea_generator_agent import CampaignIdeaGeneratorAgent
     from agents.image_generation_agent import ImageGenerationAgent
     from agents.affinity_agent import AffinityEngineAgent
 
-    affinity = AffinityEngineAgent().run(interaction)
-    print(json.dumps(affinity, indent=4, default=str))
+    # affinity = AffinityEngineAgent().run(interaction)
+    # print(json.dumps(affinity, indent=4, default=str))
 
 
     product_link = "https://auto.mahindra.com/suv/xuv3xo/X3XO.html"
     product_link = "http://www.dpauto.co.in/new-cars/mahindra-xuv-3xo.html"
     brochure = "https://auto.mahindra.com/on/demandware.static/-/Sites-amc-Library/default/dw48c7c87f/brochures/X3XO/X3XO_brochure.pdf"
 
-    c = CohortGenerationAgent(product_website_url = product_link, brochure_url = None)
-    cohorts = c.run()
-    print(json.dumps(cohorts, indent=4, default=str))
+    jeep_meridian_brochure = "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/1f0e5109-ead3-42e9-8af8-b58b8942b10f-6966062a_New-Jeep-Meridian-Brochure.pdf"
+    jeep_meridian_website = "https://www.jeep-india.com/new-jeep-meridian.html"
+
+    import time
+    start_time = time.time()
+    # c = CohortGenerationAgent(product_website_url = jeep_meridian_website, brochure_url = jeep_meridian_brochure)
+    c = ProductCohortGenerationAgent(product_website_url = jeep_meridian_website, brochure_url = jeep_meridian_brochure)
+    cohort_def = c.run()
+    end_time = time.time()
+    print(f"Time Taken: {end_time - start_time}")
+
+    print(json.dumps(cohort_def, indent=4, default=str))
+    # with open("meredian_cohort_def.json", "w") as f:
+    #     json.dump(cohort_def, f, indent=4, default=str)
+
+    assert False
+    
+    
+
+    # c = CohortGenerationAgent(product_website_url = product_link, brochure_url = None)
+    # cohorts = c.run()
+    # print(json.dumps(cohorts, indent=4, default=str))
 
     
-    cc = CohortClassificationAgent(source = interaction, brochure_url = None, cohorts=cohorts["cohorts"])
-    classified_cohort = cc.run()
-    print(json.dumps(classified_cohort, indent=4, default=str))
+    # cc = CohortClassificationAgent(source = interaction, brochure_url = None, cohorts=cohorts["cohorts"])
+    # classified_cohort = cc.run()
+    # print(json.dumps(classified_cohort, indent=4, default=str))
 
-    campaign = CampaignIdeaGeneratorAgent(source = interaction, classified_cohort = classified_cohort, brochure_url = None, product_website_url = product_link)
+    interaction = None
+    affinity_score = None 
+    classified_cohort = "test_drive_seeker"
+    brochure_url = brochure
+
+    campaign = CampaignIdeaGeneratorAgent(source = interaction, affinity_score=affinity_score, classified_cohort = classified_cohort, brochure_url = None, product_website_url = product_link)
     final = campaign.run()
-    print(json.dumps(final, indent=4, default=str))
+    print(f"Final Result: {json.dumps(final, indent=4, default=str)}")
 
 
 
