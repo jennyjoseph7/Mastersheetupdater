@@ -3,7 +3,7 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
-from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CAMPAIGN_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
+from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CAMPAIGN_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME, gryd, hp, AutocrmModel
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from functools import reduce
@@ -186,17 +186,20 @@ def run_workflow(
     kwargs[f'{campaign_type.replace("-", "_")}_id'] = lead_id
     gryd.create_async_task('RunCampaignOrCreater', AUTOCRM_CAMPAIGN_SERVICE_NAME, kwargs=kwargs)
 
-def get_proceed_status(lead_detail: dict, max_attempts: int = 3, max_failed: int = 10, logger=None):
+def get_proceed_status(channels: list, lead_detail: dict, max_attempts: int = 3, max_failed: int = 10, logger=None):
     logger = logger or mlogger
-    user_detail = hp.make_single(user_detail, force = True)
-    channel = user_detail.get('channel')
-    campaign_id = user_detail.get('campaign_id')
-    user_id = user_detail.get('user_id')
-    is_contacted = len([s for s in user_details if s.get('disposition', '') in ["engaged", "converted"]]) > 0
-    if is_contacted:
-        logger.info(f"User {user_id} has already been contacted for campaign_id={campaign_id}, channel={channel}, doing nothing.")
+    status_model = AutocrmModel('contact_status')
+    for channel in channels:
+
+
+    channel = lead_detail.get('channel')
+    campaign_id = lead_detail.get('campaign_id')
+    lead_id = lead_detail.get('lead_id')
+    disposition = lead_detail.get('disposition')
+    disposition_detail = lead_detail.get('disposition_detail')
+    if disposition in ["engaged", "converted"]:
         return False
-    is_error = len([s for s in user_details if s.get('disposition', '') in ["error", "queued"]]) > 0
+    is_error = len([s for s in lead_detail if s.get('disposition', '') in ["error", "queued"]]) > 0
     if is_error:
         logger.info(f"Contact with user {user_id} in channel {channel} has already resulted in error for campaign_id={campaign_id}, doing nothing.")
         return False
@@ -210,17 +213,62 @@ def get_proceed_status(lead_detail: dict, max_attempts: int = 3, max_failed: int
         return False
     return True
 
+@gryd.is_a_task(function_name="get_channel_from_lead", job_param='job', auth_param='auth', logger_param='logger')
+def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Union[str, None] = None, logger=None, job=None, auth=None, *args, **kwargs):
+    enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
+    logger = logger or mlogger
+    # TODO: Implement this
+    channel = "voice_phone"
+    channel_identifier = lead.get('phone_number') or lead.get('alt_phone_number_2') or lead.get('alt_phone_number_3') or lead.get('alt_phone_number_4')
+    return channel, channel_identifier
+
 @gryd.is_a_task(function_name="determine_campaign_next_action", job_param='job', auth_param='auth', logger_param='logger')
 def determine_campaign_next_action(
         campaign_type: str,
         lead_id: str,
-        channel: str,
-        channel_identifier: str,
-        disposition: str,
-        disposition_detail: str,
+        channel: str = None,
+        channel_identifier: str = None,
+        disposition: str = None,
+        disposition_detail: str = None,
         enterprise_id: Union[str, None] = None,
         logger=None, job=None, auth=None, 
         *args, **kwargs):
+    """
+    This function is used to determine the next action for a campaign.
+    1. Get the channel id from lead model
+    2. Get the campaign id
+    3. Extract all the channel identifiers from the lead, including the person model
+    4. If there is a last contacted information, we can start with that and the iterate over the other credentials provided.
+    5. Check if there any are inactive numbers and remove them from the list
+    6. Iterate over the list and chexk which ones are failed or error in that channel and how many times
+    7. If the number of times threshold is completed, then we go to the next number on the list for same channel 
+    8. If all the attempts have failed or attempted then go to next channel
+    10. If we have connected, then we will try again for N times with a delay
+    11. If we have interacted, then we will process based on disposition detail.
+    12. If all avenues and channels are exhausted we will do nothing.
+    Args:
+        campaign_type: The type of campaign.
+        lead_id: The ID of the lead.
+        channel: The channel of the campaign.
+        channel_identifier: The channel identifier of the campaign.
+        disposition: The disposition of the campaign.
+        disposition_detail: The disposition detail of the campaign.
+        enterprise_id: The ID of the enterprise.
+        logger: The logger object.
+        job: The job object.
+        auth: The auth object.
+        args: The arguments.
+        kwargs: The keyword arguments.
+    Returns:
+        A dictionary containing the next action for a campaign.
+        {
+            "next_channel": "channel",
+            "next_channel_identifier": "channel_identifier",
+            "template_id": "template_id",
+            "template_variables": "template_variables"
+        }
+        or None if no next action is found.
+    """
     enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
     logger = logger or mlogger
     campaign_type = campaign_type.lower()
@@ -251,6 +299,9 @@ def determine_campaign_next_action(
             "id": _id_value,
             "object": _detail
         }
+    campaign_details = _values.get('campaign', {}).get('object')
+    if not channel:
+        channel, channel_identifier = get_channel_from_lead(lead, campaign_details)
     workflow_model = gryd.base_model.Model('campaign_workflow', enterprise_id)
     dispostion = dispostion.lower() 
     disposition_options = {
@@ -353,3 +404,8 @@ def determine_campaign_next_action(
         return
     logger.info(f"No more retries allowed for campaign_id={campaign_id}, channel={channel}, user_id={user_id}, session_id={session_id}, doing nothing.")
     return
+
+
+
+
+

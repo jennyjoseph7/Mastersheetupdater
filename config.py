@@ -178,6 +178,7 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
         m = AutocrmModel(model_name = autocrm_model, logger = logger)
     data_name = m.name
     linenum = 0
+    number_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('number',),  m.attributes.items()))))
     list_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('list', 'string_list', 'stringlist', 'number_list', 'numberlist'),  m.attributes.items()))))
     object_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('nested_object',),  m.attributes.items()))))
     object_list_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('object_list',),  m.attributes.items()))))
@@ -192,49 +193,66 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
                 if linenum < start_from:
                     continue
                 row = {k.strip(): v.strip() for k, v in row.items()}
-                for k in bool_keys:
-                    logger.info(f"Converting boolean attribute {k}: {row[k]}")
-                    if row[k].lower() in ['true', '1', 'yes']:
-                        row[k] = True
-                    elif row[k].lower() in ['false', '0', 'no']:
-                        row[k] = False
-                    elif row[k]:
-                        raise ValueError(f"Incorrect boolean value {row[k]}")
-                    logger.info(f"Converting boolean attribute {k}: {row[k]} -> {row[k]}")
-                for k in list_keys:
-                    logger.info(f"Converting list attribute {k}: {row[k]}")
-                    rk = row[k]
-                    logger.info("Converting list attribute %s: %s", k, rk)
-                    rok = list(map(lambda x: x.strip(), rk.split(',')))
-                    row[k] = list(filter(lambda x: x, rok)) or None
-                    logger.info("Converted list attribute %s: %s -> %s", k, rk, row[k])
-                for k in object_keys:
-                    rk = row[k]
-                    logger.info("Converting dict attribute %s: %s", k, rk)
-                    r = {}
-                    mr = list(map(lambda x: x.strip(), row[k].split(',')))
-                    try:
-                        r = {x[0].strip():x[1].strip() for x in mr.split(":")}
-                    except ValueError as e:
-                        raise ValueError(f"Value for for attribute {k} is not parseable into nested_object: {row[k]}")
-                    else:
-                        row[k] = r or None
-                        logger.info("Converted dict attribute %s: %s -> %s", k, rk, row[k])
-                for k in object_list_keys:
-                    rk = row[k]
-                    r = []
-                    logger.info("Converting object list attribute %s: %s", k, rk)
-                    mrl = list(map(lambda x: x.strip(), row[k].split('|')))
-                    for mk in mrl:
+                for k in number_keys:
+                    if row.get(k):
+                        rk = row[k]
+                        logger.info(f"Converting number attribute {k}: {rk}")
                         try:
-                            rk = {x[0].strip():x[1].strip() for x in mk.split(":")}
+                            if '.' in rk:
+                                row[k] = float(rk)
+                            else:
+                                row[k] = int(rk)
+                        except ValueError as e:
+                            raise ValueError(f"Value for for attribute {k} is not parseable into number: {row[k]}")
+                        logger.info(f"Converted number attribute {k}: {rk} -> {row[k]}")
+                for k in bool_keys:
+                    if row.get(k):
+                        rk = row[k]
+                        logger.info(f"Converting boolean attribute {k}: {rk}")
+                        if rk.lower() in ['true', '1', 'yes']:
+                            row[k] = True
+                        elif rk.lower() in ['false', '0', 'no']:
+                            row[k] = False
+                        elif rk:
+                            raise ValueError(f"Incorrect boolean value {rk}")
+                        logger.info(f"Converted boolean attribute {k}: {rk} -> {row[k]}")
+                for k in list_keys:
+                    if row.get(k):
+                        rk = row[k]
+                        logger.info("Converting list attribute %s: %s", k, rk)
+                        rok = list(map(lambda x: x.strip(), rk.split(',')))
+                        row[k] = list(filter(lambda x: x, rok)) or None
+                        logger.info("Converted list attribute %s: %s -> %s", k, rk, row[k])
+                for k in object_keys:
+                    if row.get(k):
+                        rk = row[k]
+                        logger.info("Converting dict attribute %s: %s", k, rk)
+                        r = {}
+                        mr = list(map(lambda x: x.strip(), row[k].split(',')))
+                        try:
+                            r = {x.split(':')[0].strip():x.split(':')[1].strip() for x in mr}
                         except ValueError as e:
                             raise ValueError(f"Value for for attribute {k} is not parseable into nested_object: {row[k]}")
                         else:
-                            r.append(rk)
-                    row[k] = r or None
-                    logger.info("Converted object list attribute %s: %s -> %s", k, rk, row[k])
+                            row[k] = r or None
+                            logger.info("Converted dict attribute %s: %s -> %s", k, rk, row[k])
+                for k in object_list_keys:
+                    if row.get(k):
+                        rk = row[k]
+                        r = []
+                        logger.info("Converting object list attribute %s: %s", k, rk)
+                        mrl = list(map(lambda x: x.strip(), row[k].split('|')))
+                        for mk in mrl:
+                            try:
+                                rk = {x[0].strip():x[1].strip() for x in mk.split(":")}
+                            except ValueError as e:
+                                raise ValueError(f"Value for for attribute {k} is not parseable into nested_object: {row[k]}")
+                            else:
+                                r.append(rk)
+                        row[k] = r or None
+                        logger.info("Converted object list attribute %s: %s -> %s", k, rk, row[k])
                 row = {k:v for k, v in row.items() if v not in (None, '')}
+                logger.info(f"Row: {hp.json.dumps(row, option=hp.json.OPT_INDENT_2).decode('utf-8')}")
                 m.post(row)
                 logger.info(f"Data posted successfully: {data_name}, linenum {linenum}")
     except Exception as e:

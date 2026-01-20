@@ -388,10 +388,27 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
                 persons_involved.append(person)
     elif missing_emails_phones:
         data = {}
+        ph_list = ["phone_number", "alt_phone_number_2", "alt_phone_number_3", "alt_phone_number_4"]
+        for i, k in enumerate(ph_list):
+            if k not in row:
+                for j,l in enumerate(ph_list[i+1:]):
+                    if l in missing_emails_phones:
+                        data[k] = missing_emails_phones.get(l)
+                        break
+            else:
+                data[k] = row.get(k)
+        email_list = ["email", "alt_email_2", "alt_email_3", "alt_email_4"]
+        for i, k in enumerate(email_list):
+            if k not in row:
+                for j,l in enumerate(email_list[i+1:]):
+                    if l in missing_emails_phones:
+                        data[k] = missing_emails_phones.get(l)
+                        break
+            else:
+                data[k] = row.get(k)
         for k in person_model._model_ref.attr_seq:
             if is_valid_value(row, k) and not any(_ in k for _ in ('phone', 'email')):
                 data[k] = row.get(k)
-            data.update(missing_emails_phones)
             try:
                 person = person_model.post(data)
                 if vehicle_id:
