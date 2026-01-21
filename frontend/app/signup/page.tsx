@@ -86,14 +86,6 @@ const urlRegex =
 const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
-interface Region {
-  region_id: string;
-  region_name: string;
-  country_name?: string;
-  country_phone_code?: string;
-  [key: string]: any;
-}
-
 export default function DealerSignup() {
   const router = useRouter();
   const [phase, setPhase] = useState<"registration" | "success">(
@@ -118,9 +110,6 @@ export default function DealerSignup() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successDealershipId, setSuccessDealershipId] = useState("");
 
-  const [regions, setRegions] = useState<Region[]>([]);
-  const [isFetchingRegions, setIsFetchingRegions] = useState(false);
-
   // Get reCAPTCHA site key from environment
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
   const isRecaptchaEnabled = Boolean(recaptchaSiteKey);
@@ -133,7 +122,7 @@ export default function DealerSignup() {
     phone: "",
     password: "",
     confirmPassword: "",
-    region: "", // Initialize as empty, will set to first fetched region or user selection
+    region: "south-india",
   });
 
   // Additional dealership details (step 2)
@@ -148,65 +137,6 @@ export default function DealerSignup() {
   const [websiteError, setWebsiteError] = useState("");
   const [panError, setPanError] = useState("");
   const [gstinError, setGstinError] = useState("");
-
-  useEffect(() => {
-    const fetchRegions = async () => {
-      setIsFetchingRegions(true);
-      try {
-        const response = await fetch(
-          "https://autobot-webapp-dev.gryd.in/gryd/db/objects/region",
-          {
-            headers: {
-              "Content-Type": "application/json",
-              "X-GRYD-ENTERPRISE-ID": "autocrm",
-              "X-GRYD-TOKEN": "53014452-7df1-351c-9b79-af13d3d6b92f",
-              "X-GRYD-SESSION-ID": "94b970d4-5c2b-3762-bf65-272901d0ad53",
-              Accept: "application/json",
-              "X-GRYD-ROLE": "agent",
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch regions: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        console.log("Fetched regions:", data);
-        
-        // Handle different possible API response structures
-        let regionList: Region[] = [];
-        if (data.data && Array.isArray(data.data)) {
-          regionList = data.data;
-        } else if (Array.isArray(data)) {
-          regionList = data;
-        } else if (data.objects && Array.isArray(data.objects)) {
-           // Fallback for older structures
-          regionList = data.objects;
-        }
-
-        setRegions(regionList);
-
-        // Set default region if none selected and we have regions
-        if (regionList.length > 0 && !registrationData.region) {
-          const defaultRegion = regionList[0];
-          const defaultRegionValue = defaultRegion.region_id;
-          setRegistrationData(prev => ({
-            ...prev,
-            region: defaultRegionValue || ""
-          }));
-        }
-
-      } catch (error) {
-        console.error("Error fetching regions:", error);
-        // Fallback or empty state - handled by UI showing empty or loading
-      } finally {
-        setIsFetchingRegions(false);
-      }
-    };
-
-    fetchRegions();
-  }, []);
 
   const handleGenerateOTP = async () => {
     if (!registrationData.phone) {
@@ -314,10 +244,6 @@ export default function DealerSignup() {
     }
     if (!registrationData.phone) {
       setError("Phone is required");
-      return;
-    }
-    if (!registrationData.region) {
-      setError("Region is required");
       return;
     }
     if (!phoneOtpToken) {
@@ -934,22 +860,12 @@ Check browser console and Network tab for more details.`
                         }
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         required
-                        disabled={isFetchingRegions || regions.length === 0}
                       >
-                         {isFetchingRegions ? (
-                          <option value="">Loading regions...</option>
-                        ) : regions.length > 0 ? (
-                          regions.map((region) => (
-                            <option 
-                              key={region.region_id} 
-                              value={region.region_id}
-                            >
-                              {region.region_name}
-                            </option>
-                          ))
-                        ) : (
-                          <option value="">No regions available</option>
-                        )}
+                        <option value="south-india">South India</option>
+                        <option value="north-india">North India</option>
+                        <option value="east-india">East India</option>
+                        <option value="west-india">West India</option>
+                        <option value="central-india">Central India</option>
                       </select>
                     </div>
                   </div>
