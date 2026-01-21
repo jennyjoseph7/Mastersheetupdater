@@ -8,6 +8,26 @@ import {
 } from "./headers";
 
 /* ---------------------------------------------------
+   Utils (Next.js Safe)
+--------------------------------------------------- */
+
+function getDealershipId() {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("dealership_id");
+}
+
+function epochToIST(epochTime) {
+  if (!epochTime) return "";
+  return new Date(epochTime * 1000).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+  });
+}
+
+function capitalize(str) {
+  return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
+}
+
+/* ---------------------------------------------------
    Generic Fetch Helpers
 --------------------------------------------------- */
 
@@ -164,7 +184,7 @@ async function startImportTask(
     {
       method: "POST",
       body: JSON.stringify({
-        args: [category || "post-sales", "ambal-auto-south-india", fileUrl],
+        args: [category || "post-sales", getDealershipId(), fileUrl],
         kwargs,
         runtime_limit: 3600,
         cancellable: true,
@@ -225,25 +245,22 @@ async function getTaskResult(taskId) {
 }
 
 /* ---------------------------------------------------
-   Campaign Fetchers (Admin override supported)
+   Campaign Fetchers
 --------------------------------------------------- */
 
 async function fetchPreSalesCampaigns(page = 1, pageSize = 50) {
   const response = await authenticatedFetch(
     `${APP_BASE_URL}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}`,
-    {
-      headers: { "X-GRYD-ROLE": "admin" },
-    }
+    { headers: { "X-GRYD-ROLE": "admin" } }
   );
 
   const json = await response.json();
-  return {
-    items: json?.data ?? [],
-    total: json?.total_number ?? 0,
-  };
+  return { items: json?.data ?? [], total: json?.total_number ?? 0 };
 }
 
-async function fetchPostSalesCampaigns(dealershipId) {
+async function fetchPostSalesCampaigns(dealershipId = getDealershipId()) {
+  if (!dealershipId) return { items: [], total: 0 };
+
   const response = await authenticatedFetch(
     `${APP_BASE_URL}/gryd/db/objects/post_sales_campaign?dealership_id=${encodeURIComponent(
       dealershipId
@@ -251,21 +268,18 @@ async function fetchPostSalesCampaigns(dealershipId) {
   );
 
   const json = await response.json();
-  return {
-    items: json?.data ?? [],
-    total: json?.total_number ?? 0,
-  };
+  return { items: json?.data ?? [], total: json?.total_number ?? 0 };
 }
 
 async function fetchCampaignObjectives(campaignType) {
   return fetchAPIData("campaign_objective", {
     campaign_type: campaignType?.replace(/_/g, "-"),
     sort_by: "created",
-    sort_reverse: true
+    sort_reverse: true,
   });
 }
 
-async function fetchCampaignSummary(dealershipId) {
+async function fetchCampaignSummary(dealershipId = getDealershipId()) {
   const url = dealershipId
     ? `${APP_BASE_URL}/gryd/db/objects/campaign_summary?dealership_id=${encodeURIComponent(
         dealershipId
@@ -276,36 +290,31 @@ async function fetchCampaignSummary(dealershipId) {
   const json = await response.json();
   return json?.data ?? [];
 }
+
 async function fetchAudienceTasks(page = 1, pageSize = 50) {
   return fetchAPIData("audience_task", {
     page_number: page,
     page_size: pageSize,
     sort_by: "created",
-    sort_reverse: true
+    sort_reverse: true,
   });
 }
+
 async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
   try {
     const response = await authenticatedFetch(
       `${APP_BASE_URL}/gryd/db/objects/dealership_campaign?page_number=${page}&page_size=${pageSize}`,
-      {
-        headers: {
-          "X-GRYD-ROLE": "admin", // role override only
-        },
-      }
+      { headers: { "X-GRYD-ROLE": "admin" } }
     );
 
     const json = await response.json();
-
-    return {
-      items: json?.data ?? [],
-      total: json?.total_number ?? 0,
-    };
+    return { items: json?.data ?? [], total: json?.total_number ?? 0 };
   } catch (error) {
     console.error("[fetchDealershipCampaigns] Fetch error:", error);
     return { items: [], total: 0 };
   }
 }
+
 async function fetchCampaignPerformanceSummary(campaignId = "") {
   try {
     const url = `${APP_BASE_URL}/gryd/db/objects/campaign_performance_summary${
@@ -313,26 +322,17 @@ async function fetchCampaignPerformanceSummary(campaignId = "") {
     }`;
 
     const response = await authenticatedFetch(url);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API Error: ${response.status} ${errorText}`);
-    }
+    if (!response.ok) throw new Error(await response.text());
 
     const json = await response.json();
 
     if (campaignId && Array.isArray(json?.data)) {
-      return json.data.find(
-        (item) => item.campaign_id === campaignId
-      ) || null;
+      return json.data.find((i) => i.campaign_id === campaignId) || null;
     }
 
     return json?.data ?? [];
   } catch (error) {
-    console.error(
-      "[fetchCampaignPerformanceSummary] Fetch error:",
-      error
-    );
+    console.error("[fetchCampaignPerformanceSummary]", error);
     return null;
   }
 }
@@ -341,16 +341,16 @@ async function fetchCampaignPerformanceSummary(campaignId = "") {
    Utils
 --------------------------------------------------- */
 
-function epochToIST(epochTime) {
-  if (!epochTime) return "";
-  return new Date(epochTime * 1000).toLocaleString("en-IN", {
-    timeZone: "Asia/Kolkata",
-  });
-}
+// function epochToIST(epochTime) {
+//   if (!epochTime) return "";
+//   return new Date(epochTime * 1000).toLocaleString("en-IN", {
+//     timeZone: "Asia/Kolkata",
+//   });
+// }
 
-function capitalize(str) {
-  return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
-}
+// function capitalize(str) {
+//   return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
+// }
 
 /* ---------------------------------------------------
    Exports
@@ -376,4 +376,5 @@ export {
   fetchCampaignPerformanceSummary,
   epochToIST,
   capitalize,
+  getDealershipId,
 };
