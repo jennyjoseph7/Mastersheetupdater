@@ -158,11 +158,13 @@ async function startImportTask(
   tags = [],
   sourceName = "",
   fieldMapping = {},
-  campaignIdOrObjectiveId = ""
+  campaignIdOrObjectiveId = "",
+  dealershipId = getDealershipId()
 ) {
+  
   const kwargs = {
     audience_name: audienceName,
-    workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+    // workshop_id: dealershipId,
     source: "csv",
     tags,
     source_name: sourceName || "Uploaded via csv",
@@ -248,9 +250,11 @@ async function getTaskResult(taskId) {
    Campaign Fetchers
 --------------------------------------------------- */
 
-async function fetchPreSalesCampaigns(page = 1, pageSize = 50) {
+async function fetchPreSalesCampaigns(page = 1, pageSize = 50,dealershipId = getDealershipId()) {
   const response = await authenticatedFetch(
-    `${APP_BASE_URL}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}`,
+    `${APP_BASE_URL}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
+      dealershipId
+    )}`,
     { headers: { "X-GRYD-ROLE": "admin" } }
   );
 
@@ -293,6 +297,7 @@ async function fetchCampaignSummary(dealershipId = getDealershipId()) {
 
 async function fetchAudienceTasks(page = 1, pageSize = 50) {
   return fetchAPIData("audience_task", {
+    dealership_id: getDealershipId(),
     page_number: page,
     page_size: pageSize,
     sort_by: "created",
