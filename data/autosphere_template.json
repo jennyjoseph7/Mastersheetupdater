@@ -1,0 +1,301 @@
+{
+    "attributes": [
+        {
+            "name": "template_name",
+            "type": "text",
+            "indexed": true,
+            "required": true
+        },
+        {
+            "required": true,
+            "name": "title",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.region.region_id",
+            "required": true
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.region.region_name",
+            "required": true
+        },
+        {
+            "name": "brand_id",
+            "refers": "parents.brand.brand_id",
+            "required": true,
+            "options": "/options/brand/brand_name?region_id={region_id}"
+        },
+        {
+            "name": "brand_name",
+            "refers": "parents.brand.brand_name"
+        },
+        {
+            "name": "vehicle_model_id",
+            "type": "text",
+            "options": "/options/vehicle_model/vehicle_model_name?brand_id={brand_id}"
+        },
+        {
+            "name": "vehicle_model_name",
+            "type": "text",
+            "force_update": ["brand_id", "region_id", "vehicle_model_id"],
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle_model",
+                    "vehicle_model_id",
+                    "vehicle_model_name"
+                ]
+            }
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": [
+                    "region_name",
+                    "title",
+                    "brand_name",
+                    "vehicle_model_name",
+                    "template_name"
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "is_unique": true,
+                    "separator": "-",
+                    "case": "lower",
+                    "skip_empty": true,
+                    "attribute_join": "-"
+                }
+            },
+            "id": true,
+            "name": "template_id",
+            "type": "uid"
+        },
+        {
+            "name": "description",
+            "type": "text"
+        },
+        {
+            "name": "hashtags",
+            "type": "string_list",
+            "list_type": "text",
+            "indexed": true
+        },
+        {
+            "name": "image_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "image"
+        },
+        {
+            "name": "thumbnail_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "image"
+        },
+        {
+            "name": "primary_color",
+            "type": "text"
+        },
+        {
+            "name": "secondary_color",
+            "type": "text"
+        },
+        {
+            "name": "tertiary_color",
+            "type": "text"
+        },
+        {
+            "name": "background_color",
+            "type": "text"
+        },
+        {
+            "name": "text_color",
+            "type": "text"
+        },
+        {
+            "name": "cta_color",
+            "type": "text"
+        },
+        {
+            "name": "heading_font",
+            "type": "text"
+        },
+        {
+            "name": "body_font",
+            "type": "text"
+        },
+        {
+            "name": "font_fallback",
+            "type": "text"
+        },
+        {
+            "name": "font_weight_allowed",
+            "type": "string_list",
+            "list_type": "text"
+        },
+        {
+            "name": "font_size_min",
+            "type": "number"
+        },
+        {
+            "name": "font_size_max",
+            "type": "number"
+        },
+        {
+            "name": "line_height",
+            "type": "number"
+        },
+        {
+            "name": "letter_spacing",
+            "type": "number"
+        },
+        {
+            "name": "text_case",
+            "type": "text"
+        },
+        {
+            "name": "canvas_width",
+            "type": "number"
+        },
+        {
+            "name": "canvas_height",
+            "type": "number"
+        },
+        {
+            "name": "safe_area_margin",
+            "type": "number"
+        },
+        {
+            "name": "max_text_lines",
+            "type": "number"
+        },
+        {
+            "name": "logo_max_width",
+            "type": "number"
+        },
+        {
+            "name": "logo_max_height",
+            "type": "number"
+        },
+        {
+            "name": "aspect_ratio",
+            "type": "text"
+        },
+        {
+            "name": "theme_name",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "theme_type",
+            "options": [
+                "light",
+                "dark",
+                "brand",
+                "festival"
+            ],
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "border_radius",
+            "type": "number"
+        },
+        {
+            "name": "shadow_style",
+            "type": "text"
+        },
+        {
+            "name": "overlay_opacity",
+            "type": "number"
+        },
+        {
+            "name": "gradient_allowed",
+            "type": "bool"
+        },
+        {
+            "name": "editable_elements",
+            "type": "string_list",
+            "list_type": "text"
+        },
+        {
+            "name": "recommended_text_length",
+            "type": "number"
+        },
+        {
+            "name": "disallowed_words",
+            "type": "string_list",
+            "list_type": "text"
+        },
+        {
+            "name": "tone",
+            "options": [
+                "formal",
+                "friendly",
+                "bold",
+                "premium"
+            ],
+            "type": "text"
+        },
+        {
+            "name": "base_konva_json",
+            "type": "nested_object"
+        },
+        {
+            "name": "locked_layers",
+            "type": "string_list",
+            "list_type": "text"
+        },
+        {
+            "name": "snap_to_grid",
+            "type": "bool"
+        },
+        {
+            "name": "grid_size",
+            "type": "number"
+        },
+        {
+            "name": "similar_templates",
+            "type": "string_list",
+            "list_type": "text"
+        },
+        {
+            "name": "admin_notes",
+            "type": "text"
+        },
+        {
+            "name": "created",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            },
+            "auto_updater": true
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            },
+            "auto_updater": true,
+            "force_update": true
+        }
+    ],
+    "parents": [
+        "region",
+        "brand"
+    ]
+}
