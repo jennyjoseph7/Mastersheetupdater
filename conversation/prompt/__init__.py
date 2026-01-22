@@ -407,6 +407,7 @@ def get_conversation_history(*args, **kwargs):
     return hp.json.dumps(kwargs.get("session_data_cache",{}).get("messages",[])).decode("utf-8")
 
 def setup_primary_prompt(*args, **kwargs):
+    
     '''
     Prompt sections -
     - Who are you
@@ -425,7 +426,9 @@ def setup_primary_prompt(*args, **kwargs):
     mlogger.info("session_data_cache_data == {}".format(kwargs.get("session_data_cache",{}).get("data",{}).get("campaign_data").keys()))
     session_data_cache_data = kwargs.get("session_data_cache",{}).get("data",{})
     campaign_data = session_data_cache_data.get("campaign_data")
-    user_data = session_data_cache_data.get("user_data")
+    user_data = session_data_cache_data.get("user_data",{})
+
+    user_data.pop("persons_involved", None)
     campaign_type = campaign_data.get("campaign_type")
     campaign_name = campaign_data.get("campaign_name")
     campaign_objective = campaign_data.get("campaign_objective")
