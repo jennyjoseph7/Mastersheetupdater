@@ -103,5 +103,11 @@
       "read_access": true,
       "role": "human_agent"
     }
+  ],
+  "campaign_performance_summary" : [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
   ]
 }
