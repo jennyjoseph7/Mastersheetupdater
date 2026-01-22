@@ -16,6 +16,32 @@ AUTOCRM_CAMPAIGN_SERVICE_NAME = os.environ.get("AUTOCRM_CAMPAIGN_SERVICE_NAME", 
 GRYD_FILE_USER_ID = os.environ.get("GRYD_FILE_USER_ID")
 GRYD_FILE_API_KEY = os.environ.get("GRYD_FILE_API_KEY")
 GRYD_FILE_SERVER_URL = os.environ.get("GRYD_FILE_SERVER_URL", "https://file-prod.gryd.in")
+AUTOCRM_ALLOWED_CHANNELS = [
+    "email",
+    "whatsapp_chat",
+    "rcs",
+    "voice_phone",
+    "whatsapp_voice_note",
+    "whatsapp_voice_call",
+    "sms",
+    "voice",
+    "voicebot"
+    "web_chat",
+    "web_chat_voice",
+    "fb_chat",
+    "insta_chat",
+    "twitter_chat",
+    "zoom_bot",
+    "ms_teams"
+]
+AUTOCRM_CHEAPEST_CHANNELS = [
+    "email",
+    "whatsapp_chat",
+    "rcs",
+    "voice_phone",
+    "whatsapp_voice_note",
+    "whatsapp_voice_call",
+]
 AUTOCRM_CALL_CONNECTED_PRICE = os.environ.get("AUTOCRM_CALL_CONNECTED_PRICE", 2)
 AUTOCRM_CALL_CONNECTED_ITEM = "call_connected"
 AUTOCRM_CALL_CONNECTED_UNITS = "count"
@@ -149,7 +175,7 @@ def post_autocrm_model(model_name, enterprise = None, logger = None):
             raise
 
 
-def post_json_file(filename_json, autocrm_model, start_from = 0, logger = None):
+def post_json_file(filename_json, autocrm_model, start_from = 0, limit = None, logger = None):
     logger = logger or clogger
     m = autocrm_model
     if isinstance(autocrm_model, str):
@@ -166,12 +192,14 @@ def post_json_file(filename_json, autocrm_model, start_from = 0, logger = None):
                 m.post(data)
                 logger.info(f"Data posted successfully: {data_name}, index {index}")
                 index += 1
+                if limit and index > limit + start_from:
+                    break
         return m
     except Exception as e:
         logger.error(f"{e}\nError posting data for: {data_name} for index {index} in {filename_json}")
         raise
 
-def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
+def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, logger = None):
     logger = logger or clogger
     m = autocrm_model
     if isinstance(autocrm_model, str):
@@ -190,7 +218,7 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
             headers = reader.fieldnames
             logger.info(f"Headers for {data_name}: {headers}")
             for linenum, row in enumerate(reader, 2):
-                if linenum < start_from:
+                if linenum + 1 < start_from:
                     continue
                 row = {k.strip(): v.strip() for k, v in row.items()}
                 for k in number_keys:
@@ -255,11 +283,13 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, logger = None):
                 logger.info(f"Row: {hp.json.dumps(row, option=hp.json.OPT_INDENT_2).decode('utf-8')}")
                 m.post(row)
                 logger.info(f"Data posted successfully: {data_name}, linenum {linenum}")
+                if limit and linenum + 1 > limit + start_from:
+                    break
     except Exception as e:
         logger.error(f"{e}\nError posting data for: {data_name} for linenum {linenum} in {filename_csv}")
         raise
 
-def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0):
+def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, limit = None):
     logger = logger or clogger
     filename_json = hp.joinpath(BASE_PATH, "seed", f"{data_name}s.json")
     filename_csv = hp.joinpath(BASE_PATH, "seed", f"{data_name}s.csv")
@@ -267,9 +297,9 @@ def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0):
     if reseed:
         m.delete_many()
     if hp.isfile(filename_csv):
-        post_csv_file(filename_csv, m, start_from = start_from, logger = logger)
+        post_csv_file(filename_csv, m, start_from = start_from, limit = limit, logger = logger)
     elif hp.isfile(filename_json):
-        post_json_file(filename_json, m, start_from = start_from, logger = logger)
+        post_json_file(filename_json, m, start_from = start_from, limit = limit, logger = logger)
     else:
         logger.error(f"File: {filename_csv} or {filename_json} not found")
         raise FileNotFoundError(f"Seed file for : {data_name} not found")

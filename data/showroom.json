@@ -267,6 +267,13 @@
       "force_update": "dealership_id"
     },
     {
+      "name": "hashtags",
+      "type": "string_list",
+      "list_type": "text",
+      "indexed": true,
+      "ui_element": "tags"
+    },
+    {
       "auto_updater": true,
       "default": {
         "args": [

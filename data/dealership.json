@@ -445,6 +445,13 @@
             "ui_element": "image"
         },
         {
+            "name": "hashtags",
+            "type": "string_list",
+            "list_type": "text",
+            "indexed": true,
+            "ui_element": "tags"
+        },
+        {
             "name": "dealership_id",
             "type": "uid",
             "indexed": true,
