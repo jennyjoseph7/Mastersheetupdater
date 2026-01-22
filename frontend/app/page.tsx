@@ -67,6 +67,7 @@ import {
   UsersIcon,
   BarChart3,
 } from "lucide-react";
+import { set } from "react-hook-form";
 
 const swrOptions = {
   revalidateOnFocus: false,
@@ -192,10 +193,12 @@ export default function CampaignDashboard() {
     () => fetchCampaigns(campaignTypeFilter, page),
     swrOptions
   );
+  
+  let dealershipId = localStorage.getItem("dealership_id");
 
   // Fetch campaign summary data
   const { data: campaignSummaryData } = useSWR(
-    "campaign-summary",
+    dealershipId,
     fetchCampaignSummary,
     swrOptions
   );
@@ -284,7 +287,8 @@ export default function CampaignDashboard() {
       }
 
       // console.log("activeCampaign_count",activeCampaign_count,"totalCampaign_count",totalCampaign_count);
-      setTotalCampaignCount(totalCampaign_count);
+      // setTotalCampaignCount(totalCampaign_count);
+      setTotalCampaignCount(totalForType);
       setActiveCampaignCount(activeCampaign_count);
       setTotalCount(totalForType);
       setActiveCount(activeForType);

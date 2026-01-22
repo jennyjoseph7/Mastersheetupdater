@@ -284,13 +284,15 @@ async function fetchCampaignObjectives(campaignType) {
 }
 
 async function fetchCampaignSummary(dealershipId = getDealershipId()) {
-  const url = dealershipId
-    ? `${APP_BASE_URL}/gryd/db/objects/campaign_summary?dealership_id=${encodeURIComponent(
-        dealershipId
-      )}`
-    : `${APP_BASE_URL}/gryd/db/objects/campaign_summary`;
+  console.log("Fetching campaign summary for dealership ID:", dealershipId);
+  if (!dealershipId) return { items: [], total: 0 };
 
-  const response = await authenticatedFetch(url);
+  const response = await authenticatedFetch(
+    `${APP_BASE_URL}/gryd/db/objects/campaign_summary?dealership_id=${encodeURIComponent(
+      dealershipId
+    )}`
+  );
+  // const response = await authenticatedFetch(url);
   const json = await response.json();
   return json?.data ?? [];
 }
