@@ -194,8 +194,9 @@ export default function CampaignDashboard() {
     swrOptions
   );
   
-  let dealershipId = localStorage.getItem("dealership_id");
-
+  // let dealershipId = localStorage.getItem("dealership_id");
+// Safe version
+let dealershipId = typeof window !== "undefined" ? localStorage.getItem("dealership_id") : null;
   // Fetch campaign summary data
   const { data: campaignSummaryData } = useSWR(
     dealershipId,
