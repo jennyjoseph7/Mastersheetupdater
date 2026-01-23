@@ -283,6 +283,18 @@
       "name": "model_year_id",
       "type": "uid",
       "id": true
+    },
+    {
+      "name" : "information_status",
+      "type" : "text",
+      "default" : "pending",
+      "options" : [
+        "pending",
+        "running",
+        "unverified",
+        "verified"
+      ],
+      "ui_element" : "select"
     }
   ],
   "parents": [
