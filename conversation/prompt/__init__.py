@@ -517,8 +517,6 @@ def setup_primary_prompt(*args, **kwargs):
     {doc_data}
     Conversation History -
     {conversation_history}
-    Output Format -
-    {output_format}
     """
     return primary_prompt
 
