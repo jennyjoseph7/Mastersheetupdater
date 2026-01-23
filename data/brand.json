@@ -98,6 +98,35 @@
       "ui_element": "image"
     },
     {
+      "name": "dark_logo_url",
+      "type": "text",
+      "constraint": {
+        "function": "url_validator"
+      },
+      "converter": {
+        "function": "url_converter"
+      },
+      "ui_element": "image"
+    },
+    {
+      "name": "light_logo_url",
+      "type": "text",
+      "constraint": {
+        "function": "url_validator"
+      },
+      "converter": {
+        "function": "url_converter"
+      },
+      "ui_element": "image"
+    },
+    {
+      "name": "hashtags",
+      "type": "string_list",
+      "list_type": "text",
+      "indexed": true,
+      "ui_element": "tags"
+    },
+    {
       "name": "website",
       "type": "text",
       "constraint": {
@@ -107,6 +136,10 @@
         "function": "url_converter"
       },
       "ui_element": "url"
+    },
+    {
+      "name": "brand_history",
+      "type": "text"
     },
     {
       "auto_updater": true,

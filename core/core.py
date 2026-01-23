@@ -1950,11 +1950,11 @@ if __name__ == "__main__":
     #gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-south-india", "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/485b7cbc-55d5-44d2-b5b9-0e6d6e405f4c-692977e5_afinallead.csv", campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943", workshop_id = 12)    
     for out in gryd_task_import_leads_from_csv(
             "post-sales", 
-            "ambal-auto-south-india", 
-            "/Users/ggananth/Downloads/afinallead.csv", 
+            "vpj-motors-south-india", 
+            "/Users/ggananth/Downloads/voice.csv", 
             #campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
-            audience_name = "Ambal Auto - Service Center - New data",
+            audience_name = "VPJ Motors - Service Center - New data",
             campaign_objective_id = "post-sales-warranty-expiry-offer-nexa-mumbai-west-nexa-dealer-group-west-india",
-            workshop_id = "ambal-auto - ambal-auto---service-center - coimbatore"
+            workshop_id = "vpj motors-workshop1"
         ):    
         print(hp.json.dumps(out, hp.json.OPT_INDENT_2))

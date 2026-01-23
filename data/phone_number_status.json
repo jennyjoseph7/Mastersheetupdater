@@ -30,8 +30,10 @@
                 "whatsapp_chat",
                 "whatsapp_voice_note",
                 "whatsapp_voice_call",
-                "zoom_bot",
-                "ms_teams"
+                "rcs",
+                "sms",
+                "voice",
+                "voicebot"
             ],
             "required": true,
             "indexed": true

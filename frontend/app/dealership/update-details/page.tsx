@@ -272,6 +272,10 @@ export default function DealershipUpdateDetails() {
         // Check if it looks like a region suffix pattern (e.g., "-south-india")
         const potentialRegion = dealershipId.substring(lastDashIndex + 1);
         const commonRegions = [
+          "India",
+          "United States",
+          "United Arab Emirates",
+          "Saudi Arabia",
           "south-india",
           "north-india",
           "east-india",

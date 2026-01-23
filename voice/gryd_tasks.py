@@ -75,6 +75,7 @@ def trigger_voice_call(*args, **kwargs):
         "user_id": user_data.get("user_id"),
         "campaign_id": user_data.get("campaign_id"),
         "campaign_type": user_data.get("campaign_type"),
+        "lead_id": user_data.get("lead_id"),
         "status":"queued",
         "channel": user_data.get("channel", "voice_phone"),
         "phone_number":vhp.format_phone_number(user_data.get("mobile_number")),
@@ -84,7 +85,7 @@ def trigger_voice_call(*args, **kwargs):
     session_data = session_model.post(session_obj)
 
     session_data["room_id"] = user_data.get("room_id", "ambal_auto")
-
+    session_data["agent_id"] = user_data.get("agent_id")    
     if user_data.get("generate_prompt", True):
         for x in converse.get_primary_prompt(*args, **{
             "session_id" : session_data['session_id'],
@@ -237,116 +238,88 @@ def post_actions(session_id):
 
 
 if __name__ == "__main__":
-    data = {
-    "_is_testing": False,
-    #"mobile_number": "919689108283",
-    "mobile_number": "918870737879",
-    "generate_prompt": False,
-    "user_id": "fccaa5ef133430a0",
-    "campaign_id": "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
-    "campaign_name": "Scheduled Service Reminder",
-    "campaign_type": "post-sales",
-    "campaign_sub_type": ["workshop awareness"],
-    "campaign_objective": ["Service reminder"],
-    "campaign_objective_type": ["lead volume"],
-    "campaign_description": "Remind customers about their upcoming scheduled service appointments",
-    "campaign_status": "Active",
+    data = {'_is_testing': False,
+ 'ctas': ['book-service'],
+ 'created': 1769076498.8989508,
+ 'updated': 1769076620.0956566,
+ 'channels': ['voice_phone'],
+ 'end_date': 1769644800,
+ 'languages': ['english'],
+ 'region_id': 'south-india',
+ 'start_date': 1769040000,
+ 'campaign_id': '7b187cc3-b868-366e-97d0-d1f793fd813b',
+ 'dealer_name': 'deepaklogin3',
+ 'region_name': 'South India',
+ 'urgency_hook': 'Don’t wait—keep your car running smooth with timely service!',
+ 'campaign_name': 'general service reminder- 22nd jan voice',
+ 'campaign_type': 'post-sales',
+ 'cost_per_lead': 0.0,
+ 'dealership_id': 'deepaklogin3-south-india',
+ 'campaign_offer': "Hey there! It’s almost time for your vehicle's periodic maintenance. Swing by the dealership to keep your ride in tip-top shape and avoid any surprises on the road. Let’s keep your journey safe and smooth!",
+ 'campaign_status': 'Active',
+ 'number_targeted': 3,
+ 'budget_allocated': 25.68,
+ 'supported_brands': ['hyundai'],
+ 'campaign_sub_type': 'other',
+ 'conversation_tone': 'Be on-point, warm, confident, polite, conversational, and very crisp — like a friendly local representative. Avoid being pushy or overly sales oriented. Incorporate natural conversational elements like brief affirmations   to maintain engagement. End every conversation politely, with warmth and gratitude. Speak at a medium pace, easy to follow, with positive, empathetic, and reassuring emotion (not robotic).',
+ 'custom_attributes': [],
+ 'campaign_description': "Hey there! It’s almost time for your vehicle's periodic maintenance. Swing by the dealership to keep your ride in tip-top shape and avoid any surprises on the road. Let’s keep your journey safe and smooth!",
+ 'campaign_user_source': {'source_type': 'default',
+  'campaign_users': [{'lead_id': 'dl9cay4026-deepaklogin3-general-service-reminder--22nd-jan-voice',
+    'mobile_number': '8850988794',
+    'customer_name': 'Nikit',
+    'email': None,
+    'contact_channel': 'voice_phone',
+    'template_id': None,
+    'template_details': None}],
+  'field_mapping': {'lead_id': 'lead_id',
+   'mobile_number': 'mobile_number',
+   'customer_name': 'customer_name',
+   'template_id': 'template_id',
+   'template_details': 'template_details',
+   'contact_channel': 'contact_channel',
+   'reg_num': 'reg_num'},
+  'config': {'batch_size': 100, '_skip_sent_message': True}},
+ 'target_audience_tags': ['service-due',
+  'periodic-maintenance',
+  'active-customer',
+  'paid-service-eligible',
+  'last-service-older-than-6months',
+  'battery_health_alert',
+  'tyre_health_alert',
+  'tyre-rotation-due',
+  'engine-oil-check',
+  'brake_inspection_recommended',
+  'wheel_alignment_recommended',
+  'car-washing-recommended',
+  'brake-pad-check',
+  'engine-performance-check',
+  'suspension_check_recommended',
+  'coolant_radiator_check',
+  'ac_vent_cleaning_recommended'],
+ 'campaign_objective_id': 'post-sales-general-service-due-reminder-ambal-auto-south-india',
+ 'campaign_objective_name': 'General Service Due Reminder',
+ 'campaign_objective_type': ['lead volume'],
+ 'conversion_rate_percent': 0.0,
+ 'region_level_guardrails': 'Maintain professional communication standards. Respect regional languages.',
+ 'region_level_guidelines': 'Emphasize technology features and premium quality. Highlight safety ratings.',
+ 'why_user_should_avail_this': 'Regular periodic servicing keeps your vehicle safe, efficient, and performing at its best. It protects long term engine health, prevents unexpected repair costs, and ensures a smooth drive. Engine oil and filters naturally degrade with time, so yearly replacement is important even with low running. A general checkup also helps spot early issues in brakes, battery, suspension, and electrical systems before they turn into major repairs. Periodic service keeps the warranty valid and maintains the resale value of your car.',
+ 'other_important_information': 'Periodic maintenance is mileage/time based — typically every year or 10,000 km once. Completing on time helps maintain warranty validity.',
+ 'supported_brands_guidelines': {},
+ 'reasons_for_non_applicability': "- If the customer says the service is already completed, you should say, 'Thank you for letting me know! I'll update the records.'\n- If the customer has sold the car, you should say, 'Oh okay, got it. Could you please share the new owner's contact number, so we can update our records?.'",
+ 'reasons_users_may_not_be_interested': "- If the customer says they are busy, you should say, 'Sure, I completely understand. When can I call you back regarding your free service? Your vehicle needs to have that completed, so I will reach you at a time that works best for you.' \n - If the customer says they haven't driven much or want to skip service, you should say 'I understand. Even if the car is not driven much, the engine oil and filters need to be changed every year because they have a validity period. When they age, the oil loses effectiveness and the components start wearing out, which can cause bigger issues later. That is why periodic service is still important.' \n - If Customer Says they don't have the money to service or financial constraint or can we book it to next month, you should say 'I understand. Just a reminder — your service window ends in few days and the yearly service will lapse after that.  When you bring your car to our garage, our service advisor will review and adjust the pricing to ensure you get the best value. With continued service, you'll keep earning loyalty points, which can be redeemed to offset future charges.' \n - If customer says they plan to sell the vehicle, you should say, 'Got it. Completing the service can increase resale value and give buyers more confidence due to an updated service record.'",
+ 'channel': 'voice_phone',
+ 'sender': None,
+ 'provider_name': 'tata-tele',
+ 'template_message': None,
+ 'lead_id': 'dl9cay4026-deepaklogin3-general-service-reminder--22nd-jan-voice',
+ 'mobile_number': '8850988794',
+ 'customer_name': 'Nikit',
+ 'email': None,
+ 'contact_channel': 'voice_phone',
+ 'template_id': None,
+ 'template_details': None}
 
-    "created": 1764835501.0808802,
-    "updated": 1764835501.0822716,
-    "start_date": 1704067200,
-    "end_date": 1735689600,
-
-    "dealer_name": "Ambal Auto",
-    "dealership_id": "ambal-auto-south-india",
-    "dealership_description": (
-        "Our customers can experience the joy of state-of-the-art technology, "
-        "reliability, transparency and complete peace of mind."
-    ),
-
-    "region_id": "south-india",
-    "region_name": "South India",
-    "region_level_guardrails": "Maintain professional communication standards. Respect regional languages.",
-    "region_level_guidelines": "Emphasize technology features and premium quality. Highlight safety ratings.",
-
-    "workshop_id": "ambal-auto---service-center---coimbatore",
-    "workshop_name": "Ambal Auto - Service Center",
-    "workshop_full_name": "Ambal Auto Ambal Auto - Service Center",
-    "workshop_address": (
-        "Ambal Auto, Iyer Hospital Premises, Trichy Rd, "
-        "Coimbatore, Tamil Nadu 641005"
-    ),
-    "workshop_pincode": "641005",
-    "workshop_email": "workshop@ambalauto.com",
-    "workshop_contact_number": "+91-9876543501",
-    "workshop_operating_hours": {
-        "opening_time": "09:00",
-        "closing_time": "18:00"
-    },
-    "workshop_geolocation": [11.0168, 76.9558],
-
-    "channels": ["whatsapp_chat", "email", "voice_phone"],
-    "channel": "voice_phone",
-    "provider_name": "tata-tele",
-    "sender": None,
-
-    "languages": ["english", "hindi", "tamil"],
-    "supported_brands": ["maruti-suzuki-arena", "maruti-suzuki-nexa"],
-    "supported_brands_guidelines": [],
-
-    "ctas": ["book-service", "request-callback"],
-    "urgency_hook": [
-        "Your vehicle service is due in 30 days. Book now to avoid last-minute rush!"
-    ],
-    "campaign_offer": "10% discount on service charges for bookings made within 7 days",
-
-    "budget_allocated": 40000,
-    "actual_spent": 35000,
-    "cost_per_lead": 0,
-
-    "number_targeted": 400,
-    "number_reached": 360,
-    "number_contacted": 300,
-    "number_engaged": 200,
-    "number_converted": 100,
-    "conversion_rate_percent": 0,
-
-    "remarks": "Focus on high-value customers with service history",
-    "responsible_person": "Ramesh Kumar",
-
-    "campaign_user_source": {
-        "source_type": "default",
-        "campaign_users": [
-            {
-                "lead_id": "tn37dm7087-ambal-auto-scheduled-service-reminder",
-                "mobile_number": "918438403561",
-                "customer_name": None,
-                "contact_channel": "voice_phone",
-                "template_id": None,
-                "template_details": None
-            }
-        ],
-        "field_mapping": {
-            "lead_id": "lead_id",
-            "mobile_number": "mobile_number",
-            "customer_name": None,
-            "template_id": "template_id",
-            "template_details": "template_details",
-            "contact_channel": "contact_channel"
-        }
-    },
-
-    "config": {
-        "batch_size": 100,
-        "_skip_sent_message": True
-    },
-
-    "lead_id": "tn37dm7087-ambal-auto-scheduled-service-reminder",
-    "customer_name": None,
-    "contact_channel": "voice_phone",
-    "template_id": None,
-    "template_details": None
-}
 
     trigger_voice_call(**{"user_data":data})
 

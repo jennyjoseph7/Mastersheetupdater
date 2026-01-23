@@ -16,7 +16,8 @@ import { MapFields } from "./steps/map-fields";
 import { PreviewConfirm } from "./steps/preview-confirm";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import type { DataSource } from "@/app/audience/page";
-import { startImportTask, createAudienceTask, updateAudienceTask } from "@/utils/api";
+import { startImportTask, createAudienceTask, updateAudienceTask, getDealershipId } from "@/utils/api";
+import { get } from "http";
 
 // NEW PROP: prefilledData
 interface AddDataSourceDialogProps {
@@ -162,6 +163,7 @@ export function AddDataSourceDialog({
         campaign_id: targetCampaignId,
         campaign_objective_name: "",
         audience_name: formData.audienceName,
+        dealership_id: getDealershipId(),
         tags: formData.tags || [],
         csv_file_url: formData.fileUrl,
         error_csv_link: "", 

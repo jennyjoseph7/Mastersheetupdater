@@ -256,39 +256,39 @@
             "type": "text"
         },
         {
-            "name": "on_error_retries",
+            "name": "retries",
             "type": "number",
             "default": 0
         },
         {
-            "name": "on_error_delay",
+            "name": "delay",
             "type": "number",
             "default": 10
         },
         {
-            "name": "on_error_trigger_id",
+            "name": "delay_type",
+            "type": "text",
+            "default": "constant",
+            "options": [
+                "constant",
+                "linear",
+                "exponential"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "trigger_id",
             "type": "uid",
             "option_others": true,
-            "options": "/options/campaign_workflow/campaign_workflow_name"
+            "options": [
+                "switch_to_next_credential",
+                "switch_to_next_channel",
+                "follow_up_contact",
+                "confirmation_message"
+            ]
         },
         {
-            "name": "on_failed_retries",
-            "type": "number",
-            "default": 3
-        },
-        {
-            "name": "on_failed_delay",
-            "type": "number",
-            "default": 600
-        },
-        {
-            "name": "on_failed_trigger_id",
-            "type": "uid",
-            "option_others": true,
-            "options": "/options/campaign_workflow/campaign_workflow_name"
-        },
-        {
-            "name": "on_failed_trigger",
+            "name": "trigger",
             "type": "nested_object",
             "dict_keys": [
                 "task",
@@ -296,126 +296,6 @@
                 "kwargs",
                 "args"
             ]
-        },
-        {
-            "name": "on_attempted_retries",
-            "type": "number",
-            "default": 3
-        },
-        {
-            "name": "on_attempted_delay",
-            "type": "number",
-            "default": 600
-        },
-        {
-            "name": "on_attempted_trigger_id",
-            "type": "uid",
-            "option_others": true,
-            "options": "/options/campaign_workflow/campaign_workflow_name"
-        },
-        {
-            "name": "on_attempted_trigger",
-            "type": "nested_object",
-            "dict_keys": [
-                "task",
-                "service",
-                "kwargs",
-                "args"
-            ]
-        },
-        {
-            "name": "on_reached_retries",
-            "type": "number",
-            "default": 0
-        },
-        {
-            "name": "on_reached_delay",
-            "type": "number",
-            "default": 10
-        },
-        {
-            "name": "on_reached_trigger_id",
-            "type": "uid",
-            "option_others": true,
-            "options": "/options/campaign_workflow/campaign_workflow_name"
-        },
-        {
-            "name": "on_reached_trigger",
-            "type": "nested_object",
-            "dict_keys": [
-                "task",
-                "service",
-                "kwargs",
-                "args"
-            ]
-        },
-        {
-            "name": "on_contacted_retries",
-            "type": "number",
-            "default": 1
-        },
-        {
-            "name": "on_contacted_delay",
-            "type": "number",
-            "default": 10
-        },
-        {
-            "name": "on_contacted_trigger_id",
-            "type": "uid",
-            "option_others": true,
-            "options": "/options/campaign_workflow/campaign_workflow_name"
-        },
-        {
-            "name": "on_contacted_trigger",
-            "type": "nested_object",
-            "dict_keys": [
-                "task",
-                "service",
-                "kwargs",
-                "args"
-            ]
-        },
-        {
-            "name": "on_engaged_retries",
-            "type": "number",
-            "default": 1
-        },
-        {
-            "name": "on_engaged_delay",
-            "type": "number",
-            "default": 86400
-        },
-        {
-            "name": "on_engaged_trigger_id",
-            "type": "uid",
-            "option_others": true,
-            "options": "/options/campaign_workflow/campaign_workflow_name"
-        },
-        {
-            "name": "on_engaged_trigger",
-            "type": "nested_object",
-            "dict_keys": [
-                "task",
-                "service",
-                "kwargs",
-                "args"
-            ]
-        },
-        {
-            "name": "on_converted_trigger_id",
-            "type": "uid",
-            "option_others": true,
-            "options": "/options/campaign_workflow/campaign_workflow_name"
-        },
-        {
-            "name": "on_converted_trigger",
-            "type": "nested_object",
-            "dict_keys": [
-                "task",
-                "service",
-                "kwargs",
-                "args"
-            ]
-        }
+        }    
     ]
 }

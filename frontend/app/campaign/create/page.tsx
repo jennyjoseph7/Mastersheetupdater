@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // Imports
-import { fetchAudienceTasks } from "@/utils/api";
+import { fetchAudienceTasks ,getDealershipId} from "@/utils/api";
 import { api } from "@/lib/api";
 
 import {
@@ -617,22 +617,28 @@ function CampaignCreateContent() {
     try {
       let endpoint = "";
       let finalPayload = {};
+      const dealershipId = getDealershipId();
 
+      if (!dealershipId) {
+        alert("Dealership ID not found. Please re-login.");
+        setIsPostingCampaign(false);
+        return;
+      }
       if (campaignType === "presales") {
         endpoint = "/gryd/db/object/pre_sales_campaign";
         finalPayload = {
           ...commonPayload,
           campaign_type: "pre-sales",
-          workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
-          dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
+          // workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+          dealership_id: dealershipId,
         };
       } else {
         endpoint = "/gryd/db/object/post_sales_campaign";
         finalPayload = {
           ...commonPayload,
           campaign_type: "post-sales",
-          workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
-          dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
+          // workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+          dealership_id: dealershipId,
         };
       }
 

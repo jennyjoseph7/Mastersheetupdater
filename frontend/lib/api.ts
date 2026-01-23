@@ -605,7 +605,8 @@ export async function getDealershipDetails(): Promise<DealershipDetailsResponse>
   }
 
   const responseData = await res.json();
-  console.log("[Get Dealership Details] Response:", responseData);
+  console.log("[Get Dealership Details22] Response:", responseData);
+  localStorage.setItem("dealership_details", JSON.stringify(responseData));
   return responseData;
 }
 
@@ -778,6 +779,7 @@ export async function getWorkshopsForDealership(
 
   const responseData = await res.json();
   console.log("[Get Workshops] Response:", responseData);
+  localStorage.setItem("workshops_data", JSON.stringify(responseData.data));
 
   // Handle both array and object responses
   if (Array.isArray(responseData)) {
