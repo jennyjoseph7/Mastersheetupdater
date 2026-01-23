@@ -64,6 +64,7 @@ import {
   getBuybackCentersForDealership,
   dealershipUpdateDetails,
 } from "@/lib/api";
+import { getBrands } from "@/utils/api";
 import { ProtectedRoute } from "@/components/protected-route";
 import { useAuth } from "@/lib/auth-context";
 import { isDealershipSetupComplete } from "@/lib/dealership-utils";
@@ -71,6 +72,20 @@ import { isDealershipSetupComplete } from "@/lib/dealership-utils";
 const urlRegex = /^(https?:\/\/)?.+\..+/;
 const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
+const DEFAULT_BRANDS = [
+  "Toyota",
+  "Honda",
+  "Maruti Suzuki",
+  "Maruti Suzuki NEXA",
+  "Hyundai",
+  "Tata Motors",
+  "Mahindra",
+  "Kia",
+  "MG Motor",
+  "Ford",
+  "Volkswagen",
+];
 
 export default function DealershipUpdateDetails() {
   const router = useRouter();
@@ -89,6 +104,9 @@ export default function DealershipUpdateDetails() {
     gstin: "",
     website: "",
   });
+
+  const [availableBrands, setAvailableBrands] =
+    useState<string[]>(DEFAULT_BRANDS);
 
   // Physical Locations state - unified for all location types
   type LocationType = "workshop" | "showroom" | "buyback_center";
@@ -126,9 +144,9 @@ export default function DealershipUpdateDetails() {
     }
   }, [user?.id]);
 
-  // Fetch all existing locations on component mount
+  // Fetch all existing locations and available brands on component mount
   useEffect(() => {
-    const fetchAllLocations = async () => {
+    const fetchAllData = async () => {
       const storedDealershipId =
         typeof window !== "undefined"
           ? localStorage.getItem("dealership_id")
@@ -141,7 +159,7 @@ export default function DealershipUpdateDetails() {
 
       setLoadingLocations(true);
       try {
-        // Fetch all location types in parallel
+        // 1. Fetch Locations
         const [fetchedWorkshops, fetchedShowrooms, fetchedBuybackCenters] =
           await Promise.all([
             getWorkshopsForDealership(currentDealershipId).catch(() => []),
@@ -154,17 +172,68 @@ export default function DealershipUpdateDetails() {
         setBuybackCenters(
           Array.isArray(fetchedBuybackCenters) ? fetchedBuybackCenters : []
         );
+
+        // 2. Fetch Available Brands based on Region
+        try {
+          // Get dealership details to find region info
+          // const details = await getDealershipDetails(currentDealershipId);
+          const details = await getDealershipDetails();
+
+          let regionId = details?.region_id;
+
+          // If region_id is not directly available, try to infer from region_name
+          if (!regionId && details?.region_name) {
+            regionId = details.region_name
+              .toLowerCase()
+              .replace(/\s+/g, "-");
+          }
+
+          // Fallback: try to extract from dealership ID string (e.g. "dealer-south-india")
+          if (!regionId && currentDealershipId.includes("-")) {
+            // Logic similar to what's used for legal name extraction, but for region
+             const commonRegions = [
+               "south-india",
+               "north-india",
+               "east-india",
+               "west-india",
+               "central-india",
+             ];
+             for (const region of commonRegions) {
+                if (currentDealershipId.toLowerCase().endsWith(region)) {
+                    regionId = region;
+                    break;
+                }
+             }
+          }
+          
+          if (regionId) {
+            const brandsData = await getBrands(regionId);
+            if (Array.isArray(brandsData) && brandsData.length > 0) {
+              const brandNames = brandsData
+                .map((b: any) => b.brand_name)
+                .filter(Boolean);
+              
+              if (brandNames.length > 0) {
+                 // Remove duplicates
+                 setAvailableBrands([...new Set(brandNames)]);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn(
+            "[Dealership Update] Failed to fetch dynamic brands, using defaults.",
+            err
+          );
+          // Keep default brands on error
+        }
       } catch (error) {
-        console.error("[Dealership Update] Error fetching locations:", error);
-        setWorkshops([]);
-        setShowrooms([]);
-        setBuybackCenters([]);
+        console.error("[Dealership Update] Error fetching initial data:", error);
       } finally {
         setLoadingLocations(false);
       }
     };
 
-    fetchAllLocations();
+    fetchAllData();
   }, [user?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -920,19 +989,7 @@ export default function DealershipUpdateDetails() {
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {[
-                          "Toyota",
-                          "Honda",
-                          "Maruti Suzuki",
-                          "Maruti Suzuki NEXA",
-                          "Hyundai",
-                          "Tata Motors",
-                          "Mahindra",
-                          "Kia",
-                          "MG Motor",
-                          "Ford",
-                          "Volkswagen",
-                        ]
+                        {availableBrands
                           .filter(
                             (brand) => !dealershipDetails.brands.includes(brand)
                           )

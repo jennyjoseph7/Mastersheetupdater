@@ -71,6 +71,16 @@ async function deleteAPIData(modelName, id) {
 }
 
 /* ---------------------------------------------------
+   Brand Fetcher
+--------------------------------------------------- */
+
+async function getBrands(regionId) {
+  if (!regionId) return [];
+  const { items } = await fetchAPIData("brand", { region_id: regionId });
+  return items;
+}
+
+/* ---------------------------------------------------
    Pivot / Counts
 --------------------------------------------------- */
 
@@ -345,21 +355,6 @@ async function fetchCampaignPerformanceSummary(campaignId = "") {
 }
 
 /* ---------------------------------------------------
-   Utils
---------------------------------------------------- */
-
-// function epochToIST(epochTime) {
-//   if (!epochTime) return "";
-//   return new Date(epochTime * 1000).toLocaleString("en-IN", {
-//     timeZone: "Asia/Kolkata",
-//   });
-// }
-
-// function capitalize(str) {
-//   return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
-// }
-
-/* ---------------------------------------------------
    Exports
 --------------------------------------------------- */
 
@@ -384,4 +379,5 @@ export {
   epochToIST,
   capitalize,
   getDealershipId,
+  getBrands,
 };
