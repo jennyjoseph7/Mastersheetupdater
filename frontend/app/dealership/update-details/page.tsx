@@ -63,6 +63,7 @@ import {
   getShowroomsForDealership,
   getBuybackCentersForDealership,
   dealershipUpdateDetails,
+  // getBrands,
 } from "@/lib/api";
 import { getBrands } from "@/utils/api";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -105,8 +106,7 @@ export default function DealershipUpdateDetails() {
     website: "",
   });
 
-  const [availableBrands, setAvailableBrands] =
-    useState<string[]>(DEFAULT_BRANDS);
+  const [availableBrands, setAvailableBrands] = useState<any[]>([]);
 
   // Physical Locations state - unified for all location types
   type LocationType = "workshop" | "showroom" | "buyback_center";
@@ -183,40 +183,30 @@ export default function DealershipUpdateDetails() {
 
           // If region_id is not directly available, try to infer from region_name
           if (!regionId && details?.region_name) {
-            regionId = details.region_name
-              .toLowerCase()
-              .replace(/\s+/g, "-");
+            regionId = details.region_name.toLowerCase().replace(/\s+/g, "-");
           }
 
           // Fallback: try to extract from dealership ID string (e.g. "dealer-south-india")
           if (!regionId && currentDealershipId.includes("-")) {
-            // Logic similar to what's used for legal name extraction, but for region
-             const commonRegions = [
-               "south-india",
-               "north-india",
-               "east-india",
-               "west-india",
-               "central-india",
-             ];
-             for (const region of commonRegions) {
-                if (currentDealershipId.toLowerCase().endsWith(region)) {
-                    regionId = region;
-                    break;
-                }
-             }
+            const commonRegions = [
+              "south-india",
+              "north-india",
+              "east-india",
+              "west-india",
+              "central-india",
+            ];
+            for (const region of commonRegions) {
+              if (currentDealershipId.toLowerCase().endsWith(region)) {
+                regionId = region;
+                break;
+              }
+            }
           }
-          
+
           if (regionId) {
             const brandsData = await getBrands(regionId);
             if (Array.isArray(brandsData) && brandsData.length > 0) {
-              const brandNames = brandsData
-                .map((b: any) => b.brand_name)
-                .filter(Boolean);
-              
-              if (brandNames.length > 0) {
-                 // Remove duplicates
-                 setAvailableBrands([...new Set(brandNames)]);
-              }
+              setAvailableBrands(brandsData);
             }
           }
         } catch (err) {
@@ -224,10 +214,12 @@ export default function DealershipUpdateDetails() {
             "[Dealership Update] Failed to fetch dynamic brands, using defaults.",
             err
           );
-          // Keep default brands on error
         }
       } catch (error) {
-        console.error("[Dealership Update] Error fetching initial data:", error);
+        console.error(
+          "[Dealership Update] Error fetching initial data:",
+          error
+        );
       } finally {
         setLoadingLocations(false);
       }
@@ -312,6 +304,7 @@ export default function DealershipUpdateDetails() {
       }
 
       // Map brand names to API format (slug format)
+      // We keep this as a fallback if dynamic mapping fails
       const brandSlugMap: Record<string, string> = {
         "Maruti Suzuki": "maruti-suzuki-arena",
         "Maruti Suzuki NEXA": "maruti-suzuki-nexa",
@@ -326,11 +319,25 @@ export default function DealershipUpdateDetails() {
         Volkswagen: "volkswagen",
       };
 
-      const brandSlugs = dealershipDetails.brands
-        .map(
-          (brand) =>
-            brandSlugMap[brand] || brand.toLowerCase().replace(/\s+/g, "-")
-        )
+      // Construct brand IDs by looking up the full brand object from API response
+      const brandIds = dealershipDetails.brands
+        .map((name) => {
+          // 1. Try to find the matching brand object in the fetched list
+          const brandObj = availableBrands.find(
+            (b: any) => b.brand_name === name
+          );
+
+          // 2. If found, use the official brand_id from the database
+          if (brandObj && brandObj.brand_id) {
+            return brandObj.brand_id;
+          }
+
+          // 3. Fallback: Use slug map or basic slugification if not found in API list
+          // (This handles the case where DEFAULT_BRANDS are used due to API failure)
+          return (
+            brandSlugMap[name] || name.toLowerCase().replace(/\s+/g, "-")
+          );
+        })
         .filter(Boolean);
 
       // Extract legal name from dealership_id (remove region suffix if present)
@@ -378,8 +385,8 @@ export default function DealershipUpdateDetails() {
         kwargs.languages = []; // Include empty array for languages
       }
 
-      if (brandSlugs.length > 0) {
-        kwargs.supported_brands = brandSlugs;
+      if (brandIds.length > 0) {
+        kwargs.supported_brands = brandIds;
       } else {
         kwargs.supported_brands = []; // Include empty array for supported_brands
       }
@@ -989,13 +996,24 @@ export default function DealershipUpdateDetails() {
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableBrands
+                        {(availableBrands.length > 0
+                          ? availableBrands
+                          : DEFAULT_BRANDS.map((name) => ({
+                              brand_name: name,
+                            }))
+                        )
                           .filter(
-                            (brand) => !dealershipDetails.brands.includes(brand)
+                            (brand: any) =>
+                              !dealershipDetails.brands.includes(
+                                brand.brand_name
+                              )
                           )
-                          .map((brand) => (
-                            <SelectItem key={brand} value={brand}>
-                              {brand}
+                          .map((brand: any) => (
+                            <SelectItem
+                              key={brand.brand_name}
+                              value={brand.brand_name}
+                            >
+                              {brand.brand_name}
                             </SelectItem>
                           ))}
                       </SelectContent>

@@ -171,7 +171,6 @@ async function startImportTask(
   campaignIdOrObjectiveId = "",
   dealershipId = getDealershipId()
 ) {
-  
   const kwargs = {
     audience_name: audienceName,
     // workshop_id: dealershipId,
@@ -260,7 +259,11 @@ async function getTaskResult(taskId) {
    Campaign Fetchers
 --------------------------------------------------- */
 
-async function fetchPreSalesCampaigns(page = 1, pageSize = 50,dealershipId = getDealershipId()) {
+async function fetchPreSalesCampaigns(
+  page = 1,
+  pageSize = 50,
+  dealershipId = getDealershipId()
+) {
   const response = await authenticatedFetch(
     `${APP_BASE_URL}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
       dealershipId
