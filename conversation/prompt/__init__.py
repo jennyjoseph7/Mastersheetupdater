@@ -406,6 +406,11 @@ def get_output_format(*args, **kwargs):
 def get_conversation_history(*args, **kwargs):
     return hp.json.dumps(kwargs.get("session_data_cache",{}).get("messages",[])).decode("utf-8")
 
+def prune_user_data(user_data):
+    popable = ["created","updated","region_id","vehicle_id","campaign_id","workshop_id","phone_number","audience_name","campaign_name","campaign_type","dealership_id","purchase_date","persons_involved","campaign_sub_type","custom_attributes","alt_phone_number_2","alt_phone_number_3","alt_phone_number_4","alt_phone_number_4","post_sales_lead_id","campaign_objective_id","supported_brand_names","loyalty_contact_number","campaign_objective_name","campaign_objective_type","region_level_guardrails","region_level_guidelines","supported_brands_guidelines","reasons_users_may_not_be_interested"]
+    for p in popable:
+        user_data.pop(p, None)
+    return user_data
 def setup_primary_prompt(*args, **kwargs):
     
     '''
@@ -427,8 +432,7 @@ def setup_primary_prompt(*args, **kwargs):
     session_data_cache_data = kwargs.get("session_data_cache",{}).get("data",{})
     campaign_data = session_data_cache_data.get("campaign_data")
     user_data = session_data_cache_data.get("user_data",{})
-
-    user_data.pop("persons_involved", None)
+    user_data = prune_user_data(user_data)
     campaign_type = campaign_data.get("campaign_type")
     campaign_name = campaign_data.get("campaign_name")
     campaign_objective = campaign_data.get("campaign_objective")
