@@ -1186,7 +1186,7 @@
             }
         },
         {
-            "name": "last_interaction_date",
+            "name": "last_interaction_time",
             "type": "number",
             "auto_updater": true,
             "force_update": "last_session_id",

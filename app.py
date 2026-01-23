@@ -58,7 +58,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
               task="check_inactive_sessions",
               service=AUTOCRM_CRON_SERVICE_NAME,
               schedule = "*/15 * * * *",
-              kwargs={"inactivity_time": 1440, "only_for_channels":["whatsapp_chat"]},
+              kwargs={"inactivity_time": 1440, "only_for_channels":["whatsapp_chat"],"outbound_timeout_minutes":60},
               add_schedule_to_queue=False
         )
         cron_worker.add_cron_job(

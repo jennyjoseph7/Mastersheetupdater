@@ -11,7 +11,7 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
-from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
+from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter,update_session_data_in_lead
 from gryd_worker import gryd_db_helper as db
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
@@ -323,10 +323,11 @@ def check_inactive_sessions(*args, **kwargs):
                             "history_updated_time": last_ts,
                         },
                     )
-
+                    # TODO:also update session related data to respective lead_model by passing last_session_id which will update last_session_channel,last_interaction etc..
+                    # update_session_data_in_lead(session_id=session_id,"") 
                     mlogger.info(
-                        f"Appended {len(appended_history)} messages "
-                        f"to session {session_id}"
+                        f"Appended {len(appended_history)} messages"
+                        f"for session {session_id}"
                     )
                 else:
                     mlogger.info(f"No new history rows for session {session_id}")
