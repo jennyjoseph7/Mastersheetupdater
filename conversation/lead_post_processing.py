@@ -127,6 +127,8 @@ def post_session_process(*args, **kwargs):
     
         if appt_date_time_purpose.get("appointment_date"):
             visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data)
+            if not visit_data:
+                return
             visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "workshop_visit"
             pg.post(visit_model,visit_data)
     
