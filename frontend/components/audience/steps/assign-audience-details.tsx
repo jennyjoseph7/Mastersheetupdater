@@ -125,20 +125,20 @@ export function AssignAudienceDetails({
               className="grid grid-cols-1 gap-4 md:grid-cols-2"
             >
               <Label
-                htmlFor="post_sales"
+                htmlFor="pre-sales"
                 className={cn(
                   "relative flex cursor-pointer flex-col gap-4 rounded-xl border-2 p-5 transition-all hover:bg-accent/40 hover:border-primary/50",
-                  formData.category === "post_sales"
+                  formData.category === "pre-sales"
                     ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                     : "border-border bg-card"
                 )}
               >
-                <RadioGroupItem value="post_sales" id="post_sales" className="sr-only" />
+                <RadioGroupItem value="pre-sales" id="pre-sales" className="sr-only" />
                 <div className="flex items-start justify-between">
                   <div className="rounded-lg bg-primary/10 p-2.5 dark:bg-primary/30">
                     <Target className="h-5 w-5 text-primary" />
                   </div>
-                  {formData.category === "post_sales" && (
+                  {formData.category === "pre-sales" && (
                     <CheckCircle2 className="h-5 w-5 text-primary animate-in fade-in zoom-in duration-300" />
                   )}
                 </div>
