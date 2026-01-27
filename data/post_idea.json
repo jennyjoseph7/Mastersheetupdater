@@ -316,25 +316,25 @@
         },
         {
             "name": "is_trending",
-            "type": "boolean",
+            "type": "bool",
             "default": false,
             "indexed": true
         },
         {
             "name": "is_popular",
-            "type": "boolean",
+            "type": "bool",
             "default": false,
             "indexed": true
         },
         {
             "name": "is_new",
-            "type": "boolean",
+            "type": "bool",
             "default": false,
             "indexed": true
         },
         {
             "name": "is_featured",
-            "type": "boolean",
+            "type": "bool",
             "default": false,
             "indexed": true
         }

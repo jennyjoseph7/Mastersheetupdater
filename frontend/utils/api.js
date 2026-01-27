@@ -71,6 +71,16 @@ async function deleteAPIData(modelName, id) {
 }
 
 /* ---------------------------------------------------
+   Brand Fetcher
+--------------------------------------------------- */
+
+async function getBrands(regionId) {
+  if (!regionId) return [];
+  const { items } = await fetchAPIData("brand", { region_id: regionId });
+  return items;
+}
+
+/* ---------------------------------------------------
    Pivot / Counts
 --------------------------------------------------- */
 
@@ -161,7 +171,6 @@ async function startImportTask(
   campaignIdOrObjectiveId = "",
   dealershipId = getDealershipId()
 ) {
-  
   const kwargs = {
     audience_name: audienceName,
     // workshop_id: dealershipId,
@@ -250,7 +259,11 @@ async function getTaskResult(taskId) {
    Campaign Fetchers
 --------------------------------------------------- */
 
-async function fetchPreSalesCampaigns(page = 1, pageSize = 50,dealershipId = getDealershipId()) {
+async function fetchPreSalesCampaigns(
+  page = 1,
+  pageSize = 50,
+  dealershipId = getDealershipId()
+) {
   const response = await authenticatedFetch(
     `${APP_BASE_URL}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
       dealershipId
@@ -345,21 +358,6 @@ async function fetchCampaignPerformanceSummary(campaignId = "") {
 }
 
 /* ---------------------------------------------------
-   Utils
---------------------------------------------------- */
-
-// function epochToIST(epochTime) {
-//   if (!epochTime) return "";
-//   return new Date(epochTime * 1000).toLocaleString("en-IN", {
-//     timeZone: "Asia/Kolkata",
-//   });
-// }
-
-// function capitalize(str) {
-//   return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
-// }
-
-/* ---------------------------------------------------
    Exports
 --------------------------------------------------- */
 
@@ -384,4 +382,5 @@ export {
   epochToIST,
   capitalize,
   getDealershipId,
+  getBrands,
 };

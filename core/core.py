@@ -1053,7 +1053,7 @@ def dealership_update_details(
     if not supported_brands:
         raise ValueError("Supported brands are required")
     brand_model = gryd.base_model.Model('brand', AUTOCRM_APP_ENTERPRISE_ID)
-    brands = list(map(lambda x: x.get('brand_id'), brand_model.list(_as_option=True, _page_size=1, brand_id=supported_brands, region_id=dealership.get('region_id'))))
+    brands = list(map(lambda x: x.get('brand_id'), brand_model.list(_as_option=True, brand_id=supported_brands, region_id=dealership.get('region_id'))))
     logger.info(f"Supported Brands for region {dealership.get('region_id')}: {brands}")
     if any(brand not in brands for brand in supported_brands):
         unsupported_brands = list(filter(lambda brand: brand not in brands, supported_brands))

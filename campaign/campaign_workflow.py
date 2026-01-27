@@ -67,6 +67,16 @@ PROVIDER_STATUS_MAP = reduce(dict_appender,
     {s: [] for s in set(DISPOSITION_MAP.values())}
 )
 
+DISPOSITION_OPTIONS = {
+    "queued": ["queued"],
+    "error": ["error", "queued"],
+    "failed": ["failed", "queued"],
+    "attempted": ["attempted", "queued", "engaged", "converted", "reached", "contacted"],
+    "reached": ["reached", "queued", "contacted", "engaged", "converted", "attempted"],
+    "contacted": ["contacted", "queued", "engaged", "converted"],
+    "engaged": ["engaged", "queued", "converted"],
+    "converted": ["converted", "queued"],
+}
 
 CHANNEL_IDENTIFIER_MAP = {
     "whatsapp": "phone_number",
@@ -159,41 +169,39 @@ def get_model_and_attrs(campaign_type: str, enterprise_id: str = None):
         raise ValueError(f"Invalid campaign type: {campaign_type}")
     return campaign_model, lead_model, user_model, user_id_attr, lead_id_attr
 
+def get_cheapest_channel(channels: list):
+    for c in AUTOCRM_CHEAPEST_CHANNELS:
+        if c in channels:
+            return c
+    return channels[0]
 
-def get_proceed_status(channels: list, lead_detail: dict, max_attempts: int = 3, max_failed: int = 10, logger=None):
+def sort_channel_by_cheapest(channels: list):
+    return sorted(channels, key=lambda x: AUTOCRM_CHEAPEST_CHANNELS.index(x))
+
+def get_channel_identifier_from_lead(channel: str, lead: dict, logger=None):
     logger = logger or mlogger
-    status_model = AutocrmModel('contact_status')
-
-
-    channel = lead_detail.get('channel')
-    campaign_id = lead_detail.get('campaign_id')
-    lead_id = lead_detail.get('lead_id')
-    disposition = lead_detail.get('disposition')
-    disposition_detail = lead_detail.get('disposition_detail')
-    if disposition in ["engaged", "converted"]:
-        return False
-    is_error = len([s for s in lead_detail if s.get('disposition', '') in ["error", "queued"]]) > 0
-    if is_error:
-        logger.info(f"Contact with user {user_id} in channel {channel} has already resulted in error for campaign_id={campaign_id}, doing nothing.")
-        return False
-    is_failed = len([s for s in user_details if s.get('disposition', '') in ["failed", "queued"]]) > max_failed
-    if is_failed:
-        logger.info(f"Contact with user {user_id} in channel {channel} has already failed {max_failed} times for campaign_id={campaign_id}, doing nothing.")
-        return False
-    is_un_contacted = len([s for s in user_details if s.get('disposition', '') in ["reached", "attempted"]]) > max_attempts
-    if is_un_contacted:
-        logger.info(f"Contact with user {user_id} in channel {channel} has been attempted {max_attempts} times for campaign_id={campaign_id}, doing nothing.")
-        return False
-    return True
+    st = hp.time()
+    channel_identifier_list = []
+    if channel == "phone_number":
+        channel_identifier_list = get_phone_number_identifier_from_lead(channel, lead, logger=logger)
+    elif channel == "email":
+        channel_identifier_list = get_email_identifier_from_lead(lead, logger=logger)
+    else:
+        logger.error(f"Invalid channel: {channel}, doing nothing.")
+    logger.info(f"Time taken to get channel identifier: {hp.time() - st} seconds")
+    return channel_identifier_list
 
 @gryd.is_a_task(function_name="get_channel_from_lead", job_param='job', auth_param='auth', logger_param='logger')
-def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Union[str, None] = None, workflow = None, logger=None, job=None, auth=None, *args, **kwargs):
+def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Union[str, None] = None, workflow = None, current_channel = None, current_channel_identifier = None, disposition = None, logger=None, job=None, auth=None, *args, **kwargs):
     """
     This function is used to get the next channel and channel identifier from the lead.
     Args:
         lead: The lead dictionary.
         campaign_details: The campaign details dictionary.
         enterprise_id: The enterprise ID.
+        workflow: The workflow dictionary.
+        channel: The channel string.
+        disposition: The disposition string.
         logger: The logger object.
         job: The job object.
         auth: The auth object.
@@ -208,40 +216,25 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
     enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
     campaign_id = campaign_details.get('campaign_id')
     status_model = AutocrmModel('contact_status')
-    email_status_model = AutocrmModel('email_status')
-    phone_status_model = AutocrmModel('phone_number_status')
     logger.info(f"Loaded models for get_channel_from_lead in {hp.time() - st} seconds")
     channels = campaign_details.get('channels') or ["voice_phone"]
-    logger.info(f"Channels: {channels} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
-    for c in AUTOCRM_CHEAPEST_CHANNELS:
-        # Sort by cheapest to most expensive
-        if c in channels:
-            channels.remove(c)
-            channels.insert(0, c)
-    logger.info(f"Sorted channels: {channels} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
+    channels = sort_channel_by_cheapest(channels)
+    if current_channel:
+        channels = channels[channels.index(current_channel):]
+    logger.info(f"Checking for channels: {channels} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
     for channel in channels:
         channel_type = CHANNEL_IDENTIFIER_MAP.get(channel)
         logger.info(f"Processing channel: {channel} with type: {channel_type} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
-        channel_identifier_list = []
-        if channel_type == "phone_number":
-            logger.info(f"Getting phone number identifiers for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
-            st1 = hp.time()
-            channel_identifier_list = get_phone_number_identifier_from_lead(channel, lead)
-            logger.info(f"Time taken to get phone number identifiers: {hp.time() - st1} seconds")
-        elif channel_type == "email":
-            logger.info(f"Getting email identifiers for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
-            st1 = hp.time()
-            channel_identifier_list = get_email_identifier_from_lead(lead)
-            logger.info(f"Time taken to get email identifiers: {hp.time() - st1} seconds")
-        else:
-            logger.error(f"Invalid channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}, doing nothing.")
-            continue
+        channel_identifier_list = get_channel_identifier_from_lead(channel, lead, logger=logger)
         if not channel_identifier_list:
             logger.error(f"No channel identifiers found for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}, doing nothing.")
             continue
+        if current_channel_identifier and current_channel_identifier in channel_identifier_list:
+            channel_identifier_list = channel_identifier_list[channel_identifier_list.index(current_channel_identifier):]
         change_channel = False
         for channel_identifier in channel_identifier_list:
             logger.info(f"Processing channel identifier: {channel_identifier} for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
+            status = lead.get('status')
             kws = {channel_type: channel_identifier}
             if channel_type == "phone_number":
                 kws["channel"] = channel
@@ -280,7 +273,9 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
     logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
     return None, None, 0, None
 
-def get_email_identifier_from_lead(lead: dict):
+def get_email_identifier_from_lead(lead: dict, logger=None):
+    logger = logger or mlogger
+    st = hp.time()
     rlist = []
     priority = []
     email_list = ["email", "alt_email_2", "alt_email_3", "alt_email_4"]
@@ -303,9 +298,12 @@ def get_email_identifier_from_lead(lead: dict):
         if p1 in rlist:
             rlist.remove(p1)
         rlist.insert(0, p1)
+    logger.info(f"Time taken to get email identifiers: {hp.time() - st} seconds")
     return rlist
 
-def get_phone_number_identifier_from_lead(channel: str, lead: dict):
+def get_phone_number_identifier_from_lead(channel: str, lead: dict, logger=None):
+    logger = logger or mlogger
+    st = hp.time()
     rlist = []
     priority = []
     ph_list = ["phone_number", "alt_phone_number_2", "alt_phone_number_3", "alt_phone_number_4"]
@@ -328,18 +326,37 @@ def get_phone_number_identifier_from_lead(channel: str, lead: dict):
         if p1 in rlist:
             rlist.remove(p1)
         rlist.insert(0, p1)
+    logger.info(f"Time taken to get phone number identifiers: {hp.time() - st} seconds")
     return rlist
 
 
-def remap_workflow(workflows: dict, campaign_id: str, dealership_id: str, campaign_objective_id: str, campaign_type: str):
+def remap_workflow(workflows: dict, campaign_id: str, dealership_id: str, campaign_objective_id: str, campaign_type: str, logger=None):
+    logger = logger or mlogger
+    st = hp.time()
     ret = {}
+    def get_right_workflow(status):
+        kws = {
+            "dealership_id": dealership_id,
+            "campaign_objective_id": campaign_objective_id,
+            "campaign_type": campaign_type,
+            "status": status
+        }
+        opts = ["dealership_id", "campaign_objective_id", "campaign_type", "status"]
+        for k in range(len(opts)):
+            rws = filter(lambda x: all(x.get(o) == kws.get(o) for o in opts), workflows)
+            if rws:
+                return hp.make_single(rws)
+            opts.pop(0)
+        return CAMPAIGN_WORKFLOW
+
     for status in PROVIDER_STATUS_MAP:
-        for k in trigger_map:
-            ret[k] = {
-                'trigger': workflow.get(trigger_map.get(k)[0], CAMPAIGN_WORKFLOW.get(status).get('trigger')),
-                'retries': workflow.get(trigger_map.get(k)[2], None),
-                'delay': workflow.get(trigger_map.get(k)[3], None)
-            }
+        workflow = get_right_workflow(status)
+        ret[status] = {
+             'trigger': workflow.get('trigger'),
+             'retries': workflow.get('retries'),
+             'delay': workflow.get('delay')
+         }
+    logger.info(f"Time taken to remap workflow: {hp.time() - st} seconds")
     return ret
 
 @gryd.is_a_task(function_name="determine_campaign_next_action", job_param='job', auth_param='auth', logger_param='logger')
@@ -420,30 +437,24 @@ def determine_campaign_next_action(
             "object": _detail
         }
     campaign_details = _values.get('campaign', {}).get('object')
+    
+    workflow = _values.get('workflow', {}).get('object')
     if not channel:
-        channel, channel_identifier = get_channel_from_lead(lead, campaign_details)
+        channel = AUTOCRM_CHEAPEST_CHANNELS[0]
     workflow_model = gryd.base_model.Model('campaign_workflow', enterprise_id)
+    if not disposition:
+        disposition = "queued"
     dispostion = dispostion.lower() 
-    disposition_options = {
-        "queued": ["queued"],
-        "error": ["error", "queued"],
-        "failed": ["failed", "queued"],
-        "attempted": ["attempted", "queued", "engaged", "converted", "reached", "contacted"],
-        "reached": ["reached", "queued", "contacted", "engaged", "converted", "attempted"],
-        "contacted": ["contacted", "queued", "engaged", "converted"],
-        "engaged": ["engaged", "queued", "converted"],
-        "converted": ["converted", "queued"],
-    }
     disposition = DISPOSITION_MAP.get(disposition)
     if not disposition:
         str_msg = f"Invalid disposition: {disposition} for campaign_type={campaign_type}, channel={channel}, enterprise_id={enterprise_id}"
         logger.error(str_msg)
         raise ValueError(str_msg)
-    if disposition not in disposition_options:
+    if disposition not in DISPOSITION_OPTIONS:
         str_msg = f"Invalid disposition: {disposition} for campaign_type={campaign_type}, channel={channel}, enterprise_id={enterprise_id}"
         logger.error(str_msg)
         raise ValueError(str_msg)
-    workflow_stage = disposition_options.get(disposition, ['queued'])
+    workflow_stage = DISPOSITION_OPTIONS.get(disposition, ['queued'])
     workflows = workflow_model.list(
         _page_size=1, 
         _as_option=True, 
@@ -452,38 +463,8 @@ def determine_campaign_next_action(
         campaign_objective_id=_values.get('campaign_objective', {}).get('id'),
         workflow_stage=workflow_stage
     )
-    next_workflow = hp.make_single(workflows, force = True)
-    if next_workflow:
-        next_workflow = remap_workflow(next_workflow)
-    else:
-        next_workflow = CAMPAIGN_WORKFLOW
-    # Map disposition to workflow triggers
-    # Get trigger details based on disposition
-    trigger_field, trigger_id_field, retries_field, delay_field = trigger_map.get(disposition, (None, None, None, None))
-    
-    if not (trigger_field or (trigger_id_field and next_workflow.get(trigger_id_field))):
-        str_msg = f"No trigger field found for disposition={disposition} in workflow={next_workflow}, doing nothing."
-        logger.info(str_msg)
-        return
-    contact_status_model = gryd.base_model.Model('contact_status', enterprise_id)
-    channel_identifier_name = CHANNEL_IDENTIFIER_MAP.get(channel)
-    provider_statuses = PROVIDER_STATUS_MAP.get(disposition, [])
-    cs_params = {
-       channel_identifier_name : channel_identifier,
-       'campaign_type': campaign_type,
-       'campaign_id': _values.get('campaign', {}).get('id'),
-       'channel': channel,
-       'provider_status': provider_statuses,
-       "_sort_by": "created",
-       "_sort_reverse": True
-    }
-    contact_statuses = contact_status_model.list(_page_size=500, _as_option=True, **cs_params)
-    status_count = len(contact_statuses)
-    # Check if we've exceeded retries
-    ## Get from campagign_user_detail, and campaign_user_detail_archive
-    max_retries = next_workflow.get(retries_field, 0) if retries_field else 0
-    logger.info(f"Max retries: {max_retries}, Status count: {status_count} for disposition={converted_disposition} in channel={channel}")
-
+    workflow = remap_workflow(workflows, campaign_id=campaign_details.get('campaign_id'), dealership_id=dealership_id, campaign_objective_id=campaign_details.get('campaign_objective_id'), campaign_type=campaign_type, logger=logger)
+    channel, channel_identifier, delay, trigger = get_channel_from_lead(lead, campaign_details, workflow=workflow, channel=channel, disposition=disposition, logger=logger)
     gryd.create_async_task('RunCampaignOrCreater', AUTOCRM_CAMPAIGN_SERVICE_NAME, kwargs=kwargs)
     return
 

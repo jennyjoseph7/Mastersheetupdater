@@ -68,13 +68,7 @@
         {
             "required": false,
             "name": "raw_doc",
-            "type": "text",
-            "constraint": {
-                "function": "url_validator"
-            },
-            "converter": {
-                "function": "url_converter"
-            }
+            "type": "text"
         },
         {
             "name" : "document_type",
