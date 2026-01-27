@@ -254,7 +254,7 @@
     {
       "auto_updater": true,
       "default": {
-        "args": ["vehicle_model_name", "variant_name", "engine_type", "transmission_type"],
+        "args": ["vehicle_model_name", "variant_name", "engine_type", "transmission_type", "drivetrain"],
         "function": "name_to_id",
         "kwargs": {
           "case": "lower",

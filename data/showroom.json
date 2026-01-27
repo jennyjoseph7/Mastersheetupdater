@@ -55,6 +55,10 @@
       "refers": "parents.region_subdivision.subdivision_name"
     },
     {
+      "name": "timezone",
+      "refers": "parents.region_subdivision.timezone"
+    },
+    {
       "name": "languages",
       "refers": "parents.region_subdivision.languages"
     },

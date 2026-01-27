@@ -1,0 +1,283 @@
+{
+    "name": "post_workshop",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "post_idea_id",
+            "refers": "parents.post_idea.post_idea_id",
+            "indexed": true,
+            "options": "/options/post_idea/post_idea_id?campaign_type=post-sales"
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.post_idea.region_id",
+            "indexed": true
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.post_idea.region_name",
+            "indexed": true
+        },
+        {
+            "name": "language",
+            "refers": "parents.post_idea.language",
+            "indexed": true
+        },
+        {
+            "name": "idea",
+            "refers": "parents.post_idea.idea"
+        },
+        {
+            "name": "campaign_type",
+            "refers": "parents.post_idea.campaign_type",
+            "indexed": true
+        },
+        {
+            "name": "campaign_objective_id",
+            "refers": "parents.campaign_objective.campaign_objective_id",
+            "indexed": true,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_idea",
+                    "post_idea_id",
+                    "campaign_objective_id"
+                ]
+            }
+        },
+        {
+            "name": "campaign_objective_name",
+            "refers": "parents.campaign_objective.campaign_objective_name",
+            "indexed": true
+        },
+        {
+            "name": "campaign_objective_description",
+            "refers": "parents.campaign_objective.campaign_objective_description"
+        },
+        {
+            "name": "guardrails_guidelines",
+            "refers": "parents.campaign_objective.guardrails_guidelines"
+        },
+        {
+            "name": "why_user_should_avail_this",
+            "refers": "parents.campaign_objective.why_user_should_avail_this"
+        },
+        {
+            "name": "reasons_users_may_not_be_interested",
+            "refers": "parents.campaign_objective.reasons_users_may_not_be_interested"
+        },
+        {
+            "name": "reasons_for_non_applicability",
+            "refers": "parents.campaign_objective.reasons_for_non_applicability"
+        },
+        {
+            "name": "other_important_information",
+            "refers": "parents.campaign_objective.other_important_information"
+        },
+        {
+            "name": "target_audience_tags",
+            "refers": "parents.campaign_objective.target_audience_tags"
+        },
+        {
+            "name": "ctas",
+            "refers": "parents.campaign_objective.ctas"
+        },
+        {
+            "name": "workshop_id",
+            "refers": "parents.workshop.workshop_id",
+            "indexed": true
+        },
+        {
+            "name": "workshop_name",
+            "refers": "parents.workshop.workshop_name",
+            "indexed": true
+        },
+        {
+            "name": "workshop_type",
+            "refers": "parents.workshop.workshop_type"
+        },
+        {
+            "name": "workshop_contact_number",
+            "refers": "parents.workshop.contact_number"
+        },
+        {
+            "name": "workshop_email",
+            "refers": "parents.workshop.email"
+        },
+        {
+            "name": "workshop_address",
+            "refers": "parents.workshop.address"
+        },
+        {
+            "name": "workshop_city",
+            "refers": "parents.workshop.city"
+        },
+        {
+            "name": "workshop_state",
+            "refers": "parents.workshop.state"
+        },
+        {
+            "name": "workshop_pincode",
+            "refers": "parents.workshop.pincode"
+        },
+        {
+            "name": "workshop_supported_brands",
+            "refers": "parents.workshop.supported_brands"
+        },
+        {
+            "name": "workshop_geolocation",
+            "type": "geolocation",
+            "refers": "parents.workshop.geolocation"
+        },
+        {
+            "name": "workshop_operating_hours",
+            "type": "nested_object",
+            "refers": "parents.workshop.operating_hours"
+        },
+        {
+            "name": "workshop_days_open",
+            "type": "string_list",
+            "refers": "parents.workshop.days_open"
+        },
+        {
+            "name": "post_workshop_id",
+            "type": "uid",
+            "id": true,
+            "indexed": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "post_idea_id",
+                    "workshop_id"
+                ],
+                "kwargs": {
+                    "attribute_join": "-",
+                    "is_unique": true,
+                    "separator": "-",
+                    "case": "lower",
+                    "skip_empty": true
+                }
+            },
+            "auto_updater": true
+        },
+        {
+            "name": "idea_image_url",
+            "refers": "parents.post_idea.image_url"
+        },
+        {
+            "name": "video_url",
+            "refers": "parents.post_idea.video_url"
+        },
+        {
+            "name": "caption",
+            "refers": "parents.post_idea.caption"
+        },
+        {
+            "name": "hook",
+            "refers": "parents.post_idea.hook"
+        },
+        {
+            "name": "slogan",
+            "refers": "parents.post_idea.slogan"
+        },
+        {
+            "name": "message",
+            "refers": "parents.post_idea.message"
+        },
+        {
+            "name": "hashtags",
+            "refers": "parents.post_idea.hashtags"
+        },
+        {
+            "name": "autosphere_template_id",
+            "refers": "parents.post_idea.autosphere_template_id"
+        },
+        {
+            "name": "autosphere_template_name",
+            "refers": "parents.post_idea.autosphere_template_name"
+        },
+        {
+            "name": "brand_id",
+            "refers": "parents.post_idea.brand_id"
+        },
+        {
+            "name": "template_image_url",
+            "refers": "parents.post_idea.template_image_url"
+        },
+        {
+            "name": "theme_name",
+            "refers": "parents.post_idea.theme_name",
+            "indexed": true
+        },
+        {
+            "name": "theme_type",
+            "refers": "parents.post_idea.theme_type",
+            "indexed": true
+        },
+        {
+            "name": "brand_name",
+            "refers": "parents.post_idea.brand_name",
+            "indexed": true
+        },
+        {
+            "name": "brand_logo_url",
+            "refers": "parents.post_idea.brand_logo_url"
+        },
+        {
+            "name": "vehicle_model_id",
+            "refers": "parents.post_idea.vehicle_model_id"
+        },
+        {
+            "name": "vehicle_model_name",
+            "refers": "parents.post_idea.vehicle_model_name"
+        },
+        {
+            "name": "is_trending",
+            "refers": "parents.post_idea.is_trending",
+            "indexed": true
+        },
+        {
+            "name": "is_popular",
+            "refers": "parents.post_idea.is_popular",
+            "indexed": true
+        },
+        {
+            "name": "is_new",
+            "refers": "parents.post_idea.is_new",
+            "indexed": true
+        },
+        {
+            "name": "is_featured",
+            "refers": "parents.post_idea.is_featured",
+            "indexed": true
+        },
+        {
+            "name": "is_recommended",
+            "type": "bool",
+            "default": false,
+            "indexed": true
+        }
+    ],
+    "parents": [
+        "post_idea",
+        "dealership",
+        "campaign_objective",
+        "workshop"
+    ]
+}
