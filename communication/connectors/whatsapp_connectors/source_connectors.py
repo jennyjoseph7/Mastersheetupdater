@@ -507,11 +507,11 @@ class BaseWebhookConverter:
         if wa_status:
             logger.info(f"Received {wa_status} status webhook for {message_dict.get('enterprise_id')} enterprise and mobile number: {message_dict.get('recipientAddress',message_dict.get('mobile_number'))}")
             message_dict["message_status"]=wa_status
-            
+            logger.info(f"Message dict: {message_dict}")
             gryd.create_async_task(
                 'post_contact_status',
                 AUTOCRM_COMMUNICATION_SERVICE_NAME,
-                args=(message_dict.get('message_id'),),
+                args = (message_dict.get('message_id'),),
                 kwargs=message_dict)
             # self.post_contact_status(message_dict.get('message_id'),**message_dict)
             
@@ -633,7 +633,7 @@ class BaseWebhookConverter:
         kwargs["temporary_data"] = temporary_data
         logger.info("Calling session logic...")
         # call session logic here...
-        d=self.handle_session_logic(mobile_number)
+        d=self.handle_session_logic(mobile_number,"whatsapp_chat")
         logger.info(f"Session logic result: {d}")
         user_d=temporary_data.get("whatsapp_user_details")
         converse_kwargs.update({
@@ -657,7 +657,7 @@ class BaseWebhookConverter:
 
         logger.info(f"Created Async task result: {res}")
 
-    def handle_session_logic(self,phone_number, campaign_details=None, from_web_chat=False):
+    def handle_session_logic(self,phone_number, channel=None,campaign_details=None, from_web_chat=False):
         payload = {}
         dealership_id = None
 
@@ -666,7 +666,8 @@ class BaseWebhookConverter:
         if person:
             payload.update({
                 "phone_number": phone_number,
-                "user_id": person.get("user_id")
+                "user_id": person.get("user_id"),
+                
             })
 
         with get_pg_connector() as pg:
@@ -679,7 +680,7 @@ class BaseWebhookConverter:
                     "campaign_type": campaign_details.get("campaign_type"),
                     "lead_id": campaign_details.get("lead_id"),
                 })
-                session = self.get_or_create_session(payload)
+                session = self.get_or_create_session(payload,channel)
                 return {**session}
 
             logger.info(f"TEST phone_number: {phone_number}")
@@ -745,7 +746,7 @@ class BaseWebhookConverter:
                         _ = list(pg.list("communication_credential", {"dealership_id": dealership_id}))
 
                 logger.info(f"TEST BEFORE SESSION FINAL PAYLOAD: {payload}")
-                session = self.get_or_create_session(payload)
+                session = self.get_or_create_session(payload,channel)
                 return {**session, "dealership_id": dealership_id}
 
             # 5. NON-CAMPAIGN FLOW
@@ -754,7 +755,7 @@ class BaseWebhookConverter:
                 dealership_id = creds[0].get("dealership_id")
                 payload["dealership_id"] = dealership_id
 
-            session = self.get_or_create_session(payload)
+            session = self.get_or_create_session(payload,channel)
             return {**session, "dealership_id": dealership_id}
 
     def get_or_create_person(self,phone_number):
@@ -823,7 +824,7 @@ class BaseWebhookConverter:
         condition = "Where " + " AND ".join(conditions)
         return condition, params
     
-    def get_or_create_session(self,data):
+    def get_or_create_session(self,data,channel=None):
         """
         Find active session or create new one.
         session_live=True AND status != completed
@@ -833,7 +834,7 @@ class BaseWebhookConverter:
             "session_id":data.get("session_id"),
             "user_id":data.get("user_id"),
             # "campaign_id":data.get("campaign_id"),
-            "channel": "whatsapp_chat",
+            "channel": channel or "whatsapp_chat",
             "session_live": True,
             "status": "completed~"
         }
@@ -854,7 +855,7 @@ class BaseWebhookConverter:
                     # end the old session
                     self.end_session(**{"session_id":sessions[0].get("session_id")})
                     # create new session
-                    s=self.create_new_session(data)
+                    s=self.create_new_session(data,channel)
                     return s
                 else:
                     logger.info("Session has exisiting campaign_id. So we are returning the existing session.")
@@ -863,30 +864,41 @@ class BaseWebhookConverter:
             logger.info(f"No Existing session found. Creating a new one..")
             
             # Create new session
-            s=self.create_new_session(data)
+            s=self.create_new_session(data,channel)
             
             return s
 
     @gryd.is_a_task(function_name="end_session")
     def end_session(*args, **kwargs):
+        """
+        Ends a session and triggers a post session process task.
+
+        Args:
+            session_id (str): The session id to end.
+
+        Returns:
+            None
+        """
         session_id=kwargs.get("session_id")
         logger.info(f"Ending session with session_id: {session_id}")
         with get_pg_connector() as pg:
             pg.update("session","session_id",session_id,{"session_live":False,"status":"completed","end_time":time.time()})
-            # gryd.create_async_task("post_session_process",AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,args=[],kwargs={"session_id":session_id})
-            post_session_process(**{"session_id":session_id})
-            logger.info(f"Session with session_id: {session_id}. Has been ended.")
-
+            update_session_data_in_lead(session_id,"completed")
+        logger.info(f"Calling post session process task for session_id: {session_id}")
+        # post_session_process(**{"session_id":session_id})
+        gryd.create_async_task("post_session_process",AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,args=[],kwargs={"session_id":session_id})
+        logger.info(f"Session with session_id: {session_id}. Has been ended.")
+        
     @gryd.is_a_task(function_name="check_or_create_session")
     def check_or_create_session(phone_number, campaign_details, from_web_chat): 
         return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
 
-    def create_new_session(self,data):
+    def create_new_session(self,data,channel=None):
         with get_pg_connector() as pg:
             new_session = {
                 **data,
                 "session_live": True,
-                "channel": "whatsapp_chat",
+                "channel": channel or "whatsapp_chat",
                 "status": "interacted",
                 "campaign_type": data.get("campaign_type","inbound"),
                 "campaign_id": data.get("campaign_id",'inbound'),
@@ -899,6 +911,13 @@ class BaseWebhookConverter:
             session_id=self.generate_uid(data)
             s= pg.update("session","session_id",session_id,new_session)
             logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. And the session_id is -- {s}")
+            
+            # updating last_session_channel
+            if data.get("campaign_type") == "pre_sales":
+                pg.update("pre_sales_lead","pre_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel})
+            elif data.get("campaign_type") == "post_sales":
+                pg.update("post_sales_lead","post_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel})
+            # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
             return s 
     def send_otp_template(*args, **kwargs):
         logger.info("Send OTP template called")
@@ -1565,7 +1584,20 @@ class WhatsappCampaignTemplate:
 
 
 
-
+def update_session_data_in_lead(session_id,status):
+    with get_pg_connector() as pg:
+        session_data = list(pg.list("session", {"session_id": session_id}))
+        if not session_data:
+            logger.info(f"Could not find session with session_id: {session_id}")
+        session_data = session_data[0]
+        lead_id = session_data.get("lead_id")
+        campaign_type = session_data.get("campaign_type")
+        last_interaction_time = session_data.get("last_response_time",None)
+        lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
+        lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
+        logger.info(f"Updating session data in lead with session_id: {session_id} and lead_id: {lead_id}")
+        pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
+        logger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
 
 
         

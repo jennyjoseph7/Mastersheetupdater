@@ -1,0 +1,348 @@
+{
+    "name": "post_idea",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.region.region_id",
+            "indexed": true
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.region.region_name",
+            "indexed": true
+        },
+        {
+            "name": "language",
+            "type": "text",
+            "options": [
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujarati",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic"
+            ],
+            "default": "english"
+        },
+        {
+            "name": "idea",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "campaign_type",
+            "type": "text",
+            "options": [
+                "pre-sales",
+                "post-sales",
+                "dealership"
+            ],
+            "default": "pre-sales",
+            "indexed": true
+        },
+        {
+            "name": "campaign_objective_id",
+            "refers": "parents.campaign_objective.campaign_objective_id",
+            "indexed": true
+        },
+        {
+            "name": "campaign_objective_name",
+            "refers": "parents.campaign_objective.campaign_objective_name",
+            "indexed": true
+        },
+        {
+            "name": "campaign_objective_description",
+            "refers": "parents.campaign_objective.campaign_objective_description"
+        },
+        {
+            "name": "guardrails_guidelines",
+            "refers": "parents.campaign_objective.guardrails_guidelines"
+        },
+        {
+            "name": "why_user_should_avail_this",
+            "refers": "parents.campaign_objective.why_user_should_avail_this"
+        },
+        {
+            "name": "reasons_users_may_not_be_interested",
+            "refers": "parents.campaign_objective.reasons_users_may_not_be_interested"
+        },
+        {
+            "name": "reasons_for_non_applicability",
+            "refers": "parents.campaign_objective.reasons_for_non_applicability"
+        },
+        {
+            "name": "other_important_information",
+            "refers": "parents.campaign_objective.other_important_information"
+        },
+        {
+            "name": "target_audience_tags",
+            "refers": "parents.campaign_objective.target_audience_tags"
+        },
+        {
+            "name": "ctas",
+            "refers": "parents.campaign_objective.ctas"
+        },
+        {
+            "name": "post_idea_id",
+            "type": "uid",
+            "id": true,
+            "indexed": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "region_id",
+                    "campaign_type",
+                    "campaign_objective_id",
+                    "language",
+                    "idea"
+                ],
+                "kwargs": {
+                    "attribute_join": "-",
+                    "is_unique": true,
+                    "separator": "-",
+                    "case": "lower",
+                    "skip_empty": true
+                }
+            },
+            "auto_updater": true
+        },
+        {
+            "name": "image_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            }
+        },
+        {
+            "name": "video_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            }
+        },
+        {
+            "name": "status",
+            "type": "text",
+            "options": [
+                "new",
+                "reviewing",
+                "approved",
+                "rejected"
+            ],
+            "default": "new",
+            "indexed": true
+        },
+        {
+            "name": "caption",
+            "type": "text"
+        },
+        {
+            "name": "hook",
+            "type": "text"
+        },
+        {
+            "name": "slogan",
+            "type": "text"
+        },
+        {
+            "name": "message",
+            "type": "text"
+        },
+        {
+            "name": "hashtags",
+            "type": "string_list",
+            "list_type": "text"
+        },
+        {
+            "name": "autosphere_template_id",
+            "refers": "parents.autosphere_template.template_id",
+            "required": false,
+            "options": "/options/autosphere_template/template_name?region_id={region_id}"
+        },
+        {
+            "name": "autosphere_template_name",
+            "refers": "parents.autosphere_template.template_name"
+        },
+        {
+            "name": "brand_id",
+            "refers": "parents.brand.brand_id",
+            "required": false,
+            "options": "/options/brand/brand_name?region_id={region_id}"
+        },
+        {
+            "name": "template_image_url",
+            "refers": "parents.autosphere_template.image_url"
+        },
+        {
+            "name": "theme_name",
+            "refers": "parents.autosphere_template.theme_name"
+        },
+        {
+            "name": "theme_type",
+            "refers": "parents.autosphere_template.theme_type"
+        },
+        {
+            "name": "brand_name",
+            "refers": "parents.brand.brand_name"
+        },
+        {
+            "name": "brand_logo_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "default": {
+                "function": "set_if_condition",
+                "args": [
+                    {
+                        "function": "get_from_model",
+                        "args": [
+                            "brand",
+                            "brand_id",
+                            "brand_dark_logo_url"
+                        ]
+                    },
+                    {
+                        "function": "set_if_condition",
+                        "args": [
+                            {
+                                "function": "get_from_model",
+                                "args": [
+                                    "brand",
+                                    "brand_id",
+                                    "brand_light_logo_url"
+                                ]
+                            },
+                            {
+                                "function": "get_from_model",
+                                "args": [
+                                    "brand",
+                                    "brand_id",
+                                    "brand_logo_url"
+                                ]
+                            }
+                        ],
+                        "kwargs": {
+                            "theme_type": "light"
+                        }
+                    }
+                ],
+                "kwargs": {
+                    "theme_type": "dark"
+                }
+            }
+        },
+        {
+            "name": "brand_website",
+            "refers": "parents.brand.website"
+        },
+        {
+            "name": "brand_parent_company",
+            "refers": "parents.brand.parent_company"
+        },
+        {
+            "name": "brand_level_guidelines",
+            "refers": "parents.brand.brand_level_guidelines"
+        },
+        {
+            "name": "brand_level_guardrails",
+            "refers": "parents.brand.brand_level_guardrails"
+        },
+        {
+            "name": "oem_name",
+            "refers": "parents.brand.oem_name"
+        },
+        {
+            "name": "oem_brand_awareness",
+            "refers": "parents.brand.oem_brand_awareness"
+        },
+        {
+            "name": "oem_country_of_origin",
+            "refers": "parents.brand.oem_country_of_origin"
+        },
+        {
+            "name": "vehicle_model_id",
+            "options": "/options/vehicle_model/vehicle_model_name?brand_id={brand_id}"
+        },
+        {
+            "name": "vehicle_model_name",
+            "force_update": [
+                "brand_id",
+                "region_id",
+                "vehicle_model_id"
+            ],
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "vehicle_model",
+                    "vehicle_model_id",
+                    "vehicle_model_name"
+                ]
+            }
+        },
+        {
+            "name": "is_trending",
+            "type": "bool",
+            "default": false,
+            "indexed": true
+        },
+        {
+            "name": "is_popular",
+            "type": "bool",
+            "default": false,
+            "indexed": true
+        },
+        {
+            "name": "is_new",
+            "type": "bool",
+            "default": false,
+            "indexed": true
+        },
+        {
+            "name": "is_featured",
+            "type": "bool",
+            "default": false,
+            "indexed": true
+        }
+    ],
+    "parents": [
+        "region",
+        "campaign_objective",
+        "autosphere_template",
+        "brand"
+    ]
+}

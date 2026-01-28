@@ -129,6 +129,10 @@
             ]
         },
         {
+          "name": "timezone",
+          "type": "text"
+        },
+        {
             "name": "subdivision_name",
             "type": "text",
             "required": true,

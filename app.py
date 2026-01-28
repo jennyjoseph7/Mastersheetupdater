@@ -6,7 +6,7 @@ from ai_service import ai_service_app
 # from communication.connectors.connector_whatsapp import process_forwarded_webhook
 from db_routes import db_routes, ai_service_app
 from voice.voice.providers.twilio import app as twilio_routes
-from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_app
+from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_routes
 import os
 from flask import Flask,request,jsonify
 from config import *
@@ -58,7 +58,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
               task="check_inactive_sessions",
               service=AUTOCRM_CRON_SERVICE_NAME,
               schedule = "*/15 * * * *",
-              kwargs={"inactivity_time": 1440, "only_for_channels":["whatsapp_chat"]},
+              kwargs={"inactivity_time": 1440, "only_for_channels":["whatsapp_chat"],"outbound_timeout_minutes":60},
               add_schedule_to_queue=False
         )
         cron_worker.add_cron_job(
@@ -157,7 +157,7 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
 # app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
 app.register_blueprint(twilio_routes)
-app.register_blueprint(elevanlabs_tatatele_app)
+app.register_blueprint(elevanlabs_tatatele_routes)
 
 
 

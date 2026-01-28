@@ -1,4 +1,40 @@
 {
+  "post_buyback_center": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "post_workshop": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "post_showroom": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "autosphere_template": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "brand": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "post_idea": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
   "campaign_objective": [
     {
       "read_access": true,
@@ -81,6 +117,12 @@
     }
   ],
   "template": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "campaign_performance_summary": [
     {
       "read_access": true,
       "role": "human_agent"

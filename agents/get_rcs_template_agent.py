@@ -23,7 +23,7 @@ from pprint import pprint
 
 
 
-class get_email_template_agent(BaseAgent):
+class get_rcs_template_agent(BaseAgent):
     def __init__(self, source, *args, **kwargs):
         super().__init__(**kwargs)
 
@@ -57,12 +57,14 @@ class get_email_template_agent(BaseAgent):
         records = list(pg.list(
             table_name="template",
             where={"campaign_type": self.campaign_type,
-                   "template_type" : "text",
-                   "channel" : "email",
+                   "template_type" : "rcs",
+                   #"channel" : "rcs_phone",
+                   #"status" : "approved",
+                   #"communication_credentials_id" : communication_credentials_id
             }
         ))
 
-        #print("records",records)
+        print("records",records)
 
         return records or []
     
@@ -95,9 +97,12 @@ class get_email_template_agent(BaseAgent):
             obj.strip().lower() if isinstance(obj, str) else obj
             for obj in (self.campaign_objective or [])
         )
-
+        print("input_objectives",input_objectives)
         # template_variables is a list of lists - process each list
         data_attrs_list = self.template_variables or []
+
+        print("data_attrs_list",data_attrs_list)
+
         if not isinstance(data_attrs_list, list):
             data_attrs_list = [data_attrs_list]
 
@@ -208,6 +213,7 @@ class get_email_template_agent(BaseAgent):
                 if len(unique_results) >= limit:
                     break
                 
+        print("unique_results",unique_results)
         return unique_results
 
 
@@ -219,11 +225,11 @@ class get_email_template_agent(BaseAgent):
 
 
 
-@gryd.is_a_task('get_email_template', logger_param='logger', job_param='job')
-def get_email_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective = None,dealership_id=None, logger=None, job=None):
+@gryd.is_a_task('get_rcs_template', logger_param='logger', job_param='job')
+def get_rcs_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective = None,dealership_id=None, logger=None, job=None):
 
         logger = logger or gryd.hp.get_logger(__name__)
-        logger.info("Getting Email Template...")
+        logger.info("Getting rcs Template...")
         # if dealership_id is None:
         #     dealership_id = 'daveai'
         try:
@@ -260,7 +266,7 @@ def get_email_template(lead_info=None, lead_id=None, campaign_type=None, campaig
             logger.info(f"Source data : {data}")
 
             # 2. Template Selector Agent
-            template_agent = get_email_template_agent(source=data, logger=logger)
+            template_agent = get_rcs_template_agent(source=data, logger=logger)
             result = template_agent.run()
 
             return result

@@ -388,10 +388,27 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
                 persons_involved.append(person)
     elif missing_emails_phones:
         data = {}
+        ph_list = ["phone_number", "alt_phone_number_2", "alt_phone_number_3", "alt_phone_number_4"]
+        for i, k in enumerate(ph_list):
+            if k not in row:
+                for j,l in enumerate(ph_list[i+1:]):
+                    if l in missing_emails_phones:
+                        data[k] = missing_emails_phones.get(l)
+                        break
+            else:
+                data[k] = row.get(k)
+        email_list = ["email", "alt_email_2", "alt_email_3", "alt_email_4"]
+        for i, k in enumerate(email_list):
+            if k not in row:
+                for j,l in enumerate(email_list[i+1:]):
+                    if l in missing_emails_phones:
+                        data[k] = missing_emails_phones.get(l)
+                        break
+            else:
+                data[k] = row.get(k)
         for k in person_model._model_ref.attr_seq:
             if is_valid_value(row, k) and not any(_ in k for _ in ('phone', 'email')):
                 data[k] = row.get(k)
-            data.update(missing_emails_phones)
             try:
                 person = person_model.post(data)
                 if vehicle_id:
@@ -1036,7 +1053,7 @@ def dealership_update_details(
     if not supported_brands:
         raise ValueError("Supported brands are required")
     brand_model = gryd.base_model.Model('brand', AUTOCRM_APP_ENTERPRISE_ID)
-    brands = list(map(lambda x: x.get('brand_id'), brand_model.list(_as_option=True, _page_size=1, brand_id=supported_brands, region_id=dealership.get('region_id'))))
+    brands = list(map(lambda x: x.get('brand_id'), brand_model.list(_as_option=True, brand_id=supported_brands, region_id=dealership.get('region_id'))))
     logger.info(f"Supported Brands for region {dealership.get('region_id')}: {brands}")
     if any(brand not in brands for brand in supported_brands):
         unsupported_brands = list(filter(lambda brand: brand not in brands, supported_brands))
@@ -1933,11 +1950,11 @@ if __name__ == "__main__":
     #gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-south-india", "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/485b7cbc-55d5-44d2-b5b9-0e6d6e405f4c-692977e5_afinallead.csv", campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943", workshop_id = 12)    
     for out in gryd_task_import_leads_from_csv(
             "post-sales", 
-            "ambal-auto-south-india", 
-            "/Users/ggananth/Downloads/afinallead.csv", 
+            "vpj-motors-south-india", 
+            "/Users/ggananth/Downloads/voice.csv", 
             #campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
-            audience_name = "Ambal Auto - Service Center - New data",
+            audience_name = "VPJ Motors - Service Center - New data",
             campaign_objective_id = "post-sales-warranty-expiry-offer-nexa-mumbai-west-nexa-dealer-group-west-india",
-            workshop_id = "ambal-auto - ambal-auto---service-center - coimbatore"
+            workshop_id = "vpj motors-workshop1"
         ):    
         print(hp.json.dumps(out, hp.json.OPT_INDENT_2))

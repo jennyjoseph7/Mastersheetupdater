@@ -28,10 +28,10 @@ logger = utils.get_logger(__name__)
 
 # ---- Config / env ----
 load_dotenv()
-API_KEY = os.getenv("API_KEY")
-AGENT_ID = os.getenv("AGENT_ID")
-TATATELE_PHONE_NUMBER = os.getenv("TATATELE_PHONE_NUMBER", "918065251305")
-PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
+API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_3f302b2e36acc353d040152b3d6c9bc7bf728955483bce75")
+AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_0501k747d7s6e3xv5t3xew1rn217")
+TATATELE_PHONE_NUMBER = os.environ.get("TATATELE_PHONE_NUMBER", "918065251305")
+PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
 # ---- Clients ----
 tatatele_client = CloudPhoneAPI(TATATELE_API_TOKEN, TATATELE_BASE_URL)
@@ -128,9 +128,10 @@ class CallSession:
             logger.error(f"[{self.call_id}] Goodbye/hangup error: %s", e)
 
     async def get_signed_url(self):
-        if not AGENT_ID or not API_KEY:
+        agent_id = self.session_data.get("agent_id") or AGENT_ID
+        if not agent_id or not API_KEY:
             raise RuntimeError("Missing AGENT_ID or API_KEY")
-        url = f"https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id={AGENT_ID}"
+        url = f"https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id={agent_id}"
         resp = requests.get(url, headers={"xi-api-key": API_KEY}, timeout=10)
         if resp.status_code != 200:
             logger.error(f"[{self.call_id}] Failed to get signed url: %s %s", resp.status_code, resp.text)

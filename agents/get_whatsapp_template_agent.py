@@ -32,7 +32,7 @@ class get_whatsapp_template_agent(BaseAgent):
 
         self.source = source
         self.template_variables = source.get("template_variables", [])
-        self.template_variables = self.template_variables[0]
+        #self.template_variables = self.template_variables[0]
         self.campaign_type = source.get("campaign_type","")
         self.campaign_objective = source.get("campaign_objective",[])
         #self.dealership_id = source.get("dealership_id","daveai")
@@ -97,9 +97,12 @@ class get_whatsapp_template_agent(BaseAgent):
             obj.strip().lower() if isinstance(obj, str) else obj
             for obj in (self.campaign_objective or [])
         )
-
+        print("input_objectives",input_objectives)
         # template_variables is a list of lists - process each list
         data_attrs_list = self.template_variables or []
+
+        print("data_attrs_list",data_attrs_list)
+
         if not isinstance(data_attrs_list, list):
             data_attrs_list = [data_attrs_list]
 

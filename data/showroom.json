@@ -55,6 +55,10 @@
       "refers": "parents.region_subdivision.subdivision_name"
     },
     {
+      "name": "timezone",
+      "refers": "parents.region_subdivision.timezone"
+    },
+    {
       "name": "languages",
       "refers": "parents.region_subdivision.languages"
     },
@@ -265,6 +269,13 @@
       },
       "auto_updater": true,
       "force_update": "dealership_id"
+    },
+    {
+      "name": "hashtags",
+      "type": "string_list",
+      "list_type": "text",
+      "indexed": true,
+      "ui_element": "tags"
     },
     {
       "auto_updater": true,
