@@ -259,6 +259,30 @@
             "refers": "parents.region.region_level_guardrails"
         },
         {
+            "name": "region_discount_percentage",
+            "refers": "parents.region.discount_percentage"
+        },
+        {
+            "name": "discount_percentage",
+            "type": "number",
+            "default": 0
+        },
+        {
+            "name": "flat_discount",
+            "type": "bool",
+            "default": false
+        },
+        {
+            "name": "power_law_discount",
+            "type": "bool",
+            "default": false
+        },
+        {
+            "name": "deduct_payment_gateway_charges",
+            "type": "bool",
+            "default": false
+        },
+        {
             "name": "showroom_center_count",
             "type": "number"
         },

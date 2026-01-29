@@ -367,26 +367,8 @@
             "auto_updater": true
         },
         {
-            "name": "amount_paise",
-            "type": "number"
-        },
-        {
-            "name": "razorpay_order_id",
-            "type": "text",
-            "indexed": true
-        },
-        {
-            "name": "razorpay_payment_id",
-            "type": "text",
-            "indexed": true
-        },
-        {
-            "name": "razorpay_signature",
-            "type": "text"
-        },
-        {
-            "name": "raw_razorpay_payload",
-            "type": "object"
+            "name": "payment_object",
+            "type": "nested_object"
         }
     ]
 }

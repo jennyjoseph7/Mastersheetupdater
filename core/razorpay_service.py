@@ -19,6 +19,9 @@ client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 def get_billing_model():
     return gryd.base_model.Model("billing", AUTOCRM_APP_ENTERPRISE_ID)
 
+def get_dealer_model():
+    return gryd.base_model.Model("dealership", AUTOCRM_APP_ENTERPRISE_ID)
+
 def get_billing_by_order_id(order_id: str):
     BillingModel = get_billing_model()
 
@@ -33,39 +36,86 @@ def get_billing_by_order_id(order_id: str):
 
     return result[0]
 
-def create_credit_purchase(dealership_id: str, credits: int):
+def get_dealer_by_id(dealer_id: str):
+    DealerModel = get_dealer_model()
 
+    result = DealerModel.list(
+        dealership_id=str(dealer_id),
+        _as_option=True
+    )
+
+    if not result:
+        logger.error(f"[Dealership Id] Not found | dealership_id={dealer_id}")
+        raise Exception("Dealership Id record not found")
+
+    return result[0]
+
+def create_credit_purchase(dealership_id: str, credits: int, currency="INR"):
+
+    from .core import VATCalculator, calculate_currency_rate
     if not isinstance(credits, int) or credits <= 0:
         raise ValueError("Credits must be a positive integer")
 
-    amount_paise = credits * 100
+    dealer = get_dealer_by_id(dealership_id)
+
+    if dealer.get("region_discount_percentage", 0) > 0:
+        final_discount_pct = dealer["region_discount_percentage"]
+
+    if dealer.get("discount_percentage", 0) > 0:
+        final_discount_pct = dealer["discount_percentage"]
+
+    currency_rate_task = calculate_currency_rate(args=[currency])
+
+    currency_rate_obj = currency_rate_task.get()
+    unit_price = currency_rate_obj["rate"]
+
+    
+    vat_calculator = VATCalculator("india")
+
+    final_cost_obj = vat_calculator.calculate(
+        item_quantity=credits,
+        item_price=unit_price,
+        discount_percentage=final_discount_pct
+    )
+
+    total_amount = final_cost_obj["total_amount"]
+
+    if currency.upper() == "INR":
+        amount_gateway = int(round(total_amount * 100))
+    else:
+        amount_gateway = round(total_amount, 2)
 
     order = client.order.create({
-        "amount": amount_paise,
-        "currency": "INR",
+        "amount": amount_gateway,
+        "currency": currency,
         "payment_capture": 1
     })
 
     BillingModel = get_billing_model()
 
-    billing = BillingModel.post({
+    billing_obj = {
         "dealership_id": dealership_id,
         "transaction_date": datetime.date.today().isoformat(),
         "transaction_type": "credit",
         "item_name": "credits_purchase",
+        "item_description": "Purchasing credits",
         "item_quantity": credits,
-        "item_price": 1,
-        "item_total" : credits,
+        "item_price": unit_price,
+        "item_total": round(credits * unit_price, 2),
         "item_units": "credits",
-        "currency": "INR",
+        "currency": currency,
         "payment_gateway": "razorpay",
         "razorpay_order_id": order["id"],
-        "amount_paise": amount_paise,
+        "amount_paise": amount_gateway if currency.upper() == "INR" else None,
         "status": "initiated",
-        "channel" : "razorpay",
-        "campaing_id" : "inbound",
-        "item_description" : "Purchasing credits"
-    })
+        "channel": "razorpay",
+        "campaign_id": "inbound",
+        "discount_percentage": final_discount_pct,
+    }
+
+    billing_obj.update(final_cost_obj)
+
+    billing = BillingModel.post(billing_obj)
 
     logger.info(
         f"[BILLING] Initiated | billing_id={billing['billing_id']} | order_id={order['id']}"
@@ -73,7 +123,9 @@ def create_credit_purchase(dealership_id: str, credits: int):
 
     return {
         "order_id": order["id"],
-        "credits": credits
+        "credits": credits,
+        "currency": currency,
+        "amount": total_amount
     }
 
 def verify_payment_signature(data: dict) -> bool:
@@ -195,3 +247,43 @@ def razorpay_webhook_handler(payload: dict):
 
     elif event == "payment.cancelled":
         mark_payment_cancelled(order_id)
+
+
+def calculate_pricing(
+    credits_purchased,
+    alpha=0.5,
+    min_credits_for_discount=100_000,
+    cap_discount=0.2,
+    credits_at_cap=10_000_000,
+    price_per_credit=1.0
+):
+    """
+    Returns pricing details for a credit purchase using a capped power-curve discount.
+
+    Returns:
+        dict: {
+            "credits_purchased": int,
+            "discount": float,      # fraction (e.g., 0.2 = 20%)
+            "item_cost": float      # total cost after discount
+        }
+    """
+
+    # No discount below minimum threshold
+    if credits_purchased < min_credits_for_discount:
+        discount = 0.0
+    elif credits_purchased >= credits_at_cap:
+        discount = cap_discount
+    else:
+        normalized = (
+            (credits_purchased - min_credits_for_discount) /
+            (credits_at_cap - min_credits_for_discount)
+        )
+        discount = cap_discount * (normalized ** alpha)
+
+    item_cost = credits_purchased * price_per_credit * (1 - discount)
+
+    return {
+        "credits_purchased": credits_purchased,
+        "discount": round(discount, 6),
+        "item_cost": round(item_cost, 2)
+    }
