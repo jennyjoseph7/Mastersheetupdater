@@ -1,72 +1,78 @@
 {
-	"webapp" : {
-		"port" : 5000,
-		"url_scheme" : "http",
-		"api_threads" : 2,
-		"name" : "app"
-	},
-	"agents" : [
-		{
-			"name" : "whatsapp_template_creator",
-			"entry_point" : "whatsapp_template_creator_agent.py",
-			"parallel_threads" : 2,
-			"shutdown_time" : 0
-		},
-		{
-			"name": "get_whatsapp_template",
-			"entry_point": "get_whatsapp_template_agent.py",
-			"parallel_threads": 2,
-			"shutdown_time": 0
-		},
-		{
-			"name" : "campaign_idea_creator",
-			"entry_point" : "campaign_idea_creator.py",
-			"parallel_threads" : 2,
-			"shutdown_time" : 0
-		}
-	],
-	"workers" : [
-		{
-		"name": "communication",
-		"entry_point": "communication_worker.py",
-		"parallel_threads": 2,
-		"shutdown_time": 0
-		},
-		{
-		"name": "core",
-		"entry_point": "core.py",
-		"parallel_threads": 2,
-		"shutdown_time": 0
-		},
-		{
-		"name": "cron",
-		"entry_point": "cron.py",
-		"parallel_threads": 2,
-		"shutdown_time": 0
-		},
-		{
-		"name": "campaign",
-		"entry_point": "campaign_worker.py",
-		"parallel_threads": 2,
-		"shutdown_time": 0
-		},
-		{
-		"name": "conversation",
-		"entry_point": "converse.py",
-		"parallel_threads": 2,
-		"shutdown_time": 0
-		},
-		{
-		"name": "conversation",
-		"entry_point": "lead_post_processing.py",
-		"parallel_threads": 1,
-		"shutdown_time": 0
-		},
-		{
-		"name": "voice",
-		"entry_point": "gryd_tasks.py",
-		"parallel_threads": 2,
-		"shutdown_time": 0
-		}
-  ]
+    "webapp": {
+        "port": 5000,
+        "url_scheme": "http",
+        "api_threads": 2,
+        "name": "app"
+    },
+    "agents": [
+        {
+            "name": "whatsapp_template_creator",
+            "entry_point": "whatsapp_template_creator_agent.py",
+            "parallel_threads": 2,
+            "shutdown_time": 0
+        },
+        {
+            "name": "get_whatsapp_template",
+            "entry_point": "get_whatsapp_template_agent.py",
+            "parallel_threads": 2,
+            "shutdown_time": 0
+        },
+        {
+            "name": "campaign_idea_creator",
+            "entry_point": "campaign_idea_creator.py",
+            "parallel_threads": 2,
+            "shutdown_time": 0
+        }
+    ],
+    "workers": [
+        {
+            "name": "communication",
+            "entry_point": "communication_worker.py",
+            "parallel_threads": 2,
+            "shutdown_time": 0
+        },
+        {
+            "name": "core",
+            "entry_point": "core.py",
+            "parallel_threads": 2,
+            "shutdown_time": 0
+        },
+        {
+            "name": "cron",
+            "entry_point": "cron.py",
+            "parallel_threads": 2,
+            "shutdown_time": 0
+        },
+        {
+            "name": "campaign",
+            "entry_point": "campaign_worker.py",
+            "parallel_threads": 2,
+            "shutdown_time": 0
+        },
+        {
+            "name": "conversation",
+            "entry_point": "converse.py",
+            "parallel_threads": 2,
+            "shutdown_time": 0
+        },
+        {
+            "name": "conversation",
+            "entry_point": "lead_post_processing.py",
+            "parallel_threads": 1,
+            "shutdown_time": 0
+        },
+        {
+            "name": "voice",
+            "entry_point": "gryd_tasks.py",
+            "parallel_threads": 2,
+            "shutdown_time": 0
+        },
+        {
+            "name": "spark",
+            "entry_point": "spark.py",
+            "parallel_threads": 2,
+            "shutdown_time": 0
+        }
+    ]
 }
