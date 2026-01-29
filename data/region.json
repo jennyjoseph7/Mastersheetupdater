@@ -84,6 +84,11 @@
       "default": "%d-%m-%Y"
     },
     {
+            "name": "discount_percentage",
+            "type": "number",
+            "default": 0
+    },
+    {
       "auto_updater": true,
       "default": {
         "args": [
