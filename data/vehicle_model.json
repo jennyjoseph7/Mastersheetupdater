@@ -22,7 +22,15 @@
     },
     {
       "name": "brand_id",
-      "refers": "parents.brand.brand_id"
+      "refers": "parents.brand.brand_id",
+      "default": {
+        "function": "search_in_model",
+        "args": [
+          "brand",
+          "brand_name",
+          "brand_name"
+        ]
+      }
     },
     {
       "name": "brand_name",
@@ -240,6 +248,15 @@
     {
       "name": "year_launched",
       "type": "number"
+    },
+
+    {
+      "name" : "feature_summary",
+      "type" : "text"
+    },
+    {
+      "name" : "competitor_vehicles",
+      "type" : "string_list"
     },
     {
       "auto_updater": true,

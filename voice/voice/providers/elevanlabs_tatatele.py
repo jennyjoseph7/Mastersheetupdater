@@ -10,7 +10,6 @@ import base64
 import asyncio
 import logging
 import threading
-from websocket import create_connection
 from ai_service import ai_service  
 import requests
 import websockets
@@ -29,10 +28,10 @@ logger = utils.get_logger(__name__)
 
 # ---- Config / env ----
 load_dotenv()
-API_KEY = os.getenv("API_KEY")
-AGENT_ID = os.getenv("AGENT_ID")
-TATATELE_PHONE_NUMBER = os.getenv("TATATELE_PHONE_NUMBER", "918065251305")
-PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
+API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_3f302b2e36acc353d040152b3d6c9bc7bf728955483bce75")
+AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_0501k747d7s6e3xv5t3xew1rn217")
+TATATELE_PHONE_NUMBER = os.environ.get("TATATELE_PHONE_NUMBER", "918065251305")
+PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
 # ---- Clients ----
 tatatele_client = CloudPhoneAPI(TATATELE_API_TOKEN, TATATELE_BASE_URL)
@@ -129,9 +128,10 @@ class CallSession:
             logger.error(f"[{self.call_id}] Goodbye/hangup error: %s", e)
 
     async def get_signed_url(self):
-        if not AGENT_ID or not API_KEY:
+        agent_id = self.session_data.get("agent_id") or AGENT_ID
+        if not agent_id or not API_KEY:
             raise RuntimeError("Missing AGENT_ID or API_KEY")
-        url = f"https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id={AGENT_ID}"
+        url = f"https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id={agent_id}"
         resp = requests.get(url, headers={"xi-api-key": API_KEY}, timeout=10)
         if resp.status_code != 200:
             logger.error(f"[{self.call_id}] Failed to get signed url: %s %s", resp.status_code, resp.text)
@@ -227,7 +227,7 @@ class CallSession:
                             "streamSid": self.stream_sid,
                             "media": {"payload": converted_audio}
                         }
-                        await asyncio.get_running_loop().run_in_executor(None, lambda: wb.send(json.dumps(msg_out)))
+                        await wb.send(json.dumps(msg_out))
                         logger.info(f"[{self.call_id}] -> SENT audio TO Tatatele (len={len(converted_audio)})")
                     except Exception as e:
                         logger.error(f"[{self.call_id}] Failed to send to Tatatele: %s", e)
@@ -251,34 +251,39 @@ class CallSession:
             logger.info(f"[{self.call_id}] *** CONNECTED TO ELEVENLABS IMMEDIATELY ***")
 
             #Send initial config to 11labs
-            self.dave_ws.send(json.dumps({
+            logger.info(f"Sending initial config to ElevenLabs {self.session_data}")
+            config_data = {
                 "type": "conversation_initiation_client_data",
                 "dynamic_variables": self.session_data.get("dynamic_variables", {}),
-                "user_id": self.session_data.get("session_id") or self.session_data.get("user_id"),
-                "conversation_config_override": {
+                "user_id": self.session_data.get("session_id") or self.session_data.get("user_id")
+            }
+
+            if self.session_data.get("prompt"):
+                config_data["conversation_config_override"] = {
                     "agent": {
                         "prompt": {"prompt":self.session_data.get("prompt", "")},
                         "first_message": self.session_data.get("first_message"),
                         "language": self.session_data.get("language", "en")
                     }
-                }                
-            }))
+                }
+                
+            await self.dave_ws.send(json.dumps(config_data))
 
             # Send buffered media immediately - not sure why jay added?.
-            # for chunk in self.media_buffer:
-            #     logger.info(f"[{self.call_id}] FLUSHING buffered chunk (len={len(chunk)})")
-            #     try:
-            #         await self.dave_ws.send(json.dumps({"user_audio_chunk": chunk}))
-            #         logger.info(f"[{self.call_id}] -> FLUSHED buffered chunk")
-            #     except:
-            #         pass
-            # self.media_buffer.clear()
+            for chunk in self.media_buffer:   
+                logger.info(f"[{self.call_id}] FLUSHING buffered chunk (len={len(chunk)})")
+                try:
+                    await self.dave_ws.send(json.dumps({"user_audio_chunk": chunk}))
+                    logger.info(f"[{self.call_id}] -> FLUSHED buffered chunk")
+                except:
+                    pass
+            self.media_buffer.clear()
 
             # Start parallel readers
             async def tatatele_reader():
                 while True:
                     try:
-                        raw = await asyncio.get_running_loop().run_in_executor(None, wb.recv)
+                        raw = await wb.recv()
                         tt_msg = json.loads(raw)
                         ev = tt_msg.get("event")
 
@@ -344,12 +349,11 @@ class CallSession:
 
     async def connect_external_websocket(self, url: str):
         """Connect to external websocket for this call session."""
-        loop = asyncio.get_running_loop()
         ws = None
         try:
             logger.info(f"[{self.call_id}] connecting to {url}")
             try:
-                ws = await loop.run_in_executor(None, lambda: create_connection(url))
+                ws = await websockets.connect(url)
                 logger.info(f"[{self.call_id}] connected to {url}")
                 self.bridge_started = True
             except Exception as conn_error:
@@ -358,7 +362,7 @@ class CallSession:
 
             while not self.stop_event.is_set():
                 try:
-                    msg = await loop.run_in_executor(None, ws.recv)
+                    msg = await ws.recv()
                     logger.info(f"[{self.call_id}] received: {msg}")
                     await self.outbound_media_stream(ws)
                 except Exception as e:
@@ -369,7 +373,7 @@ class CallSession:
         finally:
             try:
                 if ws:
-                    await loop.run_in_executor(None, ws.close)
+                    await ws.close()
             except Exception:
                 pass
             self.bridge_started = False
@@ -388,6 +392,7 @@ def run_async_in_thread(coro):
         finally:
             loop.close()
 
+    logger.info("Starting async task in background thread")
     thread = threading.Thread(target=thread_target, daemon=True)
     thread.start()
 
@@ -589,7 +594,7 @@ def calculate_elevenlabs_billing_usd(callback_data):
 
 def make_call_tatatele(session_data, *args, **kwargs):
  
-
+    logger.info(f"Making Tatatele call with session data: {session_data}")
     session_data = session_data or {}
     agent_number = session_data.get("agent_number", TATATELE_PHONE_NUMBER)
     caller_id = session_data.get("caller_id", TATATELE_PHONE_NUMBER)
@@ -599,13 +604,14 @@ def make_call_tatatele(session_data, *args, **kwargs):
     session_started = False
 
     def start_session(call_id):  
+        print('Starting session with call_id:', call_id)
         if call_id not in call_sessions:
             session = CallSession(call_id)
             session.session_data = session_data
             call_sessions[call_id] = session
 
             logger.info(f"[{call_id}] Starting Connection to websocket bridge")
-            external_wss = f"{config.AUTOCRM_WEBSOCKET_BASE_URL}/tatatele/user/{room_id}"
+            external_wss = f"{config.AUTOCRM_WEBSOCKET_BASE_URL}/tatatele/{customer_number}/{agent_number}"
 
             async def start_bridge():
                 await session.connect_external_websocket(external_wss)
@@ -616,12 +622,12 @@ def make_call_tatatele(session_data, *args, **kwargs):
 
         return True
 
-    # if session_id and not session_started:
-    #     session_started = start_session(session_id)
+    if session_id and not session_started:
+        session_started = start_session(session_id)
 
     try:
         logger.info("Originate call to %s via tatatele", customer_number)
-        response = tatatele_client.click_to_call(
+        response = tatatele_client.click_to_call_support(
             caller_id,
             customer_number,
             custom_id= session_id #custom_identifier
@@ -629,9 +635,9 @@ def make_call_tatatele(session_data, *args, **kwargs):
 
         logger.info(f"Tatatele originate response: {response}")
         call_id = response.get('ref_id')
-        # if call_id and not session_started:
-        #     logger.info(f"No session id provider starting session with call_id: {call_id}")
-        #     start_session(call_id)
+        if call_id and not session_started:
+            logger.info(f"No session id provider starting session with call_id: {call_id}")
+            start_session(call_id)
 
         if not session_started:
             response["error_message"] = f"Session was not started for call_id: {call_id}"
@@ -643,24 +649,7 @@ def make_call_tatatele(session_data, *args, **kwargs):
         logger.exception("Tatatele call initiation failed")
         return {"error": str(exc)}
 
-#delete this after testing
-def start_session(call_id, session_data):  
-        if call_id not in call_sessions:
-            session = CallSession(call_id)
-            session.session_data = session_data
-            call_sessions[call_id] = session
 
-            logger.info(f"[{call_id}] Starting Connection to websocket bridge")
-            external_wss = f"{config.AUTOCRM_WEBSOCKET_BASE_URL}/tatatele/user/{session_data['room_id']}"
-
-            async def start_bridge():
-                await session.connect_external_websocket(external_wss)
-
-            run_async_in_thread(start_bridge())
-        else:
-            logger.info(f"[{call_id}] Session already exists, bridge likely running")
-
-        return True
 
 # ---------- Flask endpoints ----------
 
@@ -668,19 +657,33 @@ def start_session(call_id, session_data):
 def root():
     return jsonify({"message": "Server is running"})
 
+@app.route('/tatatele/create-stream-url', methods=['POST'])
+def create_stream_url(*args, **kwargs):
+    data = request.get_json()
+    base_ws_url = config.AUTOCRM_WEBSOCKET_BASE_URL
+
+    from_number = data.get("from_number")[1:]
+    to_number = data.get("to_number")[1:]
+    wss_url = f"{base_ws_url}/tatatele/{from_number}/{to_number}"
+
+    logger.info(f"Generated wss_url: {wss_url}")
+    return jsonify({
+        "sucess": True,
+        "wss_url": wss_url
+    })
 
 @app.route("/tatatele-outbound-call", methods=["POST"])
 def outbound_call(*args, **kwargs):
     logger.info("Received /outbound-call request headers: %s", dict(request.headers))
     data = request.get_json()
-    number = data.get("number")
+    number = data.get("phone_number")
     if not number:
         return jsonify({"error": "Phone number is required"}), 400
     response = make_call_tatatele(data)
     if  response.get("error"):
         logger.exception(f"Tatatele originate failed: {response}")
-        return jsonify(response), 500
-    return jsonify({"success": True, "message": "Call initiated", "call_response": response})
+        return jsonify({"success": False, "message": "Call failed", "call_response": response}), 500
+    return jsonify({"success": True, "message": "Call initiated", "call_response": response}), 200
 
 
 @app.route("/smartflo/webhook", methods=["POST"])
@@ -700,7 +703,7 @@ def smartflo_webhook():
     logger.info(f"[{call_id}] Incoming payload: {json.dumps(payload, indent=4)}")
 
     if  payload ["status"] in ["Answered by customer"]:
-        start_session(call_id, {"room_id":"ambal_auto"})
+        #start_session(call_id, {"room_id":"ambal_auto"})
         #patch the statuss
         #gryd_tasks.post_billing_object(status, session_id)
         pass

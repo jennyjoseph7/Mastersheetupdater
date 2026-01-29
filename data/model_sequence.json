@@ -48,5 +48,10 @@
     "campaign_dashboard",
     "campaign_performance_summary",
     "campaign_summary",
-    "template_summary"
+    "template_summary",
+    "autosphere_template",
+    "post_idea",
+    "post_showroom",
+    "post_workshop",
+    "post_buyback_center"
 ]

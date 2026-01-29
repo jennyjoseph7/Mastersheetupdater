@@ -48,12 +48,12 @@ export function SelectSourceType({ formData, updateFormData }: SelectSourceTypeP
         <Card
           className={cn(
             "cursor-pointer transition-all hover:shadow-md",
-            formData.sourceType === "File" && "border-primary ring-2 ring-primary ring-offset-2",
+            formData.sourceType === "csv" && "border-primary ring-2 ring-primary ring-offset-2",
           )}
-          onClick={() => updateFormData({ sourceType: "File" })}
+          onClick={() => updateFormData({ sourceType: "csv" })}
         >
           <CardContent className="flex flex-col items-center justify-center p-8 relative">
-            {formData.sourceType === "File" && (
+            {formData.sourceType === "csv" && (
               <div className="absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 <Check className="h-4 w-4" />
               </div>

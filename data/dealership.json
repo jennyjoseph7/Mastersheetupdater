@@ -234,7 +234,17 @@
         {
             "name": "region_id",
             "refers": "parents.region.region_id",
-            "required": true
+            "required": true,
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "region",
+                    "region_id"
+                ],
+                "kwargs": {
+                    "region_name": "{region_name}"
+                }
+            }
         },
         {
             "name": "region_name",
@@ -457,6 +467,13 @@
                 "function": "url_converter"
             },
             "ui_element": "image"
+        },
+        {
+            "name": "hashtags",
+            "type": "string_list",
+            "list_type": "text",
+            "indexed": true,
+            "ui_element": "tags"
         },
         {
             "name": "dealership_id",

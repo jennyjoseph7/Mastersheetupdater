@@ -1,59 +1,136 @@
-// lib/api.ts
+"use client";
 
-// Always use production URL
-const getAppBaseUrl = () => {
-  const url = "https://autobot-webapp-dev.gryd.in";
-  console.log(`[APP_ENV] Using production URL -> ${url}`);
-  return url;
-};
+import { triggerGlobalLogout } from "@/lib/auth-context";
 
-const APP_BASE_URL = getAppBaseUrl();
-
-// Helper: read cookie safely in browser
-const getCookie = (name: string) => {
+/* ---------------------------------------------------
+   1. Cookie Helper (CLIENT SAFE)
+--------------------------------------------------- */
+const getCookie = (name: string): string | null => {
   if (typeof document === "undefined") return null;
 
   const match = document.cookie
     .split("; ")
     .find((row) => row.startsWith(name + "="));
 
-  return match ? match.split("=")[1] : null;
+  return match ? decodeURIComponent(match.split("=")[1]) : null;
 };
 
-// Read cookies (browser-safe)
-let token = getCookie("gryd_token");
-let sessionId = getCookie("gryd_session_id");
-let applicationId = getCookie("gryd_application_id");
+/* ---------------------------------------------------
+   2. Base URL (Environment Aware)
+--------------------------------------------------- */
+const getAppBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
 
-// Fallback (curl-tested credentials)
-if (!token || !sessionId) {
-  console.log("[Create Workshop API] Using fallback hardcoded credentials");
-  token = "53014452-7df1-351c-9b79-af13d3d6b92f";
-  sessionId = "94b970d4-5c2b-3762-bf65-272901d0ad53";
-} else {
-  console.log("[Create Workshop API] Using user credentials from cookies");
+  const url = "https://autobot-webapp-dev.gryd.in";
+  console.log(`[APP_ENV] Using production URL -> ${url}`);
+  return url;
+};
+
+export const APP_BASE_URL = getAppBaseUrl();
+
+/* ---------------------------------------------------
+   3. Header Types
+--------------------------------------------------- */
+interface HeaderParams {
+  token: string | null;
+  sessionId: string | null;
+  applicationId: string | null;
+  role?: string;
 }
 
-const HEADERS = {
-  "Content-Type": "application/json",
-  "X-GRYD-ENTERPRISE-ID": "autocrm",
-  "X-GRYD-TOKEN": token,
-  "X-GRYD-SESSION-ID": sessionId,
-  "X-GRYD-APPLICATION-ID": applicationId || "autocrm",
-  "X-GRYD-ROLE": "agent",
+/* ---------------------------------------------------
+   4. Centralized Header Generator
+--------------------------------------------------- */
+export const createApiHeaders = ({
+  token,
+  sessionId,
+  applicationId,
+  role = "agent",
+}: HeaderParams) => {
+  const finalAppId =
+    !applicationId || applicationId === "gryd"
+      ? "autocrm"
+      : applicationId;
+
+  return {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "X-GRYD-ENTERPRISE-ID": "autocrm",
+    "X-GRYD-TOKEN": token ?? "",
+    "X-GRYD-SESSION-ID": sessionId ?? "",
+    "X-GRYD-APPLICATION-ID": finalAppId,
+    "X-GRYD-ROLE": role,
+  };
 };
 
-const FILE_UPLOAD_URL = "https://file-prod.gryd.in/media/document";
+/* ---------------------------------------------------
+   5. Client Header Getter (🔥 FIX)
+   NEVER export static headers
+--------------------------------------------------- */
+export const getClientHeaders = () => {
+  return createApiHeaders({
+    token: getCookie("gryd_token"),
+    sessionId: getCookie("gryd_session_id"),
+    applicationId: getCookie("gryd_application_id"),
+    role: "agent",
+  });
+};
 
-const FILE_UPLOAD_HEADERS = {
+/* ---------------------------------------------------
+   6. File Upload Config (unchanged)
+--------------------------------------------------- */
+export const FILE_UPLOAD_URL =
+  "https://file-prod.gryd.in/media/document";
+
+export const FILE_UPLOAD_HEADERS = {
   "X-I2CE-ENTERPRISE-ID": "gryd_file_system",
   "X-I2CE-USER-ID": "abhishek+file-gryd@iamdave.ai",
   "X-I2CE-API-KEY": "4bd3fe53-02bf-3918-8e27-53095dd0e32b",
 };
 
-export {
-  APP_BASE_URL,
-  HEADERS,
-  FILE_UPLOAD_URL,
-  FILE_UPLOAD_HEADERS,
+/* ---------------------------------------------------
+   7. Authenticated Fetch (🔥 SAFE)
+--------------------------------------------------- */
+export const authenticatedFetch = async (
+  endpoint: string,
+  options: RequestInit = {}
+) => {
+  const token = getCookie("gryd_token");
+  const sessionId = getCookie("gryd_session_id");
+  const applicationId = getCookie("gryd_application_id");
+
+  // 🚨 Session check ONLY here (not at import time)
+  if (!token || !sessionId) {
+    console.warn("[API] Missing credentials. Logging out...");
+    triggerGlobalLogout();
+    throw new Error("Session expired");
+  }
+
+  const headers = {
+    ...createApiHeaders({
+      token,
+      sessionId,
+      applicationId,
+      role: "agent",
+    }),
+    ...(options.headers || {}),
+  };
+
+  const url = endpoint.startsWith("http")
+    ? endpoint
+    : `${APP_BASE_URL}${endpoint}`;
+
+  const response = await fetch(url, {
+    ...options,
+    headers: headers as HeadersInit,
+  });
+
+  if (response.status === 401) {
+    console.warn("[API] 401 Unauthorized. Logging out...");
+    triggerGlobalLogout();
+  }
+
+  return response;
 };

@@ -32,7 +32,7 @@ class get_email_template_agent(BaseAgent):
 
         self.source = source
         self.template_variables = source.get("template_variables", [])
-        self.template_variables = self.template_variables[0]
+        #self.template_variables = self.template_variables[0]
         self.campaign_type = source.get("campaign_type","")
         self.campaign_objective = source.get("campaign_objective",[])
         #self.dealership_id = source.get("dealership_id","daveai")
@@ -223,7 +223,7 @@ class get_email_template_agent(BaseAgent):
 def get_email_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective = None,dealership_id=None, logger=None, job=None):
 
         logger = logger or gryd.hp.get_logger(__name__)
-        logger.info("Getting WhatsApp Template...")
+        logger.info("Getting Email Template...")
         # if dealership_id is None:
         #     dealership_id = 'daveai'
         try:

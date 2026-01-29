@@ -94,7 +94,7 @@ def post_session_process(*args, **kwargs):
         session_update_data["sentiment_score"] = sentiment_score
     if emotion_analysis:
         session_update_data["emotion_analysis"] = emotion_analysis
-
+    appt_date_time_purpose = {}
     if updated_lead_data.get("disposition") == "converted":
         appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
         updated_lead_data.update(appt_date_time_purpose)
@@ -122,8 +122,15 @@ def post_session_process(*args, **kwargs):
             pg.update("person","user_id",session_data.get("user_data").get("user_id"),user_or_vehicle_data)
 
     with get_pg_connector() as pg:
-        pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
+        updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
         pg.update("session","session_id",session_id,session_update_data)
+    
+        if appt_date_time_purpose.get("appointment_date"):
+            visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data)
+            if not visit_data:
+                return
+            visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "workshop_visit"
+            pg.post(visit_model,visit_data)
     
 def get_summary(session_id,session_data):
     messages = session_data.get("messages")
@@ -760,7 +767,43 @@ def get_disposition(session_id, session_data_cache):
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
     mlogger.info("disposition prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
+def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data):
+    from datetime import datetime
+    session_data = session_data.get("data",{})
+    campaign_type = "pre_sales" if campaign_data.get("campaign_type") == "pre-sales" else "post_sales"
 
+    lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id")
+    campaign_data = session_data.get("campaign_data")
+    
+    if campaign_data.get("campaign_type") == "pre-sales":
+        if not lead_data.get("showroom_id"):
+            return {}
+    if campaign_data.get("campaign_type") == "post-sales":
+        if not lead_data.get("workshop_id"):
+            return {}
+        
+    date_str = appt_date_time_purpose.get("appointment_date")
+    time_str = appt_date_time_purpose.get("appointment_time") or "10:00:00"
+    full_datetime_str = f"{date_str} {time_str}"
+    format_string = "%Y-%m-%d %H:%M"
+    timestamp_object = datetime.strptime(full_datetime_str, format_string)
+    
+    appt_data = {
+            "appointment_date" : date_str,
+            "appointment_time" : time_str
+    }
+    if campaign_data.get("campaign_type") == "post-sales":
+        appt_data["post_sales_lead_id"]= lead_id
+        appt_data["service_date"]= lead_id
+        appt_data["workshop_id"] = lead_data.get("workshop_id")
+
+    elif campaign_data.get("campaign_type") == "pre-sales":
+        appt_data["pre_sales_lead_id"]= timestamp_object.timestamp()
+        appt_data["showroom_id"] = lead_data.get("showroom_id")
+
+
+    return appt_data
+        
 def get_appt_date_time_purpose(session_id,session_data_cache):
     """
     Retrieves the appointment date time and purpose from the conversation history.

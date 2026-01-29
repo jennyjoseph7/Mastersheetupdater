@@ -11,7 +11,7 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
-from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
+from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter,update_session_data_in_lead
 from gryd_worker import gryd_db_helper as db
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
@@ -36,36 +36,36 @@ def clear_otp_cache(logger=None, job=None):
 def overall_campaign_summary():
     with get_pg_connector() as pg:
 
-        # Time before execution
-        before = list(
+        # Time before execution (force BIGINT -> Python int)
+        before = int(list(
             pg.yield_results(
-                "SELECT EXTRACT(EPOCH FROM NOW()) * 1000 AS ts"
+                "SELECT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT"
             )
-        )[0][0]
-        # mlogger.info(f"-----before---{before}")
+        )[0][0])
 
         pg.execute_write(
             "CALL update_overall_campaign_summary();",
             _fetch=False
         )
 
-        # Count updated rows
-        updated_rows = list(
+        # Count updated rows (force BIGINT)
+        updated_rows = int(list(
             pg.yield_results(
                 """
-                SELECT COUNT(*)
+                SELECT COUNT(*)::BIGINT
                 FROM campaign_summary
                 WHERE updated >= to_timestamp(%s / 1000.0)
                 """,
                 (before,)
             )
-        )[0][0]
+        )[0][0])
 
-        total_rows = list(
+        # Count total rows (force BIGINT)
+        total_rows = int(list(
             pg.yield_results(
-                "SELECT COUNT(*) FROM campaign_summary"
+                "SELECT COUNT(*)::BIGINT FROM campaign_summary"
             )
-        )[0][0]
+        )[0][0])
 
         if updated_rows > 0:
             mlogger.info(
@@ -154,7 +154,7 @@ def performance_summary():
             ) t;
         """))
 
-        update_count = counts[0][0] if counts else 0
+        update_count = int(counts[0][0]) if counts and counts[0][0] is not None else 0
 
         if update_count == 0:
             mlogger.info("[CRON] No campaign updates detected. Skipping execution.")
@@ -323,10 +323,11 @@ def check_inactive_sessions(*args, **kwargs):
                             "history_updated_time": last_ts,
                         },
                     )
-
+                    # TODO:also update session related data to respective lead_model by passing last_session_id which will update last_session_channel,last_interaction etc..
+                    # update_session_data_in_lead(session_id=session_id,"") 
                     mlogger.info(
-                        f"Appended {len(appended_history)} messages "
-                        f"to session {session_id}"
+                        f"Appended {len(appended_history)} messages"
+                        f"for session {session_id}"
                     )
                 else:
                     mlogger.info(f"No new history rows for session {session_id}")
@@ -538,9 +539,15 @@ def create_campaign_templates(logger=None, job=None):
 
 
 
-                dispositions = ["reached", "engaged"]
+                dispositions = ["queued", "attempted", "reached", "engaged"]
 
                 postsales_disposition_detail = {
+                        "queued": [
+                            "User is interested in purchasing a vehicle"
+                        ],
+                        "attempted": [
+                            "Attempted to contact regarding the vehicle",
+                        ],
                         "reached": [
                             "Message Deliverd but didn't seen",
                             "Message sent but not replied"
@@ -561,6 +568,12 @@ def create_campaign_templates(logger=None, job=None):
                     }
 
                 presale_disposition_detail = {
+                        "queued": [
+                            "User is interested in servicing their vehicle"
+                        ],
+                        "attempted": [
+                            "Attempted to contact regarding the servicing of the vehicle",
+                        ],
                         "reached": [
                             "Message Deliverd but didn't seen",
                             "Message sent but not replied"

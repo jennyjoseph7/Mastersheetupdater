@@ -115,8 +115,22 @@ def gryd_start_mail(
             **kwargs
         )
         logger.info(" Email sent. Response: %s", response)
-        
-        # TODO: call contact_status 
+        get_data=["lead_id","campaign_id","campaign_type","email","dealership_id","channel_provider","channel","campaign_model"]
+        payload={}
+        for key in get_data:
+            if key in kwargs:
+                payload[key]=kwargs[key]
+        msg_status=WA_TO_DISPOSITION.get(response.get("status"), None)
+        if msg_status:
+            payload["provider_status"]=msg_status
+            payload["phone_number"]=kwargs.get("phone_number")
+            # logger.info(f"EMAIL STATUS: {msg_status} Message dict: {payload}")
+            gryd.create_async_task(
+                    "post_contact_status", 
+                    AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+                    kwargs=payload
+                )
+       
 
     except Exception as e:
         logger.error("Failed to send email: %s", e)

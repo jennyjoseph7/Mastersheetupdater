@@ -44,7 +44,6 @@ if SERVER_URL.endswith('/'):
 app = Blueprint('twilio_routes', __name__)
 twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN else None
 
-
 def make_call_twilio(session_data, *args, **kwargs):
     number = session_data.get("phone_number", "918850988794") #for test
     session_id = session_data.get('session_id')
@@ -57,6 +56,15 @@ def make_call_twilio(session_data, *args, **kwargs):
         daemon=True
     )
     thread.start()
+    twiml_response = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+    <Response>
+        <Connect>
+            <Stream url=\"wss://autobot-messenger.gryd.in/ws/twilio/{session_id}/{session_id}_input_client\">
+                <Parameter name="session_id" value="{session_id}"></Parameter>
+            </Stream>
+        </Connect>
+    </Response>"""
+    # return Response(twiml_response, mimetype="text/xml")
 
     try:
         call = twilio_client.calls.create(
@@ -73,7 +81,8 @@ def make_call_twilio(session_data, *args, **kwargs):
                             "completed"],
             from_=TWILIO_PHONE_NUMBER,
             to=number,
-            url=f"{SERVER_URL}/outbound-call-twiml?session_id={session_id}"
+            twiml= twiml_response
+            # url=f"{SERVER_URL}/outbound-call-twiml?session_id={session_id}"
         )
         logger.info(f"Twilio call initiated with SID: {call.sid}")
         return call.__dict__
@@ -82,7 +91,6 @@ def make_call_twilio(session_data, *args, **kwargs):
         return {
             "error": exc.msg
         }
-
 
 
 

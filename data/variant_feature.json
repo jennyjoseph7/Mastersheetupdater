@@ -292,6 +292,18 @@
       "name": "variant_feature_id",
       "type": "uid",
       "id": true
+    },
+    {
+      "name": "information_status",
+      "type": "text",
+      "default": "unverified",
+      "options": [
+        "pending",
+        "running",
+        "unverified",
+        "verified"
+      ],
+      "ui_element": "select"
     }
   ],
   "parents": [

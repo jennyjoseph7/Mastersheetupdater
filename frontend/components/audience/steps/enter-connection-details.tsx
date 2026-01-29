@@ -48,7 +48,7 @@ export function EnterConnectionDetails({
       updateFormData({
         file: file,
         fileUrl: fileUrl,
-        sourceType: "File",
+        sourceType: "csv",
         extractedHeaders: headers,
         fieldMappings: headers.map((h: string, i: number) => ({
             id: `map_${i}`,
