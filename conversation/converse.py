@@ -319,6 +319,8 @@ def get_primary_prompt(*args, **kwargs):
     logger = kwargs.get("logger",mlogger)
     logger.info("get_primary_prompt called")
     kwargs["session_data_cache"] = setup_session_data_cache(*args, **kwargs)
+    if not kwargs.get("channel"):
+        kwargs["channel"] = "voice_phone"
     yield from yield_primary_prompt(*args, **kwargs)
 @gryd.is_a_task()
 def execute_primary_prompt(*args, **kwargs):
