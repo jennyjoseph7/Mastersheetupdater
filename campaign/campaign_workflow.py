@@ -175,10 +175,63 @@ def get_cheapest_channel(channels: list):
             return c
     return channels[0]
 
-def sort_channel_by_cheapest(channels: list):
-    return sorted(channels, key=lambda x: AUTOCRM_CHEAPEST_CHANNELS.index(x))
+def sort_channel_by_cheapest(channels: list, current_channel: str = None):
+    rlist = sorted(channels, key=lambda x: AUTOCRM_CHEAPEST_CHANNELS.index(x))
+    if current_channel:
+        rlist = rlist[rlist.index(current_channel):]
+    return rlist
 
-def get_channel_identifier_from_lead(channel: str, lead: dict, logger=None):
+def get_highest_status(statuses: list):
+    if not statuses:
+        return "queued"
+    mstatuses = set(map(lambda x: x.get('status'), statuses))
+    for k in ["contacted", "reached", "attempted", "failed", "error", "queued"]:
+        if k in mstatuses:
+            return k
+    return "queued"
+
+def get_attempts(statuses: list, status: str):
+    return sum(1 for _ in filter(lambda x: x.get('status') == status, statuses))
+
+def get_next_delay(status: str, attempts: int, workflow_stage: dict):
+    next_delay_type = workflow_stage.get('delay_type', 'linear')
+    next_delay = workflow_stage.get('delay', 0)
+    if next_delay_type == "exponential":
+        next_delay = next_delay * 2 ** (attempts - 1)
+    elif next_delay_type == "linear":
+        next_delay = next_delay * attempts
+    return next_delay
+
+def get_remaining_retries(workflow_stage: dict, attempts: int = 0):
+    return max(0, workflow_stage.get('retries', 0) - attempts)
+
+def get_statuses(channel: str, channel_type: str, channel_identifier: str, status_model: AutocrmModel = None, campaign_id: str = None, dealership_id: str = None, logger=None):
+    logger = logger or mlogger
+    st = hp.time()
+    status_model = status_model or AutocrmModel('contact_status')
+    channel_type = CHANNEL_IDENTIFIER_MAP.get(channel)
+    if not channel_type:
+        raise ValueError(f"Invalid channel: {channel}, doing nothing.")
+    kws = {"channel": channel, channel_type: channel_identifier, "_sort_by": "updated", "_sort_reverse": True, "_as_option":True, "_page_size":100}
+    if channel_type == "phone_number":
+        kws["channel"] = channel
+    if campaign_id:
+        kws["campaign_id"] = campaign_id
+    if dealership_id:
+        kws["dealership_id"] = dealership_id
+    statuses = status_model.list(**kws)
+    if not statuses and dealership_id:
+        kws.pop("dealership_id", None)
+        statuses = status_model.list(**kws)
+    if not statuses and campaign_id:
+        kws.pop("campaign_id", None)
+        statuses = status_model.list(**kws)
+    logger.info(f"Time taken to get statuses: {hp.time() - st} seconds")
+    if not statuses:
+        return None
+    return statuses
+
+def get_channel_identifier_from_lead(channel: str, lead: dict, channel_identifier: str = None, logger=None):
     logger = logger or mlogger
     st = hp.time()
     channel_identifier_list = []
@@ -188,6 +241,8 @@ def get_channel_identifier_from_lead(channel: str, lead: dict, logger=None):
         channel_identifier_list = get_email_identifier_from_lead(lead, logger=logger)
     else:
         logger.error(f"Invalid channel: {channel}, doing nothing.")
+    if channel_identifier:
+        channel_identifier_list = channel_identifier_list[channel_identifier_list.index(channel_identifier):]
     logger.info(f"Time taken to get channel identifier: {hp.time() - st} seconds")
     return channel_identifier_list
 
@@ -216,57 +271,61 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
     enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
     campaign_id = campaign_details.get('campaign_id')
     status_model = AutocrmModel('contact_status')
+    workflow = workflow or CAMPAIGN_WORKFLOW
+    disposition = disposition or "queued"
     logger.info(f"Loaded models for get_channel_from_lead in {hp.time() - st} seconds")
     channels = campaign_details.get('channels') or ["voice_phone"]
-    channels = sort_channel_by_cheapest(channels)
-    if current_channel:
-        channels = channels[channels.index(current_channel):]
+    channels = sort_channel_by_cheapest(channels, current_channel=current_channel)
     logger.info(f"Checking for channels: {channels} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
     for channel in channels:
         channel_type = CHANNEL_IDENTIFIER_MAP.get(channel)
         logger.info(f"Processing channel: {channel} with type: {channel_type} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
-        channel_identifier_list = get_channel_identifier_from_lead(channel, lead, logger=logger)
+        channel_identifier_list = get_channel_identifier_from_lead(channel, lead, channel_identifier=current_channel_identifier, logger=logger)
         if not channel_identifier_list:
             logger.error(f"No channel identifiers found for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}, doing nothing.")
             continue
-        if current_channel_identifier and current_channel_identifier in channel_identifier_list:
-            channel_identifier_list = channel_identifier_list[channel_identifier_list.index(current_channel_identifier):]
         change_channel = False
         for channel_identifier in channel_identifier_list:
             logger.info(f"Processing channel identifier: {channel_identifier} for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
-            status = lead.get('status')
-            kws = {channel_type: channel_identifier}
-            if channel_type == "phone_number":
-                kws["channel"] = channel
-            status = hp.make_single(status_model.list(_page_size=1, _as_option=True, **kws))
-            if status:
-                status_status = status.get('status', 'queued')
-                attempts = status.get('attempts', 0)
-                workflow_stage = (workflow or {}).get(status_status) or CAMPAIGN_WORKFLOW.get(status_status)
-                next_delay_type = workflow_stage.get('delay_type', 'linear')
-                next_delay = workflow_stage.get('delay', 0)
-                if next_delay_type == "exponential":
-                    next_delay = next_delay * 2 ** (attempts - 1)
-                elif next_delay_type == "linear":
-                    next_delay = next_delay * attempts
-                next_retries = workflow_stage.get('retries', 0)
-                if attempts < next_retries:
+            statuses = get_statuses(channel, channel_type, channel_identifier, status_model=status_model, campaign_id=campaign_id, dealership_id=enterprise_id, logger=logger)
+            if not statuses:
+                logger.info(f"No statuses found for channel: {channel} with channel identifier: {channel_identifier} for campaign_id={campaign_id}, enterprise_id={enterprise_id}, starting now.")
+                return channel, channel_identifier, 0, None
+            last_status = hp.make_single(statuses)
+            highest_status = get_highest_status(statuses)
+            if highest_status != "contacted":
+                attempts = get_attempts(statuses, highest_status)
+                workflow_stage = (workflow or {}).get(highest_status) or CAMPAIGN_WORKFLOW.get(highest_status)
+                # We haven't contacted yet, so we need to try and find the right credential and channel to connect to.
+                next_delay = get_next_delay(highest_status, attempts, workflow_stage)
+                next_retries = get_remaining_retries(workflow_stage, attempts)
+                if next_retries > 0:
                     return channel, channel_identifier, next_delay, None
                 trigger = workflow_stage.get('trigger', 'switch_to_next_credential')
-                if trigger == "switch_to_next_credential":
-                    continue
-                elif trigger == "switch_to_next_channel":
-                    change_channel = True
-                    continue
-                elif trigger == "follow_up_contact":
-                    logger.info(f"Following up contact for channel: {channel} with channel identifier: {channel_identifier} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
-                    logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
-                    return channel, channel_identifier, next_delay, "follow_up_contact"
-                elif trigger == "confirmation_message":
-                    logger.info(f"Sending confirmation message for channel: {channel} with channel identifier: {channel_identifier} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
-                    logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
-                    return channel, channel_identifier, next_delay, "confirmation_message"
+            else:
+                # We have connected, so we need to follow up with the contact.
+                workflow_stage = (workflow or {}).get(disposition) or CAMPAIGN_WORKFLOW.get(disposition)
+                attempts = get_attempts(statuses, "contacted") # We need to count the number of times we have contacted.
+                if disposition in ["engaged", "converted"]:
+                    attempts /= workflow_stage.get('retries', 0) # We need to calculate attempts per contact.
+                next_delay = get_next_delay(highest_status, attempts, workflow_stage)
+                next_retries = get_remaining_retries(workflow_stage, attempts)
+                if next_retries > 0:
+                    return channel, channel_identifier, next_delay, None
+                trigger = workflow_stage.get('trigger', 'follow_up_contact')
+            if trigger == "switch_to_next_credential":
                 continue
+            elif trigger == "switch_to_next_channel":
+                change_channel = True
+                continue
+            elif trigger == "follow_up_contact":
+                logger.info(f"Following up contact for channel: {channel} with channel identifier: {channel_identifier} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
+                logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
+                return channel, channel_identifier, next_delay, "follow_up_contact"
+            elif trigger == "confirmation_message":
+                logger.info(f"Sending confirmation message for channel: {channel} with channel identifier: {channel_identifier} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
+                logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
+                return channel, channel_identifier, next_delay, "confirmation_message"
             if change_channel:
                 break
     logger.info(f"No next action found for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}, doing nothing.")

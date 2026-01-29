@@ -48,11 +48,20 @@
     {
       "name": "region_id",
       "refers": "parents.region.region_id",
-      "required": true
+      "required": true,
+      "default": {
+        "function": "search_in_model",
+        "args": [
+          "region",
+          "region_name",
+          "region_name"
+        ]
+      }
     },
     {
       "name": "region_name",
-      "refers": "parents.region.region_name"
+      "refers": "parents.region.region_name",
+      "indexed": true
     },
     {
       "name": "country_name",
