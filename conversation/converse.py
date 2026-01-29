@@ -4,7 +4,7 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
-from config import AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_ITEM,AUTOCRM_CORE_SERVICE_NAME
+from config import AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_ITEM,AUTOCRM_CORE_SERVICE_NAME, AUTOCRM_CAMPAIGN_SERVICE_NAME
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
 from conversation.prompt import yield_primary_prompt, run_prompt_sync
@@ -101,8 +101,8 @@ def converse(*args, **kargs):
     pass_kwargs["session_data_cache"] = setup_session_data_cache(*args, **pass_kwargs)
     pass_kwargs["responses"] = []
     dealership_id = pass_kwargs.get("session_data_cache",{}).get("data").get("campaign_data",{}).get("dealership_id")
-    if not dealership_id:
-        yield from yield_error("error","dealer_id not set in campaign data",*args, **pass_kwargs)
+    # if not dealership_id:
+    #     yield from yield_error("error","dealer_id not set in campaign data",*args, **pass_kwargs)
     customer_response = kargs.get("customer_response","")
     if request_data.get("channel") in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"] and not request_data.get("orchestrate"):
         yield from yield_primary_prompt(*args, **pass_kwargs)
@@ -114,6 +114,10 @@ def converse(*args, **kargs):
         if isinstance(ppresp,dict):
             if ppresp.get("intent","") != "filler":
                 do_orchestrate = False
+            
+            if "_job" in ppresp:
+                yield ppresp
+                return
         ppresp["index"] = response_index
         response_index += 1
         out_put_text += ppresp.get("placeholder","")
@@ -338,8 +342,30 @@ def execute_primary_prompt(*args, **kwargs):
     logger.info("prompt == {}".format(prompt))
     
     response = run_prompt_sync(user_query=kwargs.get("request_data").get("customer_response"),system_prompt=prompt,**kwargs)
-
-    yield {"intent" : "llm_response","placeholder":response}
+    if response == "[PHONE]":
+        yield {
+                    "_job":{
+                        "task":"nada_pre_sales",
+                        "service" : AUTOCRM_CAMPAIGN_SERVICE_NAME ,
+                        "kwargs" : {
+                            "channel" : "voice_phone",
+                            "session_id" : kwargs.get("session_id")
+                        } 
+                    }
+                }
+    elif response == "[WHATSAPP]":
+        yield {
+                    "_job":{
+                        "task":"nada_pre_sales",
+                        "service" : AUTOCRM_CAMPAIGN_SERVICE_NAME ,
+                        "kwargs" : {
+                            "channel" : "whatsapp_chat",
+                            "session_id" : kwargs.get("session_id")
+                        } 
+                    }
+                }
+    else:
+        yield {"intent" : "llm_response","placeholder":response}
 
 
 
