@@ -793,12 +793,12 @@ def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_dat
             "appointment_time" : time_str
     }
     if campaign_data.get("campaign_type") == "post-sales":
-        appt_data=["post_sales_lead_id"]= lead_id
-        appt_data=["service_date"]= lead_id
+        appt_data["post_sales_lead_id"]= lead_id
+        appt_data["service_date"]= lead_id
         appt_data["workshop_id"] = lead_data.get("workshop_id")
 
     elif campaign_data.get("campaign_type") == "pre-sales":
-        appt_data=["pre_sales_lead_id"]= timestamp_object.timestamp()
+        appt_data["pre_sales_lead_id"]= timestamp_object.timestamp()
         appt_data["showroom_id"] = lead_data.get("showroom_id")
 
 

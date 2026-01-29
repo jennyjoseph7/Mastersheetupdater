@@ -964,7 +964,7 @@ function CampaignCreateContent() {
           isOpen={isUploadDialogOpen}
           onClose={() => setIsUploadDialogOpen(false)}
           prefilledData={{
-            category: campaignType === "presales" ? "pre_sales" : "post-sales",
+            category: campaignType === "presales" ? "pre-sales" : "post-sales",
             objectiveId: selectedObjective,
             campaignId: createdCampaignId || undefined,
           }}

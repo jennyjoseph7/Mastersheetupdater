@@ -1,4 +1,10 @@
-import { getDealershipDetails, type DealershipDetailsResponse, getWorkshopsForDealership } from "./api";
+import { 
+  getDealershipDetails, 
+  type DealershipDetailsResponse, 
+  getWorkshopsForDealership,
+  getShowroomsForDealership, //
+  getBuybackCentersForDealership //
+} from "./api";
 
 /**
  * Check if dealership setup is completed
@@ -7,7 +13,7 @@ import { getDealershipDetails, type DealershipDetailsResponse, getWorkshopsForDe
  * - languages (at least one)
  * - supported_brands (at least one)
  * - pan_number or gstin or website (at least one verification field)
- * - at least one workshop exists
+ * - AND at least one facility exists (Workshop OR Showroom OR Buyback Center)
  */
 export async function isDealershipSetupComplete(): Promise<boolean> {
   try {
@@ -23,51 +29,70 @@ export async function isDealershipSetupComplete(): Promise<boolean> {
     });
 
     // Check if essential fields are present
-    // Dealership type must exist and not be empty
     const hasDealershipType = 
       Boolean(details.dealership_type) && 
       String(details.dealership_type).trim() !== "";
     
-    // Languages must be an array with at least one non-empty item
     const hasLanguages =
       Array.isArray(details.languages) && 
       details.languages.length > 0 &&
       details.languages.some((lang: any) => lang && String(lang).trim() !== "");
     
-    // Supported brands must be an array with at least one non-empty item
     const hasSupportedBrands =
       Array.isArray(details.supported_brands) &&
       details.supported_brands.length > 0 &&
       details.supported_brands.some((brand: any) => brand && String(brand).trim() !== "");
     
-    // Accept website, pan_number, or gstin as verification (must be non-empty)
     const panNumber = details.pan_number ? String(details.pan_number).trim() : "";
     const gstin = details.gstin ? String(details.gstin).trim() : "";
     const website = details.website ? String(details.website).trim() : "";
     
     const hasVerification = panNumber !== "" || gstin !== "" || website !== "";
 
-    // Check if at least one workshop exists
+    const dealershipId = details.dealership_id || details.dealership_slug || "";
+
+    // 1. Check for Workshop
     let hasWorkshop = false;
     try {
-      const dealershipId = details.dealership_id || details.dealership_slug || "";
       if (dealershipId) {
         const workshops = await getWorkshopsForDealership(dealershipId);
         hasWorkshop = Array.isArray(workshops) && workshops.length > 0;
-        console.log("[Dealership Utils] Workshops found:", workshops.length);
       }
-    } catch (workshopError) {
-      console.error("[Dealership Utils] Error checking workshops:", workshopError);
-      // If we can't check workshops, don't fail the entire check
-      // but log it for debugging
+    } catch (e) {
+      console.error("[Dealership Utils] Error checking workshops:", e);
     }
+
+    // 2. Check for Showroom
+    let hasShowroom = false;
+    try {
+      if (dealershipId) {
+        const showrooms = await getShowroomsForDealership(dealershipId);
+        hasShowroom = Array.isArray(showrooms) && showrooms.length > 0;
+      }
+    } catch (e) {
+      console.error("[Dealership Utils] Error checking showrooms:", e);
+    }
+
+    // 3. Check for Buyback Center (New Requirement)
+    let hasBuybackCenter = false;
+    try {
+      if (dealershipId) {
+        const buybackCenters = await getBuybackCentersForDealership(dealershipId);
+        hasBuybackCenter = Array.isArray(buybackCenters) && buybackCenters.length > 0;
+      }
+    } catch (e) {
+      console.error("[Dealership Utils] Error checking buyback centers:", e);
+    }
+
+    // Combine checks: ANY facility is sufficient
+    const hasAnyFacility = hasWorkshop || hasShowroom || hasBuybackCenter;
 
     const isComplete =
       hasDealershipType &&
       hasLanguages &&
       hasSupportedBrands &&
       hasVerification &&
-      hasWorkshop;
+      hasAnyFacility;
 
     console.log("[Dealership Utils] Setup completion check:", {
       hasDealershipType,
@@ -75,13 +100,15 @@ export async function isDealershipSetupComplete(): Promise<boolean> {
       hasSupportedBrands,
       hasVerification,
       hasWorkshop,
+      hasShowroom,
+      hasBuybackCenter,
+      hasAnyFacility,
       isComplete,
     });
 
     return isComplete;
   } catch (error) {
     console.error("[Dealership Utils] Error checking setup status:", error);
-    // If we can't fetch details, assume not complete
     return false;
   }
 }
@@ -114,20 +141,26 @@ export async function getDealershipSetupStatus(): Promise<{
       missingFields.push("PAN Number, GSTIN, or Website");
     }
 
-    // Check for workshops
-    try {
-      const dealershipId = details.dealership_id || details.dealership_slug || "";
-      if (dealershipId) {
-        const workshops = await getWorkshopsForDealership(dealershipId);
-        if (!Array.isArray(workshops) || workshops.length === 0) {
-          missingFields.push("Workshop Details");
-        }
-      } else {
-        missingFields.push("Workshop Details");
-      }
-    } catch (workshopError) {
-      console.error("[Dealership Utils] Error checking workshops:", workshopError);
-      missingFields.push("Workshop Details");
+    const dealershipId = details.dealership_id || details.dealership_slug || "";
+    let hasAnyFacility = false;
+
+    // Check all three facilities
+    if (dealershipId) {
+      const [workshops, showrooms, buybackCenters] = await Promise.all([
+        getWorkshopsForDealership(dealershipId).catch(() => []),
+        getShowroomsForDealership(dealershipId).catch(() => []),
+        getBuybackCentersForDealership(dealershipId).catch(() => [])
+      ]);
+
+      const hasWorkshop = Array.isArray(workshops) && workshops.length > 0;
+      const hasShowroom = Array.isArray(showrooms) && showrooms.length > 0;
+      const hasBuybackCenter = Array.isArray(buybackCenters) && buybackCenters.length > 0;
+
+      hasAnyFacility = hasWorkshop || hasShowroom || hasBuybackCenter;
+    }
+
+    if (!hasAnyFacility) {
+      missingFields.push("At least one facility (Workshop, Showroom, or Buyback Center)");
     }
 
     return {

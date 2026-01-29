@@ -322,7 +322,7 @@ def get_purpose_and_steps(*args, **kwargs):
         steps = ["- Full Name \n- Interested Model\n- Date & Time "]
     if campaign_type == "inbound":
         return f"Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy.\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
-    return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user isnt already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy.\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
+    return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy.\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
 def get_cta_options(*args, **kwargs):
     ctas = kwargs.get("campaign_data").get("ctas")
     if not ctas:
@@ -402,7 +402,7 @@ def get_tone_and_style(*args, **kwargs):
     return "be descriptive in your explanations, give examples and explanations when asking the user to select any options. try to acheive your goal but dont force the customer."
 
 def get_output_format(*args, **kwargs):
-    return "" if "voice" in kwargs.get("request_data",{}).get("response_channel","text") else "text"
+    return "" if "voice" in kwargs.get("request_data",{}).get("channel","text") else "text"
 def get_conversation_history(*args, **kwargs):
     return hp.json.dumps(kwargs.get("session_data_cache",{}).get("messages",[])).decode("utf-8")
 
@@ -411,6 +411,16 @@ def prune_user_data(user_data):
     for p in popable:
         user_data.pop(p, None)
     return user_data
+
+def get_response_channel_info(channel):
+    mlogger.info("got channel == {}".format(channel))
+    if channel and channel in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
+        mlogger.info("got voice channel")
+        return """
+        \nConversation Initiation Pattern -
+        Start The conversation with the customer by asking them  - "Hello, am i speaking with <name of customer in Who is the customer section>?", if they confirm ask them "Do you have a moment to speak with me?", if they confirm tell them about the offer from the campaign.\n
+        """
+    return ""
 def setup_primary_prompt(*args, **kwargs):
     
     '''
@@ -427,7 +437,7 @@ def setup_primary_prompt(*args, **kwargs):
 
     '''
     
-    
+    mlogger.info("primary_prompt called with data \n {} \n\n ---------------".format(kwargs))
     mlogger.info("session_data_cache_data == {}".format(kwargs.get("session_data_cache",{}).get("data",{}).get("campaign_data").keys()))
     session_data_cache_data = kwargs.get("session_data_cache",{}).get("data",{})
     campaign_data = session_data_cache_data.get("campaign_data")
@@ -440,6 +450,8 @@ def setup_primary_prompt(*args, **kwargs):
     dealer_description = "{dealer_name} is a dealer who sells cars from their showrooms".format(dealer_name=dealer_name) if campaign_type == "pre-sales" else "{dealer_name} has a service center.".format(dealer_name=dealer_name)
     shop_id = campaign_data.get("workshop_id")
     showroom_workshop_desc = ""
+
+
     if not campaign_data:
         campaign_name = "inbound"
         campaign_objective = "inbound"
@@ -472,7 +484,10 @@ def setup_primary_prompt(*args, **kwargs):
     output_format = get_output_format(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     mlogger.info("my history data == {}".format(conversation_history))
 
+    response_channel_info = get_response_channel_info(kwargs.get("channel",""))
+
     if campaign_data.get("campaign_type") == "inbound":
+        mlogger.info("is inbound")
         primary_prompt = f"""
         Who you are -
         {who_are_you}
@@ -496,6 +511,7 @@ def setup_primary_prompt(*args, **kwargs):
         {output_format}
         """
         return primary_prompt
+    mlogger.info("is outbound")
     primary_prompt = f"""
     Who you are -
     {who_are_you}
@@ -505,6 +521,7 @@ def setup_primary_prompt(*args, **kwargs):
     {who_is_the_customer}
     The purpose of this conversation -
     {purpose_and_steps}
+    {response_channel_info}
     Possible states of the conversation and how to handle -
     {possible_states_and_solutions}
     Rules -
