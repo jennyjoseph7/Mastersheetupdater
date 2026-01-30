@@ -395,8 +395,13 @@ export default function CampaignDashboard() {
     campaignTypeFilter,
   ]);
 
-  const displayStart = 0;
-  const displaySlice = filteredCampaigns.slice(displayStart, ITEMS_PER_PAGE);
+const displayStart = (page - 1) * ITEMS_PER_PAGE;
+const displaySlice = filteredCampaigns.slice(
+  displayStart,
+  displayStart + ITEMS_PER_PAGE
+);
+
+const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   const getStatusBadge = (status?: string) => {
     const variants: Record<
@@ -926,6 +931,47 @@ export default function CampaignDashboard() {
                   )}
                 </TableBody>
               </Table>
+              {/* Pagination */}
+<div className="flex items-center justify-between mt-4">
+  <p className="text-sm text-muted-foreground">
+    Page {page} of {totalPages}
+  </p>
+
+  <div className="flex gap-2">
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={page === 1}
+      onClick={() => setPage((p) => Math.max(1, p - 1))}
+    >
+      Previous
+    </Button>
+
+    {Array.from({ length: totalPages }).map((_, index) => {
+      const pageNumber = index + 1;
+      return (
+        <Button
+          key={pageNumber}
+          variant={page === pageNumber ? "default" : "outline"}
+          size="sm"
+          onClick={() => setPage(pageNumber)}
+        >
+          {pageNumber}
+        </Button>
+      );
+    })}
+
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={page === totalPages}
+      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+    >
+      Next
+    </Button>
+  </div>
+</div>
+
             </CardContent>
           </Card>
         </div>
