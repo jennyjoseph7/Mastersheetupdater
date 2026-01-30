@@ -282,13 +282,14 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, log
                         r = []
                         logger.info("Converting object list attribute %s: %s", k, rk)
                         mrl = list(map(lambda x: x.strip(), row[k].split('|')))
+                        logger.info(f"Object list attribute {k} after : {mrl}")
                         for mk in mrl:
-                            try:
-                                rk = {x[0].strip():x[1].strip() for x in mk.split(":")}
-                            except ValueError as e:
-                                raise ValueError(f"Value for for attribute {k} is not parseable into nested_object: {row[k]}")
-                            else:
-                                r.append(rk)
+                            rk = {}
+                            for rk1 in mk.split(","):
+                                rk1 = rk1.strip()
+                                if ":" in rk1:
+                                    rk[rk1.split(':')[0].strip()] = rk1.split(':')[1].strip()
+                            r.append(rk)
                         row[k] = r or None
                         logger.info("Converted object list attribute %s: %s -> %s", k, rk, row[k])
                 row = {k:v for k, v in row.items() if v not in (None, '')}
