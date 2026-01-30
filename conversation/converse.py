@@ -117,6 +117,7 @@ def converse(*args, **kargs):
             
             if "_job" in ppresp:
                 yield ppresp
+                mlogger.info("job == {}".format(ppresp))
                 return
         ppresp["index"] = response_index
         response_index += 1
@@ -342,8 +343,10 @@ def execute_primary_prompt(*args, **kwargs):
     logger.info("prompt == {}".format(prompt))
     
     response = run_prompt_sync(user_query=kwargs.get("request_data").get("customer_response"),system_prompt=prompt,**kwargs)
-    if response == "[PHONE]":
-        yield {
+    mlogger.info("response == ##{}##".format(response))
+    if response == "PHONE":
+
+        phone_job = {
                     "_job":{
                         "task":"nada_pre_sales",
                         "service" : AUTOCRM_CAMPAIGN_SERVICE_NAME ,
@@ -353,8 +356,11 @@ def execute_primary_prompt(*args, **kwargs):
                         } 
                     }
                 }
-    elif response == "[WHATSAPP]":
-        yield {
+        yield phone_job
+        mlogger.info("phone_job == {}".format(phone_job))
+        return
+    elif "WHATSAPP" in response:
+        whatsapp_job = {
                     "_job":{
                         "task":"nada_pre_sales",
                         "service" : AUTOCRM_CAMPAIGN_SERVICE_NAME ,
@@ -364,6 +370,9 @@ def execute_primary_prompt(*args, **kwargs):
                         } 
                     }
                 }
+        mlogger.info("whatsapp_job == {}".format(whatsapp_job))
+        yield whatsapp_job
+        return
     else:
         yield {"intent" : "llm_response","placeholder":response}
 
