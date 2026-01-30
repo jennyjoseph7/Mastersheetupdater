@@ -488,7 +488,89 @@ def setup_primary_prompt(*args, **kwargs):
     
     if campaign_data.get("campaign_type") == "inbound":
         mlogger.info("is inbound")
-        whats_is_autongage = """A product that helps dealers run campaigns to targeted audience via phone call whatsapp messages and sms"""
+        whats_is_autongage = """A product that helps dealers run campaigns to targeted audience via phone call whatsapp messages and sms
+        AutoNgage – Consolidated Overview, Real-World Problems & FAQs 
+        1. What is AutoNgage? 
+        AutoNgage is an AI-powered dealership engagement and campaign orchestration platform built 
+        specifically for the automotive ecosystem. It acts as a unified intelligence layer that manages customer 
+        interactions across sales, service, and marketing channels such as WhatsApp, Voice, Web, Email, and 
+        SMS. 
+        Unlike traditional CRMs or basic WhatsApp bots, AutoNgage does not just record data or send 
+        messages. It actively understands customer intent, decides the next best action, selects the right 
+        channel and timing, executes conversations automatically, and continuously learns from outcomes to 
+        improve performance. 
+        In simple terms, AutoNgage functions as an AI Sales and Service Concierge for dealerships. 
+        
+        2. Real-World Problems Faced by Dealerships 
+        2.1 Missed Calls and Delayed Follow-ups 
+        In real dealership operations, incoming calls often go unanswered due to peak hours, understaffed 
+        teams, or manual processes. Even when leads are captured, follow-ups are delayed or forgotten, 
+        leading to lost sales opportunities and customer dissatisfaction. 
+        AutoNgage ensures that every enquiry receives an instant response and follow-up through automated, 
+        intelligent conversations. 
+        
+        2.2 Inefficient Service Booking and High No-Show Rates 
+        Service booking is commonly handled through phone calls or manual CRM updates. Customers wait 
+        on hold, advisors juggle schedules, and rescheduling becomes cumbersome. This results in frustration 
+        and increased no-shows. 
+        AutoNgage enables instant service booking, rescheduling, and confirmation through WhatsApp or 
+        web, reducing dependency on calls and significantly lowering no-show rates. 
+        
+        2.3 Low Response Rates from Calls and SMS 
+        Customers increasingly ignore unknown numbers and generic SMS messages. Traditional outbound 
+        calling and SMS campaigns show poor engagement and low conversion. 
+        AutoNgage prioritizes conversational channels like WhatsApp and intelligently decides when voice 
+        follow-ups are required, improving reach and response rates. 
+        
+        2.4 Poor Lead Conversion from Enquiries 
+        Leads generated from websites, campaigns, or walk-ins often turn cold due to delayed responses, 
+        inconsistent follow-ups, or lack of personalization. 
+        
+        
+        D. Campaign & Marketing FAQs 
+        Q12. Can we run campaigns across multiple channels together?​
+        Yes. AutoNgage supports WhatsApp, Voice, Email, and SMS campaigns from a single dashboard. 
+        Q13. How does AutoNgage decide who should receive which campaign?​
+        It uses segmentation, past behavior, engagement history, and intent signals to select the right audience. 
+        Q14. Can campaigns be scheduled and paused anytime?​
+        Yes. Dealers have full control to schedule, pause, edit, or stop campaigns. 
+        Q15. Does AutoNgage support multilingual campaigns?​
+        Yes. It supports multiple languages and can auto-detect customer language preferences. 
+        
+        E. Dealer Onboarding & Operations FAQs 
+        Q16. How long does dealer onboarding take?​
+        Basic onboarding can be completed quickly once required documents and verification details are 
+        submitted. 
+        Q17. Can multiple outlets or branches be managed under one account?​
+        Yes. AutoNgage supports multi-location dealership setups. 
+        Q18. Can verified dealers start campaigns immediately?​
+        Yes. Once verified, dealers can create and launch campaigns instantly. 
+        
+        F. Control, Compliance & Security FAQs 
+        Q19. Who controls the messaging and tone?​
+        Dealers retain full control. AutoNgage follows pre-approved templates and brand guidelines. 
+        Q20. Is customer data secure?​
+        Yes. AutoNgage follows industry-standard security practices and only uses data for authorized 
+        engagement. 
+        Q21. Can AutoNgage comply with OEM and regional regulations?​
+        Yes. The platform is designed to align with OEM policies and regional compliance requirements. 
+        
+        
+        
+        
+        G. Analytics & ROI FAQs 
+        Q22. What kind of analytics does AutoNgage provide?​
+        It provides engagement metrics, conversion rates, drop-offs, cost per lead, and intent analysis across 
+        channels. 
+        Q23. Can we measure ROI from AutoNgage?​
+        Yes. Dealers can track incremental bookings, conversions, engagement uplift, and operational cost 
+        savings using  dashboard. 
+        
+        H. Scalability & Future Readiness FAQs 
+        Q24. Can AutoNgage scale across brands, regions, and languages?​
+        Yes. AutoNgage is built to scale across multiple OEMs, geographies, and languages. 
+ 
+        """
         primary_prompt = f"""
         Who you are -
         You are a ai sales assistant for AutoNgage.
@@ -501,10 +583,14 @@ def setup_primary_prompt(*args, **kwargs):
 
         Your purpose is to push the customer to try and get the customer to do a demo on either whatsapp or over a phone call.
 
+        The conversation History So Far - 
+        {conversation_history}
+        
+        
         You can do only one of 5 things.
         1) Answer questions the user has about autongage if the information is available in the section above. the format of this answer should be natural language answer i can send back to the customer.
-        2) If the customer asks for a demo over whatsapp your only response should be - [WHATSAPP] - I will match this exact value and proceed to give the user a demo on whatsapp.
-        3) If the customer asks for a demo over a phone call your only response should be - [PHONE] - I will match this exact value and proceed to give the user a demo on a phone call.
+        2) If the customer asks for a demo over whatsapp your only response should be - '[WHATSAPP]'
+        3) If the customer asks for a demo over a phone call your only response should be - '[PHONE]'
         4) If the customer asks for a demo but not a specific mode. Ask them if they want to do the demo over whatsapp or phone call. Once they confirm the mode, You can use above rule #2 and #3 to proceed.
         5) If the customer asks for anything else you should answer - I dont have an answer to that question.
 

@@ -769,7 +769,9 @@ def get_disposition(session_id, session_data_cache):
     return hp.json.loads(resp)
 def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data):
     from datetime import datetime
-    session_data = session_data.get("data",{})
+    mlogger.info("get_visit_data called with session_data_cache == {}".format(json.dumps(session_data_cache)))
+    session_data = session_data_cache.get("data",{})
+    campaign_data = session_data.get("campaign_data",{})
     campaign_type = "pre_sales" if campaign_data.get("campaign_type") == "pre-sales" else "post_sales"
 
     lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id")
