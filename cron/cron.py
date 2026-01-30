@@ -136,7 +136,7 @@ def performance_summary():
                 FROM pre_sales_campaign c
                 LEFT JOIN campaign_performance_summary s
                   ON s.campaign_performance_summary_id =
-                     c.dict->>'campaign_id' || '-pre-sales'
+                     c.dict->>'campaign_id'
                 WHERE
                     s.campaign_performance_summary_id IS NULL
                     OR c.updated > TO_TIMESTAMP((s.dict->>'updated')::BIGINT / 1000)
@@ -147,7 +147,7 @@ def performance_summary():
                 FROM post_sales_campaign c
                 LEFT JOIN campaign_performance_summary s
                   ON s.campaign_performance_summary_id =
-                     c.dict->>'campaign_id' || '-post-sales'
+                     c.dict->>'campaign_id'
                 WHERE
                     s.campaign_performance_summary_id IS NULL
                     OR c.updated > TO_TIMESTAMP((s.dict->>'updated')::BIGINT / 1000)
@@ -216,17 +216,18 @@ def check_inactive_sessions(*args, **kwargs):
             return
 
         now_epoch = int(time.time())
-
+        other_channels = []
         for session in session_list:
             session_id = session.get("session_id")
             channel = session.get("channel")
             campaign_type = session.get("campaign_type") or "inbound"
 
             if channel not in only_for_channels:
-                mlogger.info(
-                    f"Skipping session {session_id} "
-                    f"(channel={channel})"
-                )
+                other_channels.append(channel)
+                # mlogger.info(
+                #     f"Skipping session {session_id} "
+                #     f"(channel={channel})"
+                # )
                 continue
 
             # last activity time ----------
@@ -348,8 +349,8 @@ def check_inactive_sessions(*args, **kwargs):
                     f"Session {session_id} still active "
                     f"({inactive_cutoff_epoch - now_epoch}s remaining)"
                 )
-
-            mlogger.info("************************************************")
+        mlogger.info(f"Other channel counts skipped: {len(other_channels)}")
+        mlogger.info("************************************************")
 
 @gryd.is_a_task(logger_param='logger', job_param='job')
 def create_campaign_ideas_for_dealerships(
