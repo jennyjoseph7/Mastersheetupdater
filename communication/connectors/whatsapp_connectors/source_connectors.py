@@ -791,10 +791,10 @@ class BaseWebhookConverter:
         with get_pg_connector() as pg:
             person_list = list(pg.list(
                 "person", 
-                {"phone_number":phone_number}
+                {"phone_number":phone_number,"_sort_by": "updated", "_sort_reverse": True}
             ))
             if person_list:
-                logger.info(f"Person already exists for phone_number: {phone_number}")
+                logger.info(f"Person already exists for phone_number: {phone_number} and the user_id is {person_list[0].get('user_id')}")
                 return person_list[0]  
             
             d={

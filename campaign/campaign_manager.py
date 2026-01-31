@@ -720,7 +720,7 @@ def nada_pre_sales(*args,**kwargs):
         gryd.create_async_task(
             "process_single_lead",
             AUTOCRM_CAMPAIGN_SERVICE_NAME,
-            args=[channel, lead_id, "pre-sales", campaign_id],
+            args=[channel, lead_id, "pre-sales", campaign_id,"01kga11vdgsmhte5p3jzmh2n73"],
             kwargs={}
         )
         
@@ -807,7 +807,7 @@ def generate_uid(data):
 
     return uid.hex[:16]
 @gryd.is_a_task(function_name="process_single_lead")
-def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None):
+def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=None, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None):
     
     """
     Process a single lead and send campaign messages for each user.
@@ -916,21 +916,25 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,
 
         # logger.info("Template Data: %s", template_data)
     elif channel in ("whatsapp_chat", "sms", "rcs"):
-        
-        template_data = get_whatsapp_template(
-            lead_id=lead_id,
-            campaign_type=campaign_type,
-            # campaign_objective= [campaign_details.get("campaign_objective_name")] if campaign_details.get("campaign_objective_name") else ["Free Service Reminder"],
-            campaign_objective= [campaign_details.get("campaign_objective_name")] or ["Free Service Due Reminder"] if campaign_details.get("campaign_type") == "post-sales" else ["Test Drive Booking"],
-            # dealership_id = lead_data.get("dealership_id"), //for later pass disposition and disposition detail
-            lead_info={}
-        )
-        
-        # template_data=testing_whatsapp_template()
-        if not template_data:
-            yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
-            return
-        template_data = template_data[0]
+        if not templateID:
+            template_data = get_whatsapp_template(
+                lead_id=lead_id,
+                campaign_type=campaign_type,
+                # campaign_objective= [campaign_details.get("campaign_objective_name")] if campaign_details.get("campaign_objective_name") else ["Free Service Reminder"],
+                campaign_objective= [campaign_details.get("campaign_objective_name")] or ["Free Service Due Reminder"] if campaign_details.get("campaign_type") == "post-sales" else ["Test Drive Booking"],
+                # dealership_id = lead_data.get("dealership_id"), //for later pass disposition and disposition detail
+                lead_info={}
+            )
+            
+            # template_data=testing_whatsapp_template()
+            if not template_data:
+                yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
+                return
+            template_data = template_data[0]
+        else:
+            with get_pg_connector() as pg:
+                template_details=pg.get("template","template_id",templateID)
+                template_data=template_details
         logger.info(f"TEmplate data: {template_data}")
         logger.info(f"Template ID for phone_number={lead_data.get('phone_number')}: {template_data.get('template_id')}")
     else:
