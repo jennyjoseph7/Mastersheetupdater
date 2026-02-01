@@ -258,11 +258,16 @@ def check_inactive_sessions(*args, **kwargs):
             )
 
             # inactivity timeout ----------
-            if campaign_type != "post-sales":
-                session_timeout_seconds = outbound_timeout_minutes * 60
-            else:
-                session_timeout_seconds = inactivity_time * 60
+            # if campaign_type != "post-sales":
+            #     session_timeout_seconds = outbound_timeout_minutes * 60
+            # else:
+            #     session_timeout_seconds = inactivity_time * 60
 
+            session_timeout_seconds = inactivity_time * 60 
+            mlogger.info(
+                f"Session {session_id} timeout set to "
+                f"{session_timeout_seconds}s"
+            )
             inactive_cutoff_epoch = (
                 last_activity_epoch + session_timeout_seconds
             )

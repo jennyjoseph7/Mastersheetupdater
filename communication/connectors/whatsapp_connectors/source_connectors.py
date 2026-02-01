@@ -693,7 +693,8 @@ class BaseWebhookConverter:
             payload.update({
                 "phone_number": phone_number,
                 "user_id": person.get("user_id"),
-                
+                "person_name": person.get("name"),
+                "email": person.get("email")
             })
 
         with get_pg_connector() as pg:
@@ -789,10 +790,15 @@ class BaseWebhookConverter:
         logger.info(f"Getting or creating person for phone_number: {phone_number}")
         
         with get_pg_connector() as pg:
-            person_list = list(pg.list(
-                "person", 
-                {"phone_number":phone_number,"_sort_by": "updated", "_sort_reverse": True}
+            # filters={"phone_number":phone_number,"_sort_by": "updated", "_sort_reverse": True}
+            person_list = list(pg.list_order_by(
+                "person",
+                {"phone_number":phone_number},
+                order_by="updated",
+                order="DESC"
             ))
+            
+            logger.info(f"Person list found: {person_list}")
             if person_list:
                 logger.info(f"Person already exists for phone_number: {phone_number} and the user_id is {person_list[0].get('user_id')}")
                 return person_list[0]  
@@ -821,7 +827,7 @@ class BaseWebhookConverter:
         uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
 
         return uid.hex[:16]   # 16 characters
-      
+    
     def apply_filters(self, session_id=None, user_id=None, channel=None, session_live=None, status=None):
         conditions = [] 
         params = ()

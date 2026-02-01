@@ -419,7 +419,14 @@ def post_contact_status(*args, **data):
         campaign_type = None
         channel = None
         # update person
-        person_d = list(pg.list("person", {"phone_number": data.get("phone_number")}))
+        # person_d = list(pg.list("person", {"phone_number": data.get("phone_number")}))
+        person_d = list(pg.list_order_by(
+                "person",
+                {"phone_number": data.get("phone_number")},
+                order_by="updated",
+                order="DESC"
+            ))
+        
         if person_d:
             person = person_d[0]
             user_id = person.get("user_id")

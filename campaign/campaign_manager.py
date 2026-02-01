@@ -682,6 +682,7 @@ def nada_pre_sales(*args,**kwargs):
     dealership_id="us-dealership-united-states"
     campaign_id="4c99d5ea-4441-3ce6-841f-de5d7585b3b7"
     urgency_hook="Book now — slots are filling fast!"
+    
     if not session_id and not channel:
         logger.error("Session ID or Channel is required.")
         return
@@ -693,8 +694,11 @@ def nada_pre_sales(*args,**kwargs):
             logger.error(f"No session found for session_id={session_id}")
             return
         session_data=session_data[0]
+        logger.info(f"TEST SESSION DATA--{session_data}")
         user_id=session_data.get("user_id")
         phone_number=session_data.get("phone_number")
+        person_name=session_data.get("person_name")
+        email=session_data.get("email")
         if not user_id or not phone_number:
             logger.error(f"User ID or Phone number missing in session data for session_id={session_id}")
             return
@@ -705,7 +709,9 @@ def nada_pre_sales(*args,**kwargs):
             "campaign_id":campaign_id,
             "user_id":user_id,
             "urgency_hook":urgency_hook,
-            "phone_number":phone_number
+            "phone_number":phone_number,
+            "person_name":person_name,
+            "email":email
         })
         
         # update the session with lead_id and campaign details
@@ -737,6 +743,7 @@ def check_and_create_lead_object(**kwargs):
         if existing_leads:
             logger.info(f"Lead already exists for campaign_id={campaign_id}, user_id={user_id}")
             return existing_leads[0].get("pre_sales_lead_id")
+        logger.info(f"TEST USER ID--{user_id} and campaign_id--{campaign_id}")
         lead_data={
             "ctas": [
                 "Book a Test Drive",
@@ -751,6 +758,8 @@ def check_and_create_lead_object(**kwargs):
             "region_id": "united-states",
             "campaign_id": campaign_id,
             "user_id": user_id,
+            "person_name": kwargs.get("person_name"),
+            "email": kwargs.get("email"),
             "dealer_name": "us dealership",
             "disposition": "queued",
             "region_name": "United states",
@@ -794,6 +803,7 @@ def check_and_create_lead_object(**kwargs):
         with get_pg_connector() as pg:
             l=pg.update("pre_sales_lead", "pre_sales_lead_id", lead_id,lead_data)
             lead_d=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
+            # logger.info(f"Lead created: {json.dumps(lead_d,indent=4)} with user_id={user_id} and campaign_id={campaign_id}")
             logger.info(f"Pre-sales lead data created -- {lead_d[0].get('pre_sales_lead_id')}")
             return lead_d[0].get("pre_sales_lead_id")
         
@@ -965,7 +975,10 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     
     # not using persons_involved for now...
     mobile = lead_data.get("phone_number") 
-    customer_name = lead_data.get("person_name") 
+    logger.info(f"Campaign ID: {campaign_id}, Original Mobile: {mobile}")
+    customer_name = "Dear NADA Visitor" if campaign_id == "4c99d5ea-4441-3ce6-841f-de5d7585b3b7" and lead_data.get("person_name") is None else lead_data.get("person_name")
+    lead_data['person_name']=customer_name
+    logger.info(f"Customer Name: {customer_name}")
     variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data) if template_data else {}
     logger.info(f"Variable Mapping: {variable_mapping}")
     campaign_user = {
