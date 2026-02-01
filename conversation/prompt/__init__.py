@@ -423,8 +423,8 @@ def get_response_channel_info(channel,campaign_id):
             """
         return ""
     ret = ""
+    mlogger.info("RUNNING NADA HACK")
     if channel and channel in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
-        mlogger.info("got voice channel")
         ret = """
         \nConversation Initiation Pattern -
         Start The conversation with the customer by asking them  - 
