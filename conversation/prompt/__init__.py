@@ -412,15 +412,38 @@ def prune_user_data(user_data):
         user_data.pop(p, None)
     return user_data
 
-def get_response_channel_info(channel):
+def get_response_channel_info(channel,campaign_id):
     mlogger.info("got channel == {}".format(channel))
+    if campaign_id != "4c99d5ea-4441-3ce6-841f-de5d7585b3b7":
+        if channel and channel in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
+            mlogger.info("got voice channel")
+            return """
+            \nConversation Initiation Pattern -
+            Start The conversation with the customer by asking them  - "Hello, am i speaking with <name of customer in Who is the customer section>?", if they confirm ask them "Do you have a moment to speak with me?", if they confirm tell them about the offer from the campaign.\n
+            """
+        return ""
+    ret = ""
     if channel and channel in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
         mlogger.info("got voice channel")
-        return """
+        ret = """
         \nConversation Initiation Pattern -
-        Start The conversation with the customer by asking them  - "Hello, am i speaking with <name of customer in Who is the customer section>?", if they confirm ask them "Do you have a moment to speak with me?", if they confirm tell them about the offer from the campaign.\n
+        Start The conversation with the customer by asking them  - 
+        - If the 'Who is the Customer' section contains the name of the customer then start with 
+            - "Hello, am i speaking with <name of customer in Who is the customer section>?", 
+        - Else If the 'Who is the Customer' section does not contain the name of the customer then start with 
+            - "Hello, Do you mind telling me your name?", Follow that with "Could you tell me the name of your dealership?", at the end ask them if they mind sharing their email id.
+        - if they confirm ask them "Do you have a moment to speak with me?", 
+        - if they confirm tell them about the offer from the campaign.\n
         """
-    return ""
+    else:
+        ret = """
+        \nConversation Initiation Pattern -
+        Start The conversation with the customer by asking them  -
+        - If the 'Who is the Customer' section does not contain the name of the customer then start with 
+            - "Hello, Do you mind telling me your name?", Follow that with "Could you tell me the name of your dealership?", at the end ask them if they mind sharing their email id.
+        - Once they provide all the above information, tell them about the offer from the campaign. Also inform them about how you can help them.\n
+        """
+    return ret
 def setup_primary_prompt(*args, **kwargs):
     
     '''
