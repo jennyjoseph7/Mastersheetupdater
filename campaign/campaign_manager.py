@@ -24,7 +24,7 @@ from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 from agents.get_whatsapp_template_agent import get_whatsapp_template
 from agents.get_email_template_agent import get_email_template
 from communication.connectors.email_communication import communication_sender
-from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,WHATSAPP_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME
+from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,WHATSAPP_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
@@ -269,7 +269,7 @@ class BaseCampaignCreater:
                     "channel_provider":whatsapp_provider,
                     "channel":"whatsapp_chat",
                 }
-        
+            
             gryd.create_async_task(
                 "post_contact_status", 
                 AUTOCRM_COMMUNICATION_SERVICE_NAME, 
@@ -673,9 +673,151 @@ def trigger_campaign(*args, **kwargs):
 
     logger.info("All valid leads queued successfully.")
 
+@gryd.is_a_task(function_name="nada_pre_sales")
+def nada_pre_sales(*args,**kwargs):
+    logger.info(f"------ nada_pre_sales ------")
+    channel = kwargs.get("channel")
+    session_id = kwargs.get("session_id")
+    logger.info(f"Channel: {channel}, session ID: {session_id}")
+    dealership_id="us-dealership-united-states"
+    campaign_id="4c99d5ea-4441-3ce6-841f-de5d7585b3b7"
+    urgency_hook="Book now — slots are filling fast!"
+    
+    if not session_id and not channel:
+        logger.error("Session ID or Channel is required.")
+        return
+    user_id=None
+    with get_pg_connector() as pg:
+        # getting the user_id from session_id
+        session_data=list(pg.list("session",{"session_id":session_id}))
+        if not session_data:
+            logger.error(f"No session found for session_id={session_id}")
+            return
+        session_data=session_data[0]
+        logger.info(f"TEST SESSION DATA--{session_data}")
+        user_id=session_data.get("user_id")
+        phone_number=session_data.get("phone_number")
+        person_name=session_data.get("person_name")
+        email=session_data.get("email")
+        if not user_id or not phone_number:
+            logger.error(f"User ID or Phone number missing in session data for session_id={session_id}")
+            return
+        lead_id=check_and_create_lead_object(**{
+            "channel":channel,
+            "session_id":session_id,
+            "dealership_id":dealership_id,
+            "campaign_id":campaign_id,
+            "user_id":user_id,
+            "urgency_hook":urgency_hook,
+            "phone_number":phone_number,
+            "person_name":person_name,
+            "email":email
+        })
+        
+        # update the session with lead_id and campaign details
+        s=pg.update("session","session_id",session_id,{"lead_id":lead_id,"campaign_id":campaign_id,"dealership_id":dealership_id,"campaign_model":"pre_sales_campaign","campaign_type":"pre-sales","lead_model":"pre_sales_lead"})
+        logger.info(f"Session data updated with lead_id={lead_id} for the session_id={session_id}")
+        
+        # updating the session_data_cache with data:{}
+        pg.update("session_data_cache","session_id",session_id,{"data":{}})
+        
+        # process the lead
+        # process_single_lead(channel,lead_id,"pre-sales",campaign_id,user_id)
+        gryd.create_async_task(
+            "process_single_lead",
+            AUTOCRM_CAMPAIGN_SERVICE_NAME,
+            args=[channel, lead_id, "pre-sales", campaign_id,"01kga11vdgsmhte5p3jzmh2n73"],
+            kwargs={}
+        )
+        
+        logger.info(f"Pre-sales lead processed for lead_id={lead_id}")
+        
+    
+def check_and_create_lead_object(**kwargs):
+    dealership_id=kwargs.get("dealership_id")
+    campaign_id=kwargs.get("campaign_id")
+    user_id=kwargs.get("user_id")
+    urgency_hook=kwargs.get("urgency_hook")
+    with get_pg_connector() as pg:
+        existing_leads=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
+        if existing_leads:
+            logger.info(f"Lead already exists for campaign_id={campaign_id}, user_id={user_id}")
+            return existing_leads[0].get("pre_sales_lead_id")
+        logger.info(f"TEST USER ID--{user_id} and campaign_id--{campaign_id}")
+        lead_data={
+            "ctas": [
+                "Book a Test Drive",
+                "Request a Callback"
+            ],
+            "created": time.time(),
+            "updated": time.time(),
+            "lead_tags": [
+                "test-drive-booking",
+                "book-test-drive"
+            ],
+            "region_id": "united-states",
+            "campaign_id": campaign_id,
+            "user_id": user_id,
+            "person_name": kwargs.get("person_name"),
+            "email": kwargs.get("email"),
+            "dealer_name": "us dealership",
+            "disposition": "queued",
+            "region_name": "United states",
+            "workshop_id": "None",
+            "phone_number": kwargs.get("phone_number"),
+            "urgency_hook": urgency_hook,
+            "audience_name": "us test",
+            "campaign_name": "Mustang Test Drive ",
+            "campaign_type": "pre-sales",
+            "dealership_id": dealership_id,
+            "campaign_offer": "Don't miss your chance to drive the legendary Mustang! Schedule your test drive now and discover what makes this car a true classic. Limited slots available!",
+            "finance_required": False,
+            "supported_brands": [
+                "ford-united-states",
+                "toyota-usa-united-states",
+                "chevrolet-united-states",
+                "general-motors-truck-company-united-states",
+                "hyundai-motor-america-united-states"
+            ],
+            "vehicle_category": "Passenger Vehicle",
+            "campaign_sub_type": "other",
+            "conversation_tone": "Be on-point, warm, confident, polite, conversational, and very crisp - like a friendly local representative. Avoid being pushy or overly sales oriented. Incorporate natural conversational elements like brief affirmations to maintain engagement. End every conversation politely, with warmth and gratitude. Speak at a medium pace, easy to follow, with positive, empathetic, and reassuring emotion (not robotic).",
+            "pre_sales_lead_id": "vandana-8401586512-us-dealership-united-states-4c99d5ea-4441-3ce6-841f-de5d7585b3b7",
+            "campaign_description": "Don't miss your chance to drive the legendary Mustang! Schedule your test drive now and discover what makes this car a true classic. Limited slots available!",
+            "campaign_objective_id": "pre-sales-test-drive-booking",
+            "supported_brand_names": {},
+            "region_level_guardrails": "- Maintain professional communication standards. Ensure clear communication. Respect regional languages. Provide local language support. Be mindful of potential network issues or poor call quality \n -Trigger calls between 10am to 7pm",
+            "region_level_guidelines": "Avoid slang, sarcasm, or culturally sensitive humor. Use polite, respectful, and neutral tone. Prefer simple sentences suitable for Tier-2/Tier-3 customers",
+            "why_user_should_avail_this": "Find 1-2 standout features from the vehicle knowledge base that make a strong case for buying this car.If They Mention a Specific Aspect: Talk 1-2 highlights about the aspect and push for test drive. Don't be salesy",
+            "supported_brands_guidelines": {},
+            "previous_interaction_details": {},
+            "reasons_for_non_applicability": "- If the customer has already purchased a vehicle from another brand, you should say, 'Oh okay, congratulations on your new car! Just out of curiosity, what made you go with that brand? Your feedback helps us improve. And if you ever consider another vehicle in the future, feel free to reach out.' \\n - If the customer has already purchased from your brand, you should say, 'That's great to hear! Congratulations on your purchase. Hope you're enjoying the ride. If you ever need any support or have questions about service, feel free to connect with us anytime.' \\n - If the customer says they are no longer interested in buying a car, you should say, 'No problem at all. Can I ask what changed? Just trying to understand so we can serve you better if your plans change in the future. And if you know anyone looking for a vehicle, we'd love to help them out.' \\n - If the customer's contact number is wrong or belongs to someone else, you should say, 'Oh, I see. Sorry for the confusion. Could you help me with the correct contact number for [customer name], or let me know if they're no longer interested so we can update our records?' \\n - If the customer has relocated to a different city or country, you should say, 'Understood. If your new location has our dealership, I can connect you with the team there. Otherwise, I'll update our records. Safe travels, and feel free to reach out if you're ever back in the area.'",
+            "campaign_objective_description": "Your goal is to have natural, human-like conversations with customers who have shown interest in the vehicle and guide them smoothly towards booking a test drive. You are also knowledgeable about the vehicle so focuse on giving the customer a smooth and pleasant experience.",
+            "reasons_users_may_not_be_interested": "- If the customer says they are busy or asks for a callback later, you should say, 'Sure, I completely understand. When would be a good time to call you back? I just wanted to make sure you don't miss out on the current offers and available test drive slots before they fill up.' \\n - If the customer says they are just browsing or not ready to buy yet, you should say, 'No worries at all! Most of our customers take their time. How about I book a test drive for you? There's no commitment, and it helps you get a real feel of the vehicle. Would this weekend work for you?' \\n - If the customer says the price is too high or out of budget, you should say, 'I understand budget is important. We have some flexible financing options and exchange offers that might work better for you. Can I share those details? It might bring the monthly payment to something more comfortable.' \\n - If the customer is comparing with other brands, you should say, 'That's smart to compare. Many of our customers also looked at competitor. What I can do is share a quick features highlight of vehicle and after-sales benefits, so you have all the info to make the right choice. Would that help?' \\n - If the customer says they want to wait for the next model or year, you should say, 'I get that. Just so you know, the current model has some launch offers and immediate delivery options that the next one might not have. Plus, waiting could mean 6-8 months. But happy to keep you updated on both. What matters most to you - features or timing?' \\n - If the customer mentions they are getting a better deal elsewhere, you should say, 'I appreciate you being upfront. Let me check what we can do to match or improve that offer. Can you share what package they offered? I'd like to see if we can work something out for you.' \\n -If the customer had a bad experience with the brand before, you should say, 'I'm really sorry to hear that. Things have improved a lot, especially in service and support. I'd love the chance to change that impression. How about a test drive and a chat with our service team so you can see the difference yourself?' \\n - If the customer says they need to discuss with family first, you should say, 'Absolutely, that makes sense. Would it help if I sent you a detailed brochure and financing options you can review together? Or would you prefer to bring your family for a test drive so everyone can experience it?' \\n - If the customer is worried about maintenance costs, you should say, 'That's a valid concern. Our vehicles come with a warranty and service packages that keep costs predictable. I can share the exact maintenance schedule and costs upfront, so there are no surprises later.' \\n - If the customer prefers to buy during festival season or year-end, you should say, 'That's a common choice. Just a heads up - current stock and offers might not be available then, and prices could change. But I can note your interest and reach out closer to that time with the best deals. Does that work?' \\n - If the customer recently test drive and didn't like something, you should say, 'Thanks for sharing that feedback. Can you tell me what specifically didn't feel right? Sometimes it's about the variant or settings. I'd like to address that or maybe suggest a different variant that might suit you better.' \\n - If the customer is unsure about which variant to choose, you should say, 'No problem, that's very common. Let me ask you a few quick questions about how you'll use the car - city driving, highway, family size - and I can recommend the variant that fits your needs and budget best.' \\n - If the customer wants to think about it, you should say, 'Of course, take your time. Just so you have all the information, let me send you the brochure, a video walkthrough, and current offers. And I'm here anytime if questions come up. Should I follow up in a couple of days or would you prefer to reach out when ready? \\n - If the customer asks about exchange value for their old vehicle, you should say, 'Sure, I can arrange for our exchange team to evaluate your current vehicle. Can you share the make, model, year, and approximate kms driven? We'll give you the best possible value."
+        }
+        
+        # l = AutocrmModel("pre_sales_lead", logger = logger)
+        # l.post(lead_data)
+        lead_id=generate_uid(lead_data)
+        # logger.info(f"Creating new pre-sales lead with lead_id={lead_id} and lead_data={json.dumps(lead_data,indent=4)}")     
+        with get_pg_connector() as pg:
+            l=pg.update("pre_sales_lead", "pre_sales_lead_id", lead_id,lead_data)
+            lead_d=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
+            # logger.info(f"Lead created: {json.dumps(lead_d,indent=4)} with user_id={user_id} and campaign_id={campaign_id}")
+            logger.info(f"Pre-sales lead data created -- {lead_d[0].get('pre_sales_lead_id')}")
+            return lead_d[0].get("pre_sales_lead_id")
+        
+def generate_uid(data):
+    if isinstance(data, (dict, list)):
+        data_str = json.dumps(data, sort_keys=True)
+    else:
+        data_str = str(data)
 
+    uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
+
+    return uid.hex[:16]
 @gryd.is_a_task(function_name="process_single_lead")
-def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None):
+def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=None, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None):
     
     """
     Process a single lead and send campaign messages for each user.
@@ -744,7 +886,6 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,
 
     if not channel:
         channel = get_channel(lead_data, campaign_details)
-
     if channel == "voice_phone":
         provider_name = VOICE_PROVIDER_NAME
     elif channel == "email":
@@ -754,7 +895,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,
         template_data= get_email_template(
             lead_id=lead_id,
             campaign_type=campaign_type,
-            campaign_objective= [campaign_details.get("campaign_objective_name")] if campaign_details.get("campaign_objective_name") else ["Free Service Due Reminder"],
+            campaign_objective= [campaign_details.get("campaign_objective_name")] or ["Free Service Due Reminder"] if campaign_details.get("campaign_type") == "post-sales" else ["Test Drive Booking"],
             lead_info={}
         )
         if not template_data:
@@ -785,18 +926,26 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,
 
         # logger.info("Template Data: %s", template_data)
     elif channel in ("whatsapp_chat", "sms", "rcs"):
-        template_data = get_whatsapp_template(
-            lead_id=lead_id,
-            campaign_type=campaign_type,
-            campaign_objective= [campaign_details.get("campaign_objective_name")] if campaign_details.get("campaign_objective_name") else ["Free Service Reminder"],
-            # dealership_id = lead_data.get("dealership_id"), //for later pass disposition and disposition detail 
-            lead_info={}
-        )
-        if not template_data:
-            yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
-            return
-        template_data = template_data[0]
-        # logger.info(f"TEmplate data: {template_data}")
+        if not templateID:
+            template_data = get_whatsapp_template(
+                lead_id=lead_id,
+                campaign_type=campaign_type,
+                # campaign_objective= [campaign_details.get("campaign_objective_name")] if campaign_details.get("campaign_objective_name") else ["Free Service Reminder"],
+                campaign_objective= [campaign_details.get("campaign_objective_name")] or ["Free Service Due Reminder"] if campaign_details.get("campaign_type") == "post-sales" else ["Test Drive Booking"],
+                # dealership_id = lead_data.get("dealership_id"), //for later pass disposition and disposition detail
+                lead_info={}
+            )
+            
+            # template_data=testing_whatsapp_template()
+            if not template_data:
+                yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
+                return
+            template_data = template_data[0]
+        else:
+            with get_pg_connector() as pg:
+                template_details=pg.get("template","template_id",templateID)
+                template_data=template_details
+        logger.info(f"TEmplate data: {template_data}")
         logger.info(f"Template ID for phone_number={lead_data.get('phone_number')}: {template_data.get('template_id')}")
     else:
         yield {"status": "Error", "error_description": f"Unsupported channel: {channel}"}
@@ -825,8 +974,11 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,
         # variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data, selected_person) if template_data else {}
     
     # not using persons_involved for now...
-    mobile = lead_data.get("phone_number")
-    customer_name = lead_data.get("person_name")
+    mobile = lead_data.get("phone_number") 
+    logger.info(f"Campaign ID: {campaign_id}, Original Mobile: {mobile}")
+    customer_name = "Dear NADA Visitor" if campaign_id == "4c99d5ea-4441-3ce6-841f-de5d7585b3b7" and lead_data.get("person_name") is None else lead_data.get("person_name")
+    lead_data['person_name']=customer_name
+    logger.info(f"Customer Name: {customer_name}")
     variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data) if template_data else {}
     logger.info(f"Variable Mapping: {variable_mapping}")
     campaign_user = {
@@ -938,6 +1090,7 @@ def get_channel(lead, campaign_details):
 
     return "whatsapp_chat"  #fallback
 
+
 def get_variable_values(template_variables, lead_data, selected_person=None):
     """
     Extract values for template variables from lead_data or selected_person.
@@ -1007,3 +1160,42 @@ def format_email_payload(campaign_data,campaign_user,mobile_number):
     p_filters = {k: v for k, v in p.items() if v not in [None ,[],[None]]}
     
     return p_filters
+
+
+def testing_whatsapp_template():
+    
+    return [{
+            "sender": "917795030574",
+            "status": "approved",
+            "buttons": [
+                {
+                    "text": "Call",
+                    "type": "QUICK_REPLY"
+                },
+                {
+                    "text": "Chat",
+                    "type": "QUICK_REPLY"
+                }
+            ],
+            "channel": "whatsapp_chat",
+            "created": 1769683785.335568,
+            "updated": 1769683785.3367856,
+            "language": "english",
+            "dealer_name": "DaveAI",
+            "region_name": "South India",
+            "search_term": "nada_autongage_demo1 text english pre-sales  ",
+            "template_id": "01kg4ntf1ztsa783ss81nq8gqs",
+            "campaign_type": "pre-sales",
+            "dealership_id": "daveai",
+            "provider_name": "Airtel",
+            "template_name": "nada_autoNgage_demo1",
+            "template_type": "text",
+            "template_message": "",
+            "campaign_objective": [],
+            "template_variables": [],
+            "template_button_payloads": [
+                "nada_autongage-call",
+                "nada_autongage-chat"
+            ],
+            "communication_credentials_id": "airtel-917795030574"
+        }    ]
