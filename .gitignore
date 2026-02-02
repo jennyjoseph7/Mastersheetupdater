@@ -69,3 +69,5 @@ core/testBillModel.py
 core/rezorpay_fe_test.html
 billing.json
 venv/
+spark/fonts
+spark/output
