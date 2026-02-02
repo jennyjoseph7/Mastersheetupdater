@@ -4,21 +4,38 @@ import { useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, AlertCircle, BarChart3, AlertTriangle } from "lucide-react";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  Cell 
+} from 'recharts';
 
-// --- UI Component Imports (Adjust paths if necessary) ---
+// --- UI Component Imports ---
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // --- Custom Component Imports ---
 import { EngagementFunnel } from "@/components/engagement-funnel";
 import { CampaignFailureChart } from "@/components/campaign-failure-chart";
 import { CostPerLeadChart } from "@/components/cost-per-lead-chart";
-import { ConversationIntentChart } from "@/components/conversation-intent-chart";
 import { ProtectedRoute } from "@/components/protected-route";
 import { fetchCampaignPerformanceSummary } from "@/utils/api";
 
@@ -32,27 +49,23 @@ const SWR_OPTIONS = {
   shouldRetryOnError: false,
 };
 
-// Mapping raw statuses to funnel dispositions
 const WA_TO_DISPOSITION: Record<string, string> = {
-  "initiated": "queued",
-  "queued": "queued",
-  
-  "sent": "attempted",
-  "attempted": "attempted",
-  
-  "delivered": "reached",
-  "reached": "reached",
-  
   "read": "contacted",
-  "contacted": "contacted",
-  
-  "interacted": "engaged",
-  "engaged": "engaged",
-  
-  "converted": "converted",
-  
+  "sent": "attempted",
+  "initiated": "queued",
+  "delivered": "reached",
   "failed": "failed",
-  "error": "failed" 
+  "interacted": "engaged",
+  "converted": "converted"
+};
+
+const CHANNEL_COLORS: Record<string, string> = {
+  "whatsapp_chat": "#25D366",
+  "whatsapp": "#25D366",
+  "email": "#EA4335",
+  "voice": "#4285F4",
+  "sms": "#FACC15",
+  "default": "#8884d8"
 };
 
 // --- TypeScript Interfaces ---
@@ -69,11 +82,18 @@ interface FailureStat {
   count: number;
 }
 
+interface IntentStat {
+  channel: string;
+  count: number;
+  intent?: string;
+}
+
 interface CampaignPerformance {
   campaign_name: string;
   campaign_type: string;
   engagement_stats: EngagementStat[];
   failure_stats_by_channel: FailureStat[];
+  intent_distribution_by_channel: IntentStat[];
 }
 
 interface FunnelStage {
@@ -91,23 +111,22 @@ const calculatePercentage = (part: number, total: number) => {
   return Math.round((part / total) * 100);
 };
 
-// Process stats into a Waterfall Funnel
 function processEngagementStats(engagementStats: EngagementStat[]) {
   if (!engagementStats || engagementStats.length === 0) {
     return { all: [], whatsapp: [], email: [], voice: [] };
   }
 
-  // 1. Group raw stats by channel
   const byChannel: Record<string, EngagementStat[]> = {};
+  let globalTotal = 0;
+
   engagementStats.forEach((stat) => {
     const channel = stat.channel || "unknown";
     if (!byChannel[channel]) byChannel[channel] = [];
     byChannel[channel].push(stat);
+    globalTotal += (stat.count || 0);
   });
 
-  // 2. Logic to build stages for a specific list of stats
   const createFunnelStages = (channelStats: EngagementStat[]): FunnelStage[] => {
-    // Initialize base counters
     const counts = {
       queued: 0,
       attempted: 0,
@@ -118,97 +137,37 @@ function processEngagementStats(engagementStats: EngagementStat[]) {
       failed: 0
     };
 
-    // Map raw status to standard disposition and sum distinct counts
+    let channelTotal = 0;
+
     channelStats.forEach((stat) => {
       const rawStatus = (stat.status || "").toLowerCase();
       const disposition = WA_TO_DISPOSITION[rawStatus];
       
-      // Only count known dispositions
       if (disposition && disposition in counts) {
         counts[disposition as keyof typeof counts] += (stat.count || 0);
+        channelTotal += (stat.count || 0);
       }
     });
 
-    // --- WATERFALL CALCULATION ---
-    // We sum from bottom (Converted) to top (Queued) to create the funnel.
-    // Logic: If you are "Converted", you were implicitly "Engaged", "Contacted", etc.
-
-    const totalConverted = counts.converted;
-    const totalEngaged = counts.engaged + totalConverted;
-    const totalContacted = counts.contacted + totalEngaged;
-    const totalReached = counts.reached + totalContacted;
-    const totalFailed = counts.failed;
-    
-    // Attempted includes Successes (Reached) + Failures
-    const totalAttempted = counts.attempted + totalReached + totalFailed;
-    
-    // Queued includes everything
-    const totalQueued = counts.queued + totalAttempted;
-
-    // Safety check: if no data
-    if (totalQueued === 0) return [];
+    if (channelTotal === 0) return [];
 
     const stages: FunnelStage[] = [];
+    const pushStage = (name: string, val: number) => {
+      stages.push({
+        stage: name,
+        value: calculatePercentage(val, channelTotal),
+        percentage: `${calculatePercentage(val, channelTotal)}%`,
+        count: val,
+        dropoff: 0
+      });
+    };
 
-    // 1. Queued
-    stages.push({
-      stage: "Queued",
-      value: 100,
-      percentage: "100%",
-      count: totalQueued,
-      dropoff: 0
-    });
-
-    // 2. Attempted
-    const attemptedPct = calculatePercentage(totalAttempted, totalQueued);
-    stages.push({
-      stage: "Attempted",
-      value: attemptedPct,
-      percentage: `${attemptedPct}%`,
-      count: totalAttempted,
-      dropoff: 100 - attemptedPct
-    });
-
-    // 3. Reached (Delivered)
-    const reachedPct = calculatePercentage(totalReached, totalQueued);
-    stages.push({
-      stage: "Reached",
-      value: reachedPct,
-      percentage: `${reachedPct}%`,
-      count: totalReached,
-      // Dropoff here represents failures (Attempted - Reached)
-      dropoff: attemptedPct - reachedPct 
-    });
-
-    // 4. Contacted (Read)
-    const contactedPct = calculatePercentage(totalContacted, totalQueued);
-    stages.push({
-      stage: "Contacted",
-      value: contactedPct,
-      percentage: `${contactedPct}%`,
-      count: totalContacted,
-      dropoff: reachedPct - contactedPct
-    });
-
-    // 5. Engaged (Interacted)
-    const engagedPct = calculatePercentage(totalEngaged, totalQueued);
-    stages.push({
-      stage: "Engaged",
-      value: engagedPct,
-      percentage: `${engagedPct}%`,
-      count: totalEngaged,
-      dropoff: contactedPct - engagedPct
-    });
-
-    // 6. Converted
-    const convertedPct = calculatePercentage(totalConverted, totalQueued);
-    stages.push({
-      stage: "Converted",
-      value: convertedPct,
-      percentage: `${convertedPct}%`,
-      count: totalConverted,
-      dropoff: engagedPct - convertedPct
-    });
+    pushStage("Queued", counts.queued);
+    pushStage("Attempted", counts.attempted);
+    pushStage("Reached", counts.reached);
+    pushStage("Contacted", counts.contacted);
+    pushStage("Engaged", counts.engaged);
+    pushStage("Converted", counts.converted);
 
     return stages;
   };
@@ -221,37 +180,25 @@ function processEngagementStats(engagementStats: EngagementStat[]) {
   };
 }
 
-// Process failure stats for the bar chart
 function processFailureStats(failureStats: FailureStat[]) {
   if (!failureStats || failureStats.length === 0) return [];
-
-  const byChannel: Record<string, Record<string, number>> = {};
-
-  failureStats.forEach((stat) => {
-    const channel = stat.channel || "unknown";
-    const message = stat.message || "Unknown Error";
-    
-    if (!byChannel[channel]) byChannel[channel] = {};
-    byChannel[channel][message] = (byChannel[channel][message] || 0) + (stat.count || 0);
-  });
-
-  const channelMap: Record<string, string> = {
-    whatsapp_chat: "WhatsApp",
-    whatsapp: "WhatsApp",
-    email: "Email",
-    voice: "Voice",
-  };
-
-  return Object.entries(byChannel).map(([channel, failures]) => {
-    const dataPoint: any = { channel: channelMap[channel] || channel };
-    Object.entries(failures).forEach(([message, count]) => {
-      dataPoint[message] = count;
-    });
-    return dataPoint;
-  });
+  return failureStats.map(stat => ({
+    ...stat,
+    channelName: stat.channel === "whatsapp_chat" ? "WhatsApp" : stat.channel
+  }));
 }
 
-// --- Inner Component (Contains Logic) ---
+function processIntentStats(intentStats: IntentStat[]) {
+  if (!intentStats || intentStats.length === 0) return [];
+  
+  return intentStats.map(stat => ({
+    name: stat.channel === "whatsapp_chat" ? "WhatsApp" : stat.channel,
+    count: stat.count,
+    fill: CHANNEL_COLORS[stat.channel] || CHANNEL_COLORS.default
+  }));
+}
+
+// --- Inner Component ---
 
 function CampaignInsightsContent() {
   const searchParams = useSearchParams();
@@ -270,30 +217,25 @@ function CampaignInsightsContent() {
   const campaignName = performanceData?.campaign_name || "Campaign";
   const campaignType = performanceData?.campaign_type || "";
 
-  // Memoize data processing
-  const funnelData = useMemo(() => {
-    if (!performanceData?.engagement_stats) return { all: [], whatsapp: [], email: [], voice: [] };
-    return processEngagementStats(performanceData.engagement_stats);
-  }, [performanceData]);
+  // Data Memoization
+  const funnelData = useMemo(() => 
+    processEngagementStats(performanceData?.engagement_stats || []), 
+  [performanceData]);
 
-  const failureData = useMemo(() => {
-    if (!performanceData?.failure_stats_by_channel) return [];
-    return processFailureStats(performanceData.failure_stats_by_channel);
-  }, [performanceData]);
+  const failureData = useMemo(() => 
+    processFailureStats(performanceData?.failure_stats_by_channel || []), 
+  [performanceData]);
+
+  const intentData = useMemo(() => 
+    processIntentStats(performanceData?.intent_distribution_by_channel || []), 
+  [performanceData]);
 
   // -- Render States --
-
   if (isLoading) {
     return (
       <div className="flex flex-col w-full space-y-6 px-4 md:px-6 lg:px-8 pb-6 mt-6">
-         <div className="space-y-2">
-            <Skeleton className="h-8 w-[250px]" />
-            <Skeleton className="h-4 w-[150px]" />
-         </div>
-         <div className="grid grid-cols-1 gap-6">
-            <Skeleton className="h-[300px] w-full" />
-            <Skeleton className="h-[300px] w-full" />
-         </div>
+         <div className="space-y-2"><Skeleton className="h-8 w-[250px]" /></div>
+         <Skeleton className="h-[400px] w-full" />
       </div>
     );
   }
@@ -304,44 +246,20 @@ function CampaignInsightsContent() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            Failed to load campaign data. {error.message}
-          </AlertDescription>
+          <AlertDescription>Failed to load data. {error.message}</AlertDescription>
         </Alert>
-        <Link href="/">
-            <Button variant="outline" className="mt-4">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Campaigns
-            </Button>
-        </Link>
+        <Link href="/"><Button variant="outline" className="mt-4"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button></Link>
       </div>
     );
   }
 
   if (!performanceData) {
     return (
-      <div className="flex flex-col w-full">
-         <div className="flex h-20 items-center justify-between px-4 md:px-6 lg:px-8 w-full">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-              <h1 className="text-2xl font-semibold tracking-tight">Campaign Insights</h1>
-            </div>
-          </div>
-          <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-6 w-full">
-            <Card>
-              <CardContent className="p-6 text-center text-muted-foreground">
-                No campaign selected or data unavailable.
-              </CardContent>
-            </Card>
-          </div>
-      </div>
+       <div className="flex-1 px-4 md:px-6 lg:px-8 pb-6 w-full mt-6">
+        <Alert><AlertTitle>No Data</AlertTitle><AlertDescription>No campaign selected.</AlertDescription></Alert>
+       </div>
     );
   }
-
-  // -- Main Data View --
 
   return (
     <div className="flex flex-col w-full">
@@ -349,9 +267,7 @@ function CampaignInsightsContent() {
       <div className="flex h-20 items-center justify-between px-4 md:px-6 lg:px-8 w-full">
         <div className="flex items-center gap-4">
           <Link href="/">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+            <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
           </Link>
           <div>
             <div className="flex items-center gap-3">
@@ -360,9 +276,7 @@ function CampaignInsightsContent() {
                 {campaignType === "post-sales" ? "Post-Sales" : campaignType === "pre-sales" ? "Pre-Sales" : campaignType}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Campaign Performance Statistics
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Campaign Performance Statistics</p>
           </div>
         </div>
       </div>
@@ -374,63 +288,130 @@ function CampaignInsightsContent() {
             <TabsTrigger value="audience">Audience / Leads</TabsTrigger>
           </TabsList>
 
-          {/* Statistics Tab */}
           <TabsContent value="statistics" className="space-y-6 mt-6">
             
             {/* 1. Engagement Funnel */}
             {(funnelData.all?.length > 0) && (
-              <Card className="shadow">
+              <Card className="shadow-sm">
                 <CardHeader>
                   <CardTitle>Engagement Funnel</CardTitle>
-                  <CardDescription>
-                    Tracking user journey from Queue to Conversion
-                  </CardDescription>
+                  <CardDescription>Current status distribution (Non-Cumulative)</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {/* Pass the calculated waterfall data to your funnel component */}
                   <EngagementFunnel customData={funnelData} />
                 </CardContent>
               </Card>
             )}
 
-            {/* 2. Failure Reasons */}
-            {failureData.length > 0 && (
-              <Card className="shadow">
-                <CardHeader>
-                  <CardTitle>Failure Reasons by Channel</CardTitle>
-                  <CardDescription>Distribution of delivery failures across channels</CardDescription>
+            {/* 2. Combined Row: Failure Chart, Failure Grid, Intent Distribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Column 1: Failure Chart */}
+              <Card className="shadow-sm flex flex-col">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-medium">Failure Chart</CardTitle>
+                  <CardDescription>Visual breakdown of errors</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <CampaignFailureChart customData={failureData} />
+                <CardContent className="flex-1 min-h-[250px]">
+                  {failureData.length > 0 ? (
+                    <CampaignFailureChart customData={failureData} />
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No failures recorded</div>
+                  )}
                 </CardContent>
               </Card>
-            )}
 
-            {/* 3. Analytics Grid (Cost & Intent) */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Card className="shadow">
+              {/* Column 2: Failure Reasons Grid */}
+              <Card className="shadow-sm flex flex-col">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-base font-medium">Failure Reasons</CardTitle>
+                      <CardDescription>Detailed list</CardDescription>
+                    </div>
+                    {failureData.length > 0 && (
+                      <Badge variant="destructive" className="ml-2 h-6">
+                        {failureData.reduce((acc, curr) => acc + curr.count, 0)} Failed
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-auto">
+                   {failureData.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[100px]">Channel</TableHead>
+                          <TableHead>Error</TableHead>
+                          <TableHead className="text-right">#</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {failureData.map((item, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium capitalize text-xs">{item.channelName}</TableCell>
+                            <TableCell className="text-muted-foreground text-xs truncate max-w-[120px]" title={item.message}>
+                              {item.message}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-xs">{item.count}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                   ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">No failures recorded</div>
+                   )}
+                </CardContent>
+              </Card>
+
+              {/* Column 3: Intent Distribution */}
+              <Card className="shadow-sm flex flex-col">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-medium">Intent Distribution</CardTitle>
+                  <CardDescription>By Channel</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 min-h-[250px]">
+                  {intentData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={intentData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#888888" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <Tooltip 
+                          cursor={{ fill: 'transparent' }}
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                        />
+                        <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={40}>
+                          {intentData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                      No intent data available
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 3. Cost Metrics (Separate Row) */}
+            <div className="grid grid-cols-1" style={{display: "none"}}>
+              <Card className="shadow-sm">
                 <CardHeader>
-                  <CardTitle>Cost per Lead by Channel</CardTitle>
-                  <CardDescription>Average cost to acquire a lead per channel</CardDescription>
+                  <CardTitle>Cost per Lead</CardTitle>
+                  <CardDescription>Average cost to acquire a lead</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <CostPerLeadChart />
                 </CardContent>
               </Card>
-
-              <Card className="shadow">
-                <CardHeader>
-                  <CardTitle>Intent Distribution</CardTitle>
-                  <CardDescription>Distribution of conversation intents across channels</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ConversationIntentChart />
-                </CardContent>
-              </Card>
             </div>
+
           </TabsContent>
 
-          {/* Audience Tab */}
           <TabsContent value="audience" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
@@ -450,7 +431,7 @@ function CampaignInsightsContent() {
   );
 }
 
-// --- Main Page Export (Wrapped in Suspense) ---
+// --- Main Page Export ---
 
 export default function CampaignInsightsPage() {
   return (
