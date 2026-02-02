@@ -6,4 +6,4 @@ dotenv
 pydub
 fastapi
 elevenlabs
-"elevenlabs[pyaudio]"
+elevenlabs[pyaudio]
