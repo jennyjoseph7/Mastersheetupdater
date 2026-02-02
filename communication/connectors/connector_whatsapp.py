@@ -551,6 +551,10 @@ def post_contact_status(*args, **data):
             if update_payload.get("lead_id"):
                 logger.info(f"[post_contact_status] Removing lead_id from update_payload")
                 update_payload.pop("lead_id")
+            
+            if update_payload.get("dealership_id"):
+                logger.info(f"[post_contact_status] Removing dealership_id from update_payload")
+                update_payload.pop("dealership_id")
             pg.update(
                 lead_table,
                 lead_pk,

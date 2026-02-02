@@ -669,11 +669,14 @@ class BaseWebhookConverter:
                 AUTOCRM_CAMPAIGN_SERVICE_NAME,
                 args=[],
                 kwargs={"channel":"whatsapp_chat","session_id":d.get("session_id",None)}
-            )
+            )            
         # i will have dealership_id,campaign_id,urgency_hook,user_id, create a pre_sales lead for this.
         # update the session with this lead id ,campaign id and campaign_type
         else:
             logger.info(f"Sending Converse with payload: {safe_orjson_dumps(converse_kwargs)} for service name : {CONVERS_SERVICE_NAME}")
+            if button_payload=="nada_autongage-yes":
+                converse_kwargs["customer_response"] ="Hi"
+            logger.info(f"Sending Customer Response -- {converse_kwargs.get('customer_response')}")
             res = gryd.create_async_task(
                 CONVERS_TASK_NAME,
                 CONVERS_SERVICE_NAME,
@@ -867,7 +870,8 @@ class BaseWebhookConverter:
             "session_id":data.get("session_id"),
             "user_id":data.get("user_id"),
             # "campaign_id":data.get("campaign_id"),
-            "channel": channel or "whatsapp_chat" if data.get("campaign_type")=="post-sales" else None,
+            # "channel": channel or "whatsapp_chat" if data.get("campaign_type")=="post-sales" else None, 
+            "channel": channel or "whatsapp_chat",
             "session_live": True,
             "status": "completed~"
         }
@@ -875,7 +879,7 @@ class BaseWebhookConverter:
         filters = {k: v for k, v in filters.items() if v is not None}
         condition, param = self.apply_filters(**filters)
         
-        # logger.info(f"TEST filters for sessions--{filters}")
+        logger.info(f"TEST filters for sessions--{filters}")
         with get_pg_connector() as pg:
             sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
             # logger.info(f'TEST sessions found for {sessions}')
@@ -893,7 +897,7 @@ class BaseWebhookConverter:
                     is_previous_session_inbound=True
                     return sessions[0]
                 logger.info(f"Is previous session inbound: {is_previous_session_inbound}")
-                if (new_campaign_id != old_campaign_id) and not is_previous_session_inbound:
+                if (new_campaign_id != old_campaign_id):
                     logger.info("There is a new triggered campaign for this user. Since there is an existing session, we are ending the existing(old) session and creating a new session..")
                     logger.info(f"OLD SESSIONID--{sessions[0].get('session_id')}")
                     # end the old session
