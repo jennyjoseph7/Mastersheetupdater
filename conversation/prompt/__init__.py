@@ -298,7 +298,7 @@ def get_who_you_represent(*args, **kwargs):
 def get_user_info(*args, **kwargs):
     user_data = kwargs.get("user_data")
 
-    return "The following is all the information we currently have about the customer: \n{}\n\n".format(user_data)
+    return "The following is all the information we currently have about the customer (Use the users name from this data): \n{}\n\n".format(user_data)
 
 def get_purpose_and_steps(*args, **kwargs):
     session_data_cache_data = kwargs.get("session_data_cache",{})
@@ -307,8 +307,8 @@ def get_purpose_and_steps(*args, **kwargs):
     campaign_type = campaign_data.get("campaign_type","inbound")
 
     purpose_dict = {
-        "test_drive" : ["- Full Name \n- Interested Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time "],
-        "service" : ["- Full Name \n- Car Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time \n- Service Type"]
+        "test_drive" : ["- Full Name (if not available as 'person_name' in 'Who is the customer section') \n- Interested Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time "],
+        "service" : ["- Full Name (if not available as 'person_name' in 'Who is the customer section')\n- Car Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time \n- Service Type"]
         }
 
     ###TODO create a way to detect the flow to push
@@ -355,6 +355,7 @@ def get_example_states_and_solutions(*args, **kwargs):
         "- If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose if the arent already in the purpose flow.",
         "\n- If a purpose flow is completed, you should provide a confirmation message to the user with the details of the booking.",
         "\n- After the purpose is completed already in this conversation, do not urge them again.",
+        "\n- If you have the name of the user in the 'Who is the customer section', you should always use it and do not ask them for their name again.",
         "\n- If the customer provides you a date and time you should always check against the current date time and validate. also you should always provide the DD-MM-YYYY format for the date you want to mention. Do not say today or tomorrow or other such references to date.",
         "\n- If the customer requests a callback or requests to speak with a human or a phone call in any way, you should say - 'Someone will be with you soon'.",
     ]
@@ -412,15 +413,38 @@ def prune_user_data(user_data):
         user_data.pop(p, None)
     return user_data
 
-def get_response_channel_info(channel):
-    mlogger.info("got channel == {}".format(channel))
+def get_response_channel_info(channel,campaign_id, campaign_data):
+    mlogger.info("got channel == {} and campaign id == {}".format(channel,campaign_id))
+    if campaign_id != "4c99d5ea-4441-3ce6-841f-de5d7585b3b7":
+        if channel and channel in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
+            mlogger.info("got voice channel")
+            return """
+            \nConversation Initiation Pattern -
+            Start The conversation with the customer by asking them  - "Hello, am i speaking with <name of customer in Who is the customer section>?", if they confirm ask them "Do you have a moment to speak with me?", if they confirm tell them about the offer from the campaign.\n
+            """
+        return ""
+    ret = ""
+    mlogger.info("RUNNING NADA HACK")
     if channel and channel in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
-        mlogger.info("got voice channel")
-        return """
+        ret = """
         \nConversation Initiation Pattern -
-        Start The conversation with the customer by asking them  - "Hello, am i speaking with <name of customer in Who is the customer section>?", if they confirm ask them "Do you have a moment to speak with me?", if they confirm tell them about the offer from the campaign.\n
+        Start The conversation with the customer by asking them  - 
+        - If the 'Who is the Customer' section contains the name of the customer then start with 
+            - "Hello, am i speaking with <name of customer in Who is the customer section>?", 
+        - Else If the 'Who is the Customer' section does not contain the name of the customer then start with 
+            - "Hello, Do you mind telling me your name?", Follow that with "Could you tell me the name of your dealership?", at the end ask them if they mind sharing their email id.
+        - if they confirm ask them "Do you have a moment to speak with me?", 
+        - if they confirm tell them about the offer from the campaign.\n
         """
-    return ""
+    else:
+        ret = """
+        \nConversation Initiation Pattern -
+        Start The conversation with the customer by asking them  -
+        - If the 'Who is the Customer' section does not contain the name of the customer then start with 
+            - "Hello, Do you mind telling me your name?", Follow that with "Could you tell me the name of your dealership?", at the end ask them if they mind sharing their email id.
+        - Once you have all the above information, tell them about the offer from the campaign. Also inform them about how you can help them. You can use the following campaign information to do so. -- {campaign_data}\n
+        """
+    return ret
 def setup_primary_prompt(*args, **kwargs):
     
     '''
@@ -484,7 +508,7 @@ def setup_primary_prompt(*args, **kwargs):
     output_format = get_output_format(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     mlogger.info("my history data == {}".format(conversation_history))
 
-    response_channel_info = get_response_channel_info(kwargs.get("channel",""))
+    response_channel_info = get_response_channel_info(kwargs.get("channel",""),campaign_data.get("campaign_id","inbound"),campaign_data)
     
     if campaign_data.get("campaign_type") == "inbound":
         mlogger.info("is inbound")
