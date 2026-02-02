@@ -298,7 +298,7 @@ def get_who_you_represent(*args, **kwargs):
 def get_user_info(*args, **kwargs):
     user_data = kwargs.get("user_data")
 
-    return "The following is all the information we currently have about the customer: \n{}\n\n".format(user_data)
+    return "The following is all the information we currently have about the customer (Use the users name from this data): \n{}\n\n".format(user_data)
 
 def get_purpose_and_steps(*args, **kwargs):
     session_data_cache_data = kwargs.get("session_data_cache",{})
@@ -307,8 +307,8 @@ def get_purpose_and_steps(*args, **kwargs):
     campaign_type = campaign_data.get("campaign_type","inbound")
 
     purpose_dict = {
-        "test_drive" : ["- Full Name \n- Interested Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time "],
-        "service" : ["- Full Name \n- Car Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time \n- Service Type"]
+        "test_drive" : ["- Full Name (if not available as 'person_name' in 'Who is the customer section') \n- Interested Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time "],
+        "service" : ["- Full Name (if not available as 'person_name' in 'Who is the customer section')\n- Car Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time \n- Service Type"]
         }
 
     ###TODO create a way to detect the flow to push
@@ -355,6 +355,7 @@ def get_example_states_and_solutions(*args, **kwargs):
         "- If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose if the arent already in the purpose flow.",
         "\n- If a purpose flow is completed, you should provide a confirmation message to the user with the details of the booking.",
         "\n- After the purpose is completed already in this conversation, do not urge them again.",
+        "\n- If you have the name of the user in the 'Who is the customer section', you should always use it and do not ask them for their name again.",
         "\n- If the customer provides you a date and time you should always check against the current date time and validate. also you should always provide the DD-MM-YYYY format for the date you want to mention. Do not say today or tomorrow or other such references to date.",
         "\n- If the customer requests a callback or requests to speak with a human or a phone call in any way, you should say - 'Someone will be with you soon'.",
     ]
@@ -412,15 +413,38 @@ def prune_user_data(user_data):
         user_data.pop(p, None)
     return user_data
 
-def get_response_channel_info(channel):
-    mlogger.info("got channel == {}".format(channel))
+def get_response_channel_info(channel,campaign_id, campaign_data):
+    mlogger.info("got channel == {} and campaign id == {}".format(channel,campaign_id))
+    if campaign_id != "4c99d5ea-4441-3ce6-841f-de5d7585b3b7":
+        if channel and channel in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
+            mlogger.info("got voice channel")
+            return """
+            \nConversation Initiation Pattern -
+            Start The conversation with the customer by asking them  - "Hello, am i speaking with <name of customer in Who is the customer section>?", if they confirm ask them "Do you have a moment to speak with me?", if they confirm tell them about the offer from the campaign.\n
+            """
+        return ""
+    ret = ""
+    mlogger.info("RUNNING NADA HACK")
     if channel and channel in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
-        mlogger.info("got voice channel")
-        return """
+        ret = """
         \nConversation Initiation Pattern -
-        Start The conversation with the customer by asking them  - "Hello, am i speaking with <name of customer in Who is the customer section>?", if they confirm ask them "Do you have a moment to speak with me?", if they confirm tell them about the offer from the campaign.\n
+        Start The conversation with the customer by asking them  - 
+        - If the 'Who is the Customer' section contains the name of the customer then start with 
+            - "Hello, am i speaking with <name of customer in Who is the customer section>?", 
+        - Else If the 'Who is the Customer' section does not contain the name of the customer then start with 
+            - "Hello, Do you mind telling me your name?", Follow that with "Could you tell me the name of your dealership?", at the end ask them if they mind sharing their email id.
+        - if they confirm ask them "Do you have a moment to speak with me?", 
+        - if they confirm tell them about the offer from the campaign.\n
         """
-    return ""
+    else:
+        ret = """
+        \nConversation Initiation Pattern -
+        Start The conversation with the customer by asking them  -
+        - If the 'Who is the Customer' section does not contain the name of the customer then start with 
+            - "Hello, Do you mind telling me your name?", Follow that with "Could you tell me the name of your dealership?", at the end ask them if they mind sharing their email id.
+        - Once you have all the above information, tell them about the offer from the campaign. Also inform them about how you can help them. You can use the following campaign information to do so. -- {campaign_data}\n
+        """
+    return ret
 def setup_primary_prompt(*args, **kwargs):
     
     '''
@@ -484,32 +508,141 @@ def setup_primary_prompt(*args, **kwargs):
     output_format = get_output_format(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     mlogger.info("my history data == {}".format(conversation_history))
 
-    response_channel_info = get_response_channel_info(kwargs.get("channel",""))
-
+    response_channel_info = get_response_channel_info(kwargs.get("channel",""),campaign_data.get("campaign_id","inbound"),campaign_data)
+    
     if campaign_data.get("campaign_type") == "inbound":
         mlogger.info("is inbound")
+        whats_is_autongage = """A product that helps dealers run campaigns to targeted audience via phone call whatsapp messages and sms
+        AutoNgage – Consolidated Overview, Real-World Problems & FAQs 
+        1. What is AutoNgage? 
+        AutoNgage is an AI-powered dealership engagement and campaign orchestration platform built 
+        specifically for the automotive ecosystem. It acts as a unified intelligence layer that manages customer 
+        interactions across sales, service, and marketing channels such as WhatsApp, Voice, Web, Email, and 
+        SMS. 
+        Unlike traditional CRMs or basic WhatsApp bots, AutoNgage does not just record data or send 
+        messages. It actively understands customer intent, decides the next best action, selects the right 
+        channel and timing, executes conversations automatically, and continuously learns from outcomes to 
+        improve performance. 
+        In simple terms, AutoNgage functions as an AI Sales and Service Concierge for dealerships. 
+        
+        2. Real-World Problems Faced by Dealerships 
+        2.1 Missed Calls and Delayed Follow-ups 
+        In real dealership operations, incoming calls often go unanswered due to peak hours, understaffed 
+        teams, or manual processes. Even when leads are captured, follow-ups are delayed or forgotten, 
+        leading to lost sales opportunities and customer dissatisfaction. 
+        AutoNgage ensures that every enquiry receives an instant response and follow-up through automated, 
+        intelligent conversations. 
+        
+        2.2 Inefficient Service Booking and High No-Show Rates 
+        Service booking is commonly handled through phone calls or manual CRM updates. Customers wait 
+        on hold, advisors juggle schedules, and rescheduling becomes cumbersome. This results in frustration 
+        and increased no-shows. 
+        AutoNgage enables instant service booking, rescheduling, and confirmation through WhatsApp or 
+        web, reducing dependency on calls and significantly lowering no-show rates. 
+        
+        2.3 Low Response Rates from Calls and SMS 
+        Customers increasingly ignore unknown numbers and generic SMS messages. Traditional outbound 
+        calling and SMS campaigns show poor engagement and low conversion. 
+        AutoNgage prioritizes conversational channels like WhatsApp and intelligently decides when voice 
+        follow-ups are required, improving reach and response rates. 
+        
+        2.4 Poor Lead Conversion from Enquiries 
+        Leads generated from websites, campaigns, or walk-ins often turn cold due to delayed responses, 
+        inconsistent follow-ups, or lack of personalization. 
+        
+        
+        D. Campaign & Marketing FAQs 
+        Q12. Can we run campaigns across multiple channels together?​
+        Yes. AutoNgage supports WhatsApp, Voice, Email, and SMS campaigns from a single dashboard. 
+        Q13. How does AutoNgage decide who should receive which campaign?​
+        It uses segmentation, past behavior, engagement history, and intent signals to select the right audience. 
+        Q14. Can campaigns be scheduled and paused anytime?​
+        Yes. Dealers have full control to schedule, pause, edit, or stop campaigns. 
+        Q15. Does AutoNgage support multilingual campaigns?​
+        Yes. It supports multiple languages and can auto-detect customer language preferences. 
+        
+        E. Dealer Onboarding & Operations FAQs 
+        Q16. How long does dealer onboarding take?​
+        Basic onboarding can be completed quickly once required documents and verification details are 
+        submitted. 
+        Q17. Can multiple outlets or branches be managed under one account?​
+        Yes. AutoNgage supports multi-location dealership setups. 
+        Q18. Can verified dealers start campaigns immediately?​
+        Yes. Once verified, dealers can create and launch campaigns instantly. 
+        
+        F. Control, Compliance & Security FAQs 
+        Q19. Who controls the messaging and tone?​
+        Dealers retain full control. AutoNgage follows pre-approved templates and brand guidelines. 
+        Q20. Is customer data secure?​
+        Yes. AutoNgage follows industry-standard security practices and only uses data for authorized 
+        engagement. 
+        Q21. Can AutoNgage comply with OEM and regional regulations?​
+        Yes. The platform is designed to align with OEM policies and regional compliance requirements. 
+        
+        
+        
+        
+        G. Analytics & ROI FAQs 
+        Q22. What kind of analytics does AutoNgage provide?​
+        It provides engagement metrics, conversion rates, drop-offs, cost per lead, and intent analysis across 
+        channels. 
+        Q23. Can we measure ROI from AutoNgage?​
+        Yes. Dealers can track incremental bookings, conversions, engagement uplift, and operational cost 
+        savings using  dashboard. 
+        
+        H. Scalability & Future Readiness FAQs 
+        Q24. Can AutoNgage scale across brands, regions, and languages?​
+        Yes. AutoNgage is built to scale across multiple OEMs, geographies, and languages. 
+ 
+        """
         primary_prompt = f"""
         Who you are -
-        {who_are_you}
-        Who is the customer -
-        {who_is_the_customer}
-        The purpose of this conversation -
-        {purpose_and_steps}
-        Possible states of the conversation and how to handle -
-        {possible_states_and_solutions}
-        Rules -
-        {rules}
-        Tone and style -
-        {tone_and_style}
-        Dealer description -
-        {showroom_workshop_desc}
-        Documents Data -
-        {doc_data}
-        Conversation History -
+        You are a ai sales assistant for AutoNgage.
+        Your customers are representatives of car dealerships.
+
+        You can answer basic questions about AutoNgage the product. 
+        
+        What is AutoNgage -
+        {whats_is_autongage}
+
+        Your purpose is to push the customer to try and get the customer to do a demo on either whatsapp or over a phone call.
+
+        The conversation History So Far - 
         {conversation_history}
-        Output Format -
-        {output_format}
+        
+        
+        You can do only one of 5 things.
+        1) Answer questions the user has about autongage if the information is available in the section above. the format of this answer should be natural language answer i can send back to the customer.
+        2) If the customer asks for a demo over whatsapp your only response should be - '[WHATSAPP]'
+        3) If the customer asks for a demo over a phone call your only response should be - '[PHONE]'
+        4) If the customer asks for a demo but not a specific mode. Ask them if they want to do the demo over whatsapp or phone call. Once they confirm the mode, You can use above rule #2 and #3 to proceed.
+        5) If the customer asks for anything else you should answer - I dont have an answer to that question.
+
+
         """
+
+        # primary_prompt = f"""
+        # Who you are -
+        # {who_are_you}
+        # Who is the customer -
+        # {who_is_the_customer}
+        # The purpose of this conversation -
+        # {purpose_and_steps}
+        # Possible states of the conversation and how to handle -
+        # {possible_states_and_solutions}
+        # Rules -
+        # {rules}
+        # Tone and style -
+        # {tone_and_style}
+        # Dealer description -
+        # {showroom_workshop_desc}
+        # Documents Data -
+        # {doc_data}
+        # Conversation History -
+        # {conversation_history}
+        # Output Format -
+        # {output_format}
+        # """
         return primary_prompt
     mlogger.info("is outbound")
     primary_prompt = f"""

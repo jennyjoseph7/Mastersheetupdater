@@ -30,8 +30,10 @@
     {
       "name": "campaign_sub_type",
       "type": "text",
+      "option_others": true,
       "options": [
         "brand awareness",
+        "service overdue",
         "product awareness",
         "event",
         "lead generation",

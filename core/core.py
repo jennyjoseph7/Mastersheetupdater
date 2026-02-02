@@ -94,7 +94,7 @@ MIME_TYPES = {
     'csv': 'text/csv',
 }
 
-def func_gryd_file_system(local_path, logger = None, **kwargs):
+def func_gryd_file_system(local_path, media_type = 'document', logger = None):
     """
     Uploads a file to the Gryd File System.
     Args:
@@ -105,8 +105,8 @@ def func_gryd_file_system(local_path, logger = None, **kwargs):
         The URL of the uploaded file.
     """
     logger = logger or mlogger
-    logger.info(f"Uploading file to Gryd File System: {local_path}")
-    url = f"{GRYD_FILE_SERVER_URL}/media/{kwargs.get('media_type','document')}"
+    logger.info(f"Uploading file to Gryd File System: {local_path} with media type: {media_type}")
+    url = f"{GRYD_FILE_SERVER_URL}/media/{media_type}"
 
     ext = os.path.splitext(local_path)[1].replace('.','').lower()
     content_type = MIME_TYPES[ext]

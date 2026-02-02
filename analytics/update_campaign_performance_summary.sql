@@ -160,7 +160,7 @@ BEGIN
             COUNT(*) AS cnt
         FROM session 
         WHERE dict->>'campaign_id' = p_campaign_id
-        AND LOWER(dict->>'disposition') IN ('interacted','engaged') 
+        AND (LOWER(dict->>'disposition') IN ('interacted','engaged') OR LOWER(dict->>'status') IN ('interacted','engaged'))
         GROUP BY 1
     ) t;
     

@@ -47,7 +47,12 @@ def trigger_voice_call(*args, **kwargs):
     Returns:
         None or dict: (Describe return value if applicable)
     """
-
+    
+    #temporary changes-
+    #4c99d5ea-4441-3ce6-841f-de5d7585b3b7  - campaign id for testing
+    dealership_provider_map = {
+        "us-dealership-united-states": ("elevanlab", "agent_6501kg4h48mbfhp8cryeh1a66t3j")
+    }
    
     user_data = kwargs.get("user_data", {})
     logger.info(f"Triggering voice call with user data: {user_data}")
@@ -89,7 +94,8 @@ def trigger_voice_call(*args, **kwargs):
     if user_data.get("generate_prompt", True):
         for x in converse.get_primary_prompt(*args, **{
             "session_id" : session_data['session_id'],
-            "session_data" : session_data
+            "session_data" : session_data,
+            "channel":"voice_phone"
         }):
             if x.get('prompt'):
                 session_data["prompt"] = x.get('prompt')
@@ -97,8 +103,16 @@ def trigger_voice_call(*args, **kwargs):
 
     
     logger.info(f"Session for Voice Call: {session_data}")
-    provider = user_data.get("provider_name", "tatatele").replace("-", "").strip().lower()
 
+    #temporary provider selection logic
+    provider = "tatatele"
+    logger.info(f"Using dealership_id: {user_data.get('dealership_id')} for provider mapping. {list(dealership_provider_map.keys())}")
+    if user_data.get("dealership_id") in list(dealership_provider_map.keys()):
+        provider = dealership_provider_map[user_data.get("dealership_id")][0]
+        session_data["agent_id"] = dealership_provider_map[user_data.get("dealership_id")][1]
+    #----------end-----------
+
+    #provider = user_data.get("provider_name", provider).replace("-", "").strip().lower()
     response = providers.make_call(provider, session_data, *args, **kwargs)
 
     yield {
@@ -238,7 +252,15 @@ def post_actions(session_id):
 
 
 if __name__ == "__main__":
+
+
+    #provider based on dealershiop id-
+
+
     data = {'_is_testing': False,
+'mobile_number': "8850988794",#'918401586512',
+"dealership_id": 'us-dealership-united-states',
+'generate_prompt': True,
  'ctas': ['book-service'],
  'created': 1769076498.8989508,
  'updated': 1769076620.0956566,
@@ -254,7 +276,6 @@ if __name__ == "__main__":
  'campaign_name': 'general service reminder- 22nd jan voice',
  'campaign_type': 'post-sales',
  'cost_per_lead': 0.0,
- 'dealership_id': 'deepaklogin3-south-india',
  'campaign_offer': "Hey there! It’s almost time for your vehicle's periodic maintenance. Swing by the dealership to keep your ride in tip-top shape and avoid any surprises on the road. Let’s keep your journey safe and smooth!",
  'campaign_status': 'Active',
  'number_targeted': 3,
@@ -313,7 +334,6 @@ if __name__ == "__main__":
  'provider_name': 'tata-tele',
  'template_message': None,
  'lead_id': 'dl9cay4026-deepaklogin3-general-service-reminder--22nd-jan-voice',
- 'mobile_number': '8850988794',
  'customer_name': 'Nikit',
  'email': None,
  'contact_channel': 'voice_phone',

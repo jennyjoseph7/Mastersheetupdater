@@ -23,7 +23,7 @@ sys.path.append(PARENT_DIR)
 
 from autocrm_db_helper import get_pg_connector
 
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME
 
 logger.info("[INIT] Intializing Source Connector inside whatsapp_connector------------")
 def SleepOverMessage():
@@ -544,6 +544,7 @@ class BaseWebhookConverter:
             logger.error("No valid message text found in body or media URL. Cannot process further.")
             return
 
+        # logger.info(f"[process_message_dict] PROCESSING MESSAGE DICT---{json.dumps(message_dict, indent=4)}")
         
         try: 
             self.webhook_process_end_time= time.time() - self.webhook_process_start_time
@@ -573,7 +574,6 @@ class BaseWebhookConverter:
                 "phone_number_id":message_dict.get("phone_number_id")
             }
         }
-        
         webhook_received_time = float(message_dict.get("webhook_received_time",0))
         # logger.info(f"TEST webhook_received_time----{webhook_received_time}")
 
@@ -586,6 +586,7 @@ class BaseWebhookConverter:
        
         logger.info(f"message_media_url (before processing): {message_media_url} | type: {type(message_media_url)}")
 
+        
         if isinstance(message_media_url, dict):
             file_path = message_media_url.get("file_path")
             customer_response = message_media_url.get("customer_response")
@@ -621,7 +622,7 @@ class BaseWebhookConverter:
                 "intent": message_dict.get("intent"),
             })
 
-
+        
         self.converse_payload = {
             "_job": {
                 "task": CONVERS_TASK_NAME,
@@ -639,24 +640,52 @@ class BaseWebhookConverter:
         converse_kwargs.update({
             "session_id":d.get("session_id",None),
             "campaign_id":d.get("campaign_id","inbound"),
-            "campaign_type":d.get("campaign_type",None),
+            "campaign_type":d.get("campaign_type","inbound"),
             "dealershp_id":d.get("dealership_id",None),
             # these 2 we need to check and send for email also..
             "provider":user_d.get("whatsapp_provider",None), 
             "contact":user_d.get("mobile_number",None),
+            "lead_id":"inbound" if not d.get("campaign_id") else d.get("lead_id","inbound"),
             # "lead_id":d.get("lead_id",None),
         })
         # Remove all None values
         converse_kwargs = {k: v for k, v in converse_kwargs.items() if v is not None}
-        logger.info(f"Sending Converse with payload: {safe_orjson_dumps(converse_kwargs)} for service name : {CONVERS_SERVICE_NAME}")
-        res = gryd.create_async_task(
-            CONVERS_TASK_NAME,
-            CONVERS_SERVICE_NAME,
-            kwargs=converse_kwargs
-        )
+        button_payload=message_dict.get("message_dict").get("button").get("payload") if message_dict.get("message_dict").get("button") else None
+        logger.info(f"[process_message_dict] Button payload: {button_payload}       ")
+        if message_text.lower() == "see autongage in action":
+            logger.info(f"Sending Autongage demo template with mobile_number: {mobile_number}")
+            self.send_custom_template(**{"mobile_number":mobile_number,"template_id":"01kg4ntf1ztsa783ss81nq8gqs"})
+            return
+        elif button_payload =="nada_autongage-call":
+            gryd.create_async_task(
+                "nada_pre_sales",
+                AUTOCRM_CAMPAIGN_SERVICE_NAME,
+                args=[],
+                kwargs={"channel":"voice_phone","session_id":d.get("session_id",None)}
+            )
+        elif button_payload =="nada_autongage-chat":
+            gryd.create_async_task(
+                "nada_pre_sales",
+                AUTOCRM_CAMPAIGN_SERVICE_NAME,
+                args=[],
+                kwargs={"channel":"whatsapp_chat","session_id":d.get("session_id",None)}
+            )            
+        # i will have dealership_id,campaign_id,urgency_hook,user_id, create a pre_sales lead for this.
+        # update the session with this lead id ,campaign id and campaign_type
+        else:
+            logger.info(f"Sending Converse with payload: {safe_orjson_dumps(converse_kwargs)} for service name : {CONVERS_SERVICE_NAME}")
+            if button_payload=="nada_autongage-yes":
+                converse_kwargs["customer_response"] ="Hi"
+            logger.info(f"Sending Customer Response -- {converse_kwargs.get('customer_response')}")
+            res = gryd.create_async_task(
+                CONVERS_TASK_NAME,
+                CONVERS_SERVICE_NAME,
+                kwargs=converse_kwargs
+            )
 
-        logger.info(f"Created Async task result: {res}")
+            logger.info(f"Created Async task result: {res}")
 
+    
     def handle_session_logic(self,phone_number, channel=None,campaign_details=None, from_web_chat=False):
         payload = {}
         dealership_id = None
@@ -667,7 +696,8 @@ class BaseWebhookConverter:
             payload.update({
                 "phone_number": phone_number,
                 "user_id": person.get("user_id"),
-                
+                "person_name": person.get("name"),
+                "email": person.get("email")
             })
 
         with get_pg_connector() as pg:
@@ -763,12 +793,17 @@ class BaseWebhookConverter:
         logger.info(f"Getting or creating person for phone_number: {phone_number}")
         
         with get_pg_connector() as pg:
-            person_list = list(pg.list(
-                "person", 
-                {"phone_number":phone_number}
+            # filters={"phone_number":phone_number,"_sort_by": "updated", "_sort_reverse": True}
+            person_list = list(pg.list_order_by(
+                "person",
+                {"phone_number":phone_number},
+                order_by="updated",
+                order="DESC"
             ))
+            
+            logger.info(f"Person list found: {person_list}")
             if person_list:
-                logger.info(f"Person already exists for phone_number: {phone_number}")
+                logger.info(f"Person already exists for phone_number: {phone_number} and the user_id is {person_list[0].get('user_id')}")
                 return person_list[0]  
             
             d={
@@ -795,7 +830,7 @@ class BaseWebhookConverter:
         uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
 
         return uid.hex[:16]   # 16 characters
-      
+    
     def apply_filters(self, session_id=None, user_id=None, channel=None, session_live=None, status=None):
         conditions = [] 
         params = ()
@@ -830,26 +865,39 @@ class BaseWebhookConverter:
         session_live=True AND status != completed
         """
         logger.info(f"In create or get session function. User id: {data.get('user_id')}, data: {data}")
+        
         filters = {
             "session_id":data.get("session_id"),
             "user_id":data.get("user_id"),
             # "campaign_id":data.get("campaign_id"),
+            # "channel": channel or "whatsapp_chat" if data.get("campaign_type")=="post-sales" else None, 
             "channel": channel or "whatsapp_chat",
             "session_live": True,
             "status": "completed~"
         }
         
-        # filters = {k: v for k, v in filters.items() if v is not None}
+        filters = {k: v for k, v in filters.items() if v is not None}
         condition, param = self.apply_filters(**filters)
         
-        # logger.info(f"TEST filters for sessions--{filters}")
+        logger.info(f"TEST filters for sessions--{filters}")
         with get_pg_connector() as pg:
             sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
             # logger.info(f'TEST sessions found for {sessions}')
             if sessions:
+                new_campaign_id = str(data.get("campaign_id")).strip() if data.get("campaign_id") else None
+                old_campaign_id = str(sessions[0].get("campaign_id")).strip() if sessions[0].get("campaign_id") else None
+
                 logger.info(f"Found exisiting session for user_id: {data.get('user_id')}")
                 logger.info(f"Old campaign id: {sessions[0].get('campaign_id')}, New campaign id: {data.get('campaign_id')}")
-                if data.get("campaign_id") != sessions[0].get("campaign_id"):
+
+                is_previous_session_inbound=False
+                # Handle case where old_campaign_id is 'inbound' and new_campaign_id is None
+                if old_campaign_id == "inbound" and not new_campaign_id:
+                    logger.info("Old campaign id is 'inbound' and new campaign id is None. Returning existing session.")
+                    is_previous_session_inbound=True
+                    return sessions[0]
+                logger.info(f"Is previous session inbound: {is_previous_session_inbound}")
+                if (new_campaign_id != old_campaign_id):
                     logger.info("There is a new triggered campaign for this user. Since there is an existing session, we are ending the existing(old) session and creating a new session..")
                     logger.info(f"OLD SESSIONID--{sessions[0].get('session_id')}")
                     # end the old session
@@ -900,6 +948,7 @@ class BaseWebhookConverter:
                 "session_live": True,
                 "channel": channel or "whatsapp_chat",
                 "status": "interacted",
+                "disposition": "engaged",
                 "campaign_type": data.get("campaign_type","inbound"),
                 "campaign_id": data.get("campaign_id",'inbound'),
                 "created": time.time(),
@@ -960,6 +1009,23 @@ class BaseWebhookConverter:
         )
         provider.handle_custom_template(**t_data)
 
+        return
+    
+    def send_custom_message(*args, **kwargs):
+        logger.info("Send custom message called")
+        to = kwargs.get("to")
+        message = kwargs.get("message")
+
+        if not to or not message:
+            logger.error("Missing 'to' or 'message' in custom message")
+            return
+
+        provider = WhatsappMessangerConnector.whatsapp(
+            WHATSAPP_PROVIDER_NAME, *args, **kwargs
+        )
+        logger.info(f"Provider: {provider}")
+        logger.info(f"Sending message to {to} with content: {message}")
+        provider._send_text(to, message)
         return
     
     # @timelogger()
@@ -1025,7 +1091,27 @@ class BaseWebhookConverter:
         t_data.update({"headers":headers,"base_url":base_url})
         provider.handle_custom_template(**t_data)
         
-        
+    
+    def send_twilio_message(*args,**kwargs):
+        logger.info("Send Twilio message called---")
+        mobile_number=kwargs.get("mobile_number")        
+        message_text=kwargs.get("message_text")        
+        if not mobile_number or not message_text:
+            logger.error("mobile_number or message_text missing")
+            return
+        t_data={
+            "mobile_number":mobile_number,
+            "message_text":message_text,
+        }
+                        
+        provider = WhatsappMessangerConnector.whatsapp(
+                "twilio", *args, **kwargs
+            )
+        headers=BaseWebhookConverter().get_headers("", "")
+        config = PROVIDER_CONFIG.get("twilio", {})
+        base_url = config.get("base_url", "")
+        t_data.update({"headers":headers,"base_url":base_url})
+        provider.handle_twilio_message(**t_data)
 class PayloadBuilder:
     def __init__(self, provider_name, from_number):
         self.provider_name = provider_name
@@ -1085,7 +1171,8 @@ class BaseWhatsappMessenger:
             "meta":self.manage_graph_api,
             "gupshup":self.manage_gupshup_api,
             "rml":self.manage_rml_api,  
-            "concord":self.manage_concord_api
+            "concord":self.manage_concord_api,
+            "twilio":self.manage_twilio_api,
         }
         pass
     def manage_concord_api(self,*args,**kwargs):
@@ -1100,6 +1187,11 @@ class BaseWhatsappMessenger:
         '''
         raise NotImplementedError("Subclasses must implement the `manage airtel api` method.")
     
+    def manage_twilio_api(self,*args,**kwargs):
+        '''
+        Method to manage twilio api.
+        '''
+        raise NotImplementedError("Subclasses must implement the `manage twilio api` method.")
     def manage_graph_api(self,*args,**kwargs):
         '''
         Method to manage airtel api.
@@ -1593,11 +1685,12 @@ def update_session_data_in_lead(session_id,status):
         lead_id = session_data.get("lead_id")
         campaign_type = session_data.get("campaign_type")
         last_interaction_time = session_data.get("last_response_time",None)
-        lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
-        lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
-        logger.info(f"Updating session data in lead with session_id: {session_id} and lead_id: {lead_id}")
-        pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
-        logger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
+        if lead_id:
+            lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
+            lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
+            logger.info(f"Updating session data in lead with session_id: {session_id} and lead_id: {lead_id}")
+            pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
+            logger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
 
 
         
