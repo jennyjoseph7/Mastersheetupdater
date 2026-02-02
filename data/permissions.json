@@ -127,5 +127,11 @@
       "read_access": true,
       "role": "human_agent"
     }
+  ],
+  "session": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
   ]
 }
