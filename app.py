@@ -50,22 +50,22 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="overall_campaign_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/20 * * * *",
+              schedule = "*/10 * * * *",
               add_schedule_to_queue=False
             )
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="check_inactive_sessions",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/15 * * * *",
-              kwargs={"inactivity_time": 1440, "only_for_channels":["whatsapp_chat"],"outbound_timeout_minutes":60},
+              schedule = "*/5 * * * *",
+              kwargs={"inactivity_time": 10, "only_for_channels":["whatsapp_chat"],"outbound_timeout_minutes":60},
               add_schedule_to_queue=False
         )
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="template_approval",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/20 * * * *",
+              schedule = "*/10 * * * *",
               add_schedule_to_queue=False
         )
         
@@ -73,7 +73,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="performance_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/20 * * * *",
+              schedule = "*/0 * * * *",
               add_schedule_to_queue=False
         )
         

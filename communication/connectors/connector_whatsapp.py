@@ -389,7 +389,6 @@ def post_contact_status(*args, **data):
     Handle and store contact status updates coming from WhatsApp / messaging providers.
     Disposition updates for post-sales leads are strictly monotonic.
     """
-
     DISPOSITION_SEQUENCE = [
         "queued",
         "attempted",
@@ -420,7 +419,14 @@ def post_contact_status(*args, **data):
         campaign_type = None
         channel = None
         # update person
-        person_d = list(pg.list("person", {"phone_number": data.get("phone_number")}))
+        # person_d = list(pg.list("person", {"phone_number": data.get("phone_number")}))
+        person_d = list(pg.list_order_by(
+                "person",
+                {"phone_number": data.get("phone_number")},
+                order_by="updated",
+                order="DESC"
+            ))
+        
         if person_d:
             person = person_d[0]
             user_id = person.get("user_id")
@@ -488,6 +494,8 @@ def post_contact_status(*args, **data):
         channel = channel or data.get("channel") 
         lead_table = "post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
         lead_pk = "post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
+        
+        
         a={lead_pk: lead_id or data.get("lead_id")}
         lead_d = list(pg.list(lead_table, a))
         # logger.info(f"[post_contact_status] lead_table={lead_table}, a={a}, lead_d={lead_d}")
@@ -537,7 +545,16 @@ def post_contact_status(*args, **data):
                 f"(current={lead.get('disposition')}, incoming={incoming_disp})"
             )
         # logger.info(f"[post_contact_status] update_payload={update_payload}")
+    
+        # logger.info(f"[post_contact_status] lead_table={lead_table}, lead_pk={lead_pk}, lead_id={lead_id or data.get('lead_id')}")
         if update_payload:
+            if update_payload.get("lead_id"):
+                logger.info(f"[post_contact_status] Removing lead_id from update_payload")
+                update_payload.pop("lead_id")
+            
+            if update_payload.get("dealership_id"):
+                logger.info(f"[post_contact_status] Removing dealership_id from update_payload")
+                update_payload.pop("dealership_id")
             pg.update(
                 lead_table,
                 lead_pk,

@@ -150,12 +150,15 @@
     {
       "name": "campaign_objective_name",
       "type": "text",
-      "function": "get_from_model",
-      "args": [
-        "campaign_objective",
-        "campaign_objective_id",
-        "campaign_objective_name"
-      ]
+      "default":{
+        "function": "get_from_model",
+        "args": [
+          "campaign_objective",
+          "campaign_objective_id",
+          "campaign_objective_name"
+        ]
+      }
+      
     },
     {
       "name": "campaign_objective_type",

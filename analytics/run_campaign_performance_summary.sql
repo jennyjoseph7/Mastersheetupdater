@@ -20,7 +20,8 @@ BEGIN
         FROM pre_sales_campaign c
         LEFT JOIN campaign_performance_summary s
             ON s.campaign_performance_summary_id =
-               c.dict->>'campaign_id' || '-pre-sales'
+            --    c.dict->>'campaign_id' || '-pre-sales'
+                c.dict->>'campaign_id'
         WHERE
             s.campaign_performance_summary_id IS NULL
             OR c.updated > TO_TIMESTAMP(
@@ -39,7 +40,8 @@ BEGIN
         FROM post_sales_campaign c
         LEFT JOIN campaign_performance_summary s
             ON s.campaign_performance_summary_id =
-               c.dict->>'campaign_id' || '-post-sales'
+            --    c.dict->>'campaign_id' || '-post-sales'
+                c.dict->>'campaign_id'
         WHERE
             s.campaign_performance_summary_id IS NULL
             OR c.updated > TO_TIMESTAMP(

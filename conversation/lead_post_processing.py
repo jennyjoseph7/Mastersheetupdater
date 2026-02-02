@@ -124,9 +124,10 @@ def post_session_process(*args, **kwargs):
     with get_pg_connector() as pg:
         updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
         pg.update("session","session_id",session_id,session_update_data)
-    
+        mlogger.info("appointment data == {}".format(appt_date_time_purpose))
         if appt_date_time_purpose.get("appointment_date"):
             visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data)
+            mlogger.info("visit data == {}".format(visit_data))
             if not visit_data:
                 return
             visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "workshop_visit"
@@ -769,12 +770,14 @@ def get_disposition(session_id, session_data_cache):
     return hp.json.loads(resp)
 def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data):
     from datetime import datetime
-    session_data = session_data.get("data",{})
+    mlogger.info("get_visit_data called with session_data_cache == {}".format(json.dumps(session_data_cache)))
+    session_data = session_data_cache
+    campaign_data = session_data.get("campaign_data",{})
     campaign_type = "pre_sales" if campaign_data.get("campaign_type") == "pre-sales" else "post_sales"
 
     lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id")
     campaign_data = session_data.get("campaign_data")
-    
+    mlogger.info("campaign_data == {}".format(json.dumps(campaign_data)))
     if campaign_data.get("campaign_type") == "pre-sales":
         if not lead_data.get("showroom_id"):
             return {}
@@ -792,12 +795,12 @@ def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_dat
             "appointment_date" : date_str,
             "appointment_time" : time_str
     }
-    if campaign_data.get("campaign_type") == "post-sales":
+    if campaign_type == "post_sales":
         appt_data["post_sales_lead_id"]= lead_id
         appt_data["service_date"]= lead_id
         appt_data["workshop_id"] = lead_data.get("workshop_id")
 
-    elif campaign_data.get("campaign_type") == "pre-sales":
+    elif campaign_type == "pre_sales":
         appt_data["pre_sales_lead_id"]= timestamp_object.timestamp()
         appt_data["showroom_id"] = lead_data.get("showroom_id")
 
@@ -910,8 +913,8 @@ def get_extra_data(session_id,session_data_cache):
     """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
     mlogger.info("got extra data response as ===== {}".format(resp))
-
-    updated_dict = hp.json.loads(resp)
+    if resp and isinstance(resp,str):
+        updated_dict = hp.json.loads(resp)
     mlogger.info("getting extra data summary for campaign_type {} and updated_dict {}".format(campaign_type,updated_dict))
     if campaign_type == "post-sales":
         current_summary = lead_data.get("vehicle_persona_summary")

@@ -58,6 +58,11 @@ AUTOCRM_RESPONSE_PROVIDED_UNITS = "500_characters"
 AUTOCRM_RESPONSE_PROVIDED_ITEM = "response_to_query"
 WHATSAPP_PROVIDER_NAME="airtel"
 WHATSAPP_PROVIDER_NUMBER="917795030574"
+
+# twilio
+# WHATSAPP_PROVIDER_NAME="twilio"
+# WHATSAPP_PROVIDER_NUMBER="+14243494750"
+
 EMAIL_PROVIDER_REGION = "ap-south-1"
 EMAIL_PROVIDER_NAME = "AwsSender"
 EMAIL_SENDER_NAME = "info@iamdave.ai"
@@ -76,6 +81,18 @@ BILLING_MODEL_NAME = "billing"
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET")
 RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET")
+
+# twilio
+API_KEY="sk_3f302b2e36acc353d040152b3d6c9bc7bf728955483bce75"
+TWILIO_ACCOUNT_SID="AC948289c0813572345e4e7982d680b3c5"
+TWILIO_AUTH_TOKEN="1e0baeef37f6d89b3b553a3588c74bcd"
+TWILIO_PHONE_NUMBER="+14243494750"
+TWILIO_WHATSAPP_NUMBER="+14243494750"
+PORT="8080"
+HOST="0.0.0.0"
+AGENT_ID="agent_5701ka8618cbfxcbdp4wg6xb3x23"
+AGENT_NAME="maruti_RFP"
+PHONE_NUMBER_ID="phnum_8201k1anbf9wet6v915q8arr1vmz"
 
 BASE_PATH = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_PATH, "data")
@@ -159,15 +176,21 @@ def load_autocrm_models(logger = None):
 def post_autocrm_model(model_name, enterprise = None, logger = None):
     logger = logger or clogger
     enterprise = enterprise or gryd.base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
+    with hp.read_file(DATA_DIR, f"permissions.json") as pj:
+        permissions = pj.get(model_name, [])
     with hp.read_file(DATA_DIR, f"{model_name}.json") as model_json:
         logger.info(f"Posting model: {model_name}")
         try:
             enterprise.post_model(model_name, model = model_json)
             logger.info(f"Model posted successfully: {model_name}")
-            return gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
+            r = gryd.base_model.Model(model_name, AUTOCRM_APP_ENTERPRISE_ID)
+            if permissions:
+                r._update_permissions(permissions)
+            return r
         except Exception as e:
             logger.error(f"Error posting model: {model_name}")
             raise
+
 
 
 def post_json_file(filename_json, autocrm_model, start_from = 0, limit = None, logger = None):
@@ -265,13 +288,14 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, log
                         r = []
                         logger.info("Converting object list attribute %s: %s", k, rk)
                         mrl = list(map(lambda x: x.strip(), row[k].split('|')))
+                        logger.info(f"Object list attribute {k} after : {mrl}")
                         for mk in mrl:
-                            try:
-                                rk = {x[0].strip():x[1].strip() for x in mk.split(":")}
-                            except ValueError as e:
-                                raise ValueError(f"Value for for attribute {k} is not parseable into nested_object: {row[k]}")
-                            else:
-                                r.append(rk)
+                            rk = {}
+                            for rk1 in mk.split(","):
+                                rk1 = rk1.strip()
+                                if ":" in rk1:
+                                    rk[rk1.split(':')[0].strip()] = rk1.split(':')[1].strip()
+                            r.append(rk)
                         row[k] = r or None
                         logger.info("Converted object list attribute %s: %s -> %s", k, rk, row[k])
                 row = {k:v for k, v in row.items() if v not in (None, '')}

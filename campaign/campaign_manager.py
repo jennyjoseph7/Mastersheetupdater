@@ -24,7 +24,7 @@ from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 from agents.get_whatsapp_template_agent import get_whatsapp_template
 from agents.get_email_template_agent import get_email_template
 from communication.connectors.email_communication import communication_sender
-from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,WHATSAPP_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME
+from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,WHATSAPP_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
@@ -269,7 +269,7 @@ class BaseCampaignCreater:
                     "channel_provider":whatsapp_provider,
                     "channel":"whatsapp_chat",
                 }
-        
+            
             gryd.create_async_task(
                 "post_contact_status", 
                 AUTOCRM_COMMUNICATION_SERVICE_NAME, 
@@ -673,9 +673,152 @@ def trigger_campaign(*args, **kwargs):
 
     logger.info("All valid leads queued successfully.")
 
+@gryd.is_a_task(function_name="nada_pre_sales")
+def nada_pre_sales(*args,**kwargs):
+    logger.info(f"------ nada_pre_sales ------")
+    channel = kwargs.get("channel")
+    session_id = kwargs.get("session_id")
+    logger.info(f"Channel: {channel}, session ID: {session_id}")
+    dealership_id="us-dealership-united-states"
+    campaign_id="4c99d5ea-4441-3ce6-841f-de5d7585b3b7"
+    urgency_hook="Book now — slots are filling fast!"
+    
+    if not session_id and not channel:
+        logger.error("Session ID or Channel is required.")
+        return
+    user_id=None
+    with get_pg_connector() as pg:
+        # getting the user_id from session_id
+        session_data=list(pg.list("session",{"session_id":session_id}))
+        if not session_data:
+            logger.error(f"No session found for session_id={session_id}")
+            return
+        session_data=session_data[0]
+        logger.info(f"TEST SESSION DATA--{session_data}")
+        user_id=session_data.get("user_id")
+        phone_number=session_data.get("phone_number")
+        person_name=session_data.get("person_name")
+        email=session_data.get("email")
+        if not user_id or not phone_number:
+            logger.error(f"User ID or Phone number missing in session data for session_id={session_id}")
+            return
+        lead_id=check_and_create_lead_object(**{
+            "channel":channel,
+            "session_id":session_id,
+            "dealership_id":dealership_id,
+            "campaign_id":campaign_id,
+            "user_id":user_id,
+            "urgency_hook":urgency_hook,
+            "phone_number":phone_number,
+            "person_name":person_name,
+            "email":email
+        })
+        
+        # update the session with lead_id and campaign details
+        s=pg.update("session","session_id",session_id,{"lead_id":lead_id,"campaign_id":campaign_id,"dealership_id":dealership_id,"campaign_model":"pre_sales_campaign","campaign_type":"pre-sales","lead_model":"pre_sales_lead"})
+        logger.info(f"Session data updated with lead_id={lead_id} for the session_id={session_id}")
+        
+        # updating the session_data_cache with data:{}
+        pg.update("session_data_cache","session_id",session_id,{"data":{}})
+        
+        # process the lead
+        # process_single_lead(channel,lead_id,"pre-sales",campaign_id,user_id)
+        gryd.create_async_task(
+            "process_single_lead",
+            AUTOCRM_CAMPAIGN_SERVICE_NAME,
+            args=[channel, lead_id, "pre-sales", campaign_id,"01kga11vdgsmhte5p3jzmh2n73"],
+            kwargs={}
+        )
+        
+        logger.info(f"Pre-sales lead processed for lead_id={lead_id}")
+        
+    
+def check_and_create_lead_object(**kwargs):
+    dealership_id=kwargs.get("dealership_id")
+    campaign_id=kwargs.get("campaign_id")
+    user_id=kwargs.get("user_id")
+    urgency_hook=kwargs.get("urgency_hook")
+    with get_pg_connector() as pg:
+        existing_leads=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
+        if existing_leads:
+            logger.info(f"Lead already exists for campaign_id={campaign_id}, user_id={user_id}")
+            return existing_leads[0].get("pre_sales_lead_id")
+        logger.info(f"TEST USER ID--{user_id} and campaign_id--{campaign_id}")
+        lead_data={
+            "ctas": [
+                "Book a Test Drive",
+                "Request a Callback"
+            ],
+            "created": time.time(),
+            "updated": time.time(),
+            "lead_tags": [
+                "test-drive-booking",
+                "book-test-drive"
+            ],
+            "region_id": "united-states",
+            "campaign_id": campaign_id,
+            "user_id": user_id,
+            "person_name": kwargs.get("person_name"),
+            "email": kwargs.get("email"),
+            "dealer_name": "us dealership",
+            "disposition": "queued",
+            "region_name": "United states",
+            "workshop_id": "None",
+            "phone_number": kwargs.get("phone_number"),
+            "urgency_hook": urgency_hook,
+            "audience_name": "us test",
+            "campaign_name": "Mustang Test Drive ",
+            "campaign_type": "pre-sales",
+            "dealership_id": dealership_id,
+            "campaign_offer": "Don't miss your chance to drive the legendary Mustang! Schedule your test drive now and discover what makes this car a true classic. Limited slots available!",
+            "finance_required": False,
+            "supported_brands": [
+                "ford-united-states",
+                "toyota-usa-united-states",
+                "chevrolet-united-states",
+                "general-motors-truck-company-united-states",
+                "hyundai-motor-america-united-states"
+            ],
+            "vehicle_category": "Passenger Vehicle",
+            "campaign_sub_type": "other",
+            "conversation_tone": "Be on-point, warm, confident, polite, conversational, and very crisp - like a friendly local representative. Avoid being pushy or overly sales oriented. Incorporate natural conversational elements like brief affirmations to maintain engagement. End every conversation politely, with warmth and gratitude. Speak at a medium pace, easy to follow, with positive, empathetic, and reassuring emotion (not robotic).",
+            "pre_sales_lead_id": "vandana-8401586512-us-dealership-united-states-4c99d5ea-4441-3ce6-841f-de5d7585b3b7",
+            "campaign_description": "Don't miss your chance to drive the legendary Mustang! Schedule your test drive now and discover what makes this car a true classic. Limited slots available!",
+            "campaign_objective_id": "pre-sales-test-drive-booking",
+            "dealership_guidelines": "- This dealership sells vehicles only from the following brands: Ford, Toyota, Chevrolet, GMC and Hyundai.You must answer questions strictly using the vehicle information provided to you for these brands only.\n -Do not provide information about any other brands or manufacturers.\n -If a user asks about a vehicle, feature, or specification that is not available in the provided data, respond politely that you do not have that information at the moment. \n -Do not guess, assume, or fabricate details.\n -Keep responses clear, professional, and customer-friendly, suitable for a dealership environment.\n -When possible, highlight features and details that are important to American car buyers  such as performance, engines, safety, technology, comfort, towing, trims, etc. \n - The Ford F-150 is America's best-selling full-size pickup known for its broad engine lineup, rugged capability, advanced tech, and trim-by-trim versatility: base trims like XL and STX offer practical work-ready features with a 2.7 L EcoBoost V6 (approximately 325 hp, 400 lb-ft) and a smooth 10-speed automatic transmission, while mid-range trims such as XLT and Lariat step up with options like a 5.0 L Ti-VCT V8 (approximately 400 hp, 410 lb-ft) or 3.5 L EcoBoost V6 (approximately 400 hp, 500 lb-ft) and available hybrid PowerBoost powertrain (approximately 430 hp, 570 lb-ft) for strong everyday performance and excellent towing; top-end models like King Ranch, Platinum, Tremor, Raptor, and Raptor R bring luxury, off-road hardware, and high-output engines up to a supercharged 5.2 L V8 with 720 hp on Raptor R. The F-150's capability is class-leading: when properly equipped it can tow up to around 13 500 lbs and haul hefty payloads (approximately 2 440 lbs), with advanced trailer tech such as Pro Trailer Backup Assist and Pro Trailer Hitch Assist to make towing easier. Turning circle figures are competitive for a full-size truck (about 47.8 ft/41.2 ft diameter, varying by configuration) and the truck offers multiple drive modes (Normal, Eco, Sport, Tow/Haul, plus terrain modes on 4X4 or off-road trims) to tailor performance. Tech highlights across the lineup include SYNC 4 infotainment with large touchscreens and wireless Apple CarPlay/Android Auto, over-the-air updates, Ford Co-Pilot360 safety suite, available BlueCruise hands-free highway driving, and Pro Power Onboard generators for job-site or camping power. Trim choices let buyers prioritize value and utility (XL/STX), balanced comfort and capability (XLT/Lariat), premium appointments (King Ranch/Platinum) or serious off-road performance (Tremor/Raptor) all with a smooth 10-speed automatic and strong torque delivery suited to American truck buyers.\n - The Ford Mustang remains an iconic American sports car with a lineup tailored to different performance tastes, combining classic rear-wheel-drive dynamics with modern powertrains and tech: base EcoBoost trims use a turbocharged 2.3 L EcoBoost I-4 making about 315 hp and 350 lb-ft of torque paired with a 10-speed automatic transmission for quick, efficient acceleration and everyday usability; GT models step up to the naturally aspirated 5.0 L Coyote V8 delivering around 480-486 hp and 415-418 lb-ft torque with a 6-speed manual (with rev-matching) or optional 10-speed automatic for classic muscle car feel and strong mid-range pull; and the performance-focused Dark Horse variant boosts that V8 to around 500 hp with 418 lb-ft, reinforced drivetrain components, upgraded suspension and brakes for track-ready capability. All variants use a limited-slip differential and rear-wheel drive to maximize traction, and while official turning radius figures for the latest Mustang aren't widely published, prior models typically had an 18-20 ft curb-to-curb turning radius, making U-turns typical for a long-wheelbase coupe. Technical specs emphasize spirited performance (0-60 times vary strongly by trim and conditions) and handling balance with available MagneRide adaptive dampers on higher trims, plus classic muscle-car exhaust notes and optional performance packages that include enhanced cooling, larger brakes, and torque-vectoring tech. Inside, Mustangs come with modern infotainment, digital instrument displays, driver assistance features, selectable drive modes (including Track, Sport, Normal), and options like launch control; trims typically include EcoBoost, EcoBoost Premium, GT, GT Premium, Dark Horse and convertible options within each for buyers prioritizing everything from daily driving and fuel economy to high-performance track use. \n - The Ford Explorer is a versatile, three-row midsize SUV that appeals to American buyers looking for strong performance, family-friendly practicality, and modern tech: it offers a standard 2.3 L EcoBoost turbocharged inline-4 engine producing about 300 hp and 310 lb-ft of torque and an available 3.0 L EcoBoost twin-turbo V6 with around 400 hp and 415 lb-ft of torque on higher trims (both paired with a smooth 10-speed automatic transmission and available rear-wheel-drive or Intelligent 4WD) for confident highway merging and towing; the Explorer can tow up to around 5,000 lbs with the standard Class III Trailer Tow Package. Trims span six main variants — Active 100A (entry-level), Active, ST-Line (sportier styling), Tremor (off-road-ready with all-terrain hardware), Platinum (luxury-oriented), and ST (performance SUV with sport-tuned suspension) - letting buyers emphasize value, capability, comfort, or performance. All models include a selectable drive mode system with Normal, Eco, Sport, Tow/Haul, Slippery, Trail/Off-Road settings to suit conditions, and a modern tech suite with the Ford Digital Experience's large touchscreen, digital gauge cluster, wireless Apple CarPlay/Android Auto, and advanced safety aids (Ford Co-Pilot360). Standard features grow with trim level to include premium audio, heated/ventilated seats, panoramic roof, and hands-free BlueCruise highway driving on higher trims. While official current turning radius figures aren't broadly published by Ford, typical midsize SUV turning circles are competitive for city driving and U-turns. With three rows of seating, generous cargo space and comprehensive driver assistance, the Explorer blends daily usability with strong powertrain choices and customizable trim-by-trim features for a range of American SUV buyers.\n - The Chevrolet Silverado 1500 is a full-size American pickup that blends power, capability, modern tech, and a range of trims to suit work-oriented and lifestyle buyers alike: under the hood buyers can choose from four main engines — a 2.7 L TurboMax turbo-4 with about 310 hp and 430 lb-ft of torque paired to an 8-speed automatic, a traditional 5.3 L EcoTec3 V8 making 355 hp and 383 lb-ft with a 10-speed automatic, a 6.2 L EcoTec3 V8 delivering 420 hp and 460 lb-ft also with a 10-speed, and a 3.0 L Duramax turbo-diesel I6 that offers 305 hp and a strong 495 lb-ft torque figure for excellent towing and fuel economy trade-offs - all designed for strong towing and hauling across configurations. The Silverado's trims range from WT (Work Truck), Custom, LT, RST, Trail Boss and off-road-focused ZR2, up to premium LTZ and High Country, giving customers choices from basic work-ready trucks to rugged off-road builds and luxury-oriented models with advanced comfort and tech features such as large infotainment screens, advanced driver assists, and optional equipment like bed organizers or Multi-Flex tailgate hardware. On the technical side, the Silverado pairs these engines with rear-wheel drive or available four-wheel drive, offers competitive towing capacity up to around 13 000+ lbs depending on configuration, and while exact current turning radius isn't broadly published, recent 1500 models have turning diameters that are typical for full-size pickups (longer wheelbases generally mean wider turns). With its combination of flexible powertrains, robust torque delivery, smooth automatic transmissions, and a broad lineup of trims to match performance, utility, off-road ability and refinement, the Silverado 1500 remains a strong choice for American truck buyers seeking capability and choice.\n - The Chevrolet Equinox is a compact SUV that blends efficient performance, practical utility, modern tech, and broad appeal for American buyers; it is powered by a turbocharged 1.5 L four-cylinder engine producing about 175 hp and 184 lb-ft of torque in front-wheel-drive models and up to around 203 lb-ft with all-wheel drive, paired with a continuously variable transmission (CVT) for FWD or an available 8-speed automatic for AWD for smooth daily driving and responsive power delivery. Key trims include LT (value-oriented), RS (sport-inspired styling), and ACTIV (rugged look with all-terrain capability), each offered with FWD or AWD to suit different preferences and weather conditions, and all trims come with Chevy Safety Assist active safety tech and a large 11.3-inch infotainment display with wireless Apple CarPlay and Android Auto to keep drivers connected. The Equinox delivers competitive cargo space and passenger room with a turning diameter around 37.1 ft (curb-to-curb) for easy maneuvering in urban and suburban environments, and while towing capacity is modest (around 1,500 lbs max with AWD), it covers most everyday needs. Amenities vary by trim from heated seats, driver-assist features and upgraded interior materials on RS and ACTIV, to rugged exterior cues and all-terrain tires on ACTIV, making the Equinox appealing for buyers prioritizing efficiency, safety, comfort, and a versatile compact SUV package. \n - The Chevrolet Traverse is a three-row midsize SUV that appeals to American buyers seeking spacious family-oriented practicality, strong performance, and modern tech: it's powered by a turbocharged 2.5 L inline-4 engine producing around 328 hp and 326 lb-ft of torque paired with an 8-speed automatic transmission, with front-wheel drive standard and available all-wheel drive for added capability; this setup delivers confident highway merging, respectable fuel economy (around 20-27 mpg city/highway depending on drivetrain), and a towing capacity up to about 5,000 lbs for trailers or boats. Key trims include LT (well-equipped core model), Z71 (adds rugged styling and advanced AWD hardware), RS (sport-inspired design), and High Country (top-tier luxury features and available advanced tech), each offering seating for up to 7-8 passengers, ample cargo room and family-friendly features. The Traverse's turning radius is around 5.9 m (about 19.5 ft), making it reasonably maneuverable for a larger SUV, and it packs practical dimensions with a long wheelbase (~121 in) for stable handling. Technology highlights include a large touchscreen with Apple CarPlay/Android Auto, wireless phone charging, multiple USB-C ports, advanced safety systems, and available premium touches like Super Cruise hands-free highway driving on higher trims. With its blend of powerful turbo engine, smooth automatic transmission, versatile trims from practical to premium, and useful family-centric features, the Traverse is a strong choice in the midsize SUV segment. \n - The Toyota RAV4 is a complete redesign for the U.S. market and now comes standard with hybrid powertrains (no conventional gas-only engine), blending efficiency, technology, utility, and safety in a compact SUV package that appeals to American buyers. Powertrain options include a 2.5-liter four-cylinder hybrid engine paired with electric motors delivering about 226 hp in front-wheel-drive form or 236 hp with AWD, coupled to an e-CVT transmission for smooth, efficient operation; a plug-in hybrid (PHEV) variant boosts output to around 320 hp with a ~50 mile electric-only range and all-wheel drive across the board. The RAV4 offers respectable torque from its hybrid system (with around 163 lb-ft from the 2.5L engine plus additional electric motor torque) and a turning radius around 5.6 m (18.5 ft) that contributes to easy maneuverability in urban environments. Dimensions strike a practical balance with roughly 181 in length, ~105.9 in wheelbase, and ample cargo/passenger space, while towing capacity ranges from around 1,750 lbs on base models up to 3,500 lbs when properly equipped on select AWD trims. Standard tech includes a large infotainment touchscreen with wireless Apple CarPlay/Android Auto, Toyota Safety Sense advanced driver-assistance suite, and optional features like wireless charging and premium JBL audio; comfort/convenience features expand with higher trims. In the U.S., the RAV4 is offered in trims such as LE, SE, XLE, XLE Premium, Woodland, XSE, Limited (plus higher-end or performance-oriented PHEV/Rugged/Sport variants), giving buyers a broad range of capability and feature content to match lifestyle and budget needs. \n - The Toyota Tacoma is a highly capable, mid-size pickup engineered for American buyers who want a blend of everyday practicality, strong performance and serious off-road ability: it's built on Toyota's TNGA-F body-on-frame platform and offers two main powertrains - a 2.4-liter i-FORCE turbocharged four-cylinder gasoline engine that delivers up to about 278 hp and 317 lb-ft of torque (with 228 hp/243 lb-ft on the base SR) paired with an 8-speed automatic or available 6-speed intelligent manual transmission, and an i-FORCE MAX hybrid 2.4L turbo with integrated electric motor producing around 326 hp and 465 lb-ft, both optimized for towing, daily driving and trail duty. The Tacoma can tow up to roughly 6,500 lbs when properly equipped and hauls a hefty payload, while its turning radius/minimum circle is around 6.8 m (≈22.2 ft), aiding maneuverability in parking and tight trails. The truck's rugged capability is backed by features like full-time or part-time 4WD systems, multi-terrain select, crawl control and locking differentials on off-road trims, plus Toyota Safety Sense 3.0 with advanced driver aids. Dimensionally the Tacoma has a wheelbase around 131.9 in and typical midsize pickup proportions with a 5-seat cabin and bed options; ground clearance and suspension tune vary by trim. In the U.S. lineup, Tacoma is available across many trims to match different needs and budgets, including SR, SR5, TRD PreRunner, TRD Sport, TRD Off-Road, Limited, Trailhunter and TRD Pro - with i-FORCE MAX hybrid versions offered on select higher and off-road-oriented models - each adding various comfort, tech and capability upgrades such as larger touchscreens, premium audio, adaptive suspension, ARB gear, FOX or Bilstein shocks, and off-road protection. \n - The Toyota Grand Highlander is a three-row, family-oriented SUV that blends spacious interior comfort with versatile performance and modern tech tailored for American buyers: it offers three powertrain choices - a 2.4-liter turbocharged four-cylinder gasoline engine (≈265 hp, 310 lb-ft torque, 8-speed automatic), a 2.5-liter hybrid (≈245 hp with excellent fuel economy), and a 2.4-liter Turbo Hybrid MAX (≈362 hp and ~400 lb-ft torque with a 6-speed automatic), all available with front-wheel drive or all-wheel drive depending on grade. These powertrains provide a balance of everyday responsiveness, towing capability (up to ~5,000 lbs on gas and Hybrid MAX, ~3,500 lbs on hybrid), and efficiency, with EPA combined mpg in the mid-30s on hybrid trims. Standard and available features include Toyota Safety Sense 3.0 advanced driver-assistance, a 12.3-inch touchscreen with wireless Apple CarPlay/Android Auto, three-zone climate control, multiple USB-C ports, digital key, head-up display, panoramic roof, and premium JBL audio on higher trims. Its adult-sized third row and up to ~97.5 cu ft of cargo space (seats folded) support family hauling and road trips. While official turning radius figures aren't widely published, its 3-row SUV footprint (~201 in length, ~116 in wheelbase) yields typical midsize SUV maneuverability. The U.S. lineup includes LE, XLE, Limited, Hybrid Nightshade, and Platinum trims — with both gas and hybrid powertrains across many grades (Hybrid MAX generally on Limited and Platinum) — giving buyers options from efficient family transport to performance-oriented comfort and tech-rich luxury. \n - The GMC Sierra 1500 is positioned as a full-size American truck blending capability, tech, comfort and towing strength: it's offered in a broad range of trims from Pro, SLE, Elevation, SLT, AT4, AT4X, Denali and Denali Ultimate with varying levels of comfort, off-road gear and luxury amenities (from basic work-oriented features up through premium leather seats, adaptive cruise, Super Cruise hands-free driving and advanced cameras) to suit different buyers' needs. Powertrain options include a base 2.7L TurboMax 4-cyl (≈310 hp and 430 lb-ft torque with an 8-speed automatic), a 5.3L EcoTec3 V8 (~355 hp/383 lb-ft), an optional 6.2L V8 (~420 hp/460 lb-ft) and an available 3.0L Duramax Turbo-Diesel I-6 (~305 hp/495 lb-ft), all paired to GM's smooth automatic transmissions (8-speed or 10-speed depending on engine), delivering robust torque for towing and hauling. Towing and hauling are strong points: depending on configuration and engine the Sierra can tow up to around 13,300 lbs when properly equipped and carry nearly 2,200 lbs of payload, with advanced ProGrade trailering systems and up to 14 camera views to assist hitching and maneuvering. Standard tech includes a large infotainment touchscreen, digital driver displays, wireless Apple CarPlay/Android Auto, premium audio options on higher trims, and safety features like lane-keep assist, automatic emergency braking and more. While official turning radius specs vary by cab and drivetrain setup and aren't always publicly highlighted, the Sierra is designed to balance full-size truck capability with reasonable maneuverability. Heavy-duty Sierra 2500/3500 models with larger gas/diesel V-8s and Allison 10-speed automatics are also available for customers needing more commercial-grade performance. Additionally, GMC offers an EV Sierra lineup with battery range options and unique trims (Elevation, AT4, Denali) featuring dual electric motors, substantial power, long range and advanced off-road modes for buyers interested in an electrified truck experience. \n - The GMC Yukon & Yukon XL are large American-style, three-row full-size SUVs built for families, towing and highway comfort, offered in multiple trim levels - Elevation (entry), AT4 and AT4 Ultimate (off-road oriented), and Denali and Denali Ultimate (luxury premium) — with sophisticated interiors, advanced infotainment, and safety tech including large touchscreens, digital driver displays, available Super Cruise hands-free driving, and premium audio options on upper trims. Power comes from three engines across the lineup: a 5.3 L V8 (~355 hp and 383 lb-ft torque), a 6.2 L V8 (~420 hp and 460 lb-ft), and an available 3.0 L Turbo-Diesel I-6 (~305 hp and 495 lb-ft) — all paired to a 10-speed automatic transmission with rear-wheel-drive standard on some trims and 4WD/AWD available or standard on rugged versions. These SUVs are engineered for heavy-duty tasks, with maximum towing up to about 8,400 lbs depending on engine, drivetrain and configuration, and substantial passenger/cargo volumes suitable for long trips or hauling gear. The turning diameter/radius is around 39.5 ft curb to curb (≈~19.75 ft radius), reflecting the vehicle's size while still enabling reasonable maneuverability for its class. Between the standard and available features are advanced driver assists, adaptive air ride suspension on higher trims, Magnetic Ride Control on off-road AT4 models, premium leather seating, panoramic sunroof options, multiple camera views and towing aids, and distinct styling and comfort levels that let buyers choose from capable everyday-use models to highly equipped luxury versions in both Yukon and longer-wheelbase Yukon XL variants. \n - The GMC Terrain is a compact American-market SUV built for daily driving, efficiency and a good mix of tech and utility, offered in three main trims — Elevation, AT4 (off-road-oriented), and Denali (luxury) — with distinctive styling and feature sets to match varying buyer preferences. All 2026 Terrains are powered by a 1.5-liter turbocharged 4-cylinder engine producing around 175 hp with torque figures of 184 lb-ft on FWD and up to 203 lb-ft on AWD models; front-drive layouts use a CVT (continuously variable transmission) while AWD versions get an 8-speed automatic for smoother power delivery and better traction. The Terrain's compact footprint (~181 in length) yields a turning diameter of about 37.1 ft (~18.55 ft radius), helping maneuverability in urban settings, and it can tow up to ~1,500 lbs when properly equipped. Inside, buyers get a 15″ infotainment touchscreen, 11″ driver display, wireless Apple CarPlay/Android Auto, and advanced safety tech such as blind-spot monitoring, lane-keeping assist, adaptive cruise and automatic emergency braking across trims, with AT4 adding rugged styling and small off-road aids and Denali bringing premium leather, heated/ventilated seats, panoramic sunroof and upgraded audio. Fuel economy is competitive for the class (~25-28 mpg combined), and cargo space is generous with up to ~63.5 cu ft with rear seats folded, making the Terrain a versatile choice for families, commuters and weekend adventurers alike. \n - Hyundai Tucson tailored for an American customer, covering the key parameters you'd typically ask about: The Tucson is a compact 5-seat SUV available in multiple trims including SE, SEL, XRT, SEL Premium and Limited for the gasoline model, plus several Hybrid trims (Hybrid Blue SE AWD, Hybrid SEL, Hybrid SEL Convenience and Hybrid Limited AWD) with Front-Wheel or All-Wheel Drive options, offering a range of equipment and price points to suit different needs. The standard engine on most gas models is a 2.5 L naturally aspirated inline-4 producing about 187 hp and 178 lb-ft of torque paired with an 8-speed automatic transmission (with dual shift mode), delivering around 25-33 mpg on EPA ratings depending on trim and drive type; Hybrid variants use a 1.6 L turbocharged gas engine with electric assist for about 231 hp and ~195 lb-ft, improving efficiency and low-end torque with a 6-speed automatic hybrid transmission. Performance-oriented plug-in hybrid versions (where available) can push higher outputs (~268 hp) while keeping a respectable turning radius of about 5.9 m (19.3 ft) for easy maneuvering. Technical dimensions include a wheelbase ~108.5 in, overall length ~182.7 in, cargo capacity of roughly 38.7-39 cu ft behind the rear seats (expandable with seats folded), and towing capability up to ~2,750 lbs on the gas model and around ~2,000 lbs on hybrid variants. Standard features across trims typically include a suite of safety tech (Hyundai SmartSense with lane-keeping, blind-spot warnings, adaptive cruise), touchscreen infotainment with Apple CarPlay/Android Auto, Bluetooth, and available upgrades like larger screens, panoramic sunroof, premium audio and advanced driver assists, backed by Hyundai's typical 5-year/60,000-mile basic warranty \n The Hyundai Elantra is a compact sedan that appeals to American buyers with a range of trim levels and powertrain options, solid fuel economy, modern tech, and safety features in a value-oriented package. In the standard gas-powered lineup you'll find trims like SE, SEL Sport, SEL Sport Premium, and Limited, all powered by a 2.0-liter naturally aspirated I-4 engine producing about 147 hp and 132 lb-ft of torque paired with an Intelligent Variable Transmission (CVT/IVT) driving the front wheels, delivering strong efficiency (roughly 31 city / 40 hwy / 35 combined MPG EPA) and a turning radius around 5.4 m (17.7 ft) for easy maneuverability; this version seats five and offers comfortable interior space with roughly 99-100 cu ft of passenger volume and ~14 cu ft of trunk space. For buyers craving more performance there's the Elantra N Line, which uses a 1.6-liter turbocharged I-4 with about 201 hp and improved torque and handling via a 7-speed dual-clutch automatic transmission, sport-tuned suspension and unique styling cues. Additionally, hybrid variants (such as Blue, SEL Sport and Limited trims) combine a 1.6 L engine with an electric motor for a ~139 hp combined output with higher efficiency and use a 6-speed eco dual-clutch automatic. Across the lineup you'll find a host of technology and safety features including Hyundai SmartSense driver-assist systems (like forward collision warning, blind-spot assist and lane keep assist), wireless Apple CarPlay/Android Auto, touchscreen infotainment (8″ standard, larger available), Bluetooth, multiple USB ports, available Bose premium audio, heated seats and more, plus Hyundai's 5-year/60,000-mile basic warranty. Overall, the Elantra balances practicality, safety tech, and efficiency with options that range from efficient daily commuting to sportier driving engagement. \n - The Hyundai Santa Fe is a midsize SUV that appeals to American buyers with a broad range of trims and powertrain options designed for practicality, comfort, and capability: trims include SE, SEL, XRT, Limited and premium Calligraphy, each available with Front-Wheel Drive or optional HTRAC All-Wheel Drive, plus hybrid versions of SE, SEL, Limited and Calligraphy for better efficiency and performance. The standard powertrain on gasoline models is a 2.5-liter turbocharged inline-4 engine producing 277 hp and 311 lb-ft of torque paired with a smooth 8-speed automatic transmission (Hyundai replaced the former dual-clutch unit in 2026 for better reliability) that drives the front wheels or AWD and delivers EPA fuel economy around 20 city/29 hwy mpg; towing capacity with trailer brakes can reach up to 3,500 lbs depending on configuration. Hybrid models use a 1.6 L turbocharged gas engine with electric assist and a 6-speed automatic, making about 231 hp and 195 lb-ft (hybrid) for improved economy and lower emissions while retaining SUV versatility. The Santa Fe offers a turning radius ~18.9-19.0 ft (5.8 m) for maneuverability in tight spaces and a comfortable interior with seating for five, generous passenger volumes, and ample cargo space expandable with the rear seats folded. Standard and available tech includes a touchscreen infotainment system with Apple CarPlay/Android Auto, wireless charging, multiple USB ports, safety features through Hyundai SmartSense (adaptive cruise, lane assist, blind-spot monitoring), heated/ventilated seats, panoramic sunroof, premium audio, and advanced driver aids, backed by Hyundai's 5-year/60,000-mile basic warranty and extended powertrain coverage.",
+            "supported_brand_names": {},
+            "region_level_guardrails": "- Maintain professional communication standards. Ensure clear communication. Respect regional languages. Provide local language support. Be mindful of potential network issues or poor call quality \n -Trigger calls between 10am to 7pm",
+            "region_level_guidelines": "Avoid slang, sarcasm, or culturally sensitive humor. Use polite, respectful, and neutral tone. Prefer simple sentences suitable for Tier-2/Tier-3 customers",
+            "why_user_should_avail_this": "Find 1-2 standout features from the vehicle knowledge base that make a strong case for buying this car.If They Mention a Specific Aspect: Talk 1-2 highlights about the aspect and push for test drive. Don't be salesy",
+            "supported_brands_guidelines": {},
+            "previous_interaction_details": {},
+            "reasons_for_non_applicability": "- If the customer has already purchased a vehicle from another brand, you should say, 'Oh okay, congratulations on your new car! Just out of curiosity, what made you go with that brand? Your feedback helps us improve. And if you ever consider another vehicle in the future, feel free to reach out.' \\n - If the customer has already purchased from your brand, you should say, 'That's great to hear! Congratulations on your purchase. Hope you're enjoying the ride. If you ever need any support or have questions about service, feel free to connect with us anytime.' \\n - If the customer says they are no longer interested in buying a car, you should say, 'No problem at all. Can I ask what changed? Just trying to understand so we can serve you better if your plans change in the future. And if you know anyone looking for a vehicle, we'd love to help them out.' \\n - If the customer's contact number is wrong or belongs to someone else, you should say, 'Oh, I see. Sorry for the confusion. Could you help me with the correct contact number for [customer name], or let me know if they're no longer interested so we can update our records?' \\n - If the customer has relocated to a different city or country, you should say, 'Understood. If your new location has our dealership, I can connect you with the team there. Otherwise, I'll update our records. Safe travels, and feel free to reach out if you're ever back in the area.'",
+            "campaign_objective_description": "Your goal is to have natural, human-like conversations with customers who have shown interest in the vehicle and guide them smoothly towards booking a test drive. You are also knowledgeable about the vehicle so focuse on giving the customer a smooth and pleasant experience.",
+            "reasons_users_may_not_be_interested": "- If the customer says they are busy or asks for a callback later, you should say, 'Sure, I completely understand. When would be a good time to call you back? I just wanted to make sure you don't miss out on the current offers and available test drive slots before they fill up.' \\n - If the customer says they are just browsing or not ready to buy yet, you should say, 'No worries at all! Most of our customers take their time. How about I book a test drive for you? There's no commitment, and it helps you get a real feel of the vehicle. Would this weekend work for you?' \\n - If the customer says the price is too high or out of budget, you should say, 'I understand budget is important. We have some flexible financing options and exchange offers that might work better for you. Can I share those details? It might bring the monthly payment to something more comfortable.' \\n - If the customer is comparing with other brands, you should say, 'That's smart to compare. Many of our customers also looked at competitor. What I can do is share a quick features highlight of vehicle and after-sales benefits, so you have all the info to make the right choice. Would that help?' \\n - If the customer says they want to wait for the next model or year, you should say, 'I get that. Just so you know, the current model has some launch offers and immediate delivery options that the next one might not have. Plus, waiting could mean 6-8 months. But happy to keep you updated on both. What matters most to you - features or timing?' \\n - If the customer mentions they are getting a better deal elsewhere, you should say, 'I appreciate you being upfront. Let me check what we can do to match or improve that offer. Can you share what package they offered? I'd like to see if we can work something out for you.' \\n -If the customer had a bad experience with the brand before, you should say, 'I'm really sorry to hear that. Things have improved a lot, especially in service and support. I'd love the chance to change that impression. How about a test drive and a chat with our service team so you can see the difference yourself?' \\n - If the customer says they need to discuss with family first, you should say, 'Absolutely, that makes sense. Would it help if I sent you a detailed brochure and financing options you can review together? Or would you prefer to bring your family for a test drive so everyone can experience it?' \\n - If the customer is worried about maintenance costs, you should say, 'That's a valid concern. Our vehicles come with a warranty and service packages that keep costs predictable. I can share the exact maintenance schedule and costs upfront, so there are no surprises later.' \\n - If the customer prefers to buy during festival season or year-end, you should say, 'That's a common choice. Just a heads up - current stock and offers might not be available then, and prices could change. But I can note your interest and reach out closer to that time with the best deals. Does that work?' \\n - If the customer recently test drive and didn't like something, you should say, 'Thanks for sharing that feedback. Can you tell me what specifically didn't feel right? Sometimes it's about the variant or settings. I'd like to address that or maybe suggest a different variant that might suit you better.' \\n - If the customer is unsure about which variant to choose, you should say, 'No problem, that's very common. Let me ask you a few quick questions about how you'll use the car - city driving, highway, family size - and I can recommend the variant that fits your needs and budget best.' \\n - If the customer wants to think about it, you should say, 'Of course, take your time. Just so you have all the information, let me send you the brochure, a video walkthrough, and current offers. And I'm here anytime if questions come up. Should I follow up in a couple of days or would you prefer to reach out when ready? \\n - If the customer asks about exchange value for their old vehicle, you should say, 'Sure, I can arrange for our exchange team to evaluate your current vehicle. Can you share the make, model, year, and approximate kms driven? We'll give you the best possible value."
+        }
+        
+        # l = AutocrmModel("pre_sales_lead", logger = logger)
+        # l.post(lead_data)
+        lead_id=generate_uid(lead_data)
+        # logger.info(f"Creating new pre-sales lead with lead_id={lead_id} and lead_data={json.dumps(lead_data,indent=4)}")     
+        with get_pg_connector() as pg:
+            l=pg.update("pre_sales_lead", "pre_sales_lead_id", lead_id,lead_data)
+            lead_d=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
+            # logger.info(f"Lead created: {json.dumps(lead_d,indent=4)} with user_id={user_id} and campaign_id={campaign_id}")
+            logger.info(f"Pre-sales lead data created -- {lead_d[0].get('pre_sales_lead_id')}")
+            return lead_d[0].get("pre_sales_lead_id")
+        
+def generate_uid(data):
+    if isinstance(data, (dict, list)):
+        data_str = json.dumps(data, sort_keys=True)
+    else:
+        data_str = str(data)
 
+    uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
+
+    return uid.hex[:16]
 @gryd.is_a_task(function_name="process_single_lead")
-def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None):
+def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=None, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None):
     
     """
     Process a single lead and send campaign messages for each user.
@@ -744,7 +887,6 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,
 
     if not channel:
         channel = get_channel(lead_data, campaign_details)
-
     if channel == "voice_phone":
         provider_name = VOICE_PROVIDER_NAME
     elif channel == "email":
@@ -754,7 +896,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,
         template_data= get_email_template(
             lead_id=lead_id,
             campaign_type=campaign_type,
-            campaign_objective= [campaign_details.get("campaign_objective_name")] if campaign_details.get("campaign_objective_name") else ["Free Service Due Reminder"],
+            campaign_objective= [campaign_details.get("campaign_objective_name")] or ["Free Service Due Reminder"] if campaign_details.get("campaign_type") == "post-sales" else ["Test Drive Booking"],
             lead_info={}
         )
         if not template_data:
@@ -785,18 +927,26 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,
 
         # logger.info("Template Data: %s", template_data)
     elif channel in ("whatsapp_chat", "sms", "rcs"):
-        template_data = get_whatsapp_template(
-            lead_id=lead_id,
-            campaign_type=campaign_type,
-            campaign_objective= [campaign_details.get("campaign_objective_name")] if campaign_details.get("campaign_objective_name") else ["Free Service Reminder"],
-            # dealership_id = lead_data.get("dealership_id"), //for later pass disposition and disposition detail 
-            lead_info={}
-        )
-        if not template_data:
-            yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
-            return
-        template_data = template_data[0]
-        # logger.info(f"TEmplate data: {template_data}")
+        if not templateID:
+            template_data = get_whatsapp_template(
+                lead_id=lead_id,
+                campaign_type=campaign_type,
+                # campaign_objective= [campaign_details.get("campaign_objective_name")] if campaign_details.get("campaign_objective_name") else ["Free Service Reminder"],
+                campaign_objective= [campaign_details.get("campaign_objective_name")] or ["Free Service Due Reminder"] if campaign_details.get("campaign_type") == "post-sales" else ["Test Drive Booking"],
+                # dealership_id = lead_data.get("dealership_id"), //for later pass disposition and disposition detail
+                lead_info={}
+            )
+            
+            # template_data=testing_whatsapp_template()
+            if not template_data:
+                yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
+                return
+            template_data = template_data[0]
+        else:
+            with get_pg_connector() as pg:
+                template_details=pg.get("template","template_id",templateID)
+                template_data=template_details
+        logger.info(f"TEmplate data: {template_data}")
         logger.info(f"Template ID for phone_number={lead_data.get('phone_number')}: {template_data.get('template_id')}")
     else:
         yield {"status": "Error", "error_description": f"Unsupported channel: {channel}"}
@@ -825,8 +975,11 @@ def process_single_lead(channel, lead, campaign_type, campaign_id, user_id=None,
         # variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data, selected_person) if template_data else {}
     
     # not using persons_involved for now...
-    mobile = lead_data.get("phone_number")
-    customer_name = lead_data.get("person_name")
+    mobile = lead_data.get("phone_number") 
+    logger.info(f"Campaign ID: {campaign_id}, Original Mobile: {mobile}")
+    customer_name = "Dear NADA Visitor" if campaign_id == "4c99d5ea-4441-3ce6-841f-de5d7585b3b7" and lead_data.get("person_name") is None else lead_data.get("person_name")
+    lead_data['person_name']=customer_name
+    logger.info(f"Customer Name: {customer_name}")
     variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data) if template_data else {}
     logger.info(f"Variable Mapping: {variable_mapping}")
     campaign_user = {
@@ -938,6 +1091,7 @@ def get_channel(lead, campaign_details):
 
     return "whatsapp_chat"  #fallback
 
+
 def get_variable_values(template_variables, lead_data, selected_person=None):
     """
     Extract values for template variables from lead_data or selected_person.
@@ -1007,3 +1161,42 @@ def format_email_payload(campaign_data,campaign_user,mobile_number):
     p_filters = {k: v for k, v in p.items() if v not in [None ,[],[None]]}
     
     return p_filters
+
+
+def testing_whatsapp_template():
+    
+    return [{
+            "sender": "917795030574",
+            "status": "approved",
+            "buttons": [
+                {
+                    "text": "Call",
+                    "type": "QUICK_REPLY"
+                },
+                {
+                    "text": "Chat",
+                    "type": "QUICK_REPLY"
+                }
+            ],
+            "channel": "whatsapp_chat",
+            "created": 1769683785.335568,
+            "updated": 1769683785.3367856,
+            "language": "english",
+            "dealer_name": "DaveAI",
+            "region_name": "South India",
+            "search_term": "nada_autongage_demo1 text english pre-sales  ",
+            "template_id": "01kg4ntf1ztsa783ss81nq8gqs",
+            "campaign_type": "pre-sales",
+            "dealership_id": "daveai",
+            "provider_name": "Airtel",
+            "template_name": "nada_autoNgage_demo1",
+            "template_type": "text",
+            "template_message": "",
+            "campaign_objective": [],
+            "template_variables": [],
+            "template_button_payloads": [
+                "nada_autongage-call",
+                "nada_autongage-chat"
+            ],
+            "communication_credentials_id": "airtel-917795030574"
+        }    ]
