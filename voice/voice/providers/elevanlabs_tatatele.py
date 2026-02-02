@@ -29,7 +29,7 @@ logger = utils.get_logger(__name__)
 # ---- Config / env ----
 load_dotenv()
 API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_3f302b2e36acc353d040152b3d6c9bc7bf728955483bce75")
-AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_0501k747d7s6e3xv5t3xew1rn217")
+AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_6501kg4h48mbfhp8cryeh1a66t3j")
 TATATELE_PHONE_NUMBER = os.environ.get("TATATELE_PHONE_NUMBER", "918065251305")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
@@ -142,7 +142,7 @@ class CallSession:
     @staticmethod
     def pcm16_16k_to_mulaw_8k_base64(b64_pcm16_16k):
         """Convert 16kHz PCM16 base64 → 8kHz μ-law base64 for telephony."""
-        return b64_pcm16_16k
+        #return b64_pcm16_16k
         try:
             raw_pcm16 = base64.b64decode(b64_pcm16_16k)
             pcm16_8k = audioop.ratecv(raw_pcm16, 2, 1, 16000, 8000, None)[0]
@@ -747,8 +747,8 @@ def process():
     logger.info(f"Billing record created: {xx}")
 
     logger.info(f"Triggering post history and actions for session_id: {session_id}")
-    gryd_tasks.post_history(data)
     gryd_tasks.post_actions(session_id)
+    gryd_tasks.post_history(data)
 
     return jsonify({"status": "processed"})
 
