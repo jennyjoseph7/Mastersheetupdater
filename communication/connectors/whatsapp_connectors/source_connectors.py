@@ -507,7 +507,7 @@ class BaseWebhookConverter:
         if wa_status:
             logger.info(f"Received {wa_status} status webhook for {message_dict.get('enterprise_id')} enterprise and mobile number: {message_dict.get('recipientAddress',message_dict.get('mobile_number'))}")
             message_dict["message_status"]=wa_status
-            logger.info(f"Message dict: {message_dict}")
+            # logger.info(f"Calling post_contact_status with Message dict: {message_dict}")
             gryd.create_async_task(
                 'post_contact_status',
                 AUTOCRM_COMMUNICATION_SERVICE_NAME,

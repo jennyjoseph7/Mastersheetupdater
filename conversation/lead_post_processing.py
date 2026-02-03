@@ -780,9 +780,11 @@ def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_dat
     mlogger.info("campaign_data == {}".format(json.dumps(campaign_data)))
     if campaign_data.get("campaign_type") == "pre-sales":
         if not lead_data.get("showroom_id"):
+            mlogger.info("showroom_id not found in lead_data")
             return {}
     if campaign_data.get("campaign_type") == "post-sales":
         if not lead_data.get("workshop_id"):
+            mlogger.info("showroom_id not found in lead_data")
             return {}
         
     date_str = appt_date_time_purpose.get("appointment_date")
