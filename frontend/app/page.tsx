@@ -67,6 +67,8 @@ import {
   Target,
   UsersIcon,
   BarChart3,
+  RefreshCw,
+  Eye,
 } from "lucide-react";
 
 const swrOptions = {
@@ -101,8 +103,7 @@ export default function CampaignDashboard() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
-  const [campaignTypeFilter, setCampaignTypeFilter] =
-    useState<string>("post-sales"); // default
+  const [campaignTypeFilter, setCampaignTypeFilter] = useState<string>("all"); // default to "all" to show both types
 
   const [mergedCampaigns, setMergedCampaigns] = useState<Campaign[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -149,6 +150,23 @@ export default function CampaignDashboard() {
       };
     }
 
+    // Handle "all" type - fetch both pre-sales and post-sales
+    if (type === "all") {
+      const [preRes, postRes] = await Promise.all([
+        fetchPreSalesCampaigns(),
+        fetchPostSalesCampaigns(),
+      ]);
+
+      const preItems = preRes?.items ?? [];
+      const postItems = postRes?.items ?? [];
+      const merged = [...preItems, ...postItems];
+
+      return {
+        merged: merged,
+        total: (preRes?.total ?? 0) + (postRes?.total ?? 0),
+      };
+    }
+
     // Handle pre-sales campaigns using the dedicated function
     if (type === "pre-sales" || type === "pre_sales") {
       const res = await fetchPreSalesCampaigns();
@@ -179,7 +197,11 @@ export default function CampaignDashboard() {
     };
   };
 
-  const { data: counts } = useSWR("pivot-counts", fetchCounts, swrOptions);
+  const { data: counts, mutate: mutateCounts } = useSWR(
+    "pivot-counts",
+    fetchCounts,
+    swrOptions
+  );
 
   const {
     data: campaignsData,
@@ -199,7 +221,7 @@ export default function CampaignDashboard() {
       : null;
 
   // Fetch campaign summary data
-  const { data: campaignSummaryData } = useSWR(
+  const { data: campaignSummaryData, mutate: mutateCampaignSummary } = useSWR(
     dealershipId, // If null, this won't run
     fetchCampaignSummary,
     swrOptions
@@ -232,7 +254,8 @@ export default function CampaignDashboard() {
       campaignSummaryData &&
       Array.isArray(campaignSummaryData) &&
       campaignSummaryData.length > 0 &&
-      campaignTypeFilter !== "dealership"
+      campaignTypeFilter !== "dealership" &&
+      campaignTypeFilter !== "all"
     ) {
       return;
     }
@@ -241,7 +264,7 @@ export default function CampaignDashboard() {
     if (campaignTypeFilter === "dealership" && campaignsData) {
       setTotalCount(campaignsData.total ?? 0);
       setTotalCampaignCount(campaignsData.total ?? 0);
-      
+
       const activeDealership = (campaignsData.merged ?? []).filter(
         (c: Campaign) => {
           const status =
@@ -254,11 +277,85 @@ export default function CampaignDashboard() {
           return status === "live";
         }
       ).length;
-      
+
       setActiveCount(activeDealership);
       setActiveCampaignCount(activeDealership);
       setTotalReach(0); // Dealership specific reach if available
       setConversionRate(0); // Dealership specific rate
+      return;
+    }
+
+    // For "all" type, sum both pre-sales and post-sales counts
+    if (campaignTypeFilter === "all") {
+      if (campaignsData) {
+        setTotalCount(campaignsData.total ?? 0);
+        setTotalCampaignCount(campaignsData.total ?? 0);
+
+        const activeAll = (campaignsData.merged ?? []).filter((c: Campaign) => {
+          const status =
+            c.campaign_status ||
+            (c.start_date && c.end_date && Date.now() / 1000 > c.end_date
+              ? "completed"
+              : c.start_date && Date.now() / 1000 >= c.start_date
+              ? "live"
+              : "scheduled");
+          return status === "live" || status === "active";
+        }).length;
+
+        setActiveCount(activeAll);
+        setActiveCampaignCount(activeAll);
+      }
+
+      // Use summary data if available for reach and conversion rate
+      if (campaignSummaryData && Array.isArray(campaignSummaryData)) {
+        const preSalesSummary = campaignSummaryData.find(
+          (s: any) =>
+            s.campaign_type === "pre-sales" || s.campaign_type === "pre_sales"
+        );
+        const postSalesSummary = campaignSummaryData.find(
+          (s: any) =>
+            s.campaign_type === "post-sales" || s.campaign_type === "post_sales"
+        );
+
+        const totalReachSum =
+          (preSalesSummary?.total_reach ?? 0) +
+          (postSalesSummary?.total_reach ?? 0);
+        const preRate = preSalesSummary?.conversation_rate ?? 0;
+        const postRate = postSalesSummary?.conversation_rate ?? 0;
+        const avgRate =
+          preSalesSummary && postSalesSummary
+            ? ((preRate < 1 ? preRate * 100 : preRate) +
+                (postRate < 1 ? postRate * 100 : postRate)) /
+              2
+            : (preRate < 1 ? preRate * 100 : preRate) ||
+              (postRate < 1 ? postRate * 100 : postRate);
+
+        setTotalReach(totalReachSum);
+        setConversionRate(avgRate);
+      } else if (counts) {
+        // Fallback to pivot counts
+        let totalForAll = 0;
+        let activeForAll = 0;
+
+        if (typeof counts.total === "object" && counts.total !== null) {
+          totalForAll =
+            (counts.total.pre_sales ?? 0) + (counts.total.post_sales ?? 0);
+        } else {
+          totalForAll = counts.total ?? 0;
+        }
+
+        if (typeof counts.active === "object" && counts.active !== null) {
+          activeForAll =
+            (counts.active.pre_sales ?? 0) + (counts.active.post_sales ?? 0);
+        } else {
+          activeForAll = counts.active ?? 0;
+        }
+
+        setTotalCampaignCount(totalForAll);
+        setTotalCount(totalForAll);
+        setActiveCampaignCount(activeForAll);
+        setActiveCount(activeForAll);
+      }
       return;
     }
 
@@ -302,8 +399,9 @@ export default function CampaignDashboard() {
 
   // Process campaign summary data (FIXED: Filter by type instead of sum)
   useEffect(() => {
-    // If we are on dealership tab, the previous useEffect handles it
-    if (campaignTypeFilter === "dealership") return;
+    // If we are on dealership tab or "all" tab, the previous useEffect handles it
+    if (campaignTypeFilter === "dealership" || campaignTypeFilter === "all")
+      return;
 
     if (campaignSummaryData && Array.isArray(campaignSummaryData)) {
       // Find the specific summary for the selected campaign type
@@ -321,10 +419,10 @@ export default function CampaignDashboard() {
         setTotalCampaignCount(currentTypeSummary.total_count ?? 0);
         setActiveCampaignCount(currentTypeSummary.active_count ?? 0);
         setTotalReach(currentTypeSummary.total_reach ?? 0);
-        
+
         const rate = currentTypeSummary.conversation_rate ?? 0;
         setConversionRate(rate < 1 ? rate * 100 : rate);
-        
+
         // Also ensure internal counts match
         setTotalCount(currentTypeSummary.total_count ?? 0);
         setActiveCount(currentTypeSummary.active_count ?? 0);
@@ -395,13 +493,13 @@ export default function CampaignDashboard() {
     campaignTypeFilter,
   ]);
 
-const displayStart = (page - 1) * ITEMS_PER_PAGE;
-const displaySlice = filteredCampaigns.slice(
-  displayStart,
-  displayStart + ITEMS_PER_PAGE
-);
+  const displayStart = (page - 1) * ITEMS_PER_PAGE;
+  const displaySlice = filteredCampaigns.slice(
+    displayStart,
+    displayStart + ITEMS_PER_PAGE
+  );
 
-const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   const getStatusBadge = (status?: string) => {
     const variants: Record<
@@ -531,6 +629,18 @@ const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
     }
   };
 
+  const handleRefresh = async () => {
+    try {
+      await Promise.all([
+        mutateCampaigns(),
+        mutateCounts(),
+        mutateCampaignSummary(),
+      ]);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    }
+  };
+
   return (
     <ProtectedRoute>
       <div className="flex flex-col w-full">
@@ -545,6 +655,17 @@ const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
             </p>
           </div>
           <div className="flex gap-3">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />{" "}
+              Refresh
+            </Button>
             <Button
               className="gap-2"
               onClick={() => {
@@ -577,8 +698,10 @@ const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
                 <div className="text-2xl font-bold">{totalCampaignCount}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Current type:{" "}
-                  {campaignTypeFilter === "pre_sales" ||
-                  campaignTypeFilter === "pre-sales"
+                  {campaignTypeFilter === "all"
+                    ? "All Types"
+                    : campaignTypeFilter === "pre_sales" ||
+                      campaignTypeFilter === "pre-sales"
                     ? "Pre-Sales"
                     : campaignTypeFilter === "post-sales"
                     ? "Post-Sales"
@@ -752,7 +875,9 @@ const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
                         className="gap-2 bg-transparent"
                       >
                         Campaign Type:{" "}
-                        {campaignTypeFilter === "pre_sales"
+                        {campaignTypeFilter === "all"
+                          ? "All"
+                          : campaignTypeFilter === "pre_sales"
                           ? "Pre-Sales"
                           : campaignTypeFilter === "post-sales"
                           ? "Post-Sales"
@@ -764,6 +889,14 @@ const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
                         Filter by Campaign Type
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setCampaignTypeFilter("all");
+                          setPage(1);
+                        }}
+                      >
+                        All
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
                           setCampaignTypeFilter("pre_sales");
@@ -803,6 +936,7 @@ const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
                     <TableHead>Channels Used</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Launch Date</TableHead>
+                    <TableHead>Analytics</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -811,7 +945,7 @@ const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
                   {loading ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center text-muted-foreground"
                       >
                         Loading...
@@ -820,7 +954,7 @@ const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
                   ) : error ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center text-destructive"
                       >
                         {error}
@@ -829,7 +963,7 @@ const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
                   ) : filteredCampaigns.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center text-muted-foreground"
                       >
                         No campaigns found
@@ -843,9 +977,7 @@ const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
                         : campaign.campaign_type;
 
                       return (
-                        <TableRow
-                          key={campaign.id || campaign.campaign_id}
-                        >
+                        <TableRow key={campaign.id || campaign.campaign_id}>
                           <TableCell className="font-medium capitalize">
                             {campaignType?.replace("_", " ") || "Unknown"}
                           </TableCell>
@@ -867,63 +999,73 @@ const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
                                 )
                               : "-"}
                           </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 gap-1.5 px-2 text-xs"
+                              onClick={() => handleInsights(campaign)}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              View Analytics
+                            </Button>
+                          </TableCell>
                           <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <span className="sr-only">Open menu</span>
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem
-                                  onClick={() => handleEdit(campaign)}
-                                >
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDuplicate(campaign)}
-                                >
-                                  <Copy className="mr-2 h-4 w-4" />
-                                  Duplicate
-                                </DropdownMenuItem>
-
-                                {campaign.campaign_status === "live" ? (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      handlePauseOrLaunch(campaign, "pause")
-                                    }
+                            <div className="flex items-center justify-end gap-2">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
                                   >
-                                    <Pause className="mr-2 h-4 w-4" /> Pause
-                                  </DropdownMenuItem>
-                                ) : (
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                   <DropdownMenuItem
-                                    onClick={() =>
-                                      handlePauseOrLaunch(campaign, "launch")
-                                    }
+                                    onClick={() => handleEdit(campaign)}
                                   >
-                                    <Play className="mr-2 h-4 w-4" /> Launch
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit
                                   </DropdownMenuItem>
-                                )}
+                                  <DropdownMenuItem
+                                    onClick={() => handleDuplicate(campaign)}
+                                  >
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Duplicate
+                                  </DropdownMenuItem>
 
-                                <DropdownMenuItem
-                                  onClick={() => handleInsights(campaign)}
-                                >
-                                  <BarChart3 className="mr-2 h-4 w-4" />
-                                  Insights
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteClick(campaign)}
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                                  {campaign.campaign_status === "live" ? (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handlePauseOrLaunch(campaign, "pause")
+                                      }
+                                    >
+                                      <Pause className="mr-2 h-4 w-4" /> Pause
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handlePauseOrLaunch(campaign, "launch")
+                                      }
+                                    >
+                                      <Play className="mr-2 h-4 w-4" /> Launch
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteClick(campaign)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -932,46 +1074,45 @@ const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
                 </TableBody>
               </Table>
               {/* Pagination */}
-<div className="flex items-center justify-between mt-4">
-  <p className="text-sm text-muted-foreground">
-    Page {page} of {totalPages}
-  </p>
+              <div className="flex items-center justify-between mt-4">
+                <p className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </p>
 
-  <div className="flex gap-2">
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={page === 1}
-      onClick={() => setPage((p) => Math.max(1, p - 1))}
-    >
-      Previous
-    </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
 
-    {Array.from({ length: totalPages }).map((_, index) => {
-      const pageNumber = index + 1;
-      return (
-        <Button
-          key={pageNumber}
-          variant={page === pageNumber ? "default" : "outline"}
-          size="sm"
-          onClick={() => setPage(pageNumber)}
-        >
-          {pageNumber}
-        </Button>
-      );
-    })}
+                  {Array.from({ length: totalPages }).map((_, index) => {
+                    const pageNumber = index + 1;
+                    return (
+                      <Button
+                        key={pageNumber}
+                        variant={page === pageNumber ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPage(pageNumber)}
+                      >
+                        {pageNumber}
+                      </Button>
+                    );
+                  })}
 
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={page === totalPages}
-      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-    >
-      Next
-    </Button>
-  </div>
-</div>
-
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
