@@ -59,6 +59,10 @@
       "refers": "parents.dealership.region_id"
     },
     {
+      "name" : "region_subdivision_id",
+      "refers" : "parents.showroom.region_subdivision_id"
+    },
+    {
       "name": "region_name",
       "refers": "parents.dealership.region_name"
     },
@@ -482,10 +486,232 @@
       "name": "campaign_id",
       "type": "uid",
       "id": true
+    },
+    {
+      "name" : "voice_agent_id",
+      "type" : "text",
+      "default" : {
+        "function" : "set_if_condition",
+        "args" : [
+          {
+            "function" : "get_from_model",
+            "args" : [
+              "region_subdivision",
+              "region_subdivision_id",
+              "voice_agent_id"
+            ]
+          },
+          {
+            "function" : "set_if_condition",
+            "args" : [
+              {
+                "function" : "get_from_model",
+                "args" : [
+                  "region",
+                  "region_id",
+                  "voice_agent_id"
+                ]
+              },
+              null
+            ],
+            "kwargs":{
+              "region_id" : "~null"
+            }
+          }
+        ],
+        "kwargs" : {
+          "subdivision_id" : "~null"
+        }
+      }
+    },
+    {
+      "name" : "voice_id",
+      "type" : "text",
+      "default" : {
+        "function" : "set_if_condition",
+        "args" : [
+          {
+            "function" : "get_from_model",
+            "args" : [
+              "region_subdivision",
+              "region_subdivision_id",
+              "voice_id"
+            ]
+          },
+          {
+            "function" : "set_if_condition",
+            "args" : [
+              {
+                "function" : "get_from_model",
+                "args" : [
+                  "region",
+                  "region_id",
+                  "voice_id"
+                ]
+              },
+              null
+            ],
+            "kwargs":{
+              "region_id" : "~null"
+            }
+          }
+        ],
+        "kwargs" : {
+          "subdivision_id" : "~null"
+        }
+      }
+    },
+    {
+      "name" : "voice_start_language",
+      "type" : "text",
+      "default" : {
+        "function" : "set_if_condition",
+        "args" : [
+          {
+            "function" : "get_from_model",
+            "args" : [
+              "region_subdivision",
+              "region_subdivision_id",
+              "voice_start_language"
+            ]
+          },
+          {
+            "function" : "set_if_condition",
+            "args" : [
+              {
+                "function" : "get_from_model",
+                "args" : [
+                  "region",
+                  "region_id",
+                  "voice_start_language"
+                ]
+              },
+              null
+            ],
+            "kwargs":{
+              "region_id" : "~null"
+            }
+          }
+        ],
+        "kwargs" : {
+          "subdivision_id" : "~null"
+        }
+      },
+      "options" : [
+          "Arabic",
+          "Bulgarian",
+          "Chinese",
+          "Croatian",
+          "Czech",
+          "Danish",
+          "Dutch",
+          "English",
+          "Filipino",
+          "Finnish",
+          "French",
+          "German",
+          "Greek",
+          "Hindi",
+          "Hungarian",
+          "Indonesian",
+          "Italian",
+          "Japanese",
+          "Korean",
+          "Malay",
+          "Norwegian",
+          "Polish",
+          "Portuguese (Brazil)",
+          "Portuguese",
+          "Romanian",
+          "Russian",
+          "Slovak",
+          "Spanish",
+          "Swedish",
+          "Tamil",
+          "Turkish",
+          "Ukrainian",
+          "Vietnamese"
+      ]
+    },
+    {
+      "name" : "voice_first_message",
+      "type" : "text",
+      "default" : {
+        "function" : "set_if_condition",
+        "args" : [
+          {
+            "function" : "get_from_model",
+            "args" : [
+              "region_subdivision",
+              "region_subdivision_id",
+              "voice_first_message"
+            ]
+          },
+          {
+            "function" : "set_if_condition",
+            "args" : [
+              {
+                "function" : "get_from_model",
+                "args" : [
+                  "region",
+                  "region_id",
+                  "voice_first_message"
+                ]
+              },
+              null
+            ],
+            "kwargs":{
+              "region_id" : "~null"
+            }
+          }
+        ],
+        "kwargs" : {
+          "subdivision_id" : "~null"
+        }
+      }
+    },
+    {
+      "name" : "communication_credentials_id",
+      "type" : "uid",
+      "refers" : "parents.communication_credential.communication_credentials_id",
+      "default" : {
+        "function" : "set_if_condition",
+        "args" : [
+          {
+            "function" : "get_from_model",
+            "args" : [
+              "region_subdivision",
+              "region_subdivision_id",
+              "communication_credentials_id"
+            ]
+          },
+          {
+            "function" : "set_if_condition",
+            "args" : [
+              {
+                "function" : "get_from_model",
+                "args" : [
+                  "region",
+                  "region_id",
+                  "communication_credentials_id"
+                ]
+              },
+              null
+            ],
+            "kwargs":{
+              "region_id" : "~null"
+            }
+          }
+        ],
+        "kwargs" : {
+          "subdivision_id" : "~null"
+        }
+      }
     }
   ],
   "parents": [
     "dealership",
-    "showroom"
+    "showroom",
+    "communication_credential"
   ]
 }

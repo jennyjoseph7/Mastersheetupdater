@@ -29,7 +29,7 @@ logger = utils.get_logger(__name__)
 # ---- Config / env ----
 load_dotenv()
 API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_3f302b2e36acc353d040152b3d6c9bc7bf728955483bce75")
-AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_6501kg4h48mbfhp8cryeh1a66t3j")
+AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_5701ka8618cbfxcbdp4wg6xb3x23")
 TATATELE_PHONE_NUMBER = os.environ.get("TATATELE_PHONE_NUMBER", "918065251305")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
@@ -59,10 +59,10 @@ def terminate_session(call_id: str):
 class CallSession:
     """Manages state for a single call, enabling concurrent call support."""
 
-    def __init__(self, call_id: str):
+    def __init__(self, call_id: str, ws=None):
         self.call_id = call_id
         self.bridge_started = False
-        self.dave_ws: Optional[websockets.WebSocketClientProtocol] = None
+        self.dave_ws: Optional[websockets.WebSocketClientProtocol] = ws
         self.stream_sid: Optional[str] = None
         self.media_buffer = []
         self.processed_agent_responses = set()
@@ -128,6 +128,7 @@ class CallSession:
             logger.error(f"[{self.call_id}] Goodbye/hangup error: %s", e)
 
     async def get_signed_url(self):
+        logger.info(f"{self.session_data} Fetching signed URL for ElevenLabs connection")
         agent_id = self.session_data.get("agent_id") or AGENT_ID
         if not agent_id or not API_KEY:
             raise RuntimeError("Missing AGENT_ID or API_KEY")
@@ -139,18 +140,37 @@ class CallSession:
         j = resp.json()
         return j["signed_url"]
 
+    # @staticmethod
+    # def pcm16_16k_to_mulaw_8k_base64(b64_pcm16_16k):
+    #     """Convert 16kHz PCM16 base64 → 8kHz μ-law base64 for telephony."""
+    #     #return b64_pcm16_16k
+    #     try:
+    #         raw_pcm16 = base64.b64decode(b64_pcm16_16k)
+    #         pcm16_8k = audioop.ratecv(raw_pcm16, 2, 1, 16000, 8000, None)[0]
+    #         mulaw = audioop.lin2ulaw(pcm16_8k, 2)
+    #         return base64.b64encode(mulaw).decode("utf-8")
+    #     except Exception as e:
+    #         logger.error("Audio convert error: %s", e)
+    #         return None
+
     @staticmethod
     def pcm16_16k_to_mulaw_8k_base64(b64_pcm16_16k):
-        """Convert 16kHz PCM16 base64 → 8kHz μ-law base64 for telephony."""
-        #return b64_pcm16_16k
         try:
             raw_pcm16 = base64.b64decode(b64_pcm16_16k)
-            pcm16_8k = audioop.ratecv(raw_pcm16, 2, 1, 16000, 8000, None)[0]
-            mulaw = audioop.lin2ulaw(pcm16_8k, 2)
+            audio = AudioSegment(
+                data=raw_pcm16,
+                sample_width=2,  # 16-bit
+                frame_rate=16000,
+                channels=1
+            )
+            audio_8k = audio.set_frame_rate(8000)
+            pcm_8k = audio_8k.raw_data
+            mulaw = audioop.lin2ulaw(pcm_8k, 2)
             return base64.b64encode(mulaw).decode("utf-8")
         except Exception as e:
             logger.error("Audio convert error: %s", e)
             return None
+
 
     @staticmethod
     def extract_audio_b64_from_dave(msg: dict) -> str | None:
@@ -214,12 +234,9 @@ class CallSession:
             except:
                 return
 
-            # Handle audio from ElevenLabs -> Tatatele
-            audio_b64 = self.extract_audio_b64_from_dave(msg_data)
+            audio_b64 = msg_data.get("audio_event",{}).get("audio_base_64") #self.extract_audio_b64_from_dave(msg_data)
             if audio_b64 and self.stream_sid:
-                converted_audio = self.pcm16_16k_to_mulaw_8k_base64(
-                    audio_b64 if isinstance(audio_b64, str) else audio_b64.get("audio_base_64", "")
-                )
+                converted_audio = self.pcm16_16k_to_mulaw_8k_base64(audio_b64 if isinstance(audio_b64, str) else audio_b64.get("audio_base_64", ""))
                 if converted_audio:
                     try:
                         msg_out = {
@@ -292,25 +309,7 @@ class CallSession:
                         elif ev == "start":
                             logger.info(f"[{self.call_id}] START EVENT: {tt_msg}")
                             self.stream_sid = tt_msg.get("start", {}).get("streamSid", self.stream_sid)
-                            # params = tt_msg.get("start", {}).get("customParameters", {}) or {}
-                            # logger.info(f"[{self.call_id}] Got start event with params: %s", params)
-
-                            # # Send config to ElevenLabs
-                            # config = {
-                            #     "type": "conversation_initiation_client_data",
-                            #     "dynamic_variables": params.get("dynamic_variables", {}),
-                            #     "user_id": params.get("session_id") or params.get("user_id"),
-                            #     "conversation_config_override": {
-                            #         "agent": {
-                            #             "prompt": params.get("prompt", ""),
-                            #             "first_message": params.get("first_message"),
-                            #             "language": params.get("language", "en")
-                            #         }
-                            #     }
-                            # }
-                            # await self.dave_ws.send(json.dumps(config))
-                            # logger.info(f"[{self.call_id}] *** SENT CONFIG TO AGENT ***")
-
+                            
                         elif ev == "stop":
                             logger.info(f"[{self.call_id}] Call ended by platform")
                             break
@@ -327,10 +326,11 @@ class CallSession:
                     logger.error(f"[{self.call_id}] Dave reader error: %s", e)
 
             # Run both readers
-            done, pending = await asyncio.wait([tatatele_reader(), dave_reader()], return_when=asyncio.FIRST_COMPLETED)
-            for t in pending:
-                t.cancel()
-                terminate_session(self.call_id)
+            await asyncio.gather(tatatele_reader(), dave_reader())
+            # done, pending = await asyncio.wait([tatatele_reader(), dave_reader()], return_when=asyncio.FIRST_COMPLETED)
+            # for t in pending:
+            #     t.cancel()
+            #     terminate_session(self.call_id)
 
         except Exception as e:
             logger.exception(f"[{self.call_id}] Main error: %s", e)
@@ -592,6 +592,37 @@ def calculate_elevenlabs_billing_usd(callback_data):
 
     return billing_breakdown
 
+#trial 
+def connect_elevenlabs_websocket(session_data):
+
+    async def connect():
+        signed_url = await CallSession.get_signed_url()
+        dave_ws = await websockets.connect(signed_url)
+        return dave_ws
+    
+    dave_ws = asyncio.run(connect())
+
+    #Send initial config to 11labs
+    logger.info(f"Sending initial config to ElevenLabs {session_data}")
+    config_data = {
+        "type": "conversation_initiation_client_data",
+        "dynamic_variables": session_data.get("dynamic_variables", {}),
+        "user_id": session_data.get("session_id") or session_data.get("user_id")
+    }
+
+    if session_data.get("prompt"):
+        config_data["conversation_config_override"] = {
+            "agent": {
+                "prompt": {"prompt":session_data.get("prompt", "")},
+                "first_message": session_data.get("first_message"),
+                "language": session_data.get("language", "en")
+            }
+        }
+        
+    asyncio.run(dave_ws.send(json.dumps(config_data)))
+
+    return dave_ws
+
 def make_call_tatatele(session_data, *args, **kwargs):
  
     logger.info(f"Making Tatatele call with session data: {session_data}")
@@ -603,6 +634,7 @@ def make_call_tatatele(session_data, *args, **kwargs):
     customer_number = session_data.get("phone_number", "918850988794") #for test
     session_started = False
 
+    # dave_ws = connect_elevenlabs_websocket(session_data)
     def start_session(call_id):  
         print('Starting session with call_id:', call_id)
         if call_id not in call_sessions:
