@@ -225,7 +225,7 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, log
     data_name = m.name
     linenum = 0
     number_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('number',),  m.attributes.items()))))
-    list_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('list', 'string_list', 'stringlist', 'number_list', 'numberlist'),  m.attributes.items()))))
+    list_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('list', 'string_list', 'stringlist', 'number_list', 'numberlist', 'geolocation'),  m.attributes.items()))))
     object_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('nested_object',),  m.attributes.items()))))
     object_list_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('object_list',),  m.attributes.items()))))
     bool_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('bool',),  m.attributes.items()))))
