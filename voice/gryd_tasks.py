@@ -262,7 +262,7 @@ if __name__ == "__main__":
 
     data = {'_is_testing': False,
 'mobile_number': "918850988794",#'918401586512',
-"dealership_id": 'sales-dealership1-india',
+"dealership_id": '"stellantis-india',
 'generate_prompt': True,
  'ctas': ['book-service'],
  'created': 1769076498.8989508,
