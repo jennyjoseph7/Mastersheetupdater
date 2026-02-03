@@ -144,6 +144,7 @@ interface EngagementFunnelProps {
     email?: FunnelStage[];
     voice?: FunnelStage[];
   };
+  availableChannels?: string[]; // Array of channel keys that have data
 }
 
 function FunnelStageCard({
@@ -188,9 +189,28 @@ function FunnelStageCard({
   );
 }
 
-export function EngagementFunnel({ customData }: EngagementFunnelProps = {}) {
-  const [activeTab, setActiveTab] = useState("all");
+export function EngagementFunnel({
+  customData,
+  availableChannels,
+}: EngagementFunnelProps = {}) {
   const funnelData = customData || defaultFunnelData;
+
+  // Determine available channels from data if not provided
+  const channels =
+    availableChannels ||
+    (() => {
+      const channels: string[] = ["all"];
+      if (funnelData.whatsapp && funnelData.whatsapp.length > 0)
+        channels.push("whatsapp");
+      if (funnelData.email && funnelData.email.length > 0)
+        channels.push("email");
+      if (funnelData.voice && funnelData.voice.length > 0)
+        channels.push("voice");
+      return channels;
+    })();
+
+  // Set initial active tab to first available channel
+  const [activeTab, setActiveTab] = useState(channels[0] || "all");
 
   const getCurrentData = () => {
     switch (activeTab) {
@@ -215,14 +235,32 @@ export function EngagementFunnel({ customData }: EngagementFunnelProps = {}) {
     );
   }
 
+  const channelLabels: Record<string, string> = {
+    all: "All Channels",
+    whatsapp: "WhatsApp",
+    email: "Email",
+    voice: "Voice",
+  };
+
+  // Map channel count to grid classes
+  const gridColsClass: Record<number, string> = {
+    1: "grid-cols-1",
+    2: "grid-cols-2",
+    3: "grid-cols-3",
+    4: "grid-cols-4",
+  };
+
+  const gridClass = gridColsClass[channels.length] || "grid-cols-4";
+
   return (
     <div className="w-full">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-3 bg-muted/50 p-1">
-          <TabsTrigger value="all">All Channels</TabsTrigger>
-          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
-          <TabsTrigger value="email">Email</TabsTrigger>
-          <TabsTrigger value="voice">Voice</TabsTrigger>
+        <TabsList className={`grid w-full ${gridClass} mb-3 bg-muted/50 p-1`}>
+          {channels.map((channel) => (
+            <TabsTrigger key={channel} value={channel}>
+              {channelLabels[channel] || channel}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-0">
@@ -235,27 +273,6 @@ export function EngagementFunnel({ customData }: EngagementFunnelProps = {}) {
                 total={data.length}
               />
             ))}
-          </div>
-
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            <div className="bg-card border rounded p-2">
-              <p className="text-xs text-muted-foreground">Conversion Rate</p>
-              <p className="text-lg font-bold text-emerald-600">
-                {data[data.length - 1].percentage}
-              </p>
-            </div>
-            <div className="bg-card border rounded p-2">
-              <p className="text-xs text-muted-foreground">Total Reached</p>
-              <p className="text-lg font-bold text-blue-600">
-                {data[0].count.toLocaleString()}
-              </p>
-            </div>
-            <div className="bg-card border rounded p-2">
-              <p className="text-xs text-muted-foreground">Converted</p>
-              <p className="text-lg font-bold text-purple-600">
-                {data[data.length - 1].count.toLocaleString()}
-              </p>
-            </div>
           </div>
         </TabsContent>
       </Tabs>

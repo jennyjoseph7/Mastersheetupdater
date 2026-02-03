@@ -133,5 +133,17 @@
       "read_access": true,
       "role": "human_agent"
     }
+  ],
+  "pre_sales_lead": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "post_sales_lead": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
   ]
 }
