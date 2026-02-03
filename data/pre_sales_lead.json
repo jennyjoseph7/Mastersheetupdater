@@ -555,6 +555,7 @@
         },
         {
             "name": "preferred_language",
+            "type": "text",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -758,6 +759,7 @@
         {
             "name": "lead_source",
             "type": "text",
+            "option_others": true,
             "options": [
                 "Walk-in",
                 "CRM",

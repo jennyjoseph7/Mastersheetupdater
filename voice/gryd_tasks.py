@@ -51,7 +51,10 @@ def trigger_voice_call(*args, **kwargs):
     #temporary changes-
     #4c99d5ea-4441-3ce6-841f-de5d7585b3b7  - campaign id for testing
     dealership_provider_map = {
-        "us-dealership-united-states": ("elevanlab", "agent_6501kg4h48mbfhp8cryeh1a66t3j")
+        "us-dealership-united-states": ("elevanlab", "agent_6501kg4h48mbfhp8cryeh1a66t3j"),
+        "sales-dealership1-india": ("tatatele", "agent_5701ka8618cbfxcbdp4wg6xb3x23"),  #stellantis
+        "stellantis-india": ("tatatele", "agent_5701ka8618cbfxcbdp4wg6xb3x23"),
+        "ambal-auto-india": ("tatatele", "agent_0501k747d7s6e3xv5t3xew1rn217")
     }
    
     user_data = kwargs.get("user_data", {})
@@ -258,8 +261,8 @@ if __name__ == "__main__":
 
 
     data = {'_is_testing': False,
-'mobile_number': "8850988794",#'918401586512',
-"dealership_id": 'us-dealership-united-states',
+'mobile_number': "918850988794",#'918401586512',
+"dealership_id": '"stellantis-india',
 'generate_prompt': True,
  'ctas': ['book-service'],
  'created': 1769076498.8989508,

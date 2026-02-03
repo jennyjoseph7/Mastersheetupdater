@@ -29,7 +29,7 @@ logger = utils.get_logger(__name__)
 # ---- Config / env ----
 load_dotenv()
 API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_3f302b2e36acc353d040152b3d6c9bc7bf728955483bce75")
-AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_6501kg4h48mbfhp8cryeh1a66t3j")
+AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_5701ka8618cbfxcbdp4wg6xb3x23")
 TATATELE_PHONE_NUMBER = os.environ.get("TATATELE_PHONE_NUMBER", "918065251305")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
@@ -128,6 +128,7 @@ class CallSession:
             logger.error(f"[{self.call_id}] Goodbye/hangup error: %s", e)
 
     async def get_signed_url(self):
+        logger.info(f"{self.session_data} Fetching signed URL for ElevenLabs connection")
         agent_id = self.session_data.get("agent_id") or AGENT_ID
         if not agent_id or not API_KEY:
             raise RuntimeError("Missing AGENT_ID or API_KEY")

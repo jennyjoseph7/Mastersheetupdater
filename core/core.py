@@ -296,7 +296,28 @@ def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = 
             data[k] = row.get(k)
         else:
             data[k] = None
-
+    for k in [
+        "brand_preference",
+        "model_preference",
+        "variant_preference",
+        "color_preference",
+        "engine_type_preference",
+        "transmission_preference",
+        "range_preference",
+        "feature_preferences",
+        "segment_preference",
+        "competitor_brands",
+        "competitor_models",
+        "emotions",
+        "engagement_events",
+        "previous_interaction_ids",
+        "lead_tags",
+        "interested_vehicle_competitor_vehicles"
+    ]:
+        if is_valid_value(row, k):
+            data[k] = row.get(k).split(',')
+        else:
+            data[k] = None
     lead = models['lead_model'].post(data)
     return lead, ""
 
@@ -1949,12 +1970,11 @@ if __name__ == "__main__":
 
     #gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-south-india", "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/485b7cbc-55d5-44d2-b5b9-0e6d6e405f4c-692977e5_afinallead.csv", campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943", workshop_id = 12)    
     for out in gryd_task_import_leads_from_csv(
-            "post-sales", 
-            "vpj-motors-south-india", 
-            "/Users/ggananth/Downloads/voice.csv", 
+            "pre-sales", 
+            "sales-dealership1-india", 
+            "/Users/ggananth/Downloads/stellantis.csv", 
             #campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
-            audience_name = "VPJ Motors - Service Center - New data",
-            campaign_objective_id = "post-sales-warranty-expiry-offer-nexa-mumbai-west-nexa-dealer-group-west-india",
-            workshop_id = "vpj motors-workshop1"
+            audience_name = "Stellantis - test data",
+            campaign_objective_id = "pre-sales-test-drive-booking"
         ):    
         print(hp.json.dumps(out, hp.json.OPT_INDENT_2))
