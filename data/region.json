@@ -120,7 +120,7 @@
     {
       "name" : "voice_start_language",
       "type" : "text",
-      "default":"en",
+      "default":"English",
       "options" : [
           "Arabic",
           "Bulgarian",
