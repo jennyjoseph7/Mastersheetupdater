@@ -70,7 +70,7 @@ export default function TopNavigation() {
     { href: "/template", label: "Template", icon: FileText },
     { href: "/connection", label: "Connection", icon: LinkIcon },
     { href: "/conversions", label: "Conversions", icon: Target },
-    { href: "/insights", label: "Insights", icon: TrendingUp },
+    { href: "/insights", label: "Live Status", icon: TrendingUp },
   ];
 
   if (!user) {
@@ -252,7 +252,6 @@ export default function TopNavigation() {
           </div>
         </div>
       </header>
-
     </>
   );
 }

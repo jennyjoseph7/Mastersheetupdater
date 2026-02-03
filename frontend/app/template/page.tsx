@@ -24,7 +24,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Loader2
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 
 import { TemplateStatusTable } from "@/components/template/template-status-table";
@@ -40,13 +41,13 @@ export interface Template {
   status: "Pending" | "Approved" | "Rejected";
   updated: number;
   rejectionReason?: string;
-  
+
   // New fields for preview
   template_message?: string;
   template_type?: string;
   template_variables?: string[];
   buttons?: Array<{ text: string; type: string }>;
-  
+
   [key: string]: any;
 }
 
@@ -68,11 +69,11 @@ export default function TemplatePage() {
   // --- State ---
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearch = useDebounce(searchQuery, 500); 
-  
+  const debouncedSearch = useDebounce(searchQuery, 500);
+
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  
+
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
@@ -89,11 +90,14 @@ export default function TemplatePage() {
 
       // Map filters to API params
       if (debouncedSearch) {
-        queryParams.template_name = debouncedSearch; 
+        queryParams.template_name = debouncedSearch;
       }
       // Assuming API wants 'whatsapp_chat' instead of 'WhatsApp'
       if (channelFilter !== "all") {
-        queryParams.channel = channelFilter === "WhatsApp" ? "whatsapp_chat" : channelFilter.toLowerCase();
+        queryParams.channel =
+          channelFilter === "WhatsApp"
+            ? "whatsapp_chat"
+            : channelFilter.toLowerCase();
       }
       // API uses lowercase status
       if (statusFilter !== "all") {
@@ -101,21 +105,26 @@ export default function TemplatePage() {
       }
 
       const apiResponse = await fetchAPIData("template", queryParams);
-      
+
       // Normalize Data for UI
       const items = (apiResponse.items || []).map((item: any) => ({
         ...item,
         // Map 'whatsapp_chat' to 'WhatsApp' for the UI
-        channel: item.channel === 'whatsapp_chat' ? 'WhatsApp' : capitalize(item.channel),
+        channel:
+          item.channel === "whatsapp_chat"
+            ? "WhatsApp"
+            : capitalize(item.channel),
         // Map lowercase 'approved' to 'Approved'
         status: capitalize(item.status),
         // Fallback for campaign name since API returns 'campaign_type'
-        campaignName: item.campaign_type ? capitalize(item.campaign_type) : (item.campaign_name || "-"),
+        campaignName: item.campaign_type
+          ? capitalize(item.campaign_type)
+          : item.campaign_name || "-",
       }));
 
       return {
         items,
-        total: apiResponse.total
+        total: apiResponse.total,
       };
     },
     {
@@ -125,23 +134,27 @@ export default function TemplatePage() {
   );
 
   // --- Fetch KPI Stats ---
-  const { data: stats } = useSWR(
+  const { data: stats, mutate: mutateStats } = useSWR(
     "template-stats",
     async () => {
       // Fetch stats with lowercase status values as per API data
       const [pending, approved, rejected] = await Promise.all([
         fetchAPIData("template", { status: "pending", page_size: 1 }),
         fetchAPIData("template", { status: "approved", page_size: 1 }),
-        fetchAPIData("template", { status: "rejected", page_size: 1 })
+        fetchAPIData("template", { status: "rejected", page_size: 1 }),
       ]);
       return {
         pending: pending.total,
         approved: approved.total,
-        rejected: rejected.total
+        rejected: rejected.total,
       };
     },
     { revalidateOnFocus: false }
   );
+
+  const handleRefresh = async () => {
+    await Promise.all([mutate(), mutateStats()]);
+  };
 
   const templates = data?.items || [];
   const totalItems = data?.total || 0;
@@ -160,21 +173,31 @@ export default function TemplatePage() {
     <div className="flex min-h-screen flex-col bg-background">
       {/* Header */}
       <div className="border-b bg-card">
-        <div className="flex h-20 items-center px-6 md:px-8">
+        <div className="flex h-20 items-center justify-between px-6 md:px-8">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
               Template Status
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Monitor and manage all your campaign templates and their approval status.
+              Monitor and manage all your campaign templates and their approval
+              status.
             </p>
           </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isLoading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+            />
+          </Button>
         </div>
       </div>
 
       {/* Main Content */}
       <main className="flex-1 p-6 md:p-8 space-y-6">
-        
         {/* KPI Cards Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
@@ -184,7 +207,9 @@ export default function TemplatePage() {
                   <p className="text-sm font-medium text-muted-foreground">
                     Pending Approval
                   </p>
-                  <p className="text-3xl font-bold mt-2">{stats?.pending ?? "-"}</p>
+                  <p className="text-3xl font-bold mt-2">
+                    {stats?.pending ?? "-"}
+                  </p>
                 </div>
                 <div className="rounded-full bg-yellow-100 dark:bg-yellow-900/20 p-3">
                   <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-500" />
@@ -200,7 +225,9 @@ export default function TemplatePage() {
                   <p className="text-sm font-medium text-muted-foreground">
                     Approved
                   </p>
-                  <p className="text-3xl font-bold mt-2">{stats?.approved ?? "-"}</p>
+                  <p className="text-3xl font-bold mt-2">
+                    {stats?.approved ?? "-"}
+                  </p>
                 </div>
                 <div className="rounded-full bg-green-100 dark:bg-green-900/20 p-3">
                   <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-500" />
@@ -216,7 +243,9 @@ export default function TemplatePage() {
                   <p className="text-sm font-medium text-muted-foreground">
                     Rejected
                   </p>
-                  <p className="text-3xl font-bold mt-2">{stats?.rejected ?? "-"}</p>
+                  <p className="text-3xl font-bold mt-2">
+                    {stats?.rejected ?? "-"}
+                  </p>
                 </div>
                 <div className="rounded-full bg-red-100 dark:bg-red-900/20 p-3">
                   <XCircle className="h-6 w-6 text-red-600 dark:text-red-500" />
@@ -233,7 +262,9 @@ export default function TemplatePage() {
                     Total Templates
                   </p>
                   <p className="text-3xl font-bold mt-2">
-                     {(!stats) ? (data?.total ?? "-") : (stats.pending + stats.approved + stats.rejected)}
+                    {!stats
+                      ? data?.total ?? "-"
+                      : stats.pending + stats.approved + stats.rejected}
                   </p>
                 </div>
                 <div className="rounded-full bg-blue-100 dark:bg-blue-900/20 p-3">
@@ -284,15 +315,15 @@ export default function TemplatePage() {
         {/* Table Area */}
         <div className="space-y-4">
           <div className="relative min-h-[200px]">
-             {isLoading && (
-                <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center">
-                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-             )}
-             <TemplateStatusTable
-               templates={templates}
-               onDelete={handleDelete}
-             />
+            {isLoading && (
+              <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            )}
+            <TemplateStatusTable
+              templates={templates}
+              onDelete={handleDelete}
+            />
           </div>
 
           {/* Pagination Controls */}
@@ -309,7 +340,7 @@ export default function TemplatePage() {
                 </span>{" "}
                 of <span className="font-medium">{totalItems}</span> results
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
@@ -324,12 +355,12 @@ export default function TemplatePage() {
                   variant="outline"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1 || isLoading}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                
+
                 <div className="flex items-center gap-1 mx-2">
                   <span className="text-sm font-medium">
                     Page {page} of {totalPages || 1}
@@ -340,7 +371,7 @@ export default function TemplatePage() {
                   variant="outline"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages || isLoading}
                 >
                   <ChevronRight className="h-4 w-4" />
