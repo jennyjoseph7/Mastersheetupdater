@@ -67,7 +67,9 @@ export async function api(
 
   // --- MISSING COOKIE CHECK ---
   if (!freshToken || !freshSessionId) {
-    console.warn(`[API] Missing credentials for ${fullUrl}. Triggering logout...`);
+    console.warn(
+      `[API] Missing credentials for ${fullUrl}. Triggering logout...`
+    );
     triggerGlobalLogout();
     throw new Error("Authentication required");
   }
@@ -147,7 +149,9 @@ export async function fetchPersonObjects() {
 
   // --- MISSING COOKIE CHECK ---
   if (!token || !sessionId) {
-    console.warn("[Fetch Person Objects] Missing credentials. Triggering logout...");
+    console.warn(
+      "[Fetch Person Objects] Missing credentials. Triggering logout..."
+    );
     triggerGlobalLogout();
     throw new ApiError(401, "Authentication required");
   }
@@ -1149,6 +1153,199 @@ export async function getBuybackCentersForDealership(
     return responseData.data;
   } else if (responseData && Array.isArray(responseData.buyback_centers)) {
     return responseData.buyback_centers;
+  }
+
+  return [];
+}
+
+// Service Visit and Showroom Visit interfaces and functions for Conversions
+export interface ServiceVisit {
+  service_visit_id?: string;
+  user_id?: string;
+  person_name?: string;
+  phone_number?: string;
+  email?: string;
+  appointment_date?: string;
+  appointment_time?: string;
+  purpose_of_visit?: string | string[];
+  status?: string;
+  dealership_id?: string;
+  dealer_name?: string;
+  workshop_name?: string;
+  [key: string]: any;
+}
+
+export interface ShowroomVisit {
+  showroom_visit_id?: string;
+  user_id?: string;
+  person_name?: string;
+  phone_number?: string;
+  email?: string;
+  visit_date?: string;
+  visit_timestamp?: number;
+  purpose_of_visit?: string | string[];
+  showroom_visit_status?: string;
+  dealership_id?: string;
+  dealer_name?: string;
+  showroom_name?: string;
+  [key: string]: any;
+}
+
+export async function getServiceVisitsForDealership(
+  dealershipId: string
+): Promise<ServiceVisit[]> {
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    triggerGlobalLogout();
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/service_visit?dealership_id=${encodeURIComponent(
+    dealershipId
+  )}`;
+
+  console.log("[Get Service Visits] Calling backend directly:", backendUrl);
+  console.log("[Get Service Visits] Application ID (fixed):", applicationId);
+
+  const res = await fetch(backendUrl, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "agent",
+    },
+    cache: "no-store",
+    mode: "cors",
+  });
+
+  console.log(`[Get Service Visits] Response status: ${res.status}`);
+
+  // --- AUTO-LOGOUT CHECK ---
+  if (res.status === 401) {
+    triggerGlobalLogout();
+  }
+  // -------------------------
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      return [];
+    }
+    let errorMessage = `Failed to fetch service visits (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Get Service Visits] Response:", responseData);
+
+  if (Array.isArray(responseData)) {
+    return responseData;
+  } else if (responseData && Array.isArray(responseData.data)) {
+    return responseData.data;
+  } else if (responseData && Array.isArray(responseData.service_visits)) {
+    return responseData.service_visits;
+  }
+
+  return [];
+}
+
+export async function getShowroomVisitsForDealership(
+  dealershipId: string
+): Promise<ShowroomVisit[]> {
+  // Get credentials from cookies
+  const token = getCookieFromDocument("gryd_token");
+  const sessionId = getCookieFromDocument("gryd_session_id");
+  let applicationId = getCookieFromDocument("gryd_application_id");
+
+  // CRITICAL FIX: Always use "autocrm", never "gryd"
+  if (applicationId === "gryd" || !applicationId) {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    triggerGlobalLogout();
+    throw new ApiError(401, "Authentication required. Please login again.");
+  }
+
+  // Call backend directly
+  const backendUrl = `${API_BASE_URL}/gryd/db/objects/showroom_visit?dealership_id=${encodeURIComponent(
+    dealershipId
+  )}`;
+
+  console.log("[Get Showroom Visits] Calling backend directly:", backendUrl);
+  console.log("[Get Showroom Visits] Application ID (fixed):", applicationId);
+
+  const res = await fetch(backendUrl, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-GRYD-ENTERPRISE-ID": "autocrm",
+      "X-GRYD-TOKEN": token,
+      "X-GRYD-SESSION-ID": sessionId,
+      "X-GRYD-APPLICATION-ID": applicationId,
+      "X-GRYD-ROLE": "agent",
+    },
+    cache: "no-store",
+    mode: "cors",
+  });
+
+  console.log(`[Get Showroom Visits] Response status: ${res.status}`);
+
+  // --- AUTO-LOGOUT CHECK ---
+  if (res.status === 401) {
+    triggerGlobalLogout();
+  }
+  // -------------------------
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      return [];
+    }
+    let errorMessage = `Failed to fetch showroom visits (${res.status})`;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData?.error || errorData?.message || errorMessage;
+    } catch {
+      const errorText = await res.text();
+      errorMessage = errorText || errorMessage;
+    }
+
+    errorMessage =
+      errorMessage.replace(/^API Error:\s*\d*\s*/i, "").trim() || errorMessage;
+    throw new ApiError(res.status, errorMessage);
+  }
+
+  const responseData = await res.json();
+  console.log("[Get Showroom Visits] Response:", responseData);
+
+  if (Array.isArray(responseData)) {
+    return responseData;
+  } else if (responseData && Array.isArray(responseData.data)) {
+    return responseData.data;
+  } else if (responseData && Array.isArray(responseData.showroom_visits)) {
+    return responseData.showroom_visits;
   }
 
   return [];
