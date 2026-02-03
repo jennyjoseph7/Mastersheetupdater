@@ -270,6 +270,7 @@ class BaseCampaignCreater:
                     "channel":"whatsapp_chat",
                 }
             
+            # logger.info(f"Calling post_contact_status with data: {data}")
             gryd.create_async_task(
                 "post_contact_status", 
                 AUTOCRM_COMMUNICATION_SERVICE_NAME, 
@@ -1005,8 +1006,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         return
 
     final_payload = {
-        **campaign_details,
         **(template_data or {}),
+        **campaign_details,
         "enterprise_id": campaign_details.get("enterprise_id"),
         "campaign_id": campaign_details.get("campaign_id"),
         "channel": channel,
