@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowDown } from "lucide-react";
 
 interface FunnelStage {
   stage: string;
@@ -151,40 +150,79 @@ function FunnelStageCard({
   stage,
   index,
   total,
+  topWidth,
+  bottomWidth,
+  leftOffset,
 }: {
   stage: FunnelStage;
   index: number;
   total: number;
+  topWidth: number;
+  bottomWidth: number;
+  leftOffset: number;
 }) {
-  const widthPercentage = stage.value;
-  const calculatedWidth = 40 + (widthPercentage / 100) * 50; // reduced width range from 40-100 to 40-90
+  // Calculate gradient color - purple gradient that gets darker as we go down
+  const hue = 260;
+  const baseSaturation = 70;
+  const baseLightness = 55;
+
+  // Darker gradient as we go down the funnel
+  const saturation = baseSaturation + index * 1.5;
+  const lightnessStart = baseLightness - index * 2.5;
+  const lightnessEnd = baseLightness - index * 3;
+
+  const gradientStart = `hsl(${hue}, ${saturation}%, ${lightnessStart}%)`;
+  const gradientEnd = `hsl(${hue}, ${saturation + 3}%, ${lightnessEnd}%)`;
+
+  // Calculate taper percentage for clip-path
+  // This creates the trapezoid shape where bottom is narrower than top
+  // The bottom width should match the next stage's top width
+  // Container width is topWidth%, and we want bottom edge to be bottomWidth%
+  // So bottom edge should span (bottomWidth / topWidth * 100)% of the container
+  const bottomEdgePercent = (bottomWidth / topWidth) * 100;
+  const bottomLeftOffset = (100 - bottomEdgePercent) / 2;
+  const bottomRightOffset = 100 - bottomLeftOffset;
 
   return (
-    <div className="relative">
-      <div
-        className="relative mx-auto"
-        style={{ width: `${calculatedWidth}%` }}
-      >
-        <div className="bg-primary/90 rounded p-2 shadow-sm border border-primary/20">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-primary-foreground">
+    <div className="relative w-full flex items-center gap-4 mb-0 min-h-[60px]">
+      {/* Funnel segment container - positioned with calculated left offset for seamless connection */}
+      <div className="relative flex-1" style={{ position: "relative" }}>
+        <div
+          className="relative"
+          style={{
+            width: `${topWidth}%`,
+            height: "60px",
+            marginLeft: `${leftOffset}%`,
+          }}
+        >
+          {/* Create trapezoid shape using CSS clip-path */}
+          {/* Top edge spans full container width, bottom edge is narrower */}
+          {/* The bottom edge width (bottomWidth) matches the next stage's top width */}
+          <div
+            className="relative h-full flex items-center justify-center px-4"
+            style={{
+              clipPath: `polygon(
+                0% 0%,
+                100% 0%,
+                ${bottomRightOffset}% 100%,
+                ${bottomLeftOffset}% 100%
+              )`,
+              background: `linear-gradient(to bottom, ${gradientStart}, ${gradientEnd})`,
+            }}
+          >
+            <h3 className="text-sm font-semibold text-white text-center">
               {stage.stage}
             </h3>
-            <span className="text-xs font-medium text-primary-foreground/80">
-              {stage.count.toLocaleString()}
-            </span>
-          </div>
-          <div className="text-lg font-bold text-primary-foreground">
-            {stage.percentage}
           </div>
         </div>
       </div>
 
-      {index < total - 1 && (
-        <div className="flex justify-center">
-          <ArrowDown className="h-4 w-4 text-muted-foreground/50" />
-        </div>
-      )}
+      {/* Percentage display on the right */}
+      <div className="flex-shrink-0 w-20 text-right">
+        <span className="text-sm font-semibold text-foreground whitespace-nowrap">
+          {stage.percentage}
+        </span>
+      </div>
     </div>
   );
 }
@@ -264,15 +302,68 @@ export function EngagementFunnel({
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-0">
-          <div className="space-y-0 py-2">
-            {data.map((stage, index) => (
-              <FunnelStageCard
-                key={`${activeTab}-${stage.stage}`}
-                stage={stage}
-                index={index}
-                total={data.length}
-              />
-            ))}
+          <div className="py-4 w-full max-w-5xl mx-auto relative">
+            {(() => {
+              // Pre-calculate all widths and offsets for seamless connection
+              const maxWidth = 90;
+              const minWidth = 20;
+
+              // First pass: calculate bottom widths for all stages
+              const stageData: Array<{
+                stage: FunnelStage;
+                bottomWidth: number;
+                topWidth: number;
+                index: number;
+              }> = data.map((stage, index) => {
+                const widthPercentage = stage.value;
+                const bottomWidth =
+                  minWidth + (widthPercentage / 100) * (maxWidth - minWidth);
+                return { stage, bottomWidth, topWidth: 0, index };
+              });
+
+              // Second pass: calculate top widths - each stage's top width equals previous stage's bottom width
+              stageData.forEach((item, index) => {
+                if (index === 0) {
+                  item.topWidth = maxWidth;
+                } else {
+                  // Top width of current stage = bottom width of previous stage
+                  item.topWidth = stageData[index - 1].bottomWidth;
+                }
+              });
+
+              // Calculate left offsets to ensure seamless connection
+              // Each stage's bottom width equals the next stage's top width
+              // We need to align the bottom edge of each stage with the top edge of the next
+              const offsets: number[] = [];
+              stageData.forEach((item, index) => {
+                if (index === 0) {
+                  // First stage: center it
+                  offsets[index] = (100 - item.topWidth) / 2;
+                } else {
+                  // Calculate where previous stage's bottom edge starts
+                  const prevItem = stageData[index - 1];
+                  // Previous stage's bottom edge left position = container offset + half the width difference
+                  const prevBottomLeft =
+                    offsets[index - 1] +
+                    (prevItem.topWidth - prevItem.bottomWidth) / 2;
+                  // Current stage's top edge should start at the same position
+                  // (since topWidth[i] = bottomWidth[i-1], they have the same width and align perfectly)
+                  offsets[index] = prevBottomLeft;
+                }
+              });
+
+              return stageData.map((item, index) => (
+                <FunnelStageCard
+                  key={`${activeTab}-${item.stage.stage}`}
+                  stage={item.stage}
+                  index={index}
+                  total={data.length}
+                  topWidth={item.topWidth}
+                  bottomWidth={item.bottomWidth}
+                  leftOffset={offsets[index]}
+                />
+              ));
+            })()}
           </div>
         </TabsContent>
       </Tabs>

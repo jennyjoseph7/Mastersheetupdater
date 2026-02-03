@@ -663,8 +663,12 @@ function CampaignInsightsContent() {
                           <TableHead>Name</TableHead>
                           <TableHead>Phone</TableHead>
                           <TableHead>Email</TableHead>
-                          <TableHead>Disposition</TableHead>
-                          <TableHead>Provider Status</TableHead>
+                          <TableHead className="text-center">
+                            Disposition
+                          </TableHead>
+                          <TableHead className="text-center">
+                            Provider Status
+                          </TableHead>
                           <TableHead>Last Interaction</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
@@ -690,35 +694,37 @@ function CampaignInsightsContent() {
                                 {lead.phone_number || "N/A"}
                               </TableCell>
                               <TableCell>{displayEmail}</TableCell>
-                              <TableCell>
+                              <TableCell className="text-center">
                                 <Badge
+                                  variant="outline"
                                   className={
                                     lead.disposition === "contacted"
-                                      ? "bg-green-500 hover:bg-green-600 text-white border-green-600 border-transparent"
+                                      ? "border-green-500 text-green-700 dark:text-green-400"
                                       : lead.disposition === "failed"
-                                      ? "bg-red-500 hover:bg-red-600 text-white border-red-600 border-transparent"
+                                      ? "border-red-500 text-red-700 dark:text-red-400"
                                       : lead.disposition === "queued"
-                                      ? "bg-blue-500 hover:bg-blue-600 text-white border-blue-600 border-transparent"
+                                      ? "border-blue-500 text-blue-700 dark:text-blue-400"
                                       : lead.disposition === "reached"
-                                      ? "bg-purple-500 hover:bg-purple-600 text-white border-purple-600 border-transparent"
+                                      ? "border-purple-500 text-purple-700 dark:text-purple-400"
                                       : lead.disposition === "converted" ||
                                         lead.disposition === "engaged"
-                                      ? "bg-primary text-primary-foreground border-primary border-transparent"
+                                      ? "border-primary text-primary"
                                       : ""
                                   }
                                 >
                                   {lead.disposition || "N/A"}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="text-center">
                                 {lead.provider_status ? (
                                   <Badge
-                                    variant={
+                                    variant="outline"
+                                    className={
                                       lead.provider_status === "reached"
-                                        ? "default"
+                                        ? "border-green-500 text-green-700 dark:text-green-400"
                                         : lead.provider_status === "failed"
-                                        ? "destructive"
-                                        : "secondary"
+                                        ? "border-red-500 text-red-700 dark:text-red-400"
+                                        : "border-muted-foreground/50"
                                     }
                                   >
                                     {lead.provider_status}
