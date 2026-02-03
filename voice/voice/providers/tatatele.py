@@ -6,14 +6,12 @@ import json
 from typing import Dict, Any
 import asyncio
 import os, sys, json
-from flask import Blueprint, request, jsonify, Response
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 import config
 
 TATATELE_BASE_URL = os.environ.get("TATATELE_BASE_URL", "https://api-smartflo.tatateleservices.com/v1")
 TATATELE_API_TOKEN = os.environ.get("TATATELE_API_TOKEN", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI3MDEzNTciLCJjciI6ZmFsc2UsImlzcyI6Imh0dHBzOi8vY2xvdWRwaG9uZS50YXRhdGVsZXNlcnZpY2VzLmNvbS90b2tlbi9nZW5lcmF0ZSIsImlhdCI6MTc2MzM2MzI0MiwiZXhwIjoyMDYzMzYzMjQyLCJuYmYiOjE3NjMzNjMyNDIsImp0aSI6ImV3UzJOUnRCQkpWaXl6NkoifQ.7vZB9svDAOvyEqNRLykrZBJOr2HQkvBSwOwFZuwSkvI")
 
-app = Blueprint('tatatele_routes', __name__)
 
 
 class CloudPhoneAPI:

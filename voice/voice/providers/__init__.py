@@ -1,11 +1,13 @@
 
 from . import twilio
 from . import elevanlabs_tatatele
+from . import elevanlab
 import requests
 
 PROVIDERS = {
     'twilio': twilio,
     'tatatele': elevanlabs_tatatele,
+    'elevanlab': elevanlab,
 }
 
 PROVDER_RESPONSE_FORMAT = {
@@ -18,7 +20,12 @@ PROVDER_RESPONSE_FORMAT = {
         "call_sid": "ref_id",
         "message": "message",
         "success": "success",
-    }
+    },
+    "elevanlab": {
+        "call_sid": "call_sid",
+        "message": "message",
+        "success": "success",
+    },
 }
 
 
@@ -63,4 +70,6 @@ def make_call(provider_name: str, payload:dict,  *args, **kwargs):
         "message": r.get(PROVDER_RESPONSE_FORMAT[provider_name]["message"]),
         "success": r.get(PROVDER_RESPONSE_FORMAT[provider_name]["success"]),
     }
+
+
 
