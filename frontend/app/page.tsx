@@ -287,7 +287,45 @@ export default function CampaignDashboard() {
 
     // For "all" type, sum both pre-sales and post-sales counts
     if (campaignTypeFilter === "all") {
-      if (campaignsData) {
+      // Use summary data if available (more accurate than filtering campaigns)
+      if (campaignSummaryData && Array.isArray(campaignSummaryData)) {
+        const preSalesSummary = campaignSummaryData.find(
+          (s: any) =>
+            s.campaign_type === "pre-sales" || s.campaign_type === "pre_sales"
+        );
+        const postSalesSummary = campaignSummaryData.find(
+          (s: any) =>
+            s.campaign_type === "post-sales" || s.campaign_type === "post_sales"
+        );
+
+        // Sum up total and active counts from summaries
+        const totalCountSum =
+          (preSalesSummary?.total_count ?? 0) +
+          (postSalesSummary?.total_count ?? 0);
+        const activeCountSum =
+          (preSalesSummary?.active_count ?? 0) +
+          (postSalesSummary?.active_count ?? 0);
+        const totalReachSum =
+          (preSalesSummary?.total_reach ?? 0) +
+          (postSalesSummary?.total_reach ?? 0);
+        const preRate = preSalesSummary?.conversation_rate ?? 0;
+        const postRate = postSalesSummary?.conversation_rate ?? 0;
+        const avgRate =
+          preSalesSummary && postSalesSummary
+            ? ((preRate < 1 ? preRate * 100 : preRate) +
+                (postRate < 1 ? postRate * 100 : postRate)) /
+              2
+            : (preRate < 1 ? preRate * 100 : preRate) ||
+              (postRate < 1 ? postRate * 100 : postRate);
+
+        setTotalCampaignCount(totalCountSum);
+        setTotalCount(totalCountSum);
+        setActiveCampaignCount(activeCountSum);
+        setActiveCount(activeCountSum);
+        setTotalReach(totalReachSum);
+        setConversionRate(avgRate);
+      } else if (campaignsData) {
+        // Fallback: calculate from campaigns data
         setTotalCount(campaignsData.total ?? 0);
         setTotalCampaignCount(campaignsData.total ?? 0);
 
@@ -304,34 +342,6 @@ export default function CampaignDashboard() {
 
         setActiveCount(activeAll);
         setActiveCampaignCount(activeAll);
-      }
-
-      // Use summary data if available for reach and conversion rate
-      if (campaignSummaryData && Array.isArray(campaignSummaryData)) {
-        const preSalesSummary = campaignSummaryData.find(
-          (s: any) =>
-            s.campaign_type === "pre-sales" || s.campaign_type === "pre_sales"
-        );
-        const postSalesSummary = campaignSummaryData.find(
-          (s: any) =>
-            s.campaign_type === "post-sales" || s.campaign_type === "post_sales"
-        );
-
-        const totalReachSum =
-          (preSalesSummary?.total_reach ?? 0) +
-          (postSalesSummary?.total_reach ?? 0);
-        const preRate = preSalesSummary?.conversation_rate ?? 0;
-        const postRate = postSalesSummary?.conversation_rate ?? 0;
-        const avgRate =
-          preSalesSummary && postSalesSummary
-            ? ((preRate < 1 ? preRate * 100 : preRate) +
-                (postRate < 1 ? postRate * 100 : postRate)) /
-              2
-            : (preRate < 1 ? preRate * 100 : preRate) ||
-              (postRate < 1 ? postRate * 100 : postRate);
-
-        setTotalReach(totalReachSum);
-        setConversionRate(avgRate);
       } else if (counts) {
         // Fallback to pivot counts
         let totalForAll = 0;
