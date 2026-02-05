@@ -150,7 +150,8 @@
           "case": "lower",
           "attribute_join": "-",
           "is_unique": true,
-          "separator": "-"
+          "separator": "-",
+          "skip_empty": true
         }
       },
       "name": "color_id",

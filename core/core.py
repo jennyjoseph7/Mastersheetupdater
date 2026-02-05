@@ -246,27 +246,39 @@ def get_vehicle_id(vehicle_model, row, missing_reason = None, logger = None):
         row['vehicle_id'] = vehicle.get('vehicle_id')
     return row, missing_reason
 
+def get_rooftop(row, models, model_name, missing_reason = None, rooftop_id = None, logger = None):
+    logger = logger or mlogger
+    missing_reason = missing_reason or []
+    ws_val = rooftop_id or get_valid_value(row, f'{model_name}_id')
+    def get_ws_val(t):
+        ws_val = hp.make_single(
+            models['rooftop_model'].list(
+                _as_option=True, 
+                _page_size=1,
+                dealership_id = row.get("dealership_id"),
+                workshop_code=f"~{row.get(f'{model_name}_{t}')}"
+            ),
+            force = True,
+            default = {}
+        )
+        ws_val = ws_val.get(f'{model_name}_id')
+        return ws_val
+    if not ws_val:
+        if is_valid_value(row, f"{model_name}_code"):
+            ws_val = get_ws_val('code')
+        elif is_valid_value(row, f'{model_name}_name'):
+            ws_val = get_ws_val('name')
+    if not ws_val:
+        missing_reason.append(f"{model_name} ID or {model_name} code or {model_name} name not found")
+    row[f'{model_name}_id'] = ws_val
+    return row, missing_reason
+
 
 def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id = None, logger = None):
     logger = logger or mlogger
     logger.info(f"Processing post-sales lead row: {row}")
     missing_reason = missing_reason or []
-    ws_val = rooftop_id or get_valid_value(row, 'workshop_id')
-    if not ws_val:
-        if is_valid_value(row, 'workshop_name'):
-            ws_val = hp.make_single(
-                models['rooftop_model'].list(
-                    _as_option=True, 
-                    _page_size=1,
-                    workshop_name=f"~{row.get('workshop_name')}"
-                ),
-                force = True,
-                default = {}
-            )
-            ws_val = ws_val.get('workshop_id')
-    if not ws_val:
-        missing_reason.append("Workshop ID or workshop_name not found")
-    row['workshop_id'] = ws_val
+    row = get_rooftop(row, models, 'workshop', missing_reason, rooftop_id, logger)
     if not any([get_valid_value(row, k) for k in ['next_service_due', 'warranty_expiry_date', 'insurance_expiry_date', 'extended_warranty_expiry_date']]):
         missing_reason.append("Either one of next service due date, warranty expiry date, or insurance expiry date is required")
     if is_valid_value(row, 'next_service_due'):
@@ -283,6 +295,7 @@ def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = 
     logger = logger or mlogger
     logger.info(f"Processing pre-sales lead row: {row}")
     missing_reason = missing_reason or []
+    row = get_rooftop(row, models, 'showroom', missing_reason, rooftop_id, logger)
     data = row
     for k in [
         "phone_number",
@@ -361,24 +374,19 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
     if not phone and not email:
         missing_reason.append("Missing phone_number and email, required one of them")
     persons_involved = []
-    for k in ["phone_number", "alt_phone_number_2", "alt_phone_number_3", "alt_phone_number_4"]:
-        phone = get_valid_value(row, k)
-        if phone:
-            for l in ["phone_number", "alt_phone_number_2", "alt_phone_number_3", "alt_phone_number_4"]:
-                persons = person_model.list(_as_option=True, _page_size=1, **{l: f"{phone}^"})
-                if persons:
-                    persons_involved.extend(persons)
-                else:
-                    missing_emails_phones[l] = phone
-    for k in ["email", "alt_email_2", "alt_email_3", "alt_email_4"]:
-        email = get_valid_value(row, k)
-        if email:
-            for l in ["email", "alt_email_2", "alt_email_3", "alt_email_4"]:
-                persons = models['person_model'].list(_as_option=True, _page_size=1, **{l: f"{email}^"})
-                if persons:
-                    persons_involved.extend(persons)
-                else:
-                    missing_emails_phones[l] = email
+    def manage_credentials(typ):
+        opts = [f"{typ}", f"alt_{typ}_2", f"alt_{typ}_3", "alt_{type}_4"]
+        for k in opts:
+            cred = get_valid_value(row, k)
+            if cred:
+                for l in opts:
+                    persons = person_model.list(_as_option=True, _page_size=1, **{l: f"{cred}^"})
+                    if persons:
+                        persons_involved.extend(persons)
+                    else:
+                        missing_emails_phones[l] = cred
+    manage_credentials('phone_number')
+    manage_credentials('email')
     if persons_involved:
         persons_involved = get_unique_persons_involved(persons_involved)
     vehicle_id = get_valid_value(row, 'vehicle_id')
@@ -409,24 +417,18 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
                 persons_involved.append(person)
     elif missing_emails_phones:
         data = {}
-        ph_list = ["phone_number", "alt_phone_number_2", "alt_phone_number_3", "alt_phone_number_4"]
-        for i, k in enumerate(ph_list):
-            if k not in row:
-                for j,l in enumerate(ph_list[i+1:]):
-                    if l in missing_emails_phones:
-                        data[k] = missing_emails_phones.get(l)
-                        break
-            else:
-                data[k] = row.get(k)
-        email_list = ["email", "alt_email_2", "alt_email_3", "alt_email_4"]
-        for i, k in enumerate(email_list):
-            if k not in row:
-                for j,l in enumerate(email_list[i+1:]):
-                    if l in missing_emails_phones:
-                        data[k] = missing_emails_phones.get(l)
-                        break
-            else:
-                data[k] = row.get(k)
+        def manage_missing(typ):
+            _list = [f"{typ}", f"alt_{typ}_2", f"alt_{typ}_3", f"alt_{typ}_4"]
+            for i, k in enumerate(_list):
+                if k not in row:
+                    for j,l in enumerate(_list[i+1:]):
+                        if l in missing_emails_phones:
+                            data[k] = missing_emails_phones.get(l)
+                            break
+                else:
+                    data[k] = row.get(k)
+        manage_missing('phone_number')
+        manage_missing('email')
         for k in person_model._model_ref.attr_seq:
             if is_valid_value(row, k) and not any(_ in k for _ in ('phone', 'email')):
                 data[k] = row.get(k)
