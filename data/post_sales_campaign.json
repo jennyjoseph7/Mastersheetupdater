@@ -720,6 +720,59 @@
           "subdivision_id" : "~null"
         }
       }
+    },
+    {
+      "name" : "purpose",
+      "type" : "text",
+      "require" : false,
+      "default" : {
+        "function" : "get_from_model",
+        "args" : [
+          "campaign_objective",
+          "campaign_objective_id",
+          "purpose"
+        ]
+      }
+    },
+    {
+      "name" : "purpose_steps",
+      "type" : "string_list",
+      "require" : false,
+      "default" : {
+        "function" : "get_from_model",
+        "args" : [
+          "campaign_objective",
+          "campaign_objective_id",
+          "purpose_steps"
+        ]
+      }
+    },
+    {
+      "name" : "custom_conversation_start_pattern",
+      "type" : "string_list",
+      "require" : false,
+      "default" : {
+        "function" : "get_from_model",
+        "args" : [
+          "campaign_objective",
+          "campaign_objective_id",
+          "custom_conversation_start_pattern"
+        ]
+      },
+      "placeholder" : "Custom Conversation Start Pattern Mention what the bot should say in the starting of a conversation and how."
+    },
+    {
+      "name":"doc_data",
+      "type" : "text",
+      "required" : false,
+      "default" : {
+        "function" : "get_from_model",
+        "args" : [
+          "campaign_objective",
+          "campaign_objective_id",
+          "doc_data"
+        ]
+      }
     }
   ],
   "parents": [
