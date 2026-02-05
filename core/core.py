@@ -278,7 +278,7 @@ def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id =
     logger = logger or mlogger
     logger.info(f"Processing post-sales lead row: {row}")
     missing_reason = missing_reason or []
-    row = get_rooftop(row, models, 'workshop', missing_reason, rooftop_id, logger)
+    row, missing_reason = get_rooftop(row, models, 'workshop', missing_reason, rooftop_id, logger)
     if not any([get_valid_value(row, k) for k in ['next_service_due', 'warranty_expiry_date', 'insurance_expiry_date', 'extended_warranty_expiry_date']]):
         missing_reason.append("Either one of next service due date, warranty expiry date, or insurance expiry date is required")
     if is_valid_value(row, 'next_service_due'):
@@ -295,7 +295,7 @@ def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = 
     logger = logger or mlogger
     logger.info(f"Processing pre-sales lead row: {row}")
     missing_reason = missing_reason or []
-    row = get_rooftop(row, models, 'showroom', missing_reason, rooftop_id, logger)
+    row, missing_reason = get_rooftop(row, models, 'showroom', missing_reason, rooftop_id, logger)
     data = row
     for k in [
         "phone_number",
@@ -481,7 +481,7 @@ def process_common_row(campaign_type, row, models, missing_reason = None, dealer
         raise ValueError(f"Invalid campaign type: {campaign_type}")
     return row, missing_reason
 
-def process_headers(headers, mapping, workshop_id, campaign_type, logger = None):
+def process_headers(headers, mapping, rooftop_id, campaign_type, logger = None):
     logger = logger or mlogger
     logger.info(f"Processing headers: {headers}")
     if not headers:
@@ -491,9 +491,12 @@ def process_headers(headers, mapping, workshop_id, campaign_type, logger = None)
     has_contact = any(h in headers for h in required_contact)
     if not has_contact:
         raise ValueError(f"CSV missing at least one required contact field: {required_contact}")
-    if not "workshop_id" in headers and not workshop_id and not "workshop_name" in headers:
-        raise ValueError("Either workshop_id or workshop_name must be present as a column or argument")
+    if campaign_type == "pre-sales":
+        if not "showroom_id" in headers and not rooftop_id and not "showroom_name" in headers and not "showroom_code" in headers:
+            raise ValueError("Either showroom_id or showroom_name/showroom_code must be present as a column or argument")
     if campaign_type == 'post-sales':
+        if not "workshop_id" in headers and not rooftop_id and not "workshop_name" in headers and not "workshop_code" in headers:
+            raise ValueError("Either workshop_id or workshop_name/workshop_code must be present as a column or argument")
         if "reg_number" not in headers:
             raise ValueError("CSV is missing 'reg_number' which is required for post-sales campaign.")
     return headers
@@ -1130,8 +1133,12 @@ def gryd_task_import_leads_from_csv(
     audience_name = kwargs.get('audience_name')
     enterprise_id = kwargs.get("enterprise_id") or AUTOCRM_APP_ENTERPRISE_ID
     mapping = kwargs.get("mapping", {})
-    workshop_id = str(kwargs.get("workshop_id"))
-    showroom_id = str(kwargs.get("showroom_id"))
+    workshop_id = kwargs.get("workshop_id")
+    if workshop_id and not isinstance(workshop_id):
+        workshop_id = str(workshop_id)
+    showroom_id = kwargs.get("showroom_id")
+    if showroom_id and not isinstance(showroom_id):
+        showroom_id = str(showroom_id)
     rooftop_type = "workshop" if workshop_id else "showroom" if showroom_id else "dealership"
     rooftop_id = workshop_id if rooftop_type == 'workshop' else showroom_id if rooftop_type == 'showroom' else dealership_id
     campaign_objective_id = kwargs.get("campaign_objective_id")
@@ -1155,7 +1162,7 @@ def gryd_task_import_leads_from_csv(
             headers = reader.fieldnames
             logger.info(f"Headers: {headers}")
             original_headers = headers
-            headers = process_headers(original_headers, mapping, workshop_id, campaign_type, logger = logger)
+            headers = process_headers(original_headers, mapping, rooftop_id, campaign_type, logger = logger)
             with open(error_csv_path, "w", newline="", encoding="utf-8") as fe:
                 # Error csv
                 error_csv_headers = ["line_num"] + headers + ["_error"]
