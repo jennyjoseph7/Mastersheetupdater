@@ -105,6 +105,10 @@
       "indexed": true
     },
     {
+      "name": "showroom_code",
+      "type": "text"
+    },
+    {
       "name": "showroom_full_name",
       "type": "text",
       "indexed": true,
