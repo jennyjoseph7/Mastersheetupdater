@@ -480,7 +480,8 @@
           "campaign_name",
           "start_date",
           "campaign_type",
-          "campaign_objective"
+          "campaign_objective",
+          "created"
         ]
       },
       "name": "campaign_id",

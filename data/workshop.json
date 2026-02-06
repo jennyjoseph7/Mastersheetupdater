@@ -84,6 +84,10 @@
       "indexed": true
     },
     {
+      "name": "workshop_code",
+      "type": "text"
+    },
+    {
       "name": "workshop_full_name",
       "type": "text",
       "indexed": true,
@@ -100,6 +104,17 @@
           "case": "title",
           "skip_empty": true
         }
+      }
+    },
+    {
+      "name": "workshop_code",
+      "type": "text",
+      "indexed": true,
+      "default": {
+        "function": "copy_attribute",
+        "args": [
+          "workshop_name"
+        ]
       }
     },
     {
@@ -348,5 +363,8 @@
       "id": true
     }
   ],
-  "parents": ["dealership", "region_subdivision"]
+  "parents": [
+    "dealership",
+    "region_subdivision"
+  ]
 }
