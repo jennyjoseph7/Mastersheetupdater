@@ -305,24 +305,32 @@ def get_purpose_and_steps(*args, **kwargs):
     campaign_data = session_data_cache_data.get("campaign_data",{})
     user_data = session_data_cache_data.get("user_data")
     campaign_type = campaign_data.get("campaign_type","inbound")
+    
+    
+    flow = "service" if campaign_type == "post-sales" else "either test drive at the showroom or at home"
+    urgency_hooks = campaign_data.get("urgency_hook",[])
+    date_now = hp.datetime.now().strftime("%A, %B %d, %Y")
+    offer = campaign_data.get("campaign_offer","No Offer")
+    date_time_ref = f"\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
+
+
 
     purpose_dict = {
         "test_drive" : ["- Full Name (if not available as 'person_name' in 'Who is the customer section') \n- Interested Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time "],
         "service" : ["- Full Name (if not available as 'person_name' in 'Who is the customer section')\n- Car Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time \n- Service Type"]
         }
-
-    ###TODO create a way to detect the flow to push
-    flow = "service" if campaign_type == "post-sales" else "either test drive at the showroom or at home"
-    urgency_hooks = campaign_data.get("urgency_hook",[])
-    date_now = hp.datetime.now().strftime("%A, %B %d, %Y")
-    offer = campaign_data.get("campaign_offerf","No Offer")
+    p_steps = ""
+    if campaign_data.get("purpose"):
+        if campaign_data.get("purpose_steps"):
+            steps = ', \n'.join(campaign_data.get("purpose_steps"))
+            return f"The overall purpose of your conversation with the user is to help the customer book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}.Here are the details you should gather from the user when trying to complete the {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
     if flow == "service":
         steps = ["- Full Name \n- Car Model \n- Date & Time \n- Service Type"]
     else:
         steps = ["- Full Name \n- Interested Model\n- Date & Time "]
     if campaign_type == "inbound":
-        return f"Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy.\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
-    return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy.\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
+        return f"Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy.{date_time_ref}"
+    return f"The overall purpose of your conversation with the user is to help the customer book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
 def get_cta_options(*args, **kwargs):
     ctas = kwargs.get("campaign_data").get("ctas")
     if not ctas:
@@ -416,6 +424,8 @@ def prune_user_data(user_data):
 def get_response_channel_info(channel,campaign_id, campaign_data):
     mlogger.info("got channel == {} and campaign id == {}".format(channel,campaign_id))
     if campaign_id != "4c99d5ea-4441-3ce6-841f-de5d7585b3b7":
+        if campaign_data.get("custom_conversation_start_pattern"):
+            return "\nConversation Initiation Pattern -\n{}\n".format(campaign_data.get("custom_conversation_start_pattern"))
         if channel and channel in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
             mlogger.info("got voice channel")
             return """

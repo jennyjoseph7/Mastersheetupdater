@@ -25,19 +25,19 @@
       "refers": "parents.dealership.dealership_id",
       "indexed": true,
       "default": {
-          "function": "name_to_id",
-          "args": [
-              "dealer_name",
-              "dealer_group_name",
-              "region_name"
-          ],
-          "kwargs": {
-              "attribute_join": "-",
-              "is_unique": true,
-              "separator": "-",
-              "skip_empty": true,
-              "case": "lower"
-          }
+        "function": "name_to_id",
+        "args": [
+          "dealer_name",
+          "dealer_group_name",
+          "region_name"
+        ],
+        "kwargs": {
+          "attribute_join": "-",
+          "is_unique": true,
+          "separator": "-",
+          "skip_empty": true,
+          "case": "lower"
+        }
       }
     },
     {
@@ -105,6 +105,10 @@
       "indexed": true
     },
     {
+      "name": "showroom_code",
+      "type": "text"
+    },
+    {
       "name": "showroom_full_name",
       "type": "text",
       "indexed": true,
@@ -121,6 +125,17 @@
           "case": "title",
           "skip_empty": true
         }
+      }
+    },
+    {
+      "name": "showroom_code",
+      "type": "text",
+      "indexed": true,
+      "default": {
+        "function": "copy_attribute",
+        "args": [
+          "showroom_name"
+        ]
       }
     },
     {

@@ -145,5 +145,17 @@
       "read_access": true,
       "role": "human_agent"
     }
+  ],
+  "service_visit": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
+  ],
+  "showroom_visit": [
+    {
+      "read_access": true,
+      "role": "human_agent"
+    }
   ]
 }

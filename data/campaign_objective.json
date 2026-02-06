@@ -212,6 +212,36 @@
           "case": "lower"
         }
       }
+    },
+    {
+      "name" : "purpose",
+      "type" : "text",
+      "require" : false
+      }
+    },
+    {
+      "name" : "purpose_steps",
+      "type" : "string_list",
+      "require" : false
+    },
+    {
+      "name" : "custom_conversation_start_pattern",
+      "type" : "string_list",
+      "require" : false,
+      "placeholder" : "Custom Conversation Start Pattern Mention what the bot should say in the starting of a conversation and how."
+    },
+    {
+      "name":"doc_data",
+      "default": {
+        "function" : "get_from_model",
+        "args" : [
+          "dealership",
+          "dealership_id",
+          "doc_data"
+        ]
+      },
+      "type" : "text",
+      "required" : false
     }
   ],
   "parents": ["dealership"]

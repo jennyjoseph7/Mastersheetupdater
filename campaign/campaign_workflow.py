@@ -418,6 +418,31 @@ def remap_workflow(workflows: dict, campaign_id: str, dealership_id: str, campai
     logger.info(f"Time taken to remap workflow: {hp.time() - st} seconds")
     return ret
 
+def get_values_from_details(campaign_type, lead_id, lead_id_attr, lead_model, user_id_attr, user_model, campaign_model, dealership_model, campaign_objective_model, lead = None, logger = None):
+    logger = logger or mlogger
+    _values = {}
+    for _id_attr, _model, _name in [
+            (lead_id_attr, lead_model, 'lead'), 
+            (user_id_attr, user_model, 'user'), 
+            ('campaign_id', campaign_model, 'campaign'), 
+            ('dealership_id', dealership_model, 'dealership'), 
+            ('campaign_objective_id', campaign_objective_model, 'campaign_objective')
+        ]:
+        if not lead:
+            _detail = lead = lead_model.get(lead_id)
+            _id_value = lead_id
+        else:
+            _id_value = lead.get(_id_attr)
+            _detail = _model.get(_id_value)
+        if not _detail:
+            str_msg = f"No {_model.name} found for {_id_attr}={_id_value}, campaign_type={campaign_type}, enterprise_id={enterprise_id}"
+            logger.error(str_msg)
+            raise ValueError(str_msg)
+        _values[_name] = {
+            "id": _id_value,
+            "object": _detail
+        }
+
 @gryd.is_a_task(function_name="determine_campaign_next_action", job_param='job', auth_param='auth', logger_param='logger')
 def determine_campaign_next_action(
         campaign_type: str,
@@ -467,36 +492,17 @@ def determine_campaign_next_action(
     """
     enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
     logger = logger or mlogger
-    campaign_type = campaign_type.lower()
-    channel = channel.lower()
+    campaign_type = campaign_type.lower().replace('_', '-')
+    if isinstance(channel, str):
+        channel = channel.lower()
     campaign_model, lead_model, user_model, user_id_attr, lead_id_attr = get_model_and_attrs(campaign_type)
     dealership_model = gryd.base_model.Model('dealership', enterprise_id)
     campaign_objective_model = gryd.base_model.Model('campaign_objective', enterprise_id)
-    lead = None
-    _values = {}
-    for _id_attr, _model in [
-            (lead_id_attr, lead_model), 
-            (user_id_attr, user_model), 
-            ('campaign_id', campaign_model), 
-            ('dealership_id', dealership_model), 
-            ('campaign_objective_id', campaign_objective_model)
-        ]:
-        if not lead:
-            _detail = lead = lead_model.get(lead_id)
-            _id_value = lead_id
-        else:
-            _id_value = lead.get(_id_attr)
-            _detail = _model.get(_id_value)
-        if not _detail:
-            str_msg = f"No {_model.name} found for {_id_attr}={_id_value}, campaign_type={campaign_type}, enterprise_id={enterprise_id}"
-            logger.error(str_msg)
-            raise ValueError(str_msg)
-        _values[_model.name] = {
-            "id": _id_value,
-            "object": _detail
-        }
+    _values = get_values_from_details(campaign_type, lead_id, lead, lead_id_attr, lead_model, user_id_attr, user_model, campaign_model, dealership_model, campaign_objective_model, logger)
+    lead = _values.get('lead', {}).get('object')
     campaign_details = _values.get('campaign', {}).get('object')
-    
+    campaign_id = _values.get('campaign', {}).get('id') 
+    dealership_id = _values.get('dealership', {}).get('id')
     workflow = _values.get('workflow', {}).get('object')
     if not channel:
         channel = AUTOCRM_CHEAPEST_CHANNELS[0]
@@ -524,7 +530,17 @@ def determine_campaign_next_action(
     )
     workflow = remap_workflow(workflows, campaign_id=campaign_details.get('campaign_id'), dealership_id=dealership_id, campaign_objective_id=campaign_details.get('campaign_objective_id'), campaign_type=campaign_type, logger=logger)
     channel, channel_identifier, delay, trigger = get_channel_from_lead(lead, campaign_details, workflow=workflow, channel=channel, disposition=disposition, logger=logger)
-    gryd.create_async_task('RunCampaignOrCreater', AUTOCRM_CAMPAIGN_SERVICE_NAME, kwargs=kwargs)
+    gryd.create_async_task('process_single_lead', AUTOCRM_CAMPAIGN_SERVICE_NAME, args= [
+        channel,
+        lead,
+        campaign_type,
+        campaign_id,
+    ], kwargs = {
+        "user_id": _values.get('user', {}).get('id'),
+        "disposition_tag": disposition,
+        "disposition_detail_tag": lead.get('disposition_detail'),
+        "channel_identifier": channel_identifier
+    }, delay = delay)
     return
 
 

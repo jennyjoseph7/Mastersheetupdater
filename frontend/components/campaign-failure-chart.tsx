@@ -1,6 +1,28 @@
-"use client"
+"use client";
 
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+const CHANNEL_COLORS: Record<string, string> = {
+  whatsapp_chat: "#25D366",
+  whatsapp: "#25D366",
+  WhatsApp: "#25D366",
+  email: "#EA4335",
+  Email: "#EA4335",
+  voice: "#4285F4",
+  Voice: "#4285F4",
+  sms: "#FACC15",
+  SMS: "#FACC15",
+  default: "#6366f1",
+};
 
 const defaultFailureData = [
   {
@@ -17,7 +39,7 @@ const defaultFailureData = [
     "Didn't pick up": 180,
     Rejected: 240,
   },
-]
+];
 
 interface CampaignFailureChartProps {
   customData?: Array<Record<string, any>>;
@@ -36,18 +58,23 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p className="font-semibold mb-2">{label}</p>
         {payload.map((entry: any, index: number) => (
           <div key={index} className="flex items-center gap-2 text-sm">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
+            <div
+              className="w-3 h-3 rounded-sm"
+              style={{ backgroundColor: entry.color }}
+            />
             <span className="text-muted-foreground">{entry.name}:</span>
             <span className="font-semibold">{entry.value}</span>
           </div>
         ))}
       </div>
-    )
+    );
   }
-  return null
-}
+  return null;
+};
 
-export function CampaignFailureChart({ customData }: CampaignFailureChartProps = {}) {
+export function CampaignFailureChart({
+  customData,
+}: CampaignFailureChartProps = {}) {
   const failureData = customData || defaultFailureData;
 
   if (!failureData || failureData.length === 0) {
@@ -62,7 +89,8 @@ export function CampaignFailureChart({ customData }: CampaignFailureChartProps =
   const failureReasons = new Set<string>();
   failureData.forEach((item) => {
     Object.keys(item).forEach((key) => {
-      if (key !== "channel") {
+      // Exclude channel, channelName, and other non-failure-reason keys
+      if (key !== "channel" && key !== "channelName") {
         failureReasons.add(key);
       }
     });
@@ -71,22 +99,51 @@ export function CampaignFailureChart({ customData }: CampaignFailureChartProps =
   const failureReasonArray = Array.from(failureReasons);
   const colorMap: Record<string, string> = {
     "Message not delivered": "hsl(260, 98%, 31%)",
-    "Spam": "hsl(280, 85%, 45%)",
+    Spam: "hsl(280, 85%, 45%)",
     "Not reachable": "hsl(260, 75%, 50%)",
     "Didn't pick up": "hsl(270, 70%, 60%)",
-    "Rejected": "hsl(280, 65%, 70%)",
+    Rejected: "hsl(280, 65%, 70%)",
   };
 
   // Generate colors for unknown failure reasons
   const getColor = (reason: string, index: number) => {
-    return colorMap[reason] || `hsl(${260 + index * 20}, 70%, ${50 + index * 5}%)`;
+    return (
+      colorMap[reason] || `hsl(${260 + index * 20}, 70%, ${50 + index * 5}%)`
+    );
   };
 
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={failureData}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <XAxis dataKey="channel" className="text-xs" tick={{ fontSize: 12 }} />
+        <XAxis
+          dataKey="channel"
+          className="text-xs"
+          tick={(props) => {
+            const { x, y, payload } = props;
+            const channelName = payload.value || "";
+            const channelKey = channelName.toLowerCase();
+            const fillColor =
+              CHANNEL_COLORS[channelName] ||
+              CHANNEL_COLORS[channelKey] ||
+              CHANNEL_COLORS.default;
+            return (
+              <g transform={`translate(${x},${y})`}>
+                <text
+                  x={0}
+                  y={0}
+                  dy={16}
+                  textAnchor="middle"
+                  fill={fillColor}
+                  fontSize={12}
+                  fontWeight={500}
+                >
+                  {channelName}
+                </text>
+              </g>
+            );
+          }}
+        />
         <YAxis
           className="text-xs"
           tick={{ fontSize: 12 }}
@@ -105,7 +162,11 @@ export function CampaignFailureChart({ customData }: CampaignFailureChartProps =
             dataKey={reason}
             stackId="a"
             fill={getColor(reason, index)}
-            radius={index === failureReasonArray.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+            radius={
+              index === failureReasonArray.length - 1
+                ? [4, 4, 0, 0]
+                : [0, 0, 0, 0]
+            }
           />
         ))}
       </BarChart>
