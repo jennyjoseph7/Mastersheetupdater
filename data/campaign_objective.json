@@ -217,7 +217,6 @@
       "name" : "purpose",
       "type" : "text",
       "require" : false
-      }
     },
     {
       "name" : "purpose_steps",
