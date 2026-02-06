@@ -3,3 +3,5 @@ pdfkit==1.0.0
 razorpay
 elevenlabs
 elevenlabs[pyaudio]
+aiohttp>=3.9.0
+uvloop>=0.19.0; sys_platform != "win32"

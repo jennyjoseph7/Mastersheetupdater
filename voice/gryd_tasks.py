@@ -255,6 +255,12 @@ def post_actions(session_id):
        }
    )
 
+@gryd.is_a_task(function_name="end_voice_session")
+def end_session(*args, **kwargs):
+    converter = BaseWebhookConverter()
+    return converter.end_session(*args, **kwargs)
+
+
 
 if __name__ == "__main__":
 
@@ -264,7 +270,7 @@ if __name__ == "__main__":
     #+919920297124 -Ankita +919833885948- Arshiya
 
     data = {'_is_testing': False,
-    'mobile_number': "918850988794", #"918850988794", #'918401586512', #"918850988794",
+    'mobile_number': "918850988794", #"918850988794", #"918401586512", #"918850988794",
     "dealership_id": 'stellantis-india',
     'generate_prompt': False,
 
@@ -349,7 +355,7 @@ if __name__ == "__main__":
     'template_details': None}
 
 
-    trigger_voice_call(**{"user_data":data})
+    #trigger_voice_call(**{"user_data":data})
 
     gryd.create_async_task(
         "trigger_voice_call",
@@ -361,8 +367,8 @@ if __name__ == "__main__":
     )
 
 
-    for x in trigger_voice_call(**{"user_data":data}):
-        print(x)
+    # for x in trigger_voice_call(**{"user_data":data}):
+    #     print(x)
 
     # from gryd_worker import gryd
     # from communication.connectors.load_providers import load_providers
