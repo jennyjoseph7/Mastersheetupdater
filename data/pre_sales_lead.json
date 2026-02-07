@@ -901,6 +901,19 @@
             }
         },
         {
+            "name": "showroom_code",
+            "type": "text",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "showroom_name"
+                ]
+            }
+        },
+        {
             "name": "showroom_address",
             "type": "text",
             "force_update": "showroom_id",
