@@ -137,7 +137,7 @@ export function EngagementModal({
                   className="mb-4"
                 >
                   <TabsList
-                    className="grid w-full"
+                    className="inline-flex h-auto w-full bg-transparent p-0 gap-2"
                     style={{
                       gridTemplateColumns: `repeat(${sessions.length}, minmax(0, 1fr))`,
                     }}
@@ -146,12 +146,13 @@ export function EngagementModal({
                       <TabsTrigger
                         key={session.session_id}
                         value={index.toString()}
+                        className="flex-1 h-auto py-2.5 px-4 rounded-lg border border-border/50 bg-background/50 data-[state=active]:bg-background data-[state=active]:border-border data-[state=active]:shadow-sm transition-all duration-200 hover:bg-background/80"
                       >
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-xs capitalize">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-xs font-medium capitalize leading-tight">
                             {session.channel?.replace(/_/g, " ") || "Session"}
                           </span>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-[10px] text-muted-foreground/80 font-normal">
                             {session.duration
                               ? `${Math.floor(session.duration / 60)}m`
                               : "N/A"}

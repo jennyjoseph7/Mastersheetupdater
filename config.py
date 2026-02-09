@@ -50,10 +50,10 @@ AUTOCRM_CALL_COMPLETED_UNITS = "seconds"
 AUTOCRM_CALL_COMPLETED_ITEM = "call_completed"
 AUTOCRM_CURRENCY = os.environ.get("AUTOCRM_CURRENCY", "INR")
 AUTOCRM_WEBSOCKET_BASE_URL = os.environ.get("AUTOCRM_WEBSOCKET_BASE_URL", "wss://autobot-messenger.gryd.in/ws")
-AUTOCRM_MESSAGE_DELIVERED_PRICE = os.environ.get("AUTOCRM_MESSAGE_DELIVERED_PRICE", 0.75)
+AUTOCRM_MESSAGE_DELIVERED_PRICE = os.environ.get("AUTOCRM_MESSAGE_DELIVERED_PRICE", 0.90)
 AUTOCRM_MESSAGE_DELIVERED_UNITS = "count"
 AUTOCRM_MESSAGE_DELIVERED_ITEM = "message_delivered"
-AUTOCRM_RESPONSE_PROVIDED_PRICE = os.environ.get("AUTOCRM_RESPONSE_PROVIDED_PRICE", 0.90)
+AUTOCRM_RESPONSE_PROVIDED_PRICE = os.environ.get("AUTOCRM_RESPONSE_PROVIDED_PRICE", 0.93)
 AUTOCRM_RESPONSE_PROVIDED_UNITS = "500_characters"
 AUTOCRM_RESPONSE_PROVIDED_ITEM = "response_to_query"
 WHATSAPP_PROVIDER_NAME="airtel"
@@ -322,5 +322,4 @@ def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, 
     else:
         logger.error(f"File: {filename_csv} or {filename_json} not found")
         raise FileNotFoundError(f"Seed file for : {data_name} not found")
-
-
+  

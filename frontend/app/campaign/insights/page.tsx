@@ -76,7 +76,7 @@ const CHANNEL_COLORS: Record<string, string> = {
   email: "#EA4335",
   voice: "#4285F4",
   sms: "#FACC15",
-  default: "#8884d8",
+  default: "#6366f1", // Changed from pink/purple to indigo
 };
 
 // --- TypeScript Interfaces ---
@@ -204,8 +204,8 @@ function processEngagementStats(engagementStats: EngagementStat[]) {
 
     pushStage("Queued", counts.queued);
     pushStage("Attempted", counts.attempted);
-    pushStage("Reached", counts.reached);
     pushStage("Contacted", counts.contacted);
+    pushStage("Reached", counts.reached);
     pushStage("Engaged", counts.engaged);
     pushStage("Converted", counts.converted);
 
@@ -251,11 +251,19 @@ function processFailureStats(failureStats: FailureStat[]) {
 function processIntentStats(intentStats: IntentStat[]) {
   if (!intentStats || intentStats.length === 0) return [];
 
-  return intentStats.map((stat) => ({
-    name: stat.channel === "whatsapp_chat" ? "WhatsApp" : stat.channel,
-    count: stat.count,
-    fill: CHANNEL_COLORS[stat.channel] || CHANNEL_COLORS.default,
-  }));
+  // Filter out channels that aren't in our defined color list to avoid pink colors
+  const validChannels = Object.keys(CHANNEL_COLORS);
+
+  return intentStats
+    .filter((stat) => {
+      const channel = stat.channel || "";
+      return validChannels.includes(channel) || channel === "whatsapp_chat";
+    })
+    .map((stat) => ({
+      name: stat.channel === "whatsapp_chat" ? "WhatsApp" : stat.channel,
+      count: stat.count,
+      fill: CHANNEL_COLORS[stat.channel] || CHANNEL_COLORS.default,
+    }));
 }
 
 // --- Inner Component ---
@@ -471,22 +479,36 @@ function CampaignInsightsContent() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {failureData.map((item, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell className="font-medium capitalize text-xs">
-                              {item.channelName}
-                            </TableCell>
-                            <TableCell
-                              className="text-muted-foreground text-xs truncate max-w-[120px]"
-                              title={item.message}
-                            >
-                              {item.message}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-xs">
-                              {item.count}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {failureData.map((item, idx) => {
+                          // Get the color for this channel
+                          const channelKey =
+                            item.channel === "whatsapp_chat"
+                              ? "whatsapp"
+                              : item.channel;
+                          const channelColor =
+                            CHANNEL_COLORS[channelKey] ||
+                            CHANNEL_COLORS.default;
+
+                          return (
+                            <TableRow key={idx}>
+                              <TableCell
+                                className="font-medium capitalize text-xs"
+                                style={{ color: channelColor }}
+                              >
+                                {item.channelName}
+                              </TableCell>
+                              <TableCell
+                                className="text-muted-foreground text-xs truncate max-w-[120px]"
+                                title={item.message}
+                              >
+                                {item.message}
+                              </TableCell>
+                              <TableCell className="text-right font-bold text-xs">
+                                {item.count}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   ) : (
@@ -552,8 +574,30 @@ function CampaignInsightsContent() {
                           fontSize={12}
                           tickLine={false}
                           axisLine={false}
-                          tick={{ fill: "hsl(var(--muted-foreground))" }}
                           height={40}
+                          tick={(props) => {
+                            const { x, y, payload } = props;
+                            const dataEntry = intentData.find(
+                              (entry) => entry.name === payload.value
+                            );
+                            const fillColor =
+                              dataEntry?.fill || "hsl(var(--muted-foreground))";
+                            return (
+                              <g transform={`translate(${x},${y})`}>
+                                <text
+                                  x={0}
+                                  y={0}
+                                  dy={16}
+                                  textAnchor="middle"
+                                  fill={fillColor}
+                                  fontSize={12}
+                                  fontWeight={500}
+                                >
+                                  {payload.value}
+                                </text>
+                              </g>
+                            );
+                          }}
                         />
                         <YAxis
                           stroke="hsl(var(--muted-foreground))"
@@ -663,8 +707,12 @@ function CampaignInsightsContent() {
                           <TableHead>Name</TableHead>
                           <TableHead>Phone</TableHead>
                           <TableHead>Email</TableHead>
-                          <TableHead>Disposition</TableHead>
-                          <TableHead>Provider Status</TableHead>
+                          <TableHead className="text-center">
+                            Disposition
+                          </TableHead>
+                          <TableHead className="text-center">
+                            Provider Status
+                          </TableHead>
                           <TableHead>Last Interaction</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
@@ -690,35 +738,39 @@ function CampaignInsightsContent() {
                                 {lead.phone_number || "N/A"}
                               </TableCell>
                               <TableCell>{displayEmail}</TableCell>
-                              <TableCell>
+                              <TableCell className="text-center">
                                 <Badge
+                                  variant="outline"
                                   className={
                                     lead.disposition === "contacted"
-                                      ? "bg-green-500 hover:bg-green-600 text-white border-green-600 border-transparent"
+                                      ? "border-green-500 text-green-700 dark:text-green-400"
                                       : lead.disposition === "failed"
-                                      ? "bg-red-500 hover:bg-red-600 text-white border-red-600 border-transparent"
+                                      ? "border-red-500 text-red-700 dark:text-red-400"
                                       : lead.disposition === "queued"
-                                      ? "bg-blue-500 hover:bg-blue-600 text-white border-blue-600 border-transparent"
+                                      ? "border-blue-500 text-blue-700 dark:text-blue-400"
                                       : lead.disposition === "reached"
-                                      ? "bg-purple-500 hover:bg-purple-600 text-white border-purple-600 border-transparent"
+                                      ? "border-purple-500 text-purple-700 dark:text-purple-400"
                                       : lead.disposition === "converted" ||
                                         lead.disposition === "engaged"
-                                      ? "bg-primary text-primary-foreground border-primary border-transparent"
+                                      ? "border-primary text-primary"
                                       : ""
                                   }
                                 >
                                   {lead.disposition || "N/A"}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="text-center">
                                 {lead.provider_status ? (
                                   <Badge
-                                    variant={
+                                    variant="outline"
+                                    className={
                                       lead.provider_status === "reached"
-                                        ? "default"
+                                        ? "border-purple-500 text-purple-700 dark:text-purple-400"
+                                        : lead.provider_status === "contacted"
+                                        ? "border-green-500 text-green-700 dark:text-green-400"
                                         : lead.provider_status === "failed"
-                                        ? "destructive"
-                                        : "secondary"
+                                        ? "border-red-500 text-red-700 dark:text-red-400"
+                                        : "border-muted-foreground/50"
                                     }
                                   >
                                     {lead.provider_status}

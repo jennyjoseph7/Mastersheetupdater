@@ -425,7 +425,7 @@ def post_contact_status(*args, **data):
 
     return
 
- 
+
 # def post_contact_status(*args, **data):
 #     """
 #     Handle and store contact status updates coming from WhatsApp / messaging providers.

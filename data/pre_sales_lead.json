@@ -555,6 +555,7 @@
         },
         {
             "name": "preferred_language",
+            "type": "text",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -758,6 +759,7 @@
         {
             "name": "lead_source",
             "type": "text",
+            "option_others": true,
             "options": [
                 "Walk-in",
                 "CRM",
@@ -887,6 +889,19 @@
         },
         {
             "name": "showroom_name",
+            "type": "text",
+            "force_update": "showroom_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "showroom_name"
+                ]
+            }
+        },
+        {
+            "name": "showroom_code",
             "type": "text",
             "force_update": "showroom_id",
             "default": {
@@ -1314,7 +1329,28 @@
         {
             "name" : "interested_vehicle_id",
             "type" : "uid",
-            "refers" : "parents.model_year.model_year_id"
+            "refers" : "parents.model_year.model_year_id",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "model_year",
+                    "model_year_id"
+                ],
+                "kwargs": {
+                    "vehicle_model_name": "~{interested_vehicle_name}",
+                    "brand_name": "~{interested_vehicle_brand_name}",
+                    "_sort_by": "year",
+                    "_sort_reverse": true
+                }
+            }
+        },
+        {
+            "name": "interested_vehicle_brand_name",
+            "refers": "parents.model_year.brand_name"
+        },
+        {
+            "name" : "interested_vehicle_name",
+            "refers" : "parents.model_year.vehicle_model_name"
         },
         {
             "name" : "interested_vehicle_feature_summary",
@@ -1323,7 +1359,7 @@
                 "function": "get_from_model",
                 "args": [
                     "model_year",
-                    "interested_vehicle",
+                    "interested_vehicle_id",
                     "feature_summary"
                 ]
             }
@@ -1335,22 +1371,10 @@
             "function" : "get_from_model",
             "args" : [
               "model_year",
-              "interested_vehicle",
+              "interested_vehicle_id",
               "competitor_vehicles"
             ]
           }
-        },
-        {
-            "name" : "interested_vehicle_name",
-            "type" : "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "model_year",
-                    "interested_vehicle",
-                    "vehicle_model_name"
-                ]
-            }
         },
         {
             "name": "created",
