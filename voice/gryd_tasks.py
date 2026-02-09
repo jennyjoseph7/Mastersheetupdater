@@ -86,7 +86,7 @@ def trigger_voice_call(*args, **kwargs):
         "campaign_id": user_data.get("campaign_id"),
         "campaign_type": user_data.get("campaign_type"),
         "lead_id": user_data.get("lead_id"),
-        "status":"queued",
+        "status":"attempted",
         "channel": user_data.get("channel", "voice_phone"),
         "phone_number":vhp.format_phone_number(user_data.get("mobile_number")),
         "start_time": hp.epoch()
@@ -108,6 +108,14 @@ def trigger_voice_call(*args, **kwargs):
 
     
     logger.info(f"Session for Voice Call: {session_data}")
+    user_data.update(session_data)
+    attrs=["phone_number","status", "lead_id","campaign_id","campaign_type","email","dealership_id","channel_provider","channel","campaign_model"]
+    payload = {a:user_data.get(a) for a in attrs if a in user_data}
+    gryd.create_async_task(
+        "post_contact_status", 
+        config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+        kwargs=payload
+    )
 
     #temporary provider selection logic
     provider = "tatatele"
@@ -169,7 +177,7 @@ def post_billing_object(status, session_id, duration = 1, *args, **kwargs):
         "item_total" : duration*config.AUTOCRM_CALL_COMPLETED_PRICE,
         "item_units" : config.AUTOCRM_CALL_COMPLETED_UNITS,
         }
-    elif status in ["connected"]:
+    elif status in ["queued", "contacted"]:
         x = {
         "item_name" : config.AUTOCRM_CALL_CONNECTED_ITEM,
         "item_quantity" : 1,
@@ -215,25 +223,54 @@ def format_transcript(transcript, start_time_unix):
     
     return session_history   
 
-def patch_session_hitory(data, session_id = None):
-    session_history = format_transcript(data.get('transcript'), data.get('metadata').get('accepted_time_unix_secs'))
 
-    session_id = session_id or data.get('user_id')
-    m = gryd.base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
+# get_data=["lead_id","campaign_id","campaign_type","email","dealership_id","channel_provider","channel","campaign_model"]
+# payload={}
+# for key in get_data:
+#     if key in kwargs:
+#         payload[key]=kwargs[key]
+# msg_status=WA_TO_DISPOSITION.get(response.get("status"), None)
+# if msg_status:
+#     payload["provider_status"]=msg_status
+#     payload["phone_number"]=kwargs.get("phone_number")
+#     # logger.info(f"EMAIL STATUS: {msg_status} Message dict: {payload}")
+#     gryd.create_async_task(
+#             "post_contact_status", 
+#             AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+#             kwargs=payload
+#         )
+       
 
-    r = m.patch(
-        session_id, 
-        {
-            "history" : session_history
-        }
-    )
-    logger.info(f"Patched session model : {r}")
-
-def post_history(data):
-
+def post_history(session_history, all_data):
+    # {
+    #     "reply_to": "1234",
+    #     "customer_response": "hello",
+    #     "request_data": {
+    #         "customer_response": "hello"
+    #     },
+    #     "session_id": "1234",
+    #     "user_id": "5678",
+    #     "responses": [
+    #         {
+    #             "intent": "llm_response",
+    #             "placeholder": "hello",
+    #             "index": 1,
+    #             "created": 1234567890,
+    #             "updated": 1234567890
+    #         }
+    #     ]
+    # }
     history  = []
-    for d in data:
-        pass
+    for d in session_history:
+        history.append({
+           "reply_to": BaseWebhookConverter().generate_uid(d),
+           "customer_response": d.get("message"),
+           "request_data": {
+                "customer_response": d.get("message")
+           },
+            "session_id": all_data.get("session_id"),
+
+        })
     
     gryd.create_async_task(
         "post_all_messages_for_session",
@@ -270,7 +307,7 @@ if __name__ == "__main__":
     #+919920297124 -Ankita +919833885948- Arshiya
 
     data = {'_is_testing': False,
-    'mobile_number': "918850988794", #"918850988794", #"918401586512", #"918850988794",
+    'mobile_number': "918850988794", #"919604780730", #"918850988794", #"918401586512", #"918850988794",
     "dealership_id": 'stellantis-india',
     'generate_prompt': False,
 
@@ -385,3 +422,118 @@ if __name__ == "__main__":
 
 
 
+#answered by agent
+
+{
+    "uuid": "69882f281b4b0",
+    "call_to_number": "+919594778746",
+    "caller_id_number": "+918065251305",
+    "start_stamp": "2026-02-08 12:07:18",
+    "answer_agent_number": "+919594778746",
+    "call_id": "h11.08-1770532638.2135633",
+    "billing_circle": {
+        "operator": "Idea",
+        "circle": "Mumbai"
+    },
+    "call_status": "queued",
+    "direction": "click_to_call",
+    "customer_no_with_prefix ": "+919594778746",
+    "ref_id": "5c4113fa-538e-422b-8925-685bdc6915c0",
+    "custom_identifier": "1ca7c3d1-9545-3413-80c2-8956b256e716",
+    "status": "Answered by agent"
+}
+
+
+
+
+
+{
+    "uuid": "6988359567e27",
+    "call_to_number": "+919702523384",
+    "caller_id_number": "8065251305",
+    "start_stamp": "2026-02-08 12:34:53",
+    "answer_stamp": "",
+    "end_stamp": "2026-02-08 12:34:59",
+    "billsec": "6",
+    "digits_dialed": "",
+    "direction": "clicktocall",
+    "duration": "6",
+    "answered_agent": "",
+    "answered_agent_name": "",
+    "answered_agent_number": "",
+    "missed_agent": "",
+    "call_flow": [
+        {
+            "type": "init",
+            "value": "h3.08-1770534283.2156835",
+            "time": "1770534293"
+        },
+        {
+            "type": "Agent",
+            "id": "",
+            "name": "",
+            "dialst": "Dialed",
+            "num": "+919702523384",
+            "time": 1770534293
+        },
+        {
+            "type": "voice-streaming",
+            "name": "Ambal Auto Prod",
+            "id": "553",
+            "time": 1770534293
+        },
+        {
+            "id": 553,
+            "name": "Ambal Auto Prod",
+            "type": "voice-streaming",
+            "s_id": "a118e1a0-77e1-4fad-8707-77d65f37e226",
+            "s_ip": "10.98.44.81",
+            "s_port": 12544,
+            "a_h": "TTLHYD-Server-003-telephony-8",
+            "r_h": "vpaas-rtp-docker-35",
+            "status": "started",
+            "time": 1770534294.338
+        },
+        {
+            "id": 553,
+            "name": "Ambal Auto Prod",
+            "type": "voice-streaming",
+            "s_id": "a118e1a0-77e1-4fad-8707-77d65f37e226",
+            "s_ip": "10.98.44.81",
+            "s_port": 12544,
+            "a_h": "TTLHYD-Server-003-telephony-8",
+            "r_h": "vpaas-rtp-docker-35",
+            "status": "ended",
+            "time": 1770534298.911
+        },
+        {
+            "type": "hangup",
+            "time": 1770534299
+        }
+    ],
+    "broadcast_lead_fields": "",
+    "recording_url": "https://cloudphone.tatateleservices.com/file/recording?callId=h3.08-1770534283.2156835&type=rec&token=emtyTmduSlJZRGpSWnpMNHhyK04rODZkd2tzY204WXVKSEQyQWN3Qk1vTXJPY25VcU13VG9ncmRUUitaRTYvTTo6YWIxMjM0Y2Q1NnJ0eXl1dQ%3D%3D",
+    "recording_name": "$recording_name",
+    "call_status": "contacted",
+    "call_id": "h3.08-1770534283.2156835",
+    "outbound_sec": "6",
+    "agent_ring_time": "6",
+    "agent_transfer_ring_time": "$agent_transfer_ring_time",
+    "billing_circle": {
+        "operator": "Idea",
+        "circle": "Mumbai"
+    },
+    "call_connected": "1",
+    "aws_call_recording_identifier": "9d2c63a93ccbf0a174320709e5c18080",
+    "customer_no_with_prefix ": "+919702523384",
+    "campaign_name": "$campaign_name",
+    "campaign_id": "$campaign_id",
+    "customer_ring_time": "10",
+    "reason_key": "Call Disconnected By Caller",
+    "hangup_cause_description": "Normal call clearing",
+    "hangup_cause_code": "16",
+    "hangup_cause_key": "NORMAL_CLEARING",
+    "ref_id": "1b4e38a7-b0d4-497e-8004-385a86532f58",
+    "custom_identifier": "3d5af0f4-bb88-312f-9ecd-a12583efd7f4",
+    "status": "answered"
+}

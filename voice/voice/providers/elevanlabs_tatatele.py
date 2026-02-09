@@ -1,5 +1,7 @@
 from time import time
 import os, sys
+
+import pytz
 # Add the autobot_agents root directory to path to find config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 
@@ -98,65 +100,13 @@ class CallSession:
         self.session_data = {}
         logger.info(f"[{self.call_id}] Session created")
 
-    async def intent_handler(self, user_message, model_identifier="gcp-gemini-2.5-flash-lite"):
-        """Detects if user wants to end call. Returns True/False."""
-        system_prompt = """You are an intent-detection model.
-        Return ONLY JSON: {"end_call": true/false}
-        true → STOP call (cut, hangup, bye, end, not interested, busy, later)
-        false → CONTINUE call
-        No explanations, only valid JSON."""
-
-        user_prompt = f"User said: '{user_message.get('user_transcript', '')}'"
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-
-        try:
-            output = ai_service.get_llm_response(messages=messages, model_identifier=model_identifier)
-            logger.info(f"[{self.call_id}] Intent detection raw output: %s", output)
-            result = json.loads(output.strip())
-            return result.get("end_call", False)
-        except Exception as e:
-            logger.error(f"[{self.call_id}] Intent parsing error: %s", e)
-            return False
-
-    async def trigger_goodbye_and_hangup(self):
-        """Send goodbye message to bot, wait for speech, then hangup."""
-        if not self.dave_ws:
-            logger.error(f"[{self.call_id}] Cannot hangup: missing dave_ws")
-            return
-
-        logger.info(f"[{self.call_id}] END INTENT DETECTED - Sending goodbye message")
-
-        # Override agent prompt for goodbye
-        goodbye_msg = {
-            "type": "conversation_config_override",
-            "conversation_config_override": {
-                "agent": {
-                    "prompt": "User wants to end call. Say polite goodbye like 'Thank you for calling, have a great day! Goodbye.' then STOP talking completely. Do not continue conversation.",
-                    "first_message": None
-                }
-            }
-        }
-
-        try:
-            await self.dave_ws.send(json.dumps(goodbye_msg))
-            logger.info(f"[{self.call_id}] Goodbye message sent to ElevenLabs")
-
-            # Wait 6 seconds for goodbye audio to play
-            await asyncio.sleep(6)
-
-            # Hangup call
-            tatatele_client.hangup_call(self.call_id)
-            logger.info(f"[{self.call_id}] Call hung up after goodbye speech")
-
-        except Exception as e:
-            logger.error(f"[{self.call_id}] Goodbye/hangup error: %s", e)
 
     async def get_signed_url(self):
         """Fetch signed URL using async aiohttp - non-blocking."""
         logger.info(f"{self.session_data} Fetching signed URL for ElevenLabs connection")
+        user_number = self.session_data.get("phone_number")
+        agent_number = self.session_data.get("agent_number")
+        
         agent_id = self.session_data.get("agent_id") or AGENT_ID
         if not agent_id or not API_KEY:
             raise RuntimeError("Missing AGENT_ID or API_KEY")
@@ -175,6 +125,7 @@ class CallSession:
     def pcm16_16k_to_mulaw_8k_base64(b64_pcm16_16k):
         """Convert 16kHz PCM16 base64 → 8kHz μ-law base64 for telephony.
         Uses audioop only (C extension) - ~10x faster than pydub."""
+        return b64_pcm16_16k
         try:
             raw_pcm16 = base64.b64decode(b64_pcm16_16k)
             # Downsample 16kHz → 8kHz using audioop (native C, very fast)
@@ -221,15 +172,6 @@ class CallSession:
         except Exception:
             return None
 
-    async def run_intent_check(self, user_message):
-        """Check intent and trigger goodbye + hangup if needed."""
-        is_end_intent = await self.intent_handler(user_message)
-
-        if is_end_intent:
-            logger.info(f"[{self.call_id}] CUT THE CALL INTENT DETECTED - Triggering goodbye sequence")
-            asyncio.create_task(self.trigger_goodbye_and_hangup())
-        else:
-            logger.info(f"[{self.call_id}] Intent: CONTINUE call")
 
     async def outbound_media_stream(self, wb):
         """Main media bridging logic for this call session."""
@@ -624,53 +566,6 @@ def run_async_in_thread(coro):
     thread.start()
 
 
-# -----------------------------------------
-# Tata Tele Payload Normalizer
-# -----------------------------------------
-def tatatele_status_map(payload: bytes) -> Dict[str, Any]:
-    TATA_TELE_STATUS_MAP = {
-        "failed": "error",
-        "no-answer": "failed",
-        "canceled": "failed",
-        "missed": "failed",
-        "busy": "failed",
-        "queued": "queued",
-        "initiated": "attempted",
-        "ringing": "reached",
-        "answered": "contacted",
-        "in-progress": "contacted",
-        "completed": "contacted",
-        "Answered by customer": "contacted",
-        "Answered by agent": "queued"
-
-    }
-
-    if not isinstance(payload, (bytes, bytearray)):
-        raise TypeError("Payload must be bytes")
-
-    try:
-        json_str = payload.decode("utf-8")
-    except UnicodeDecodeError:
-        raise ValueError("Invalid UTF-8 JSON payload")
-
-    try:
-        data = json.loads(json_str)
-    except json.JSONDecodeError:
-        raise ValueError("Payload is not valid JSON")
-
-    if not isinstance(data, dict):
-        raise ValueError("JSON must be a dict")
-
-    raw_status = data.get("call_status") or data.get("status")
-    if raw_status is None:
-        raise KeyError("Missing 'call_status' field")
-
-    mapped_status = TATA_TELE_STATUS_MAP.get(raw_status, raw_status)
-    data["status"] = raw_status  # Preserve original
-    data["call_status"] = mapped_status
-    return data
-
-
 def calculate_elevenlabs_billing_usd(callback_data):
     # Safely extract nested data
 
@@ -844,13 +739,11 @@ def make_call_tatatele(session_data, *args, **kwargs):
 
             session = CallSession(call_id)
             # Ensure phone numbers are in session_data for tracking
-            session_data['phone_number'] = customer_number
-            session_data['agent_number'] = agent_number
             session.session_data = session_data
             call_sessions[call_id] = session
 
         logger.info(f"[{call_id}] Starting Connection to websocket bridge")
-        external_wss = f"{config.AUTOCRM_WEBSOCKET_BASE_URL}/tatatele/{customer_number}/{agent_number}"
+        external_wss = f"{config.AUTOCRM_WEBSOCKET_BASE_URL}/tatatele/{customer_number}/{agent_number}_{customer_number}"
 
         async def start_bridge():
             await session.connect_external_websocket(external_wss)
@@ -886,6 +779,53 @@ def make_call_tatatele(session_data, *args, **kwargs):
         return {"error": str(exc)}
 
 
+# -----------------------------------------
+# Tata Tele Payload Normalizer
+# -----------------------------------------
+def tatatele_status_map(payload: bytes) -> Dict[str, Any]:
+    TATA_TELE_STATUS_MAP = {
+        "failed": "error",
+        "no-answer": "failed",
+        "canceled": "failed",
+        "missed": "failed",
+        "busy": "failed",
+        "queued": "queued",
+        "initiated": "attempted",
+        "ringing": "reached",
+        "answered": "contacted",
+        "in-progress": "contacted",
+        "completed": "contacted",
+        "Answered by customer": "contacted",
+        "Answered by agent": "queued"
+
+    }
+
+    if not isinstance(payload, (bytes, bytearray)):
+        raise TypeError("Payload must be bytes")
+
+    try:
+        json_str = payload.decode("utf-8")
+    except UnicodeDecodeError:
+        raise ValueError("Invalid UTF-8 JSON payload")
+
+    try:
+        data = json.loads(json_str)
+    except json.JSONDecodeError:
+        raise ValueError("Payload is not valid JSON")
+
+    if not isinstance(data, dict):
+        raise ValueError("JSON must be a dict")
+
+    raw_status = data.get("call_status") or data.get("status")
+    if raw_status is None:
+        raise KeyError("Missing 'call_status' field")
+
+    mapped_status = TATA_TELE_STATUS_MAP.get(raw_status, raw_status)
+    data["status"] = raw_status  # Preserve original
+    data["call_status"] = mapped_status
+    return data
+
+
 
 # ---------- Flask endpoints ----------
 
@@ -900,7 +840,7 @@ def create_stream_url(*args, **kwargs):
 
     from_number = data.get("from_number")[1:]
     to_number = data.get("to_number")[1:]
-    wss_url = f"{base_ws_url}/tatatele/{from_number}/{to_number}"
+    wss_url = f"{base_ws_url}/tatatele/{from_number}_{to_number}/{to_number}"
 
     logger.info(f"Generated wss_url: {wss_url}")
     return jsonify({
@@ -924,7 +864,7 @@ def outbound_call(*args, **kwargs):
 
 @app.route("/smartflo/webhook", methods=["POST"])
 def smartflo_webhook():
-    #from voice import gryd_tasks
+    from voice import gryd_tasks
     raw = request.get_data()
     payload = tatatele_status_map(raw)
 
@@ -938,12 +878,14 @@ def smartflo_webhook():
 
     logger.info(f"[{call_id}] Incoming payload: {json.dumps(payload, indent=4)}")
 
-    if  payload ["status"] in ["Answered by customer"]:
+    if  payload ["status"] in ["contacted"]:
         #start_session(call_id, {"room_id":"ambal_auto"})
         #patch the statuss
-        #gryd_tasks.post_billing_object(status, session_id)
+        #gryd_tasks.post_billing_object("contacted", session_id)
         pass
-    elif status in ['failed', 'canceled', 'no-answer', 'missed', 'busy', 'completed']:
+    elif payload ["status"] in ["queued"]:
+        gryd_tasks.post_billing_object(status, session_id)
+    elif status in ['failed', 'canceled', 'missed', 'busy', 'completed']:
         logger.info(f"[{call_id}] Call ended or failed - cleaning up session")
 
         # Cleanup session
@@ -961,6 +903,9 @@ def process():
     payload = request.get_json()
 
     logger.info(f"Processing payload: {json.dumps(payload, indent=4)}")
+
+    if payload.get("full_audio"):
+        return jsonify({"status": "ignored", "message": "Full audio payloads are ignored to save bandwidth"})
 
     data = payload.get("data", {})
 
@@ -981,12 +926,35 @@ def process():
 
     logger.info(f"Billing record created: {xx}")
 
+    session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time()))
     logger.info(f"Triggering post history and actions for session_id: {session_id}")
+    
+    gryd_tasks.end_session(**{
+        "session_id": session_id,
+        "history": session_history,
+        "status": "completed"
+    })
+    
     gryd_tasks.post_actions(session_id)
-    gryd_tasks.post_history(data)
+    gryd_tasks.post_history(session_history, all_data = data)
 
     return jsonify({"status": "processed"})
 
+
+def format_transcript(transcript, start_time_unix):
+    from datetime import datetime
+    session_history = []
+    if not transcript:
+        return []
+    func = lambda x: datetime.fromtimestamp(start_time_unix+float(x), tz=pytz.timezone("UTC")).strftime("%Y-%m-%d %I:%M:%S %p %z")
+    for msg in transcript:
+        session_history.append({
+            "role":msg.get('role'),
+            "message":msg.get('message','').replace('.','') if msg.get('message') else '',
+            "timestamp": func(msg.get('time_in_call_secs',0.0))
+        })
+    
+    return session_history
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)

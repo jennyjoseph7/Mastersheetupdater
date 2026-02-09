@@ -432,15 +432,13 @@ def post_contact_status(*args, **data):
             user_id = person.get("user_id")
 
             person_payload = {
-                "previous_contact_channel": (
-                    "whatsapp_chat"
-                    if data.get("channel") == "whatsapp_chat"
-                    else "email"
-                )
+                "previous_contact_channel": data.get("channel")
             }
 
             if data.get("channel") == "whatsapp_chat":
                 person_payload["last_contacted_whatsapp_number"] = data.get("phone_number")
+            elif data.get("channel") == "voice_phone":
+                person_payload["last_contacted_phone_number"] = data.get("phone_number")
             else:
                 person_payload["last_contacted_email"] = data.get("email")
 
