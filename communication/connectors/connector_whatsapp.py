@@ -621,8 +621,8 @@ def post_contact_status(*args, **data):
                 update_payload,
             )
 
-    return
-
+    yield contact_status_id
+       
 @gryd.is_a_task(function_name="check_or_create_session")
 def check_or_create_session(phone_number, campaign_details, from_web_chat): 
     return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)

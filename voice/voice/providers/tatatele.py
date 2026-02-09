@@ -43,7 +43,7 @@ class CloudPhoneAPI:
         body = {
             "customer_number": customer_number,
             "caller_id": caller_id,
-            "api_key": os.environ.get("TATATELE_CLICK_TO_SUPPORT_API_KEY","076702b7-12ef-427f-8026-dfcefc844b7d"), #api key for ramani:  a808d1c2-436b-4280-bf37-0a69dbdfedc7
+            "api_key": api_key or os.environ.get("TATATELE_CLICK_TO_SUPPORT_API_KEY","076702b7-12ef-427f-8026-dfcefc844b7d"), #api key for ramani:  a808d1c2-436b-4280-bf37-0a69dbdfedc7
             "async": 1,
             "custom_identifier": custom_id,
             "call_timeout": timeout,
@@ -61,3 +61,13 @@ class CloudPhoneAPI:
         body = {"call_id": call_id}
         response = requests.post(url, headers=self.headers, json=body)
         return response.json()
+
+
+if __name__ == "__main__":
+    api = CloudPhoneAPI(TATATELE_API_TOKEN, TATATELE_BASE_URL)
+    #response = api.click_to_call(agent_number="919820792020", customer_number="919820792020", caller_id="919820792020", custom_id="test_call_123")
+    response = api.get_call_records()
+
+
+    json_object = json.dumps(response, indent=4)
+    print(json_object)

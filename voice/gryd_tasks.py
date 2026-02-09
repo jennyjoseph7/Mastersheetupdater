@@ -1,15 +1,14 @@
+
 import os
 import sys
-sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as dbhp
 from gryd_worker.gryd_routes import payload_decorator
 from models import model as base_model
 from ai_service import ai_service_app
-from voice import providers
 import config
 import datetime
 import pytz
-import voice.utils as vhp
 from conversation import converse
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 logger = hp.get_logger(__name__)
@@ -19,6 +18,36 @@ gryd.SERVICE = config.AUTOCRM_VOICE_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(__name__)
 
+
+country_codes = {
+    "IN": "+91",
+    "US": "+1",
+    "UK": "+44",
+    "CA": "+1",
+    "AU": "+61",
+    "DE": "+49",
+    "FR": "+33",
+    "ES": "+34",
+    "IT": "+39",
+    "BR": "+55",
+    "MX": "+52",
+    "RU": "+7",
+    "JP": "+81",
+    "CN": "+86"
+}
+
+
+provider_country_codes_format = {
+    "tatatele": lambda cc: cc.lstrip("+"),
+    "twilio": lambda cc: cc,
+}
+
+def format_phone_number(phone_number, provider = "tatatele", country_code = "IN"):
+    phone_number = phone_number.strip().replace(" ", "").replace("-", "")[-10:]
+    
+    cc = provider_country_codes_format[provider](country_codes.get(country_code, "+91"))
+    phone_number = f"{cc}{phone_number}"
+    return phone_number
 
 
 @gryd.is_a_task(function_name="trigger_voice_call")
@@ -88,7 +117,7 @@ def trigger_voice_call(*args, **kwargs):
         "lead_id": user_data.get("lead_id"),
         "status":"attempted",
         "channel": user_data.get("channel", "voice_phone"),
-        "phone_number":vhp.format_phone_number(user_data.get("mobile_number")),
+        "phone_number":format_phone_number(user_data.get("mobile_number")),
         "start_time": hp.epoch()
         
     }
@@ -109,13 +138,6 @@ def trigger_voice_call(*args, **kwargs):
     
     logger.info(f"Session for Voice Call: {session_data}")
     user_data.update(session_data)
-    attrs=["phone_number","status", "lead_id","campaign_id","campaign_type","email","dealership_id","channel_provider","channel","campaign_model"]
-    payload = {a:user_data.get(a) for a in attrs if a in user_data}
-    gryd.create_async_task(
-        "post_contact_status", 
-        config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-        kwargs=payload
-    )
 
     #temporary provider selection logic
     provider = "tatatele"
@@ -126,7 +148,10 @@ def trigger_voice_call(*args, **kwargs):
     #----------end-----------
 
     #provider = user_data.get("provider_name", provider).replace("-", "").strip().lower()
+    from voice import providers
     response = providers.make_call(provider, session_data, *args, **kwargs)
+
+    
 
     yield {
         "success": response.get("success"),
@@ -137,7 +162,7 @@ def trigger_voice_call(*args, **kwargs):
         "campaign_id": session_data["campaign_id"],
     }
 
-
+    post_contact_status_voice(user_data, message_id=response.get("call_sid"))
 
 
 @gryd.is_a_task(function_name="post_billing_object")
@@ -188,6 +213,7 @@ def post_billing_object(status, session_id, duration = 1, *args, **kwargs):
 
     obj.update(x)
     
+    logger.info(f"Calling task post_billing : {obj}")
     gryd.create_async_task(
         "post_billing",
         config.AUTOCRM_CORE_SERVICE_NAME,
@@ -199,85 +225,60 @@ def post_billing_object(status, session_id, duration = 1, *args, **kwargs):
             obj["transaction_date"],
             obj["item_quantity"],
             obj["item_price"],
-            obj["item_unit"],
+            obj["item_units"],
             obj["currency"]
         ]
     )
     # m = gryd.base_model.Model(config.BILLING_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
     # return m.post(obj)
 
-def format_transcript(transcript, start_time_unix):
-    #praveen gave this format but i think this deosnt make sense as timestamps will be diff for user and agent
-    user_queries = []
-    agent_responses = []
-    timestamps = []
-    session_history = []
 
-    func = lambda x: datetime.fromtimestamp(start_time_unix+float(x), tz=pytz.timezone("UTC")).strftime("%Y-%m-%d %I:%M:%S %p %z")
-    for msg in transcript:
-        session_history.append({
-            "role":msg.get('role'),
-            "message":msg.get('message','').replace('.','') if msg.get('message') else '',
-            "timestamp": func(msg.get('time_in_call_secs',0.0))
-        })
+def post_history(session_id, session_history):
     
-    return session_history   
+    session_model = base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
+    session_data = session_model.get(session_id)
 
+    converter = BaseWebhookConverter()
+    agent_msgs = [d for d in session_history if d.get("role") == "agent"]
+    user_msgs = [d for d in session_history if d.get("role") == "user"]
 
-# get_data=["lead_id","campaign_id","campaign_type","email","dealership_id","channel_provider","channel","campaign_model"]
-# payload={}
-# for key in get_data:
-#     if key in kwargs:
-#         payload[key]=kwargs[key]
-# msg_status=WA_TO_DISPOSITION.get(response.get("status"), None)
-# if msg_status:
-#     payload["provider_status"]=msg_status
-#     payload["phone_number"]=kwargs.get("phone_number")
-#     # logger.info(f"EMAIL STATUS: {msg_status} Message dict: {payload}")
-#     gryd.create_async_task(
-#             "post_contact_status", 
-#             AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-#             kwargs=payload
-#         )
-       
+    if len(agent_msgs) != len(user_msgs):
+        logger.error(
+            f"post_history: agent ({len(agent_msgs)}) and user ({len(user_msgs)}) message counts do not match"
+        )
 
-def post_history(session_history, all_data):
-    # {
-    #     "reply_to": "1234",
-    #     "customer_response": "hello",
-    #     "request_data": {
-    #         "customer_response": "hello"
-    #     },
-    #     "session_id": "1234",
-    #     "user_id": "5678",
-    #     "responses": [
-    #         {
-    #             "intent": "llm_response",
-    #             "placeholder": "hello",
-    #             "index": 1,
-    #             "created": 1234567890,
-    #             "updated": 1234567890
-    #         }
-    #     ]
-    # }
-    history  = []
-    for d in session_history:
+    max_len = max(len(user_msgs), len(agent_msgs))
+    history = []
+    for i in range(max_len):
+        u = user_msgs[i] if i < len(user_msgs) else {}
+        a = agent_msgs[i] if i < len(agent_msgs) else {}
+        tme = hp.time()
         history.append({
-           "reply_to": BaseWebhookConverter().generate_uid(d),
-           "customer_response": d.get("message"),
-           "request_data": {
-                "customer_response": d.get("message")
-           },
-            "session_id": all_data.get("session_id"),
-
+            "reply_to": converter.generate_uid(u) if u else "",
+            "customer_response": u.get("message", ""),
+            "request_data": {
+                "customer_response": u.get("message", "")
+            },
+            "session_id": session_data.get("session_id"),
+            "user_id": session_data.get("user_id"),
+            "responses": [
+                {
+                    "intent": "llm_response",
+                    "placeholder": a.get("message", ""),
+                    "index": i + 1,
+                    "created": tme,
+                    "updated": tme
+                }
+            ]
         })
-    
+
+    logger.info(f"Calling task post_all_messages_for_session with history: {history}")
     gryd.create_async_task(
         "post_all_messages_for_session",
-        config.AUTOCRM_CONVERSATION_SERVICE_NAME, 
-        args = [],
-        kwargs = {
-            "history": history or data
+        config.AUTOCRM_CONVERSATION_SERVICE_NAME,
+        args=[],
+        kwargs={
+            "history": history
         }
     )
 
@@ -292,8 +293,30 @@ def post_actions(session_id):
        }
    )
 
+def post_contact_status_voice(session_data = None, session_id = None, message_id=None, **additiona_params):
+    if not session_data and session_id:
+        session_model = base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
+        session_data = session_model.get(session_id)
+
+    if additiona_params:
+        session_data.update(additiona_params)
+
+    logger.info(f'Posting contact status with payload: {session_data}')
+    attrs=["phone_number", "lead_id","campaign_id","campaign_type","email","dealership_id","channel","campaign_model"]
+    payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
+    payload["provider_status"] = session_data.get("status", "attempted")
+    payload["message_id"] = message_id or BaseWebhookConverter.generate_uid(session_data)
+    for x in gryd.create_async_task(
+        "post_contact_status", 
+        config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+        kwargs=payload
+    ):
+        return x
+
+
 @gryd.is_a_task(function_name="end_voice_session")
 def end_session(*args, **kwargs):
+    logger.info(f"Ending session with args: {args}, kwargs: {kwargs}")
     converter = BaseWebhookConverter()
     return converter.end_session(*args, **kwargs)
 
