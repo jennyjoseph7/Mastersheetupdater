@@ -4,7 +4,7 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AutocrmModel
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
 json = hp.json
@@ -131,7 +131,9 @@ def post_session_process(*args, **kwargs):
             if not visit_data:
                 return
             visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "workshop_visit"
-            pg.post(visit_model,visit_data)
+            m = AutocrmModel(visit_model)
+            posted = m.post(visit_data)
+            mlogger.info("visit posted == {}".format(posted))
     
 def get_summary(session_id,session_data):
     messages = session_data.get("messages")
@@ -790,7 +792,7 @@ def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_dat
     date_str = appt_date_time_purpose.get("appointment_date")
     time_str = appt_date_time_purpose.get("appointment_time") or "10:00:00"
     full_datetime_str = f"{date_str} {time_str}"
-    format_string = "%Y-%m-%d %H:%M"
+    format_string = "%d-%m-%Y %H:%M"
     timestamp_object = datetime.strptime(full_datetime_str, format_string)
     
     appt_data = {
@@ -799,11 +801,11 @@ def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_dat
     }
     if campaign_type == "post_sales":
         appt_data["post_sales_lead_id"]= lead_id
-        appt_data["service_date"]= lead_id
+        appt_data["service_date"]= date_str
         appt_data["workshop_id"] = lead_data.get("workshop_id")
 
     elif campaign_type == "pre_sales":
-        appt_data["pre_sales_lead_id"]= timestamp_object.timestamp()
+        appt_data["pre_sales_lead_id"]= lead_id
         appt_data["showroom_id"] = lead_data.get("showroom_id")
 
 
