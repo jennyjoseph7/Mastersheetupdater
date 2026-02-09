@@ -191,12 +191,17 @@ class AffinityEngineAgent(UtilityMixin):
             domain: str = None
         ):
         
-        super().__init__(
-            interaction_json=interaction_json, 
-            brochure_url=brochure_url, 
-            product_website_url=product_website_url, 
-            model_identifier=model_identifier
-            )
+        try:
+            super().__init__(
+                interaction_json=interaction_json, 
+                brochure_url=brochure_url, 
+                product_website_url=product_website_url, 
+                model_identifier=model_identifier
+                )
+        except Exception as e:
+            traceback.print_exc()
+            pass 
+        
         self.interaction_json:dict = self._load_json(interaction_json) 
         self.model_identifier = model_identifier
         self.llm:Callable = lambda messages:ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
