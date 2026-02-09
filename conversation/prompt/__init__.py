@@ -281,7 +281,7 @@ def get_who_you_represent(*args, **kwargs):
             campaign_data = pg.get(session_data.get("campaign_model"),f"{session_data.get('campaign_model')}_id",session_data.get("campaign_id")) 
     if not campaign_data:
         return "You represent Autobot and all dealers listed with the platform."
-    dealership_name = campaign_data.get("dealer_name")
+    dealership_name = campaign_data.get("dealership_name")
     region = campaign_data.get("region_name")
     dealer_type = ""
     shop_details = ""
@@ -322,8 +322,9 @@ def get_purpose_and_steps(*args, **kwargs):
     p_steps = ""
     if campaign_data.get("purpose"):
         if campaign_data.get("purpose_steps"):
+            flow = campaign_data.get("purpose")
             steps = ', \n'.join(campaign_data.get("purpose_steps"))
-            return f"The overall purpose of your conversation with the user is to help the customer book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}.Here are the details you should gather from the user when trying to complete the {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
+            return f"The overall purpose of your conversation with the user is to help the customer {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}.Here are the details you should gather from the user when trying to complete the {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
     if flow == "service":
         steps = ["- Full Name \n- Car Model \n- Date & Time \n- Service Type"]
     else:
