@@ -157,9 +157,9 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
 
 # app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
+app.register_blueprint(elevanlabs_tatatele_routes)
 app.register_blueprint(twilio_routes)
 app.register_blueprint(elevanlab_routes)
-app.register_blueprint(elevanlabs_tatatele_routes)
 
 
 
