@@ -880,10 +880,10 @@ def smartflo_webhook():
     logger.info(f"[{call_id}] Incoming payload: {json.dumps(payload, indent=4)}")
     import gryd_tasks
     if  status in ["contacted"]:
-        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = payload.get("ref_id"),  **{"provider_status": "completed"})
+        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = payload.get("ref_id"),  **{"status": "completed"})
     elif status in ["queued"]:
         gryd_tasks.post_billing_object(status, session_id)
-        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = payload.get("ref_id"),  **{"provider_status": status})
+        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = payload.get("ref_id"),  **{"status": status})
     elif status in ['failed', 'canceled', 'missed', 'busy', 'completed']:
         logger.info(f"[{call_id}] Call ended or failed - cleaning up session")
 
@@ -930,8 +930,10 @@ def process():
     
     gryd_tasks.end_session(**{
         "session_id": session_id,
-        "history": session_history,
-        "status": "completed"
+        "additional_dict":{
+            "history": session_history,
+            "status": "completed"
+        }
     })
     
     gryd_tasks.post_actions(session_id)

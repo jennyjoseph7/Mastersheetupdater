@@ -305,7 +305,7 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     attrs=["phone_number", "lead_id","campaign_id","campaign_type","email","dealership_id","channel","campaign_model"]
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
-    payload["message_id"] = message_id or BaseWebhookConverter.generate_uid(session_data)
+    payload["message_id"] = message_id or BaseWebhookConverter().generate_uid(session_data)
     for x in gryd.create_async_task(
         "post_contact_status", 
         config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
@@ -343,7 +343,7 @@ if __name__ == "__main__":
     'languages': ['english'],
     'region_id': 'south-india',
     'start_date': 1769040000,
-    'campaign_id': '7b187cc3-b868-366e-97d0-d1f793fd813b',
+    'campaign_id': '66d8b346-e24f-3b40-902f-459512fb1e74',
     'dealer_name': 'deepaklogin3',
     'region_name': 'South India',
     'urgency_hook': 'Don’t wait—keep your car running smooth with timely service!',
@@ -407,7 +407,7 @@ if __name__ == "__main__":
     'sender': None,
     'provider_name': 'tata-tele',
     'template_message': None,
-    'lead_id': 'dl9cay4026-deepaklogin3-general-service-reminder--22nd-jan-voice',
+    'lead_id': 'vandana-8401586512-sales-dealership1-india-66d8b346-e24f-3b40-902f-459512fb1e74',
     'customer_name': 'Nikit',
     'email': None,
     'contact_channel': 'voice_phone',
