@@ -391,6 +391,7 @@ class BaseCustomCampaignManager:
                 gryd.create_async_task('trigger_voice_call', AUTOCRM_VOICE_SERVICE_NAME, args=[],kwargs={"user_data":d})
                 # send_voice_campaign_message(campaign_user_data.get("mobile_number"),campaign_user_data,campaign_details_data,VOICE_CAMPAIGN_BASE_URL)
                 # TODO call nikit task for voice
+                pass
             elif channel.upper()=="EMAIL":
                 logger.info("Sending Email campaign---")
                 # logger.info(f"[email_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
@@ -888,9 +889,16 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
 
     if not channel:
         channel = get_channel(lead_data, campaign_details)
+
     if channel == "voice_phone":
         provider_name = VOICE_PROVIDER_NAME
     elif channel == "email":
+        # email_cred=pg.list("communication_credentials", {"channel": "email"})
+        # email_cred=email_cred[0] if email_cred else None
+        # if not email_cred:
+        #     yield {"status": "Error", "error_description": "No email credentials found"}
+        #     return
+        # sender_name=email_cred.get("sender_name")
         sender_name=EMAIL_SENDER_NAME
         provider_name = EMAIL_PROVIDER_NAME
         
