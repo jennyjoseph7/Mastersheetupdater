@@ -928,9 +928,14 @@ class BaseWebhookConverter:
             None
         """
         session_id=kwargs.get("session_id")
+        additional_dict=kwargs.get("additional_dict",{})
+        additional_dict["session_live"] = additional_dict.get("session_live", False)
+        additional_dict["status"] = additional_dict.get("status", "completed")
+        additional_dict["end_time"] = additional_dict.get("end_time", time.time())
+
         logger.info(f"Ending session with session_id: {session_id}")
         with get_pg_connector() as pg:
-            pg.update("session","session_id",session_id,{"session_live":False,"status":"completed","end_time":time.time()})
+            pg.update("session","session_id",session_id,additional_dict)
             update_session_data_in_lead(session_id,"completed")
         logger.info(f"Calling post session process task for session_id: {session_id}")
         # post_session_process(**{"session_id":session_id})
