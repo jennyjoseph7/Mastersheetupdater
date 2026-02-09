@@ -42,6 +42,15 @@ class CohortClassificationAgent(UtilityMixin):
             cohorts:Union[dict, list[dict]]=None, 
             model_identifier:str='azure-gpt-4o'
             ):
+        """
+        Cohort Classification Agent.
+        Parameters:
+        source (dict or str, optional): A JSON object or path to a JSON file containing customer interaction data. Defaults to None.
+        brochure_url (str, optional): URL of the brochure. Defaults to None.
+        product_website_url (str, optional): URL of the product website. Defaults to None.
+        cohorts (Union[dict, list[dict]], optional): Cohorts registry. Defaults to None.
+        model_identifier (str, optional): The identifier of the Large Language Model to use for generating code based on human instructions. Defaults to 'azure-gpt-4o'.
+        """
         self.model_identifier:str = model_identifier
         self.source:dict=self._load_json(source=source)
         self.llm:Callable=lambda messages : ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
@@ -138,5 +147,11 @@ class CohortClassificationAgent(UtilityMixin):
         response = self.exec_json_llm_with_retry(self.llm, messages=self.system_prompt())
         logger.info(f"Response from [cohort_classification_agent]: \n {json.dumps(response, indent=4)}")
         return response
+    
+    def run_with_events(self) -> Iterator[dict]:
+        pass 
+
+
+    
 
 

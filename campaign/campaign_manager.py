@@ -270,7 +270,7 @@ class BaseCampaignCreater:
                     "channel":"whatsapp_chat",
                 }
             
-            # logger.info(f"Calling post_contact_status with data: {data}")
+            # logger.info(f"Calling post_contact_status with data from campaign: {data}")
             gryd.create_async_task(
                 "post_contact_status", 
                 AUTOCRM_COMMUNICATION_SERVICE_NAME, 
