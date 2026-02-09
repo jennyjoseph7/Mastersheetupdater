@@ -46,7 +46,7 @@ import {
   Eye,
   Download,
 } from "lucide-react";
-import { EngagementFunnel } from "@/components/engagement-funnel";
+import { ProfessionalFunnel } from "@/components/engagement-funnel";
 import { SentimentAnalysis } from "@/components/sentiment-analysis";
 import { ConversationIntentChart } from "@/components/conversation-intent-chart";
 import { CostPerLeadChart } from "@/components/cost-per-lead-chart";
@@ -472,7 +472,7 @@ export default function CampaignInsights() {
               </div>
             </CardHeader>
             <CardContent>
-              <EngagementFunnel />
+              <ProfessionalFunnel />
             </CardContent>
           </Card>
 
