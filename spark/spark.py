@@ -12,7 +12,7 @@ if APP_DIR not in sys.path:
 from combine_images import merge_layers
 from check_distortion import analyze_image, pad_and_resize_image
 from spdl_comfy import comfy_image_generation_task
-from core import func_gryd_file_system
+from spark_helpers import func_gryd_file_system
 SERVICE = 'spark'
 gryd.SERVICE = SERVICE
 gryd.set_queue_manager()
@@ -44,7 +44,7 @@ def comfy_image_generation(
     prompt,
     number_of_images=1,
     job = None,
-    logger = None
+    logger = None,
     **kwargs):
     logger = logger or mlogger
     return comfy_image_generation_task(input_image_url, prompt, number_of_images, logger = logger, **kwargs)
