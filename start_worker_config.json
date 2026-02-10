@@ -70,16 +70,9 @@
         },
         {
             "name": "spark",
-            "entry_point": "spdl_comfy.py",
-            "parallel_threads": 2,
-            "shutdown_time": 0
-        },
-        {
-            "name": "spark",
             "entry_point": "spark.py",
             "parallel_threads": 2,
             "shutdown_time": 0
         }
-        
     ]
 }

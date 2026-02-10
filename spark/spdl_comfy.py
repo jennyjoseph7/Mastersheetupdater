@@ -13,7 +13,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # -------------------- LOGGING --------------------
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("spdl_comfy")
+mlogger = logging.getLogger("spdl_comfy")
 
 # -------------------- COMFY CONFIG --------------------
 COMFY_HOST = os.getenv("COMFY_HOST")
@@ -101,6 +101,7 @@ def comfy_image_generation_task(
     number_of_images=1,
     **kwargs
 ):
+    logger = kwargs.pop('logger', None) or mlogger
     try:
         os.makedirs(COMFY_INPUT_DIR, exist_ok=True)
 
