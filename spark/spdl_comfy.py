@@ -41,7 +41,7 @@ def load_workflow():
 
 
 def download_image(url, save_path):
-    logger.info(f"Downloading image: {url}")
+    mlogger.info(f"Downloading image: {url}")
     r = requests.get(url, timeout=30)
     r.raise_for_status()
     with open(save_path, "wb") as f:
@@ -49,7 +49,7 @@ def download_image(url, save_path):
 
 
 def upload_to_gryd(file_path):
-    logger.info(f"Uploading to GRYD: {file_path}")
+    mlogger.info(f"Uploading to GRYD: {file_path}")
     with open(file_path, "rb") as f:
         files = {"file": (os.path.basename(file_path), f, "image/png")}
         r = requests.post(GRYD_URL, headers=HEADERS, files=files, timeout=60)
