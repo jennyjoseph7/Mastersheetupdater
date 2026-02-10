@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/table";
 
 // --- Custom Component Imports ---
-import { EngagementFunnel } from "@/components/engagement-funnel";
+import { ProfessionalFunnel } from "@/components/engagement-funnel";
 import { CampaignFailureChart } from "@/components/campaign-failure-chart";
 import { CostPerLeadChart } from "@/components/cost-per-lead-chart";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -421,7 +421,7 @@ function CampaignInsightsContent() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <EngagementFunnel
+                  <ProfessionalFunnel
                     customData={funnelData}
                     availableChannels={availableChannels}
                   />

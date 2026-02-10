@@ -1,372 +1,412 @@
 "use client";
 
 import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Users,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  ArrowRight,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
+// --- Types ---
 interface FunnelStage {
+  id: string;
   stage: string;
-  value: number;
-  percentage: string;
   count: number;
-  dropoff?: number;
+  percentage: number;
 }
 
+// --- Data ---
 const defaultFunnelData = {
   all: [
-    { stage: "Sent/Called", value: 100, percentage: "100%", count: 30000 },
-    {
-      stage: "Delivered/Answered",
-      value: 87,
-      percentage: "87%",
-      count: 26100,
-      dropoff: 13,
-    },
-    {
-      stage: "Read/Greeted",
-      value: 62,
-      percentage: "62%",
-      count: 18600,
-      dropoff: 25,
-    },
-    {
-      stage: "Interacted",
-      value: 34,
-      percentage: "34%",
-      count: 10200,
-      dropoff: 28,
-    },
-    {
-      stage: "Dropped-off",
-      value: 24,
-      percentage: "24%",
-      count: 7200,
-      dropoff: 10,
-    },
-    {
-      stage: "Converted",
-      value: 9,
-      percentage: "9%",
-      count: 2700,
-      dropoff: 15,
-    },
+    { id: "1", stage: "Queued", count: 37, percentage: 100 },
+    { id: "2", stage: "Attempted", count: 33, percentage: 89 },
+    { id: "3", stage: "Contacted", count: 31, percentage: 84 },
+    { id: "4", stage: "Reached", count: 22, percentage: 59 },
+    { id: "5", stage: "Engaged", count: 0, percentage: 0 },
+    { id: "6", stage: "Converted", count: 0, percentage: 0 },
   ],
   whatsapp: [
-    { stage: "Sent", value: 100, percentage: "100%", count: 12000 },
-    {
-      stage: "Delivered",
-      value: 92,
-      percentage: "92%",
-      count: 11040,
-      dropoff: 8,
-    },
-    { stage: "Read", value: 68, percentage: "68%", count: 8160, dropoff: 24 },
-    {
-      stage: "Interacted",
-      value: 38,
-      percentage: "38%",
-      count: 4560,
-      dropoff: 30,
-    },
-    {
-      stage: "Dropped-off",
-      value: 28,
-      percentage: "28%",
-      count: 3360,
-      dropoff: 10,
-    },
-    {
-      stage: "Converted",
-      value: 11,
-      percentage: "11%",
-      count: 1320,
-      dropoff: 17,
-    },
-  ],
-  email: [
-    { stage: "Sent", value: 100, percentage: "100%", count: 10000 },
-    {
-      stage: "Delivered",
-      value: 95,
-      percentage: "95%",
-      count: 9500,
-      dropoff: 5,
-    },
-    { stage: "Read", value: 45, percentage: "45%", count: 4500, dropoff: 50 },
-    {
-      stage: "Interacted",
-      value: 22,
-      percentage: "22%",
-      count: 2200,
-      dropoff: 23,
-    },
-    {
-      stage: "Dropped-off",
-      value: 15,
-      percentage: "15%",
-      count: 1500,
-      dropoff: 7,
-    },
-    { stage: "Converted", value: 7, percentage: "7%", count: 700, dropoff: 8 },
-  ],
-  voice: [
-    { stage: "Called", value: 100, percentage: "100%", count: 8000 },
-    {
-      stage: "Answered",
-      value: 72,
-      percentage: "72%",
-      count: 5760,
-      dropoff: 28,
-    },
-    { stage: "Greeted", value: 65, percentage: "65%", count: 5200, dropoff: 7 },
-    {
-      stage: "Interacted",
-      value: 42,
-      percentage: "42%",
-      count: 3360,
-      dropoff: 23,
-    },
-    {
-      stage: "Dropped-off",
-      value: 28,
-      percentage: "28%",
-      count: 2240,
-      dropoff: 14,
-    },
-    { stage: "Converted", value: 8, percentage: "8%", count: 640, dropoff: 20 },
+    { id: "w1", stage: "Sent", count: 120, percentage: 100 },
+    { id: "w2", stage: "Delivered", count: 110, percentage: 92 },
+    { id: "w3", stage: "Read", count: 85, percentage: 71 },
+    { id: "w4", stage: "Replied", count: 40, percentage: 33 },
+    { id: "w5", stage: "Converted", count: 10, percentage: 8 },
   ],
 };
 
-interface EngagementFunnelProps {
-  customData?: {
-    all?: FunnelStage[];
-    whatsapp?: FunnelStage[];
-    email?: FunnelStage[];
-    voice?: FunnelStage[];
+// --- Helper: Color Generator ---
+function getStageColor(dropoffRate: number, index: number) {
+  // Base Hues
+  const healthyHue = 245; // Indigo (Good retention)
+  const warningHue = 270; // Purple
+  const dangerHue = 330;  // Pink/Red (High dropoff)
+
+  // Logic: 
+  // If dropoff is low (<10%), use Healthy Indigo.
+  // If dropoff is high (>20%), shift towards Danger Pink.
+  // Otherwise, standard Purple.
+  
+  if (dropoffRate > 25) {
+     return {
+        top: `hsl(${dangerHue}, 85%, 55%)`,
+        bottom: `hsl(${dangerHue}, 90%, 45%)`,
+        border: `hsl(${dangerHue}, 90%, 75%)`
+     };
+  }
+  
+  if (dropoffRate > 10) {
+     // Standard Purple Gradient
+     return {
+        top: `hsl(${warningHue}, 75%, ${60 - index * 3}%)`,
+        bottom: `hsl(${warningHue}, 85%, ${50 - index * 3}%)`,
+        border: `hsl(${warningHue}, 85%, 70%)`
+     };
+  }
+
+  // Healthy (Blue-ish)
+  return {
+     top: `hsl(${healthyHue}, 80%, ${60 - index * 2}%)`,
+     bottom: `hsl(${healthyHue}, 90%, ${50 - index * 2}%)`,
+     border: `hsl(${healthyHue}, 90%, 70%)`
   };
-  availableChannels?: string[]; // Array of channel keys that have data
 }
 
-function FunnelStageCard({
+// --- Hover Details Card ---
+function HoverDetails({
   stage,
+  prevStage,
   index,
-  total,
-  topWidth,
-  bottomWidth,
-  leftOffset,
+  totalStages,
+  isVisible,
+  widthOffset,
 }: {
   stage: FunnelStage;
+  prevStage: FunnelStage | null;
   index: number;
-  total: number;
-  topWidth: number;
-  bottomWidth: number;
-  leftOffset: number;
+  totalStages: number;
+  isVisible: boolean;
+  widthOffset: number;
 }) {
-  // Calculate gradient color - purple gradient that gets darker as we go down
-  const hue = 260;
-  const baseSaturation = 70;
-  const baseLightness = 55;
+  const dropoffCount = prevStage ? prevStage.count - stage.count : 0;
+  
+  const conversionRate = prevStage && prevStage.count > 0
+    ? ((stage.count / prevStage.count) * 100).toFixed(1)
+    : "0.0";
 
-  // Darker gradient as we go down the funnel
-  const saturation = baseSaturation + index * 1.5;
-  const lightnessStart = baseLightness - index * 2.5;
-  const lightnessEnd = baseLightness - index * 3;
+  const dropoffRate = prevStage && prevStage.count > 0
+    ? ((dropoffCount / prevStage.count) * 100).toFixed(0)
+    : "0";
 
-  const gradientStart = `hsl(${hue}, ${saturation}%, ${lightnessStart}%)`;
-  const gradientEnd = `hsl(${hue}, ${saturation + 3}%, ${lightnessEnd}%)`;
+  // Position Logic
+  const isBottomHalf = index > totalStages - 3; 
 
-  // Calculate taper percentage for clip-path
-  // This creates the trapezoid shape where bottom is narrower than top
-  // The bottom width should match the next stage's top width
-  // Container width is topWidth%, and we want bottom edge to be bottomWidth%
-  // So bottom edge should span (bottomWidth / topWidth * 100)% of the container
-  const bottomEdgePercent = (bottomWidth / topWidth) * 100;
-  const bottomLeftOffset = (100 - bottomEdgePercent) / 2;
-  const bottomRightOffset = 100 - bottomLeftOffset;
+  const alignmentClass = isBottomHalf 
+    ? "bottom-0 origin-bottom-left" 
+    : "top-0 origin-top-left";
+    
+  const arrowPosition = isBottomHalf 
+    ? "bottom-6" 
+    : "top-6";
 
   return (
-    <div className="relative w-full flex items-center gap-4 mb-0 min-h-[60px]">
-      {/* Funnel segment container - positioned with calculated left offset for seamless connection */}
-      <div className="relative flex-1" style={{ position: "relative" }}>
-        <div
-          className="relative"
-          style={{
-            width: `${topWidth}%`,
-            height: "60px",
-            marginLeft: `${leftOffset}%`,
-          }}
-        >
-          {/* Create trapezoid shape using CSS clip-path */}
-          {/* Top edge spans full container width, bottom edge is narrower */}
-          {/* The bottom edge width (bottomWidth) matches the next stage's top width */}
-          <div
-            className="relative h-full flex items-center justify-center px-4"
-            style={{
-              clipPath: `polygon(
-                0% 0%,
-                100% 0%,
-                ${bottomRightOffset}% 100%,
-                ${bottomLeftOffset}% 100%
-              )`,
-              background: `linear-gradient(to bottom, ${gradientStart}, ${gradientEnd})`,
-            }}
-          >
-            <h3 className="text-sm font-semibold text-white text-center">
-              {stage.stage}
-            </h3>
-          </div>
-        </div>
-      </div>
+    <div
+      className={cn(
+        "absolute z-50 w-[280px] pl-8 transition-all duration-300 cubic-bezier(0.16, 1, 0.3, 1) cursor-default",
+        isVisible
+          ? "opacity-100 translate-x-0 scale-100"
+          : "opacity-0 -translate-x-4 scale-95 pointer-events-none",
+        alignmentClass 
+      )}
+      style={{
+        left: `calc(50% + ${widthOffset / 2}%)`, 
+      }}
+    >
+      <div className="bg-white/95 backdrop-blur-xl rounded-xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-slate-100 p-5 relative overflow-hidden">
+        
+        {/* Decorative Top Line */}
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-80" />
 
-      {/* Percentage display on the right */}
-      <div className="flex-shrink-0 w-20 text-right">
-        <span className="text-sm font-semibold text-foreground whitespace-nowrap">
-          {stage.percentage}
-        </span>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+          <h4 className="font-bold text-slate-800 text-sm">{stage.stage}</h4>
+          <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-full tracking-wide uppercase">
+            Step {index + 1}
+          </span>
+        </div>
+
+        {/* Stats */}
+        <div className="space-y-4">
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+              <Users className="w-3 h-3" /> Active Users
+            </div>
+            <div className="text-3xl font-bold text-slate-900 tabular-nums tracking-tight">{stage.count}</div>
+          </div>
+
+          {prevStage && (
+            <div className="space-y-3 pt-2">
+              <div className="flex justify-between items-end">
+                 <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Conversion</div>
+                    <div className="text-lg font-bold text-emerald-600 flex items-center gap-1">
+                       <TrendingUp className="w-4 h-4" /> {conversionRate}%
+                    </div>
+                 </div>
+                 <span className="text-[10px] font-medium text-emerald-600/70">from prev. step</span>
+              </div>
+
+              <div className="h-px bg-slate-100 w-full" />
+
+              <div className="flex justify-between items-end">
+                 <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Drop-off</div>
+                    <div className="text-lg font-bold text-slate-700 flex items-center gap-1">
+                       <TrendingDown className="w-4 h-4" /> {dropoffRate}%
+                    </div>
+                 </div>
+                 <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
+                   -{dropoffCount} users
+                 </span>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Triangle Pointer */}
+        {/* <div 
+           className={cn(
+             "absolute left-6 w-4 h-4 bg-white border-l border-b border-slate-100 transform rotate-45",
+             arrowPosition
+           )} 
+        /> */}
       </div>
     </div>
   );
 }
 
-export function EngagementFunnel({
-  customData,
-  availableChannels,
-}: EngagementFunnelProps = {}) {
-  const funnelData = customData || defaultFunnelData;
+// --- Funnel Row Component ---
+function FunnelRow({
+  stage,
+  prevStage,
+  index,
+  totalStages,
+  topWidth,
+  bottomWidth,
+}: {
+  stage: FunnelStage;
+  prevStage: FunnelStage | null;
+  index: number;
+  totalStages: number;
+  topWidth: number;
+  bottomWidth: number;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
 
-  // Determine available channels from data if not provided
-  const channels =
-    availableChannels ||
-    (() => {
-      const channels: string[] = ["all"];
-      if (funnelData.whatsapp && funnelData.whatsapp.length > 0)
-        channels.push("whatsapp");
-      if (funnelData.email && funnelData.email.length > 0)
-        channels.push("email");
-      if (funnelData.voice && funnelData.voice.length > 0)
-        channels.push("voice");
-      return channels;
-    })();
+  // 1. Math for Layout
+  const avgWidth = (topWidth + bottomWidth) / 2;
+  const leftEdgePercent = (100 - avgWidth) / 2;
 
-  // Set initial active tab to first available channel
-  const [activeTab, setActiveTab] = useState(channels[0] || "all");
+  // 2. Math for Shape
+  const insetTop = (100 - topWidth) / 2;
+  const insetBottom = (100 - bottomWidth) / 2;
+  const clipPath = `polygon(${insetTop}% 0%, ${100 - insetTop}% 0%, ${100 - insetBottom}% 100%, ${insetBottom}% 100%)`;
 
-  const getCurrentData = () => {
-    switch (activeTab) {
-      case "whatsapp":
-        return funnelData.whatsapp || [];
-      case "email":
-        return funnelData.email || [];
-      case "voice":
-        return funnelData.voice || [];
-      default:
-        return funnelData.all || [];
-    }
-  };
+  // 3. Logic for Color & Dropoff
+  const dropoffCount = prevStage ? prevStage.count - stage.count : 0;
+  const dropoffRate = prevStage && prevStage.count > 0 
+    ? (dropoffCount / prevStage.count) * 100 
+    : 0;
 
-  const data = getCurrentData();
+  // Get dynamic color based on health
+  const colors = getStageColor(dropoffRate, index);
+  const gradient = `linear-gradient(to bottom, ${colors.top}, ${colors.bottom})`;
 
-  if (data.length === 0) {
-    return (
-      <div className="w-full text-center text-muted-foreground py-8">
-        No engagement data available
-      </div>
-    );
-  }
-
-  const channelLabels: Record<string, string> = {
-    all: "All Channels",
-    whatsapp: "WhatsApp",
-    email: "Email",
-    voice: "Voice",
-  };
-
-  // Map channel count to grid classes
-  const gridColsClass: Record<number, string> = {
-    1: "grid-cols-1",
-    2: "grid-cols-2",
-    3: "grid-cols-3",
-    4: "grid-cols-4",
-  };
-
-  const gridClass = gridColsClass[channels.length] || "grid-cols-4";
+  // 4. Stacking Logic
+  const zIndexValue = isHovered ? 50 : totalStages - index;
 
   return (
-    <div className="w-full">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={`grid w-full ${gridClass} mb-3 bg-muted/50 p-1`}>
-          {channels.map((channel) => (
-            <TabsTrigger key={channel} value={channel}>
-              {channelLabels[channel] || channel}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+    <div 
+      className="relative w-[600px] h-[64px] group flex items-center justify-center transition-all duration-200"
+      style={{ 
+        zIndex: zIndexValue, 
+        marginBottom: '-6px' 
+      }} 
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* LEFT LABEL */}
+      <div 
+        className="absolute top-1/2 -translate-y-1/2 flex flex-col items-end pr-6 transition-all duration-300"
+        style={{ 
+           left: 0, 
+           width: `${leftEdgePercent}%`, 
+           opacity: isHovered ? 1 : 0.6
+        }}
+      >
+         <span className="text-xs font-semibold text-slate-400 whitespace-nowrap">{stage.stage}</span>
+         <span className={cn(
+            "text-lg font-bold tabular-nums leading-none",
+            isHovered ? "text-indigo-600" : "text-slate-700"
+         )}>
+            {stage.count}
+         </span>
+      </div>
 
-        <TabsContent value={activeTab} className="mt-0">
-          <div className="py-4 w-full max-w-5xl mx-auto relative">
-            {(() => {
-              // Pre-calculate all widths and offsets for seamless connection
-              const maxWidth = 90;
-              const minWidth = 20;
-
-              // First pass: calculate bottom widths for all stages
-              const stageData: Array<{
-                stage: FunnelStage;
-                bottomWidth: number;
-                topWidth: number;
-                index: number;
-              }> = data.map((stage, index) => {
-                const widthPercentage = stage.value;
-                const bottomWidth =
-                  minWidth + (widthPercentage / 100) * (maxWidth - minWidth);
-                return { stage, bottomWidth, topWidth: 0, index };
-              });
-
-              // Second pass: calculate top widths - each stage's top width equals previous stage's bottom width
-              stageData.forEach((item, index) => {
-                if (index === 0) {
-                  item.topWidth = maxWidth;
-                } else {
-                  // Top width of current stage = bottom width of previous stage
-                  item.topWidth = stageData[index - 1].bottomWidth;
-                }
-              });
-
-              // Calculate left offsets to ensure seamless connection
-              // Each stage's bottom width equals the next stage's top width
-              // We need to align the bottom edge of each stage with the top edge of the next
-              const offsets: number[] = [];
-              stageData.forEach((item, index) => {
-                if (index === 0) {
-                  // First stage: center it
-                  offsets[index] = (100 - item.topWidth) / 2;
-                } else {
-                  // Calculate where previous stage's bottom edge starts
-                  const prevItem = stageData[index - 1];
-                  // Previous stage's bottom edge left position = container offset + half the width difference
-                  const prevBottomLeft =
-                    offsets[index - 1] +
-                    (prevItem.topWidth - prevItem.bottomWidth) / 2;
-                  // Current stage's top edge should start at the same position
-                  // (since topWidth[i] = bottomWidth[i-1], they have the same width and align perfectly)
-                  offsets[index] = prevBottomLeft;
-                }
-              });
-
-              return stageData.map((item, index) => (
-                <FunnelStageCard
-                  key={`${activeTab}-${item.stage.stage}`}
-                  stage={item.stage}
-                  index={index}
-                  total={data.length}
-                  topWidth={item.topWidth}
-                  bottomWidth={item.bottomWidth}
-                  leftOffset={offsets[index]}
-                />
-              ));
-            })()}
+      {/* CENTER: Funnel Slice */}
+      <div className="relative w-full h-full">
+        {/* Shadow */}
+        <div 
+          className="absolute inset-0 bg-slate-900/10 blur-md translate-y-2 scale-[0.95]"
+          style={{ clipPath, zIndex: -1 }}
+        />
+        
+        {/* Main Body */}
+        <div
+          className="relative w-full h-full transition-all duration-300 group-hover:scale-[1.01] group-hover:-translate-y-0.5 cursor-pointer shadow-inner"
+          style={{ clipPath, background: gradient }}
+        >
+          {/* Top Highlight (Glass effect) */}
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-white/40" />
+          
+          {/* Percentage Text */}
+          <div className="absolute inset-0 flex items-center justify-center">
+             <span className="text-white font-bold text-sm drop-shadow-md tracking-wide">
+                {stage.percentage}
+             </span>
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
+
+      {/* RIGHT: Drop-off Arrow & Hover Card */}
+      <div 
+         className="absolute h-full pointer-events-none"
+         style={{
+            left: `calc(50% + ${avgWidth / 2}%)`,
+         }}
+      >
+          {/* THE DROP-OFF ARROW INDICATOR */}
+          {dropoffCount > 0 && (
+             <div className="absolute top-1/2 -translate-y-1/2 left-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className={cn(
+                   "h-px w-6", 
+                   dropoffRate > 20 ? "bg-red-300" : "bg-slate-300"
+                )} />
+                <div className={cn(
+                   "flex items-center text-xs font-bold bg-white/80 backdrop-blur px-2 py-0.5 rounded-full border shadow-sm",
+                   dropoffRate > 20 ? "text-red-600 border-red-100" : "text-slate-500 border-slate-100"
+                )}>
+                   <ArrowRight className="w-3 h-3 mr-1" />
+                   {dropoffRate.toFixed(0)}%
+                </div>
+             </div>
+          )}
+
+          {/* Hover Details Popup (Inside this div to share relative positioning) */}
+          <div className="pointer-events-auto">
+             <HoverDetails 
+               stage={stage} 
+               prevStage={prevStage} 
+               index={index}
+               totalStages={totalStages}
+               isVisible={isHovered}
+               widthOffset={0} // We are already positioned at the edge
+             />
+          </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Main Export ---
+export function ProfessionalFunnel({
+  customData,
+  availableChannels,
+}: {
+  customData?: any;
+  availableChannels?: string[];
+} = {}) {
+  const funnelData = customData || defaultFunnelData;
+  const channels = availableChannels || ["all", "whatsapp"];
+  const [activeTab, setActiveTab] = useState(channels[0]);
+
+  // @ts-ignore
+  const currentData: FunnelStage[] = funnelData[activeTab] || funnelData.all;
+
+  const MAX_WIDTH = 100;
+  const MIN_WIDTH = 25; 
+  const stepSize = currentData.length > 1 
+    ? (MAX_WIDTH - MIN_WIDTH) / (currentData.length - 1)
+    : 0;
+
+  if (!currentData || currentData.length === 0) {
+    return <div className="p-8 text-center text-slate-400">No Data Available</div>;
+  }
+
+  return (
+    <div className="w-full max-w-5xl mx-auto bg-white rounded-3xl border border-slate-100 shadow-sm p-8 pb-12 overflow-visible">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-12">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Conversion Flow</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            Real-time stage analysis and drop-off metrics
+          </p>
+        </div>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="bg-slate-100/80 p-1 h-auto">
+            {channels.map((c) => (
+              <TabsTrigger 
+                key={c} 
+                value={c} 
+                className="capitalize px-4 py-1.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 font-medium"
+              >
+                {c === 'all' ? 'All Channels' : c}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Chart Area */}
+      <div className="relative flex flex-col items-center py-6 isolate">
+        {/* Dashed Center Line */}
+        <div className="absolute top-0 bottom-12 left-1/2 w-px border-l border-dashed border-slate-200 -z-10" />
+
+        {currentData.map((stage, index) => {
+          const topW = MAX_WIDTH - (index * stepSize);
+          const bottomW = MAX_WIDTH - ((index + 1) * stepSize);
+          const safeTop = Math.max(topW, 15);
+          const safeBottom = Math.max(bottomW, 15 * 0.8);
+
+          return (
+            <FunnelRow
+              key={stage.id}
+              stage={stage}
+              prevStage={index > 0 ? currentData[index - 1] : null}
+              index={index}
+              totalStages={currentData.length}
+              topWidth={safeTop}
+              bottomWidth={safeBottom}
+            />
+          );
+        })}
+
+        {/* Bottom Badge */}
+        <div className="mt-8 z-20">
+           <div className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 shadow-sm hover:shadow-md transition-shadow cursor-default">
+              <Activity className="w-4 h-4" />
+              <span className="font-bold tabular-nums">
+                {currentData[currentData.length - 1].count}
+              </span>
+              <span className="text-sm font-medium">Converted Users</span>
+           </div>
+        </div>
+      </div>
     </div>
   );
 }

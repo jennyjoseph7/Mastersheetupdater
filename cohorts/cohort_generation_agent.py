@@ -16,7 +16,7 @@ import traceback
 logger = get_logger(__name__)
 
 class ProductCohortGenerationAgent(UtilityMixin):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, brochure_url=None, product_website_url=None, model_identifier="azure-gpt-4o", *args, **kwargs):
         """
         Initialize the ProductCohortGenerationAgent.
 
@@ -25,15 +25,28 @@ class ProductCohortGenerationAgent(UtilityMixin):
             **kwargs: Arbitrary keyword arguments.
             (brochure_url: str, product_website_url: str, model_identifier: str)
         """
-        super().__init__(*args, **kwargs)
-        self.brochure_url : str = kwargs.get("brochure_url", None)
-        self.product_website_url : str = kwargs.get("product_website_url", None)
+        try:
+            super().__init__(*args, **kwargs)
+        except Exception as e:
+            print("\n")
+            traceback.print_exc()
+            print("\n Error with super init. Ignoring...")
+            pass 
+
+        self.brochure_url : str = brochure_url
+        self.product_website_url : str = product_website_url
 
         self.brochure_content : list[dict] = self.fetch_brochure_content(brochure_url = self.brochure_url)
         self.product_website_content : list[dict] = self.fetch_product_details_from_website(website_url = self.product_website_url)
         
-        self.model_identifier : str = kwargs.get("model_identifier", "azure-gpt-4o")
+        self.model_identifier : str = model_identifier
         self.llm : Callable = lambda messages : ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
+
+        self.num_of_cohorts : int = kwargs.get("num_of_cohorts", 20)
+        if isinstance(self.num_of_cohorts, str):
+            self.num_of_cohorts = int(self.num_of_cohorts)
+        if self.num_of_cohorts is None:
+            self.num_of_cohorts = 20
 
         identifiers = [
             "Automotive",
@@ -140,7 +153,7 @@ class ProductCohortGenerationAgent(UtilityMixin):
         - Compact vs full-size preference
 
         **REQUIREMENTS:**
-        - Generate exactly 30 cohorts (strict requirement)
+        - Generate exactly {self.num_of_cohorts} cohorts (strict requirement)
         - Each cohort must be mutually distinguishable (minimal overlap)
         - Cover the full customer funnel from awareness to loyalty
         - Cohort IDs must be unique, descriptive, and actionable
@@ -325,4 +338,43 @@ class ProductCohortGenerationAgent(UtilityMixin):
             traceback.print_exc()
             response = {"error": str(e), "raw_response": response}
         return response
+    
+
+    def run_with_events(self, batch_size=10) -> Iterable[dict]:
+        def emit(event_type, data=None):
+            return {"type": event_type, "data": data}
+        try:
+            yield emit("status", "classifying domain")
+            domain = self._classify_domain().get("identifier", "automotive").title()
+            cohort_id_generation_prompt:list[dict] = self._cohort_ids_generation_prompt(domain=domain)
+            product_context_parts = []
+            if self.brochure_content:
+                product_context_parts.append(f"PRODUCT BROCHURE:\n{json.dumps(self.brochure_content, indent=2)}")
+            if self.product_website_content:
+                product_context_parts.append(f"PRODUCT WEBSITE:\n{json.dumps(self.product_website_content, indent=2)}")
+            if product_context_parts:
+                product_context = "\n\n".join(product_context_parts)
+                cohort_id_generation_prompt.append({
+                    "role": "user",
+                    "content": f"{self.additional_product_context} \n {product_context}"
+                })
+            yield emit("status", "generating cohort ids")
+            cohort_ids:list[str] = self.exec_json_llm_with_retry(self.llm, messages=cohort_id_generation_prompt)
+            logger.info(f"Cohort IDs: {cohort_ids}")
+            allowed_cohorts = cohort_ids
+            yield emit("status", f"batching cohorts ({len(allowed_cohorts)})")
+            cohort_batches:list[list[str]] = list(self.chunk_list(items=allowed_cohorts, chunk_size=batch_size))
+            final_idx = 1
+            for batch_idx, cohort_batch in enumerate(cohort_batches, start=1):
+                yield emit("status", f"generating cohorts batch {batch_idx}/{len(cohort_batches)}")
+                messages = self._cohorts_generation_prompt(cohort_batch=cohort_batch)
+                response = self.exec_json_llm_with_retry(self.llm, messages=messages)
+                cohorts:list[dict] = response.get("cohorts", [])
+                # idxed_cohorts = [{"idx": idx, **cohort} for idx, cohort in enumerate(cohorts, start=1)]
+                yield emit("cohort", cohorts)
+            yield emit("done", "cohort generation completed")
+        except Exception as e:
+            traceback.print_exc()
+            yield emit("error", str(e))
+
     

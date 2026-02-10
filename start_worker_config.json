@@ -65,7 +65,7 @@
         {
             "name": "voice",
             "entry_point": "gryd_tasks.py",
-            "parallel_threads": 10,
+            "parallel_threads": 3,
             "shutdown_time": 0
         },
         {

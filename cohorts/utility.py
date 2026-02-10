@@ -11,8 +11,17 @@ from common_utils import get_logger
 from file_loaders.website_loader import WebsiteLoader
 from file_loaders.pdf_loader import PDFLoader
 import time
+from gryd_worker import gryd
 
 logger = get_logger(__name__)
+
+GRYD_SERVICE_NAME = "autocrm-campaign-agents"
+GRYD_CONFIG = {
+    "broker_type" : "sqs", 
+    "timeout" : 10,
+    "wait_time_to_shutdown" : 43200
+}
+
 
 class UtilityMixin:
     """Utility functions"""
@@ -39,7 +48,7 @@ class UtilityMixin:
         for attempt in range(1, MAX_RETRIES+1):
             try:
                 func_response = func(*args, **kwargs)
-                logger.info(f"response from {func.__name__}: {func_response}")
+                # logger.info(f"response from {func.__name__}: {func_response}")
                 response = self.extract_json_from_llm_response(func_response)
                 return response
             except Exception as e:

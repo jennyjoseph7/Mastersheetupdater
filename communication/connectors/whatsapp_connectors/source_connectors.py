@@ -10,7 +10,8 @@ import re
 
 from conversation.lead_post_processing import post_session_process
 
-from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NAME,WHATSAPP_PROVIDER_NUMBER
+# from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NAME,WHATSAPP_PROVIDER_NUMBER,AUTOCRM_CORE_SERVICE_NAME
+import config
 from connectors.communication_helpers import * 
 
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
@@ -505,12 +506,14 @@ class BaseWebhookConverter:
         
         # whatsapp status webhooks received here-----
         if wa_status:
-            logger.info(f"Received {wa_status} status webhook for {message_dict.get('enterprise_id')} enterprise and mobile number: {message_dict.get('recipientAddress',message_dict.get('mobile_number'))}")
+            mob_num=message_dict.get('recipientAddress',message_dict.get('mobile_number'))
+            logger.info(f"Received {wa_status} status webhook for {message_dict.get('enterprise_id')} enterprise and mobile number: {mob_num}")
             message_dict["message_status"]=wa_status
-            # logger.info(f"Calling post_contact_status with Message dict: {message_dict}")
+            logger.info(f"Calling post_contact_status with Message dict : {message_dict}")
+            logger.info(f"Calling post_contact_status and checking the disposition : {wa_status}")    
             gryd.create_async_task(
                 'post_contact_status',
-                AUTOCRM_COMMUNICATION_SERVICE_NAME,
+                config.AUTOCRM_COMMUNICATION_SERVICE_NAME,
                 args = (message_dict.get('message_id'),),
                 kwargs=message_dict)
             # self.post_contact_status(message_dict.get('message_id'),**message_dict)
@@ -519,7 +522,11 @@ class BaseWebhookConverter:
         if msg_status: return {"info":f"Received {msg_status}--->{wa_status} status webhook"}
 
         return {}
+    
+    
     # @timelogger(label="process_message_dict")
+    
+    
     def process_message_dict(self, *args, **kwargs):
         """
         Processes the message dictionary and triggers a conversation workflow.
@@ -984,8 +991,8 @@ class BaseWebhookConverter:
             logger.error("template_id or mobile_number or otp missing")
             return
 
-        provider_name = WHATSAPP_PROVIDER_NAME
-        sender = WHATSAPP_PROVIDER_NUMBER
+        provider_name = config.WHATSAPP_PROVIDER_NAME
+        sender = config.WHATSAPP_PROVIDER_NUMBER
 
         t_data = {
             "mobile_number": mobile_number,
@@ -1026,7 +1033,7 @@ class BaseWebhookConverter:
             return
 
         provider = WhatsappMessangerConnector.whatsapp(
-            WHATSAPP_PROVIDER_NAME, *args, **kwargs
+            config.WHATSAPP_PROVIDER_NAME, *args, **kwargs
         )
         logger.info(f"Provider: {provider}")
         logger.info(f"Sending message to {to} with content: {message}")

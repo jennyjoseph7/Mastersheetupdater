@@ -2,8 +2,7 @@ from time import time
 import os, sys
 
 import pytz
-# Add the autobot_agents root directory to path to find config
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from .tatatele import CloudPhoneAPI, TATATELE_API_TOKEN, TATATELE_BASE_URL
 import config
@@ -21,6 +20,7 @@ from elevenlabs import ElevenLabs
 from typing import Dict, Any, Optional
 import audioop  # Native C extension - fast audio processing
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp
+
 from utils import helpers as vhp
 import utils
 
@@ -32,6 +32,8 @@ except ImportError:
     pass  # uvloop not available, use default event loop
 
 logger = utils.get_logger(__name__)
+
+
 
 # ---- Config / env ----
 load_dotenv()
@@ -622,16 +624,16 @@ def calculate_elevenlabs_billing_usd(callback_data):
     is_burst = charging.get('is_burst', False)
 
     # Call outcome
-    analysis = callback_data.get('analysis', {})
+    analysis = callback_data.get('analysis', {}) or {}
     call_successful = analysis.get('call_successful', 'unknown')
 
     # Error information (if any)
-    error = metadata.get('error', {})
+    error = metadata.get('error', {}) or {}
     error_code = error.get('code', None)
     error_reason = error.get('reason', None)
 
     # RAG usage
-    rag_usage = metadata.get('rag_usage', {})
+    rag_usage = metadata.get('rag_usage', {}) or {}
     rag_usage_count = rag_usage.get('usage_count', 0)
 
     # Construct complete billing dictionary
@@ -864,7 +866,6 @@ def outbound_call(*args, **kwargs):
 
 @app.route("/smartflo/webhook", methods=["POST"])
 def smartflo_webhook():
-    from voice import gryd_tasks
     raw = request.get_data()
     payload = tatatele_status_map(raw)
 
@@ -877,14 +878,12 @@ def smartflo_webhook():
     status = payload.get("call_status")
 
     logger.info(f"[{call_id}] Incoming payload: {json.dumps(payload, indent=4)}")
-
-    if  payload ["status"] in ["contacted"]:
-        #start_session(call_id, {"room_id":"ambal_auto"})
-        #patch the statuss
-        #gryd_tasks.post_billing_object("contacted", session_id)
-        pass
-    elif payload ["status"] in ["queued"]:
+    import gryd_tasks
+    if  status in ["contacted"]:
+        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = payload.get("ref_id"),  **{"status": "completed"})
+    elif status in ["queued"]:
         gryd_tasks.post_billing_object(status, session_id)
+        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = payload.get("ref_id"),  **{"status": status})
     elif status in ['failed', 'canceled', 'missed', 'busy', 'completed']:
         logger.info(f"[{call_id}] Call ended or failed - cleaning up session")
 
@@ -899,7 +898,6 @@ def smartflo_webhook():
 
 @app.route("/tatatele-conversation", methods=["POST"])
 def process():
-    # secret - wsec_ca35c4c015f51dd09074893f1986484145df6c3e662311ce675f4892ffbf155e
     payload = request.get_json()
 
     logger.info(f"Processing payload: {json.dumps(payload, indent=4)}")
@@ -928,15 +926,18 @@ def process():
 
     session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time()))
     logger.info(f"Triggering post history and actions for session_id: {session_id}")
+
     
     gryd_tasks.end_session(**{
         "session_id": session_id,
-        "history": session_history,
-        "status": "completed"
+        "additional_dict":{
+            "history": session_history,
+            "status": "completed"
+        }
     })
     
     gryd_tasks.post_actions(session_id)
-    gryd_tasks.post_history(session_history, all_data = data)
+    gryd_tasks.post_history(session_id, session_history)
 
     return jsonify({"status": "processed"})
 
