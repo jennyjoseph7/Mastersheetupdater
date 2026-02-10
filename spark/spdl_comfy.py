@@ -27,11 +27,12 @@ COMFY_INPUT_DIR = os.getenv("COMFY_INPUT_DIR")
 COMFY_OUTPUT_DIR = os.getenv("COMFY_OUTPUT_DIR")
 
 # -------------------- GRYD CONFIG --------------------
-GRYD_URL = "https://file-prod.gryd.in/media/image"
+GRYD_URL = os.getenv("GRYD_URL")
+
 HEADERS = {
-    "X-I2CE-ENTERPRISE-ID": "gryd_file_system",
-    "X-I2CE-USER-ID": "siddhant.anchal+file-gryd@iamdave.ai",
-    "X-I2CE-API-KEY": "2a24bbde-6c29-3659-afc0-96d08b59ae3f",
+    "X-I2CE-ENTERPRISE-ID": os.getenv("GRYD_ENTERPRISE_ID"),
+    "X-I2CE-USER-ID": os.getenv("GRYD_USER_ID"),
+    "X-I2CE-API-KEY": os.getenv("GRYD_API_KEY"),
 }
 
 # -------------------- HELPERS --------------------
