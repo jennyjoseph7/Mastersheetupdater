@@ -117,6 +117,7 @@ def trigger_voice_call(*args, **kwargs):
         "lead_id": user_data.get("lead_id"),
         "status":"attempted",
         "channel": user_data.get("channel", "voice_phone"),
+        "dealership_id": user_data.get("dealership_id"),
         "phone_number":format_phone_number(user_data.get("mobile_number")),
         "start_time": hp.epoch()
         
