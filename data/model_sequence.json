@@ -53,5 +53,6 @@
     "post_idea",
     "post_showroom",
     "post_workshop",
-    "post_buyback_center"
+    "post_buyback_center",
+    "model_year_image"
 ]
