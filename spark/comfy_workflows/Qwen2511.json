@@ -28,12 +28,12 @@
           {
             "name": "A",
             "selected": true,
-            "url": "/api/view?filename=rgthree.compare._temp_nupgp_00001_.png&type=temp&subfolder=&rand=0.2209526954567358"
+            "url": "/api/view?filename=rgthree.compare._temp_nqvcp_00005_.png&type=temp&subfolder=&rand=0.12217610104398258"
           },
           {
             "name": "B",
             "selected": true,
-            "url": "/api/view?filename=rgthree.compare._temp_nupgp_00002_.png&type=temp&subfolder=&rand=0.08951406093507619"
+            "url": "/api/view?filename=rgthree.compare._temp_nqvcp_00006_.png&type=temp&subfolder=&rand=0.2791645650805268"
           }
         ]
       },
@@ -134,6 +134,15 @@
       "title": "ModelSamplingAuraFlow"
     }
   },
+  "89:92": {
+    "inputs": {
+      "unet_name": "qwen-image-edit-2511-Q8_0.gguf"
+    },
+    "class_type": "UnetLoaderGGUF",
+    "_meta": {
+      "title": "Unet Loader (GGUF)"
+    }
+  },
   "89:90": {
     "inputs": {
       "conditioning": [
@@ -203,32 +212,9 @@
       "title": "ReferenceLatent"
     }
   },
-  "89:92": {
-    "inputs": {
-      "unet_name": "qwen-image-edit-2511-Q8_0.gguf"
-    },
-    "class_type": "UnetLoaderGGUF",
-    "_meta": {
-      "title": "Unet Loader (GGUF)"
-    }
-  },
-  "89:97": {
-    "inputs": {
-      "lora_name": "Qwen-Image-Edit-2509-Lightning-4steps-V1.0-bf16.safetensors",
-      "strength_model": 0.5,
-      "model": [
-        "89:92",
-        0
-      ]
-    },
-    "class_type": "LoraLoaderModelOnly",
-    "_meta": {
-      "title": "LoraLoaderModelOnly"
-    }
-  },
   "89:65": {
     "inputs": {
-      "seed": 961404205021853,
+      "seed": 293245119076788,
       "steps": 12,
       "cfg": 1,
       "sampler_name": "er_sde",
@@ -254,6 +240,20 @@
     "class_type": "KSampler",
     "_meta": {
       "title": "KSampler"
+    }
+  },
+  "89:97": {
+    "inputs": {
+      "lora_name": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+      "strength_model": 0.5,
+      "model": [
+        "89:92",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
     }
   }
 }
