@@ -3,7 +3,7 @@ from gryd_worker import gryd, gryd_helpers as hp
 import json
 from typing import Any, Dict
 from PIL import Image, ImageOps
-import re, time
+import re, time, typing
 from ai_service import ai_service
 
 mlogger = hp.get_logger(__name__)
@@ -28,7 +28,7 @@ def check_image_size(image_path: str, min_dim: int = 1024, max_aspect_ratio: flo
         return valid_size, width, height
 
 
-def pad_and_resize_image(image_path:str, output_dimensions:list = None, output_image_path:str = None, grey_color:tuple = None, logger:hp.logging.Logger = None):
+def pad_and_resize_image(image_path:str, output_dimensions:typing.Union[list[int, int], list[int, int, int]], output_image_path:str = None, grey_color:tuple = None, logger:hp.logging.Logger = None):
     logger = logger or mlogger
     grey_color = grey_color or (175, 175, 175)
     output_image_path = output_image_path or image_path
