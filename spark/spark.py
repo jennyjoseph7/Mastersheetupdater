@@ -10,7 +10,7 @@ APP_DIR = dirname(abspath(__file__))
 if APP_DIR not in sys.path:
     sys.path.append(APP_DIR)
 from combine_images import merge_layers
-from check_distortion import analyze_image
+from check_distortion import analyze_image, pad_and_resize_image
 from core import func_gryd_file_system
 SERVICE = 'spark'
 gryd.SERVICE = SERVICE
@@ -29,6 +29,11 @@ def merge_layers(base_png: str, png_layers: list[tuple[str, float, int, int]] = 
     output_path = merge_layers(base_png, png_layers=png_layers, svg_layers=svg_layers, output_path=output_path, job=job, logger=logger)
     cdn_url = func_gryd_file_system(output_path, media_type='image', logger=logger)
     return cdn_url
+
+@gryd.is_a_task(function_name="pad_and_resize_image", job_param='job', logger_param='logger')
+def pad_and_resize_image(image_path: str, output_dimensions: list = None, job: dict = None, logger: hp.logging.Logger = None):
+    logger = logger or mlogger
+    return pad_and_resize_image(image_path, output_dimensions=output_dimensions, logger=logger)
 
 
 

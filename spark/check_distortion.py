@@ -2,7 +2,7 @@ import sys, os
 from gryd_worker import gryd, gryd_helpers as hp
 import json
 from typing import Any, Dict
-from PIL import Image
+from PIL import Image, ImageOps
 import re, time
 from ai_service import ai_service
 
@@ -26,6 +26,59 @@ def check_image_size(image_path: str, min_dim: int = 1024, max_aspect_ratio: flo
         aspect_ratio = max(width / height, height / width)
         valid_size = (width >= min_dim or height >= min_dim) and (aspect_ratio <= max_aspect_ratio)
         return valid_size, width, height
+
+
+def pad_and_resize_image(image_path:str, output_dimensions:list = None, output_image_path:str = None, grey_color:tuple = None, logger:hp.logging.Logger = None):
+    logger = logger or mlogger
+    grey_color = grey_color or (175, 175, 175)
+    output_image_path = output_image_path or image_path
+    if not isinstance(output_dimensions, list) or len(output_dimensions) not in [2, 3]:
+        raise ValueError("output_dimentions must be a list of 2 or 3 integers")
+    with Image.open(image_path) as img:
+        width, height = img.size
+        if len(output_dimensions) == 2:
+            if img.mode == "RGB":
+                channels = 3
+            elif img.mode == "RGBA":
+                channels = 4
+            else:
+                channels = 1
+            output_dimensions.append(channels)
+        req_width, req_height, channels = output_dimensions
+        if width > req_width or height > req_height:
+            width_ratio = req_width / width
+            height_ratio = req_height / height
+            if width_ratio <= height_ratio: # it is easier to shrink the width than the height
+                new_width = req_width
+                new_height = int(height * width_ratio)
+            else:
+                # it is easier to shrink the height than the width
+                new_height = req_height
+                new_width = int(width * height_ratio)
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            width = new_width
+            height = new_height
+        pad_width = req_width - width
+        pad_height = req_height - height
+        # INSERT_YOUR_CODE
+        # First, create a new blank (grey) image with the requested output size.
+        if img.mode == "RGBA" or channels == 4:
+            mode = "RGBA"
+            grey_color = grey_color + (255,)
+        else:
+            mode = "RGB"
+        background = Image.new(mode, (req_width, req_height), grey_color)
+        # Compute left and top offsets for centering
+        left = (pad_width) // 2
+        top = (pad_height) // 2
+        if left + width > req_width:
+            left = max(0, req_width - width)
+        if top + height > req_height:
+            top = max(0, req_height - height)
+        # Paste the resized image onto the grey background, centered
+        background.paste(img, (left, top))
+        background.save(output_image_path)
+        return output_image_path
 
 def analyze_image(
     image_path: str,
