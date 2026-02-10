@@ -2,20 +2,16 @@ import argparse
 import io
 import os, sys
 from PIL import Image
-import cairosvg
-from wand.image import Image as WandImage, Color
-from svglib.svglib import svg2rlg
-from reportlab.graphics import renderPM
+try:
+    import cairosvg
+except ImportError as e:
+    cairosvg = None
 from gryd_worker import gryd, gryd_helpers as hp
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
 mlogger = hp.get_logger(__name__)
-CAIROSVG_FONT_PATH = joinpath(BASE_DIR, "fonts")
-if CAIROSVG_FONT_PATH not in os.environ.get("CAIROSVG_FONT_PATH", ""):
-    os.environ["CAIROSVG_FONT_PATH"] = os.pathsep.join([CAIROSVG_FONT_PATH, os.environ.get("CAIROSVG_FONT_PATH", "")])
-    mlogger.info(f"CAIROSVG_FONT_PATH set to: {os.environ['CAIROSVG_FONT_PATH']}")
 
 DEFAULT_SCALE = 1.0
 DEFAULT_X = 0
@@ -50,6 +46,8 @@ def load_png_layer(path, scale):
 
 
 def load_svg_layer(path, scale, base_size):
+    if not cairosvg:
+        raise ValueError("CairoSVG not loaded, cannot perform merge on this system")
     base_w, base_h = base_size
     
     svg_png_bytes = cairosvg.svg2png(
@@ -59,27 +57,6 @@ def load_svg_layer(path, scale, base_size):
     )
 
     return Image.open(io.BytesIO(svg_png_bytes)).convert("RGBA")
-
-def load_wand_layer(path, scale, base_size):
-    base_w, base_h = base_size
-    with open(path, "rb") as f:
-        svg_data = f.read()
-        with Color("transparent") as background:
-            with WandImage(blob=svg_data, format="svg", background=background) as image:
-                image.resize(int(base_w * scale), int(base_h * scale))
-                png_image = image.make_blob("png")
-                image = Image.open(io.BytesIO(png_image)).convert("RGBA")
-                return image
-
-def load_svg_lib_layer(path, scale, base_size):
-    drawing = svg2rlg(path)
-    base_w, base_h = base_size
-    with io.BytesIO() as output:
-        renderPM.drawToFile(drawing, output, fmt="PNG")
-        #png_image = output.getvalue()
-        ret_image = Image.open(output).convert("RGBA")
-        ret_image = ret_image.resize((int(base_w * scale), int(base_h * scale)))
-        return ret_image
 
 def merge_layers(base_png: str, png_layers: list[tuple[str, float, int, int]] = None, svg_layers: list[tuple[str, float, int, int]] = None, output_path: str = None, logger: hp.logging.Logger = None):
     """
