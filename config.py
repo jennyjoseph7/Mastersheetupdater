@@ -1,5 +1,5 @@
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp
-import os, sys, csv
+import os, sys, csv, re
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 AUTOCRM_ADMIN_ID = os.environ.get("AUTOCRM_ADMIN_ID", "ananth+autocrm-app@i2ce.in")
 AUTOCRM_ADMIN_PHONE_NUMBER = os.environ.get("AUTOCRM_ADMIN_PHONE_NUMBER", "99980838165")
@@ -217,8 +217,109 @@ def post_json_file(filename_json, autocrm_model, start_from = 0, limit = None, l
         logger.error(f"{e}\nError posting data for: {data_name} for index {index} in {filename_json}")
         raise
 
-def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, logger = None):
+def make_sep_dict(separator, default):
+    separator = separator or default
+    if not isinstance(separator, (str, dict)):
+        separator = default
+    if not isinstance(separator, dict):
+        separator = {None: separator}
+    return separator
+
+def process_row_bools(row, bool_keys, logger = None):
     logger = logger or clogger
+    for k in bool_keys:
+        if row.get(k):
+            rk = row[k]
+            logger.info(f"Converting boolean attribute {k}: {rk}")
+            if rk.lower() in ['true', '1', 'yes']:
+                row[k] = True
+            elif rk.lower() in ['false', '0', 'no']:
+                row[k] = False
+            elif rk:
+                raise ValueError(f"Incorrect boolean value {rk}")
+            logger.info(f"Converted boolean attribute {k}: {rk} -> {row[k]}")
+    return row
+
+def process_row_numbers(row, number_keys, logger = None):
+    logger = logger or clogger
+    for k in number_keys:
+        if row.get(k):
+            rk = row[k]
+            logger.info(f"Converting number attribute {k}: {rk}")
+            try:
+                if '.' in rk:
+                    row[k] = float(rk)
+                else:
+                    row[k] = int(rk)
+            except ValueError as e:
+                raise ValueError(f"Value for for attribute {k} is not parseable into number: {row[k]}")
+            logger.info(f"Converted number attribute {k}: {rk} -> {row[k]}")
+    return row
+
+def convert_to_list(val, separator = None, logger = None):
+    logger = logger or clogger
+    sep = separator or  r',|;'
+    rok = list(map(lambda x: x.strip(), re.split(sep, val)))
+    return list(filter(lambda x: x, rok)) or None
+
+def process_row_lists(row, list_keys, separator = None, logger = None):
+    logger = logger or clogger
+    for k in list_keys:
+        if row.get(k):
+            sep = separator.get(k, separator.get(None))
+            rk = row[k]
+            logger.info("Converting list attribute %s: %s", k, rk)
+            row[k] = convert_to_list(rk, sep)
+            logger.info("Converted list attribute %s: %s -> %s", k, rk, row[k])
+    return row
+
+def process_row_objects(row, object_keys, separator, key_separator, logger = None):
+    logger = logger or clogger
+    for k in object_keys:
+        if row.get(k):
+            sep = separator.get(k, separator.get(None))
+            key_sep = key_separator.get(k, key_separator.get(None))
+            rk = row[k]
+            logger.info("Converting dict attribute %s: %s", k, rk)
+            r = {}
+            mr = list(map(lambda x: x.strip(), re.split(sep, row[k])))
+            try:
+                r = {x.split(key_sep)[0].strip():x.split(key_sep)[1].strip() for x in mr}
+            except ValueError as e:
+                raise ValueError(f"Value for for attribute {k} is not parseable into nested_object: {row[k]}")
+            else:
+                row[k] = r or None
+                logger.info("Converted dict attribute %s: %s -> %s", k, rk, row[k])
+    return row
+
+def process_row_object_lists(row, object_list_keys, separator, key_separator, object_list_separator, logger = None):
+    logger = logger or clogger
+    for k in object_list_keys:
+        if row.get(k):
+            sep = separator.get(k, separator.get(None))
+            key_sep = key_separator.get(k, key_separator.get(None))
+            ob_list_sep = object_list_separator.get(k, object_list_separator.get(None))
+            rk = row[k]
+            r = []
+            logger.info("Converting object list attribute %s: %s", k, rk)
+            mrl = list(map(lambda x: x.strip(), re.split(ob_list_sep, rk)))
+            logger.info(f"Object list attribute {k} after split: {mrl}")
+            for mk in mrl:
+                rk = {}
+                for rk1 in re.split(sep, mk):
+                    rk1 = rk1.strip()
+                    if key_sep in rk1:
+                        rk[rk1.split(key_sep)[0].strip()] = rk1.split(key_sep)[1].strip()
+                r.append(rk)
+            row[k] = r or None
+            logger.info("Converted object list attribute %s: %s -> %s", k, rk, row[k])
+    return row
+
+def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, logger = None, separator = None, key_separator = None, object_list_separator = None):
+    logger = logger or clogger
+    separator = make_sep_dict(separator, r',|;')
+    key_separator = make_sep_dict(key_separator, r':')
+    object_list_separator = make_sep_dict(object_list_separator, r'\|')
     m = autocrm_model
     if isinstance(autocrm_model, str):
         m = AutocrmModel(model_name = autocrm_model, logger = logger)
@@ -239,65 +340,11 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, log
                 if linenum + 1 < start_from:
                     continue
                 row = {k.strip(): v.strip() for k, v in row.items()}
-                for k in number_keys:
-                    if row.get(k):
-                        rk = row[k]
-                        logger.info(f"Converting number attribute {k}: {rk}")
-                        try:
-                            if '.' in rk:
-                                row[k] = float(rk)
-                            else:
-                                row[k] = int(rk)
-                        except ValueError as e:
-                            raise ValueError(f"Value for for attribute {k} is not parseable into number: {row[k]}")
-                        logger.info(f"Converted number attribute {k}: {rk} -> {row[k]}")
-                for k in bool_keys:
-                    if row.get(k):
-                        rk = row[k]
-                        logger.info(f"Converting boolean attribute {k}: {rk}")
-                        if rk.lower() in ['true', '1', 'yes']:
-                            row[k] = True
-                        elif rk.lower() in ['false', '0', 'no']:
-                            row[k] = False
-                        elif rk:
-                            raise ValueError(f"Incorrect boolean value {rk}")
-                        logger.info(f"Converted boolean attribute {k}: {rk} -> {row[k]}")
-                for k in list_keys:
-                    if row.get(k):
-                        rk = row[k]
-                        logger.info("Converting list attribute %s: %s", k, rk)
-                        rok = list(map(lambda x: x.strip(), rk.split(',')))
-                        row[k] = list(filter(lambda x: x, rok)) or None
-                        logger.info("Converted list attribute %s: %s -> %s", k, rk, row[k])
-                for k in object_keys:
-                    if row.get(k):
-                        rk = row[k]
-                        logger.info("Converting dict attribute %s: %s", k, rk)
-                        r = {}
-                        mr = list(map(lambda x: x.strip(), row[k].split(',')))
-                        try:
-                            r = {x.split(':')[0].strip():x.split(':')[1].strip() for x in mr}
-                        except ValueError as e:
-                            raise ValueError(f"Value for for attribute {k} is not parseable into nested_object: {row[k]}")
-                        else:
-                            row[k] = r or None
-                            logger.info("Converted dict attribute %s: %s -> %s", k, rk, row[k])
-                for k in object_list_keys:
-                    if row.get(k):
-                        rk = row[k]
-                        r = []
-                        logger.info("Converting object list attribute %s: %s", k, rk)
-                        mrl = list(map(lambda x: x.strip(), row[k].split('|')))
-                        logger.info(f"Object list attribute {k} after : {mrl}")
-                        for mk in mrl:
-                            rk = {}
-                            for rk1 in mk.split(","):
-                                rk1 = rk1.strip()
-                                if ":" in rk1:
-                                    rk[rk1.split(':')[0].strip()] = rk1.split(':')[1].strip()
-                            r.append(rk)
-                        row[k] = r or None
-                        logger.info("Converted object list attribute %s: %s -> %s", k, rk, row[k])
+                row = process_row_numbers(row, number_keys, logger = logger)
+                row = process_row_bools(row, bool_keys, logger = logger)
+                row = process_row_lists(row, list_keys, separator, logger = logger)
+                row = process_row_objects(row, object_keys, separator, key_separator, logger = logger)
+                row = process_row_object_lists(row, object_list_keys, separator, key_separator, object_list_separator, logger = logger)
                 row = {k:v for k, v in row.items() if v not in (None, '')}
                 logger.info(f"Row: {hp.json.dumps(row, option=hp.json.OPT_INDENT_2).decode('utf-8')}")
                 m.post(row)
@@ -308,7 +355,7 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, log
         logger.error(f"{e}\nError posting data for: {data_name} for linenum {linenum} in {filename_csv}")
         raise
 
-def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, limit = None):
+def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, limit = None, **separators):
     logger = logger or clogger
     filename_json = hp.joinpath(BASE_PATH, "seed", f"{data_name}s.json")
     filename_csv = hp.joinpath(BASE_PATH, "seed", f"{data_name}s.csv")
@@ -316,7 +363,7 @@ def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, 
     if reseed:
         m.delete_many()
     if hp.isfile(filename_csv):
-        post_csv_file(filename_csv, m, start_from = start_from, limit = limit, logger = logger)
+        post_csv_file(filename_csv, m, start_from = start_from, limit = limit, logger = logger, **separators)
     elif hp.isfile(filename_json):
         post_json_file(filename_json, m, start_from = start_from, limit = limit, logger = logger)
     else:
