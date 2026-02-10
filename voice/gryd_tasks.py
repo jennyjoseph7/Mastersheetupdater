@@ -164,6 +164,26 @@ def trigger_voice_call(*args, **kwargs):
 
     post_contact_status_voice(user_data, message_id=response.get("call_sid"))
 
+    from autocrm_db_helper import get_pg_connector
+    import time
+
+    timeout = time.time() + float(user_data.get("call_timeout", 600))  # 10 minutes
+    while time.time() < timeout:
+        time.sleep(5)
+        with get_pg_connector() as pg:
+            statuses = list(pg.list_order_by("contact_status", {"message_id": session_data["session_id"]}, order_by="created"))
+            if not statuses:
+                logger.info(f"No contact status object found yet for message_id: {session_data['session_id']}, waiting...")
+                continue
+            latest = statuses[0]
+            if latest["provider_status"] not in ["contacted", "completed"]:
+                logger.info(f"Call is ongoing for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
+                continue
+            logger.info(f"Call ended with status '{latest['provider_status']}' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
+            return
+
+
+
 
 @gryd.is_a_task(function_name="post_billing_object")
 def post_billing_object(status, session_id, duration = 1, *args, **kwargs):
@@ -202,7 +222,7 @@ def post_billing_object(status, session_id, duration = 1, *args, **kwargs):
         "item_total" : duration*config.AUTOCRM_CALL_COMPLETED_PRICE,
         "item_units" : config.AUTOCRM_CALL_COMPLETED_UNITS,
         }
-    elif status in ["queued", "contacted"]:
+    elif status in ["reached"]:
         x = {
         "item_name" : config.AUTOCRM_CALL_CONNECTED_ITEM,
         "item_quantity" : 1,
@@ -234,7 +254,7 @@ def post_billing_object(status, session_id, duration = 1, *args, **kwargs):
 
 
 def post_history(session_id, session_history):
-    
+    import time
     session_model = base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
     session_data = session_model.get(session_id)
 
@@ -254,7 +274,7 @@ def post_history(session_id, session_history):
         a = agent_msgs[i] if i < len(agent_msgs) else {}
         tme = hp.time()
         history.append({
-            "reply_to": converter.generate_uid(u) if u else "",
+            "reply_to": converter.generate_uid(u) if u else gryd.hp.make_uuid3(str(time.time())),
             "customer_response": u.get("message", ""),
             "request_data": {
                 "customer_response": u.get("message", "")
@@ -273,7 +293,7 @@ def post_history(session_id, session_history):
         })
 
     logger.info(f"Calling task post_all_messages_for_session with history: {history}")
-    gryd.create_async_task(
+    gryd.await_result(
         "post_all_messages_for_session",
         config.AUTOCRM_CONVERSATION_SERVICE_NAME,
         args=[],
@@ -301,7 +321,7 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     if additiona_params:
         session_data.update(additiona_params)
 
-    logger.info(f'Posting contact status with payload: {session_data}')
+    logger.info(f'Posting contact status with payload: {session_data}: status: {session_data.get("status")}, message_id: {message_id}, session_id: {session_id}')
     attrs=["phone_number", "lead_id","campaign_id","campaign_type","email","dealership_id","channel","campaign_model"]
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
