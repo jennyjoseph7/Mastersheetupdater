@@ -152,8 +152,6 @@ def trigger_voice_call(*args, **kwargs):
     from voice import providers
     response = providers.make_call(provider, session_data, *args, **kwargs)
 
-    
-
     yield {
         "success": response.get("success"),
         "call_sid": response.get("call_sid"),
@@ -192,9 +190,8 @@ def trigger_voice_call(*args, **kwargs):
                     }
                     })
                     return
-                else:
-                    logger.info(f"Call is ongoing for, still connecting: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
-                    continue
+                logger.info(f"Call is ongoing for, still connecting: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
+                continue
             elif latest["provider_status"] in ["contacted", "reached"]:
                 logger.info(f"Call ended with status '{latest['provider_status']}' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
                 return
