@@ -163,12 +163,15 @@ def trigger_voice_call(*args, **kwargs):
         "campaign_id": session_data["campaign_id"],
     }
 
-    post_contact_status_voice(user_data, message_id=response.get("call_sid"))
+    post_contact_status_voice(user_data, message_id=session_data["session_id"])
 
     from autocrm_db_helper import get_pg_connector
     import time
 
     timeout = time.time() + float(user_data.get("call_timeout", 600))  # 10 minutes
+
+    attempted_timeout = time.time() + float(user_data.get("attempted_status_timeout", 60))  # 1 minutes
+
     while time.time() < timeout:
         time.sleep(5)
         with get_pg_connector() as pg:
@@ -177,11 +180,27 @@ def trigger_voice_call(*args, **kwargs):
                 logger.info(f"No contact status object found yet for message_id: {session_data['session_id']}, waiting...")
                 continue
             latest = statuses[0]
-            if latest["provider_status"] not in ["contacted", "completed"]:
-                logger.info(f"Call is ongoing for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
-                continue
-            logger.info(f"Call ended with status '{latest['provider_status']}' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
-            return
+            if latest["provider_status"] in ["attempted"]:
+                if time.time() > attempted_timeout:
+                    logger.info(f"Call seems to be not connecting for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}. Ending session.")
+                    post_contact_status_voice(session_id = session_data["session_id"], message_id=session_data["session_id"], **{"status": "busy"})
+                    end_session(**{
+                        "session_id": session_data["session_id"],
+                        "additional_dict":{
+                            "history": [],
+                            "status": "busy"
+                    }
+                    })
+                    return
+                else:
+                    logger.info(f"Call is ongoing for, still connecting: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
+                    continue
+            elif latest["provider_status"] in ["contacted", "reached"]:
+                logger.info(f"Call ended with status '{latest['provider_status']}' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
+                return
+            
+            logger.info(f"Call is ongoing for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
+            continue
 
 
 
