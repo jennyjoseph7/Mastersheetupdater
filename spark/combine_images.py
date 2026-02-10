@@ -4,7 +4,7 @@ import os, sys
 from PIL import Image
 try:
     import cairosvg
-except ImportError as e:
+except (ImportError, OSError) as e:
     cairosvg = None
 from gryd_worker import gryd, gryd_helpers as hp
 from os.path import dirname, abspath, join as joinpath

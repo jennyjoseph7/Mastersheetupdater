@@ -6,7 +6,6 @@ import uuid
 import logging
 import requests
 
-from gryd_worker import gryd
 
 # -------------------- BASE DIR --------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -34,9 +33,6 @@ HEADERS = {
     "X-I2CE-USER-ID": "siddhant.anchal+file-gryd@iamdave.ai",
     "X-I2CE-API-KEY": "2a24bbde-6c29-3659-afc0-96d08b59ae3f",
 }
-
-gryd.SERVICE = "spark"
-gryd.set_queue_manager(config={"broker_type": "sqs", "timeout": 10})
 
 # -------------------- HELPERS --------------------
 def load_workflow():
@@ -94,7 +90,6 @@ def extract_saveimage_outputs(history, save_node_id="9"):
 
 
 # -------------------- TASK --------------------
-@gryd.is_a_task()
 def comfy_image_generation_task(
     input_image_url,
     prompt,
