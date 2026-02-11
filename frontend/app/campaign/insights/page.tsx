@@ -4,7 +4,7 @@ import { useMemo, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
-import { ArrowLeft, AlertCircle, BarChart3, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -60,31 +60,27 @@ const SWR_OPTIONS = {
   shouldRetryOnError: false,
 };
 
-const WA_TO_DISPOSITION: Record<string, string> = {
-  read: "contacted",
-  sent: "attempted",
-  initiated: "queued",
-  delivered: "reached",
-  failed: "failed",
-  interacted: "engaged",
-  converted: "converted",
-};
-
 const CHANNEL_COLORS: Record<string, string> = {
   whatsapp_chat: "#25D366",
   whatsapp: "#25D366",
   email: "#EA4335",
   voice: "#4285F4",
   sms: "#FACC15",
-  default: "#6366f1", // Changed from pink/purple to indigo
+  default: "#6366f1",
 };
 
 // --- TypeScript Interfaces ---
 
+// UPDATED: Matches the strict structure required by ProfessionalFunnel
 interface EngagementStat {
   channel: string;
-  status: string;
-  count: number;
+  total: number;
+  converted: number;
+  interacted: number;
+  sent_called: number;
+  read_greeted: number;
+  delivered_answered: number;
+  [key: string]: any; // Allow extra fields
 }
 
 interface FailureStat {
@@ -105,14 +101,7 @@ interface CampaignPerformance {
   engagement_stats: EngagementStat[];
   failure_stats_by_channel: FailureStat[];
   intent_distribution_by_channel: IntentStat[];
-}
-
-interface FunnelStage {
-  stage: string;
-  value: number;
-  percentage: string;
-  count: number;
-  dropoff?: number;
+  // Include other fields returned by your API
 }
 
 interface CampaignLead {
@@ -138,108 +127,6 @@ interface CampaignLead {
 
 // --- Helper Logic ---
 
-const calculatePercentage = (part: number, total: number) => {
-  if (!total || total === 0) return 0;
-  return Math.round((part / total) * 100);
-};
-
-function processEngagementStats(engagementStats: EngagementStat[]) {
-  if (!engagementStats || engagementStats.length === 0) {
-    return {
-      all: [],
-      whatsapp: [],
-      email: [],
-      voice: [],
-      availableChannels: [],
-    };
-  }
-
-  const byChannel: Record<string, EngagementStat[]> = {};
-  let globalTotal = 0;
-
-  engagementStats.forEach((stat) => {
-    const channel = stat.channel || "unknown";
-    if (!byChannel[channel]) byChannel[channel] = [];
-    byChannel[channel].push(stat);
-    globalTotal += stat.count || 0;
-  });
-
-  const createFunnelStages = (
-    channelStats: EngagementStat[]
-  ): FunnelStage[] => {
-    const counts = {
-      queued: 0,
-      attempted: 0,
-      reached: 0,
-      contacted: 0,
-      engaged: 0,
-      converted: 0,
-      failed: 0,
-    };
-
-    channelStats.forEach((stat) => {
-      const rawStatus = (stat.status || "").toLowerCase();
-      const disposition = WA_TO_DISPOSITION[rawStatus];
-
-      if (disposition && disposition in counts) {
-        counts[disposition as keyof typeof counts] += stat.count || 0;
-      }
-    });
-
-    // Use queued count as the base (100%)
-    const baseTotal = counts.queued;
-
-    if (baseTotal === 0) return [];
-
-    const stages: FunnelStage[] = [];
-    const pushStage = (name: string, val: number) => {
-      stages.push({
-        stage: name,
-        value: calculatePercentage(val, baseTotal),
-        percentage: `${calculatePercentage(val, baseTotal)}%`,
-        count: val,
-        dropoff: 0,
-      });
-    };
-
-    pushStage("Queued", counts.queued);
-    pushStage("Attempted", counts.attempted);
-    pushStage("Contacted", counts.contacted);
-    pushStage("Reached", counts.reached);
-    pushStage("Engaged", counts.engaged);
-    pushStage("Converted", counts.converted);
-
-    return stages;
-  };
-
-  // Determine which channels have data
-  const availableChannels: string[] = ["all"];
-  if (byChannel.whatsapp_chat || byChannel.whatsapp) {
-    const whatsappData = createFunnelStages(
-      byChannel.whatsapp_chat || byChannel.whatsapp || []
-    );
-    if (whatsappData.length > 0) availableChannels.push("whatsapp");
-  }
-  if (byChannel.email) {
-    const emailData = createFunnelStages(byChannel.email || []);
-    if (emailData.length > 0) availableChannels.push("email");
-  }
-  if (byChannel.voice) {
-    const voiceData = createFunnelStages(byChannel.voice || []);
-    if (voiceData.length > 0) availableChannels.push("voice");
-  }
-
-  return {
-    all: createFunnelStages(engagementStats),
-    whatsapp: createFunnelStages(
-      byChannel.whatsapp_chat || byChannel.whatsapp || []
-    ),
-    email: createFunnelStages(byChannel.email || []),
-    voice: createFunnelStages(byChannel.voice || []),
-    availableChannels,
-  };
-}
-
 function processFailureStats(failureStats: FailureStat[]) {
   if (!failureStats || failureStats.length === 0) return [];
   return failureStats.map((stat) => ({
@@ -251,7 +138,6 @@ function processFailureStats(failureStats: FailureStat[]) {
 function processIntentStats(intentStats: IntentStat[]) {
   if (!intentStats || intentStats.length === 0) return [];
 
-  // Filter out channels that aren't in our defined color list to avoid pink colors
   const validChannels = Object.keys(CHANNEL_COLORS);
 
   return intentStats
@@ -277,6 +163,7 @@ function CampaignInsightsContent() {
     personName?: string;
   } | null>(null);
 
+  // 1. Fetch Performance Data
   const {
     data: performanceData,
     isLoading,
@@ -290,21 +177,7 @@ function CampaignInsightsContent() {
   const campaignName = performanceData?.campaign_name || "Campaign";
   const campaignType = performanceData?.campaign_type || "";
 
-  // Data Memoization
-  const funnelDataResult = useMemo(
-    () => processEngagementStats(performanceData?.engagement_stats || []),
-    [performanceData]
-  );
-
-  const funnelData = {
-    all: funnelDataResult.all,
-    whatsapp: funnelDataResult.whatsapp,
-    email: funnelDataResult.email,
-    voice: funnelDataResult.voice,
-  };
-
-  const availableChannels = funnelDataResult.availableChannels || [];
-
+  // 2. Prepare Data for Charts (Memoized)
   const failureData = useMemo(
     () => processFailureStats(performanceData?.failure_stats_by_channel || []),
     [performanceData]
@@ -316,7 +189,20 @@ function CampaignInsightsContent() {
     [performanceData]
   );
 
-  // Fetch leads (both pre-sales and post-sales simultaneously)
+  // 3. Construct API Response object for ProfessionalFunnel
+  const funnelApiResponse = useMemo(() => {
+    if (!performanceData) return undefined;
+    return {
+      data: [
+        {
+          ...performanceData,
+          campaign_id: campaignId || "", // Ensure ID is present
+        },
+      ],
+    };
+  }, [performanceData, campaignId]);
+
+  // 4. Fetch Leads
   const {
     data: leadsData,
     isLoading: leadsLoading,
@@ -411,8 +297,9 @@ function CampaignInsightsContent() {
           </TabsList>
 
           <TabsContent value="statistics" className="space-y-6 mt-6">
+            
             {/* 1. Engagement Funnel */}
-            {funnelData.all?.length > 0 && (
+            {performanceData.engagement_stats?.length > 0 && (
               <Card className="shadow-sm">
                 <CardHeader>
                   <CardTitle>Engagement Funnel</CardTitle>
@@ -421,10 +308,8 @@ function CampaignInsightsContent() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ProfessionalFunnel
-                    customData={funnelData}
-                    availableChannels={availableChannels}
-                  />
+                  {/* FIX: Used `as any` to resolve the type mismatch between the two files */}
+                  <ProfessionalFunnel apiResponse={funnelApiResponse as any} />
                 </CardContent>
               </Card>
             )}
@@ -480,7 +365,6 @@ function CampaignInsightsContent() {
                       </TableHeader>
                       <TableBody>
                         {failureData.map((item, idx) => {
-                          // Get the color for this channel
                           const channelKey =
                             item.channel === "whatsapp_chat"
                               ? "whatsapp"
@@ -719,7 +603,6 @@ function CampaignInsightsContent() {
                       </TableHeader>
                       <TableBody>
                         {leadsData.items.map((lead, index) => {
-                          // Get unique ID for the lead (handles both pre-sales and post-sales)
                           const leadId =
                             lead.pre_sales_lead_id ||
                             lead.post_sales_lead_id ||
