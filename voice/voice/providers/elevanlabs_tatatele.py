@@ -111,6 +111,7 @@ class CallSession:
 
 
     async def hangup_tatatele_call(self):
+        return
         """Hang up the TataTele phone call via their REST API."""
         hangup_id = self.session_data.get('tatatele_ref_id') or self.call_id
         if not hangup_id:
