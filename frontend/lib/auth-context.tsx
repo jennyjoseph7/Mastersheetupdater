@@ -158,6 +158,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initSession();
   }, []);
 
+  
+/* -------------------------------------------------------------------------- */
+/*                        AUTO SESSION REFRESH (5 MIN)                        */
+/* -------------------------------------------------------------------------- */
+
+useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  // Skip login page
+  if (window.location.pathname === "/login") return;
+
+  const token = localStorage.getItem("auth_token");
+  if (!token) return; // not logged in
+
+  const autoRefresh = async () => {
+    try {
+      const d = await getDealershipDetails();
+
+      const credits_balance = d?.credits_balance || 0;
+      const dealershipId = d?.dealership_id || d?.dealership_slug;
+
+      if (dealershipId) {
+        localStorage.setItem("dealership_id", dealershipId);
+      }
+
+      // Update user ONLY if credits changed (prevents re-renders)
+      setUser((prev) => {
+        if (!prev) return prev;
+        if (prev.credits === credits_balance) return prev;
+
+        const updated = {
+          ...prev,
+          credits: credits_balance,
+        };
+
+        localStorage.setItem("user_data", JSON.stringify(updated));
+        return updated;
+      });
+
+      console.log("🔄 [Auth] Session auto refreshed");
+    } catch (error: any) {
+      console.error("Auto refresh failed", error);
+
+      // Auto logout if token expired
+      if (error?.response?.status === 401) {
+        triggerGlobalLogout();
+      }
+    }
+  };
+
+  const interval = setInterval(autoRefresh, 5 * 60 * 1000); // 5 min
+
+  return () => clearInterval(interval);
+}, []); // ✅ IMPORTANT: empty dependency
+
   /* -------------------------------------------------------------------------- */
   /*                                   ACTIONS                                   */
   /* -------------------------------------------------------------------------- */
