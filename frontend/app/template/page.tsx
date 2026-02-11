@@ -295,6 +295,7 @@ export default function TemplatePage() {
                 <SelectItem value="all">All Channels</SelectItem>
                 <SelectItem value="WhatsApp">WhatsApp</SelectItem>
                 <SelectItem value="Email">Email</SelectItem>
+                <SelectItem value="Rcs">Rcs</SelectItem>
               </SelectContent>
             </Select>
 
