@@ -162,43 +162,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /*                                   ACTIONS                                   */
   /* -------------------------------------------------------------------------- */
 
-  const login = async (email: string, password: string) => {
-    const response: DealerLoginResponse = await dealerLogin({ email, password });
+const login = async (email: string, password: string) => {
+  const response: DealerLoginResponse = await dealerLogin({ email, password });
 
-    const user: User = {
-      id: response.user_id || response.session_id,
-      email: response.user_id,
-      name: email.split("@")[0],
-      credits: 5000,
-      isVerified: false,
-      verificationStatus: "pending",
-    };
+  // Store auth first
+  localStorage.setItem("auth_token", response.token);
+  localStorage.setItem("auth_data", JSON.stringify(response));
 
-    // Store local
-    localStorage.setItem("auth_token", response.token);
-    localStorage.setItem("user_data", JSON.stringify(user));
-    localStorage.setItem("auth_data", JSON.stringify(response));
+  setCookie("gryd_session_id", response.session_id, 7);
+  setCookie("gryd_token", response.token, 7);
+  setCookie("gryd_user_id", response.user_id, 7);
+  setCookie("gryd_application_id", "autocrm", 7);
 
-    // Store cookies
-    setCookie("gryd_session_id", response.session_id, 7);
-    setCookie("gryd_token", response.token, 7);
-    setCookie("gryd_user_id", response.user_id, 7);
-    setCookie("gryd_application_id", "autocrm", 7);
+  let credits_balance = 0;
+  let dealershipId = null;
+  let setupComplete = false;
 
-    setUser(user);
+  try {
+    const d = await getDealershipDetails();
+    dealershipId = d?.dealership_id || d?.dealership_slug;
+    credits_balance = d?.credits_balance || 0;
 
-    try {
-      const d = await getDealershipDetails();
-      const id = d?.dealership_id || d?.dealership_slug;
-      if (id) localStorage.setItem("dealership_id", id);
+    if (dealershipId) {
+      localStorage.setItem("dealership_id", dealershipId);
+    }
 
-      const setup = await checkDealershipSetupComplete();
-      setIsDealershipSetupComplete(setup);
-      localStorage.setItem("dealership_setup_complete", String(setup));
-    } catch {}
+    setupComplete = await checkDealershipSetupComplete();
+    localStorage.setItem("dealership_setup_complete", String(setupComplete));
+    setIsDealershipSetupComplete(setupComplete);
 
-    router.replace("/");
+    console.log("[Auth] Login successful:", d);
+  } catch (error) {
+    console.error("Dealership fetch failed:", error);
+  }
+
+  // Now create user AFTER getting credits
+  const user: User = {
+    id: response.user_id || response.session_id,
+    email: response.user_id,
+    name: email.split("@")[0],
+    credits: credits_balance,
+    isVerified: false,
+    verificationStatus: "pending",
   };
+
+  localStorage.setItem("user_data", JSON.stringify(user));
+  setUser(user);
+
+  router.replace("/");
+};
+
 
   const logout = () => {
     triggerGlobalLogout();
