@@ -69,6 +69,10 @@ import {
   BarChart3,
   RefreshCw,
   Eye,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 
 const swrOptions = {
@@ -1084,45 +1088,53 @@ export default function CampaignDashboard() {
                 </TableBody>
               </Table>
               {/* Pagination */}
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-muted-foreground">
-                  Page {page} of {totalPages}
-                </p>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    Previous
-                  </Button>
-
-                  {Array.from({ length: totalPages }).map((_, index) => {
-                    const pageNumber = index + 1;
-                    return (
-                      <Button
-                        key={pageNumber}
-                        variant={page === pageNumber ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setPage(pageNumber)}
-                      >
-                        {pageNumber}
-                      </Button>
-                    );
-                  })}
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page === totalPages}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
+             {/* Pagination Controls */}
+{/* Pagination */}
+<div className="flex items-center justify-center space-x-2 mt-4">
+  <Button
+    variant="outline"
+    className="h-8 w-8 p-0"
+    onClick={() => setPage(1)}
+    disabled={page === 1}
+  >
+    <span className="sr-only">Go to first page</span>
+    <ChevronsLeft className="h-4 w-4" />
+  </Button>
+  
+  <Button
+    variant="outline"
+    className="h-8 w-8 p-0"
+    onClick={() => setPage((p) => Math.max(1, p - 1))}
+    disabled={page === 1}
+  >
+    <span className="sr-only">Go to previous page</span>
+    <ChevronLeft className="h-4 w-4" />
+  </Button>
+  
+  <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+    Page {page} of {totalPages}
+  </div>
+  
+  <Button
+    variant="outline"
+    className="h-8 w-8 p-0"
+    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+    disabled={page === totalPages}
+  >
+    <span className="sr-only">Go to next page</span>
+    <ChevronRight className="h-4 w-4" />
+  </Button>
+  
+  <Button
+    variant="outline"
+    className="h-8 w-8 p-0"
+    onClick={() => setPage(totalPages)}
+    disabled={page === totalPages}
+  >
+    <span className="sr-only">Go to last page</span>
+    <ChevronsRight className="h-4 w-4" />
+  </Button>
+</div>
             </CardContent>
           </Card>
         </div>
