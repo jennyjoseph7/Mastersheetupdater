@@ -243,6 +243,7 @@ export interface DealershipSignupRequest {
     phone_number_otp?: string;
     email_otp_token?: string;
     phone_number_otp_token?: string;
+    credits_balance?: number;
   };
   _timeout?: number;
 }
@@ -373,6 +374,7 @@ export interface DealershipUpdateDetailsRequest {
     aliases?: string[];
     pan_number?: string;
     gstin?: string;
+    credit_balance?: number;
     website?: string;
   };
   _timeout?: number;

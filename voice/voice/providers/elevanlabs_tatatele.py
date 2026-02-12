@@ -432,7 +432,7 @@ class CallSession:
                 config_data["conversation_config_override"] = {
                     "agent": {
                         "prompt": {"prompt":self.session_data.get("prompt", "")},
-                        "first_message": self.session_data.get("first_message"),
+                        "first_message": self.session_data.get("voice_first_message"),
                         "language": self.session_data.get("language", "en")
                     }
                 }

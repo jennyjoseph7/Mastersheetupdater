@@ -38,27 +38,27 @@ import { getDealershipDetails } from "@/lib/api";
 export default function TopNavigation() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const [dealershipId, setDealershipId] = useState<string | null>(null);
+  // const [dealershipId, setDealershipId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchDealershipId = async () => {
-      if (user) {
-        try {
-          const data = await getDealershipDetails();
-          if (data?.dealership_id) {
-            setDealershipId(data.dealership_id);
-          }
-        } catch (error) {
-          console.error(
-            "[TopNavigation] Failed to fetch dealership ID:",
-            error
-          );
-        }
-      }
-    };
+  // useEffect(() => {
+  //   const fetchDealershipId = async () => {
+  //     if (user) {
+  //       try {
+  //         const data = await getDealershipDetails();
+  //         if (data?.dealership_id) {
+  //           setDealershipId(data.dealership_id);
+  //         }
+  //       } catch (error) {
+  //         console.error(
+  //           "[TopNavigation] Failed to fetch dealership ID:",
+  //           error
+  //         );
+  //       }
+  //     }
+  //   };
 
-    fetchDealershipId();
-  }, [user]);
+  //   fetchDealershipId();
+  // }, [user]);
 
   const isActive = (path: string) => {
     return pathname === path;
@@ -203,7 +203,8 @@ export default function TopNavigation() {
                       {user.name}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {dealershipId || user.email}
+{user.dealershipId || user.email}
+
                     </p>
                     <Badge variant="secondary" className="w-fit mt-1">
                       <Coins className="mr-1 h-3 w-3" />
