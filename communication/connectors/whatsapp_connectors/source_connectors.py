@@ -8,10 +8,12 @@ import re
 # from connectors.communication_helpers import AuthManager,format_box_log,safe_orjson_dumps
 # --
 
+
 from conversation.lead_post_processing import post_session_process
 
 # from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NAME,WHATSAPP_PROVIDER_NUMBER,AUTOCRM_CORE_SERVICE_NAME
-import config
+# import config
+from config import *
 from connectors.communication_helpers import * 
 
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
@@ -24,7 +26,7 @@ sys.path.append(PARENT_DIR)
 
 from autocrm_db_helper import get_pg_connector
 
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME
+# from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME
 
 logger.info("[INIT] Intializing Source Connector inside whatsapp_connector------------")
 def SleepOverMessage():
@@ -513,7 +515,7 @@ class BaseWebhookConverter:
             logger.info(f"Calling post_contact_status and checking the disposition : {wa_status}")    
             gryd.create_async_task(
                 'post_contact_status',
-                config.AUTOCRM_COMMUNICATION_SERVICE_NAME,
+                AUTOCRM_COMMUNICATION_SERVICE_NAME,
                 args = (message_dict.get('message_id'),),
                 kwargs=message_dict)
             # self.post_contact_status(message_dict.get('message_id'),**message_dict)
@@ -991,8 +993,8 @@ class BaseWebhookConverter:
             logger.error("template_id or mobile_number or otp missing")
             return
 
-        provider_name = config.WHATSAPP_PROVIDER_NAME
-        sender = config.WHATSAPP_PROVIDER_NUMBER
+        provider_name = WHATSAPP_PROVIDER_NAME
+        sender = WHATSAPP_PROVIDER_NUMBER
 
         t_data = {
             "mobile_number": mobile_number,
@@ -1033,7 +1035,7 @@ class BaseWebhookConverter:
             return
 
         provider = WhatsappMessangerConnector.whatsapp(
-            config.WHATSAPP_PROVIDER_NAME, *args, **kwargs
+            WHATSAPP_PROVIDER_NAME, *args, **kwargs
         )
         logger.info(f"Provider: {provider}")
         logger.info(f"Sending message to {to} with content: {message}")

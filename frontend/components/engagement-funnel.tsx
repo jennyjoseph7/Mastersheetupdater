@@ -364,7 +364,8 @@ export function ProfessionalFunnel({
                   value={c} 
                   className="capitalize px-4 py-1.5 text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 font-medium"
                 >
-                  {c.replace(/_/g, " ")}
+              {c ? c.replace(/_/g, " ") : "No Data"}
+
                 </TabsTrigger>
               ))}
             </TabsList>
