@@ -25,6 +25,7 @@ interface User {
   email: string;
   name: string;
   credits: number;
+  dealershipId?: string; 
   avatar?: string;
   isVerified: boolean;
   verificationStatus?: "pending" | "verified" | "rejected";
@@ -173,42 +174,45 @@ useEffect(() => {
   if (!token) return; // not logged in
 
   const autoRefresh = async () => {
-    try {
-      const d = await getDealershipDetails();
+  try {
+    const d = await getDealershipDetails();
 
-      const credits_balance = d?.credits_balance || 0;
-      const dealershipId = d?.dealership_id || d?.dealership_slug;
+    const credits_balance = d?.credits_balance || 0;
+    const dealershipId = d?.dealership_id || d?.dealership_slug;
 
-      if (dealershipId) {
-        localStorage.setItem("dealership_id", dealershipId);
+    setUser((prev) => {
+      if (!prev) return prev;
+
+      // ✅ Only update if something actually changed
+      if (
+        prev.credits === credits_balance &&
+        prev.dealershipId === dealershipId
+      ) {
+        return prev;
       }
 
-      // Update user ONLY if credits changed (prevents re-renders)
-      setUser((prev) => {
-        if (!prev) return prev;
-        if (prev.credits === credits_balance) return prev;
+      const updated = {
+        ...prev,
+        credits: credits_balance,
+        dealershipId,
+      };
 
-        const updated = {
-          ...prev,
-          credits: credits_balance,
-        };
+      localStorage.setItem("user_data", JSON.stringify(updated));
+      return updated;
+    });
 
-        localStorage.setItem("user_data", JSON.stringify(updated));
-        return updated;
-      });
+    console.log("🔄 Credits refreshed:", credits_balance);
+  } catch (error: any) {
+    console.error("Auto refresh failed", error);
 
-      console.log("🔄 [Auth] Session auto refreshed");
-    } catch (error: any) {
-      console.error("Auto refresh failed", error);
-
-      // Auto logout if token expired
-      if (error?.response?.status === 401) {
-        triggerGlobalLogout();
-      }
+    if (error?.response?.status === 401) {
+      triggerGlobalLogout();
     }
-  };
+  }
+};
 
-  const interval = setInterval(autoRefresh, 5 * 60 * 1000); // 5 min
+
+  const interval = setInterval(autoRefresh, 1 * 30 * 1000); // 5 min
 
   return () => clearInterval(interval);
 }, []); // ✅ IMPORTANT: empty dependency
@@ -257,6 +261,7 @@ const login = async (email: string, password: string) => {
     email: response.user_id,
     name: email.split("@")[0],
     credits: credits_balance,
+     dealershipId,
     isVerified: false,
     verificationStatus: "pending",
   };

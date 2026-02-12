@@ -120,6 +120,7 @@ export default function ProfilePage() {
           pan_number: formData.pan_number,
           gstin: formData.gstin,
           website: formData.website,
+          credit_balance: (dealershipData.credits_balance+500),
         },
         _timeout: 600,
       };

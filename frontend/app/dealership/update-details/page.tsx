@@ -296,6 +296,8 @@ export default function DealershipUpdateDetails() {
       // Get dealership ID from localStorage (stored during signup) or user context
       const storedDealershipId = localStorage.getItem("dealership_id");
       const dealershipId = storedDealershipId || user?.id || "";
+      // const credit_balance = localStorage.getItem("dealership"); // Default credit balance for testing
+      const credit_balance =JSON.parse(localStorage.getItem("dealership_details") || "{}").credits_balance || 0;
 
       if (!dealershipId) {
         throw new Error(
@@ -415,7 +417,7 @@ export default function DealershipUpdateDetails() {
       } else {
         kwargs.gstin = ""; // Include empty string
       }
-
+      kwargs.credits_balance = Number(credit_balance + 500)  ; // Add default credit balance for testing
       const updateRequest: DealershipUpdateDetailsRequest = {
         args: [dealershipId],
         kwargs,
