@@ -83,7 +83,8 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>", methods = ["GET","POST"])
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>/<conversation_id>", methods = ["GET","POST"])
 def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID, conversation_id = None):
-    payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
+    # payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
+    payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
     language = payload.get("language", "english")
     logger.info(f"Webhook received for channel={channel}, provider={channel_provider}, enterprise={enterprise_id}, conversation={conversation_id}, language={language}")
     if channel in ["whatsapp", "whatsapp_chat", "whatsapp_voice_note", "whatsapp_voice_call"]:
@@ -95,6 +96,9 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
     elif channel in ["voice_phone", "voice_call", "voice"]:
         #.... do the stupayloadff ....
         pass
+    elif channel in ["rcs"]:
+        logger.info(f"RCs webhook received for channel={channel}, provider={channel_provider}")
+        gryd.create_async_task("process_rcs_webhook", "autocrm-communication", args=[], kwargs=payload)
     else:
         return gryd_routes.jsonify({"status": "error", "message": "Invalid channel"}), 400, {"Access-Control-Allow-Origin": "*"}
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
@@ -103,6 +107,12 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
 def handle_ses_webhook():
     logger.info(f"SES Webhook received")
     return 
+
+@app.route("/webhook/rcs-status", methods = ["GET","POST"])
+def get_rcs_status():
+    payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
+    gryd.create_async_task("get_rcs_status", "autocrm-communication", args=[], kwargs=payload)
+    return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
 
 
 @app.route('/test_voice_agent/<provider>/<session_id>', methods = ["POST"])

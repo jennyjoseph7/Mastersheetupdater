@@ -1294,7 +1294,7 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
         "status" : "success",
         "credit_balance_before" : current_balance,
         "credit_balance_after" : new_balance,
-        "campaing_id" : campaign_id or "inbound",
+        "campaign_id" : campaign_id or "inbound",
         "channel" : channel
     }
     

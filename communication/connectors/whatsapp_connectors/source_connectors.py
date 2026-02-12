@@ -12,7 +12,6 @@ import re
 from conversation.lead_post_processing import post_session_process
 
 # from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NAME,WHATSAPP_PROVIDER_NUMBER,AUTOCRM_CORE_SERVICE_NAME
-# import config
 from config import *
 from connectors.communication_helpers import * 
 
@@ -25,8 +24,6 @@ PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.
 sys.path.append(PARENT_DIR)
 
 from autocrm_db_helper import get_pg_connector
-
-# from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME
 
 logger.info("[INIT] Intializing Source Connector inside whatsapp_connector------------")
 def SleepOverMessage():
@@ -643,7 +640,7 @@ class BaseWebhookConverter:
         kwargs["temporary_data"] = temporary_data
         logger.info("Calling session logic...")
         # call session logic here...
-        d=self.handle_session_logic(mobile_number,"whatsapp_chat")
+        d=handle_session_logic(mobile_number,"whatsapp_chat")
         logger.info(f"Session logic result: {d}")
         user_d=temporary_data.get("whatsapp_user_details")
         converse_kwargs.update({
@@ -693,7 +690,6 @@ class BaseWebhookConverter:
             )
 
             logger.info(f"Created Async task result: {res}")
-
     
     def handle_session_logic(self,phone_number, channel=None,campaign_details=None, from_web_chat=False):
         payload = {}
@@ -1041,6 +1037,8 @@ class BaseWebhookConverter:
         logger.info(f"Sending message to {to} with content: {message}")
         provider._send_text(to, message)
         return
+    
+    
     
     # @timelogger()
     def process_webhook(self, *args, **kwargs):
@@ -1688,23 +1686,6 @@ class WhatsappCampaignTemplate:
         
         return source_class(whatsapp_provider=source_type,*args,**kwargs)
 
-
-
-def update_session_data_in_lead(session_id,status):
-    with get_pg_connector() as pg:
-        session_data = list(pg.list("session", {"session_id": session_id}))
-        if not session_data:
-            logger.info(f"Could not find session with session_id: {session_id}")
-        session_data = session_data[0]
-        lead_id = session_data.get("lead_id")
-        campaign_type = session_data.get("campaign_type")
-        last_interaction_time = session_data.get("last_response_time",None)
-        if lead_id:
-            lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
-            lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
-            logger.info(f"Updating session data in lead with session_id: {session_id} and lead_id: {lead_id}")
-            pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
-            logger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
 
 
         

@@ -123,14 +123,7 @@
           ]
         }
       },
-      {
-        "name": "campaign_end_date",
-        "type": "number",
-        "default": {
-          "function": "get_from_model",
-          "args": ["campaign_model", "campaign_id", "end_date"]
-        }
-      },
+      
       {
         "name": "provider_status",
         "type": "text",
