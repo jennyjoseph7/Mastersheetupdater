@@ -6,7 +6,8 @@ RUN apt-get install ffmpeg -yy
 RUN apt-get update && apt-get install -y \
     portaudio19-dev \
     python3-dev \
-    build-essential
+    build-essential \
+    vim 
 RUN pip install pyaudio
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
@@ -19,4 +20,5 @@ COPY credentials.json ./
 
 RUN pip install -U pip setuptools
 RUN pip install --ignore-installed -r requirements.txt
+RUN pip install --ignore-installed -r spark/requirements.txt
 CMD [ "bash" , "./start_process_container.sh" ]
