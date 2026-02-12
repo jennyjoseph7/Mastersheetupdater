@@ -35,7 +35,7 @@ def get_provider(provider_name: str):
     Factory function to get provider instance by name.
 
     Args:
-        provider_name: Name of the provider ('twilio', 'vapi', etc.)
+        provider_name: Name of the provider ('twilio', 'tatatele', etc.)
 
     Returns:
         ProviderBase: Provider instance

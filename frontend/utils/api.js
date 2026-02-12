@@ -259,15 +259,20 @@ async function getTaskResult(taskId) {
    Campaign Fetchers
 --------------------------------------------------- */
 
-async function fetchPreSalesCampaigns(
+// In utils/api.ts or api.js
+
+export async function fetchPreSalesCampaigns(
   page = 1,
   pageSize = 50,
   dealershipId = getDealershipId()
 ) {
+  // Ensure dealershipId is passed correctly if page/pageSize are provided
+  const dId = dealershipId || getDealershipId();
+  
   const response = await authenticatedFetch(
     `${APP_BASE_URL}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
-      dealershipId
-    )}`,
+      dId
+    )}&sort_by=created&sort_reverse=true`,
     { headers: { "X-GRYD-ROLE": "admin" } }
   );
 
@@ -275,13 +280,19 @@ async function fetchPreSalesCampaigns(
   return { items: json?.data ?? [], total: json?.total_number ?? 0 };
 }
 
-async function fetchPostSalesCampaigns(dealershipId = getDealershipId()) {
-  if (!dealershipId) return { items: [], total: 0 };
+export async function fetchPostSalesCampaigns(
+  page = 1,
+  pageSize = 50,
+  dealershipId = getDealershipId()
+) {
+  // Ensure dealershipId is passed correctly
+  const dId = dealershipId || getDealershipId();
+  if (!dId) return { items: [], total: 0 };
 
   const response = await authenticatedFetch(
-    `${APP_BASE_URL}/gryd/db/objects/post_sales_campaign?dealership_id=${encodeURIComponent(
-      dealershipId
-    )}`
+    `${APP_BASE_URL}/gryd/db/objects/post_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
+      dId
+    )}&sort_by=created&sort_reverse=true`
   );
 
   const json = await response.json();
@@ -579,8 +590,8 @@ export {
   getTaskStatus,
   fetchAudienceTasks,
   getTaskResult,
-  fetchPreSalesCampaigns,
-  fetchPostSalesCampaigns,
+  // fetchPreSalesCampaigns,
+  // fetchPostSalesCampaigns,
   fetchCampaignObjectives,
   fetchCampaignSummary,
   fetchDealershipCampaigns,

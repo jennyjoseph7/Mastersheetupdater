@@ -7,6 +7,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from .tatatele import CloudPhoneAPI, TATATELE_API_TOKEN, TATATELE_BASE_URL
 import config
 import json
+try:
+    import orjson
+    _dumps = lambda obj: orjson.dumps(obj).decode("utf-8")  # text frame for websockets
+    _loads = orjson.loads
+except ImportError:
+    _dumps = json.dumps
+    _loads = json.loads
 import base64
 import asyncio
 import logging
@@ -50,7 +57,7 @@ app = Blueprint("tatatelli", __name__)
 
 # Session manager for concurrent calls
 call_sessions: Dict[str, 'CallSession'] = {}
-# Thread lock for session management (prevents race conditions)
+# Thread lock for session management 
 session_lock = threading.Lock()
 
 
@@ -100,8 +107,23 @@ class CallSession:
         self.processed_audio_events = set()
         self.stop_event = asyncio.Event()
         self.session_data = {}
+        self.call_sid = None
         logger.info(f"[{self.call_id}] Session created")
 
+
+    async def hangup_tatatele_call(self):
+        """Hang up the TataTele phone call via their REST API."""
+        hangup_id =  self.call_sid 
+        logger.info(f"[{self.call_id}] Attempting to hang up TataTele call with SID: {hangup_id}")
+        if not hangup_id:
+            logger.warning(f"[{self.call_id}] No call ID available for TataTele hangup")
+            return
+        try:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, tatatele_client.hangup_call, hangup_id)
+            logger.info(f"[{self.call_id}] TataTele hangup response: {result}")
+        except Exception as e:
+            logger.error(f"[{self.call_id}] Failed to hangup TataTele call: {e}")
 
     async def get_signed_url(self):
         """Fetch signed URL using async aiohttp - non-blocking."""
@@ -201,7 +223,7 @@ class CallSession:
             # Buffer if Dave not ready, send immediately if ready
             if self.dave_ws and not self.stop_event.is_set():
                 try:
-                    await self.dave_ws.send(json.dumps({"user_audio_chunk": converted_audio}))
+                    await self.dave_ws.send(_dumps({"user_audio_chunk": converted_audio}))
                     chunks_sent_to_elevenlabs[0] += 1
                     if chunks_sent_to_elevenlabs[0] % 50 == 0:  # Log every 50 chunks
                         logger.info(f"[{self.call_id}] Sent {chunks_sent_to_elevenlabs[0]} audio chunks to ElevenLabs")
@@ -238,7 +260,7 @@ class CallSession:
                             "streamSid": self.stream_sid,
                             "media": {"payload": buffered}
                         }
-                        await wb.send(json.dumps(msg_out))
+                        await wb.send(_dumps(msg_out))
                     except Exception as e:
                         logger.error(f"[{self.call_id}] Failed to flush buffered audio: %s", e)
 
@@ -249,7 +271,7 @@ class CallSession:
                         "streamSid": self.stream_sid,
                         "media": {"payload": converted_audio}
                     }
-                    await wb.send(json.dumps(msg_out))
+                    await wb.send(_dumps(msg_out))
                     chunks_sent_to_tatatele[0] += 1
                     if chunks_sent_to_tatatele[0] % 50 == 0:  # Log every 50 chunks
                         logger.info(f"[{self.call_id}] Sent {chunks_sent_to_tatatele[0]} audio chunks to TataTele")
@@ -268,7 +290,7 @@ class CallSession:
                         "event": "clear",
                         "streamSid": self.stream_sid
                     }
-                    await wb.send(json.dumps(clear_msg))
+                    await wb.send(_dumps(clear_msg))
                     logger.info(f"[{self.call_id}] -> SENT clear TO Tatatele (interruption)")
                 except Exception as e:
                     logger.error(f"[{self.call_id}] Failed to send clear: %s", e)
@@ -277,9 +299,7 @@ class CallSession:
 
         async def handle_dave_message(raw_msg):
             try:
-                if isinstance(raw_msg, bytes):
-                    raw_msg = raw_msg.decode("utf-8")
-                msg_data = json.loads(raw_msg)
+                msg_data = _loads(raw_msg)
                 msg_type = msg_data.get("type")
                 # Log all messages except frequent ones
                 if msg_type not in ("audio", "internal_tentative_agent_response", "vad"):
@@ -311,18 +331,18 @@ class CallSession:
                     else:
                         logger.warning(f"[{self.call_id}] Audio event has no audio data: {list(msg_data.keys())}")
 
-            # ===== INTERRUPTION - User interrupted agent =====
+            #  INTERRUPTION - User interrupted agent - Importat
             elif msg_type == "interruption":
                 logger.info(f"[{self.call_id}] USER INTERRUPTED - clearing audio")
                 await send_clear_to_tatatele()
 
-            # ===== CONVERSATION INITIATION METADATA =====
+            # CONVERSATION INITIATION METADATA 
             elif msg_type == "conversation_initiation_metadata":
                 metadata = msg_data.get("conversation_initiation_metadata_event", {})
                 conv_id = metadata.get("conversation_id")
                 logger.info(f"[{self.call_id}] Conversation started: {conv_id}")
 
-            # ===== USER TRANSCRIPT =====
+            #  USER TRANSCRIPT 
             elif msg_type == "user_transcript":
                 user_event = msg_data.get("user_transcription_event", {})
                 transcript = user_event.get("user_transcript", "")
@@ -330,14 +350,14 @@ class CallSession:
                 if is_final and transcript:
                     logger.info(f"[{self.call_id}] User said: {transcript}")
 
-            # ===== AGENT RESPONSE (text) =====
+            # AGENT RESPONSE (text) 
             elif msg_type == "agent_response":
                 agent_event = msg_data.get("agent_response_event", {})
                 response = agent_event.get("agent_response", "")
                 if response:
                     logger.info(f"[{self.call_id}] Agent: {response}")
 
-            # ===== AGENT RESPONSE CORRECTION =====
+            #  AGENT RESPONSE CORRECTION 
             elif msg_type == "agent_response_correction":
                 correction_event = msg_data.get("agent_response_correction_event", {})
                 original = correction_event.get("original_agent_response", "")
@@ -350,43 +370,47 @@ class CallSession:
                 event_id = ping_event.get("event_id")
                 # Respond with pong
                 try:
-                    pong_msg = {"type": "pong", "event_id": event_id}
-                    await self.dave_ws.send(json.dumps(pong_msg))
+                    await self.dave_ws.send(_dumps({"type": "pong", "event_id": event_id}))
                 except Exception as e:
                     logger.error(f"[{self.call_id}] Failed to send pong: %s", e)
 
-            # ===== CLIENT TOOL CALL =====
-            elif msg_type == "client_tool_call":
-                tool_event = msg_data.get("client_tool_call", {})
+            #  CLIENT TOOL CALL 
+            elif msg_type == "agent_tool_response":
+                tool_event = msg_data.get("agent_tool_response", {})
                 tool_name = tool_event.get("tool_name", "unknown")
                 logger.info(f"[{self.call_id}] Tool call requested: {tool_name}")
-                # TODO: Handle tool calls if needed
+                # Handle end-call tool calls from ElevenLabs agent
+                if tool_name in ("end_call", "hang_up", "hangup", "end_conversation", "disconnect"):
+                    logger.info(f"[{self.call_id}] Agent requested call end via tool: {tool_name} - triggering hangup")
+                    self.stop_event.set()
 
-            # ===== VAD (Voice Activity Detection) =====
-            elif msg_type == "vad":
-                vad_event = msg_data.get("vad_event", {})
+            #  VAD (Voice Activity Detection) 
+            elif msg_type == "vad_score":
+                vad_event = msg_data.get("vad_score", {})
                 vad_type = vad_event.get("type")  # "start" or "stop"
                 logger.debug(f"[{self.call_id}] VAD: {vad_type}")
 
-            # ===== INTERNAL TENTATIVE AGENT RESPONSE =====
+            #  INTERNAL TENTATIVE AGENT RESPONSE 
             elif msg_type == "internal_tentative_agent_response":
                 # Ignore tentative responses
                 pass
 
-            # ===== ERROR EVENT =====
+            #  ERROR EVENT 
             elif msg_type == "error":
                 error_event = msg_data.get("error", {}) or msg_data
                 error_code = error_event.get("code", "unknown")
                 error_message = error_event.get("message", str(error_event))
-                logger.error(f"[{self.call_id}] ElevenLabs ERROR: code={error_code}, message={error_message}")
+                logger.error(f"[{self.call_id}] ElevenLabs ERROR: code={error_code}, message={error_message} - triggering call hangup")
+                self.stop_event.set()
 
-            # ===== CONVERSATION END =====
+            #  CONVERSATION END 
             elif msg_type == "conversation_end":
                 end_event = msg_data.get("conversation_end_event", {})
                 reason = end_event.get("reason", "unknown")
-                logger.info(f"[{self.call_id}] ElevenLabs conversation ended: {reason}")
+                logger.info(f"[{self.call_id}] ElevenLabs conversation ended: {reason} - triggering call hangup")
+                self.stop_event.set()
 
-            # ===== UNKNOWN EVENT =====
+            #  UNKNOWN EVENT 
             else:
                 logger.info(f"[{self.call_id}] Unknown ElevenLabs event: {msg_type} - {msg_data}")
 
@@ -408,18 +432,18 @@ class CallSession:
                 config_data["conversation_config_override"] = {
                     "agent": {
                         "prompt": {"prompt":self.session_data.get("prompt", "")},
-                        "first_message": self.session_data.get("first_message"),
+                        "first_message": self.session_data.get("voice_first_message"),
                         "language": self.session_data.get("language", "en")
                     }
                 }
                 
-            await self.dave_ws.send(json.dumps(config_data))
+            await self.dave_ws.send(_dumps(config_data))
 
             # Send buffered media immediately - not sure why jay added?.
             for chunk in self.media_buffer:
                 logger.info(f"[{self.call_id}] FLUSHING buffered chunk (len={len(chunk)})")
                 try:
-                    await self.dave_ws.send(json.dumps({"user_audio_chunk": chunk}))
+                    await self.dave_ws.send(_dumps({"user_audio_chunk": chunk}))
                     logger.info(f"[{self.call_id}] -> FLUSHED buffered chunk")
                 except Exception as e:
                     logger.warning(f"[{self.call_id}] Failed to flush buffered chunk: {e}")
@@ -430,7 +454,7 @@ class CallSession:
                 while True:
                     try:
                         raw = await wb.recv()
-                        tt_msg = json.loads(raw)
+                        tt_msg = _loads(raw)
                         ev = tt_msg.get("event")
 
                         if ev == "media":
@@ -438,9 +462,8 @@ class CallSession:
                         elif ev == "start":
                             logger.info(f"[{self.call_id}] START EVENT: {tt_msg}")
                             self.stream_sid = tt_msg.get("start", {}).get("streamSid", self.stream_sid)
-                            logger.info(f"[{self.call_id}] *** GOT stream_sid: {self.stream_sid} ***")
-
-                            # Flush any buffered outgoing audio now that we have stream_sid
+                            self.call_sid = tt_msg.get("start", {}).get("callSid") #use in hangup call for tatatele
+                            # Flush any buffered outgoing audio now that we have stream _sid
                             while audio_out_buffer:
                                 buffered = audio_out_buffer.pop(0)
                                 try:
@@ -449,14 +472,14 @@ class CallSession:
                                         "streamSid": self.stream_sid,
                                         "media": {"payload": buffered}
                                     }
-                                    await wb.send(json.dumps(msg_out))
+                                    await wb.send(_dumps(msg_out))
                                     logger.debug(f"[{self.call_id}] -> FLUSHED buffered outgoing audio")
                                 except Exception as e:
                                     logger.error(f"[{self.call_id}] Failed to flush outgoing audio: %s", e)
 
                         elif ev == "stop":
                             logger.info(f"[{self.call_id}] Call ended by platform")
-                            break
+                            
 
                         elif ev == "mark":
                             # Marks indicate playback position
@@ -513,6 +536,10 @@ class CallSession:
                     self.dave_ws = None
             except Exception as e:
                 logger.warning(f"[{self.call_id}] Error closing ElevenLabs WebSocket: {e}")
+
+            # Hang up the TataTele phone call so the user isn't left on a dead line
+            await self.hangup_tatatele_call()
+
             logger.info(f"[{self.call_id}] Bridge closed")
 
             # Cleanup session
@@ -766,6 +793,18 @@ def make_call_tatatele(session_data, *args, **kwargs):
 
         logger.info(f"Tatatele originate response: {response}")
         call_id = response.get('ref_id')
+        
+        # Store TataTele ref_id so we can hang up the call later for hangup call
+        # if call_id:
+        #     session_data['tatatele_ref_id'] = call_id
+        #     # Also set directly on the session object in call_sessions,
+        #     # in case session.session_data is a different dict (e.g. session already existed)
+        #     with session_lock:
+        #         session_key = session_id or call_id
+        #         existing_session = call_sessions.get(session_key)
+        #         if existing_session:
+        #             existing_session.session_data['tatatele_ref_id'] = call_id
+
         if call_id and not session_started:
             logger.info(f"No session id provider starting session with call_id: {call_id}")
             start_session(call_id)
@@ -798,7 +837,7 @@ def tatatele_status_map(payload: bytes) -> Dict[str, Any]:
         "in-progress": "contacted",
         "completed": "contacted",
         "Answered by customer": "contacted",
-        "Answered by agent": "queued"
+        "Answered by agent": "reached"
 
     }
 
@@ -880,10 +919,12 @@ def smartflo_webhook():
     logger.info(f"[{call_id}] Incoming payload: {json.dumps(payload, indent=4)}")
     import gryd_tasks
     if  status in ["contacted"]:
-        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = payload.get("ref_id"),  **{"status": "completed"})
-    elif status in ["queued"]:
+        session_model = config.AutocrmModel(config.SESSION_MODEL_NAME, logger = logger )
+        session_model.update(session_id, {"call_recording": payload.get("recording_url")}) #add more attributes when needed
+        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = session_id,  **{"status": status})
+    elif status in ["reached"]:
         gryd_tasks.post_billing_object(status, session_id)
-        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = payload.get("ref_id"),  **{"status": status})
+        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = session_id,  **{"status": status})
     elif status in ['failed', 'canceled', 'missed', 'busy', 'completed']:
         logger.info(f"[{call_id}] Call ended or failed - cleaning up session")
 
@@ -927,6 +968,7 @@ def process():
     session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time()))
     logger.info(f"Triggering post history and actions for session_id: {session_id}")
 
+    gryd_tasks.post_history(session_id, session_history)
     
     gryd_tasks.end_session(**{
         "session_id": session_id,
@@ -936,8 +978,7 @@ def process():
         }
     })
     
-    gryd_tasks.post_actions(session_id)
-    gryd_tasks.post_history(session_id, session_history)
+    # gryd_tasks.post_actions(session_id) #calling in end_session
 
     return jsonify({"status": "processed"})
 
@@ -956,6 +997,7 @@ def format_transcript(transcript, start_time_unix):
         })
     
     return session_history
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)

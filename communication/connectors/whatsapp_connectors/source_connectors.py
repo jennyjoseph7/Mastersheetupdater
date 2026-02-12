@@ -8,6 +8,7 @@ import re
 # from connectors.communication_helpers import AuthManager,format_box_log,safe_orjson_dumps
 # --
 
+
 from conversation.lead_post_processing import post_session_process
 
 # from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NAME,WHATSAPP_PROVIDER_NUMBER,AUTOCRM_CORE_SERVICE_NAME
@@ -23,7 +24,6 @@ PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.
 sys.path.append(PARENT_DIR)
 
 from autocrm_db_helper import get_pg_connector
-
 
 logger.info("[INIT] Intializing Source Connector inside whatsapp_connector------------")
 def SleepOverMessage():

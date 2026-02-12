@@ -285,6 +285,7 @@ export default function DealerSignup() {
           email_otp_token: emailOtpToken,
           phone_number_otp: phoneOtp,
           phone_number_otp_token: phoneOtpToken,
+          credits_balance: 100, 
         },
         _timeout: 600,
       };

@@ -69,6 +69,10 @@ import {
   BarChart3,
   RefreshCw,
   Eye,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 
 const swrOptions = {
@@ -134,68 +138,71 @@ export default function CampaignDashboard() {
   };
 
   // Fetch campaigns by type and page
-  const fetchCampaigns = async (type: string, page: number) => {
-    console.log(
-      "[fetchCampaigns] Fetching campaigns for type:",
-      type,
-      "page:",
-      page
-    );
-    // Handle dealership campaigns separately
-    if (type === "dealership") {
-      const res = await fetchDealershipCampaigns();
-      return {
-        merged: res?.items ?? [],
-        total: res?.total ?? 0,
-      };
-    }
+ // In page.tsx
 
-    // Handle "all" type - fetch both pre-sales and post-sales
-    if (type === "all") {
-      const [preRes, postRes] = await Promise.all([
-        fetchPreSalesCampaigns(),
-        fetchPostSalesCampaigns(),
-      ]);
+// ... existing imports and ITEMS_PER_PAGE constant ...
 
-      const preItems = preRes?.items ?? [];
-      const postItems = postRes?.items ?? [];
-      const merged = [...preItems, ...postItems];
+// Replace your existing fetchCampaigns function with this:
+const fetchCampaigns = async (type: string, page: number) => {
+  console.log("[fetchCampaigns] Type:", type, "Page:", page, "Size:", ITEMS_PER_PAGE);
 
-      return {
-        merged: merged,
-        total: (preRes?.total ?? 0) + (postRes?.total ?? 0),
-      };
-    }
-
-    // Handle pre-sales campaigns using the dedicated function
-    if (type === "pre-sales" || type === "pre_sales") {
-      const res = await fetchPreSalesCampaigns();
-      return {
-        merged: res?.items ?? [],
-        total: res?.total ?? 0,
-      };
-    }
-
-    // Handle post-sales campaigns using the dedicated function
-    if (type === "post-sales" || type === "post_sales") {
-      const res = await fetchPostSalesCampaigns();
-      return {
-        merged: res?.items ?? [],
-        total: res?.total ?? 0,
-      };
-    }
-
-    const params = { page_number: page, page_size: ITEMS_PER_PAGE };
-    const res = await fetchAPIData(
-      type === "pre_sales" ? "pre_sales_campaign" : "post_sales_campaign",
-      params
-    );
-
+  // 1. Handle Dealership Campaigns
+  if (type === "dealership") {
+    const res = await fetchDealershipCampaigns(page, ITEMS_PER_PAGE);
     return {
       merged: res?.items ?? [],
       total: res?.total ?? 0,
     };
-  };
+  }
+
+  // 2. Handle "Pre-Sales" (Pass page & size!)
+  if (type === "pre-sales" || type === "pre_sales") {
+    const res = await fetchPreSalesCampaigns(page, ITEMS_PER_PAGE);
+    return {
+      merged: res?.items ?? [],
+      total: res?.total ?? 0,
+    };
+  }
+
+  // 3. Handle "Post-Sales" (Pass page & size!)
+  if (type === "post-sales" || type === "post_sales") {
+    const res = await fetchPostSalesCampaigns(page, ITEMS_PER_PAGE);
+    return {
+      merged: res?.items ?? [],
+      total: res?.total ?? 0,
+    };
+  }
+
+  // 4. Handle "All"
+  // Note: True server-side pagination for "All" is complex because it requires merging 
+  // two different API endpoints. For now, we fetch a larger batch (e.g. 50) 
+  // of each to ensure the client-side list is populated.
+ if (type === "all") {
+    const [preRes, postRes] = await Promise.all([
+      // FIXED: Pass 'page' and 'ITEMS_PER_PAGE' instead of 1 and 50
+      fetchPreSalesCampaigns(page, ITEMS_PER_PAGE),
+      fetchPostSalesCampaigns(page, ITEMS_PER_PAGE),
+    ]);
+
+    const preItems = preRes?.items ?? [];
+    const postItems = postRes?.items ?? [];
+    const merged = [...preItems, ...postItems];
+
+    // Sort by creation date (newest first)
+    merged.sort((a, b) => {
+      const dateA = a.created || a.start_date || 0;
+      const dateB = b.created || b.start_date || 0;
+      return dateB - dateA;
+    });
+
+    return {
+      merged: merged,
+      total: (preRes?.total ?? 0) + (postRes?.total ?? 0),
+    };
+  }
+
+  return { merged: [], total: 0 };
+};
 
   const { data: counts, mutate: mutateCounts } = useSWR(
     "pivot-counts",
@@ -503,14 +510,30 @@ export default function CampaignDashboard() {
     campaignTypeFilter,
   ]);
 
-  const displayStart = (page - 1) * ITEMS_PER_PAGE;
-  const displaySlice = filteredCampaigns.slice(
-    displayStart,
-    displayStart + ITEMS_PER_PAGE
-  );
+  // const displayStart = (page - 1) * ITEMS_PER_PAGE;
+  // const displaySlice = filteredCampaigns.slice(
+  //   displayStart,
+  //   displayStart + ITEMS_PER_PAGE
+  // );
+  // const displaySlice = filteredCampaigns;
+
+  // const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+const displaySlice = useMemo(() => {
+    // 1. For "All", we fetch a large batch (e.g. 50+), so we MUST slice client-side
+    //    to show only 5 per page.
+    if (campaignTypeFilter === "all") {
+      const displayStart = (page - 1) * ITEMS_PER_PAGE;
+      return filteredCampaigns.slice(displayStart, displayStart + ITEMS_PER_PAGE);
+    }
+
+    // 2. For specific types (Pre/Post/Dealership), the API already returns
+    //    exactly 5 items for the current page. Do NOT slice again.
+    return filteredCampaigns;
+  }, [filteredCampaigns, page, campaignTypeFilter]);
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
+  // ... continue with rendering ...
   const getStatusBadge = (status?: string) => {
     const variants: Record<
       string,
@@ -1084,45 +1107,53 @@ export default function CampaignDashboard() {
                 </TableBody>
               </Table>
               {/* Pagination */}
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-muted-foreground">
-                  Page {page} of {totalPages}
-                </p>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    Previous
-                  </Button>
-
-                  {Array.from({ length: totalPages }).map((_, index) => {
-                    const pageNumber = index + 1;
-                    return (
-                      <Button
-                        key={pageNumber}
-                        variant={page === pageNumber ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setPage(pageNumber)}
-                      >
-                        {pageNumber}
-                      </Button>
-                    );
-                  })}
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page === totalPages}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
+             {/* Pagination Controls */}
+{/* Pagination */}
+<div className="flex items-center justify-center space-x-2 mt-4">
+  <Button
+    variant="outline"
+    className="h-8 w-8 p-0"
+    onClick={() => setPage(1)}
+    disabled={page === 1}
+  >
+    <span className="sr-only">Go to first page</span>
+    <ChevronsLeft className="h-4 w-4" />
+  </Button>
+  
+  <Button
+    variant="outline"
+    className="h-8 w-8 p-0"
+    onClick={() => setPage((p) => Math.max(1, p - 1))}
+    disabled={page === 1}
+  >
+    <span className="sr-only">Go to previous page</span>
+    <ChevronLeft className="h-4 w-4" />
+  </Button>
+  
+  <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+    Page {page} of {totalPages}
+  </div>
+  
+  <Button
+    variant="outline"
+    className="h-8 w-8 p-0"
+    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+    disabled={page === totalPages}
+  >
+    <span className="sr-only">Go to next page</span>
+    <ChevronRight className="h-4 w-4" />
+  </Button>
+  
+  <Button
+    variant="outline"
+    className="h-8 w-8 p-0"
+    onClick={() => setPage(totalPages)}
+    disabled={page === totalPages}
+  >
+    <span className="sr-only">Go to last page</span>
+    <ChevronsRight className="h-4 w-4" />
+  </Button>
+</div>
             </CardContent>
           </Card>
         </div>

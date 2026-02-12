@@ -164,7 +164,7 @@ def post_billing_data(customer_response, out_put_text, campaign_data, dealership
         "_job":{
             "task": "post_billing",
             "service" : AUTOCRM_CORE_SERVICE_NAME,
-            "args": [dealership_id, transaction_type, "conversation", item_desc, tme, credits, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, currency]
+            "args": [dealership_id, transaction_type, "conversation", item_desc, tme, credits, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, currency,campaign_data.get("campaign_id"), channel],
         }
     }
 
@@ -278,8 +278,9 @@ def post_messages_data(*args, **pass_kwargs):
                 }
             respper = pg.update("message","message_id",message_id,out_message)
             new_messages.append(respper)
-            # mlogger.info("respper {}".format(respper))
-        session_data_cache_data = pass_kwargs.get("session_data_cache").get("data",{})
+        mlogger.info("session_id in post_messages_data {}".format(pass_kwargs.get("session_id")))
+        session_data_cache = setup_session_data_cache(session_id=pass_kwargs.get("session_id"))
+        session_data_cache_data = pass_kwargs.get("session_data_cache",session_data_cache).get("data",{})
         current_cache_messages = session_data_cache_data.get("messages",[])
         current_cache_messages.extend(new_messages)
         session_data_cache_data["messages"] = current_cache_messages
@@ -294,14 +295,21 @@ def setup_session_data_cache(*args, **kwargs):
     if cache_data:
         return cache_data
     session_id = kwargs.get("session_id")
-    session_data = kwargs.get("session_data")
+
+    with get_pg_connector() as pg:
+        session_data = kwargs.get("session_data")
+        if not session_data:
+            session_data = pg.get("session","session_id",session_id)
     with get_pg_connector() as pg:
         session_data_cache = pg.get("session_data_cache","session_id",session_id) or {}
-        mlogger.info("session_data_cache fetched == {}".format(session_data_cache)) 
+        mlogger.info("session_data_cache fetched == {}".format(session_data)) 
         if not session_data_cache or not session_data_cache.get("data",{}).get("campaign_data") or not session_data_cache.get("data",{}).get("user_data"):
             campaign_model_name = session_data.get("campaign_model")
             lead_model_name = session_data.get("lead_model")
+            mlogger.info("campaign_model_name == {}, lead_model_name == {}".format(campaign_model_name,lead_model_name))
+            mlogger.info("campaign_id == {}".format(session_data.get("campaign_id")))
             campaign_data = pg.get(campaign_model_name,"campaign_id",session_data.get("campaign_id")) or {}
+            mlogger.info("campaign_data == {}".format(campaign_data))
             dealership_id = campaign_data.get("dealership_id")
             dealership_data = pg.get("dealership","dealership_id",dealership_id)
             lead_data = pg.get(session_data.get("lead_model"),"{}_id".format(lead_model_name),session_data.get("lead_id")) or {}

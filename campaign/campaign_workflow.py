@@ -71,11 +71,11 @@ DISPOSITION_OPTIONS = {
     "queued": ["queued"],
     "error": ["error", "queued"],
     "failed": ["failed", "queued"],
-    "attempted": ["attempted", "queued", "engaged", "converted", "reached", "contacted"],
-    "reached": ["reached", "queued", "contacted", "engaged", "converted", "attempted"],
-    "contacted": ["contacted", "queued", "engaged", "converted"],
-    "engaged": ["engaged", "queued", "converted"],
-    "converted": ["converted", "queued"],
+    "attempted": ["attempted", "reached", "contacted", "failed", "error", "engaged", "converted"],
+    "reached": ["reached", "contacted", "engaged", "converted"],
+    "contacted": ["contacted", "engaged", "converted"],
+    "engaged": ["engaged","converted"],
+    "converted": ["converted"],
 }
 
 CHANNEL_IDENTIFIER_MAP = {
