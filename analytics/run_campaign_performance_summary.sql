@@ -29,7 +29,7 @@ BEGIN
             )
     LOOP
         RAISE NOTICE '[CRON] Updating PRE-SALES campaign: %', r.campaign_id;
-        CALL update_campaign_performance_summary(r.campaign_id, 'pre-sales');
+        CALL update_campaign_performance_summary(r.campaign_id, 'pre-sales','pre_sales_lead');
     END LOOP;
 
 
@@ -49,7 +49,7 @@ BEGIN
             )
     LOOP
         RAISE NOTICE '[CRON] Updating POST-SALES campaign: %', r.campaign_id;
-        CALL update_campaign_performance_summary(r.campaign_id, 'post-sales');
+        CALL update_campaign_performance_summary(r.campaign_id, 'post-sales','post_sales_lead');
     END LOOP;
 
 END;
