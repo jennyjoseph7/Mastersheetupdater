@@ -684,7 +684,7 @@ def post_billing_obj(**message_dict):
                 1,
                 config.AUTOCRM_MESSAGE_DELIVERED_PRICE,
                 config.AUTOCRM_MESSAGE_DELIVERED_UNITS,
-                config.AUTOCRM_CURRENCY,
+                "credits",
                 campaign_id,
                 "whatsapp_chat"
             ]
