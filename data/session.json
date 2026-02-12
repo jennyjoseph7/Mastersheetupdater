@@ -412,6 +412,10 @@
         {
             "name": "human_agents",
             "type": "string_list"
+        },
+        {
+            "name":"call_recording",
+            "type": "text"
         }
     ]
 }
