@@ -1254,7 +1254,7 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
         current_balance = float(dealership.get('credits_balance',0))
         deductable=item_quantity
         if transaction_type == "debit":
-            deductable = -1*item_quantity
+            deductable = -1*item_quantity*item_price
         db.iadd("dealership","dealership_id", dealership_id, "credits_balance", deductable)
     
     
