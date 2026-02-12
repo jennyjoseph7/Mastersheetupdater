@@ -98,6 +98,8 @@ def comfy_image_generation_task(
     **kwargs
 ):
     logger = kwargs.pop('logger', None) or mlogger
+
+    number_of_images=1
     try:
         os.makedirs(COMFY_INPUT_DIR, exist_ok=True)
 
