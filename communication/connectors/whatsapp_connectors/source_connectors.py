@@ -976,9 +976,9 @@ class BaseWebhookConverter:
             logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. And the session_id is -- {s}")
             
             # updating last_session_channel
-            if data.get("campaign_type") == "pre_sales":
+            if data.get("campaign_type") == "pre-sales":
                 pg.update("pre_sales_lead","pre_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel})
-            elif data.get("campaign_type") == "post_sales":
+            elif data.get("campaign_type") == "post-sales":
                 pg.update("post_sales_lead","post_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel})
             # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
             return s 
