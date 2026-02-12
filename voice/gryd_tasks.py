@@ -83,6 +83,7 @@ def trigger_voice_call(*args, **kwargs):
         "us-dealership-united-states": ("elevanlab", "agent_6501kg4h48mbfhp8cryeh1a66t3j"),
         "sales-dealership1-india": ("tatatele", "agent_5701ka8618cbfxcbdp4wg6xb3x23"),  #stellantis
         "stellantis-india": ("tatatele", "agent_5701ka8618cbfxcbdp4wg6xb3x23"),
+        "dave-ai-sociograph-solutions-india": ("tatatele", "agent_5701ka8618cbfxcbdp4wg6xb3x23"),
         "ambal-auto-india": ("tatatele", "agent_0501k747d7s6e3xv5t3xew1rn217")
     }
    
@@ -107,24 +108,53 @@ def trigger_voice_call(*args, **kwargs):
         yield {
             "error": f"No person found with mobile number: {user_data.get('mobile_number')}"
         }
-    user_data["user_id"] = person_obj.get("user_id","a4abae7d832632c7")
+    # user_data["user_id"] = person_obj.get("user_id","a4abae7d832632c7")
 
     session_model = base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
     session_obj = {
-        "user_id": user_data.get("user_id"),
+        "user_id": user_data.get("user_id", "d40d8858-1c88-37d6-93ad-8960d6a02798"),
         "campaign_id": user_data.get("campaign_id"),
         "campaign_type": user_data.get("campaign_type"),
         "lead_id": user_data.get("lead_id"),
         "status":"attempted",
         "channel": user_data.get("channel", "voice_phone"),
+        "dealership_id": user_data.get("dealership_id"),
         "phone_number":format_phone_number(user_data.get("mobile_number")),
         "start_time": hp.epoch()
         
     }
     session_data = session_model.post(session_obj)
 
-    session_data["room_id"] = user_data.get("room_id", "ambal_auto")
-    session_data["agent_id"] = user_data.get("agent_id")    
+    #if agent_id passed in task kwargs
+    agent_config = {
+        "voice_agent_id": user_data.get("agent_id")
+    }
+    if user_data.get("campaign_type") == "pre-sales":
+        pre_sales_lead_model = base_model.Model("pre_sales_lead", config.AUTOCRM_APP_ENTERPRISE_ID)
+        pre_sales_lead_model.patch(
+            session_data.get("lead_id"),
+            {"last_session_channel":user_data.get("channel")}
+        )
+
+        pre_sales_campaign_model = base_model.Model("pre_sales_campaign", config.AUTOCRM_APP_ENTERPRISE_ID)
+        pre_sales_campaign_model_data = pre_sales_campaign_model.get(session_data.get("campaign_id"))
+        agent_config.update({
+            k : v for k, v in pre_sales_campaign_model_data.items() if k.startswith("voice_") and v
+        })
+    elif user_data.get("campaign_type") == "post-sales":
+        post_sales_lead_model = base_model.Model("post_sales_lead", config.AUTOCRM_APP_ENTERPRISE_ID)
+        post_sales_lead_model.patch(
+            session_data.get("lead_id"),
+            {"last_session_channel":user_data.get("channel")}
+        )
+
+        post_sales_campaign_model = base_model.Model("post_sales_campaign", config.AUTOCRM_APP_ENTERPRISE_ID)
+        post_sales_campaign_model_data = post_sales_campaign_model.get(session_data.get("campaign_id"))
+        agent_config.update({
+            k : v for k, v in post_sales_campaign_model_data.items() if k.startswith("voice_") and v
+        })
+
+    # session_data["room_id"] = user_data.get("room_id", "ambal_auto")
     if user_data.get("generate_prompt", True):
         for x in converse.get_primary_prompt(*args, **{
             "session_id" : session_data['session_id'],
@@ -151,8 +181,6 @@ def trigger_voice_call(*args, **kwargs):
     from voice import providers
     response = providers.make_call(provider, session_data, *args, **kwargs)
 
-    
-
     yield {
         "success": response.get("success"),
         "call_sid": response.get("call_sid"),
@@ -162,12 +190,15 @@ def trigger_voice_call(*args, **kwargs):
         "campaign_id": session_data["campaign_id"],
     }
 
-    post_contact_status_voice(user_data, message_id=response.get("call_sid"))
+    post_contact_status_voice(user_data, message_id=session_data["session_id"])
 
     from autocrm_db_helper import get_pg_connector
     import time
 
     timeout = time.time() + float(user_data.get("call_timeout", 600))  # 10 minutes
+
+    attempted_timeout = time.time() + float(user_data.get("attempted_status_timeout", 60))  # 1 minutes
+
     while time.time() < timeout:
         time.sleep(5)
         with get_pg_connector() as pg:
@@ -176,11 +207,26 @@ def trigger_voice_call(*args, **kwargs):
                 logger.info(f"No contact status object found yet for message_id: {session_data['session_id']}, waiting...")
                 continue
             latest = statuses[0]
-            if latest["provider_status"] not in ["contacted", "completed"]:
-                logger.info(f"Call is ongoing for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
+            if latest["provider_status"] in ["attempted"]:
+                if time.time() > attempted_timeout:
+                    logger.info(f"Call seems to be not connecting for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}. Ending session.")
+                    post_contact_status_voice(session_id = session_data["session_id"], message_id=session_data["session_id"], **{"status": "busy"})
+                    end_session(**{
+                        "session_id": session_data["session_id"],
+                        "additional_dict":{
+                            "history": [],
+                            "status": "busy"
+                    }
+                    })
+                    return
+                logger.info(f"Call is ongoing for, still connecting: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
                 continue
-            logger.info(f"Call ended with status '{latest['provider_status']}' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
-            return
+            elif latest["provider_status"] in ["contacted", "reached"]:
+                logger.info(f"Call ended with status '{latest['provider_status']}' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
+                return
+            
+            logger.info(f"Call is ongoing for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
+            continue
 
 
 

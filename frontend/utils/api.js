@@ -267,7 +267,7 @@ async function fetchPreSalesCampaigns(
   const response = await authenticatedFetch(
     `${APP_BASE_URL}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
       dealershipId
-    )}`,
+    )}&sort_by=created&sort_reverse=true`,
     { headers: { "X-GRYD-ROLE": "admin" } }
   );
 
@@ -281,7 +281,7 @@ async function fetchPostSalesCampaigns(dealershipId = getDealershipId()) {
   const response = await authenticatedFetch(
     `${APP_BASE_URL}/gryd/db/objects/post_sales_campaign?dealership_id=${encodeURIComponent(
       dealershipId
-    )}`
+    )}&sort_by=created&sort_reverse=true`
   );
 
   const json = await response.json();

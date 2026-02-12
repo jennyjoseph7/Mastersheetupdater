@@ -22,7 +22,8 @@
     },
     {
       "name": "vehicle_model_id",
-      "refers": "parents.vehicle_model.vehicle_model_id"
+      "refers": "parents.vehicle_model.vehicle_model_id",
+      "indexed": true
     },
     {
       "name": "vehicle_model_generic_name",
@@ -30,23 +31,23 @@
     },
     {
       "name": "brand_id",
-      "refers": "parents.vehicle_model.brand_id"
+      "refers": "parents.vehicle_model.brand_id",
+      "indexed": true
     },
     {
       "name": "brand_name",
-      "refers": "parents.vehicle_model.brand_name"
+      "refers": "parents.vehicle_model.brand_name",
+      "indexed": true
     },
     {
       "name": "region_id",
-      "refers": "parents.vehicle_model.region_id"
+      "refers": "parents.vehicle_model.region_id",
+      "indexed": true
     },
     {
       "name": "region_name",
-      "refers": "parents.vehicle_model.region_name"
-    },
-    {
-      "name": "country_name",
-      "refers": "parents.vehicle_model.country_name"
+      "refers": "parents.vehicle_model.region_name",
+      "indexed": true
     },
     {
       "name": "region_level_guidelines",
@@ -58,11 +59,13 @@
     },
     {
       "name": "vehicle_category",
-      "refers": "parents.vehicle_model.vehicle_category"
+      "refers": "parents.vehicle_model.vehicle_category",
+      "indexed": true
     },
     {
       "name": "vehicle_type",
-      "refers": "parents.vehicle_model.vehicle_type"
+      "refers": "parents.vehicle_model.vehicle_type",
+      "indexed": true
     },
     {
       "name": "brand_logo_url",
