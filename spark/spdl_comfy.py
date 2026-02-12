@@ -11,7 +11,10 @@ import requests
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # -------------------- LOGGING --------------------
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+)
 mlogger = logging.getLogger("spdl_comfy")
 
 # -------------------- COMFY CONFIG --------------------
@@ -20,7 +23,7 @@ COMFY_HOST = os.getenv("COMFY_HOST")
 WORKFLOW_PATH = os.path.join(
     BASE_DIR,
     "comfy_workflows",
-    "Qwen2511.json"
+    "SDPL.json"
 )
 
 COMFY_INPUT_DIR = os.getenv("COMFY_INPUT_DIR")
@@ -42,38 +45,49 @@ def load_workflow():
 
 
 def download_image(url, save_path):
+    start = time.time()
     mlogger.info(f"Downloading image: {url}")
     r = requests.get(url, timeout=30)
     r.raise_for_status()
     with open(save_path, "wb") as f:
         f.write(r.content)
+    mlogger.info(f"Download completed in {time.time() - start:.2f} sec")
 
 
 def upload_to_gryd(file_path):
+    start = time.time()
     mlogger.info(f"Uploading to GRYD: {file_path}")
     with open(file_path, "rb") as f:
         files = {"file": (os.path.basename(file_path), f, "image/png")}
         r = requests.post(GRYD_URL, headers=HEADERS, files=files, timeout=60)
         r.raise_for_status()
+        mlogger.info(f"Upload completed in {time.time() - start:.2f} sec")
         return r.json().get("cdn_url")
 
 
 def queue_prompt(workflow):
+    start = time.time()
+    mlogger.info("Sending prompt to ComfyUI...")
     r = requests.post(
         f"{COMFY_HOST}/prompt",
         json={"prompt": workflow},
         timeout=30
     )
     r.raise_for_status()
-    return r.json()["prompt_id"]
+    prompt_id = r.json()["prompt_id"]
+    mlogger.info(f"Prompt queued in {time.time() - start:.2f} sec | prompt_id={prompt_id}")
+    return prompt_id
 
 
 def wait_for_completion(prompt_id, timeout=300):
     start = time.time()
+    mlogger.info(f"Waiting for Comfy completion... prompt_id={prompt_id}")
+
     while True:
         r = requests.get(f"{COMFY_HOST}/history/{prompt_id}", timeout=30)
         history = r.json()
         if prompt_id in history:
+            mlogger.info(f"Comfy execution completed in {time.time() - start:.2f} sec")
             return history[prompt_id]
 
         if time.time() - start > timeout:
@@ -99,7 +113,13 @@ def comfy_image_generation_task(
 ):
     logger = kwargs.pop('logger', None) or mlogger
 
-    number_of_images=1
+    total_start_time = time.time()
+    logger.info("===== Comfy Image Generation Task Started =====")
+    logger.info(f"Prompt: {prompt}")
+    logger.info(f"Number of images requested: {number_of_images}")
+
+    number_of_images = 1
+
     try:
         os.makedirs(COMFY_INPUT_DIR, exist_ok=True)
 
@@ -113,7 +133,8 @@ def comfy_image_generation_task(
         image_urls = []
 
         for i in range(number_of_images):
-            logger.info(f"Running ComfyUI ({i + 1}/{number_of_images})")
+            iteration_start = time.time()
+            logger.info(f"----- Running ComfyUI ({i + 1}/{number_of_images}) -----")
 
             workflow = load_workflow()
 
@@ -121,13 +142,12 @@ def comfy_image_generation_task(
             workflow["41"]["inputs"]["image"] = input_filename
 
             # ---- Inject prompts
-            workflow["89:68"]["inputs"]["prompt"] = prompt
-            workflow["89:69"]["inputs"]["prompt"] = (
-                "low quality, blurry, artifacts, distortion, watermark, text, ui"
-            )
+            workflow["89:130"]["inputs"]["prompt"] = prompt
 
             # ---- Randomize seed per image
-            workflow["89:65"]["inputs"]["seed"] = int(time.time() * 1000) % 2**32
+            seed = int(time.time() * 1000) % 2**63
+            workflow["89:65"]["inputs"]["seed"] = seed
+            logger.info(f"Seed used: {seed}")
 
             prompt_id = queue_prompt(workflow)
             logger.info(f"Comfy prompt_id={prompt_id}")
@@ -146,9 +166,17 @@ def comfy_image_generation_task(
                     if url:
                         image_urls.append(url)
 
+            logger.info(
+                f"Image {i + 1} completed in {time.time() - iteration_start:.2f} sec"
+            )
+
         # Cleanup input file
         if os.path.exists(input_path):
             os.remove(input_path)
+
+        logger.info(
+            f"===== Total Task Completed in {time.time() - total_start_time:.2f} sec ====="
+        )
 
         return {"image_urls": image_urls}
 
