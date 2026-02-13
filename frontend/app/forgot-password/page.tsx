@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <Image
-                src="images/logo.png"
+                src="/images/logo.png"
                 alt="DaveAI Logo"
                 width={180}
                 height={36}
@@ -125,7 +125,7 @@ export default function ForgotPasswordPage() {
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
               <Image
-                src="images/logo.png"
+                src="/images/logo.png"
                 alt="DaveAI Logo"
                 width={180}
                 height={36}

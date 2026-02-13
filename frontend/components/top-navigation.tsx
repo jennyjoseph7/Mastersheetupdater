@@ -79,7 +79,7 @@ export default function TopNavigation() {
         <div className="container flex h-16 items-center justify-between px-4 md:px-6">
           <Link href="/" className="flex items-center gap-2 group">
             <Image
-              src="images/logo.png"
+              src="/images/logo.png"
               alt="DaveAI Logo"
               width={120}
               height={24}
@@ -109,7 +109,7 @@ export default function TopNavigation() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group shrink-0">
             <Image
-              src="images/logo.png"
+              src="/images/logo.png"
               alt="DaveAI Logo"
               width={120}
               height={24}
