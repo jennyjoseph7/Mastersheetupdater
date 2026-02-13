@@ -539,7 +539,7 @@ export default function LiveStatusPage() {
                     <TableRow>
                       <TableHead>Campaign</TableHead>
                       <TableHead>Channel</TableHead>
-                      <TableHead>Lead ID</TableHead>
+                      {/* <TableHead>Lead ID</TableHead> */}
                       <TableHead>Name</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Email</TableHead>
@@ -564,14 +564,14 @@ export default function LiveStatusPage() {
                             <span>{formatChannel(session.channel)}</span>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        {/* <TableCell>
                           <div className="flex items-center gap-1">
                             <Hash className="h-3 w-3 text-muted-foreground" />
                             <span className="font-mono text-xs">
                               {session.lead_id}
                             </span>
                           </div>
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell>{session.person_name || "-"}</TableCell>
                         <TableCell>
                           {formatPhoneNumber(session.phone_number)}
