@@ -3,190 +3,169 @@
     "name": "contact_status",
     "model_type": "default",
     "attributes": [
-        {
-            "name": "created",
-            "type": "number",
-            "auto_updater": true,
-            "default": {
-                "function": "now_ctime"
-            }
-        },
-        {
-            "name": "updated",
-            "type": "number",
-            "auto_updater": true,
-            "force_update": true,
-            "default": {
-                "function": "now_ctime"
-            }
-        },
-        {
-            "name": "session_id",
-            "type": "text"
-        },
-        {
-            "name": "message_id",
-            "type": "text"
-        },
-        {
-            "name": "response_id",
-            "type": "text"
-        },
-        {
-            "name": "channel_provider",
-            "type": "text"
-        },
-        {
-            "name": "channel",
-            "type": "text",
-            "options": [
-                "rcs",
-                "email",
-                "web_chat",
-                "web_chat_voice",
-                "fb_chat",
-                "insta_chat",
-                "twitter_chat",
-                "voice_phone",
-                "whatsapp_chat",
-                "whatsapp_voice_note",
-                "whatsapp_voice_call",
-                "zoom_bot",
-                "ms_teams"
-            ]
-        },
-        {
-            "name": "phone_number",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "session",
-                    "session_id",
-                    "phone_number"
-                ]
-            },
-            "indexed": true
-        },
-        {
-            "name": "email",
-            "type": "text",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "session",
-                    "session_id",
-                    "email"
-                ]
-            },
-            "indexed": true
-        },
-        {
-            "name": "campaign_workflow_id",
-            "type": "text"
-        },
-        {
-            "name": "campaign_id",
-            "type": "text",
-            "indexed": true,
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "campaign_workflow",
-                    "campaign_workflow_id",
-                    "dealership_id"
-                ]
-            }
-        },
-        {
-            "name":"dealership_id",
-            "type": "text",
-            "indexed": true
-        },
-        {
-            "name": "campaign_type",
-            "type": "text",
-            "indexed": true,
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "campaign_workflow",
-                    "campaign_workflow_id",
-                    "campaign_type"
-                ]
-            }
-        },
-        {
-            "name": "campaign_model",
-            "type": "text",
-            "indexed": true,
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "campaign_workflow",
-                    "campaign_workflow_id",
-                    "campaign_model"
-                ]
-            }
-        },
-        {
-            "name": "campaign_end_date",
-            "type": "number",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "campaign_model",
-                    "campaign_id",
-                    "end_date"
-                ]
-            }
-        },
-        {
-            "name": "provider_status",
-            "type": "text",
-            "options": [
-                "initiated",
-                "sent",
-                "read",
-                "delivered",
-                "failed",
-                "no-answer",
-                "canceled",
-                "busy",
-                "queued",
-                "initiated",
-                "ringing",
-                "answered",
-                "in-progress",
-                "completed"
-            ],
-            "option_others": true,
-            "default": "initiated"
-        },
-        {
-          "name": "failure_reason",
-          "type": "text",
-          "options": [
-            "Message not delivered",
-            "Spam",
-            "Not reachable",
-            "Didn't pick up",
-            "Rejected"
-          ]
-        },
-        {
-            "name": "contact_status_id",
-            "type": "uid",
-            "indexed": true,
-            "id": true,
-            "default": {
-                "function": "make_uuid3",
-                "args": [
-                    "message_id",
-                    "response_id",
-                    "provider_status"
-                ]
-            }
+      {
+        "name": "created",
+        "type": "number",
+        "auto_updater": true,
+        "default": {
+          "function": "now_ctime"
         }
+      },
+      {
+        "name": "updated",
+        "type": "number",
+        "auto_updater": true,
+        "force_update": true,
+        "default": {
+          "function": "now_ctime"
+        }
+      },
+      {
+        "name": "session_id",
+        "type": "text"
+      },
+      {
+        "name": "message_id",
+        "type": "text"
+      },
+      {
+        "name": "response_id",
+        "type": "text"
+      },
+      {
+        "name": "channel_provider",
+        "type": "text"
+      },
+      {
+        "name": "channel",
+        "type": "text",
+        "options": [
+          "rcs",
+          "email",
+          "web_chat",
+          "web_chat_voice",
+          "fb_chat",
+          "insta_chat",
+          "twitter_chat",
+          "voice_phone",
+          "whatsapp_chat",
+          "whatsapp_voice_note",
+          "whatsapp_voice_call",
+          "zoom_bot",
+          "ms_teams"
+        ]
+      },
+      {
+        "name": "phone_number",
+        "type": "text",
+        "default": {
+          "function": "get_from_model",
+          "args": ["session", "session_id", "phone_number"]
+        },
+        "indexed": true
+      },
+      {
+        "name": "email",
+        "type": "text",
+        "default": {
+          "function": "get_from_model",
+          "args": ["session", "session_id", "email"]
+        },
+        "indexed": true
+      },
+      {
+        "name": "campaign_workflow_id",
+        "type": "text"
+      },
+      {
+        "name": "campaign_id",
+        "type": "text",
+        "indexed": true,
+        "default": {
+          "function": "get_from_model",
+          "args": ["campaign_workflow", "campaign_workflow_id", "dealership_id"]
+        }
+      },
+      {
+        "name": "dealership_id",
+        "type": "text",
+        "indexed": true
+      },
+      {
+        "name": "user_id",
+        "type": "text",
+        "indexed": true
+      },
+      {
+        "name": "lead_id",
+        "type": "text",
+        "indexed": true
+      },
+      {
+        "name": "campaign_type",
+        "type": "text",
+        "indexed": true,
+        "default": {
+          "function": "get_from_model",
+          "args": ["campaign_workflow", "campaign_workflow_id", "campaign_type"]
+        }
+      },
+      {
+        "name": "campaign_model",
+        "type": "text",
+        "indexed": true,
+        "default": {
+          "function": "get_from_model",
+          "args": [
+            "campaign_workflow",
+            "campaign_workflow_id",
+            "campaign_model"
+          ]
+        }
+      },
+      
+      {
+        "name": "provider_status",
+        "type": "text",
+        "options": [
+          "initiated",
+          "sent",
+          "read",
+          "delivered",
+          "failed",
+          "no-answer",
+          "canceled",
+          "busy",
+          "queued",
+          "initiated",
+          "ringing",
+          "answered",
+          "in-progress",
+          "completed"
+        ],
+        "option_others": true,
+        "default": "initiated"
+      },
+      {
+        "name": "failure_reason",
+        "type": "text",
+        "options": [
+          "Message not delivered",
+          "Spam",
+          "Not reachable",
+          "Didn't pick up",
+          "Rejected"
+        ]
+      },
+      {
+        "name": "contact_status_id",
+        "type": "uid",
+        "indexed": true,
+        "id": true,
+        "default": {
+          "function": "make_uuid3",
+          "args": ["message_id", "response_id", "provider_status"]
+        }
+      }
     ]
 }

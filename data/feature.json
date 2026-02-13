@@ -12,6 +12,20 @@
             }
         },
         {
+            "name": "vehicle_category",
+            "type": "text",
+            "default": "Passenger Vehicle",
+            "options": [
+                "Passenger Vehicle",
+                "Commercial Vehicle",
+                "Two Wheeler",
+                "Three Wheeler",
+                "Truck",
+                "Bus"
+            ],
+            "ui_element": "select"
+        },
+        {
             "name": "updated",
             "type": "number",
             "auto_updater": true,
@@ -165,22 +179,65 @@
         {
             "name": "engine_dependent",
             "type": "list",
-            "list_type": "text"
+            "list_type": "text",
+            "options": [
+                "Petrol",
+                "Diesel",
+                "Electric",
+                "CNG",
+                "Hybrid",
+                "LPG",
+                "Hydrogen",
+                "Other"
+            ],
+            "ui_element": "multiselect"
         },
         {
             "name": "drivetrain_dependent",
             "type": "list",
-            "list_type": "text"
+            "list_type": "text",
+            "options": [
+                "FWD",
+                "RWD",
+                "AWD",
+                "4WD"
+            ],
+            "ui_element": "multiselect"
         },
         {
             "name": "seating_dependent",
             "type": "list",
-            "list_type": "text"
+            "list_type": "text",
+            "option_others": true,
+            "options": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "6",
+                "7",
+                "8",
+                "9",
+                "10",
+                "11",
+                "12"
+            ],
+            "ui_element": "multiselect"
         },
         {
             "name": "transmission_dependent",
             "type": "list",
-            "list_type": "text"
+            "list_type": "text",
+            "option_others": true,
+            "options": [
+                "Automatic",
+                "Clutchless Manual",
+                "Manual",
+                "CVT",
+                "DCT",
+                "Other"
+            ],
+            "ui_element": "multiselect"
         }
     ]
 }

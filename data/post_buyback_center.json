@@ -1,0 +1,283 @@
+{
+    "name": "post_buyback_center",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "post_idea_id",
+            "refers": "parents.post_idea.post_idea_id",
+            "indexed": true,
+            "options": "/options/post_idea/post_idea_id?campaign_type=pre-sales"
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.post_idea.region_id",
+            "indexed": true
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.post_idea.region_name",
+            "indexed": true
+        },
+        {
+            "name": "language",
+            "refers": "parents.post_idea.language",
+            "indexed": true
+        },
+        {
+            "name": "idea",
+            "refers": "parents.post_idea.idea"
+        },
+        {
+            "name": "campaign_type",
+            "refers": "parents.post_idea.campaign_type",
+            "indexed": true
+        },
+        {
+            "name": "campaign_objective_id",
+            "refers": "parents.campaign_objective.campaign_objective_id",
+            "indexed": true,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "post_idea",
+                    "post_idea_id",
+                    "campaign_objective_id"
+                ]
+            }
+        },
+        {
+            "name": "campaign_objective_name",
+            "refers": "parents.campaign_objective.campaign_objective_name",
+            "indexed": true
+        },
+        {
+            "name": "campaign_objective_description",
+            "refers": "parents.campaign_objective.campaign_objective_description"
+        },
+        {
+            "name": "guardrails_guidelines",
+            "refers": "parents.campaign_objective.guardrails_guidelines"
+        },
+        {
+            "name": "why_user_should_avail_this",
+            "refers": "parents.campaign_objective.why_user_should_avail_this"
+        },
+        {
+            "name": "reasons_users_may_not_be_interested",
+            "refers": "parents.campaign_objective.reasons_users_may_not_be_interested"
+        },
+        {
+            "name": "reasons_for_non_applicability",
+            "refers": "parents.campaign_objective.reasons_for_non_applicability"
+        },
+        {
+            "name": "other_important_information",
+            "refers": "parents.campaign_objective.other_important_information"
+        },
+        {
+            "name": "target_audience_tags",
+            "refers": "parents.campaign_objective.target_audience_tags"
+        },
+        {
+            "name": "ctas",
+            "refers": "parents.campaign_objective.ctas"
+        },
+        {
+            "name": "buyback_center_id",
+            "refers": "parents.buyback_center.buyback_center_id",
+            "indexed": true
+        },
+        {
+            "name": "buyback_center_name",
+            "refers": "parents.buyback_center.buyback_center_name",
+            "indexed": true
+        },
+        {
+            "name": "buyback_center_type",
+            "refers": "parents.buyback_center.buyback_center_type"
+        },
+        {
+            "name": "buyback_center_contact_number",
+            "refers": "parents.buyback_center.contact_number"
+        },
+        {
+            "name": "buyback_center_email",
+            "refers": "parents.buyback_center.email"
+        },
+        {
+            "name": "buyback_center_address",
+            "refers": "parents.buyback_center.address"
+        },
+        {
+            "name": "buyback_center_city",
+            "refers": "parents.buyback_center.city"
+        },
+        {
+            "name": "buyback_center_state",
+            "refers": "parents.buyback_center.state"
+        },
+        {
+            "name": "buyback_center_pincode",
+            "refers": "parents.buyback_center.pincode"
+        },
+        {
+            "name": "buyback_center_supported_brands",
+            "refers": "parents.buyback_center.supported_brands"
+        },
+        {
+            "name": "buyback_center_geolocation",
+            "type": "geolocation",
+            "refers": "parents.buyback_center.geolocation"
+        },
+        {
+            "name": "buyback_center_operating_hours",
+            "type": "nested_object",
+            "refers": "parents.buyback_center.operating_hours"
+        },
+        {
+            "name": "buyback_center_days_open",
+            "type": "string_list",
+            "refers": "parents.buyback_center.days_open"
+        },
+        {
+            "name": "post_buyback_center_id",
+            "type": "uid",
+            "id": true,
+            "indexed": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "post_idea_id",
+                    "buyback_center_id"
+                ],
+                "kwargs": {
+                    "attribute_join": "-",
+                    "is_unique": true,
+                    "separator": "-",
+                    "case": "lower",
+                    "skip_empty": true
+                }
+            },
+            "auto_updater": true
+        },
+        {
+            "name": "idea_image_url",
+            "refers": "parents.post_idea.image_url"
+        },
+        {
+            "name": "video_url",
+            "refers": "parents.post_idea.video_url"
+        },
+        {
+            "name": "caption",
+            "refers": "parents.post_idea.caption"
+        },
+        {
+            "name": "hook",
+            "refers": "parents.post_idea.hook"
+        },
+        {
+            "name": "slogan",
+            "refers": "parents.post_idea.slogan"
+        },
+        {
+            "name": "message",
+            "refers": "parents.post_idea.message"
+        },
+        {
+            "name": "hashtags",
+            "refers": "parents.post_idea.hashtags"
+        },
+        {
+            "name": "autosphere_template_id",
+            "refers": "parents.post_idea.autosphere_template_id"
+        },
+        {
+            "name": "autosphere_template_name",
+            "refers": "parents.post_idea.autosphere_template_name"
+        },
+        {
+            "name": "brand_id",
+            "refers": "parents.post_idea.brand_id"
+        },
+        {
+            "name": "template_image_url",
+            "refers": "parents.post_idea.template_image_url"
+        },
+        {
+            "name": "theme_name",
+            "refers": "parents.post_idea.theme_name",
+            "indexed": true
+        },
+        {
+            "name": "theme_type",
+            "refers": "parents.post_idea.theme_type",
+            "indexed": true
+        },
+        {
+            "name": "brand_name",
+            "refers": "parents.post_idea.brand_name",
+            "indexed": true
+        },
+        {
+            "name": "brand_logo_url",
+            "refers": "parents.post_idea.brand_logo_url"
+        },
+        {
+            "name": "vehicle_model_id",
+            "refers": "parents.post_idea.vehicle_model_id"
+        },
+        {
+            "name": "vehicle_model_name",
+            "refers": "parents.post_idea.vehicle_model_name"
+        },
+        {
+            "name": "is_trending",
+            "refers": "parents.post_idea.is_trending",
+            "indexed": true
+        },
+        {
+            "name": "is_popular",
+            "refers": "parents.post_idea.is_popular",
+            "indexed": true
+        },
+        {
+            "name": "is_new",
+            "refers": "parents.post_idea.is_new",
+            "indexed": true
+        },
+        {
+            "name": "is_featured",
+            "refers": "parents.post_idea.is_featured",
+            "indexed": true
+        },
+        {
+            "name": "is_recommended",
+            "type": "bool",
+            "default": false,
+            "indexed": true
+        }
+    ],
+    "parents": [
+        "post_idea",
+        "dealership",
+        "campaign_objective",
+        "buyback_center"
+    ]
+}

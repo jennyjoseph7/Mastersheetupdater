@@ -1,4 +1,5 @@
 "use client";
+
 import useSWR from "swr";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -66,6 +67,12 @@ import {
   Target,
   UsersIcon,
   BarChart3,
+  RefreshCw,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 
 const swrOptions = {
@@ -78,12 +85,16 @@ const swrOptions = {
 
 export interface Campaign {
   id: string | number;
+  campaign_id?: string | number;
   name?: string;
+  campaign_name?: string;
   description?: string;
   channels?: string[];
   campaign_status?: string;
-  launchDate?: string;
-  campaign_type?: string;
+  launchDate?: string | number;
+  start_date?: number;
+  end_date?: number;
+  campaign_type?: string | string[];
   [key: string]: any;
 }
 
@@ -96,8 +107,7 @@ export default function CampaignDashboard() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
-  const [campaignTypeFilter, setCampaignTypeFilter] =
-    useState<string>("post-sales"); // default
+  const [campaignTypeFilter, setCampaignTypeFilter] = useState<string>("all"); // default to "all" to show both types
 
   const [mergedCampaigns, setMergedCampaigns] = useState<Campaign[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -128,59 +138,77 @@ export default function CampaignDashboard() {
   };
 
   // Fetch campaigns by type and page
-  const fetchCampaigns = async (type: string, page: number) => {
-    console.log(
-      "[fetchCampaigns] Fetching campaigns for type:",
-      type,
-      "page:",
-      page
-    );
-    // Handle dealership campaigns separately
-    if (type === "dealership") {
-      console.log("[fetchCampaigns] Fetching dealership campaigns...");
-      const res = await fetchDealershipCampaigns();
-      console.log("[fetchCampaigns] Dealership campaigns response:", res);
-      return {
-        merged: res?.items ?? [],
-        total: res?.total ?? 0,
-      };
-    }
+ // In page.tsx
 
-    // Handle pre-sales campaigns using the dedicated function
-    if (type === "pre-sales" || type === "pre_sales") {
-      console.log("[fetchCampaigns] Fetching pre-sales campaigns...");
-      const res = await fetchPreSalesCampaigns();
-      console.log("[fetchCampaigns] Pre-sales campaigns response:", res);
-      return {
-        merged: res?.items ?? [],
-        total: res?.total ?? 0,
-      };
-    }
+// ... existing imports and ITEMS_PER_PAGE constant ...
 
-    // Handle post-sales campaigns using the dedicated function
-    if (type === "post-sales" || type === "post_sales") {
-      console.log("[fetchCampaigns] Fetching post-sales campaigns...");
-      const res = await fetchPostSalesCampaigns();
-      console.log("[fetchCampaigns] Post-sales campaigns response:", res);
-      return {
-        merged: res?.items ?? [],
-        total: res?.total ?? 0,
-      };
-    }
+// Replace your existing fetchCampaigns function with this:
+const fetchCampaigns = async (type: string, page: number) => {
+  console.log("[fetchCampaigns] Type:", type, "Page:", page, "Size:", ITEMS_PER_PAGE);
 
-    const params = { page_number: page, page_size: ITEMS_PER_PAGE };
-    const res = await fetchAPIData(
-      type === "pre_sales" ? "pre_sales_campaign" : "post_sales_campaign",
-      params
-    );
-
+  // 1. Handle Dealership Campaigns
+  if (type === "dealership") {
+    const res = await fetchDealershipCampaigns(page, ITEMS_PER_PAGE);
     return {
       merged: res?.items ?? [],
       total: res?.total ?? 0,
     };
-  };
+  }
 
-  const { data: counts } = useSWR("pivot-counts", fetchCounts, swrOptions);
+  // 2. Handle "Pre-Sales" (Pass page & size!)
+  if (type === "pre-sales" || type === "pre_sales") {
+    const res = await fetchPreSalesCampaigns(page, ITEMS_PER_PAGE);
+    return {
+      merged: res?.items ?? [],
+      total: res?.total ?? 0,
+    };
+  }
+
+  // 3. Handle "Post-Sales" (Pass page & size!)
+  if (type === "post-sales" || type === "post_sales") {
+    const res = await fetchPostSalesCampaigns(page, ITEMS_PER_PAGE);
+    return {
+      merged: res?.items ?? [],
+      total: res?.total ?? 0,
+    };
+  }
+
+  // 4. Handle "All"
+  // Note: True server-side pagination for "All" is complex because it requires merging 
+  // two different API endpoints. For now, we fetch a larger batch (e.g. 50) 
+  // of each to ensure the client-side list is populated.
+ if (type === "all") {
+    const [preRes, postRes] = await Promise.all([
+      // FIXED: Pass 'page' and 'ITEMS_PER_PAGE' instead of 1 and 50
+      fetchPreSalesCampaigns(page, ITEMS_PER_PAGE),
+      fetchPostSalesCampaigns(page, ITEMS_PER_PAGE),
+    ]);
+
+    const preItems = preRes?.items ?? [];
+    const postItems = postRes?.items ?? [];
+    const merged = [...preItems, ...postItems];
+
+    // Sort by creation date (newest first)
+    merged.sort((a, b) => {
+      const dateA = a.created || a.start_date || 0;
+      const dateB = b.created || b.start_date || 0;
+      return dateB - dateA;
+    });
+
+    return {
+      merged: merged,
+      total: (preRes?.total ?? 0) + (postRes?.total ?? 0),
+    };
+  }
+
+  return { merged: [], total: 0 };
+};
+
+  const { data: counts, mutate: mutateCounts } = useSWR(
+    "pivot-counts",
+    fetchCounts,
+    swrOptions
+  );
 
   const {
     data: campaignsData,
@@ -193,30 +221,31 @@ export default function CampaignDashboard() {
     swrOptions
   );
 
+  // Safe check for localStorage
+  const dealershipId =
+    typeof window !== "undefined"
+      ? localStorage.getItem("dealership_id")
+      : null;
+
   // Fetch campaign summary data
-  const { data: campaignSummaryData } = useSWR(
-    "campaign-summary",
+  const { data: campaignSummaryData, mutate: mutateCampaignSummary } = useSWR(
+    dealershipId, // If null, this won't run
     fetchCampaignSummary,
     swrOptions
   );
 
   // Refresh setup status when dashboard loads and on route changes
   useEffect(() => {
-    // Always refresh setup status when dashboard loads to ensure it's up to date
-    // This is important after completing the setup
     const refreshStatus = async () => {
       console.log("[Dashboard] Refreshing setup status...");
       await checkDealershipSetup();
-      // Wait a bit for state to update
       await new Promise((resolve) => setTimeout(resolve, 300));
-      console.log("[Dashboard] Setup status refreshed");
     };
     refreshStatus();
   }, [checkDealershipSetup]);
 
   // Show modal if setup is not complete
   useEffect(() => {
-    console.log("[Dashboard] Setup status changed:", isDealershipSetupComplete);
     if (isDealershipSetupComplete === false) {
       setShowSetupModal(true);
     } else {
@@ -224,14 +253,16 @@ export default function CampaignDashboard() {
     }
   }, [isDealershipSetupComplete]);
 
-  // Update counts header (total campaigns of current type)
-  // Only use this if campaign summary data is not available (fallback)
+  // Update counts header (Legacy/Fallback or Dealership specific)
   useEffect(() => {
-    // Skip if campaign summary data is available (it will handle the updates)
+    // If we have summary data, we let the other useEffect handle stats
+    // UNLESS we are in dealership mode (which might not be in the summary API)
     if (
       campaignSummaryData &&
       Array.isArray(campaignSummaryData) &&
-      campaignSummaryData.length > 0
+      campaignSummaryData.length > 0 &&
+      campaignTypeFilter !== "dealership" &&
+      campaignTypeFilter !== "all"
     ) {
       return;
     }
@@ -239,7 +270,8 @@ export default function CampaignDashboard() {
     // For dealership campaigns, use the campaignsData total
     if (campaignTypeFilter === "dealership" && campaignsData) {
       setTotalCount(campaignsData.total ?? 0);
-      // Count active dealership campaigns
+      setTotalCampaignCount(campaignsData.total ?? 0);
+
       const activeDealership = (campaignsData.merged ?? []).filter(
         (c: Campaign) => {
           const status =
@@ -252,18 +284,104 @@ export default function CampaignDashboard() {
           return status === "live";
         }
       ).length;
+
       setActiveCount(activeDealership);
+      setActiveCampaignCount(activeDealership);
+      setTotalReach(0); // Dealership specific reach if available
+      setConversionRate(0); // Dealership specific rate
       return;
     }
 
+    // For "all" type, sum both pre-sales and post-sales counts
+    if (campaignTypeFilter === "all") {
+      // Use summary data if available (more accurate than filtering campaigns)
+      if (campaignSummaryData && Array.isArray(campaignSummaryData)) {
+        const preSalesSummary = campaignSummaryData.find(
+          (s: any) =>
+            s.campaign_type === "pre-sales" || s.campaign_type === "pre_sales"
+        );
+        const postSalesSummary = campaignSummaryData.find(
+          (s: any) =>
+            s.campaign_type === "post-sales" || s.campaign_type === "post_sales"
+        );
+
+        // Sum up total and active counts from summaries
+        const totalCountSum =
+          (preSalesSummary?.total_count ?? 0) +
+          (postSalesSummary?.total_count ?? 0);
+        const activeCountSum =
+          (preSalesSummary?.active_count ?? 0) +
+          (postSalesSummary?.active_count ?? 0);
+        const totalReachSum =
+          (preSalesSummary?.total_reach ?? 0) +
+          (postSalesSummary?.total_reach ?? 0);
+        const preRate = preSalesSummary?.conversation_rate ?? 0;
+        const postRate = postSalesSummary?.conversation_rate ?? 0;
+        const avgRate =
+          preSalesSummary && postSalesSummary
+            ? ((preRate < 1 ? preRate * 100 : preRate) +
+                (postRate < 1 ? postRate * 100 : postRate)) /
+              2
+            : (preRate < 1 ? preRate * 100 : preRate) ||
+              (postRate < 1 ? postRate * 100 : postRate);
+
+        setTotalCampaignCount(totalCountSum);
+        setTotalCount(totalCountSum);
+        setActiveCampaignCount(activeCountSum);
+        setActiveCount(activeCountSum);
+        setTotalReach(totalReachSum);
+        setConversionRate(avgRate);
+      } else if (campaignsData) {
+        // Fallback: calculate from campaigns data
+        setTotalCount(campaignsData.total ?? 0);
+        setTotalCampaignCount(campaignsData.total ?? 0);
+
+        const activeAll = (campaignsData.merged ?? []).filter((c: Campaign) => {
+          const status =
+            c.campaign_status ||
+            (c.start_date && c.end_date && Date.now() / 1000 > c.end_date
+              ? "completed"
+              : c.start_date && Date.now() / 1000 >= c.start_date
+              ? "live"
+              : "scheduled");
+          return status === "live" || status === "active";
+        }).length;
+
+        setActiveCount(activeAll);
+        setActiveCampaignCount(activeAll);
+      } else if (counts) {
+        // Fallback to pivot counts
+        let totalForAll = 0;
+        let activeForAll = 0;
+
+        if (typeof counts.total === "object" && counts.total !== null) {
+          totalForAll =
+            (counts.total.pre_sales ?? 0) + (counts.total.post_sales ?? 0);
+        } else {
+          totalForAll = counts.total ?? 0;
+        }
+
+        if (typeof counts.active === "object" && counts.active !== null) {
+          activeForAll =
+            (counts.active.pre_sales ?? 0) + (counts.active.post_sales ?? 0);
+        } else {
+          activeForAll = counts.active ?? 0;
+        }
+
+        setTotalCampaignCount(totalForAll);
+        setTotalCount(totalForAll);
+        setActiveCampaignCount(activeForAll);
+        setActiveCount(activeForAll);
+      }
+      return;
+    }
+
+    // Fallback using pivot-counts API
     if (counts) {
       let totalForType = 0;
       let activeForType = 0;
-      let totalCampaign_count = 0;
-      let activeCampaign_count = 0;
-      console.log("counts----", counts);
+
       if (typeof counts.total === "object" && counts.total !== null) {
-        totalCampaign_count = counts.total.pre_sales + counts.total.post_sales;
         totalForType =
           campaignTypeFilter === "pre_sales"
             ? counts.total.pre_sales ?? 0
@@ -273,8 +391,6 @@ export default function CampaignDashboard() {
       }
 
       if (typeof counts.active === "object" && counts.active !== null) {
-        activeCampaign_count =
-          counts.active.pre_sales + counts.active.post_sales;
         activeForType =
           campaignTypeFilter === "pre_sales"
             ? counts.active.pre_sales ?? 0
@@ -283,79 +399,29 @@ export default function CampaignDashboard() {
         activeForType = counts.active ?? 0;
       }
 
-      // console.log("activeCampaign_count",activeCampaign_count,"totalCampaign_count",totalCampaign_count);
-      setTotalCampaignCount(totalCampaign_count);
-      setActiveCampaignCount(activeCampaign_count);
+      setTotalCampaignCount(totalForType);
       setTotalCount(totalForType);
+      setActiveCampaignCount(activeForType);
       setActiveCount(activeForType);
     }
   }, [counts, campaignTypeFilter, campaignsData, campaignSummaryData]);
 
   // Update campaigns and total count whenever data or type changes
   useEffect(() => {
-    console.log("[useEffect] campaignsData changed:", campaignsData);
-    console.log("[useEffect] campaignTypeFilter:", campaignTypeFilter);
     if (campaignsData) {
-      console.log(
-        "[useEffect] Setting campaigns:",
-        campaignsData.merged?.length,
-        "items"
-      );
       setMergedCampaigns(campaignsData.merged ?? []);
       setTotalCount(campaignsData.total ?? 0);
     }
   }, [campaignsData, campaignTypeFilter]);
 
-  // Process campaign summary data
+  // Process campaign summary data (FIXED: Filter by type instead of sum)
   useEffect(() => {
+    // If we are on dealership tab or "all" tab, the previous useEffect handles it
+    if (campaignTypeFilter === "dealership" || campaignTypeFilter === "all")
+      return;
+
     if (campaignSummaryData && Array.isArray(campaignSummaryData)) {
-      // Aggregate data from all campaign types
-      let aggregatedTotalCount = 0;
-      let aggregatedActiveCount = 0;
-      let aggregatedTotalReach = 0;
-      let aggregatedConversationRate = 0;
-      let totalConversationRateSum = 0;
-      let campaignTypeCount = 0;
-
-      campaignSummaryData.forEach((summary: any) => {
-        aggregatedTotalCount += summary.total_count ?? 0;
-        aggregatedActiveCount += summary.active_count ?? 0;
-        aggregatedTotalReach += summary.total_reach ?? 0;
-
-        // Calculate weighted average for conversion rate
-        if (
-          summary.conversation_rate !== undefined &&
-          summary.conversation_rate !== null
-        ) {
-          totalConversationRateSum += summary.conversation_rate;
-          campaignTypeCount++;
-        }
-      });
-
-      // Update aggregated stats
-      setTotalCampaignCount(aggregatedTotalCount);
-      setActiveCampaignCount(aggregatedActiveCount);
-      setTotalReach(aggregatedTotalReach);
-
-      // Calculate average conversion rate
-      // If conversation_rate is stored as decimal (0.098 = 9.8%), multiply by 100
-      // If it's already a percentage (9.8 = 9.8%), use as-is
-      if (campaignTypeCount > 0) {
-        const avgRate = totalConversationRateSum / campaignTypeCount;
-        // If average is less than 1, assume it's a decimal and convert to percentage
-        setConversionRate(avgRate < 1 ? avgRate * 100 : avgRate);
-      }
-
-      // Set current campaign type based on filter
-      setCurrentCampaignType(
-        campaignTypeFilter === "pre_sales" || campaignTypeFilter === "pre-sales"
-          ? "pre-sales"
-          : campaignTypeFilter === "dealership"
-          ? "dealership"
-          : "post-sales"
-      );
-
-      // Update counts for current type
+      // Find the specific summary for the selected campaign type
       const currentTypeSummary = campaignSummaryData.find(
         (s: any) =>
           s.campaign_type === campaignTypeFilter ||
@@ -365,27 +431,43 @@ export default function CampaignDashboard() {
             s.campaign_type === "post-sales")
       );
 
+      // Update UI with specific stats
       if (currentTypeSummary) {
+        setTotalCampaignCount(currentTypeSummary.total_count ?? 0);
+        setActiveCampaignCount(currentTypeSummary.active_count ?? 0);
+        setTotalReach(currentTypeSummary.total_reach ?? 0);
+
+        const rate = currentTypeSummary.conversation_rate ?? 0;
+        setConversionRate(rate < 1 ? rate * 100 : rate);
+
+        // Also ensure internal counts match
         setTotalCount(currentTypeSummary.total_count ?? 0);
         setActiveCount(currentTypeSummary.active_count ?? 0);
+      } else {
+        // If data exists but not for this specific type (e.g., 0 campaigns)
+        setTotalCampaignCount(0);
+        setActiveCampaignCount(0);
+        setTotalReach(0);
+        setConversionRate(0);
+        setTotalCount(0);
+        setActiveCount(0);
       }
+
+      setCurrentCampaignType(
+        campaignTypeFilter === "pre_sales" || campaignTypeFilter === "pre-sales"
+          ? "pre-sales"
+          : "post-sales"
+      );
     }
   }, [campaignSummaryData, campaignTypeFilter]);
 
   const filteredCampaigns = useMemo<Campaign[]>(() => {
     const q = (searchQuery || "").trim().toLowerCase();
-    console.log(
-      "[filteredCampaigns] mergedCampaigns:",
-      mergedCampaigns.length,
-      "items"
-    );
-    console.log("[filteredCampaigns] campaignTypeFilter:", campaignTypeFilter);
 
     return mergedCampaigns.filter((campaign: Campaign) => {
       const campaignName = campaign.name ?? campaign.campaign_name ?? "";
       const matchesSearch = q === "" || campaignName.toLowerCase().includes(q);
 
-      // Derive status if not present (for dealership campaigns)
       const campaignStatus =
         campaign.campaign_status ||
         (campaign.start_date &&
@@ -407,13 +489,10 @@ export default function CampaignDashboard() {
       const normalize = (val: string | undefined) =>
         val?.toLowerCase().replace("-", "_");
 
-      // Handle campaign_type as array or string
       const campaignType = Array.isArray(campaign.campaign_type)
         ? campaign.campaign_type[0]
         : campaign.campaign_type;
 
-      // When filtering by dealership, show all campaigns (already filtered by fetch)
-      // Otherwise, match by campaign_type
       const matchesCampaignType =
         campaignTypeFilter === "all" ||
         campaignTypeFilter === "dealership" ||
@@ -431,11 +510,30 @@ export default function CampaignDashboard() {
     campaignTypeFilter,
   ]);
 
-  const displayStart = 0;
-  const displaySlice = filteredCampaigns.slice(displayStart, ITEMS_PER_PAGE);
+  // const displayStart = (page - 1) * ITEMS_PER_PAGE;
+  // const displaySlice = filteredCampaigns.slice(
+  //   displayStart,
+  //   displayStart + ITEMS_PER_PAGE
+  // );
+  // const displaySlice = filteredCampaigns;
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
+  // const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+const displaySlice = useMemo(() => {
+    // 1. For "All", we fetch a large batch (e.g. 50+), so we MUST slice client-side
+    //    to show only 5 per page.
+    if (campaignTypeFilter === "all") {
+      const displayStart = (page - 1) * ITEMS_PER_PAGE;
+      return filteredCampaigns.slice(displayStart, displayStart + ITEMS_PER_PAGE);
+    }
 
+    // 2. For specific types (Pre/Post/Dealership), the API already returns
+    //    exactly 5 items for the current page. Do NOT slice again.
+    return filteredCampaigns;
+  }, [filteredCampaigns, page, campaignTypeFilter]);
+
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
+  // ... continue with rendering ...
   const getStatusBadge = (status?: string) => {
     const variants: Record<
       string,
@@ -468,16 +566,13 @@ export default function CampaignDashboard() {
       </Badge>
     ));
 
-  // Handler functions for dropdown actions
   const handleEdit = (campaign: Campaign) => {
-    // Navigate to campaign create page with campaign data
     const campaignId = campaign.campaign_id ?? campaign.id;
     router.push(`/campaign/create?edit=${campaignId}`);
   };
 
   const handleDuplicate = async (campaign: Campaign) => {
     try {
-      // Create a copy of the campaign
       const campaignId = campaign.campaign_id ?? campaign.id;
       const campaignType = Array.isArray(campaign.campaign_type)
         ? campaign.campaign_type[0]
@@ -488,22 +583,18 @@ export default function CampaignDashboard() {
           ? "pre_sales_campaign"
           : "post_sales_campaign";
 
-      // Fetch the campaign data
       const response = await fetchAPIData(modelName, {});
       const campaignData = response.items.find(
         (c: Campaign) => (c.campaign_id ?? c.id) === campaignId
       );
 
       if (campaignData) {
-        // Remove id fields and create a duplicate
         const { campaign_id, id, ...duplicateData } = campaignData;
         duplicateData.campaign_name = `${
           campaignData.campaign_name ?? "Campaign"
         } (Copy)`;
         duplicateData.campaign_status = "Drafted";
 
-        // In a real implementation, you would POST this to create a new campaign
-        // For now, navigate to create page with the duplicate data
         localStorage.setItem(
           "duplicateCampaignData",
           JSON.stringify(duplicateData)
@@ -521,21 +612,6 @@ export default function CampaignDashboard() {
     action: "pause" | "launch"
   ) => {
     try {
-      const campaignId = campaign.campaign_id ?? campaign.id;
-      const campaignType = Array.isArray(campaign.campaign_type)
-        ? campaign.campaign_type[0]
-        : campaign.campaign_type;
-
-      const modelName =
-        campaignType === "pre-sales" || campaignType === "pre_sales"
-          ? "pre_sales_campaign"
-          : "post_sales_campaign";
-
-      const newStatus = action === "pause" ? "paused" : "live";
-
-      // Update campaign status
-      // In a real implementation, you would PATCH the campaign
-      // For now, we'll just refresh the data
       await mutateCampaigns();
       alert(
         `Campaign ${action === "pause" ? "paused" : "launched"} successfully`
@@ -577,14 +653,24 @@ export default function CampaignDashboard() {
       setDeleteDialogOpen(false);
       setCampaignToDelete(null);
 
-      // Refresh campaigns list
       await mutateCampaigns();
-      alert("Campaign deleted successfully");
     } catch (error) {
       console.error("Error deleting campaign:", error);
       alert("Failed to delete campaign. Please try again.");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      await Promise.all([
+        mutateCampaigns(),
+        mutateCounts(),
+        mutateCampaignSummary(),
+      ]);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
     }
   };
 
@@ -602,6 +688,17 @@ export default function CampaignDashboard() {
             </p>
           </div>
           <div className="flex gap-3">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />{" "}
+              Refresh
+            </Button>
             <Button
               className="gap-2"
               onClick={() => {
@@ -634,8 +731,10 @@ export default function CampaignDashboard() {
                 <div className="text-2xl font-bold">{totalCampaignCount}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Current type:{" "}
-                  {campaignTypeFilter === "pre_sales" ||
-                  campaignTypeFilter === "pre-sales"
+                  {campaignTypeFilter === "all"
+                    ? "All Types"
+                    : campaignTypeFilter === "pre_sales" ||
+                      campaignTypeFilter === "pre-sales"
                     ? "Pre-Sales"
                     : campaignTypeFilter === "post-sales"
                     ? "Post-Sales"
@@ -809,7 +908,9 @@ export default function CampaignDashboard() {
                         className="gap-2 bg-transparent"
                       >
                         Campaign Type:{" "}
-                        {campaignTypeFilter === "pre_sales"
+                        {campaignTypeFilter === "all"
+                          ? "All"
+                          : campaignTypeFilter === "pre_sales"
                           ? "Pre-Sales"
                           : campaignTypeFilter === "post-sales"
                           ? "Post-Sales"
@@ -821,6 +922,14 @@ export default function CampaignDashboard() {
                         Filter by Campaign Type
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setCampaignTypeFilter("all");
+                          setPage(1);
+                        }}
+                      >
+                        All
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
                           setCampaignTypeFilter("pre_sales");
@@ -860,6 +969,7 @@ export default function CampaignDashboard() {
                     <TableHead>Channels Used</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Launch Date</TableHead>
+                    <TableHead>Analytics</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -868,7 +978,7 @@ export default function CampaignDashboard() {
                   {loading ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center text-muted-foreground"
                       >
                         Loading...
@@ -877,7 +987,7 @@ export default function CampaignDashboard() {
                   ) : error ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center text-destructive"
                       >
                         {error}
@@ -886,7 +996,7 @@ export default function CampaignDashboard() {
                   ) : filteredCampaigns.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center text-muted-foreground"
                       >
                         No campaigns found
@@ -900,83 +1010,66 @@ export default function CampaignDashboard() {
                         : campaign.campaign_type;
 
                       return (
-                        <TableRow
-                          key={
-                            campaign.campaign_id ?? campaign.id ?? Math.random()
-                          }
-                        >
-                          <TableCell className="font-medium">
-                            {campaignType === "pre-sales" ||
-                            campaignType === "pre_sales"
-                              ? "Pre-Sales"
-                              : campaignType === "post-sales" ||
-                                campaignType === "post_sales"
-                              ? "Post-Sales"
-                              : campaignType === "dealership" ||
-                                campaignTypeFilter === "dealership"
-                              ? "Dealership"
-                              : campaignType
-                              ? campaignType.charAt(0).toUpperCase() +
-                                campaignType.slice(1)
-                              : "—"}
+                        <TableRow key={campaign.id || campaign.campaign_id}>
+                          <TableCell className="font-medium capitalize">
+                            {campaignType?.replace("_", " ") || "Unknown"}
                           </TableCell>
-                          <TableCell className="font-medium">
-                            {campaign.campaign_name ?? "—"}
+                          <TableCell>
+                            {campaign.name ||
+                              campaign.campaign_name ||
+                              "Unnamed"}
                           </TableCell>
                           <TableCell>
                             {getChannelBadges(campaign.channels)}
                           </TableCell>
                           <TableCell>
-                            {getStatusBadge(
-                              campaign.campaign_status ||
-                                (campaign.start_date &&
-                                campaign.end_date &&
-                                Date.now() / 1000 > campaign.end_date
-                                  ? "completed"
-                                  : campaign.start_date &&
-                                    Date.now() / 1000 >= campaign.start_date
-                                  ? "live"
-                                  : "scheduled")
-                            )}
+                            {getStatusBadge(campaign.campaign_status)}
                           </TableCell>
                           <TableCell>
-                            {epochToIST(campaign.start_date) ??
-                              (campaign.start_date
-                                ? new Date(
-                                    campaign.start_date * 1000
-                                  ).toLocaleDateString()
-                                : "—")}
+                            {campaign.launchDate || campaign.start_date
+                              ? epochToIST(
+                                  campaign.launchDate || campaign.start_date
+                                )
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 gap-1.5 px-2 text-xs"
+                              onClick={() => handleInsights(campaign)}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              View Analytics
+                            </Button>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleInsights(campaign)}
-                                className="gap-2"
-                              >
-                                <BarChart3 className="h-4 w-4" />
-                                Insights
-                              </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
+                                  <Button
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <span className="sr-only">Open menu</span>
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     onClick={() => handleEdit(campaign)}
                                   >
-                                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => handleDuplicate(campaign)}
                                   >
-                                    <Copy className="mr-2 h-4 w-4" /> Duplicate
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Duplicate
                                   </DropdownMenuItem>
+
                                   {campaign.campaign_status === "live" ? (
                                     <DropdownMenuItem
                                       onClick={() =>
@@ -985,8 +1078,7 @@ export default function CampaignDashboard() {
                                     >
                                       <Pause className="mr-2 h-4 w-4" /> Pause
                                     </DropdownMenuItem>
-                                  ) : campaign.campaign_status === "Drafted" ||
-                                    campaign.campaign_status === "scheduled" ? (
+                                  ) : (
                                     <DropdownMenuItem
                                       onClick={() =>
                                         handlePauseOrLaunch(campaign, "launch")
@@ -994,19 +1086,15 @@ export default function CampaignDashboard() {
                                     >
                                       <Play className="mr-2 h-4 w-4" /> Launch
                                     </DropdownMenuItem>
-                                  ) : null}
+                                  )}
+
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
-                                    onClick={() => handleInsights(campaign)}
-                                  >
-                                    <BarChart3 className="mr-2 h-4 w-4" />{" "}
-                                    Insights
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive"
                                     onClick={() => handleDeleteClick(campaign)}
+                                    className="text-destructive focus:text-destructive"
                                   >
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -1018,68 +1106,97 @@ export default function CampaignDashboard() {
                   )}
                 </TableBody>
               </Table>
-
               {/* Pagination */}
-              <div className="flex justify-between items-center mt-4">
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  >
-                    Next
-                  </Button>
-                </div>
-
-                <div className="text-sm text-muted-foreground">
-                  Page {page} of {totalPages} • Showing {displaySlice.length} of{" "}
-                  {totalCount} campaigns
-                </div>
-              </div>
+             {/* Pagination Controls */}
+{/* Pagination */}
+<div className="flex items-center justify-center space-x-2 mt-4">
+  <Button
+    variant="outline"
+    className="h-8 w-8 p-0"
+    onClick={() => setPage(1)}
+    disabled={page === 1}
+  >
+    <span className="sr-only">Go to first page</span>
+    <ChevronsLeft className="h-4 w-4" />
+  </Button>
+  
+  <Button
+    variant="outline"
+    className="h-8 w-8 p-0"
+    onClick={() => setPage((p) => Math.max(1, p - 1))}
+    disabled={page === 1}
+  >
+    <span className="sr-only">Go to previous page</span>
+    <ChevronLeft className="h-4 w-4" />
+  </Button>
+  
+  <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+    Page {page} of {totalPages}
+  </div>
+  
+  <Button
+    variant="outline"
+    className="h-8 w-8 p-0"
+    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+    disabled={page === totalPages}
+  >
+    <span className="sr-only">Go to next page</span>
+    <ChevronRight className="h-4 w-4" />
+  </Button>
+  
+  <Button
+    variant="outline"
+    className="h-8 w-8 p-0"
+    onClick={() => setPage(totalPages)}
+    disabled={page === totalPages}
+  >
+    <span className="sr-only">Go to last page</span>
+    <ChevronsRight className="h-4 w-4" />
+  </Button>
+</div>
             </CardContent>
           </Card>
         </div>
-      </div>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Campaign</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "
-              {campaignToDelete?.campaign_name ?? "this campaign"}"? This action
-              cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setDeleteDialogOpen(false);
-                setCampaignToDelete(null);
-              }}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        {/* Delete Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Are you sure?</DialogTitle>
+              <DialogDescription>
+                This action cannot be undone. This will permanently delete the
+                campaign{" "}
+                <span className="font-medium text-foreground">
+                  {campaignToDelete?.name || campaignToDelete?.campaign_name}
+                </span>{" "}
+                and remove data from our servers.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteConfirm}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete Campaign"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Setup Modal */}
+        <CompleteSetupModal
+          open={showSetupModal}
+          onOpenChange={setShowSetupModal}
+        />
+      </div>
     </ProtectedRoute>
   );
 }

@@ -13,6 +13,7 @@ from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 from gryd_worker import gryd_db_helper as db
+from communication.connectors.communication_helpers import end_session
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 
@@ -136,7 +137,7 @@ def performance_summary():
                 FROM pre_sales_campaign c
                 LEFT JOIN campaign_performance_summary s
                   ON s.campaign_performance_summary_id =
-                     c.dict->>'campaign_id' || '-pre-sales'
+                     c.dict->>'campaign_id'
                 WHERE
                     s.campaign_performance_summary_id IS NULL
                     OR c.updated > TO_TIMESTAMP((s.dict->>'updated')::BIGINT / 1000)
@@ -147,7 +148,7 @@ def performance_summary():
                 FROM post_sales_campaign c
                 LEFT JOIN campaign_performance_summary s
                   ON s.campaign_performance_summary_id =
-                     c.dict->>'campaign_id' || '-post-sales'
+                     c.dict->>'campaign_id'
                 WHERE
                     s.campaign_performance_summary_id IS NULL
                     OR c.updated > TO_TIMESTAMP((s.dict->>'updated')::BIGINT / 1000)
@@ -202,7 +203,7 @@ def check_inactive_sessions(*args, **kwargs):
     )
 
     filters = {"session_live": True, "status": "completed~"}
-    condition, param = BaseWebhookConverter().apply_filters(**filters)
+    condition, param = apply_filters(**filters)
 
     with get_pg_connector() as pg:
         session_list = list(
@@ -216,17 +217,18 @@ def check_inactive_sessions(*args, **kwargs):
             return
 
         now_epoch = int(time.time())
-
+        other_channels = []
         for session in session_list:
             session_id = session.get("session_id")
             channel = session.get("channel")
             campaign_type = session.get("campaign_type") or "inbound"
 
             if channel not in only_for_channels:
-                mlogger.info(
-                    f"Skipping session {session_id} "
-                    f"(channel={channel})"
-                )
+                other_channels.append(channel)
+                # mlogger.info(
+                #     f"Skipping session {session_id} "
+                #     f"(channel={channel})"
+                # )
                 continue
 
             # last activity time ----------
@@ -257,11 +259,16 @@ def check_inactive_sessions(*args, **kwargs):
             )
 
             # inactivity timeout ----------
-            if campaign_type != "post-sales":
-                session_timeout_seconds = outbound_timeout_minutes * 60
-            else:
-                session_timeout_seconds = inactivity_time * 60
+            # if campaign_type != "post-sales":
+            #     session_timeout_seconds = outbound_timeout_minutes * 60
+            # else:
+            #     session_timeout_seconds = inactivity_time * 60
 
+            session_timeout_seconds = inactivity_time * 60 
+            mlogger.info(
+                f"Session {session_id} timeout set to "
+                f"{session_timeout_seconds}s"
+            )
             inactive_cutoff_epoch = (
                 last_activity_epoch + session_timeout_seconds
             )
@@ -323,10 +330,11 @@ def check_inactive_sessions(*args, **kwargs):
                             "history_updated_time": last_ts,
                         },
                     )
-
+                    # TODO:also update session related data to respective lead_model by passing last_session_id which will update last_session_channel,last_interaction etc..
+                    # update_session_data_in_lead(session_id=session_id,"") 
                     mlogger.info(
-                        f"Appended {len(appended_history)} messages "
-                        f"to session {session_id}"
+                        f"Appended {len(appended_history)} messages"
+                        f"for session {session_id}"
                     )
                 else:
                     mlogger.info(f"No new history rows for session {session_id}")
@@ -341,14 +349,43 @@ def check_inactive_sessions(*args, **kwargs):
                 )
 
                 # ending the session --------
-                BaseWebhookConverter().end_session(session_id=session_id)
+                end_session(session_id=session_id)
             else:
                 mlogger.info(
                     f"Session {session_id} still active "
                     f"({inactive_cutoff_epoch - now_epoch}s remaining)"
                 )
+        mlogger.info(f"Other channel counts skipped: {len(other_channels)}")
+        mlogger.info("************************************************")
 
-            mlogger.info("************************************************")
+def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None):
+    conditions = [] 
+    params = ()
+    if session_id:
+        conditions.append("dict->>'session_id' = %s")
+        params += (session_id,)          
+    if user_id:
+        conditions.append("dict->>'user_id' = %s")
+        params += (user_id,)
+    if channel:
+        conditions.append("dict->>'channel' = %s")
+        params += (channel,)
+    if session_live:
+        conditions.append("CAST (dict->>'session_live' AS bool) = %s")
+        params += (session_live,)
+    if status:
+        if status.endswith('~'):
+            conditions.append("dict->>'status' <> %s")
+            status = status[:-1]
+            # first_part += "AND LOWER(CAST(dict->>'status' AS text)) <> LOWER(%s)"
+            params += (status,)
+        else:
+            conditions.append("dict->>'session_live' = %s")
+            params += (session_live,)
+
+    condition = "Where " + " AND ".join(conditions)
+    return condition, params
+
 
 @gryd.is_a_task(logger_param='logger', job_param='job')
 def create_campaign_ideas_for_dealerships(

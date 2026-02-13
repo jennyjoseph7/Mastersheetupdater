@@ -32,7 +32,7 @@ class get_email_template_agent(BaseAgent):
 
         self.source = source
         self.template_variables = source.get("template_variables", [])
-        self.template_variables = self.template_variables[0]
+        #self.template_variables = self.template_variables[0]
         self.campaign_type = source.get("campaign_type","")
         self.campaign_objective = source.get("campaign_objective",[])
         #self.dealership_id = source.get("dealership_id","daveai")

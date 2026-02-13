@@ -2,7 +2,8 @@
     "name": "region_subdivision",
     "model_type": "default",
     "parents": [
-        "region"
+        "region",
+        "communication_credential"
     ],
     "attributes": [
         {
@@ -129,6 +130,10 @@
             ]
         },
         {
+          "name": "timezone",
+          "type": "text"
+        },
+        {
             "name": "subdivision_name",
             "type": "text",
             "required": true,
@@ -153,6 +158,61 @@
                     "skip_empty": true
                 }
             }
-        }
+        },
+    {
+      "name" : "voice_agent_id",
+      "type" : "text",
+      "required":false
+    },
+    {
+      "name" : "voice_id",
+      "type" : "text",
+      "required":false
+    },
+    {
+      "name" : "voice_start_language",
+      "type" : "text",
+      "default":"English",
+      "options" : [
+          "Arabic",
+          "Bulgarian",
+          "Chinese",
+          "Croatian",
+          "Czech",
+          "Danish",
+          "Dutch",
+          "English",
+          "Filipino",
+          "Finnish",
+          "French",
+          "German",
+          "Greek",
+          "Hindi",
+          "Hungarian",
+          "Indonesian",
+          "Italian",
+          "Japanese",
+          "Korean",
+          "Malay",
+          "Norwegian",
+          "Polish",
+          "Portuguese (Brazil)",
+          "Portuguese",
+          "Romanian",
+          "Russian",
+          "Slovak",
+          "Spanish",
+          "Swedish",
+          "Tamil",
+          "Turkish",
+          "Ukrainian",
+          "Vietnamese"
+      ]
+    },
+    {
+      "name" : "voice_first_message",
+      "type" : "text",
+      "required":false
+    }
     ]
 }

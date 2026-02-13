@@ -23,7 +23,26 @@
         {
             "name": "dealership_id",
             "refers": "parents.dealership.dealership_id",
-            "indexed": true
+            "indexed": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "dealer_name",
+                    "dealer_group_name",
+                    "region_name"
+                ],
+                "kwargs": {
+                    "attribute_join": "-",
+                    "is_unique": true,
+                    "separator": "-",
+                    "skip_empty": true,
+                    "case": "lower"
+                }
+            }
+        },
+        {
+            "name": "dealer_group_name",
+            "refers": "parents.dealership.dealer_group_name"
         },
         {
             "name": "dealer_name",
@@ -35,11 +54,46 @@
         },
         {
             "name": "region_id",
-            "refers": "parents.dealership.region_id"
+            "refers": "parents.dealership.region_id",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "region",
+                    "region_id"
+                ],
+                "kwargs": {
+                    "region_name": "{region_name}"
+                }
+            }
         },
         {
             "name": "region_name",
             "refers": "parents.dealership.region_name"
+        },
+        {
+            "name": "region_subdivision_id",
+            "refers": "parents.region_subdivision.subdivision_id",
+            "options": "/options/region_subdivision/subdivision_name?region_id={region_id}"
+        },
+        {
+            "name": "subdivision_name",
+            "refers": "parents.region_subdivision.subdivision_name"
+        },
+        {
+            "name": "timezone",
+            "refers": "parents.region_subdivision.timezone"
+        },
+        {
+            "name": "languages",
+            "refers": "parents.region_subdivision.languages"
+        },
+        {
+            "name": "subdivision_level_guidelines",
+            "refers": "parents.region_subdivision.subdivision_level_guidelines"
+        },
+        {
+            "name": "subdivision_level_guardrails",
+            "refers": "parents.region_subdivision.subdivision_level_guardrails"
         },
         {
             "name": "buyback_center_name",
@@ -47,9 +101,34 @@
             "indexed": true
         },
         {
+            "name": "buyback_center_full_name",
+            "type": "text",
+            "indexed": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "dealer_name",
+                    "buyback_center_name"
+                ],
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " ",
+                    "case": "title",
+                    "skip_empty": true
+                }
+            }
+        },
+        {
             "name": "buyback_center_code",
             "type": "text",
-            "indexed": true
+            "indexed": true,
+            "default": {
+                "function": "copy_attribute",
+                "args": [
+                    "buyback_center_name"
+                ]
+            }
         },
         {
             "name": "buyback_center_type",
@@ -223,6 +302,10 @@
             "refers": "parents.dealership.region_level_guardrails"
         },
         {
+            "name": "supported_brands",
+            "refers": "parents.dealership.supported_brands"
+        },
+        {
             "name": "supported_brands_guidelines",
             "refers": "parents.dealership.supported_brands_guidelines"
         },
@@ -233,6 +316,13 @@
         {
             "name": "buyback_center_level_guardrails",
             "type": "text"
+        },
+        {
+            "name": "hashtags",
+            "type": "string_list",
+            "list_type": "text",
+            "indexed": true,
+            "ui_element": "tags"
         },
         {
             "auto_updater": true,
@@ -257,6 +347,7 @@
         }
     ],
     "parents": [
-        "dealership"
+        "dealership",
+        "region_subdivision"
     ]
 }

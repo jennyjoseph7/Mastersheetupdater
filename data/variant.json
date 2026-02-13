@@ -1,274 +1,323 @@
 {
-  "timezone": "Asia/Kolkata",
-  "name": "variant",
-  "model_type": "default",
-  "attributes": [
-    {
-      "name": "created",
-      "type": "number",
-      "auto_updater": true,
-      "default": {
-        "function": "now_ctime"
-      }
-    },
-    {
-      "name": "updated",
-      "type": "number",
-      "auto_updater": true,
-      "force_update": true,
-      "default": {
-        "function": "now_ctime"
-      }
-    },
-    {
-      "name": "model_year_id",
-      "refers": "parents.model_year.model_year_id"
-    },
-    {
-      "name": "vehicle_model_id",
-      "refers": "parents.model_year.vehicle_model_id"
-    },
-    {
-      "name": "vehicle_model_generic_name",
-      "refers": "parents.model_year.vehicle_model_generic_name"
-    },
-    {
-      "name": "brand_id",
-      "refers": "parents.model_year.brand_id"
-    },
-    {
-      "name": "brand_name",
-      "refers": "parents.model_year.brand_name"
-    },
-    {
-      "name": "region_id",
-      "refers": "parents.model_year.region_id"
-    },
-    {
-      "name": "region_name",
-      "refers": "parents.model_year.region_name"
-    },
-    {
-      "name": "country_name",
-      "refers": "parents.model_year.country_name"
-    },
-    {
-      "name": "region_level_guidelines",
-      "refers": "parents.model_year.region_level_guidelines"
-    },
-    {
-      "name": "region_level_guardrails",
-      "refers": "parents.model_year.region_level_guardrails"
-    },
-    {
-      "name": "brand_logo_url",
-      "refers": "parents.model_year.brand_logo_url"
-    },
-    {
-      "name": "brand_website",
-      "refers": "parents.model_year.brand_website"
-    },
-    {
-      "name": "parent_company",
-      "refers": "parents.model_year.parent_company"
-    },
-    {
-      "name": "brand_level_guidelines",
-      "refers": "parents.model_year.brand_level_guidelines"
-    },
-    {
-      "name": "brand_level_guardrails",
-      "refers": "parents.model_year.brand_level_guardrails"
-    },
-    {
-      "name": "oem_id",
-      "refers": "parents.model_year.oem_id"
-    },
-    {
-      "name": "oem_name",
-      "refers": "parents.model_year.oem_name"
-    },
-    {
-      "name": "oem_brand_awareness",
-      "refers": "parents.model_year.oem_brand_awareness"
-    },
-    {
-      "name": "oem_country_of_origin",
-      "refers": "parents.model_year.oem_country_of_origin"
-    },
-    {
-      "name": "oem_wiki_description",
-      "refers": "parents.model_year.oem_wiki_description"
-    },
-    {
-      "name": "brochure_pdf",
-      "type": "text",
-      "constraint": {
-        "function": "url_validator"
-      },
-      "converter": {
-        "function": "url_converter"
-      },
-      "ui_element": "file"
-    },
-    {
-      "name": "brochure_download_link",
-      "type": "text",
-      "constraint": {
-        "function": "url_validator"
-      },
-      "converter": {
-        "function": "url_converter"
-      },
-      "ui_element": "url"
-    },
-    {
-      "name": "vehicle_model_name",
-      "refers": "parents.model_year.vehicle_model_name"
-    },
-    {
-      "name": "vehicle_model_aliases",
-      "refers": "parents.model_year.vehicle_model_aliases"
-    },
-    {
-        "name":"transmission_type",
-        "type":"text",
-        "options":["Automatic", "Clutchless Manual", "Manual", "CVT", "DCT", "Other"],
-        "ui_element": "select"
-    },
-    {
-      "name": "vehicle_category",
-      "refers": "parents.model_year.vehicle_category"
-    },
-    {
-      "name": "vehicle_type",
-      "refers": "parents.model_year.vehicle_type"
-    },
-    {
-      "name": "year_launched",
-      "refers": "parents.model_year.year_launched"
-    },
-    {
-        "name":"model_year",
-        "refers": "parents.model_year.year"
-    },
-    {
-      "name": "discontinuation_date",
-      "refers": "parents.model_year.discontinuation_date"
-    },
-    {
-      "name": "variant_name",
-      "type": "text",
-      "indexed": true,
-      "required": true
-    },
-    {
-      "name": "variant_full_name",
-      "indexed": true,
-      "required": true,
-      "default": {
-        "function": "name_to_id",
-        "args": ["vehicle_model_name", "variant_name"],
-        "kwargs": {
-          "attribute_join": " ",
-          "is_unique": true,
-          "separator": " - "
+    "timezone": "Asia/Kolkata",
+    "name": "variant",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "model_year_id",
+            "refers": "parents.model_year.model_year_id"
+        },
+        {
+            "name": "vehicle_model_id",
+            "refers": "parents.model_year.vehicle_model_id"
+        },
+        {
+            "name": "vehicle_model_generic_name",
+            "refers": "parents.model_year.vehicle_model_generic_name"
+        },
+        {
+            "name": "brand_id",
+            "refers": "parents.model_year.brand_id"
+        },
+        {
+            "name": "brand_name",
+            "refers": "parents.model_year.brand_name"
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.model_year.region_id"
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.model_year.region_name"
+        },
+        {
+            "name": "region_level_guidelines",
+            "refers": "parents.model_year.region_level_guidelines"
+        },
+        {
+            "name": "region_level_guardrails",
+            "refers": "parents.model_year.region_level_guardrails"
+        },
+        {
+            "name": "brand_logo_url",
+            "refers": "parents.model_year.brand_logo_url"
+        },
+        {
+            "name": "brand_website",
+            "refers": "parents.model_year.brand_website"
+        },
+        {
+            "name": "parent_company",
+            "refers": "parents.model_year.parent_company"
+        },
+        {
+            "name": "brand_level_guidelines",
+            "refers": "parents.model_year.brand_level_guidelines"
+        },
+        {
+            "name": "brand_level_guardrails",
+            "refers": "parents.model_year.brand_level_guardrails"
+        },
+        {
+            "name": "oem_id",
+            "refers": "parents.model_year.oem_id"
+        },
+        {
+            "name": "oem_name",
+            "refers": "parents.model_year.oem_name"
+        },
+        {
+            "name": "oem_brand_awareness",
+            "refers": "parents.model_year.oem_brand_awareness"
+        },
+        {
+            "name": "oem_country_of_origin",
+            "refers": "parents.model_year.oem_country_of_origin"
+        },
+        {
+            "name": "oem_wiki_description",
+            "refers": "parents.model_year.oem_wiki_description"
+        },
+        {
+            "name": "brochure_pdf",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "file"
+        },
+        {
+            "name": "brochure_download_link",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "url"
+        },
+        {
+            "name": "vehicle_model_name",
+            "refers": "parents.model_year.vehicle_model_name"
+        },
+        {
+            "name": "vehicle_model_aliases",
+            "refers": "parents.model_year.vehicle_model_aliases"
+        },
+        {
+            "name": "transmission_type",
+            "type": "text",
+            "options": [
+                "Automatic",
+                "Clutchless Manual",
+                "Manual",
+                "CVT",
+                "DCT",
+                "Other"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "vehicle_category",
+            "refers": "parents.model_year.vehicle_category"
+        },
+        {
+            "name": "vehicle_type",
+            "refers": "parents.model_year.vehicle_type"
+        },
+        {
+            "name": "year_launched",
+            "refers": "parents.model_year.year_launched"
+        },
+        {
+            "name": "model_year",
+            "refers": "parents.model_year.year"
+        },
+        {
+            "name": "discontinuation_date",
+            "refers": "parents.model_year.discontinuation_date"
+        },
+        {
+            "name": "variant_name",
+            "type": "text",
+            "indexed": true,
+            "required": true
+        },
+        {
+            "name": "variant_full_name",
+            "indexed": true,
+            "required": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "vehicle_model_name",
+                    "variant_name"
+                ],
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " - "
+                }
+            }
+        },
+        {
+            "name": "variant_aliases",
+            "type": "string_list",
+            "converter": {
+                "function": "ensure_in_list",
+                "args": [
+                    "variant_name",
+                    "variant_full_name"
+                ]
+            }
+        },
+        {
+            "name": "engine_type",
+            "type": "text",
+            "options": [
+                "Petrol",
+                "Diesel",
+                "CNG",
+                "Electric",
+                "Hybrid"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "drivetrain",
+            "type": "text",
+            "options": [
+                "FWD",
+                "RWD",
+                "AWD",
+                "4WD"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "engine_capacity_cc",
+            "type": "number"
+        },
+        {
+            "name": "power_bhp",
+            "type": "number"
+        },
+        {
+            "name": "torque_nm",
+            "type": "number"
+        },
+        {
+            "name": "mileage_kmpl",
+            "type": "number"
+        },
+        {
+            "name": "seating_capacity",
+            "type": "number"
+        },
+        {
+            "name": "fuel_tank_capacity_litres",
+            "type": "number"
+        },
+        {
+            "name": "boot_space_litres",
+            "type": "number"
+        },
+        {
+            "name": "ex_showroom_price",
+            "type": "number"
+        },
+        {
+            "name": "on_road_price",
+            "type": "number"
+        },
+        {
+            "name": "price_units",
+            "type": "text",
+            "options": [
+                "INR",
+                "USD",
+                "EUR",
+                "GBP",
+                "JPY",
+                "AED",
+                "SAR",
+                "other"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "name": "safety_rating",
+            "type": "number"
+        },
+        {
+            "name": "variant_status",
+            "type": "text",
+            "options": [
+                "Available",
+                "Discontinued",
+                "Upcoming"
+            ],
+            "ui_element": "select"
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": [
+                    "vehicle_model_name",
+                    "variant_name",
+                    "engine_type",
+                    "transmission_type",
+                    "drivetrain"
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "case": "lower",
+                    "attribute_join": "-",
+                    "is_unique": true,
+                    "separator": "-",
+                    "skip_empty": true
+                }
+            },
+            "name": "variant_id",
+            "type": "uid",
+            "id": true
+        },
+        {
+            "name": "information_status",
+            "type": "text",
+            "default": "unverified",
+            "options": [
+                "pending",
+                "running",
+                "unverified",
+                "verified"
+            ],
+            "ui_element": "select"
         }
-      }
-    },
-    {
-      "name": "variant_aliases",
-      "type": "string_list",
-      "converter": {
-        "function": "ensure_in_list",
-        "args": [
-          "variant_name",
-          "variant_full_name"
-        ]
-      }
-    },
-    {
-      "name": "engine_type",
-      "type": "text",
-      "options": ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"],
-      "ui_element": "select"
-    },
-    {
-      "name": "drivetrain",
-      "type": "text",
-      "options": ["FWD", "RWD", "AWD", "4WD"],
-      "ui_element": "select"
-    },
-    {
-      "name": "engine_capacity_cc",
-      "type": "number"
-    },
-    {
-      "name": "power_bhp",
-      "type": "number"
-    },
-    {
-      "name": "torque_nm",
-      "type": "number"
-    },
-    {
-      "name": "mileage_kmpl",
-      "type": "number"
-    },
-    {
-      "name": "seating_capacity",
-      "type": "number"
-    },
-    {
-      "name": "fuel_tank_capacity_litres",
-      "type": "number"
-    },
-    {
-      "name": "boot_space_litres",
-      "type": "number"
-    },
-    {
-      "name": "ex_showroom_price",
-      "type": "number"
-    },
-    {
-      "name": "on_road_price",
-      "type": "number"
-    },
-    {
-      "name": "price_units",
-      "type": "text",
-      "options": ["INR", "USD", "EUR", "GBP", "JPY", "AED", "SAR", "other"],
-      "ui_element": "select"
-    },
-    {
-      "name": "safety_rating",
-      "type": "number"
-    },
-    {
-      "name": "variant_status",
-      "type": "text",
-      "options": ["Available", "Discontinued", "Upcoming"],
-      "ui_element": "select"
-    },
-    {
-      "auto_updater": true,
-      "default": {
-        "args": ["vehicle_model_name", "variant_name", "engine_type", "transmission_type"],
-        "function": "name_to_id",
-        "kwargs": {
-          "case": "lower",
-          "attribute_join": " ",
-          "is_unique": true,
-          "separator": " - "
-        }
-      },
-      "name": "variant_id",
-      "type": "uid",
-      "id": true
-    }
-  ],
-  "parents": [
-    "model_year"
-  ]
+    ],
+    "parents": [
+        "model_year"
+    ]
 }

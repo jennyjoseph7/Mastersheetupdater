@@ -101,7 +101,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         self.ai_generation = source.get("ai_generation",True)
         self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
 
-        self.model_identifier =   "openai-gpt-4.1-mini"#"gcp-gemini-2.5-flash-lite"
+        self.model_identifier =   "azure-gpt-4o-mini"#"gcp-gemini-2.5-flash-lite"
 
     def validate_campaign_type(self, campaign_type):
         """Validate campaign type with proper error message."""
@@ -568,7 +568,8 @@ def generate_campaign_idea(campaign_type, campaign_objective, dealership_idea=No
               'X-GRYD-TOKEN': '53014452-7df1-351c-9b79-af13d3d6b92f',
               'X-GRYD-SESSION-ID': '94b970d4-5c2b-3762-bf65-272901d0ad53',
               'Accept': 'application/json',
-              'X-GRYD-ROLE': 'agent'
+              'X-GRYD-ROLE': 'agent',
+              'X-GRYD-APPLICATION-ID': 'autocrm'
             }
 
             response = requests.request("POST", url, headers=headers, data=payload)

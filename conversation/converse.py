@@ -4,7 +4,7 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
-from config import AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_ITEM,AUTOCRM_CORE_SERVICE_NAME
+from config import AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_ITEM,AUTOCRM_CORE_SERVICE_NAME, AUTOCRM_CAMPAIGN_SERVICE_NAME
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
 from conversation.prompt import yield_primary_prompt, run_prompt_sync
@@ -101,8 +101,8 @@ def converse(*args, **kargs):
     pass_kwargs["session_data_cache"] = setup_session_data_cache(*args, **pass_kwargs)
     pass_kwargs["responses"] = []
     dealership_id = pass_kwargs.get("session_data_cache",{}).get("data").get("campaign_data",{}).get("dealership_id")
-    if not dealership_id:
-        yield from yield_error("error","dealer_id not set in campaign data",*args, **pass_kwargs)
+    # if not dealership_id:
+    #     yield from yield_error("error","dealer_id not set in campaign data",*args, **pass_kwargs)
     customer_response = kargs.get("customer_response","")
     if request_data.get("channel") in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"] and not request_data.get("orchestrate"):
         yield from yield_primary_prompt(*args, **pass_kwargs)
@@ -114,6 +114,11 @@ def converse(*args, **kargs):
         if isinstance(ppresp,dict):
             if ppresp.get("intent","") != "filler":
                 do_orchestrate = False
+            
+            if "_job" in ppresp:
+                yield ppresp
+                mlogger.info("job == {}".format(ppresp))
+                return
         ppresp["index"] = response_index
         response_index += 1
         out_put_text += ppresp.get("placeholder","")
@@ -159,7 +164,7 @@ def post_billing_data(customer_response, out_put_text, campaign_data, dealership
         "_job":{
             "task": "post_billing",
             "service" : AUTOCRM_CORE_SERVICE_NAME,
-            "args": [dealership_id, transaction_type, "conversation", item_desc, tme, credits, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, currency]
+            "args": [dealership_id, transaction_type, "conversation", item_desc, tme, credits, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, currency,campaign_data.get("campaign_id"), channel],
         }
     }
 
@@ -273,8 +278,9 @@ def post_messages_data(*args, **pass_kwargs):
                 }
             respper = pg.update("message","message_id",message_id,out_message)
             new_messages.append(respper)
-            # mlogger.info("respper {}".format(respper))
-        session_data_cache_data = pass_kwargs.get("session_data_cache").get("data",{})
+        mlogger.info("session_id in post_messages_data {}".format(pass_kwargs.get("session_id")))
+        session_data_cache = setup_session_data_cache(session_id=pass_kwargs.get("session_id"))
+        session_data_cache_data = pass_kwargs.get("session_data_cache",session_data_cache).get("data",{})
         current_cache_messages = session_data_cache_data.get("messages",[])
         current_cache_messages.extend(new_messages)
         session_data_cache_data["messages"] = current_cache_messages
@@ -289,14 +295,21 @@ def setup_session_data_cache(*args, **kwargs):
     if cache_data:
         return cache_data
     session_id = kwargs.get("session_id")
-    session_data = kwargs.get("session_data")
+
+    with get_pg_connector() as pg:
+        session_data = kwargs.get("session_data")
+        if not session_data:
+            session_data = pg.get("session","session_id",session_id)
     with get_pg_connector() as pg:
         session_data_cache = pg.get("session_data_cache","session_id",session_id) or {}
-        mlogger.info("session_data_cache fetched == {}".format(session_data_cache)) 
+        mlogger.info("session_data_cache fetched == {}".format(session_data)) 
         if not session_data_cache or not session_data_cache.get("data",{}).get("campaign_data") or not session_data_cache.get("data",{}).get("user_data"):
             campaign_model_name = session_data.get("campaign_model")
             lead_model_name = session_data.get("lead_model")
+            mlogger.info("campaign_model_name == {}, lead_model_name == {}".format(campaign_model_name,lead_model_name))
+            mlogger.info("campaign_id == {}".format(session_data.get("campaign_id")))
             campaign_data = pg.get(campaign_model_name,"campaign_id",session_data.get("campaign_id")) or {}
+            mlogger.info("campaign_data == {}".format(campaign_data))
             dealership_id = campaign_data.get("dealership_id")
             dealership_data = pg.get("dealership","dealership_id",dealership_id)
             lead_data = pg.get(session_data.get("lead_model"),"{}_id".format(lead_model_name),session_data.get("lead_id")) or {}
@@ -319,6 +332,8 @@ def get_primary_prompt(*args, **kwargs):
     logger = kwargs.get("logger",mlogger)
     logger.info("get_primary_prompt called")
     kwargs["session_data_cache"] = setup_session_data_cache(*args, **kwargs)
+    if not kwargs.get("channel"):
+        kwargs["channel"] = "voice_phone"
     yield from yield_primary_prompt(*args, **kwargs)
 @gryd.is_a_task()
 def execute_primary_prompt(*args, **kwargs):
@@ -336,8 +351,38 @@ def execute_primary_prompt(*args, **kwargs):
     logger.info("prompt == {}".format(prompt))
     
     response = run_prompt_sync(user_query=kwargs.get("request_data").get("customer_response"),system_prompt=prompt,**kwargs)
+    mlogger.info("response == ##{}##".format(response))
+    if response == "PHONE":
 
-    yield {"intent" : "llm_response","placeholder":response}
+        phone_job = {
+                    "_job":{
+                        "task":"nada_pre_sales",
+                        "service" : AUTOCRM_CAMPAIGN_SERVICE_NAME ,
+                        "kwargs" : {
+                            "channel" : "voice_phone",
+                            "session_id" : kwargs.get("session_id")
+                        } 
+                    }
+                }
+        yield phone_job
+        mlogger.info("phone_job == {}".format(phone_job))
+        return
+    elif "WHATSAPP" in response:
+        whatsapp_job = {
+                    "_job":{
+                        "task":"nada_pre_sales",
+                        "service" : AUTOCRM_CAMPAIGN_SERVICE_NAME ,
+                        "kwargs" : {
+                            "channel" : "whatsapp_chat",
+                            "session_id" : kwargs.get("session_id")
+                        } 
+                    }
+                }
+        mlogger.info("whatsapp_job == {}".format(whatsapp_job))
+        yield whatsapp_job
+        return
+    else:
+        yield {"intent" : "llm_response","placeholder":response}
 
 
 

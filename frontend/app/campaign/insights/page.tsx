@@ -1,22 +1,58 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useMemo, Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, AlertCircle } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
+
+// --- UI Component Imports ---
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, BarChart3 } from "lucide-react";
-import { fetchCampaignPerformanceSummary } from "@/utils/api";
-import { EngagementFunnel } from "@/components/engagement-funnel";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+// --- Custom Component Imports ---
+import { ProfessionalFunnel } from "@/components/engagement-funnel";
 import { CampaignFailureChart } from "@/components/campaign-failure-chart";
 import { CostPerLeadChart } from "@/components/cost-per-lead-chart";
-import { ConversationIntentChart } from "@/components/conversation-intent-chart";
 import { ProtectedRoute } from "@/components/protected-route";
+import { EngagementModal } from "@/components/engagement-modal";
+import {
+  fetchCampaignPerformanceSummary,
+  fetchCampaignLeads,
+  epochToIST,
+} from "@/utils/api";
 
-const swrOptions = {
+// --- Constants & Configuration ---
+
+const SWR_OPTIONS = {
   revalidateOnFocus: false,
   revalidateIfStale: false,
   revalidateOnReconnect: false,
@@ -24,411 +60,694 @@ const swrOptions = {
   shouldRetryOnError: false,
 };
 
-// Process engagement stats to create funnel data
-function processEngagementStats(engagementStats: any[]) {
-  if (!engagementStats || engagementStats.length === 0) {
-    return {
-      all: [],
-      whatsapp: [],
-      email: [],
-      voice: [],
-    };
-  }
+const CHANNEL_COLORS: Record<string, string> = {
+  whatsapp_chat: "#25D366",
+  whatsapp: "#25D366",
+  email: "#EA4335",
+  voice: "#4285F4",
+  sms: "#FACC15",
+  default: "#6366f1",
+};
 
-  // Group by channel
-  const byChannel: Record<string, any[]> = {};
-  engagementStats.forEach((stat) => {
-    const channel = stat.channel || "unknown";
-    if (!byChannel[channel]) {
-      byChannel[channel] = [];
-    }
-    byChannel[channel].push(stat);
-  });
+// --- TypeScript Interfaces ---
 
-  // Calculate totals
-  const totals: Record<string, number> = {};
-  engagementStats.forEach((stat) => {
-    const status = stat.status || "";
-    totals[status] = (totals[status] || 0) + (stat.count || 0);
-  });
-
-  // Find the base count (initiated or sent)
-  const baseCount = totals.initiated || totals.sent || totals.called || 1;
-
-  // Create funnel stages
-  const createFunnelStages = (channelStats: any[], channelName: string) => {
-    const channelTotals: Record<string, number> = {};
-    channelStats.forEach((stat) => {
-      const status = stat.status || "";
-      channelTotals[status] = (channelTotals[status] || 0) + (stat.count || 0);
-    });
-
-    const channelBase = channelTotals.initiated || channelTotals.sent || channelTotals.called || baseCount;
-    if (channelBase === 0) return [];
-
-    const stages = [];
-    
-    // Sent/Called
-    const sentCount = channelTotals.sent || channelTotals.called || channelTotals.initiated || 0;
-    stages.push({
-      stage: channelName === "voice" ? "Called" : "Sent",
-      value: 100,
-      percentage: "100%",
-      count: sentCount,
-    });
-
-    // Delivered/Answered
-    const deliveredCount = channelTotals.delivered || channelTotals.answered || 0;
-    const deliveredPercent = sentCount > 0 ? Math.round((deliveredCount / sentCount) * 100) : 0;
-    stages.push({
-      stage: channelName === "voice" ? "Answered" : "Delivered",
-      value: deliveredPercent,
-      percentage: `${deliveredPercent}%`,
-      count: deliveredCount,
-      dropoff: 100 - deliveredPercent,
-    });
-
-    // Read/Greeted
-    const readCount = channelTotals.read || channelTotals.greeted || 0;
-    const readPercent = sentCount > 0 ? Math.round((readCount / sentCount) * 100) : 0;
-    stages.push({
-      stage: channelName === "voice" ? "Greeted" : "Read",
-      value: readPercent,
-      percentage: `${readPercent}%`,
-      count: readCount,
-      dropoff: deliveredPercent - readPercent,
-    });
-
-    // Interacted (assuming this is read + some interaction)
-    const interactedCount = readCount; // Simplified
-    const interactedPercent = sentCount > 0 ? Math.round((interactedCount / sentCount) * 100) : 0;
-    stages.push({
-      stage: "Interacted",
-      value: interactedPercent,
-      percentage: `${interactedPercent}%`,
-      count: interactedCount,
-      dropoff: readPercent - interactedPercent,
-    });
-
-    // Dropped-off (failed)
-    const droppedCount = channelTotals.failed || 0;
-    const droppedPercent = sentCount > 0 ? Math.round((droppedCount / sentCount) * 100) : 0;
-    stages.push({
-      stage: "Dropped-off",
-      value: droppedPercent,
-      percentage: `${droppedPercent}%`,
-      count: droppedCount,
-      dropoff: interactedPercent - droppedPercent,
-    });
-
-    // Converted (simplified - would need actual conversion data)
-    const convertedCount = Math.max(0, interactedCount - droppedCount);
-    const convertedPercent = sentCount > 0 ? Math.round((convertedCount / sentCount) * 100) : 0;
-    stages.push({
-      stage: "Converted",
-      value: convertedPercent,
-      percentage: `${convertedPercent}%`,
-      count: convertedCount,
-      dropoff: interactedPercent - convertedPercent,
-    });
-
-    return stages;
-  };
-
-  // Process all channels
-  const allStages = createFunnelStages(engagementStats, "all");
-  const whatsappStats = byChannel.whatsapp_chat || byChannel.whatsapp || [];
-  const emailStats = byChannel.email || [];
-  const voiceStats = byChannel.voice || [];
-
-  return {
-    all: allStages,
-    whatsapp: whatsappStats.length > 0 ? createFunnelStages(whatsappStats, "whatsapp") : [],
-    email: emailStats.length > 0 ? createFunnelStages(emailStats, "email") : [],
-    voice: voiceStats.length > 0 ? createFunnelStages(voiceStats, "voice") : [],
-  };
+// UPDATED: Matches the strict structure required by ProfessionalFunnel
+interface EngagementStat {
+  channel: string;
+  total: number;
+  converted: number;
+  interacted: number;
+  sent_called: number;
+  read_greeted: number;
+  delivered_answered: number;
+  [key: string]: any; // Allow extra fields
 }
 
-// Process failure stats for chart
-function processFailureStats(failureStats: any[]) {
-  if (!failureStats || failureStats.length === 0) {
-    return [];
-  }
-
-  const byChannel: Record<string, Record<string, number>> = {};
-
-  failureStats.forEach((stat) => {
-    const channel = stat.channel || "unknown";
-    const message = stat.message || "Unknown";
-    
-    if (!byChannel[channel]) {
-      byChannel[channel] = {};
-    }
-    
-    byChannel[channel][message] = (byChannel[channel][message] || 0) + (stat.count || 0);
-  });
-
-  // Convert to chart format
-  const chartData: any[] = [];
-  const channelMap: Record<string, string> = {
-    whatsapp_chat: "WhatsApp",
-    whatsapp: "WhatsApp",
-    email: "Email",
-    voice: "Voice",
-  };
-
-  Object.entries(byChannel).forEach(([channel, failures]) => {
-    const channelName = channelMap[channel] || channel;
-    const dataPoint: any = { channel: channelName };
-    
-    Object.entries(failures).forEach(([message, count]) => {
-      dataPoint[message] = count;
-    });
-    
-    chartData.push(dataPoint);
-  });
-
-  return chartData;
+interface FailureStat {
+  channel: string;
+  message: string;
+  count: number;
 }
 
-export default function CampaignInsightsPage() {
+interface IntentStat {
+  channel: string;
+  count: number;
+  intent?: string;
+}
+
+interface CampaignPerformance {
+  campaign_name: string;
+  campaign_type: string;
+  engagement_stats: EngagementStat[];
+  failure_stats_by_channel: FailureStat[];
+  intent_distribution_by_channel: IntentStat[];
+  // Include other fields returned by your API
+}
+
+interface CampaignLead {
+  pre_sales_lead_id?: string;
+  post_sales_lead_id?: string;
+  lead_id?: string;
+  user_id?: string;
+  person_name: string;
+  phone_number: string;
+  email?: string;
+  disposition: string;
+  provider_status?: string;
+  last_interaction_time?: number;
+  audience_name: string;
+  created: number;
+  updated: number;
+  channel?: string;
+  campaign_name?: string;
+  dealer_name?: string;
+  region_name?: string;
+  [key: string]: any;
+}
+
+// --- Helper Logic ---
+
+function processFailureStats(failureStats: FailureStat[]) {
+  if (!failureStats || failureStats.length === 0) return [];
+  return failureStats.map((stat) => ({
+    ...stat,
+    channelName: stat.channel === "whatsapp_chat" ? "WhatsApp" : stat.channel,
+  }));
+}
+
+function processIntentStats(intentStats: IntentStat[]) {
+  if (!intentStats || intentStats.length === 0) return [];
+
+  const validChannels = Object.keys(CHANNEL_COLORS);
+
+  return intentStats
+    .filter((stat) => {
+      const channel = stat.channel || "";
+      return validChannels.includes(channel) || channel === "whatsapp_chat";
+    })
+    .map((stat) => ({
+      name: stat.channel === "whatsapp_chat" ? "WhatsApp" : stat.channel,
+      count: stat.count,
+      fill: CHANNEL_COLORS[stat.channel] || CHANNEL_COLORS.default,
+    }));
+}
+
+// --- Inner Component ---
+
+function CampaignInsightsContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const campaignId = searchParams?.get("campaign_id");
+  const [engagementModalOpen, setEngagementModalOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<{
+    userId: string;
+    personName?: string;
+  } | null>(null);
 
-  const { data: performanceData, isLoading } = useSWR(
+  // 1. Fetch Performance Data
+  const {
+    data: performanceData,
+    isLoading,
+    error,
+  } = useSWR<CampaignPerformance>(
     campaignId ? `campaign-performance-${campaignId}` : null,
     () => fetchCampaignPerformanceSummary(campaignId || ""),
-    swrOptions
+    SWR_OPTIONS
   );
 
   const campaignName = performanceData?.campaign_name || "Campaign";
   const campaignType = performanceData?.campaign_type || "";
 
-  // Process data for charts
-  const funnelData = useMemo(() => {
-    if (!performanceData?.engagement_stats) return null;
-    return processEngagementStats(performanceData.engagement_stats);
-  }, [performanceData]);
+  // 2. Prepare Data for Charts (Memoized)
+  const failureData = useMemo(
+    () => processFailureStats(performanceData?.failure_stats_by_channel || []),
+    [performanceData]
+  );
 
-  const failureData = useMemo(() => {
-    if (!performanceData?.failure_stats_by_channel) return [];
-    return processFailureStats(performanceData.failure_stats_by_channel);
-  }, [performanceData]);
+  const intentData = useMemo(
+    () =>
+      processIntentStats(performanceData?.intent_distribution_by_channel || []),
+    [performanceData]
+  );
 
-  if (!campaignId) {
+  // 3. Construct API Response object for ProfessionalFunnel
+  const funnelApiResponse = useMemo(() => {
+    if (!performanceData) return undefined;
+    return {
+      data: [
+        {
+          ...performanceData,
+          campaign_id: campaignId || "", // Ensure ID is present
+        },
+      ],
+    };
+  }, [performanceData, campaignId]);
+
+  // 4. Fetch Leads
+  const {
+    data: leadsData,
+    isLoading: leadsLoading,
+    error: leadsError,
+  } = useSWR<{ items: CampaignLead[]; total: number }>(
+    campaignId ? `campaign-leads-${campaignId}` : null,
+    () => fetchCampaignLeads(campaignId || ""),
+    SWR_OPTIONS
+  );
+
+  // -- Render States --
+  if (isLoading) {
     return (
-      <ProtectedRoute>
-        <div className="flex flex-col w-full">
-          <div className="flex h-20 items-center justify-between px-4 md:px-6 lg:px-8 w-full">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight">Campaign Insights</h1>
-              </div>
-            </div>
-          </div>
-          <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-6 w-full">
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center text-muted-foreground">
-                  Please select a campaign to view insights.
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+      <div className="flex flex-col w-full space-y-6 px-4 md:px-6 lg:px-8 pb-6 mt-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-[250px]" />
         </div>
-      </ProtectedRoute>
+        <Skeleton className="h-[400px] w-full" />
+      </div>
     );
   }
 
-  if (isLoading) {
+  if (error) {
     return (
-      <ProtectedRoute>
-        <div className="flex flex-col w-full">
-          <div className="flex h-20 items-center justify-between px-4 md:px-6 lg:px-8 w-full">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight">Loading...</h1>
-              </div>
-            </div>
-          </div>
-          <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-6 w-full">
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center text-muted-foreground">Loading campaign insights...</div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </ProtectedRoute>
+      <div className="flex-1 px-4 md:px-6 lg:px-8 pb-6 w-full mt-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            Failed to load data. {error.message}
+          </AlertDescription>
+        </Alert>
+        <Link href="/">
+          <Button variant="outline" className="mt-4">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+        </Link>
+      </div>
     );
   }
 
   if (!performanceData) {
     return (
-      <ProtectedRoute>
-        <div className="flex flex-col w-full">
-          <div className="flex h-20 items-center justify-between px-4 md:px-6 lg:px-8 w-full">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight">Campaign Insights</h1>
-              </div>
-            </div>
-          </div>
-          <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-6 w-full">
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center text-muted-foreground">
-                  No performance data available for this campaign.
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </ProtectedRoute>
+      <div className="flex-1 px-4 md:px-6 lg:px-8 pb-6 w-full mt-6">
+        <Alert>
+          <AlertTitle>No Data</AlertTitle>
+          <AlertDescription>No campaign selected.</AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   return (
-    <ProtectedRoute>
-      <div className="flex flex-col w-full">
-        {/* Header */}
-        <div className="flex h-20 items-center justify-between px-4 md:px-6 lg:px-8 w-full">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </Link>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold tracking-tight">{campaignName}</h1>
-                <Badge variant={campaignType === "post-sales" ? "default" : "secondary"}>
-                  {campaignType === "post-sales" ? "Post-Sales" : campaignType === "pre-sales" ? "Pre-Sales" : campaignType}
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                Campaign Performance Statistics
-              </p>
+    <div className="flex flex-col w-full">
+      {/* Header */}
+      <div className="flex h-20 items-center justify-between px-4 md:px-6 lg:px-8 w-full">
+        <div className="flex items-center gap-4">
+          <Link href="/">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {campaignName}
+              </h1>
+              <Badge
+                variant={
+                  campaignType === "post-sales" ? "default" : "secondary"
+                }
+              >
+                {campaignType === "post-sales"
+                  ? "Post-Sales"
+                  : campaignType === "pre-sales"
+                  ? "Pre-Sales"
+                  : campaignType}
+              </Badge>
             </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Campaign Performance Statistics
+            </p>
           </div>
         </div>
+      </div>
 
-        <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-6 w-full">
-          {/* Tabs for Statistics and Audience */}
-          <Tabs defaultValue="statistics" className="w-full">
-            <TabsList>
-              <TabsTrigger value="statistics">Statistics</TabsTrigger>
-              <TabsTrigger value="audience">Audience / Leads</TabsTrigger>
-            </TabsList>
+      <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-6 w-full">
+        <Tabs defaultValue="statistics" className="w-full">
+          <TabsList>
+            <TabsTrigger value="statistics">Statistics</TabsTrigger>
+            <TabsTrigger value="audience">Audience / Leads</TabsTrigger>
+          </TabsList>
 
-            {/* Statistics Tab */}
-            <TabsContent value="statistics" className="space-y-6 mt-6">
-              <div className="space-y-6">
-                <h2 className="text-xl font-semibold">Campaign Performance Statistics</h2>
-
-                {/* Engagement Funnel */}
-                {funnelData && (funnelData.all?.length > 0 || funnelData.whatsapp?.length > 0 || funnelData.email?.length > 0 || funnelData.voice?.length > 0) && (
-                  <Card className="shadow">
-                    <CardHeader>
-                      <CardTitle>Engagement Funnel</CardTitle>
-                      <CardDescription>Track user journey from initial contact to conversion</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <EngagementFunnel customData={funnelData} />
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Failure Reasons Bar Graph */}
-                {failureData.length > 0 && (
-                  <Card className="shadow">
-                    <CardHeader>
-                      <CardTitle>Failure Reasons by Channel</CardTitle>
-                      <CardDescription>Distribution of delivery failures across channels</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <CampaignFailureChart customData={failureData} />
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Analytics Charts */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  {/* Cost per Lead */}
-                  <Card className="shadow">
-                    <CardHeader>
-                      <CardTitle>Cost per Lead by Channel</CardTitle>
-                      <CardDescription>Average cost to acquire a lead per channel</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <CostPerLeadChart />
-                    </CardContent>
-                  </Card>
-
-                  {/* Intent Distribution */}
-                  <Card className="shadow">
-                    <CardHeader>
-                      <CardTitle>Intent Distribution by Channel</CardTitle>
-                      <CardDescription>Distribution of conversation intents across channels</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ConversationIntentChart />
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Audience Tab */}
-            <TabsContent value="audience" className="space-y-6 mt-6">
-              <Card>
+          <TabsContent value="statistics" className="space-y-6 mt-6">
+            
+            {/* 1. Engagement Funnel */}
+            {performanceData.engagement_stats?.length > 0 && (
+              <Card className="shadow-sm">
                 <CardHeader>
-                  <CardTitle>Campaign Leads</CardTitle>
-                  <CardDescription>View and manage leads from this campaign</CardDescription>
+                  <CardTitle>Engagement Funnel</CardTitle>
+                  <CardDescription>
+                    Current status distribution (Non-Cumulative)
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center text-muted-foreground py-8">
-                    Lead data will be displayed here
-                  </div>
+                  {/* FIX: Used `as any` to resolve the type mismatch between the two files */}
+                  <ProfessionalFunnel apiResponse={funnelApiResponse as any} />
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
+            )}
+
+            {/* 2. Combined Row: Failure Chart, Failure Grid, Intent Distribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Column 1: Failure Chart */}
+              <Card className="shadow-sm flex flex-col">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-medium">
+                    Failure Chart
+                  </CardTitle>
+                  <CardDescription>Visual breakdown of errors</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 min-h-[250px]">
+                  {failureData.length > 0 ? (
+                    <CampaignFailureChart customData={failureData} />
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                      No failures recorded
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Column 2: Failure Reasons Grid */}
+              <Card className="shadow-sm flex flex-col">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-base font-medium">
+                        Failure Reasons
+                      </CardTitle>
+                      <CardDescription>Detailed list</CardDescription>
+                    </div>
+                    {failureData.length > 0 && (
+                      <Badge variant="destructive" className="ml-2 h-6">
+                        {failureData.reduce((acc, curr) => acc + curr.count, 0)}{" "}
+                        Failed
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-auto">
+                  {failureData.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[100px]">Channel</TableHead>
+                          <TableHead>Error</TableHead>
+                          <TableHead className="text-right">#</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {failureData.map((item, idx) => {
+                          const channelKey =
+                            item.channel === "whatsapp_chat"
+                              ? "whatsapp"
+                              : item.channel;
+                          const channelColor =
+                            CHANNEL_COLORS[channelKey] ||
+                            CHANNEL_COLORS.default;
+
+                          return (
+                            <TableRow key={idx}>
+                              <TableCell
+                                className="font-medium capitalize text-xs"
+                                style={{ color: channelColor }}
+                              >
+                                {item.channelName}
+                              </TableCell>
+                              <TableCell
+                                className="text-muted-foreground text-xs truncate max-w-[120px]"
+                                title={item.message}
+                              >
+                                {item.message}
+                              </TableCell>
+                              <TableCell className="text-right font-bold text-xs">
+                                {item.count}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                      No failures recorded
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Column 3: Intent Distribution */}
+              <Card className="shadow-sm flex flex-col">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-medium">
+                    Intent Distribution
+                  </CardTitle>
+                  <CardDescription>By Channel</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 min-h-[250px]">
+                  {intentData.length > 0 ? (
+                    <ResponsiveContainer
+                      width="100%"
+                      height="100%"
+                      minHeight={250}
+                    >
+                      <BarChart
+                        data={intentData}
+                        margin={{ top: 20, right: 20, left: 0, bottom: 10 }}
+                        barCategoryGap="20%"
+                      >
+                        <defs>
+                          {intentData.map((entry, index) => (
+                            <linearGradient
+                              key={`gradient-${index}`}
+                              id={`gradient-${index}`}
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
+                            >
+                              <stop
+                                offset="0%"
+                                stopColor={entry.fill}
+                                stopOpacity={1}
+                              />
+                              <stop
+                                offset="100%"
+                                stopColor={entry.fill}
+                                stopOpacity={0.7}
+                              />
+                            </linearGradient>
+                          ))}
+                        </defs>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          vertical={false}
+                          stroke="hsl(var(--muted))"
+                          opacity={0.3}
+                        />
+                        <XAxis
+                          dataKey="name"
+                          stroke="hsl(var(--muted-foreground))"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          height={40}
+                          tick={(props) => {
+                            const { x, y, payload } = props;
+                            const dataEntry = intentData.find(
+                              (entry) => entry.name === payload.value
+                            );
+                            const fillColor =
+                              dataEntry?.fill || "hsl(var(--muted-foreground))";
+                            return (
+                              <g transform={`translate(${x},${y})`}>
+                                <text
+                                  x={0}
+                                  y={0}
+                                  dy={16}
+                                  textAnchor="middle"
+                                  fill={fillColor}
+                                  fontSize={12}
+                                  fontWeight={500}
+                                >
+                                  {payload.value}
+                                </text>
+                              </g>
+                            );
+                          }}
+                        />
+                        <YAxis
+                          stroke="hsl(var(--muted-foreground))"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          allowDecimals={false}
+                          tick={{ fill: "hsl(var(--muted-foreground))" }}
+                          width={40}
+                        />
+                        <Tooltip
+                          cursor={{ fill: "transparent" }}
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+                                  <p className="font-semibold text-sm mb-2">
+                                    {payload[0].payload.name}
+                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className="w-3 h-3 rounded-full"
+                                      style={{
+                                        backgroundColor: payload[0].color,
+                                      }}
+                                    />
+                                    <span className="text-sm font-medium">
+                                      {payload[0].value}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar dataKey="count" radius={[8, 8, 0, 0]} barSize={50}>
+                          {intentData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={`url(#gradient-${index})`}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                      No intent data available
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 3. Cost Metrics (Separate Row) */}
+            <div className="grid grid-cols-1" style={{ display: "none" }}>
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle>Cost per Lead</CardTitle>
+                  <CardDescription>
+                    Average cost to acquire a lead
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <CostPerLeadChart />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="audience" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Campaign Leads</CardTitle>
+                <CardDescription>
+                  View and manage leads from this campaign
+                  {leadsData && leadsData.total > 0 && (
+                    <span className="ml-2">({leadsData.total} total)</span>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {leadsLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ) : leadsError ? (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>
+                      Failed to load leads. {leadsError.message}
+                    </AlertDescription>
+                  </Alert>
+                ) : !leadsData || leadsData.items.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    No leads found for this campaign
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead className="text-center">
+                            Disposition
+                          </TableHead>
+                          <TableHead className="text-center">
+                            Provider Status
+                          </TableHead>
+                          <TableHead>Last Interaction</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {leadsData.items.map((lead, index) => {
+                          const leadId =
+                            lead.pre_sales_lead_id ||
+                            lead.post_sales_lead_id ||
+                            lead.lead_id ||
+                            `lead-${index}`;
+
+                          const displayName = lead.person_name || "User";
+                          const displayEmail = lead.email || "-";
+
+                          return (
+                            <TableRow key={leadId}>
+                              <TableCell className="font-medium">
+                                {displayName}
+                              </TableCell>
+                              <TableCell>
+                                {lead.phone_number || "N/A"}
+                              </TableCell>
+                              <TableCell>{displayEmail}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    lead.disposition === "contacted"
+                                      ? "border-green-500 text-green-700 dark:text-green-400"
+                                      : lead.disposition === "failed"
+                                      ? "border-red-500 text-red-700 dark:text-red-400"
+                                      : lead.disposition === "queued"
+                                      ? "border-blue-500 text-blue-700 dark:text-blue-400"
+                                      : lead.disposition === "reached"
+                                      ? "border-purple-500 text-purple-700 dark:text-purple-400"
+                                      : lead.disposition === "converted" ||
+                                        lead.disposition === "engaged"
+                                      ? "border-primary text-primary"
+                                      : ""
+                                  }
+                                >
+                                  {lead.disposition || "N/A"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {lead.provider_status ? (
+                                  <Badge
+                                    variant="outline"
+                                    className={
+                                      lead.provider_status === "reached"
+                                        ? "border-purple-500 text-purple-700 dark:text-purple-400"
+                                        : lead.provider_status === "contacted"
+                                        ? "border-green-500 text-green-700 dark:text-green-400"
+                                        : lead.provider_status === "failed"
+                                        ? "border-red-500 text-red-700 dark:text-red-400"
+                                        : "border-muted-foreground/50"
+                                    }
+                                  >
+                                    {lead.provider_status}
+                                  </Badge>
+                                ) : (
+                                  "-"
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {lead.last_interaction_time
+                                  ? epochToIST(lead.last_interaction_time)
+                                  : lead.created
+                                  ? epochToIST(lead.created)
+                                  : "-"}
+                              </TableCell>
+                            <TableCell>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  // 1. Visual Feedback: Disable if we absolutely cannot find an ID or Campaign ID
+                                  disabled={!campaignId || (!lead.user_id && !lead.lead_id && !lead.pre_sales_lead_id && !lead.post_sales_lead_id)}
+                                  onClick={() => {
+                                    // 2. Determine the best available ID to use
+                                    // Many systems use 'lead_id' or specific sales IDs if 'user_id' isn't generated yet
+
+                                    const effectiveUserId = lead.pre_sales_lead_id || lead.post_sales_lead_id;
+                                    // console.log("Effective User ID for Engagement:", effectiveUserId);
+                                    // console.log("Lead Data:", lead);
+                                    // 3. Debugging: This will show up in your browser console (F12)
+                                    console.log("Engagement Clicked:", { 
+                                      effectiveUserId, 
+                                      campaignId, 
+                                      rawLead: lead 
+                                    });
+
+                                    if (effectiveUserId && campaignId) {
+                                      setSelectedLead({
+                                        userId: effectiveUserId, 
+                                        personName: lead.person_name,
+                                      });
+                                      setEngagementModalOpen(true);
+                                    } else {
+                                      console.warn("Cannot open modal: Missing User ID or Campaign ID");
+                                    }
+                                  }}
+                                >
+                                  Engagement
+                                </Button>
+                            </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-    </ProtectedRoute>
+
+      {/* Engagement Modal */}
+      {selectedLead && campaignId && (
+        <EngagementModal
+          isOpen={engagementModalOpen}
+          onClose={() => {
+            setEngagementModalOpen(false);
+            setSelectedLead(null);
+          }}
+          userId={selectedLead.userId}
+          campaignId={campaignId}
+          personName={selectedLead.personName}
+        />
+      )}
+    </div>
   );
 }
 
+// --- Main Page Export ---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+export default function CampaignInsightsPage() {
+  return (
+    <ProtectedRoute>
+      <Suspense
+        fallback={
+          <div className="p-8 space-y-4">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-64 w-full" />
+          </div>
+        }
+      >
+        <CampaignInsightsContent />
+      </Suspense>
+    </ProtectedRoute>
+  );
+}

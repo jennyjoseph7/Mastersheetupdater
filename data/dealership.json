@@ -259,6 +259,30 @@
             "refers": "parents.region.region_level_guardrails"
         },
         {
+            "name": "region_discount_percentage",
+            "refers": "parents.region.discount_percentage"
+        },
+        {
+            "name": "discount_percentage",
+            "type": "number",
+            "default": 0
+        },
+        {
+            "name": "flat_discount",
+            "type": "bool",
+            "default": false
+        },
+        {
+            "name": "power_law_discount",
+            "type": "bool",
+            "default": false
+        },
+        {
+            "name": "deduct_payment_gateway_charges",
+            "type": "bool",
+            "default": false
+        },
+        {
             "name": "showroom_center_count",
             "type": "number"
         },
@@ -445,6 +469,13 @@
             "ui_element": "image"
         },
         {
+            "name": "hashtags",
+            "type": "string_list",
+            "list_type": "text",
+            "indexed": true,
+            "ui_element": "tags"
+        },
+        {
             "name": "dealership_id",
             "type": "uid",
             "indexed": true,
@@ -465,6 +496,11 @@
                 }
             },
             "auto_updater": true
+        },
+        {
+            "name" : "doc_data",
+            "type" : "text",
+            "require" : false
         }
     ],
     "parents": [

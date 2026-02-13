@@ -197,14 +197,14 @@
             }
         },
         {
-            "name": "transmission",
+            "name": "transmission_type",
             "type": "text",
             "default": {
                 "function": "get_from_model",
                 "args": [
                     "variant",
                     "variant_id",
-                    "transmission"
+                    "transmission_type"
                 ]
             }
         },

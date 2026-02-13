@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // Imports
-import { fetchAudienceTasks } from "@/utils/api";
+import { fetchAudienceTasks ,getDealershipId} from "@/utils/api";
 import { api } from "@/lib/api";
 
 import {
@@ -297,6 +297,7 @@ function CampaignCreateContent() {
   const [tone, setTone] = useState("");
   const [callToAction, setCallToAction] = useState("");
   const [language, setLanguage] = useState("en");
+  const [urgencyHook, setUrgencyHook] = useState("");
 
   // Audience Data
   const [targetAudience, setTargetAudience] = useState<string[]>([]);
@@ -521,6 +522,7 @@ function CampaignCreateContent() {
 
       setCampaignName(data.campaign_name);
       setCampaignDescription(data.campaign_description);
+      setUrgencyHook(data.urgency_hook);
       setCampaignTitle(data.campaign_tagline);
       setTone(data.campaign_tone);
       setCallToAction(data.ctas?.[0] || "Learn More");
@@ -602,7 +604,7 @@ function CampaignCreateContent() {
       channels: mapChannels(selectedChannels),
       languages: [mapLanguage(language)],
       campaign_offer: campaignData?.campaignOffer || campaignDescription,
-      urgency_hook: campaignData?.urgencyHook || "",
+      urgency_hook: urgencyHook || "",
       ctas: [callToAction],
       number_targeted: 0,
       budget_allocated: 0,
@@ -617,22 +619,28 @@ function CampaignCreateContent() {
     try {
       let endpoint = "";
       let finalPayload = {};
+      const dealershipId = getDealershipId();
 
+      if (!dealershipId) {
+        alert("Dealership ID not found. Please re-login.");
+        setIsPostingCampaign(false);
+        return;
+      }
       if (campaignType === "presales") {
         endpoint = "/gryd/db/object/pre_sales_campaign";
         finalPayload = {
           ...commonPayload,
           campaign_type: "pre-sales",
-          workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
-          dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
+          // workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+          dealership_id: dealershipId,
         };
       } else {
         endpoint = "/gryd/db/object/post_sales_campaign";
         finalPayload = {
           ...commonPayload,
           campaign_type: "post-sales",
-          workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
-          dealership_id: "nexa-delhi-south-nexa-dealer-group-north-india",
+          // workshop_id: "ambal-auto - ambal-auto---service-center - coimbatore",
+          dealership_id: dealershipId,
         };
       }
 
@@ -958,7 +966,7 @@ function CampaignCreateContent() {
           isOpen={isUploadDialogOpen}
           onClose={() => setIsUploadDialogOpen(false)}
           prefilledData={{
-            category: campaignType === "presales" ? "pre_sales" : "post-sales",
+            category: campaignType === "presales" ? "pre-sales" : "post-sales",
             objectiveId: selectedObjective,
             campaignId: createdCampaignId || undefined,
           }}
@@ -1232,6 +1240,13 @@ function CampaignCreateContent() {
                                   onChange={(e) =>
                                     setCallToAction(e.target.value)
                                   }
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Urgency Hook</Label>
+                                <Input
+                                  value={urgencyHook}
+                                  onChange={(e) => setUrgencyHook(e.target.value)}
                                 />
                               </div>
                             </div>

@@ -34,8 +34,6 @@
     "dealership_lead",
     "pre_sales_lead",
     "post_sales_lead",
-    "phone_number_status",
-    "email_status",
     "template",
     "showroom_visit",
     "service_visit",
@@ -50,5 +48,11 @@
     "campaign_dashboard",
     "campaign_performance_summary",
     "campaign_summary",
-    "template_summary"
+    "template_summary",
+    "autosphere_template",
+    "post_idea",
+    "post_showroom",
+    "post_workshop",
+    "post_buyback_center",
+    "model_year_image"
 ]
