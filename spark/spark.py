@@ -1,5 +1,6 @@
 import sys
 import os, re, tempfile
+from ai_service import ai_service
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
@@ -9,7 +10,7 @@ json = hp.json
 APP_DIR = dirname(abspath(__file__))
 if APP_DIR not in sys.path:
     sys.path.append(APP_DIR)
-from config import OPENAI_API_KEY, \
+from config import AUTOCRM_APP_ENTERPRISE_ID, OPENAI_API_KEY, \
     OPENAI_IMAGE_MODEL, \
     OPENAI_IMAGE_SIZE, \
     OPENAI_INPUT_TEXT_TOKEN_PRICE, \
@@ -91,7 +92,7 @@ def openai_image_generation(
         with tempfile.NamedTemporaryFile(suffix=".png") as f:
             local_img_path = f.name
             download_file(input_image_url, local_img_path)
-            edit_prompt = f"{prompt.strip()} (Do not change the subject/foreground.)"
+            edit_prompt = f"{prompt.strip()} (Preserve details and features of the car.)"
 
             headers = {
                 "Authorization": f"Bearer {api_key}"
@@ -154,6 +155,48 @@ def openai_image_generation(
         input_image_url=input_image_url,
         prompt=prompt
     )
+
+@gryd.is_a_task(function_name = "validate_prompt", job_param = 'job', logger_param = 'logger')
+def validate_prompt(prompt: str, car_manufacturer: str = None, car_model: str = None, job = None, logger = None):
+    logger = logger or mlogger
+    car_manufacturer = car_manufacturer or "Unknown"
+    car_model = car_model or "Unknown model"
+    r = ai_service.get_llm_response(user_query=prompt, system_prompt=f"""
+You are a prompt validator. 
+You will be given a prompt and you will need to validate it to make sure the prompt
+Car manufacturer: {car_manufacturer}
+Car model: {car_model}
+- does not contain any offensive or sensitive words. 
+- does not contain any urls. 
+- does not contain any email addresses. 
+- does not contain any phone numbers. 
+- does not contain any personal information. 
+- does not contain any sensitive information. 
+- does not contain any confidential information. 
+- does not contain any proprietary information. 
+- does not contain any confidential information. 
+- does not contain any html tags. 
+- does not contain any markdown tags. 
+- does not contain any code. 
+- does not contain any code blocks. 
+- does not contain any code snippets. 
+- does not contain any code examples. 
+- only contains instructions which can be interpreted as asking for a specific background or theme
+- does not contain any other instructions or instructions which are not related to background change
+- should not contain information about any other car manufacturer or car model
+- does not ask to modify the car which is the subject of the image in any way
+- does not ask to add any other objects to the image
+If the prompt is valid, you will return json valid: true. 
+If the prompt is invalid, you will return json valid: false, reason: reason why it is invalid.
+Strictly follow the json format.
+
+Now validate the prompt:
+""", model_identifier="azure-gpt-4o-mini", service = SERVICE, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID)
+    try:
+        return json.loads(r)
+    except Exception as e:
+        logger.error(f"Error validating prompt: {e}")
+        return {"valid": False, "reason": str(e)}
 
 if __name__ == "__main__":
     input_image_url = "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp"
