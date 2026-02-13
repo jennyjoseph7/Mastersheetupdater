@@ -200,7 +200,7 @@ def trigger_voice_call(*args, **kwargs):
 
     timeout = time.time() + float(user_data.get("call_timeout", 600))  # 10 minutes
 
-    attempted_timeout = time.time() + float(user_data.get("attempted_status_timeout", 60))  # 1 minutes
+    attempted_timeout = time.time() + float(user_data.get("attempted_status_timeout", 30))  # 0.5 minutes
 
     while time.time() < timeout:
         time.sleep(5)
