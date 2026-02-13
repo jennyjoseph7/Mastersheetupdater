@@ -16,7 +16,8 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, OPENAI_API_KEY, \
     OPENAI_INPUT_TEXT_TOKEN_PRICE, \
     OPENAI_OUTPUT_TEXT_TOKEN_PRICE, \
     OPENAI_INPUT_IMAGE_TOKEN_PRICE, \
-    OPENAI_OUTPUT_IMAGE_TOKEN_PRICE
+    OPENAI_OUTPUT_IMAGE_TOKEN_PRICE, \
+    VALIDATE_PROMPT_MODEL
 from combine_images import merge_layers
 from check_distortion import analyze_image, pad_and_resize_image
 from spdl_comfy import comfy_image_generation_task
@@ -157,10 +158,11 @@ def openai_image_generation(
     )
 
 @gryd.is_a_task(function_name = "validate_prompt", job_param = 'job', logger_param = 'logger')
-def validate_prompt(prompt: str, car_manufacturer: str = None, car_model: str = None, job = None, logger = None):
+def validate_prompt(prompt: str, car_manufacturer: str = None, car_model: str = None, validate_prompt_model: str = None, job = None, logger = None):
     logger = logger or mlogger
     car_manufacturer = car_manufacturer or "Unknown"
     car_model = car_model or "Unknown model"
+    validate_prompt_model = validate_prompt_model or VALIDATE_PROMPT_MODEL
     r = ai_service.get_llm_response(user_query=prompt, system_prompt=f"""
 You are a prompt validator. 
 You will be given a prompt and you will need to validate it to make sure the prompt
@@ -191,7 +193,7 @@ If the prompt is invalid, you will return json valid: false, reason: reason why 
 Strictly follow the json format.
 
 Now validate the prompt:
-""", model_identifier="azure-gpt-4o-mini", service = SERVICE, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID)
+""", model_identifier=validate_prompt_model, service = SERVICE, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID)
     try:
         return json.loads(r)
     except Exception as e:
