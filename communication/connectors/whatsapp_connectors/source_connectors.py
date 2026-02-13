@@ -691,56 +691,9 @@ class BaseWebhookConverter:
 
             logger.info(f"Created Async task result: {res}")
     
-
-    def get_or_create_person(self,phone_number):
-        """Return person object; create if not exists."""
-        logger.info(f"Getting or creating person for phone_number: {phone_number}")
-        
-        with get_pg_connector() as pg:
-            # filters={"phone_number":phone_number,"_sort_by": "updated", "_sort_reverse": True}
-            person_list = list(pg.list_order_by(
-                "person",
-                {"phone_number":phone_number},
-                order_by="updated",
-                order="DESC"
-            ))
-            
-            logger.info(f"Person list found: {person_list}")
-            if person_list:
-                logger.info(f"Person already exists for phone_number: {phone_number} and the user_id is {person_list[0].get('user_id')}")
-                return person_list[0]  
-            
-            d={
-                "phone_number": phone_number,
-                "created":time.time(),
-            }
-            # Create new person
-            user_id_attr=self.generate_uid(d)
-            logger.info(f"user_id_attr: {user_id_attr}")
-            d= pg.update("person","user_id",user_id_attr,{
-                "phone_number": phone_number,
-                "created":time.time(),
-                "updated":time.time()
-                })
-            logger.info(f"Person with phone_number: {phone_number}. Doesnt exist. Created a new one. data: {d}")
-            return d
-
-    def generate_uid(self,data):
-        if isinstance(data, (dict, list)):
-            data_str = json.dumps(data, sort_keys=True)
-        else:
-            data_str = str(data)
-
-        uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
-
-        return uid.hex[:16]   # 16 characters
-
-
-   
     @gryd.is_a_task(function_name="check_or_create_session")
     def check_or_create_session(phone_number, campaign_details, from_web_chat): 
         return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
-
 
     
     def send_otp_template(*args, **kwargs):
