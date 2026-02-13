@@ -23,7 +23,7 @@ COMFY_HOST = os.getenv("COMFY_HOST")
 WORKFLOW_PATH = os.path.join(
     BASE_DIR,
     "comfy_workflows",
-    "SDPL.json"
+    "sdpl.json"
 )
 
 COMFY_INPUT_DIR = os.getenv("COMFY_INPUT_DIR")
