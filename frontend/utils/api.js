@@ -439,8 +439,8 @@ async function fetchUserSessions(
       status: "completed",
       dealership_id: dealershipId,
       campaign_id: campaignId,
-      user_id: userId,
-      page_size: "10",
+      lead_id: userId,
+      // page_size: "10",
       _reverse: "updated",
     });
 

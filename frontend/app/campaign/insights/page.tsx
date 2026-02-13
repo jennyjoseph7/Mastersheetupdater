@@ -678,8 +678,10 @@ function CampaignInsightsContent() {
                                   onClick={() => {
                                     // 2. Determine the best available ID to use
                                     // Many systems use 'lead_id' or specific sales IDs if 'user_id' isn't generated yet
-                                    const effectiveUserId = lead.user_id || lead.lead_id || lead.pre_sales_lead_id || lead.post_sales_lead_id;
 
+                                    const effectiveUserId = lead.pre_sales_lead_id || lead.post_sales_lead_id;
+                                    // console.log("Effective User ID for Engagement:", effectiveUserId);
+                                    // console.log("Lead Data:", lead);
                                     // 3. Debugging: This will show up in your browser console (F12)
                                     console.log("Engagement Clicked:", { 
                                       effectiveUserId, 
