@@ -98,6 +98,18 @@ AGENT_ID="agent_5701ka8618cbfxcbdp4wg6xb3x23"
 AGENT_NAME="maruti_RFP"
 PHONE_NUMBER_ID="phnum_8201k1anbf9wet6v915q8arr1vmz"
 
+# spark/openai
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1.5")
+OPENAI_IMAGE_SIZE = os.environ.get("OPENAI_IMAGE_SIZE", "1024x1536")
+try:
+    OPENAI_INPUT_TEXT_TOKEN_PRICE = float(os.environ.get("OPENAI_INPUT_TEXT_TOKEN_PRICE", 5.0/1_000_000))
+    OPENAI_OUTPUT_TEXT_TOKEN_PRICE = float(os.environ.get("OPENAI_OUTPUT_TEXT_TOKEN_PRICE", 10.0/1_000_000))
+    OPENAI_INPUT_IMAGE_TOKEN_PRICE = float(os.environ.get("OPENAI_INPUT_IMAGE_TOKEN_PRICE", 8.0/1_000_000))
+    OPENAI_OUTPUT_IMAGE_TOKEN_PRICE = float(os.environ.get("OPENAI_OUTPUT_IMAGE_TOKEN_PRICE", 32.0/1_000_000))
+except ValueError as e:
+    raise ValueError(f"Error parsing OPENAI_INPUT_TEXT_TOKEN_PRICE, OPENAI_OUTPUT_TEXT_TOKEN_PRICE, OPENAI_INPUT_IMAGE_TOKEN_PRICE, OPENAI_OUTPUT_IMAGE_TOKEN_PRICE: {e}")
+
 BASE_PATH = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_PATH, "data")
 SERVICE = os.environ.get("SERVICE", "autocrm-app")

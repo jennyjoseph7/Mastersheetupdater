@@ -174,11 +174,16 @@ def comfy_image_generation_task(
         if os.path.exists(input_path):
             os.remove(input_path)
 
+        total_cost = (time.time() - total_start_time) * 0.0016
         logger.info(
             f"===== Total Task Completed in {time.time() - total_start_time:.2f} sec ====="
         )
-
-        return {"image_urls": image_urls}
+        return {
+            "image_urls": image_urls,
+            "total_time": time.time() - total_start_time,
+            "total_cost": total_cost,
+            "currency": "USD",
+        }
 
     except Exception as e:
         logger.exception("Comfy task failed")
