@@ -30,12 +30,12 @@ COMFY_INPUT_DIR = os.getenv("COMFY_INPUT_DIR")
 COMFY_OUTPUT_DIR = os.getenv("COMFY_OUTPUT_DIR")
 
 # -------------------- GRYD CONFIG --------------------
-GRYD_URL = os.getenv("GRYD_URL")
+GRYD_URL = os.getenv("GRYD_FILE_URL")
 
 HEADERS = {
-    "X-I2CE-ENTERPRISE-ID": os.getenv("GRYD_ENTERPRISE_ID"),
-    "X-I2CE-USER-ID": os.getenv("GRYD_USER_ID"),
-    "X-I2CE-API-KEY": os.getenv("GRYD_API_KEY"),
+    "X-I2CE-ENTERPRISE-ID": os.getenv("GRYD_FILE_ENTERPRISE_ID"),
+    "X-I2CE-USER-ID": os.getenv("GRYD_FILE_USER_ID"),
+    "X-I2CE-API-KEY": os.getenv("GRYD_FILE_API_KEY"),
 }
 
 # -------------------- HELPERS --------------------
