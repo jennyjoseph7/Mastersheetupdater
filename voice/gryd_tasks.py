@@ -9,8 +9,11 @@ from ai_service import ai_service_app
 import config
 import datetime
 import pytz
+import time
+
 from conversation import converse
-from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
+from communication.connectors.communication_helpers import end_session as end_voice_session, generate_uid
+#from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 logger = hp.get_logger(__name__)
 
 
@@ -178,7 +181,7 @@ def trigger_voice_call(*args, **kwargs):
 
     #provider = user_data.get("provider_name", provider).replace("-", "").strip().lower()
     logger.info(f"Session for Voice Call: {session_data}")
-    
+
     from voice import providers
     response = providers.make_call(provider, session_data, *args, **kwargs)
 
@@ -194,7 +197,6 @@ def trigger_voice_call(*args, **kwargs):
     post_contact_status_voice(user_data, message_id=session_data["session_id"])
 
     from autocrm_db_helper import get_pg_connector
-    import time
 
     timeout = time.time() + float(user_data.get("call_timeout", 600))  # 10 minutes
 
@@ -305,7 +307,6 @@ def post_history(session_id, session_history):
     session_model = base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
     session_data = session_model.get(session_id)
 
-    converter = BaseWebhookConverter()
     agent_msgs = [d for d in session_history if d.get("role") == "agent"]
     user_msgs = [d for d in session_history if d.get("role") == "user"]
 
@@ -321,7 +322,7 @@ def post_history(session_id, session_history):
         a = agent_msgs[i] if i < len(agent_msgs) else {}
         tme = hp.time()
         history.append({
-            "reply_to": converter.generate_uid(u) if u else gryd.hp.make_uuid3(str(time.time())),
+            "reply_to": generate_uid(u) if u else gryd.hp.make_uuid3(str(time.time())),
             "customer_response": u.get("message", ""),
             "request_data": {
                 "customer_response": u.get("message", "")
@@ -372,7 +373,7 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     attrs=["phone_number", "lead_id","campaign_id","campaign_type","email","dealership_id","channel","campaign_model"]
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
-    payload["message_id"] = message_id or BaseWebhookConverter().generate_uid(session_data)
+    payload["message_id"] = message_id or generate_uid(session_data)
     for x in gryd.create_async_task(
         "post_contact_status", 
         config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
@@ -384,8 +385,7 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
 @gryd.is_a_task(function_name="end_voice_session")
 def end_session(*args, **kwargs):
     logger.info(f"Ending session with args: {args}, kwargs: {kwargs}")
-    converter = BaseWebhookConverter()
-    return converter.end_session(*args, **kwargs)
+    return end_voice_session(*args, **kwargs)
 
 
 

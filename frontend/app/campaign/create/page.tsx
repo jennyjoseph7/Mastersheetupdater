@@ -297,6 +297,7 @@ function CampaignCreateContent() {
   const [tone, setTone] = useState("");
   const [callToAction, setCallToAction] = useState("");
   const [language, setLanguage] = useState("en");
+  const [urgencyHook, setUrgencyHook] = useState("");
 
   // Audience Data
   const [targetAudience, setTargetAudience] = useState<string[]>([]);
@@ -521,6 +522,7 @@ function CampaignCreateContent() {
 
       setCampaignName(data.campaign_name);
       setCampaignDescription(data.campaign_description);
+      setUrgencyHook(data.urgency_hook);
       setCampaignTitle(data.campaign_tagline);
       setTone(data.campaign_tone);
       setCallToAction(data.ctas?.[0] || "Learn More");
@@ -602,7 +604,7 @@ function CampaignCreateContent() {
       channels: mapChannels(selectedChannels),
       languages: [mapLanguage(language)],
       campaign_offer: campaignData?.campaignOffer || campaignDescription,
-      urgency_hook: campaignData?.urgencyHook || "",
+      urgency_hook: urgencyHook || "",
       ctas: [callToAction],
       number_targeted: 0,
       budget_allocated: 0,
@@ -1238,6 +1240,13 @@ function CampaignCreateContent() {
                                   onChange={(e) =>
                                     setCallToAction(e.target.value)
                                   }
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Urgency Hook</Label>
+                                <Input
+                                  value={urgencyHook}
+                                  onChange={(e) => setUrgencyHook(e.target.value)}
                                 />
                               </div>
                             </div>

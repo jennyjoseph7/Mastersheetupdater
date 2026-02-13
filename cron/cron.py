@@ -11,8 +11,9 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
-from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter,update_session_data_in_lead
+from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 from gryd_worker import gryd_db_helper as db
+from communication.connectors.communication_helpers import end_session
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 
@@ -202,7 +203,7 @@ def check_inactive_sessions(*args, **kwargs):
     )
 
     filters = {"session_live": True, "status": "completed~"}
-    condition, param = BaseWebhookConverter().apply_filters(**filters)
+    condition, param = apply_filters(**filters)
 
     with get_pg_connector() as pg:
         session_list = list(
@@ -348,7 +349,7 @@ def check_inactive_sessions(*args, **kwargs):
                 )
 
                 # ending the session --------
-                BaseWebhookConverter().end_session(session_id=session_id)
+                end_session(session_id=session_id)
             else:
                 mlogger.info(
                     f"Session {session_id} still active "
@@ -356,6 +357,35 @@ def check_inactive_sessions(*args, **kwargs):
                 )
         mlogger.info(f"Other channel counts skipped: {len(other_channels)}")
         mlogger.info("************************************************")
+
+def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None):
+    conditions = [] 
+    params = ()
+    if session_id:
+        conditions.append("dict->>'session_id' = %s")
+        params += (session_id,)          
+    if user_id:
+        conditions.append("dict->>'user_id' = %s")
+        params += (user_id,)
+    if channel:
+        conditions.append("dict->>'channel' = %s")
+        params += (channel,)
+    if session_live:
+        conditions.append("CAST (dict->>'session_live' AS bool) = %s")
+        params += (session_live,)
+    if status:
+        if status.endswith('~'):
+            conditions.append("dict->>'status' <> %s")
+            status = status[:-1]
+            # first_part += "AND LOWER(CAST(dict->>'status' AS text)) <> LOWER(%s)"
+            params += (status,)
+        else:
+            conditions.append("dict->>'session_live' = %s")
+            params += (session_live,)
+
+    condition = "Where " + " AND ".join(conditions)
+    return condition, params
+
 
 @gryd.is_a_task(logger_param='logger', job_param='job')
 def create_campaign_ideas_for_dealerships(

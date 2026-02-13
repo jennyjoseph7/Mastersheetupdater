@@ -669,23 +669,40 @@ function CampaignInsightsContent() {
                                   ? epochToIST(lead.created)
                                   : "-"}
                               </TableCell>
-                              <TableCell>
+                            <TableCell>
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  // 1. Visual Feedback: Disable if we absolutely cannot find an ID or Campaign ID
+                                  disabled={!campaignId || (!lead.user_id && !lead.lead_id && !lead.pre_sales_lead_id && !lead.post_sales_lead_id)}
                                   onClick={() => {
-                                    if (lead.user_id && campaignId) {
+                                    // 2. Determine the best available ID to use
+                                    // Many systems use 'lead_id' or specific sales IDs if 'user_id' isn't generated yet
+
+                                    const effectiveUserId = lead.pre_sales_lead_id || lead.post_sales_lead_id;
+                                    // console.log("Effective User ID for Engagement:", effectiveUserId);
+                                    // console.log("Lead Data:", lead);
+                                    // 3. Debugging: This will show up in your browser console (F12)
+                                    console.log("Engagement Clicked:", { 
+                                      effectiveUserId, 
+                                      campaignId, 
+                                      rawLead: lead 
+                                    });
+
+                                    if (effectiveUserId && campaignId) {
                                       setSelectedLead({
-                                        userId: lead.user_id,
+                                        userId: effectiveUserId, 
                                         personName: lead.person_name,
                                       });
                                       setEngagementModalOpen(true);
+                                    } else {
+                                      console.warn("Cannot open modal: Missing User ID or Campaign ID");
                                     }
                                   }}
                                 >
                                   Engagement
                                 </Button>
-                              </TableCell>
+                            </TableCell>
                             </TableRow>
                           );
                         })}

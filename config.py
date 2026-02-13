@@ -77,6 +77,10 @@ EXCHANGE_RATE_HOST_BASE_URL = os.environ.get("EXCHANGE_RATE_HOST_BASE_URL", "htt
 SESSION_MODEL_NAME = "session"
 BILLING_MODEL_NAME = "billing"
 
+# rcs
+RCS_PROVIDER="twilio"
+RCS_AGENT_ID="rcs:autongage_juw1l8ps_agent"
+
 #razorpay
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET")
