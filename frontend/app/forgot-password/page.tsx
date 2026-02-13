@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
                 alt="DaveAI Logo"
                 width={180}
                 height={36}
-                className="w-auto h-8 dark:invert dark:brightness-200 dark:contrast-200 dark:drop-shadow-[0_0_8px_rgba(139,92,246,0.5),0_0_16px_rgba(255,255,255,0.3)] dark:filter"
+                className="w-auto h-8 "
               />
             </div>
           </div>
@@ -129,7 +129,7 @@ export default function ForgotPasswordPage() {
                 alt="DaveAI Logo"
                 width={180}
                 height={36}
-                className="w-auto h-8 dark:invert dark:brightness-200 dark:contrast-200 dark:drop-shadow-[0_0_8px_rgba(139,92,246,0.5),0_0_16px_rgba(255,255,255,0.3)] dark:filter"
+                className="w-auto h-8 "
               />
           </div>
           <h1 className="text-3xl font-bold text-foreground">

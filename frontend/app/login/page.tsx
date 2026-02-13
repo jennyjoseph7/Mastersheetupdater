@@ -169,7 +169,7 @@ export default function LoginPage() {
               alt="autoNgage Logo"
               width={230}
               height={56}
-              className="w-auto h-10 dark:invert dark:brightness-200 dark:contrast-200 dark:drop-shadow-[0_0_8px_rgba(139,92,246,0.5),0_0_16px_rgba(255,255,255,0.3)] dark:filter"
+              className="w-auto h-10 "
             />
           </div>
           <h1 className="text-3xl font-bold text-foreground">Welcome back</h1>
