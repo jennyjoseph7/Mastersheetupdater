@@ -31,11 +31,8 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
         self.brochure_url:str=brochure_url
         self.product_website_url:str=product_website_url
 
-        self.brochure_content:list[dict]=None
-        self.product_website_content:list[dict] = None
-
-        self.brochure_content=self.fetch_brochure_content(brochure_url = self.brochure_url)
-        self.product_website_content=self.fetch_product_details_from_website(website_url = self.product_website_url)
+        self.brochure_content:list[dict]=self.fetch_brochure_content(brochure_url = self.brochure_url)
+        self.product_website_content:list[dict]=self.fetch_product_details_from_website(website_url = self.product_website_url)
 
     @property
     def whatsapp_template_example_prompt(self):
@@ -122,55 +119,8 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
 
         response =  self.exec_json_llm_with_retry(self.llm, messages=messages)
         return response
-
-
-    # - post_descriptions: generate exactly {num_of_campaign_assets} variants.
-    # - instagram_caption_with_hashtags: generate exactly {num_of_campaign_assets} caption per campaign idea.
-    # "instagram_caption_with_hashtags": [<string>, <string>, <string>],
-    # "post_description": [<string>, <string>, <string>],
-    # "whatsapp_msgs": [<string>, <string>, <string>],
-    # - whatsapp_msgs: generate exactly {num_of_campaign_assets} variants.
-    # • Each message can be up to 7-8 sentences.
-    # • Use subtle emojis for engagement.
-    # • If competitor exists, include a soft comparison highlighting superiority.
-    #     [
-    #     {{
-    #         "campaign_idea_identifier": "urban_performance_push",
-    #         "campaign_objective": "<string>",
-    #         "campaign_explanation": "<string>",
-    #         "audience": "[<string>]",
-    #         "cta": "[<string>, <string>, <string>]",
-    #         "campaign_assets": {{
-    #             "post_caption": [<string>, <string>, <string>],
-    #             "hashtags": [<string>, <string>, <string>],
-    #             "hooks": [<string>, <string>, <string>],
-    #             "slogan": [<string>, <string>, <string>],
-                
-    #         }}
-    #     }}
-    # ]
-    #         - Whatsapp messages should be up-to 5-6 sentences. You can add follow-up question in the last sentence. You can also start the message like you know customer were looking for.
-
-
-
-    def _campaign_ideas(
-            self, 
-            num_of_campaign_ideas=3, 
-            num_of_campaign_post_sets=3, 
-            num_of_hashtags=20,
-            *args, 
-            **kwargs 
-            ):
-        
-        campaign_theme = kwargs.get("campaign_theme", None)
-        core_message_direction = kwargs.get("core_message_direction", None)
-        campaign_objective = kwargs.get("campaign_objective", None),
-        consumer_insight = kwargs.get("consumer_insight", None)
-
-        brand_name = kwargs.get("brand_name", None)
-        product_category = kwargs.get("product_category", None)
-        brand_tone = kwargs.get("brand_tone", None)
-
+    
+    def _generate_list_of_campaign_ideas(self, num_of_campaign_ideas:int = 3):
         system_prompt = f"""
         You are a Product-Driven Campaign Strategy & Creative AI Agent.
 
@@ -182,133 +132,14 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
         You will be given:
         1. Customer interaction summary 
         2. Cohort classification output 
-        3. Customer affinity score
+        3. Customer affinity score (if available)
         4. Product brochure content (if available)
         5. Product website content (if available)
         6. Competitor information (if available)
 
         TASK:
         • Generate {num_of_campaign_ideas} DISTINCT campaign ideas.
-
-        OUTPUT STRUCTURE:
-        • Return a LIST (array) of dictionaries.
-        • Each dictionary represents ONE campaign idea.
-
-        ASSET COUNT RULES:
-            - hashtags: exactly {num_of_hashtags} relevant hashtags for each campaign idea (must be an array).
-            - campaign_post_sets: generate exactly {num_of_campaign_post_sets} post sets per campaign idea.
-            - Each post set must contain:
-                • post_caption: ONE string caption per post set. (must be an array with one element).
-                • hooks: ONE string hook per post set (must be an array with one element).
-                • slogan: ONE string slogan per post set (must be an array with one element).
-                • messages: generate exactly ONE string message per post set (must be an array with one element). Each  message can be up to 7-8 sentences. You can add follow-up question in the last sentence. Use subtle emojis for engagement in the message. You can also start the message like you know customer were looking for if possible.
-            - campaign_explanation: generate ONLY ONE explanation per campaign idea.
-                • Written for media planners / marketing team.
-                • Explain target audience, insight, messaging logic, and best channels.
-            - audience: generate type of audience per campaign idea. If cohort classification is available, that would be used.
-            - cta: generate CTA variants. (Book a test drive, Book an appointment, Download brochure, Enquire now...etc)
-
-        IDENTIFIER RULES:
-        - campaign_idea_identifier must be:
-            • short
-            • unique
-            • lowercase
-            • snake_case
-            • reflective of the core campaign theme
-
-        GUIDELINES:
-        - Understand the product, Carefully Analyze the Product brochure and website if available. Understand the Product's features, specifications etc.
-        - If customer interaction summary is missing, rely on cohort classification.
-        - Use cohort traits, user intent, and affinity score to personalize messaging.
-        - Avoid generic marketing clichés.
-        - Try to create unique and engaging messages. Sometime customer name might not be available. So you can try to get name from email address if possible.
-        - If there's "Opportunity Name" in the interaction, that might be the customer name. If "Opportunity Owner" is there, that might be representative of the customer.
-        - Focus on the customer's needs and preferences.
-        - Keep tone premium, confident, and automotive-focused.
-        - Do NOT repeat the same captions, hooks, or slogans across variants.
-        - Do NOT add or remove fields.
-        - Ensure each campaign_post_set has a distinct angle, tone, or theme within the same campaign.
-        - If Campaign Theme, Objective, Consumer Insight and Core Message Direction are available, Please consider them while generating the campaign ideas. These needs to be the core of the campaign ideas.
-
-        PRODUCT GUIDELINES:
-        - Focus on the product's core usage and industry.
-        - Include key features and benefits in all the campaign ideas & post sets.
-        - Avoid generic marketing clichés.
-        - The Campaign These should highlight Product's core features/benefits. The campaign sets should have Product's name (For eg. Citreon Aircross, Maruti Suzuki Ertiga...), its features.
-
-        OUTPUT RULES:
-        - Return STRICT JSON ONLY
-        - No markdown
-        - No explanations
-        - No trailing comments
-
-        FINAL OUTPUT FORMAT EXAMPLE (LIST OF DICTS):
-
-        [
-            {{
-                "campaign_idea_identifier": "urban_performance_push",
-                "campaign_objective": "<string>",
-                "campaign_explanation": "<string>",
-                "audience": ["<string>"],
-                "cta": ["<string>", "<string>"],
-                "hashtags": ["<string>", "<string>"],
-                
-                "campaign_post_sets": [
-                    {{
-                        "post_caption": ["<string>"],
-                        "hooks": ["<string>"],
-                        "slogan": ["<string>]",
-                        "messages": [<string>]
-                    }},
-                    {{
-                        "post_caption": ["<string>"],
-                        "hooks": ["<string>"],
-                        "slogan": ["<string>"],
-                        "messages": [<string>]
-                    }}
-                ]
-            }}
-        ]
-
-
         """
-        
-        user_input = f"""
-        Customer Interaction:
-        {json.dumps(self.source, indent=2)}
-
-        Classified Cohort:
-        {json.dumps(self.classified_cohort, indent=2)}
-
-        Affinity Score:
-        {json.dumps(self.affinity_score, indent=2)}
-        
-        Product Brochure Content:
-        {json.dumps(self.brochure_content, indent=2)}
-        
-        Product Website Content:
-        {json.dumps(self.product_website_content, indent=2)}
-        
-        Campaign Theme:
-        {campaign_theme}
-
-        Core Message Direction:
-        {core_message_direction}
-
-        Campaign Objective:
-        {campaign_objective}
-
-        Consumer Insight:
-        {consumer_insight}
-        """
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input}
-        ]
-
-        response =  self.exec_json_llm_with_retry(self.llm, messages=messages)
-        return response
     
     def campaign_ideas(
             self, 
