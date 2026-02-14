@@ -89,6 +89,8 @@ def trigger_voice_call(*args, **kwargs):
         "dave-ai-sociograph-solutions-india": ("tatatele", "agent_5701ka8618cbfxcbdp4wg6xb3x23"),
         "ambal-auto-india": ("tatatele", "agent_0501k747d7s6e3xv5t3xew1rn217")
     }
+
+    #TODO: Get agent number from dealership model and add in session_data in agent_number
    
     user_data = kwargs.get("user_data", {})
     logger.info(f"Triggering voice call with user data: {user_data}")
@@ -132,24 +134,29 @@ def trigger_voice_call(*args, **kwargs):
     agent_config = {
         "voice_agent_id": user_data.get("agent_id")
     }
-    if user_data.get("campaign_type") == "pre-sales":
+
+
+    logger.info(f"Session created with data: {session_data}")
+    if session_data.get("campaign_type") == "pre-sales":
         pre_sales_lead_model = base_model.Model("pre_sales_lead", config.AUTOCRM_APP_ENTERPRISE_ID)
-        pre_sales_lead_model.patch(
+        r = pre_sales_lead_model.patch(
             session_data.get("lead_id"),
-            {"last_session_channel":user_data.get("channel")}
+            {"last_session_channel":session_data.get("channel")}
         )
 
+        logger.info(f"Pre-sales lead model patch response: {r}")
         pre_sales_campaign_model = base_model.Model("pre_sales_campaign", config.AUTOCRM_APP_ENTERPRISE_ID)
         pre_sales_campaign_model_data = pre_sales_campaign_model.get(session_data.get("campaign_id"))
         agent_config.update({
             k : v for k, v in pre_sales_campaign_model_data.items() if k.startswith("voice_") and v
         })
-    elif user_data.get("campaign_type") == "post-sales":
+    elif session_data.get("campaign_type") == "post-sales":
         post_sales_lead_model = base_model.Model("post_sales_lead", config.AUTOCRM_APP_ENTERPRISE_ID)
-        post_sales_lead_model.patch(
+        r = post_sales_lead_model.patch(
             session_data.get("lead_id"),
-            {"last_session_channel":user_data.get("channel")}
+            {"last_session_channel":session_data.get("channel")}
         )
+        logger.info(f"Post-sales lead model patch response: {r}")
 
         post_sales_campaign_model = base_model.Model("post_sales_campaign", config.AUTOCRM_APP_ENTERPRISE_ID)
         post_sales_campaign_model_data = post_sales_campaign_model.get(session_data.get("campaign_id"))
@@ -374,12 +381,11 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
     payload["message_id"] = message_id or generate_uid(session_data)
-    for x in gryd.create_async_task(
+    gryd.create_async_task(
         "post_contact_status", 
         config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-        kwargs=payload
-    ):
-        return x
+        kwargs=payload)
+    #make this normal function
 
 
 @gryd.is_a_task(function_name="end_voice_session")
@@ -397,7 +403,7 @@ if __name__ == "__main__":
     #+919920297124 -Ankita +919833885948- Arshiya
 
     data = {'_is_testing': False,
-    'mobile_number': "918850988794", #"919604780730", #"918850988794", #"918401586512", #"918850988794",
+    'mobile_number': "919702523384", #"919604780730", #"918850988794", #"918401586512", #"918850988794",
     'generate_prompt': False,
 
 
