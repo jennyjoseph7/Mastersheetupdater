@@ -90,10 +90,6 @@
             "refers": "parents.variant.region_name"
         },
         {
-            "name": "country_name",
-            "refers": "parents.variant.country_name"
-        },
-        {
             "name": "region_level_guidelines",
             "refers": "parents.variant.region_level_guidelines"
         },

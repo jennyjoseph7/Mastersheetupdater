@@ -685,44 +685,6 @@
       }
     },
     {
-      "name" : "communication_credentials_id",
-      "type" : "uid",
-      "refers" : "parents.communication_credential.communication_credentials_id",
-      "default" : {
-        "function" : "set_if_condition",
-        "args" : [
-          {
-            "function" : "get_from_model",
-            "args" : [
-              "region_subdivision",
-              "region_subdivision_id",
-              "communication_credentials_id"
-            ]
-          },
-          {
-            "function" : "set_if_condition",
-            "args" : [
-              {
-                "function" : "get_from_model",
-                "args" : [
-                  "region",
-                  "region_id",
-                  "communication_credentials_id"
-                ]
-              },
-              null
-            ],
-            "kwargs":{
-              "region_id" : "~null"
-            }
-          }
-        ],
-        "kwargs" : {
-          "subdivision_id" : "~null"
-        }
-      }
-    },
-    {
       "name" : "purpose",
       "type" : "text",
       "require" : false,

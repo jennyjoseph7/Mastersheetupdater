@@ -1,6 +1,7 @@
 import sys
 import os, re
 from os.path import dirname, abspath, join as joinpath
+import requests
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
@@ -10,6 +11,28 @@ from config import hp, \
     GRYD_FILE_SERVER_URL
 
 mlogger = hp.get_logger(__name__)
+
+MIME_TYPES = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'svg': 'image/svg+xml',
+    'pdf': 'application/pdf',
+}
+
+def download_file(url, local_path = None, logger = None):
+    logger = logger or mlogger
+    logger.info(f"Downloading file from URL: {url}")
+    response = requests.get(url)
+    response.raise_for_status()
+    if not local_path:
+        return response.content
+    with open(local_path, 'wb') as f:
+        f.write(response.content)
+    logger.info(f"File downloaded and saved to: {local_path}")
+    return local_path
 
 def func_gryd_file_system(local_path, media_type = 'document', logger = None):
     """

@@ -74,7 +74,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="performance_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/0 * * * *",
+              schedule = "*/10 * * * *",
               add_schedule_to_queue=False
         )
         
