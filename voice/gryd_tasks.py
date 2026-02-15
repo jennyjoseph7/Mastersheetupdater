@@ -100,23 +100,26 @@ def trigger_voice_call(*args, **kwargs):
             "error": "Missing required user data fields: 'campaign_id', 'campaign_type', 'mobile_number'"
         }
 
-    #temporary 
     person_model = gryd.base_model.Model("person", config.AUTOCRM_APP_ENTERPRISE_ID)
-
     person_obj = person_model.list(**{"phone_number":user_data.get("mobile_number")}).get('data',{})
     person_obj = person_obj[0] if person_obj else {}
-     #
-
     if not person_obj:
         logger.error(f"No person found with mobile number: {user_data.get('mobile_number')}")
-        yield {
-            "error": f"No person found with mobile number: {user_data.get('mobile_number')}"
-        }
-    # user_data["user_id"] = person_obj.get("user_id","a4abae7d832632c7")
+
+        person_obj = person_model.post(
+            {
+                "phone_number": user_data.get("mobile_number", user_data.get("phone_number")),
+                "name": user_data.get("customer_name", "Unknown"),
+                "email": user_data.get("email"),
+            }
+        )
+        logger.info(f"Created new person object: {person_obj}")
+
+        
 
     session_model = gryd.base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
     session_obj = {
-        "user_id": user_data.get("user_id", "d40d8858-1c88-37d6-93ad-8960d6a02798"),
+        "user_id": person_obj.get("user_id"),
         "campaign_id": user_data.get("campaign_id"),
         "campaign_type": user_data.get("campaign_type"),
         "lead_id": user_data.get("lead_id"),
@@ -163,7 +166,6 @@ def trigger_voice_call(*args, **kwargs):
             k : v for k, v in post_sales_campaign_model_data.items() if k.startswith("voice_") and v
         })
 
-    # session_data["room_id"] = user_data.get("room_id", "ambal_auto")
     if user_data.get("generate_prompt", True):
         for x in converse.get_primary_prompt(*args, **{
             "session_id" : session_data['session_id'],
@@ -403,6 +405,10 @@ if __name__ == "__main__":
 
     data = {'_is_testing': False,
     'ctas': ['book-test-drive'],
+    'mobile_number': '918850988794',
+
+
+
     'created': 1771122373.4420457,
     'updated': 1771123721.3710845,
     'channels': ['voice_phone'],
@@ -459,7 +465,6 @@ if __name__ == "__main__":
     'provider_name': 'tata-tele',
     'template_message': None,
     'lead_id': 'nikit-918850988794-sales-dealership1-india-fb72d256-2294-3a32-8c4c-80a3e31c9eec',
-    'mobile_number': '918850988794',
     'customer_name': 'Nikit',
     'email': None,
     'contact_channel': 'voice_phone',
