@@ -16,7 +16,7 @@ import traceback
 logger = get_logger(__name__)
 
 class ProductCohortGenerationAgent(UtilityMixin):
-    def __init__(self, brochure_url=None, product_website_url=None, model_identifier="azure-gpt-4o", *args, **kwargs):
+    def __init__(self, brochure_url=None, product_website_url=None, model_identifier="azure-gpt-4o", additional_instruction=None, *args, **kwargs):
         """
         Initialize the ProductCohortGenerationAgent.
 
@@ -47,6 +47,8 @@ class ProductCohortGenerationAgent(UtilityMixin):
             self.num_of_cohorts = int(self.num_of_cohorts)
         if self.num_of_cohorts is None:
             self.num_of_cohorts = 20
+        
+        self.additional_instruction : str = additional_instruction or ""
 
         identifiers = [
             "Automotive",
@@ -78,9 +80,7 @@ class ProductCohortGenerationAgent(UtilityMixin):
             {
                 "cohort_id": "<snake_case_unique_id>",
                 "cohort_name": "<human_readable_name>",
-                "intent_level": "<low | medium | high>",
-                "description": "<clear business description, product-specific>",
-                "priority": "<integer_lower_is_higher_priority>",
+                "description": "<clear business description, producct-based description>",
                 "behavioral_signals": ["<signal_1>", "<signal_2>"],
                 "eligibility_rules": [
                     "<rule_1>",
@@ -108,8 +108,10 @@ class ProductCohortGenerationAgent(UtilityMixin):
             }]
         }
         return schema
+        # "intent_level": "<low | medium | high>",
+        # "priority": "<integer_lower_is_higher_priority>"
     
-    def _cohort_ids_generation_prompt(self, domain="automotive"):
+    def _cohort_ids_generation_prompt(self, domain="automotive") -> list[str]:
         system_prompt = f"""
         You are a {domain} Cohort ID Generation Agent for a production-grade personalization system.
 
@@ -152,6 +154,19 @@ class ProductCohortGenerationAgent(UtilityMixin):
         - Electric/hybrid interested, traditional fuel preference
         - Compact vs full-size preference
 
+        7. **Brand Preference (for automotive)**
+        - Luxury brands, compact brands, midsize brands
+        - Premium brands, midrange brands, budget brands
+
+        8. **Feature Preference (for automotive)**
+        - Safety features, tech features, comfort features
+        - Performance features, interior features, exterior features
+        - Color preference, interior color, exterior color
+        - Technology preference, interior technology, exterior technology
+
+        9. **First Time Buyers (for automotive)**
+        - You need to include at least one cohort specifically for first-time buyers (FTB) in your final output.
+
         **REQUIREMENTS:**
         - Generate exactly {self.num_of_cohorts} cohorts (strict requirement)
         - Each cohort must be mutually distinguishable (minimal overlap)
@@ -159,6 +174,7 @@ class ProductCohortGenerationAgent(UtilityMixin):
         - Cohort IDs must be unique, descriptive, and actionable
         - Use snake_case format, lowercase only
         - Avoid generic terms; be specific to {domain} context.
+        - If website content is available, please analyze it well and align cohort IDs with website sections (Check for sections like Specs, 3D Configurator, etc.)
 
         **FORMAT:**
         Return ONLY a valid Python list of strings (no markdown, no explanations):
@@ -172,6 +188,7 @@ class ProductCohortGenerationAgent(UtilityMixin):
         **GOOD EXAMPLES:**
         [
             "luxury_suv_aspirants",
+            "design_and_configurator_enthusiasts",
             "eco_conscious_first_time_buyers",
             "performance_enthusiast_upgraders",
             "family_safety_prioritizers",
@@ -187,6 +204,9 @@ class ProductCohortGenerationAgent(UtilityMixin):
             "high-income-buyers"  // Wrong format (use snake_case)
         ]
         """
+
+        if self.additional_instruction:
+            system_prompt += f"\n\n**ADDITIONAL INSTRUCTIONS:**\n{self.additional_instruction}"
         
         messages = [
             {
@@ -220,6 +240,8 @@ class ProductCohortGenerationAgent(UtilityMixin):
         {json.dumps(self.output_schema, indent=4)}
 
         """
+        if self.additional_instruction:
+            system_prompt += f"\n\n**ADDITIONAL INSTRUCTIONS:**\n{self.additional_instruction}"
         messages = [
             {
                 "role": "system", 
@@ -229,8 +251,11 @@ class ProductCohortGenerationAgent(UtilityMixin):
         return messages
     
     def chunk_list(self, items:list, chunk_size=10):
-        for i in range(0, len(items), chunk_size):
-            yield items[i:i + chunk_size]
+        list_length = len(items) # Get length of items list
+
+        for i in range(0, list_length, chunk_size): # Loop over items list For example: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+            limit = i + chunk_size # Set limit
+            yield items[i:limit] 
 
     def _classify_domain(self):
         prompt = f"""
@@ -285,9 +310,9 @@ class ProductCohortGenerationAgent(UtilityMixin):
 
 
     def run(self, batch_size=10):
-        cohort_id_generation_prompt = self._cohort_ids_generation_prompt(domain=self._classify_domain().get("identifier", "automotive").title())
+        domain = self._classify_domain().get("identifier", "automotive").title()
+        cohort_id_generation_prompt = self._cohort_ids_generation_prompt(domain=domain)
         product_context_parts = []
-
 
         if self.brochure_content:
             product_context_parts.append(f"PRODUCT BROCHURE:\n{json.dumps(self.brochure_content, indent=2)}")
@@ -313,20 +338,23 @@ class ProductCohortGenerationAgent(UtilityMixin):
             for batch_idx, cohort_batch in enumerate(cohort_batches, start=1):
                 logger.info(f"Running cohort contextualization batch {batch_idx}/{len(cohort_batches)}")
                 messages = self._cohorts_generation_prompt(cohort_batch = cohort_batch)
+                
+                # Add product context to messages (this was outside the loop!)
                 product_context_parts = []
+                if self.brochure_content:
+                    product_context_parts.append(f"PRODUCT BROCHURE:\n{json.dumps(self.brochure_content, indent=2)}")
 
-            if self.brochure_content:
-                product_context_parts.append(f"PRODUCT BROCHURE:\n{json.dumps(self.brochure_content, indent=2)}")
+                if self.product_website_content:
+                    product_context_parts.append(f"PRODUCT WEBSITE:\n{json.dumps(self.product_website_content, indent=2)}")
 
-            if self.product_website_content:
-                product_context_parts.append(f"PRODUCT WEBSITE:\n{json.dumps(self.product_website_content, indent=2)}")
-
-            if product_context_parts:
-                product_context = "\n\n".join(product_context_parts)
-                cohort_id_generation_prompt.append({
-                    "role": "user",
-                    "content": f"{self.additional_product_context}\n{product_context}"
-                })
+                if product_context_parts:
+                    product_context = "\n\n".join(product_context_parts)
+                    messages.append({
+                        "role": "user",
+                        "content": f"{self.additional_product_context}\n{product_context}"
+                    })
+                
+                # Execute LLM call for this batch
                 response = self.exec_json_llm_with_retry(self.llm, messages=messages)
                 coherts = response.get("cohorts", [])
                 final_cohorts.extend(coherts)
@@ -336,7 +364,7 @@ class ProductCohortGenerationAgent(UtilityMixin):
 
         except Exception as e:
             traceback.print_exc()
-            response = {"error": str(e), "raw_response": response}
+            response = {"error": str(e), "raw_response": response if 'response' in locals() else None}
         return response
     
 
@@ -364,17 +392,29 @@ class ProductCohortGenerationAgent(UtilityMixin):
             allowed_cohorts = cohort_ids
             yield emit("status", f"batching cohorts ({len(allowed_cohorts)})")
             cohort_batches:list[list[str]] = list(self.chunk_list(items=allowed_cohorts, chunk_size=batch_size))
-            final_idx = 1
+            
             for batch_idx, cohort_batch in enumerate(cohort_batches, start=1):
                 yield emit("status", f"generating cohorts batch {batch_idx}/{len(cohort_batches)}")
                 messages = self._cohorts_generation_prompt(cohort_batch=cohort_batch)
+                
+                # Add product context to messages
+                product_context_parts = []
+                if self.brochure_content:
+                    product_context_parts.append(f"PRODUCT BROCHURE:\n{json.dumps(self.brochure_content, indent=2)}")
+                if self.product_website_content:
+                    product_context_parts.append(f"PRODUCT WEBSITE:\n{json.dumps(self.product_website_content, indent=2)}")
+                if product_context_parts:
+                    product_context = "\n\n".join(product_context_parts)
+                    messages.append({
+                        "role": "user",
+                        "content": f"{self.additional_product_context}\n{product_context}"
+                    })
+                
                 response = self.exec_json_llm_with_retry(self.llm, messages=messages)
                 cohorts:list[dict] = response.get("cohorts", [])
-                # idxed_cohorts = [{"idx": idx, **cohort} for idx, cohort in enumerate(cohorts, start=1)]
                 yield emit("cohort", cohorts)
             yield emit("done", "cohort generation completed")
         except Exception as e:
             traceback.print_exc()
             yield emit("error", str(e))
-
-    
+        

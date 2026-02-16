@@ -7,7 +7,6 @@ import traceback
 import os
 import inspect
 
-
 logger = get_logger(__name__)
 
 def setup_gryd():
@@ -28,10 +27,11 @@ def cohort_generation_agent_async(*args, **kwargs):
             "brochure_url": kwargs.get("brochure_url", None),
             "product_website_url": kwargs.get("product_website_url", None),
             "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o"),
-            "batch_size": kwargs.get("batch_size", 10),
+            "additional_instruction": kwargs.get("additional_instruction", None),
+            "num_of_cohorts": kwargs.get("num_of_cohorts", 30),
         }
         agent = ProductCohortGenerationAgent(**params)
-        for event in agent.run_with_events(batch_size = 10):   
+        for event in agent.run_with_events(batch_size = kwargs.get("batch_size", 10)):   
             yield {
                 "task": inspect.currentframe().f_code.co_name,
                 **event
@@ -53,13 +53,15 @@ def cohort_generation_agent(*args, **kwargs):
         params = {
             "brochure_url": kwargs.get("brochure_url", None),
             "product_website_url": kwargs.get("product_website_url", None),
-            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o")
+            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o"),
+            "additional_instruction": kwargs.get("additional_instruction", None),
+            "num_of_cohorts": kwargs.get("num_of_cohorts", 30),
         }
 
-        cohort_generation_agent = ProductCohortGenerationAgent(
-            **params
-            )
-        output = cohort_generation_agent.run(15)
+        batch_size = kwargs.get("batch_size", 10)   
+
+        cohort_generation_agent = ProductCohortGenerationAgent(**params)
+        output = cohort_generation_agent.run(batch_size=batch_size)
         return {
             "task": inspect.currentframe().f_code.co_name, 
             **output
@@ -83,6 +85,7 @@ def cohort_classification_agent(*args, **kwargs):
             "brochure_url": kwargs.get("brochure_url", None),
             "product_website_url": kwargs.get("product_website_url", None),
             "cohorts": kwargs.get("cohorts", None),
+            "additional_instruction": kwargs.get("additional_instruction", None),
             "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o")
         }
 
@@ -104,11 +107,15 @@ def cohort_classification_agent(*args, **kwargs):
 def affinity_score_agent(*args, **kwargs):
     try:
         from affinity_agent  import AffinityEngineAgent
-        source = kwargs.get("source", None)
-        brochure_url = kwargs.get("brochure_url", None)
-        product_website_url = kwargs.get("product_website_url", None)
-        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-        affinity_score_agent = AffinityEngineAgent(interaction_json=source, brochure_url=brochure_url, product_website_url=product_website_url, model_identifier=model_identifier)
+        params_ = {
+            "interaction_json": kwargs.get("interaction_json", None),
+            "brochure_url": kwargs.get("brochure_url", None),
+            "product_website_url": kwargs.get("product_website_url", None),
+            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o"),
+            "domain": kwargs.get("domain", None),
+            "custom_affinity_dimensions": kwargs.get("custom_affinity_dimensions", None)
+        }
+        affinity_score_agent = AffinityEngineAgent(**params_)
         output = affinity_score_agent.run()
         return {
             "task": inspect.currentframe().f_code.co_name, 
@@ -190,25 +197,155 @@ if __name__ == "__main__":
     # assert False
 
     # 1. Cohort Generation
-    cohort_registry = cohort_generation_agent(
-        brochure_url="https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/1f0e5109-ead3-42e9-8af8-b58b8942b10f-6966062a_New-Jeep-Meridian-Brochure.pdf",
-        model_identifier="azure-gpt-4o"
-    )
+    # cohort_registry = cohort_generation_agent(
+    #     brochure_url="https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/1f0e5109-ead3-42e9-8af8-b58b8942b10f-6966062a_New-Jeep-Meridian-Brochure.pdf",
+    #     model_identifier="azure-gpt-4o"
+    # )
 
-    print(json.dumps(cohort_registry, indent=4, default=str))
-    assert False
+    # print(json.dumps(cohort_registry, indent=4, default=str))
+    # assert False
 
     # 2. Cohort Classification
 
-    classified_cohort = cohort_classification_agent(
-        source="https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/1f0e5109-ead3-42e9-8af8-b58b8942b10f-6966062a_New-Jeep-Meridian-Brochure.pdf",
-        brochure_url="https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/1f0e5109-ead3-42e9-8af8-b58b8942b10f-6966062a_New-Jeep-Meridian-Brochure.pdf",
-        product_website_url="https://www.new-jeep.com/meridian",
-        cohorts=cohort_registry,
-        model_identifier="azure-gpt-4o"
-    )
+    # classified_cohort = cohort_classification_agent(
+    #     source="https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/1f0e5109-ead3-42e9-8af8-b58b8942b10f-6966062a_New-Jeep-Meridian-Brochure.pdf",
+    #     brochure_url="https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/1f0e5109-ead3-42e9-8af8-b58b8942b10f-6966062a_New-Jeep-Meridian-Brochure.pdf",
+    #     product_website_url="https://www.new-jeep.com/meridian",
+    #     cohorts=cohort_registry,
+    #     model_identifier="azure-gpt-4o"
+    # )
 
     # 3. Affinity Score
+
+    t_json ={
+        "persona": "Design & Configurator Enthusiast",
+        "user_id": "u_20251204_sierra_config_001",
+        "fbp": "fb.1.1733300100.2847593021",
+        "fbc": "fb.1.1733300100.IwAR_sierra_config_id",
+        "ga_client_id": "GA1.2.2847593021.1733300000",
+        "session_id": "sess_20251204_sierra_config_01",
+        "session_start": "2025-12-04T14:25:18Z",
+        "session_end": "2025-12-04T14:43:55Z",
+        "session_duration_seconds": 1117,
+        "utm": {
+        "utm_source": "instagram",
+        "utm_medium": "social",
+        "utm_campaign": "sierra_3d_configurator",
+        "utm_adgroup": "interactive_design_showcase",
+        "utm_keyword": None,
+        "utm_referrer": "https://www.instagram.com/"
+        },
+        "device": {
+        "type": "mobile",
+        "os": "iOS",
+        "browser": "Safari",
+        "screen_resolution": "1170x2532",
+        "network_type": "5G"
+        },
+        "user_profile": {
+        "visit_number": 2,
+        "is_returning_user": True,
+        "previous_visits": ["2025-12-01"]
+        },
+        "page_context": {
+        "model": "Tata Sierra 2025",
+        "page_url": "https://cars.tatamotors.com/sierra/ice.html",
+        "page_category": "model_overview"
+        },
+        "interaction": {
+        "clicked_sections": [
+            "3D Configurator",
+            "Exterior Gallery",
+            "Color Options",
+            "Wheel Options",
+            "Accessories & Packs",
+            "Interior Gallery"
+        ],
+        "click_counts": {
+            "3D Configurator": 42,
+            "Exterior Gallery": 24,
+            "Color Options": 31,
+            "Wheel Options": 18,
+            "Accessories & Packs": 22,
+            "Interior Gallery": 15,
+            "Variants": 4,
+            "Specifications": 2,
+            "Performance": 1
+        },
+        "time_spent_per_section": {
+            "3D Configurator": 524,
+            "Color Options": 298,
+            "Exterior Gallery": 167,
+            "Accessories & Packs": 89,
+            "Interior Gallery": 39
+        },
+        "images_viewed": {
+            "exterior_images": 38,
+            "interior_images": 22,
+            "color_variants": 18,
+            "wheel_options": 9
+        },
+        "3d_interactions": {
+            "rotations": 78,
+            "zoom_in": 42,
+            "zoom_out": 35,
+            "view_switches": [
+            "exterior",
+            "interior",
+            "wheels",
+            "roof_rails",
+            "rear_view",
+            "side_profile",
+            "dashboard"
+            ],
+            "configurator": {
+            "viewed": True,
+            "color_changed": 15,
+            "wheel_options_changed": 6,
+            "accessories_added": [
+                "Roq Edition Pack",
+                "Elevated Executive Pack",
+                "Roof Rails",
+                "Chrome Exterior Kit"
+            ],
+            "configurations_saved": 4,
+            "360_view_used": True
+            }
+        },
+        "variant_interactions": {
+            "variants_viewed": ["Accomplished", "Accomplished+"],
+            "most_viewed_variant": "Accomplished+"
+        },
+        "color_preferences": {
+            "colors_viewed": [
+            "Andaman Adventure",
+            "Bengal Rouge",
+            "Coorg Clouds",
+            "Munnar Mist",
+            "Pristine White",
+            "Pure Grey"
+            ],
+            "most_viewed_color": "Bengal Rouge",
+            "color_view_count": {
+            "Bengal Rouge": 9,
+            "Andaman Adventure": 7,
+            "Coorg Clouds": 5,
+            "Munnar Mist": 4
+            }
+        }
+        }
+
+    }
+    a = affinity_score_agent(
+        interaction_json=t_json,
+        brochure_url="https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/1f0e5109-ead3-42e9-8af8-b58b8942b10f-6966062a_New-Jeep-Meridian-Brochure.pdf",
+        product_website_url="https://www.new-jeep.com/meridian",
+        model_identifier="azure-gpt-4o",
+        custom_affinity_dimensions = ["price", "features", "performance", "design", "interior", "exterior"]
+    )
+
+    print(f"Affinity Result : \n\n {json.dumps(a, indent=4)}")
+
     # 4. Campaign Idea Generation
 
 

@@ -23,19 +23,19 @@ COMFY_HOST = os.getenv("COMFY_HOST")
 WORKFLOW_PATH = os.path.join(
     BASE_DIR,
     "comfy_workflows",
-    "sdpl.json"
+    "suzuki.json"
 )
 
 COMFY_INPUT_DIR = os.getenv("COMFY_INPUT_DIR")
 COMFY_OUTPUT_DIR = os.getenv("COMFY_OUTPUT_DIR")
 
 # -------------------- GRYD CONFIG --------------------
-GRYD_URL = os.getenv("GRYD_URL")
+GRYD_URL = os.getenv("GRYD_FILE_URL")
 
 HEADERS = {
-    "X-I2CE-ENTERPRISE-ID": os.getenv("GRYD_ENTERPRISE_ID"),
-    "X-I2CE-USER-ID": os.getenv("GRYD_USER_ID"),
-    "X-I2CE-API-KEY": os.getenv("GRYD_API_KEY"),
+    "X-I2CE-ENTERPRISE-ID": os.getenv("GRYD_FILE_ENTERPRISE_ID"),
+    "X-I2CE-USER-ID": os.getenv("GRYD_FILE_USER_ID"),
+    "X-I2CE-API-KEY": os.getenv("GRYD_FILE_API_KEY"),
 }
 
 # -------------------- HELPERS --------------------
@@ -174,11 +174,16 @@ def comfy_image_generation_task(
         if os.path.exists(input_path):
             os.remove(input_path)
 
+        total_cost = (time.time() - total_start_time) * 0.0016
         logger.info(
             f"===== Total Task Completed in {time.time() - total_start_time:.2f} sec ====="
         )
-
-        return {"image_urls": image_urls}
+        return {
+            "image_urls": image_urls,
+            "total_time": time.time() - total_start_time,
+            "total_cost": total_cost,
+            "currency": "USD",
+        }
 
     except Exception as e:
         logger.exception("Comfy task failed")
