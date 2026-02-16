@@ -9,12 +9,13 @@ import {
   Activity,
   ArrowRight,
   AlertCircle,
+  Target,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // --- Types ---
 
-// 1. The Raw API Data Shape
 interface EngagementStat {
   total: number;
   channel: string;
@@ -35,16 +36,15 @@ interface ApiResponse {
   data: CampaignData[];
 }
 
-// 2. The Internal Shape we need for the UI
 interface FunnelStage {
   id: string;
-  stage: string; // The display name (e.g., "Sent / Called")
-  count: number; // The value (e.g., 11)
-  percentage: number; // % relative to the Total
+  stage: string;
+  count: number;
+  percentage: number;
 }
 
-// --- Configuration: The Order of the Funnel ---
-// We explicitly define the order of keys here.
+// --- Configuration ---
+
 const FUNNEL_ORDER = [
   { key: "total", label: "Total Leads" },
   { key: "sent_called", label: "Sent / Called" },
@@ -60,26 +60,72 @@ function getStageColor(dropoffRate: number, index: number) {
   const warningHue = 270; // Purple
   const dangerHue = 330;  // Pink/Red
 
-  // High dropoff = Redder color
   if (dropoffRate > 30) {
     return {
       top: `hsl(${dangerHue}, 85%, 55%)`,
       bottom: `hsl(${dangerHue}, 90%, 45%)`,
-      border: `hsl(${dangerHue}, 90%, 75%)`,
+      bgClass: "bg-pink-500",
     };
   }
   if (dropoffRate > 15) {
     return {
       top: `hsl(${warningHue}, 75%, ${60 - index * 3}%)`,
       bottom: `hsl(${warningHue}, 85%, ${50 - index * 3}%)`,
-      border: `hsl(${warningHue}, 85%, 70%)`,
+      bgClass: "bg-purple-500",
     };
   }
   return {
     top: `hsl(${healthyHue}, 80%, ${60 - index * 2}%)`,
     bottom: `hsl(${healthyHue}, 90%, ${50 - index * 2}%)`,
-    border: `hsl(${healthyHue}, 90%, 70%)`,
+    bgClass: "bg-indigo-500",
   };
+}
+
+// --- Sub-Component: Legend ---
+function FunnelLegend() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+      {/* Retention Health */}
+      <div className="flex flex-col gap-3 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2 mb-1">
+          <Target className="w-4 h-4 text-indigo-600" />
+          <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Retention Health</span>
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.4)]" />
+            <span className="text-xs font-bold text-slate-600">Healthy (&gt;85%)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]" />
+            <span className="text-xs font-bold text-slate-600">Warning (70-85%)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.4)]" />
+            <span className="text-xs font-bold text-slate-600">Critical (&lt;70%)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Logic Explained */}
+      <div className="flex flex-col gap-3 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2 mb-1">
+          <Layers className="w-4 h-4 text-slate-400" />
+          <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Calculation Logic</span>
+        </div>
+        <div className="flex gap-6">
+          <div className="flex items-center gap-2">
+            <div className="px-1.5 py-0.5 rounded bg-slate-200 text-[10px] font-black text-slate-600">%</div>
+            <span className="text-xs font-medium text-slate-500 italic">Vs. Total Leads</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ArrowRight className="w-3.5 h-3.5 text-slate-300" />
+            <span className="text-xs font-medium text-slate-500 italic">Step-over-step Drop</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // --- Sub-Component: Hover Details ---
@@ -97,12 +143,9 @@ function HoverDetails({
   isVisible: boolean;
 }) {
   const dropoffCount = prevStage ? prevStage.count - stage.count : 0;
-  
-  // Guard against division by zero
   const conversionRate = prevStage && prevStage.count > 0
     ? ((stage.count / prevStage.count) * 100).toFixed(1)
     : "0.0";
-
   const dropoffRate = prevStage && prevStage.count > 0
     ? ((dropoffCount / prevStage.count) * 100).toFixed(0)
     : "0";
@@ -121,14 +164,12 @@ function HoverDetails({
     >
       <div className="bg-white/95 backdrop-blur-xl rounded-xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-slate-100 p-5 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-80" />
-        
         <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
           <h4 className="font-bold text-slate-800 text-sm">{stage.stage}</h4>
           <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-full tracking-wide uppercase">
             Step {index + 1}
           </span>
         </div>
-
         <div className="space-y-4">
           <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
             <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
@@ -136,29 +177,28 @@ function HoverDetails({
             </div>
             <div className="text-3xl font-bold text-slate-900 tabular-nums tracking-tight">{stage.count}</div>
           </div>
-
           {prevStage && (
             <div className="space-y-3 pt-2">
               <div className="flex justify-between items-end">
-                 <div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Conversion</div>
-                    <div className="text-lg font-bold text-emerald-600 flex items-center gap-1">
-                       <TrendingUp className="w-4 h-4" /> {conversionRate}%
-                    </div>
-                 </div>
-                 <span className="text-[10px] font-medium text-emerald-600/70">from prev. step</span>
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Conversion</div>
+                  <div className="text-lg font-bold text-emerald-600 flex items-center gap-1">
+                    <TrendingUp className="w-4 h-4" /> {conversionRate}%
+                  </div>
+                </div>
+                <span className="text-[10px] font-medium text-emerald-600/70">from prev. step</span>
               </div>
               <div className="h-px bg-slate-100 w-full" />
               <div className="flex justify-between items-end">
-                 <div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Drop-off</div>
-                    <div className="text-lg font-bold text-slate-700 flex items-center gap-1">
-                       <TrendingDown className="w-4 h-4" /> {dropoffRate}%
-                    </div>
-                 </div>
-                 <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
-                   {dropoffCount > 0 ? `-${dropoffCount}` : "0"} users
-                 </span>
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Drop-off</div>
+                  <div className="text-lg font-bold text-slate-700 flex items-center gap-1">
+                    <TrendingDown className="w-4 h-4" /> {dropoffRate}%
+                  </div>
+                </div>
+                <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
+                  {dropoffCount > 0 ? `-${dropoffCount}` : "0"} users
+                </span>
               </div>
             </div>
           )}
@@ -186,148 +226,106 @@ function FunnelRow({
 }) {
   const [isHovered, setIsHovered] = useState(false);
 
-  // Layout Math
   const avgWidth = (topWidth + bottomWidth) / 2;
   const leftEdgePercent = (100 - avgWidth) / 2;
   const insetTop = (100 - topWidth) / 2;
   const insetBottom = (100 - bottomWidth) / 2;
   const clipPath = `polygon(${insetTop}% 0%, ${100 - insetTop}% 0%, ${100 - insetBottom}% 100%, ${insetBottom}% 100%)`;
 
-  // Stats Math
   const dropoffCount = prevStage ? prevStage.count - stage.count : 0;
-  const dropoffRate = prevStage && prevStage.count > 0 
-    ? (dropoffCount / prevStage.count) * 100 
-    : 0;
-
-  // Colors
+  const dropoffRate = prevStage && prevStage.count > 0 ? (dropoffCount / prevStage.count) * 100 : 0;
   const colors = getStageColor(dropoffRate, index);
-  const gradient = `linear-gradient(to bottom, ${colors.top}, ${colors.bottom})`;
   const zIndexValue = isHovered ? 50 : totalStages - index;
 
   return (
-    <div 
+    <div
       className="relative w-full max-w-[600px] h-[64px] group flex items-center justify-center transition-all duration-200 mx-auto"
-      style={{ zIndex: zIndexValue, marginBottom: '-6px' }} 
+      style={{ zIndex: zIndexValue, marginBottom: "-6px" }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Label (Left Side) */}
-      <div 
+      <div
         className="absolute top-1/2 -translate-y-1/2 flex flex-col items-end pr-6 transition-all duration-300 pointer-events-none"
         style={{ left: 0, width: `${leftEdgePercent}%`, opacity: isHovered ? 1 : 0.6 }}
       >
-         <span className="text-xs font-semibold text-slate-400 whitespace-nowrap hidden sm:block">{stage.stage}</span>
-         <span className={cn(
-            "text-lg font-bold tabular-nums leading-none",
-            isHovered ? "text-indigo-600" : "text-slate-700"
-         )}>
-            {stage.count}
-         </span>
+        <span className="text-xs font-semibold text-slate-400 whitespace-nowrap hidden sm:block">{stage.stage}</span>
+        <span className={cn("text-lg font-bold tabular-nums leading-none", isHovered ? "text-indigo-600" : "text-slate-700")}>
+          {stage.count}
+        </span>
       </div>
 
       {/* The Funnel Shape */}
       <div className="relative w-full h-full">
-        <div 
-          className="absolute inset-0 bg-slate-900/10 blur-md translate-y-2 scale-[0.95]"
-          style={{ clipPath, zIndex: -1 }}
-        />
+        <div className="absolute inset-0 bg-slate-900/10 blur-md translate-y-2 scale-[0.95]" style={{ clipPath, zIndex: -1 }} />
         <div
           className="relative w-full h-full transition-all duration-300 group-hover:scale-[1.01] group-hover:-translate-y-0.5 cursor-pointer shadow-inner"
-          style={{ clipPath, background: gradient }}
+          style={{ clipPath, background: `linear-gradient(to bottom, ${colors.top}, ${colors.bottom})` }}
         >
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-white/40" />
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-             <span className="text-white font-bold text-sm drop-shadow-md tracking-wide">
-                {stage.percentage}%
-             </span>
+            <span className="text-white font-bold text-sm drop-shadow-md tracking-wide">{stage.percentage}%</span>
           </div>
         </div>
       </div>
 
       {/* Right Side: Arrow & Details */}
-      <div 
-         className="absolute h-full pointer-events-none"
-         style={{ left: `calc(50% + ${avgWidth / 2}%)` }}
-      >
-          {dropoffCount > 0 && (
-             <div className="absolute top-1/2 -translate-y-1/2 left-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className={cn("h-px w-6", dropoffRate > 20 ? "bg-red-300" : "bg-slate-300")} />
-                <div className={cn(
-                   "flex items-center text-xs font-bold bg-white/80 backdrop-blur px-2 py-0.5 rounded-full border shadow-sm",
-                   dropoffRate > 20 ? "text-red-600 border-red-100" : "text-slate-500 border-slate-100"
-                )}>
-                   <ArrowRight className="w-3 h-3 mr-1" />
-                   {dropoffRate.toFixed(0)}%
-                </div>
-             </div>
-          )}
-
-          <div className="pointer-events-auto">
-             <HoverDetails 
-               stage={stage} 
-               prevStage={prevStage} 
-               index={index}
-               totalStages={totalStages}
-               isVisible={isHovered}
-             />
+      <div className="absolute h-full pointer-events-none" style={{ left: `calc(50% + ${avgWidth / 2}%)` }}>
+        {dropoffCount > 0 && (
+          <div className="absolute top-1/2 -translate-y-1/2 left-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className={cn("h-px w-6", dropoffRate > 20 ? "bg-red-300" : "bg-slate-300")} />
+            <div
+              className={cn(
+                "flex items-center text-xs font-bold bg-white/80 backdrop-blur px-2 py-0.5 rounded-full border shadow-sm",
+                dropoffRate > 20 ? "text-red-600 border-red-100" : "text-slate-500 border-slate-100"
+              )}
+            >
+              <ArrowRight className="w-3 h-3 mr-1" />
+              {dropoffRate.toFixed(0)}%
+            </div>
           </div>
+        )}
+        <div className="pointer-events-auto">
+          <HoverDetails stage={stage} prevStage={prevStage} index={index} totalStages={totalStages} isVisible={isHovered} />
+        </div>
       </div>
     </div>
   );
 }
 
 // --- Main Export ---
-export function ProfessionalFunnel({
-  apiResponse,
-}: {
-  apiResponse?: ApiResponse;
-}) {
-  // 1. Safe Data Access
+export function ProfessionalFunnel({ apiResponse }: { apiResponse?: ApiResponse }) {
   const campaign = apiResponse?.data?.[0];
   const stats = campaign?.engagement_stats || [];
-
-  // 2. Derive Channel Tabs (e.g. ['whatsapp_chat', 'email'])
   const channels = useMemo(() => stats.map((s) => s.channel), [stats]);
   const [activeTab, setActiveTab] = useState(channels[0] || "");
 
-  // Update active tab if data loads later
   useMemo(() => {
     if (!activeTab && channels.length > 0) setActiveTab(channels[0]);
   }, [channels, activeTab]);
 
-  // 3. TRANSFORM DATA: Map the specific keys to stages
   const funnelData = useMemo<FunnelStage[]>(() => {
     if (!activeTab) return [];
-    
-    // Find the object for the active channel
     const currentStat = stats.find((s) => s.channel === activeTab);
     if (!currentStat) return [];
-
     const totalValue = currentStat.total || 0;
 
-    // Map using our predefined FUNNEL_ORDER configuration
     return FUNNEL_ORDER.map((step) => {
-      // @ts-ignore - access key dynamically
+      // @ts-ignore
       const count = currentStat[step.key] ?? 0;
-      
       return {
         id: step.key,
         stage: step.label,
         count: count,
-        // Percentage is relative to the TOTAL leads
         percentage: totalValue > 0 ? Math.round((count / totalValue) * 100) : 0,
       };
     });
   }, [stats, activeTab]);
 
-  // 4. Width Calculations for Funnel Shape
   const MAX_WIDTH = 100;
   const MIN_WIDTH = 25;
-  const stepSize = funnelData.length > 1 
-    ? (MAX_WIDTH - MIN_WIDTH) / (funnelData.length - 1) 
-    : 0;
+  const stepSize = funnelData.length > 1 ? (MAX_WIDTH - MIN_WIDTH) / (funnelData.length - 1) : 0;
 
-  // 5. Render Loading / Empty State
   if (!campaign || stats.length === 0) {
     return (
       <div className="w-full max-w-5xl mx-auto p-12 text-center border border-dashed border-slate-200 rounded-3xl bg-slate-50">
@@ -341,31 +339,27 @@ export function ProfessionalFunnel({
   return (
     <div className="w-full max-w-5xl mx-auto bg-white rounded-3xl border border-slate-100 shadow-sm p-8 pb-12 overflow-visible">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
-             <h2 className="text-xl font-bold text-slate-900">{campaign.campaign_name}</h2>
-             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-wide">
-               Funnel
-             </span>
+            <h2 className="text-xl font-bold text-slate-900">{campaign.campaign_name}</h2>
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-wide">
+              Funnel
+            </span>
           </div>
-          <p className="text-sm text-slate-500">
-            Conversion metrics by channel
-          </p>
+          <p className="text-sm text-slate-500">Conversion metrics by channel</p>
         </div>
-        
-        {/* Channel Tabs */}
+
         {channels.length > 0 && (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="bg-slate-100/80 p-1 h-auto">
               {channels.map((c) => (
-                <TabsTrigger 
-                  key={c} 
-                  value={c} 
+                <TabsTrigger
+                  key={c}
+                  value={c}
                   className="capitalize px-4 py-1.5 text-sm data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-indigo-600 font-medium"
                 >
-              {c ? c.replace(/_/g, " ") : "No Data"}
-
+                  {c ? c.replace(/_/g, " ") : "No Data"}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -373,15 +367,17 @@ export function ProfessionalFunnel({
         )}
       </div>
 
+      {/* NEW UPDATED LEGENDS */}
+      <FunnelLegend />
+
       {/* The Funnel Visualization */}
       <div className="relative flex flex-col items-center py-6 isolate">
-        {/* Dashed Center Line */}
         <div className="absolute top-0 bottom-12 left-1/2 w-px border-l border-dashed border-slate-200 -z-10" />
 
         {funnelData.map((stage, index) => {
-          const topW = MAX_WIDTH - (index * stepSize);
-          const bottomW = MAX_WIDTH - ((index + 1) * stepSize);
-          
+          const topW = MAX_WIDTH - index * stepSize;
+          const bottomW = MAX_WIDTH - (index + 1) * stepSize;
+
           return (
             <FunnelRow
               key={stage.id}
@@ -398,13 +394,11 @@ export function ProfessionalFunnel({
         {/* Bottom "Converted" Badge */}
         {funnelData.length > 0 && (
           <div className="mt-8 z-20">
-             <div className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 shadow-sm hover:shadow-md transition-shadow cursor-default">
-                <Activity className="w-4 h-4" />
-                <span className="font-bold tabular-nums text-lg">
-                  {funnelData[funnelData.length - 1].count}
-                </span>
-                <span className="text-sm font-medium">Converted</span>
-             </div>
+            <div className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 shadow-sm hover:shadow-md transition-shadow cursor-default">
+              <Activity className="w-4 h-4" />
+              <span className="font-bold tabular-nums text-lg">{funnelData[funnelData.length - 1].count}</span>
+              <span className="text-sm font-medium">Converted</span>
+            </div>
           </div>
         )}
       </div>

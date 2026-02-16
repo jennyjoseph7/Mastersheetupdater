@@ -169,7 +169,8 @@
           "dealer_name",
           "showroom_name",
           "person_name",
-          "visit_date",
+          "appointment_date",
+          "appointment_time",
           "purpose_of_visit"
         ],
         "function": "name_to_id",
