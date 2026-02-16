@@ -188,7 +188,8 @@ class AffinityEngineAgent(UtilityMixin):
             brochure_url: str = None, 
             product_website_url: str = None, 
             model_identifier='azure-gpt-4o',
-            domain: str = None
+            domain: str = None,
+            custom_affinity_dimensions:list[str] = None
         ):
         
         try:
@@ -207,8 +208,14 @@ class AffinityEngineAgent(UtilityMixin):
         self.llm:Callable = lambda messages:ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
         self.brochure_url:str = brochure_url
         self.product_website_url:str = product_website_url
-        self.domain:str = domain
+        self.domain:str = domain or "Automotive"
 
+        if custom_affinity_dimensions:
+            self.affinity_dimensions = custom_affinity_dimensions
+        else:
+            self.affinity_dimensions = self.fetch_affinity_dimensions(domain = self.domain)
+
+        logger.info(f"Affinity Dimensions set to: {self.affinity_dimensions}")
         self.brochure_content = self.fetch_brochure_content(brochure_url = self.brochure_url)
         self.product_website_content = self.fetch_product_details_from_website(website_url = self.product_website_url)
         
@@ -249,10 +256,8 @@ class AffinityEngineAgent(UtilityMixin):
         """
         messages = []
         input_type = self._determine_input_type(self.interaction_json)
-        affinity_dimensions = self.fetch_affinity_dimensions(domain="Automotive")
-        logger.info(f"Affinity Dimensions: {affinity_dimensions}")
 
-        
+        # Logic is not yet implemented. This is to modify the prompt based on the input type
         if input_type == "customer":
             context_description = """
                 a customer interaction or lead information JSON containing details about an individual customer's:
@@ -295,7 +300,7 @@ class AffinityEngineAgent(UtilityMixin):
         between 0 and 1 for each dimension listed below.
 
         Dimensions:
-        {", ".join(affinity_dimensions)}
+        {", ".join(self.affinity_dimensions)}
 
         Guidelines:
         - Understand the provided JSON. (Either a customer interaction JSON or a Cohort Classification JSON). If it is a customer interaction JSON, Please understand the customer's profile, behavior, preferences, and goals. It can be a customer lead information or Interaction JSON or Cohort Classification JSON.
@@ -370,14 +375,11 @@ class AffinityEngineAgent(UtilityMixin):
         """
     def run(self):
         prompt = self._build_prompt()
-
         product_context_parts = []
         if self.brochure_content:
             product_context_parts.append(f"PRODUCT BROCHURE:\n{json.dumps(self.brochure_content, indent=2)}")
-
         if self.product_website_content:
             product_context_parts.append(f"PRODUCT WEBSITE:\n{json.dumps(self.product_website_content, indent=2)}")
-
         if product_context_parts:
             product_context = "\n\n".join(product_context_parts)
             prompt.append(
@@ -386,8 +388,6 @@ class AffinityEngineAgent(UtilityMixin):
                     "content": f"{self.additional_product_context}\n{product_context}"
                 }
             )
-        
-
         parsed = self.exec_json_llm_with_retry(self.llm, messages=prompt)
         for k in parsed["affinity_scores"]:
             parsed["affinity_scores"][k] = max(0.0, min(1.0, parsed["affinity_scores"][k]))
