@@ -46,7 +46,19 @@ def post_session_process(*args, **kwargs):
     session_data = {}
     with get_pg_connector() as pg:
         session_data = pg.get("session_data_cache","session_id",session_id)
-
+        session_mdl_obj = pg.get("session","session_id",session_id)
+    if not session_mdl_obj:
+        mlogger.info("session_id not passed in kwargs")
+        yield from yield_error("error","session_mdl_obj not found",*args, **kwargs)
+        return
+    if session_mdl_obj.get("status") in ["busy",
+                "no-answer",
+                "cancelled",
+                "failed",
+                "pre-initiated"]:
+        mlogger.info("status is {}, Not doing post processing".format(session_mdl_obj.get("status")))
+        return
+        
     if not session_data:
         mlogger.info("session_id not passed in kwargs")
 
@@ -76,6 +88,10 @@ def post_session_process(*args, **kwargs):
     #     return
 
     messages = session_data.get("messages")
+    if not messages or len(messages) == 0:
+        mlogger.info("messages not found in session_data")
+        yield from yield_error("error","messages not found in session_data",*args, **kwargs)
+        return
     sentiment_score = -1
     emotion_analysis = {}
     if messages:
@@ -86,7 +102,7 @@ def post_session_process(*args, **kwargs):
         emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
         mlogger.info(f"sentiment data gave me score = {sentiment_score} and ananlusis = {emotion_analysis}")
     
-    updated_lead_data = get_disposition(session_id,session_data)
+    updated_lead_data = get_disposition(session_id,session_data) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
     mlogger.info("got disposition as == {}".format(updated_lead_data))
     session_update_data = {"disposition":updated_lead_data.get("disposition"),"disposition_detail":updated_lead_data.get("disposition_detail")}
 
@@ -130,8 +146,9 @@ def post_session_process(*args, **kwargs):
             mlogger.info("visit data == {}".format(visit_data))
             if not visit_data:
                 return
-            visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "workshop_visit"
+            visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "service_visit"
             m = AutocrmModel(visit_model)
+            mlogger.info("visit_model == {}".format(visit_model))
             posted = m.post(visit_data)
             mlogger.info("visit posted == {}".format(posted))
     
