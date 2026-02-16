@@ -16,11 +16,12 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, OPENAI_API_KEY, \
     OPENAI_INPUT_TEXT_TOKEN_PRICE, \
     OPENAI_OUTPUT_TEXT_TOKEN_PRICE, \
     OPENAI_INPUT_IMAGE_TOKEN_PRICE, \
-    OPENAI_OUTPUT_IMAGE_TOKEN_PRICE, \
-    VALIDATE_PROMPT_MODEL
+    OPENAI_OUTPUT_IMAGE_TOKEN_PRICE
+    # VALIDATE_PROMPT_MODEL
 from combine_images import merge_layers
 from check_distortion import analyze_image, pad_and_resize_image
 from spdl_comfy import comfy_image_generation_task
+from spdl_comfy import gemini_image_generation_task
 from spark_helpers import func_gryd_file_system, download_file
 SERVICE = 'spark'
 gryd.SERVICE = SERVICE
@@ -59,6 +60,17 @@ def comfy_image_generation(
     **kwargs):
     logger = logger or mlogger
     return comfy_image_generation_task(input_image_url, prompt, number_of_images, logger = logger, **kwargs)
+
+@gryd.is_a_task(function_name = "gemini_image_generation", job_param = 'job', logger_param = 'logger')
+def gemini_image_generation(
+    input_image_url,
+    prompt,
+    number_of_images=1,
+    job = None,
+    logger = None,
+    **kwargs):
+    logger = logger or mlogger
+    return gemini_image_generation_task(input_image_url, prompt, number_of_images, logger = logger, **kwargs)
 
 
 @gryd.is_a_task(function_name = "openai_image_generation", job_param = 'job', logger_param = 'logger')
