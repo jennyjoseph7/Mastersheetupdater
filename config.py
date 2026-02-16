@@ -129,8 +129,9 @@ class AutocrmModel:
         return self.model._model_ref.attributes
 
     def post(self, data):
-        self.model.post(data)
+        ret = self.model.post(data)
         self.logger.info(f"Data posted successfully: {self.model_name}")
+        return ret
 
     def get(self, id):
         return self.model.get(id)
