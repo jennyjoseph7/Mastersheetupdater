@@ -753,7 +753,7 @@ def make_call_tatatele(session_data, *args, **kwargs):
     logger.info(f"Making Tatatele call with session data: {session_data}")
     session_data = session_data or {}
     agent_number = session_data.get("agent_number", TATATELE_PHONE_NUMBER)
-    caller_id = session_data.get("caller_id", TATATELE_PHONE_NUMBER)
+    caller_id = session_data.get("caller_id", agent_number)
     room_id = session_data.get("room_id", "default_room")
     session_id = session_data.get("session_id")
     customer_number = session_data.get("phone_number", "918850988794") #for test

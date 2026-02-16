@@ -66,7 +66,9 @@ def trigger_voice_call(*args, **kwargs):
             "user_name": "<string>",
             "<vehicle_specific>": "<value>",
             "campaign_id": "<string>",
-            "campaign_workflow_id": "<string>"
+            "campaign_workflow_id": "<string>",
+            "agent_number": <the caller number>,
+            "dealership_id": <the dealership id for which we are sending the info"
         }
 
     The function ensures that the call session context is available to the voice agent 
@@ -186,9 +188,13 @@ def trigger_voice_call(*args, **kwargs):
     #temporary provider selection logic
     provider = "tatatele"
     logger.info(f"Using dealership_id: {user_data.get('dealership_id')} for provider mapping. {list(dealership_provider_map.keys())}")
+    dealership_id = user_data.get('dealership_id')
+    default_agent = ("tatatele", "agent_5701ka8618cbfxcbdp4wg6xb3x23")
     if user_data.get("dealership_id") in list(dealership_provider_map.keys()):
-        provider = dealership_provider_map[user_data.get("dealership_id")][0]
-        session_data["agent_id"] = dealership_provider_map[user_data.get("dealership_id")][1]
+        provider = user_data.get('provider') or dealership_provider_map.get(dealership_id, default_agent)[0]
+        session_data["agent_id"] = user_data.get('agent_id') or dealership_provider_map.get(dealership_id,default_agent)[1]
+        if user_data.get('agent_number')
+            session_data["agent_number"] = user_data.get("agent_number")
     #----------end-----------
 
     #provider = user_data.get("provider_name", provider).replace("-", "").strip().lower()
