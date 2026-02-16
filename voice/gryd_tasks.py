@@ -143,7 +143,9 @@ def trigger_voice_call(*args, **kwargs):
         pre_sales_lead_model = gryd.base_model.Model("pre_sales_lead", config.AUTOCRM_APP_ENTERPRISE_ID)
         r = pre_sales_lead_model.update(
             session_data.get("lead_id"),
-            {"last_session_channel":session_data.get("channel")}
+            {"last_session_channel":session_data.get("channel")},
+            internal=True,
+            _previous_instance={}
         )
 
         logger.info(f"Pre-sales lead model patch response: {r}")
@@ -156,7 +158,9 @@ def trigger_voice_call(*args, **kwargs):
         post_sales_lead_model = gryd.base_model.Model("post_sales_lead", config.AUTOCRM_APP_ENTERPRISE_ID)
         r = post_sales_lead_model.update(
             session_data.get("lead_id"),
-            {"last_session_channel":session_data.get("channel")}
+            {"last_session_channel":session_data.get("channel")},
+            internal=True,
+            _previous_instance={}
         )
         logger.info(f"Post-sales lead model patch response: {r}")
 
