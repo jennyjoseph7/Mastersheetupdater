@@ -18,10 +18,11 @@ fi
 export SETUP_WEBAPP=${SETUP_WEBAPP:-True}
 export SETUP_WORKERS=${SETUP_WORKERS:-True}
 export RUN_IN_BG=True
-export DEV_CONTAINER=${KEEPALIVE_CONTAINER:-True}
+export KEEPALIVE_CONTAINER=${KEEPALIVE_CONTAINER:-True}
 export START_AGENTS=${START_AGENTS:-0}
 export START_WORKERS=${START_WORKERS:-0}
 export DEFAULT_WORKERS=${DEFAULT_WORKERS:-0}
+export SERVER_PORT=${WEBAPP_OVERRIDE_PORT:-0}
 
 process_config=`cat start_worker_config.json`
 
@@ -295,6 +296,10 @@ function start_workers() {
 			WEBAPP_URL_SCHEME=$(jq -r '.url_scheme' <<< "$webapp_config")
 			WEBAPP_API_THREADS=$(jq -r '.api_threads' <<< "$webapp_config")
 			WEBAPP_APP_NAME=$(jq -r '.name' <<< "$webapp_config")
+			
+			if [ $SERVER_PORT != 0 ];then
+				WEBAPP_PORT=$WEBAPP_OVERRIDE_PORT
+			fi
 
 			nohup waitress-serve --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log &
 
