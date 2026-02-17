@@ -306,7 +306,7 @@
             "auto_updater": true,
             "default": {
                 "args": [
-                    "variant_name",
+                    "variant_id",
                     "feature_name"
                 ],
                 "function": "name_to_id",
