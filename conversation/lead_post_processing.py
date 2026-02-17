@@ -699,6 +699,7 @@ def get_disposition(session_id, session_data_cache):
     lead_data = session_data_cache.get("user_data")
     campaign_data = session_data_cache.get("campaign_data")
     campaign_objective = campaign_data.get("campaign_objective")
+    campaign_purpose = campaign_data.get("purpose")
     campaign_description = campaign_data.get("campaign_description")
     message_history = session_data_cache.get("messages")
     campaign_type = campaign_data.get("campaign_type")
@@ -759,8 +760,8 @@ def get_disposition(session_id, session_data_cache):
 
     prompt = f"""
     You are a analyst bot that has the single purpose of looking at the conversation history with my customer and I and check if they completed the objective of my campaign. 
-    I am running a campaign with the objective of {campaign_objective}.
-    these are some details of the campaign {campaign_description}.
+    I am running a campaign with the objective of {campaign_purpose if campaign_purpose else campaign_objective}.
+    These are some details of the campaign - {campaign_description}.
     I want to know if the purpose of the campaign was met by the customer.
     For example:
         If campaign is about booking a test drive check if the customer booked a test drive.
@@ -769,7 +770,10 @@ def get_disposition(session_id, session_data_cache):
 
     The conversation history is as follows:
     {message_history}
-    Now check if the objective of the campaign was met by the customer. and select of the the following disposition detail to be the disposition description. If the disposition is converted the prioritization score should be 100 and prioritization category should be COMPLETE. Other wise determine the interest the have shown during the call and put a score and pick from the categories for prioritization.
+    Now check if the objective of the campaign was met by the customer. 
+    If the objective was met the disposition should be converted.
+    In all other cases it should be engaged.
+    Select of the the following disposition detail to be the disposition description. If the disposition is converted the prioritization score should be 100 and prioritization category should be COMPLETE. Other wise determine the interest the have shown during the call and put a score and pick from the categories for prioritization.
     Possible values for disposition_detail:
     {disp_details_options}
     Only pick ONE value from this above list for disposition details.
@@ -902,6 +906,7 @@ def get_extra_data(session_id,session_data_cache):
     lead_data = session_data_cache.get("user_data")
     campaign_data = session_data_cache.get("campaign_data")
     campaign_objective = campaign_data.get("campaign_objective")
+    campaign_purpose = campaign_data.get("campaign_purpose")
     campaign_description = campaign_data.get("campaign_description")
     message_history = session_data_cache.get("messages")
     campaign_type = campaign_data.get("campaign_type")
@@ -911,7 +916,7 @@ def get_extra_data(session_id,session_data_cache):
     empty_dict = {}
     prompt = f"""
     You are a data identifier bot that helps pick out values i want to save about the user from the conversation history.
-    I am running a campaign with the objective of {campaign_objective}.
+    I am running a campaign with the objective of {campaign_purpose if campaign_purpose else campaign_objective}.
     these are some details of the campaign {campaign_description}.
     This the the information i already have about the user.
     {lead_data}
