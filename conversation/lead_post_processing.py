@@ -760,7 +760,7 @@ def get_disposition(session_id, session_data_cache):
 
     prompt = f"""
     You are a analyst bot that has the single purpose of looking at the conversation history with my customer and I and check if they completed the objective of my campaign. 
-    I am running a campaign with the objective of {campaign_objective if campaign_objective else campaign_purpose}.
+    I am running a campaign with the objective of {campaign_purpose if campaign_purpose else campaign_objective}.
     These are some details of the campaign - {campaign_description}.
     I want to know if the purpose of the campaign was met by the customer.
     For example:
@@ -906,6 +906,7 @@ def get_extra_data(session_id,session_data_cache):
     lead_data = session_data_cache.get("user_data")
     campaign_data = session_data_cache.get("campaign_data")
     campaign_objective = campaign_data.get("campaign_objective")
+    campaign_purpose = campaign_data.get("campaign_purpose")
     campaign_description = campaign_data.get("campaign_description")
     message_history = session_data_cache.get("messages")
     campaign_type = campaign_data.get("campaign_type")
@@ -915,7 +916,7 @@ def get_extra_data(session_id,session_data_cache):
     empty_dict = {}
     prompt = f"""
     You are a data identifier bot that helps pick out values i want to save about the user from the conversation history.
-    I am running a campaign with the objective of {campaign_objective}.
+    I am running a campaign with the objective of {campaign_purpose if campaign_purpose else campaign_objective}.
     these are some details of the campaign {campaign_description}.
     This the the information i already have about the user.
     {lead_data}
