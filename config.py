@@ -102,6 +102,7 @@ PHONE_NUMBER_ID="phnum_8201k1anbf9wet6v915q8arr1vmz"
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1.5")
 OPENAI_IMAGE_SIZE = os.environ.get("OPENAI_IMAGE_SIZE", "1024x1536")
+VALIDATE_PROMPT_MODEL = os.environ.get("VALIDATE_PROMPT_MODEL", "azure-gpt-4o-mini")
 try:
     OPENAI_INPUT_TEXT_TOKEN_PRICE = float(os.environ.get("OPENAI_INPUT_TEXT_TOKEN_PRICE", 5.0/1_000_000))
     OPENAI_OUTPUT_TEXT_TOKEN_PRICE = float(os.environ.get("OPENAI_OUTPUT_TEXT_TOKEN_PRICE", 10.0/1_000_000))

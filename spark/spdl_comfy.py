@@ -5,6 +5,17 @@ import time
 import uuid
 import logging
 import requests
+import vertexai
+import tempfile
+from openai import OpenAI
+from vertexai.preview.vision_models import Image, ImageGenerationModel
+import google.genai as genai
+from google import genai
+from google.genai import types
+from google.genai import types as genai_types
+from google.genai.local_tokenizer import LocalTokenizer
+from gryd_worker import gryd
+
 
 
 # -------------------- BASE DIR --------------------
@@ -16,6 +27,9 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 )
 mlogger = logging.getLogger("spdl_comfy")
+
+PROJECT_ID = os.getenv("PROJECT_ID")
+LOCATION = "global"
 
 # -------------------- COMFY CONFIG --------------------
 COMFY_HOST = os.getenv("COMFY_HOST")
@@ -188,3 +202,163 @@ def comfy_image_generation_task(
     except Exception as e:
         logger.exception("Comfy task failed")
         return {"error": str(e)}
+
+
+# nano banana
+def gemini_image_generation_task(
+    input_image_url,
+    prompt,
+    number_of_images=1,
+    temperature=0.2,
+    top_p=0.95,
+    **kwargs
+):
+    logger = kwargs.pop("logger", None) or mlogger
+
+    total_start = time.time()
+
+    logger.info("===== Gemini Image Generation Task Started =====")
+    logger.info(f"Prompt: {prompt}")
+    logger.info(f"Input Image URL: {input_image_url}")
+
+    number_of_images = 1
+    logger.info(f"Number of images: {number_of_images}")
+
+    logger.info(f"Temperature: {temperature}, Top_p: {top_p}")
+
+    try:
+        # -------------------- CLIENT --------------------
+        client = genai.Client(
+            vertexai=True,
+            project=PROJECT_ID,
+            location=LOCATION
+        )
+
+        model = "gemini-3-pro-image-preview"
+
+        task_dir = tempfile.mkdtemp(prefix="gemini_")
+        image_urls = []
+
+        total_prompt_tokens = 0
+        total_output_tokens = 0
+
+        GEMINI_INPUT_TOKEN_PRICE = 2 / 1_000_000
+        GEMINI_OUTPUT_TOKEN_PRICE = 120 / 1_000_000
+
+        for i in range(number_of_images):
+
+            iteration_start = time.time()
+            logger.info(f"----- Generating image ({i+1}/{number_of_images}) -----")
+
+            image_part = genai_types.Part.from_uri(
+                file_uri=input_image_url,
+                mime_type="image/jpeg"
+            )
+
+            text_part = genai_types.Part.from_text(text=prompt)
+
+            contents = [
+                genai_types.Content(
+                    role="user",
+                    parts=[image_part, text_part]
+                )
+            ]
+
+            config = genai_types.GenerateContentConfig(
+                temperature=temperature,
+                top_p=top_p,
+                max_output_tokens=32768,
+                response_modalities=["TEXT", "IMAGE"],
+                safety_settings=[
+                    genai_types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="OFF"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="OFF"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="OFF"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_HATE", threshold="OFF"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_DANGEROUS_CONTENT", threshold="OFF"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_HARASSMENT", threshold="OFF"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT", threshold="OFF"),
+                ],
+            )
+
+            response = client.models.generate_content(
+                model=model,
+                contents=contents,
+                config=config
+            )
+
+            for candidate in response.candidates:
+                for part in candidate.content.parts:
+
+                    if getattr(part, "inline_data", None):
+
+                        file_name = f"gemini_{uuid.uuid4().hex}.png"
+                        output_path = os.path.join(task_dir, file_name)
+
+                        with open(output_path, "wb") as f:
+                            f.write(part.inline_data.data)
+
+                        url = upload_to_gryd(output_path)
+
+                        if url:
+                            image_urls.append(url)
+
+                        os.remove(output_path)
+                        break
+
+            # -------------------- TOKEN METADATA --------------------
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                usage = response.usage_metadata
+
+                prompt_tokens = getattr(usage, "prompt_token_count", 0)
+                output_tokens = getattr(usage, "candidates_token_count", 0)
+
+                total_prompt_tokens += prompt_tokens
+                total_output_tokens += output_tokens
+
+                logger.info(
+                    f"Tokens — Prompt: {prompt_tokens}, Output: {output_tokens}"
+                )
+
+            logger.info(
+                f"Image {i+1} completed in {time.time() - iteration_start:.2f} sec"
+            )
+
+        # -------------------- COST CALCULATION --------------------
+        total_time = time.time() - total_start
+
+        input_cost = GEMINI_INPUT_TOKEN_PRICE * total_prompt_tokens
+        output_cost = GEMINI_OUTPUT_TOKEN_PRICE * total_output_tokens
+
+        total_cost = (
+            input_cost +
+            output_cost +
+            total_time * gryd.EXECUTION_COST
+        )
+
+        logger.info("===== Gemini Task Completed =====")
+        logger.info(f"Total Time: {total_time:.2f} sec")
+        logger.info(f"Total Prompt Tokens: {total_prompt_tokens}")
+        logger.info(f"Total Output Tokens: {total_output_tokens}")
+        logger.info(f"Total Cost: ${total_cost:.6f}")
+
+        # -------------------- RETURN --------------------
+        return {
+            "image_urls": image_urls,
+
+            "input_token_count": total_prompt_tokens,
+            "output_token_count": total_output_tokens,
+            "total_token_count": total_prompt_tokens + total_output_tokens,
+
+            "input_cost": input_cost,
+            "output_cost": output_cost,
+            "total_cost": total_cost,
+
+            "total_time": total_time,
+            "currency": "USD"
+        }
+
+    except Exception as e:
+        logger.exception("Gemini task failed")
+        return {"error": str(e)}
+
