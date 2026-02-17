@@ -12,8 +12,11 @@ import pytz
 import time
 
 from conversation import converse
-from communication.connectors.communication_helpers import end_session as end_voice_session, generate_uid
+from communication.connectors.communication_helpers import end_session as end_voice_session, generate_uid,get_communication_credential
 #from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
+
+from autocrm_db_helper import get_pg_connector
+
 logger = hp.get_logger(__name__)
 
 
@@ -137,39 +140,50 @@ def trigger_voice_call(*args, **kwargs):
         "voice_agent_id": user_data.get("agent_id")
     }
 
-
     logger.info(f"Session created with data: {session_data}")
-    if session_data.get("campaign_type") == "pre-sales":
-        pre_sales_lead_model = gryd.base_model.Model("pre_sales_lead", config.AUTOCRM_APP_ENTERPRISE_ID)
-        r = pre_sales_lead_model.update(
-            session_data.get("lead_id"),
-            {"last_session_channel":session_data.get("channel")},
-            internal=True,
-            _previous_instance={}
+    campaign_type = session_data.get("campaign_type")
+    lead_id = session_data.get("lead_id")
+    channel = session_data.get("channel")
+    campaign_id = session_data.get("campaign_id")
 
+    CONFIG_D = {
+        "pre-sales": {
+            "table": "pre_sales_lead",
+            "pk": "pre_sales_lead_id",
+            "model": "pre_sales_campaign",
+        },
+        "post-sales": {
+            "table": "post_sales_lead",
+            "pk": "post_sales_lead_id",
+            "model": "post_sales_campaign",
+        },
+    }
+
+    config_data = CONFIG_D.get(campaign_type)
+
+    if config_data:
+        with get_pg_connector() as pg:
+            pg.update(
+                config_data["table"],
+                config_data["pk"],
+                lead_id,
+                {"last_session_channel": channel},
+            )
+            logger.info(
+                f"Updated last_session_channel for {config_data['pk']}: {lead_id} "
+                f"with channel: {channel}"
+            )
+
+        campaign_model = gryd.base_model.Model(
+            config_data["model"],
+            config.AUTOCRM_APP_ENTERPRISE_ID,
         )
+        campaign_data = campaign_model.get(campaign_id)
 
-        logger.info(f"Pre-sales lead model patch response: {r}")
-        pre_sales_campaign_model = gryd.base_model.Model("pre_sales_campaign", config.AUTOCRM_APP_ENTERPRISE_ID)
-        pre_sales_campaign_model_data = pre_sales_campaign_model.get(session_data.get("campaign_id"))
         agent_config.update({
-            k : v for k, v in pre_sales_campaign_model_data.items() if k.startswith("voice_") and v
-        })
-    elif session_data.get("campaign_type") == "post-sales":
-        post_sales_lead_model = gryd.base_model.Model("post_sales_lead", config.AUTOCRM_APP_ENTERPRISE_ID)
-        r = post_sales_lead_model.update(
-            session_data.get("lead_id"),
-            {"last_session_channel":session_data.get("channel")},
-            internal=True,
-           _previous_instance={}
-
-        )
-        logger.info(f"Post-sales lead model patch response: {r}")
-
-        post_sales_campaign_model = gryd.base_model.Model("post_sales_campaign", config.AUTOCRM_APP_ENTERPRISE_ID)
-        post_sales_campaign_model_data = post_sales_campaign_model.get(session_data.get("campaign_id"))
-        agent_config.update({
-            k : v for k, v in post_sales_campaign_model_data.items() if k.startswith("voice_") and v
+            k: v
+            for k, v in campaign_data.items()
+            if k.startswith("voice_") and v
         })
 
     if user_data.get("generate_prompt", True):
@@ -185,14 +199,14 @@ def trigger_voice_call(*args, **kwargs):
     
     user_data.update(session_data)
     
-    credentials_model = gryd.base_model.Model("communication_credential", config.AUTOCRM_APP_ENTERPRISE_ID)
+    # credentials_model = gryd.base_model.Model("communication_credential", config.AUTOCRM_APP_ENTERPRISE_ID)
 
-    credentials = credentials_model.list(**{
-        "dealership_id": user_data.get("dealership_id"),
-        "channel": "voice_phone"
-    }).get("data", [])
+    # credentials = credentials_model.list(**{
+    #     "dealership_id": user_data.get("dealership_id"),
+    #     "channel": "voice_phone"
+    # }).get("data", [])
 
-    credentials = credentials[0] if credentials else {}
+    credentials = get_communication_credential(dealership_id = user_data.get("dealership_id"), channel = "voice_phone")
 
     logger.info(f"Credentials found for dealership_id {user_data.get('dealership_id')}: {credentials}")
 
@@ -203,15 +217,17 @@ def trigger_voice_call(*args, **kwargs):
             "tatatele_phone_number_api_key": credentials.get("auth_token")
         }
         session_data["provider"] = provider
-        session_data["agent_number"] = credentials.get("sender")   
+        session_data["agent_number"] = credentials.get("sender") 
     else:
-        #temporary provider selection logic
-        provider = "tatatele"
-        logger.info(f"Using dealership_id: {user_data.get('dealership_id')} for provider mapping. {list(dealership_provider_map.keys())}")
-        if user_data.get("dealership_id") in list(dealership_provider_map.keys()):
-            provider = dealership_provider_map[user_data.get("dealership_id")][0]
-            session_data["agent_id"] = dealership_provider_map[user_data.get("dealership_id")][1]
-        #----------end-----------
+        logger.warning(f"No credentials found for dealership_id {user_data.get('dealership_id')}, channel voice_phone")  
+    # else:
+    #     #temporary provider selection logic
+    #     provider = "tatatele"
+    #     logger.info(f"Using dealership_id: {user_data.get('dealership_id')} for provider mapping. {list(dealership_provider_map.keys())}")
+    #     if user_data.get("dealership_id") in list(dealership_provider_map.keys()):
+    #         provider = dealership_provider_map[user_data.get("dealership_id")][0]
+    #         session_data["agent_id"] = dealership_provider_map[user_data.get("dealership_id")][1]
+    #     #----------end-----------
 
         #provider = user_data.get("provider_name", provider).replace("-", "").strip().lower()
 
@@ -232,7 +248,6 @@ def trigger_voice_call(*args, **kwargs):
 
     post_contact_status_voice(user_data, message_id=session_data["session_id"])
 
-    from autocrm_db_helper import get_pg_connector
 
     timeout = time.time() + float(user_data.get("call_timeout", 600))  # 10 minutes
 
