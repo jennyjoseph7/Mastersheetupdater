@@ -754,9 +754,10 @@ def make_call_tatatele(session_data, *args, **kwargs):
     session_data = session_data or {}
     agent_number = session_data.get("agent_number", TATATELE_PHONE_NUMBER)
     caller_id = session_data.get("caller_id", TATATELE_PHONE_NUMBER)
-    room_id = session_data.get("room_id", "default_room")
     session_id = session_data.get("session_id")
     customer_number = session_data.get("phone_number", "918850988794") #for test
+    tatatele_phone_number_api_key = session_data.get("provider_credentials", {}).get('tatatele_phone_number_api_key')
+
     session_started = False
 
     session_data["agent_number"] = agent_number
@@ -797,7 +798,8 @@ def make_call_tatatele(session_data, *args, **kwargs):
         response = tatatele_client.click_to_call_support(
             caller_id,
             customer_number,
-            custom_id= session_id #custom_identifier
+            custom_id= session_id, #custom_identifier session_id in this case
+            api_key = tatatele_phone_number_api_key
         )
 
         logger.info(f"Tatatele originate response: {response}")
