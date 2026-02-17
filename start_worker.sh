@@ -298,7 +298,7 @@ function start_workers() {
 			WEBAPP_APP_NAME=$(jq -r '.name' <<< "$webapp_config")
 			
 			if [ $SERVER_PORT != 0 ];then
-				WEBAPP_PORT=$WEBAPP_OVERRIDE_PORT
+				WEBAPP_PORT=$SERVER_PORT
 			fi
 
 			nohup waitress-serve --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log &
