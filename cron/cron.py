@@ -99,21 +99,6 @@ def template_summary():
         print(f"[CRON] update_template_summary row count = {rows}")
         return rows
 
-# @gryd.is_a_task(function_name="performance_summary")
-# def performance_summary():
-#     with get_pg_connector() as pg:
-#         pg.execute_write(
-#             "CALL run_campaign_performance_summary();",
-#             _fetch=False
-#         )
-#         rows = list(
-#             pg.yield_results(
-#                 "SELECT COUNT(*) FROM campaign_performance_summary;"
-#             )
-#         )
-#         print(f"[CRON] update_campaign_performance_summary row count = {rows}")
-#         return rows
-
 @gryd.is_a_task(function_name="performance_summary")
 def performance_summary():
     
@@ -349,7 +334,7 @@ def check_inactive_sessions(*args, **kwargs):
                 )
 
                 # ending the session --------
-                end_session(session_id=session_id)
+                end_session(session_id=session_id, pg=pg)
             else:
                 mlogger.info(
                     f"Session {session_id} still active "
@@ -357,7 +342,7 @@ def check_inactive_sessions(*args, **kwargs):
                 )
         mlogger.info(f"Other channel counts skipped: {len(other_channels)}")
         mlogger.info("************************************************")
-
+        return 
 def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None):
     conditions = [] 
     params = ()
