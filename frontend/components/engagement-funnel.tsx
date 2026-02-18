@@ -337,7 +337,7 @@ export function ProfessionalFunnel({ apiResponse }: { apiResponse?: ApiResponse 
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto bg-white rounded-3xl border border-slate-100 shadow-sm p-8 pb-12 overflow-visible">
+    <div className="w-full max-w-5xl mx-auto bg-white rounded-3xl  p-8 pb-12 overflow-visible">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>

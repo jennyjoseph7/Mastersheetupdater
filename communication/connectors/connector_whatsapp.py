@@ -16,7 +16,7 @@ from flask import request
 # added new instead of
 import sys,os
 import time
-from connectors.communication_helpers import format_box_log,safe_orjson_dumps,generate_uid
+from connectors.communication_helpers import format_box_log,safe_orjson_dumps,generate_uid,get_communication_credential
 from connectors.communication_configs import DB_TIMEZONE
 from config import *
 from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappReceiverConnector
@@ -464,6 +464,9 @@ def post_billing_obj(**message_dict):
             lead_model= 'post_sales_lead' if session_data.get('campaign_type') == 'post-sales' else 'pre_sales_lead'
             
         logger.info(f"We have dealership_id: {dealership_id} in contact_status_data")
+        c=get_communication_credential(dealership_id=dealership_id, channel="whatsapp_chat")
+        if c:
+            logger.info(f"Communication Credential found for dealership_id: {dealership_id} and channel whatsapp_chat")
         if lead_id:
             logger.info(f"We have lead_id: {lead_id} in contact_status_data")
             lead_model_id="post_sales_lead_id" if lead_model == "post_sales_lead" else "pre_sales_lead_id"
@@ -471,7 +474,7 @@ def post_billing_obj(**message_dict):
             lead_data=list(pg.list(lead_model,{lead_model_id:lead_id}))[0]
             # logger.info(f"We have lead_data: {lead_data}")
             if lead_data:
-                item_description =f"{lead_data.get('campaign_type', 'unknown')} - {lead_data.get('campaign_objective_name', 'campaign_objective_id')} - {lead_data.get('campaign_name', 'unknown')} - {lead_data.get('channel', 'unknown')} - {WHATSAPP_PROVIDER_NAME} - {message_dict.get('mobile_number')}"
+                item_description =f"{lead_data.get('campaign_type', 'unknown')} - {lead_data.get('campaign_objective_name', 'campaign_objective_id')} - {lead_data.get('campaign_name', 'unknown')} - {lead_data.get('channel', 'unknown')} - {c.get('provider_name', 'unknown')} - {message_dict.get('mobile_number')}"
                 campaign_id=lead_data.get('campaign_id')
             else:
                 logger.info(f"Lead data not found for lead_id: {lead_id}")

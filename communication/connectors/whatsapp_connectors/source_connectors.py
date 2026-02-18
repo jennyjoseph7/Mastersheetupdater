@@ -11,7 +11,7 @@ import re
 
 from conversation.lead_post_processing import post_session_process
 
-# from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NAME,WHATSAPP_PROVIDER_NUMBER,AUTOCRM_CORE_SERVICE_NAME
+# from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NUMBER,AUTOCRM_CORE_SERVICE_NAME
 from config import *
 from connectors.communication_helpers import * 
 
@@ -339,7 +339,6 @@ class BaseWebhookConverter:
         self.gryd_service_name= gryd.SERVICE
         self.webhook_process_start_time=kwargs.get("webhook_process_start_time",time.time())
         self.webhook_received_timestamp= hp.now(tz=DB_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
-        
     def safe_update_dict(self, updates: dict):
         """
         Safely updates self.default_message_dict with non-empty values from updates.

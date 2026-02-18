@@ -4,7 +4,18 @@ import { useMemo, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
-import { ArrowLeft, AlertCircle } from "lucide-react";
+import { 
+  ArrowLeft, 
+  AlertCircle, 
+  TrendingUp, 
+  Users, 
+  AlertTriangle, 
+  PieChart as PieIcon, 
+  DollarSign,
+  Download,       // Added for Export Icon
+  ChevronLeft,    // Added for Pagination
+  ChevronRight    // Added for Pagination
+} from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -14,6 +25,10 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  PieChart,
+  Pie,
+  Legend,
+  LabelList,
 } from "recharts";
 
 // --- UI Component Imports ---
@@ -40,8 +55,6 @@ import {
 
 // --- Custom Component Imports ---
 import { ProfessionalFunnel } from "@/components/engagement-funnel";
-import { CampaignFailureChart } from "@/components/campaign-failure-chart";
-import { CostPerLeadChart } from "@/components/cost-per-lead-chart";
 import { ProtectedRoute } from "@/components/protected-route";
 import { EngagementModal } from "@/components/engagement-modal";
 import {
@@ -60,18 +73,31 @@ const SWR_OPTIONS = {
   shouldRetryOnError: false,
 };
 
+const ITEMS_PER_PAGE = 10; // Pagination Size
+
 const CHANNEL_COLORS: Record<string, string> = {
-  whatsapp_chat: "#25D366",
-  whatsapp: "#25D366",
-  email: "#EA4335",
-  voice: "#4285F4",
-  sms: "#FACC15",
-  default: "#6366f1",
+  whatsapp_chat: "#10B981", // Emerald 500
+  whatsapp: "#10B981",
+  email: "#EF4444",         // Red 500
+  voice: "#3B82F6",         // Blue 500
+  sms: "#F59E0B",           // Amber 500
+  rcs: "#6366F1",           // Indigo 500
+  default: "#64748B",       // Slate 500
 };
+
+// Modern palette for the Donut Chart
+const PIE_COLORS = [
+  "#6366F1", // Indigo
+  "#10B981", // Emerald
+  "#F59E0B", // Amber
+  "#EC4899", // Pink
+  "#8B5CF6", // Violet
+  "#3B82F6", // Blue
+  "#F43F5E", // Rose
+];
 
 // --- TypeScript Interfaces ---
 
-// UPDATED: Matches the strict structure required by ProfessionalFunnel
 interface EngagementStat {
   channel: string;
   total: number;
@@ -80,7 +106,7 @@ interface EngagementStat {
   sent_called: number;
   read_greeted: number;
   delivered_answered: number;
-  [key: string]: any; // Allow extra fields
+  [key: string]: any;
 }
 
 interface FailureStat {
@@ -90,9 +116,16 @@ interface FailureStat {
 }
 
 interface IntentStat {
-  channel: string;
   count: number;
-  intent?: string;
+  disposition_detail?: string;
+  [key: string]: any;
+}
+
+interface CostStat {
+  channel: string;
+  total_cost: number;
+  cost_per_lead: number;
+  converted_leads: number;
 }
 
 interface CampaignPerformance {
@@ -101,7 +134,7 @@ interface CampaignPerformance {
   engagement_stats: EngagementStat[];
   failure_stats_by_channel: FailureStat[];
   intent_distribution_by_channel: IntentStat[];
-  // Include other fields returned by your API
+  cost_per_lead_by_channel: CostStat[];
 }
 
 interface CampaignLead {
@@ -131,25 +164,62 @@ function processFailureStats(failureStats: FailureStat[]) {
   if (!failureStats || failureStats.length === 0) return [];
   return failureStats.map((stat) => ({
     ...stat,
-    channelName: stat.channel === "whatsapp_chat" ? "WhatsApp" : stat.channel,
+    channelName: stat.channel === "whatsapp_chat" ? "WhatsApp" : (stat.channel || "Unknown"),
+    fill: CHANNEL_COLORS[stat.channel === "whatsapp_chat" ? "whatsapp" : stat.channel] || CHANNEL_COLORS.default
   }));
 }
 
 function processIntentStats(intentStats: IntentStat[]) {
   if (!intentStats || intentStats.length === 0) return [];
-
-  const validChannels = Object.keys(CHANNEL_COLORS);
-
   return intentStats
-    .filter((stat) => {
-      const channel = stat.channel || "";
-      return validChannels.includes(channel) || channel === "whatsapp_chat";
-    })
-    .map((stat) => ({
-      name: stat.channel === "whatsapp_chat" ? "WhatsApp" : stat.channel,
-      count: stat.count,
-      fill: CHANNEL_COLORS[stat.channel] || CHANNEL_COLORS.default,
+    .sort((a, b) => b.count - a.count)
+    .map((stat, index) => ({
+      name: stat.disposition_detail || "Other",
+      value: stat.count,
+      fill: PIE_COLORS[index % PIE_COLORS.length],
     }));
+}
+
+function processCostStats(costStats: CostStat[]) {
+  if (!costStats || costStats.length === 0) return [];
+  return costStats.map((stat) => ({
+    name: stat.channel === "whatsapp_chat" ? "WhatsApp" : stat.channel,
+    cpl: stat.cost_per_lead,
+    total: stat.total_cost,
+    leads: stat.converted_leads,
+    fill: CHANNEL_COLORS[stat.channel] || CHANNEL_COLORS.default,
+  }));
+}
+
+// CSV Export Helper
+function exportToCSV(data: CampaignLead[], filename: string) {
+  if (!data || !data.length) return;
+
+  const headers = ["Name", "Phone", "Email", "Disposition", "Provider Status", "Last Interaction"];
+  
+  const rows = data.map(lead => [
+    `"${lead.person_name || ''}"`,
+    `"${lead.phone_number || ''}"`,
+    `"${lead.email || ''}"`,
+    `"${lead.disposition || ''}"`,
+    `"${lead.provider_status || ''}"`,
+    `"${lead.last_interaction_time ? epochToIST(lead.last_interaction_time) : ''}"`
+  ]);
+
+  const csvContent = [
+    headers.join(","), 
+    ...rows.map(e => e.join(","))
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 // --- Inner Component ---
@@ -163,16 +233,23 @@ function CampaignInsightsContent() {
     personName?: string;
   } | null>(null);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+
   // 1. Fetch Performance Data
   const {
-    data: performanceData,
+    data: rawData,
     isLoading,
     error,
-  } = useSWR<CampaignPerformance>(
+  } = useSWR<any>(
     campaignId ? `campaign-performance-${campaignId}` : null,
     () => fetchCampaignPerformanceSummary(campaignId || ""),
     SWR_OPTIONS
   );
+
+  const performanceData = (rawData?.data && Array.isArray(rawData.data)) 
+    ? rawData.data[0] 
+    : rawData;
 
   const campaignName = performanceData?.campaign_name || "Campaign";
   const campaignType = performanceData?.campaign_type || "";
@@ -184,25 +261,23 @@ function CampaignInsightsContent() {
   );
 
   const intentData = useMemo(
-    () =>
-      processIntentStats(performanceData?.intent_distribution_by_channel || []),
+    () => processIntentStats(performanceData?.intent_distribution_by_channel || []),
     [performanceData]
   );
 
-  // 3. Construct API Response object for ProfessionalFunnel
+  const costData = useMemo(
+    () => processCostStats(performanceData?.cost_per_lead_by_channel || []),
+    [performanceData]
+  );
+
   const funnelApiResponse = useMemo(() => {
     if (!performanceData) return undefined;
     return {
-      data: [
-        {
-          ...performanceData,
-          campaign_id: campaignId || "", // Ensure ID is present
-        },
-      ],
+      data: [{ ...performanceData, campaign_id: campaignId || "" }],
     };
   }, [performanceData, campaignId]);
 
-  // 4. Fetch Leads
+  // 3. Fetch Leads
   const {
     data: leadsData,
     isLoading: leadsLoading,
@@ -213,7 +288,23 @@ function CampaignInsightsContent() {
     SWR_OPTIONS
   );
 
-  // -- Render States --
+  // Pagination Logic
+  const paginatedLeads = useMemo(() => {
+    if (!leadsData?.items) return [];
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return leadsData.items.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [leadsData, currentPage]);
+
+  const totalPages = leadsData?.items ? Math.ceil(leadsData.items.length / ITEMS_PER_PAGE) : 0;
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(prev => prev - 1);
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col w-full space-y-6 px-4 md:px-6 lg:px-8 pb-6 mt-6">
@@ -225,14 +316,14 @@ function CampaignInsightsContent() {
     );
   }
 
-  if (error) {
+  if (error || !performanceData) {
     return (
       <div className="flex-1 px-4 md:px-6 lg:px-8 pb-6 w-full mt-6">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
-            Failed to load data. {error.message}
+            {error ? error.message : "No campaign data available."}
           </AlertDescription>
         </Alert>
         <Link href="/">
@@ -244,52 +335,35 @@ function CampaignInsightsContent() {
     );
   }
 
-  if (!performanceData) {
-    return (
-      <div className="flex-1 px-4 md:px-6 lg:px-8 pb-6 w-full mt-6">
-        <Alert>
-          <AlertTitle>No Data</AlertTitle>
-          <AlertDescription>No campaign selected.</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col w-full">
-      {/* Header */}
-      <div className="flex h-20 items-center justify-between px-4 md:px-6 lg:px-8 w-full">
+    <div className="flex flex-col w-full min-h-screen bg-slate-50/50 dark:bg-slate-950/50">
+      
+      {/* Header Section */}
+      <div className="flex h-20 items-center justify-between px-4 md:px-6 lg:px-8 w-full border-b bg-background sticky top-0 z-10 backdrop-blur-sm bg-white/80 dark:bg-slate-950/80">
         <div className="flex items-center gap-4">
           <Link href="/">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="hover:bg-slate-100 dark:hover:bg-slate-800">
+              <ArrowLeft className="h-5 w-5 text-slate-600 dark:text-slate-400" />
             </Button>
           </Link>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
                 {campaignName}
               </h1>
               <Badge
-                variant={
-                  campaignType === "post-sales" ? "default" : "secondary"
-                }
+                variant={campaignType === "post-sales" ? "default" : "secondary"}
+                className="rounded-full px-3 font-normal"
               >
-                {campaignType === "post-sales"
-                  ? "Post-Sales"
-                  : campaignType === "pre-sales"
-                  ? "Pre-Sales"
-                  : campaignType}
+                {campaignType === "post-sales" ? "Post-Sales" : "Pre-Sales"}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Campaign Performance Statistics
-            </p>
+            <p className="text-sm text-slate-500 mt-0.5">Performance Overview</p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-6 w-full">
+      <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-10 w-full mt-8">
         <Tabs defaultValue="statistics" className="w-full">
           <TabsList>
             <TabsTrigger value="statistics">Statistics</TabsTrigger>
@@ -298,219 +372,258 @@ function CampaignInsightsContent() {
 
           <TabsContent value="statistics" className="space-y-6 mt-6">
             
-            {/* 1. Engagement Funnel */}
+            {/* 1. Engagement Funnel Card */}
             {performanceData.engagement_stats?.length > 0 && (
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <CardTitle>Engagement Funnel</CardTitle>
-                  <CardDescription>
-                    Current status distribution (Non-Cumulative)
-                  </CardDescription>
+              <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg">
+                      <TrendingUp className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                        Engagement Funnel
+                      </CardTitle>
+                      <CardDescription>Conversion journey breakdown</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  {/* FIX: Used `as any` to resolve the type mismatch between the two files */}
+                <CardContent className="pt-6">
                   <ProfessionalFunnel apiResponse={funnelApiResponse as any} />
                 </CardContent>
               </Card>
             )}
 
-            {/* 2. Combined Row: Failure Chart, Failure Grid, Intent Distribution */}
+            {/* 2. Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Column 1: Failure Chart */}
-              <Card className="shadow-sm flex flex-col">
+              
+              {/* Intent Distribution - Donut Chart */}
+              <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col col-span-1 lg:col-span-2">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-medium">
-                    Failure Chart
-                  </CardTitle>
-                  <CardDescription>Visual breakdown of errors</CardDescription>
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
+                      <PieIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-semibold">Intent Distribution</CardTitle>
+                      <CardDescription>Customer responses by category</CardDescription>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="flex-1 min-h-[250px]">
-                  {failureData.length > 0 ? (
-                    <CampaignFailureChart customData={failureData} />
+                <CardContent className="flex-1 min-h-[300px] flex items-center justify-center">
+                  {intentData.length > 0 ? (
+                    <div className="w-full h-[320px] flex flex-row items-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={intentData}
+                            cx="40%" 
+                            cy="50%"
+                            innerRadius={70} 
+                            outerRadius={100}
+                            paddingAngle={3}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {intentData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'white', 
+                              borderRadius: '8px', 
+                              border: '1px solid #e2e8f0',
+                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                            }}
+                            itemStyle={{ color: '#1e293b', fontSize: '13px', fontWeight: 500 }}
+                          />
+                          <Legend 
+                            layout="vertical" 
+                            verticalAlign="middle" 
+                            align="right"
+                            wrapperStyle={{ 
+                              paddingLeft: "20px",
+                              fontSize: "13px",
+                              lineHeight: "26px",
+                              maxWidth: "55%" 
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
                   ) : (
-                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                      No failures recorded
+                    <div className="text-slate-400 text-sm flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4" /> No intent data
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Column 2: Failure Reasons Grid */}
-              <Card className="shadow-sm flex flex-col">
+              {/* Delivery Issues - Inline Chart */}
+              <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-base font-medium">
-                        Failure Reasons
-                      </CardTitle>
-                      <CardDescription>Detailed list</CardDescription>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                        <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base font-semibold">Delivery Issues</CardTitle>
+                        <CardDescription>Top failure reasons</CardDescription>
+                      </div>
                     </div>
                     {failureData.length > 0 && (
-                      <Badge variant="destructive" className="ml-2 h-6">
-                        {failureData.reduce((acc, curr) => acc + curr.count, 0)}{" "}
-                        Failed
+                      <Badge variant="outline" className="border-red-200 text-red-700 bg-red-50">
+                        {failureData.reduce((a, b) => a + b.count, 0)} Failed
                       </Badge>
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 overflow-auto">
+                <CardContent className="flex-1 overflow-auto pt-4">
                   {failureData.length > 0 ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[100px]">Channel</TableHead>
-                          <TableHead>Error</TableHead>
-                          <TableHead className="text-right">#</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {failureData.map((item, idx) => {
-                          const channelKey =
-                            item.channel === "whatsapp_chat"
-                              ? "whatsapp"
-                              : item.channel;
-                          const channelColor =
-                            CHANNEL_COLORS[channelKey] ||
-                            CHANNEL_COLORS.default;
-
-                          return (
-                            <TableRow key={idx}>
-                              <TableCell
-                                className="font-medium capitalize text-xs"
-                                style={{ color: channelColor }}
-                              >
-                                {item.channelName}
-                              </TableCell>
-                              <TableCell
-                                className="text-muted-foreground text-xs truncate max-w-[120px]"
-                                title={item.message}
-                              >
-                                {item.message}
-                              </TableCell>
-                              <TableCell className="text-right font-bold text-xs">
-                                {item.count}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+                    <div className="space-y-4">
+                      {/* Chart */}
+                      <div className="h-[220px] w-full mb-2">
+                         <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={failureData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                                <XAxis 
+                                  dataKey="channelName" 
+                                  axisLine={false} 
+                                  tickLine={false} 
+                                  tick={{ fontSize: 12, fill: '#64748b' }} 
+                                  dy={10} 
+                                />
+                                <YAxis 
+                                  allowDecimals={false}
+                                  axisLine={false} 
+                                  tickLine={false} 
+                                  tick={{ fontSize: 12, fill: '#64748b' }} 
+                                  width={30}
+                                />
+                                <Tooltip 
+                                  cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                                  content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                      const data = payload[0].payload;
+                                      return (
+                                        <div className="bg-white border rounded p-2 shadow-sm text-xs">
+                                          <p className="font-semibold mb-1">{data.channelName}</p>
+                                          <p className="text-slate-500">{data.message}</p>
+                                          <p className="font-bold mt-1">{data.count} failed</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={24} maxBarSize={40}>
+                                  {failureData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                  ))}
+                                </Bar>
+                            </BarChart>
+                         </ResponsiveContainer>
+                      </div>
+                      
+                      {/* List View */}
+                      <div className="space-y-3">
+                        {failureData.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-sm border-b border-slate-50 pb-2 last:border-0 last:pb-0">
+                             <div className="flex flex-col max-w-[70%]">
+                                <span className="font-medium text-slate-700 capitalize flex items-center gap-2">
+                                  <span 
+                                    className="w-2 h-2 rounded-full" 
+                                    style={{ backgroundColor: item.fill }}
+                                  />
+                                  {item.channelName}
+                                </span>
+                                <span className="text-xs text-slate-500 truncate pl-4" title={item.message}>
+                                  {item.message}
+                                </span>
+                             </div>
+                             <div className="font-bold text-slate-900">{item.count}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   ) : (
-                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                    <div className="h-full flex items-center justify-center text-slate-400 text-sm">
                       No failures recorded
                     </div>
                   )}
                 </CardContent>
               </Card>
+            </div>
 
-              {/* Column 3: Intent Distribution */}
-              <Card className="shadow-sm flex flex-col">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-medium">
-                    Intent Distribution
-                  </CardTitle>
-                  <CardDescription>By Channel</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-[250px]">
-                  {intentData.length > 0 ? (
-                    <ResponsiveContainer
-                      width="100%"
-                      height="100%"
-                      minHeight={250}
-                    >
+            {/* 3. Cost Analysis - Vertical Columns */}
+            <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                      <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-semibold">Cost Analysis</CardTitle>
+                      <CardDescription>Cost Per Lead (CPL) by Channel</CardDescription>
+                    </div>
+                  </div>
+                  {costData.length > 0 && (
+                    <div className="text-right">
+                       <p className="text-xs text-slate-500 uppercase tracking-wide">Total Spend</p>
+                       <p className="text-xl font-bold text-slate-900">
+                         ₹{costData.reduce((acc, item) => acc + item.total, 0).toLocaleString()}
+                       </p>
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {costData.length > 0 ? (
+                  <div className="h-[320px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
                       <BarChart
-                        data={intentData}
-                        margin={{ top: 20, right: 20, left: 0, bottom: 10 }}
-                        barCategoryGap="20%"
+                        data={costData}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                        barCategoryGap="30%" 
                       >
-                        <defs>
-                          {intentData.map((entry, index) => (
-                            <linearGradient
-                              key={`gradient-${index}`}
-                              id={`gradient-${index}`}
-                              x1="0"
-                              y1="0"
-                              x2="0"
-                              y2="1"
-                            >
-                              <stop
-                                offset="0%"
-                                stopColor={entry.fill}
-                                stopOpacity={1}
-                              />
-                              <stop
-                                offset="100%"
-                                stopColor={entry.fill}
-                                stopOpacity={0.7}
-                              />
-                            </linearGradient>
-                          ))}
-                        </defs>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          vertical={false}
-                          stroke="hsl(var(--muted))"
-                          opacity={0.3}
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis 
+                          dataKey="name" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fill: '#64748b', fontSize: 13, fontWeight: 500 }}
+                          dy={10}
                         />
-                        <XAxis
-                          dataKey="name"
-                          stroke="hsl(var(--muted-foreground))"
-                          fontSize={12}
-                          tickLine={false}
-                          axisLine={false}
-                          height={40}
-                          tick={(props) => {
-                            const { x, y, payload } = props;
-                            const dataEntry = intentData.find(
-                              (entry) => entry.name === payload.value
-                            );
-                            const fillColor =
-                              dataEntry?.fill || "hsl(var(--muted-foreground))";
-                            return (
-                              <g transform={`translate(${x},${y})`}>
-                                <text
-                                  x={0}
-                                  y={0}
-                                  dy={16}
-                                  textAnchor="middle"
-                                  fill={fillColor}
-                                  fontSize={12}
-                                  fontWeight={500}
-                                >
-                                  {payload.value}
-                                </text>
-                              </g>
-                            );
-                          }}
-                        />
-                        <YAxis
-                          stroke="hsl(var(--muted-foreground))"
-                          fontSize={12}
-                          tickLine={false}
-                          axisLine={false}
-                          allowDecimals={false}
-                          tick={{ fill: "hsl(var(--muted-foreground))" }}
-                          width={40}
+                        <YAxis 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fill: '#64748b', fontSize: 12 }}
+                          tickFormatter={(value) => `₹${value}`}
                         />
                         <Tooltip
-                          cursor={{ fill: "transparent" }}
+                          cursor={{ fill: 'rgba(241, 245, 249, 0.4)' }}
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
+                              const data = payload[0].payload;
                               return (
-                                <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-                                  <p className="font-semibold text-sm mb-2">
-                                    {payload[0].payload.name}
-                                  </p>
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className="w-3 h-3 rounded-full"
-                                      style={{
-                                        backgroundColor: payload[0].color,
-                                      }}
-                                    />
-                                    <span className="text-sm font-medium">
-                                      {payload[0].value}
-                                    </span>
+                                <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-lg min-w-[150px]">
+                                  <p className="font-semibold text-slate-900 mb-2">{data.name}</p>
+                                  <div className="space-y-1">
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-slate-500">CPL:</span>
+                                      <span className="font-medium text-emerald-600">₹{data.cpl.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-xs text-slate-400">
+                                      <span>Total Cost:</span>
+                                      <span>₹{data.total.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-xs text-slate-400">
+                                      <span>Leads:</span>
+                                      <span>{data.leads}</span>
+                                    </div>
                                   </div>
                                 </div>
                               );
@@ -518,196 +631,188 @@ function CampaignInsightsContent() {
                             return null;
                           }}
                         />
-                        <Bar dataKey="count" radius={[8, 8, 0, 0]} barSize={50}>
-                          {intentData.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={`url(#gradient-${index})`}
-                            />
+                        <Bar 
+                          dataKey="cpl" 
+                          radius={[6, 6, 0, 0]} 
+                          maxBarSize={60}
+                        >
+                          {costData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
                           ))}
+                          <LabelList 
+                            dataKey="cpl" 
+                            position="top" 
+                            formatter={(val: any) => typeof val === 'number' ? `₹${val.toFixed(0)}` : ''} 
+                            style={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
+                          />
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                      No intent data available
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* 3. Cost Metrics (Separate Row) */}
-            <div className="grid grid-cols-1" style={{ display: "none" }}>
-              <Card className="shadow-sm">
-                <CardHeader>
-                  <CardTitle>Cost per Lead</CardTitle>
-                  <CardDescription>
-                    Average cost to acquire a lead
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <CostPerLeadChart />
-                </CardContent>
-              </Card>
-            </div>
+                  </div>
+                ) : (
+                   <div className="h-[200px] flex flex-col items-center justify-center text-slate-400">
+                      <div className="p-3 bg-slate-50 rounded-full mb-3">
+                         <DollarSign className="h-6 w-6 text-slate-300" />
+                      </div>
+                      <p>No cost data recorded</p>
+                   </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
+          {/* AUDIENCE TAB CONTENT - Updated with Export & Pagination */}
           <TabsContent value="audience" className="space-y-6 mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Campaign Leads</CardTitle>
-                <CardDescription>
-                  View and manage leads from this campaign
-                  {leadsData && leadsData.total > 0 && (
-                    <span className="ml-2">({leadsData.total} total)</span>
-                  )}
-                </CardDescription>
+            <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <CardHeader className="flex flex-row items-center justify-between pb-4">
+                <div className="flex items-center gap-2">
+                   <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                      <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                   </div>
+                   <div>
+                    <CardTitle className="text-base font-semibold">Campaign Leads</CardTitle>
+                    <CardDescription>
+                      View and manage leads from this campaign ({leadsData?.total || 0} total)
+                    </CardDescription>
+                   </div>
+                </div>
+                {/* Export Button */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-2"
+                  disabled={!leadsData?.items?.length}
+                  onClick={() => exportToCSV(leadsData?.items || [], `campaign_leads_${campaignId || 'data'}.csv`)}
+                >
+                  <Download className="h-4 w-4" /> Export
+                </Button>
               </CardHeader>
               <CardContent>
                 {leadsLoading ? (
                   <div className="space-y-4">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
                   </div>
                 ) : leadsError ? (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>
-                      Failed to load leads. {leadsError.message}
-                    </AlertDescription>
-                  </Alert>
+                  <div className="p-8 text-center text-red-500 bg-red-50 rounded-lg border border-red-100">
+                    <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-red-400" />
+                    <p>Failed to load leads data</p>
+                  </div>
                 ) : !leadsData || leadsData.items.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8">
+                  <div className="text-center text-slate-500 py-12 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
                     No leads found for this campaign
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Phone</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead className="text-center">
-                            Disposition
-                          </TableHead>
-                          <TableHead className="text-center">
-                            Provider Status
-                          </TableHead>
-                          <TableHead>Last Interaction</TableHead>
-                          <TableHead>Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {leadsData.items.map((lead, index) => {
-                          const leadId =
-                            lead.pre_sales_lead_id ||
-                            lead.post_sales_lead_id ||
-                            lead.lead_id ||
-                            `lead-${index}`;
+                  <div className="space-y-4">
+                    <div className="rounded-md border border-slate-100 overflow-hidden">
+                      <Table>
+                        <TableHeader className="bg-slate-50/50">
+                          <TableRow>
+                            <TableHead className="w-[200px] font-semibold text-slate-600">Name</TableHead>
+                            <TableHead className="font-semibold text-slate-600">Phone</TableHead>
+                            <TableHead className="font-semibold text-slate-600">Email</TableHead>
+                            <TableHead className="text-center font-semibold text-slate-600">Disposition</TableHead>
+                            <TableHead className="text-center font-semibold text-slate-600">Provider Status</TableHead>
+                            <TableHead className="text-right font-semibold text-slate-600">Last Interaction</TableHead>
+                            <TableHead className="text-right font-semibold text-slate-600">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedLeads.map((lead, index) => {
+                            const leadId =
+                              lead.pre_sales_lead_id ||
+                              lead.post_sales_lead_id ||
+                              lead.lead_id ||
+                              `lead-${index}`;
 
-                          const displayName = lead.person_name || "User";
-                          const displayEmail = lead.email || "-";
-
-                          return (
-                            <TableRow key={leadId}>
-                              <TableCell className="font-medium">
-                                {displayName}
-                              </TableCell>
-                              <TableCell>
-                                {lead.phone_number || "N/A"}
-                              </TableCell>
-                              <TableCell>{displayEmail}</TableCell>
-                              <TableCell className="text-center">
-                                <Badge
-                                  variant="outline"
-                                  className={
-                                    lead.disposition === "contacted"
-                                      ? "border-green-500 text-green-700 dark:text-green-400"
-                                      : lead.disposition === "failed"
-                                      ? "border-red-500 text-red-700 dark:text-red-400"
-                                      : lead.disposition === "queued"
-                                      ? "border-blue-500 text-blue-700 dark:text-blue-400"
-                                      : lead.disposition === "reached"
-                                      ? "border-purple-500 text-purple-700 dark:text-purple-400"
-                                      : lead.disposition === "converted" ||
-                                        lead.disposition === "engaged"
-                                      ? "border-primary text-primary"
-                                      : ""
-                                  }
-                                >
-                                  {lead.disposition || "N/A"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {lead.provider_status ? (
+                            return (
+                              <TableRow key={leadId} className="hover:bg-slate-50/50 transition-colors">
+                                <TableCell className="font-medium text-slate-900">
+                                  {lead.person_name || "Unknown User"}
+                                </TableCell>
+                                <TableCell className="text-slate-500">
+                                  {lead.phone_number}
+                                </TableCell>
+                                <TableCell className="text-slate-500 text-xs">
+                                  {lead.email || "-"}
+                                </TableCell>
+                                <TableCell className="text-center">
                                   <Badge
                                     variant="outline"
-                                    className={
-                                      lead.provider_status === "reached"
-                                        ? "border-purple-500 text-purple-700 dark:text-purple-400"
-                                        : lead.provider_status === "contacted"
-                                        ? "border-green-500 text-green-700 dark:text-green-400"
-                                        : lead.provider_status === "failed"
-                                        ? "border-red-500 text-red-700 dark:text-red-400"
-                                        : "border-muted-foreground/50"
-                                    }
+                                    className={`
+                                      capitalize font-normal border
+                                      ${lead.disposition === "contacted" ? "border-green-200 text-green-700 bg-green-50" : ""}
+                                      ${lead.disposition === "failed" ? "border-red-200 text-red-700 bg-red-50" : ""}
+                                      ${lead.disposition === "queued" ? "border-blue-200 text-blue-700 bg-blue-50" : ""}
+                                      ${lead.disposition === "reached" ? "border-purple-200 text-purple-700 bg-purple-50" : ""}
+                                      ${!lead.disposition ? "border-slate-200 text-slate-500" : ""}
+                                    `}
                                   >
-                                    {lead.provider_status}
+                                    {lead.disposition || "-"}
                                   </Badge>
-                                ) : (
-                                  "-"
-                                )}
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {lead.last_interaction_time
-                                  ? epochToIST(lead.last_interaction_time)
-                                  : lead.created
-                                  ? epochToIST(lead.created)
-                                  : "-"}
-                              </TableCell>
-                            <TableCell>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  // 1. Visual Feedback: Disable if we absolutely cannot find an ID or Campaign ID
-                                  disabled={!campaignId || (!lead.user_id && !lead.lead_id && !lead.pre_sales_lead_id && !lead.post_sales_lead_id)}
-                                  onClick={() => {
-                                    // 2. Determine the best available ID to use
-                                    // Many systems use 'lead_id' or specific sales IDs if 'user_id' isn't generated yet
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {lead.provider_status ? (
+                                    <Badge variant="secondary" className="font-normal text-xs bg-slate-100 text-slate-600 hover:bg-slate-200">
+                                      {lead.provider_status}
+                                    </Badge>
+                                  ) : <span className="text-slate-300">-</span>}
+                                </TableCell>
+                                <TableCell className="text-right text-xs text-slate-500">
+                                  {lead.last_interaction_time ? epochToIST(lead.last_interaction_time) : "-"}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!campaignId}
+                                    onClick={() => {
+                                      const effectiveUserId = lead.pre_sales_lead_id || lead.post_sales_lead_id || lead.lead_id || lead.user_id;
+                                      
+                                      if (effectiveUserId && campaignId) {
+                                        setSelectedLead({
+                                          userId: effectiveUserId, 
+                                          personName: lead.person_name,
+                                        });
+                                        setEngagementModalOpen(true);
+                                      }
+                                    }}
+                                  >
+                                    Engagement
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
 
-                                    const effectiveUserId = lead.pre_sales_lead_id || lead.post_sales_lead_id;
-                                    // console.log("Effective User ID for Engagement:", effectiveUserId);
-                                    // console.log("Lead Data:", lead);
-                                    // 3. Debugging: This will show up in your browser console (F12)
-                                    console.log("Engagement Clicked:", { 
-                                      effectiveUserId, 
-                                      campaignId, 
-                                      rawLead: lead 
-                                    });
-
-                                    if (effectiveUserId && campaignId) {
-                                      setSelectedLead({
-                                        userId: effectiveUserId, 
-                                        personName: lead.person_name,
-                                      });
-                                      setEngagementModalOpen(true);
-                                    } else {
-                                      console.warn("Cannot open modal: Missing User ID or Campaign ID");
-                                    }
-                                  }}
-                                >
-                                  Engagement
-                                </Button>
-                            </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+                    {/* Pagination Controls */}
+                    <div className="flex items-center justify-between px-2">
+                        <div className="text-sm text-muted-foreground">
+                          Page {currentPage} of {totalPages}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handlePrevPage}
+                            disabled={currentPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" /> Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleNextPage}
+                            disabled={currentPage >= totalPages}
+                          >
+                            Next <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -716,7 +821,6 @@ function CampaignInsightsContent() {
         </Tabs>
       </div>
 
-      {/* Engagement Modal */}
       {selectedLead && campaignId && (
         <EngagementModal
           isOpen={engagementModalOpen}
@@ -733,19 +837,10 @@ function CampaignInsightsContent() {
   );
 }
 
-// --- Main Page Export ---
-
 export default function CampaignInsightsPage() {
   return (
     <ProtectedRoute>
-      <Suspense
-        fallback={
-          <div className="p-8 space-y-4">
-            <Skeleton className="h-8 w-1/3" />
-            <Skeleton className="h-64 w-full" />
-          </div>
-        }
-      >
+      <Suspense fallback={<div className="p-8"><Skeleton className="h-64 w-full" /></div>}>
         <CampaignInsightsContent />
       </Suspense>
     </ProtectedRoute>

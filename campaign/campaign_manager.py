@@ -26,7 +26,7 @@ from agents.get_email_template_agent import get_email_template
 from agents.get_rcs_template_agent import get_rcs_template
 from communication.connectors.email_communication import communication_sender
 from communication.connectors.connector_rcs import gryd_send_rcs
-from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,WHATSAPP_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
+from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
@@ -402,6 +402,7 @@ class BaseCustomCampaignManager:
                 logger.info(f"[{count}] Sent {channel} message for phone_number:{campaign_data.get('mobile_number')}, campaign_id:{campaign_data.get('campaign_id')}, lead_id:{user.get('lead_id')}")
                 # logger.info(f"[voice_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
                 d={**campaign_data,**campaign_users[0]}
+                # logger.info(f"Voice call payload--{json.dumps(d,indent=4)}")
                 gryd.create_async_task('trigger_voice_call', AUTOCRM_VOICE_SERVICE_NAME, args=[],kwargs={"user_data":d})
             elif channel.upper()=="EMAIL":
                 logger.info("Sending Email campaign---")
@@ -952,36 +953,9 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
             template_data = get_template(
                 lead_id=lead_id,
                 campaign_type=campaign_type,
-                # campaign_objective= [campaign_details.get("campaign_objective_name")] if campaign_details.get("campaign_objective_name") else ["Free Service Reminder"],
                 campaign_objective= [campaign_details.get("campaign_objective_name")] or ["Free Service Due Reminder"] if campaign_details.get("campaign_type") == "post-sales" else ["Test Drive Booking"],
-                # campaign_objective=["Service Overdue"],
-                # dealership_id = lead_data.get("dealership_id"), //for later pass disposition and disposition detail
                 lead_info={}
             )
-        #     template_data=[{
-        #     "sender": "+14243494750",
-        #     "status": "approved",
-        #     "channel": "rcs",
-        #     "created": 1769601263.4781768,
-        #     "updated": 1769601263.479337,
-        #     "language": "english",
-        #     "dealer_name": "DaveAI",
-        #     "region_name": "South India",
-        #     "search_term": "rcs english post-sales service overdue",
-        #     "template_id": "MTc2OTYwMTI2MyA0ODA1NzU2",
-        #     "init_message": "Dear Customer, Our records indicate that the scheduled service for your vehicle {{reg_number}} is currently overdue. Delaying service may impact performance, safety, and warranty coverage. We recommend arranging a service visit at the earliest.",
-        #     "campaign_type": "post-sales",
-        #     "dealership_id": "daveai",
-        #     "provider_name": "Twilio",
-        #     "template_type": "rcs",
-        #     "campaign_objective": [
-        #         "Service Overdue"
-        #     ],
-        #     "template_variables": [
-        #         "reg_number"
-        #     ],
-        #     "communication_credentials_id": "twilio-14243494750-rcs"
-        # }]
             if not template_data:
                 yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
                 return

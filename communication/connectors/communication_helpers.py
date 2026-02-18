@@ -362,6 +362,42 @@ def generate_uid(data):
 
     return uid.hex[:16]   # 16 characters
 
+def get_communication_credential(dealership_id="daveai", channel=None):
+    logger.info(f"Getting communication credential for dealership - {dealership_id}")
+
+    if not channel:
+        logger.info(
+            f"Channel not provided for dealership - {dealership_id}. Returning None."
+        )
+        return None
+
+    with get_pg_connector() as pg:
+        creds = list(
+            pg.list(
+                "communication_credential",
+                {"dealership_id": dealership_id, "channel": channel}
+            )
+        )
+        if creds:
+            return creds[0]
+
+        # Fallback to default dealership "daveai" if no creds found for the dealership and channel
+        if dealership_id != "daveai":
+            logger.info(
+                f"No credential found for dealership - {dealership_id}. "
+                f"Falling back to default dealership - daveai for channel - {channel}"
+            )
+            creds = list(
+                pg.list(
+                    "communication_credential",
+                    {"dealership_id": "daveai", "channel": channel}
+                )
+            )
+            if creds:
+                return creds[0]
+
+    return None
+
 def reload_model_ref(model_name,enteprise_id):
         logger.info(f"Getting Model Connection for model_name: {model_name} and enteprise_id : {enteprise_id}")
         for model_conn_retry in range(MAX_MODEL_CONN_RETRY):
