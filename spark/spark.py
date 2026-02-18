@@ -16,8 +16,8 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, OPENAI_API_KEY, \
     OPENAI_INPUT_TEXT_TOKEN_PRICE, \
     OPENAI_OUTPUT_TEXT_TOKEN_PRICE, \
     OPENAI_INPUT_IMAGE_TOKEN_PRICE, \
-    OPENAI_OUTPUT_IMAGE_TOKEN_PRICE
-    # VALIDATE_PROMPT_MODEL
+    OPENAI_OUTPUT_IMAGE_TOKEN_PRICE, \
+    VALIDATE_PROMPT_MODEL
 from combine_images import merge_layers
 from check_distortion import analyze_image, pad_and_resize_image
 from spdl_comfy import comfy_image_generation_task
