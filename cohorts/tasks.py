@@ -130,53 +130,114 @@ def affinity_score_agent(*args, **kwargs):
         }
 
 
-@gryd.is_a_task()
+# @gryd.is_a_task()
+# def campaign_idea_generation_agent(*args, **kwargs):
+#     try:
+#         from campaign_idea_generation_agent import CampaignIdeaGeneratorAgent
+
+#         source = kwargs.get("source", None)                                 # Custom Interaction Data in Dict
+#         classified_cohort = kwargs.get("classified_cohort", None)           # Cohort Classification Result 
+#         affinity_score = kwargs.get("affinity_score", None)                 # Custom Affinity Score Result
+#         brochure_url = kwargs.get("brochure_url", None)                     # Brochure URL
+#         product_website_url = kwargs.get("product_website_url", None)       # Product Website URL
+#         num_of_campaign_ideas = kwargs.get("num_of_campaign_ideas", 5)
+#         num_of_campaign_post_sets = kwargs.get("num_of_campaign_post_sets", 5)
+#         num_of_hashtags = kwargs.get("num_of_hashtags", 20)
+
+#         campaign_theme = kwargs.get("campaign_theme", None)
+#         core_message_direction = kwargs.get("core_message_direction", None)
+#         campaign_objective = kwargs.get("campaign_objective", None)
+#         consumer_insight = kwargs.get("consumer_insight", None)
+
+#         model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
+#         campaign_idea_generation_agent = CampaignIdeaGeneratorAgent(
+#             source=source, 
+#             classified_cohort=classified_cohort, 
+#             affinity_score=affinity_score,
+#             brochure_url=brochure_url,
+#             product_website_url=product_website_url,
+#             model_identifier=model_identifier)
+#         output = campaign_idea_generation_agent.run(
+#             num_of_campaign_ideas = num_of_campaign_ideas,
+#             num_of_campaign_post_sets = num_of_campaign_post_sets, 
+#             num_of_hashtags = num_of_hashtags,
+#             campaign_theme = campaign_theme,
+#             core_message_direction = core_message_direction,
+#             campaign_objective = campaign_objective,
+#             consumer_insight = consumer_insight
+#             )
+#         return {
+#             "task": inspect.currentframe().f_code.co_name, 
+#             "campaign_ideas": output
+#         }
+#     except Exception as e:
+#         logger.error(f"Campaign Idea Generation Agent Error: {e}")
+#         traceback.print_exc()
+#         return {
+#             "task": inspect.currentframe().f_code.co_name,
+#             "error": str(e).strip()
+#         }
+
+
+@gryd.is_a_task(function_name="campaign_idea_generation_agent", job_param='job', logger_param='logger')
 def campaign_idea_generation_agent(*args, **kwargs):
     try:
-        from campaign_idea_generation_agent import CampaignIdeaGeneratorAgent
-
-        source = kwargs.get("source", None)                                 # Custom Interaction Data in Dict
-        classified_cohort = kwargs.get("classified_cohort", None)           # Cohort Classification Result 
-        affinity_score = kwargs.get("affinity_score", None)                 # Custom Affinity Score Result
-        brochure_url = kwargs.get("brochure_url", None)                     # Brochure URL
-        product_website_url = kwargs.get("product_website_url", None)       # Product Website URL
-        num_of_campaign_ideas = kwargs.get("num_of_campaign_ideas", 5)
-        num_of_campaign_post_sets = kwargs.get("num_of_campaign_post_sets", 5)
-        num_of_hashtags = kwargs.get("num_of_hashtags", 20)
-
-        campaign_theme = kwargs.get("campaign_theme", None)
-        core_message_direction = kwargs.get("core_message_direction", None)
-        campaign_objective = kwargs.get("campaign_objective", None)
-        consumer_insight = kwargs.get("consumer_insight", None)
-
-        model_identifier = kwargs.get("model_identifier", "azure-gpt-4o")
-        campaign_idea_generation_agent = CampaignIdeaGeneratorAgent(
-            source=source, 
-            classified_cohort=classified_cohort, 
-            affinity_score=affinity_score,
-            brochure_url=brochure_url,
-            product_website_url=product_website_url,
-            model_identifier=model_identifier)
-        output = campaign_idea_generation_agent.run(
-            num_of_campaign_ideas = num_of_campaign_ideas,
-            num_of_campaign_post_sets = num_of_campaign_post_sets, 
-            num_of_hashtags = num_of_hashtags,
-            campaign_theme = campaign_theme,
-            core_message_direction = core_message_direction,
-            campaign_objective = campaign_objective,
-            consumer_insight = consumer_insight
-            )
+        from campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
+        _params = {
+            "source": kwargs.get("source", None),                                 # Custom Interaction Data in Dict
+            "classified_cohort": kwargs.get("classified_cohort", None),           # Cohort Classification Result 
+            "affinity_score": kwargs.get("affinity_score", None),                 # Custom Affinity Score Result
+            "brochure_url": kwargs.get("brochure_url", None),                     # Brochure URL
+            "product_website_url": kwargs.get("product_website_url", None),       # Product Website URL
+            "campaign_theme": kwargs.get("campaign_theme", None),
+            "core_message_direction": kwargs.get("core_message_direction", None),
+            "campaign_objective": kwargs.get("campaign_objective", None),
+            "consumer_insight": kwargs.get("consumer_insight", None),
+            "additional_instruction": kwargs.get("additional_instruction", None),
+            "num_of_campaign_ideas": kwargs.get("num_of_campaign_ideas", 3), 
+            "num_of_campaign_post_sets": kwargs.get("num_of_campaign_post_sets", 3), 
+            "num_of_hashtags": kwargs.get("num_of_hashtags", 20),
+            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o")
+        }
+        agent = CampaignIdeaGeneratorAgent(**_params)
+        output = agent.run(batch_size=kwargs.get("batch_size", 2))
         return {
             "task": inspect.currentframe().f_code.co_name, 
-            "campaign_ideas": output
+            **output
         }
     except Exception as e:
         logger.error(f"Campaign Idea Generation Agent Error: {e}")
-        traceback.print_exc()
-        return {
-            "task": inspect.currentframe().f_code.co_name,
-            "error": str(e).strip()
+        raise e
+@gryd.is_a_task(function_name="campaign_idea_generation_agent_async", job_param='job', logger_param='logger')
+def campaign_idea_generation_agent_async(*args, **kwargs):
+    try:
+        from campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
+        _params = {
+            "source": kwargs.get("source", None),                                 # Custom Interaction Data in Dict
+            "classified_cohort": kwargs.get("classified_cohort", None),           # Cohort Classification Result 
+            "affinity_score": kwargs.get("affinity_score", None),                 # Custom Affinity Score Result
+            "brochure_url": kwargs.get("brochure_url", None),                     # Brochure URL
+            "product_website_url": kwargs.get("product_website_url", None),       # Product Website URL
+            "campaign_theme": kwargs.get("campaign_theme", None),
+            "core_message_direction": kwargs.get("core_message_direction", None),
+            "campaign_objective": kwargs.get("campaign_objective", None),
+            "consumer_insight": kwargs.get("consumer_insight", None),
+            "additional_instruction": kwargs.get("additional_instruction", None),
+            "num_of_campaign_ideas": kwargs.get("num_of_campaign_ideas", 3), 
+            "num_of_campaign_post_sets": kwargs.get("num_of_campaign_post_sets", 3), 
+            "num_of_hashtags": kwargs.get("num_of_hashtags", 20),
+            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o")
         }
+        agent = CampaignIdeaGeneratorAgent(**_params)
+        output = agent.run_with_events(batch_size=kwargs.get("batch_size", 2))
+        for event in output:
+            yield {
+                "task": inspect.currentframe().f_code.co_name,
+                **event
+            }
+    except Exception as e:
+        logger.error(f"Campaign Idea Generation Agent Error: {e}")
+        raise e     
 
 
 if __name__ == "__main__":
@@ -336,17 +397,48 @@ if __name__ == "__main__":
         }
 
     }
-    a = affinity_score_agent(
-        interaction_json=t_json,
-        brochure_url="https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/1f0e5109-ead3-42e9-8af8-b58b8942b10f-6966062a_New-Jeep-Meridian-Brochure.pdf",
-        product_website_url="https://www.new-jeep.com/meridian",
-        model_identifier="azure-gpt-4o",
-        custom_affinity_dimensions = ["price", "features", "performance", "design", "interior", "exterior"]
-    )
+    # a = affinity_score_agent(
+    #     interaction_json=t_json,
+    #     brochure_url="https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/1f0e5109-ead3-42e9-8af8-b58b8942b10f-6966062a_New-Jeep-Meridian-Brochure.pdf",
+    #     product_website_url="https://www.new-jeep.com/meridian",
+    #     model_identifier="azure-gpt-4o",
+    #     custom_affinity_dimensions = ["price", "features", "performance", "design", "interior", "exterior"]
+    # )
 
-    print(f"Affinity Result : \n\n {json.dumps(a, indent=4)}")
+    # print(f"Affinity Result : \n\n {json.dumps(a, indent=4)}")
 
     # 4. Campaign Idea Generation
+
+    classified_cohort = {
+        "cohort_id": "configurator_and_color_options_explorer",
+        "description": "Customers who have interacted with 3D Configurator and Color Options",
+    }
+
+    # result = campaign_idea_generation_agent(
+    #     source = t_json,
+    #     classified_cohort = classified_cohort,
+    #     affinity_score = None,
+    #     product_website_url="https://cars.tatamotors.com/sierra/ice.html",)
+
+    # print(f"Campaign Idea Generation Result : \n\n {json.dumps(result, indent=4)}")
+
+
+    async_ = campaign_idea_generation_agent_async(
+        source = t_json,
+        classified_cohort = classified_cohort,
+        affinity_score = None,
+        product_website_url="https://cars.tatamotors.com/sierra/ice.html",
+        num_of_campaign_ideas = 3,
+        num_of_campaign_post_sets = 3,
+        num_of_hashtags = 20,
+        model_identifier = "azure-gpt-4o"
+    )
+
+
+    for event in async_:
+        print(json.dumps(event, indent=4))
+
+    # print(f"Campaign Idea Generation Async Result : \n\n {json.dumps(async_, indent=4)}")
 
 
 
