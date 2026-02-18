@@ -146,6 +146,7 @@ class CallSession:
                     logger.error(f"[{self.call_id}] Failed to get signed url: %s %s", resp.status, text)
                     raise Exception(f"Failed to get signed URL: {resp.status} {text}")
                 j = await resp.json()
+                logger.info("elevellabs session url {}".format(j))
                 return j["signed_url"]
 
     @staticmethod
@@ -482,7 +483,7 @@ class CallSession:
 
                         elif ev == "stop":
                             logger.info(f"[{self.call_id}] Call ended by platform")
-                            
+                            break
 
                         elif ev == "mark":
                             # Marks indicate playback position
@@ -535,6 +536,7 @@ class CallSession:
             self.processed_agent_responses.clear()
             try:
                 if self.dave_ws:
+                    ## TODO send ws.send FLAG TO CLOSE. to say lets close all connections from the room
                     await self.dave_ws.close()
                     self.dave_ws = None
             except Exception as e:
