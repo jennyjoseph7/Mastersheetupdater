@@ -403,50 +403,64 @@ function CampaignCreateContent() {
   }, [creationStep, page]);
 
   // Fetch Objectives
-  useEffect(() => {
-    const fetchObjectives = async () => {
-      setIsLoadingObjectives(true);
-      try {
-        const typeParam =
-          campaignType === "presales" ? "pre-sales" : "post-sales";
-        const response = await api(
-          `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}`,
-          "GET"
-        );
-        const data = Array.isArray(response) ? response : response.data || [];
+useEffect(() => {
+  const fetchObjectives = async () => {
+    setIsLoadingObjectives(true);
+    try {
+      const dealershipId = getDealershipId();
+      const typeParam = campaignType === "presales" ? "pre-sales" : "post-sales";
 
-        const mapped = data.map((obj: any, idx: number) => {
-          const id = obj.campaign_objective_id || obj.id || `obj-${idx}`;
-          const title =
-            obj.campaign_objective_name || obj.title || obj.name || "Objective";
-          return {
-            id: id,
-            title: title,
-            campaignSubType: obj.campaign_sub_type || "other",
-            icon: getObjectiveIcon(id, title),
-            fullData: obj,
-          };
-        });
+      // 1. Define both requests
+      const globalUrl = `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}&dealership_id=null`;
+      const specificUrl = `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}&dealership_id=${dealershipId}`;
 
-        mapped.push({
-          id: "custom",
-          title: "Custom Objective",
-          campaignSubType: "Flexible",
-          icon: <Edit3 className="h-6 w-6" />,
-          fullData: null,
-        });
+      // 2. Fire both in parallel
+      const [globalRes, specificRes] = await Promise.all([
+        api(globalUrl, "GET"),
+        api(specificUrl, "GET")
+      ]);
 
-        if (campaignType === "presales") setPreSalesObjectives(mapped);
-        else setFetchedPostSalesObjectives(mapped);
-      } catch (e) {
-        console.error("Error fetching objectives:", e);
-      } finally {
-        setIsLoadingObjectives(false);
-      }
-    };
+      // 3. Extract data from both (handling different potential response shapes)
+      const globalData = Array.isArray(globalRes) ? globalRes : globalRes.data || [];
+      const specificData = Array.isArray(specificRes) ? specificRes : specificRes.data || [];
 
-    if (campaignType) fetchObjectives();
-  }, [campaignType]);
+      // 4. Merge them into one array
+      const combinedData = [...globalData, ...specificData];
+
+      // 5. Map the merged results
+      const mapped = combinedData.map((obj: any, idx: number) => {
+        const id = obj.campaign_objective_id || obj.id || `obj-${idx}`;
+        const title = obj.campaign_objective_name || obj.title || obj.name || "Objective";
+        return {
+          id: id,
+          title: title,
+          campaignSubType: obj.campaign_sub_type || "other",
+          icon: getObjectiveIcon(id, title),
+          fullData: obj,
+        };
+      });
+
+      // 6. Add the Custom option at the end
+      mapped.push({
+        id: "custom",
+        title: "Custom Objective",
+        campaignSubType: "Flexible",
+        icon: <Edit3 className="h-6 w-6" />,
+        fullData: null,
+      });
+
+      if (campaignType === "presales") setPreSalesObjectives(mapped);
+      else setFetchedPostSalesObjectives(mapped);
+
+    } catch (e) {
+      console.error("Error fetching objectives:", e);
+    } finally {
+      setIsLoadingObjectives(false);
+    }
+  };
+
+  if (campaignType) fetchObjectives();
+}, [campaignType]);
 
   // --- Logic ---
 
