@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, Suspense, useState, useEffect } from "react";
+import { useMemo, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
@@ -157,20 +157,43 @@ function processCostStats(costStats: CostStat[]) {
 function exportToCSV(data: CampaignLead[], filename: string) {
   if (!data || !data.length) return;
 
-  const headers = ["Name", "Phone", "Email", "Disposition", "Provider Status", "Last Interaction"];
+  // 1. Extract all unique keys from the data array to create dynamic headers
+  const headerSet = new Set<string>();
+  data.forEach(lead => {
+    Object.keys(lead).forEach(key => headerSet.add(key));
+  });
+  const headers = Array.from(headerSet);
   
-  const rows = data.map(lead => [
-    `"${lead.person_name || ''}"`,
-    `"${lead.phone_number || ''}"`,
-    `"${lead.email || ''}"`,
-    `"${lead.disposition || ''}"`,
-    `"${lead.provider_status || ''}"`,
-    `"${lead.last_interaction_time ? epochToIST(lead.last_interaction_time) : ''}"`
-  ]);
+  // 2. Map each lead to a row based on the dynamic headers
+  const rows = data.map(lead => {
+    return headers.map(header => {
+      let value = lead[header];
+
+      // Format epoch time fields to readable dates
+      if ((header === 'last_interaction_time' || header === 'created' || header === 'updated') && value) {
+        value = epochToIST(value as number);
+      }
+
+      // Handle null, undefined, or objects safely
+      if (value === null || value === undefined) {
+        value = '';
+      } else if (typeof value === 'object') {
+        value = JSON.stringify(value); // Stringify nested objects/arrays if they exist
+      } else {
+        value = String(value);
+      }
+
+      // Escape internal double quotes by doubling them (Standard CSV format)
+      value = value.replace(/"/g, '""');
+      
+      // Wrap the value in quotes
+      return `"${value}"`;
+    });
+  });
 
   const csvContent = [
     headers.join(","), 
-    ...rows.map(e => e.join(","))
+    ...rows.map(row => row.join(","))
   ].join("\n");
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -197,19 +220,10 @@ function CampaignInsightsContent() {
 
   // --- Table & Pagination State ---
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [dispositionFilter, setDispositionFilter] = useState("all"); // Added Disposition State
+  const [dispositionFilter, setDispositionFilter] = useState("all"); 
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-
-  // Debounce search term to avoid hitting the API on every single keystroke
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-    }, 500);
-    return () => clearTimeout(handler);
-  }, [searchTerm]);
 
   // 1. Fetch Performance Data (This determines the Campaign Type)
   const {
@@ -238,26 +252,25 @@ function CampaignInsightsContent() {
     return { data: [{ ...performanceData, campaign_id: campaignId || "" }] };
   }, [performanceData, campaignId]);
 
-  // 3. Conditional Fetch Leads (Server Pagination & Sorting)
+  // 3. Conditional Fetch Leads (Server Pagination & Sorting, NO Backend Search)
   const {
     data: leadsDataRaw,
     isLoading: leadsLoading,
     error: leadsError,
   } = useSWR<{ items: CampaignLead[]; total_number: number }>(
     campaignId && campaignType 
-      // Include dispositionFilter in SWR cache key so it refetches when it changes
-      ? ['campaign-leads', campaignId, campaignType, currentPage, pageSize, debouncedSearch, sortConfig?.key, sortConfig?.direction, dispositionFilter] 
+      // Removed search from SWR cache key to prevent backend refetching on type
+      ? ['campaign-leads', campaignId, campaignType, currentPage, pageSize, sortConfig?.key, sortConfig?.direction, dispositionFilter] 
       : null,
-    ([_, id, type, page, size, searchStr, sortKey, sortDir, dispFilter]) => 
+    ([_, id, type, page, size, sortKey, sortDir, dispFilter]) => 
       fetchCampaignLeads({
         campaignId: id as string,
         campaignType: type as string,
         page_number: page as number,
         page_size: size as number,
-        search: searchStr as string,
         sort_by: sortKey as string | undefined,
         sort_dir: sortDir as string | undefined,
-        disposition: dispFilter === "all" ? undefined : dispFilter as string // Pass the filter to the API
+        disposition: dispFilter === "all" ? undefined : dispFilter as string 
       }),
     SWR_OPTIONS
   );
@@ -266,6 +279,18 @@ function CampaignInsightsContent() {
   const serverLeads = leadsDataRaw?.items || [];
   const totalRecords = leadsDataRaw?.total_number || 0;
   const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+
+  // --- Local Search Filtering (Name, Phone, Email ONLY) ---
+  const visibleLeads = useMemo(() => {
+    if (!searchTerm) return serverLeads;
+    
+    const lowerCaseTerm = searchTerm.toLowerCase();
+    return serverLeads.filter((lead) =>
+      (lead.person_name && lead.person_name.toLowerCase().includes(lowerCaseTerm)) ||
+      (lead.phone_number && lead.phone_number.toLowerCase().includes(lowerCaseTerm)) ||
+      (lead.email && lead.email.toLowerCase().includes(lowerCaseTerm))
+    );
+  }, [serverLeads, searchTerm]);
 
   // Handlers
   const handleNextPage = () => {
@@ -671,17 +696,14 @@ function CampaignInsightsContent() {
 
                 {/* Table Tool Bar */}
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                  {/* Search Input */}
+                  {/* Search Input (Local filter only) */}
                   <div className="relative w-full sm:w-64">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                     <Input 
-                      placeholder="Search leads..." 
+                      placeholder="Search name, phone, email..." 
                       className="pl-8 h-9 w-full bg-slate-50"
                       value={searchTerm}
-                      onChange={(e) => {
-                        setSearchTerm(e.target.value);
-                        setCurrentPage(1); // Reset to first page on search
-                      }}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
                   
@@ -719,8 +741,8 @@ function CampaignInsightsContent() {
                     variant="outline" 
                     size="sm" 
                     className="gap-2 h-9 w-full sm:w-auto"
-                    disabled={serverLeads.length === 0}
-                    onClick={() => exportToCSV(serverLeads, `campaign_leads_${campaignId || 'data'}.csv`)}
+                    disabled={visibleLeads.length === 0}
+                    onClick={() => exportToCSV(visibleLeads, `campaign_leads_${campaignId || 'data'}.csv`)}
                   >
                     <Download className="h-4 w-4" /> Export
                   </Button>
@@ -739,7 +761,7 @@ function CampaignInsightsContent() {
                     <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-red-400" />
                     <p>Failed to load leads data</p>
                   </div>
-                ) : !serverLeads || serverLeads.length === 0 ? (
+                ) : !visibleLeads || visibleLeads.length === 0 ? (
                   <div className="text-center text-slate-500 py-12 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 flex flex-col items-center">
                     <Search className="h-8 w-8 text-slate-300 mb-3" />
                     <p>No matching leads found.</p>
@@ -803,7 +825,7 @@ function CampaignInsightsContent() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {serverLeads.map((lead, index) => {
+                          {visibleLeads.map((lead, index) => {
                             const leadId =
                               lead.pre_sales_lead_id ||
                               lead.post_sales_lead_id ||
@@ -839,7 +861,6 @@ function CampaignInsightsContent() {
                                 <TableCell className="text-center text-xs text-slate-500"> 
                                   {lead.disposition_detail || "-"}
                                 </TableCell>
-                                 
                                 <TableCell className="text-right text-xs text-slate-500">
                                   {lead.last_interaction_time ? epochToIST(lead.last_interaction_time) : "-"}
                                 </TableCell>
@@ -862,7 +883,7 @@ function CampaignInsightsContent() {
                                         }
                                       }}
                                     >
-                                       Engagement History
+                                      Engagement
                                     </Button>
                                   )}
                                 </TableCell>
