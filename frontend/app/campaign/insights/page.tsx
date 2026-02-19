@@ -783,13 +783,14 @@ function CampaignInsightsContent() {
                             >
                               <div className="flex items-center justify-center">Disposition {getSortIcon("disposition")}</div>
                             </TableHead>
-
                             <TableHead 
                               className="text-center font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
-                              onClick={() => handleSort("provider_status")}
+                              onClick={() => handleSort("disposition_detail")}
                             >
-                              <div className="flex items-center justify-center">Status {getSortIcon("provider_status")}</div>
+                              <div className="flex items-center justify-center">Disposition Detail{getSortIcon("disposition_detail")}</div>
                             </TableHead>
+
+                            
 
                             <TableHead 
                               className="text-right font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
@@ -835,13 +836,10 @@ function CampaignInsightsContent() {
                                     {lead.disposition || "-"}
                                   </Badge>
                                 </TableCell>
-                                <TableCell className="text-center">
-                                  {lead.provider_status ? (
-                                    <Badge variant="secondary" className="font-normal text-xs bg-slate-100 text-slate-600 hover:bg-slate-200">
-                                      {lead.provider_status}
-                                    </Badge>
-                                  ) : <span className="text-slate-300">-</span>}
+                                <TableCell className="text-center text-xs text-slate-500"> 
+                                  {lead.disposition_detail || "-"}
                                 </TableCell>
+                                 
                                 <TableCell className="text-right text-xs text-slate-500">
                                   {lead.last_interaction_time ? epochToIST(lead.last_interaction_time) : "-"}
                                 </TableCell>
@@ -864,7 +862,7 @@ function CampaignInsightsContent() {
                                         }
                                       }}
                                     >
-                                      Engagement
+                                       Engagement History
                                     </Button>
                                   )}
                                 </TableCell>
