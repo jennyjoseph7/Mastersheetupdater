@@ -368,59 +368,71 @@ async function fetchCampaignPerformanceSummary(campaignId = "") {
   }
 }
 
-async function fetchCampaignLeads(
+async function fetchCampaignLeads({
   campaignId = "",
-  dealershipId = getDealershipId()
-) {
-  if (!campaignId || !dealershipId) {
-    return { items: [], total: 0 };
+  campaignType = "", // Expected: "pre-sales" or "post-sales"
+  dealershipId = getDealershipId(),
+  page_number = 1,
+  page_size = 10,
+  search = "",
+  sort_by = "",
+  sort_dir = "asc",
+  disposition = "", // New filter parameter
+} = {}) {
+  // We now require campaignType to avoid making dual API calls
+  if (!campaignId || !dealershipId || !campaignType) {
+    console.warn("[fetchCampaignLeads] Missing required params:", { campaignId, campaignType });
+    return { items: [], total_number: 0 };
   }
 
   try {
-    // Fetch both pre-sales and post-sales leads simultaneously
-    const preSalesUrl = `${APP_BASE_URL}/gryd/db/objects/pre_sales_lead?dealership_id=${encodeURIComponent(
-      dealershipId
-    )}&campaign_id=${encodeURIComponent(campaignId)}`;
+    // Dynamically set the endpoint based on the campaign type
+    // Converts "pre-sales" to "pre_sales_lead" and "post-sales" to "post_sales_lead"
+    const endpointType = campaignType.replace("-", "_");
+    const endpoint = `${endpointType}_lead`;
 
-    const postSalesUrl = `${APP_BASE_URL}/gryd/db/objects/post_sales_lead?dealership_id=${encodeURIComponent(
-      dealershipId
-    )}&campaign_id=${encodeURIComponent(campaignId)}`;
+    // Construct Query Parameters
+    const params = new URLSearchParams({
+      dealership_id: dealershipId,
+      campaign_id: campaignId,
+      page_number: String(page_number),
+      page_size: String(page_size),
+    });
 
-    const [preSalesResponse, postSalesResponse] = await Promise.allSettled([
-      authenticatedFetch(preSalesUrl),
-      authenticatedFetch(postSalesUrl),
-    ]);
+    if (search) {
+      params.append("search", search); 
+    }
 
-    const preSalesData =
-      preSalesResponse.status === "fulfilled" && preSalesResponse.value.ok
-        ? await preSalesResponse.value.json()
-        : { data: [], total_number: 0 };
+    if (sort_by) {
+      params.append("sort_by", sort_by);
+      // Assuming your backend uses 'sort_reverse' boolean like other endpoints in your file
+      params.append("sort_reverse", sort_dir === "desc" ? "true" : "false"); 
+    }
+// Attach disposition filter if one is selected
+    if (disposition) {
+      params.append("disposition", disposition);
+    }
+    const url = `${APP_BASE_URL}/gryd/db/objects/${endpoint}?${params.toString()}`;
 
-    const postSalesData =
-      postSalesResponse.status === "fulfilled" && postSalesResponse.value.ok
-        ? await postSalesResponse.value.json()
-        : { data: [], total_number: 0 };
+    const response = await authenticatedFetch(url);
 
-    // Merge both datasets
-    const mergedItems = [
-      ...(preSalesData?.data ?? []),
-      ...(postSalesData?.data ?? []),
-    ];
+    if (!response.ok) {
+      throw new Error(`Error fetching leads: ${await response.text()}`);
+    }
 
-    const total =
-      (preSalesData?.total_number ?? 0) + (postSalesData?.total_number ?? 0);
+    const json = await response.json();
 
     return {
-      items: mergedItems,
-      total: total,
-      page_number: preSalesData?.page_number ?? 1,
-      page_size: preSalesData?.page_size ?? 50,
-      is_first: preSalesData?.is_first ?? true,
-      is_last: postSalesData?.is_last ?? true,
+      items: json?.data ?? [],
+      total_number: json?.total_number ?? json?.total ?? 0,
+      page_number: json?.page_number ?? page_number,
+      page_size: json?.page_size ?? page_size,
+      is_first: json?.is_first ?? true,
+      is_last: json?.is_last ?? true,
     };
   } catch (error) {
     console.error("[fetchCampaignLeads]", error);
-    return { items: [], total: 0 };
+    return { items: [], total_number: 0 };
   }
 }
 

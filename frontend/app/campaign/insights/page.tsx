@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, Suspense, useState } from "react";
+import { useMemo, Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
@@ -12,9 +12,13 @@ import {
   AlertTriangle, 
   PieChart as PieIcon, 
   DollarSign,
-  Download,       // Added for Export Icon
-  ChevronLeft,    // Added for Pagination
-  ChevronRight    // Added for Pagination
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import {
   BarChart,
@@ -44,6 +48,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -73,88 +78,46 @@ const SWR_OPTIONS = {
   shouldRetryOnError: false,
 };
 
-const ITEMS_PER_PAGE = 10; // Pagination Size
-
 const CHANNEL_COLORS: Record<string, string> = {
-  whatsapp_chat: "#10B981", // Emerald 500
+  whatsapp_chat: "#10B981",
   whatsapp: "#10B981",
-  email: "#EF4444",         // Red 500
-  voice: "#3B82F6",         // Blue 500
-  sms: "#F59E0B",           // Amber 500
-  rcs: "#6366F1",           // Indigo 500
-  default: "#64748B",       // Slate 500
+  email: "#EF4444",
+  voice: "#3B82F6",
+  sms: "#F59E0B",
+  rcs: "#6366F1",
+  default: "#64748B",
 };
 
-// Modern palette for the Donut Chart
 const PIE_COLORS = [
-  "#6366F1", // Indigo
-  "#10B981", // Emerald
-  "#F59E0B", // Amber
-  "#EC4899", // Pink
-  "#8B5CF6", // Violet
-  "#3B82F6", // Blue
-  "#F43F5E", // Rose
+  "#6366F1", "#10B981", "#F59E0B", "#EC4899", "#8B5CF6", "#3B82F6", "#F43F5E",
 ];
 
 // --- TypeScript Interfaces ---
 
 interface EngagementStat {
-  channel: string;
-  total: number;
-  converted: number;
-  interacted: number;
-  sent_called: number;
-  read_greeted: number;
-  delivered_answered: number;
+  channel: string; total: number; converted: number; interacted: number;
+  sent_called: number; read_greeted: number; delivered_answered: number;
   [key: string]: any;
 }
 
 interface FailureStat {
-  channel: string;
-  message: string;
-  count: number;
+  channel: string; message: string; count: number;
 }
 
 interface IntentStat {
-  count: number;
-  disposition_detail?: string;
-  [key: string]: any;
+  count: number; disposition_detail?: string; [key: string]: any;
 }
 
 interface CostStat {
-  channel: string;
-  total_cost: number;
-  cost_per_lead: number;
-  converted_leads: number;
-}
-
-interface CampaignPerformance {
-  campaign_name: string;
-  campaign_type: string;
-  engagement_stats: EngagementStat[];
-  failure_stats_by_channel: FailureStat[];
-  intent_distribution_by_channel: IntentStat[];
-  cost_per_lead_by_channel: CostStat[];
+  channel: string; total_cost: number; cost_per_lead: number; converted_leads: number;
 }
 
 interface CampaignLead {
-  pre_sales_lead_id?: string;
-  post_sales_lead_id?: string;
-  lead_id?: string;
-  user_id?: string;
-  person_name: string;
-  phone_number: string;
-  email?: string;
-  disposition: string;
-  provider_status?: string;
-  last_interaction_time?: number;
-  audience_name: string;
-  created: number;
-  updated: number;
-  channel?: string;
-  campaign_name?: string;
-  dealer_name?: string;
-  region_name?: string;
+  pre_sales_lead_id?: string; post_sales_lead_id?: string; lead_id?: string;
+  user_id?: string; person_name: string; phone_number: string; email?: string;
+  disposition: string; provider_status?: string; last_interaction_time?: number;
+  audience_name: string; created: number; updated: number; channel?: string;
+  campaign_name?: string; dealer_name?: string; region_name?: string;
   [key: string]: any;
 }
 
@@ -191,7 +154,6 @@ function processCostStats(costStats: CostStat[]) {
   }));
 }
 
-// CSV Export Helper
 function exportToCSV(data: CampaignLead[], filename: string) {
   if (!data || !data.length) return;
 
@@ -233,14 +195,27 @@ function CampaignInsightsContent() {
     personName?: string;
   } | null>(null);
 
-  // Pagination State
+  // --- Table & Pagination State ---
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [dispositionFilter, setDispositionFilter] = useState("all"); // Added Disposition State
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+  const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // 1. Fetch Performance Data
+  // Debounce search term to avoid hitting the API on every single keystroke
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // 1. Fetch Performance Data (This determines the Campaign Type)
   const {
     data: rawData,
-    isLoading,
-    error,
+    isLoading: perfLoading,
+    error: perfError,
   } = useSWR<any>(
     campaignId ? `campaign-performance-${campaignId}` : null,
     () => fetchCampaignPerformanceSummary(campaignId || ""),
@@ -255,57 +230,74 @@ function CampaignInsightsContent() {
   const campaignType = performanceData?.campaign_type || "";
 
   // 2. Prepare Data for Charts (Memoized)
-  const failureData = useMemo(
-    () => processFailureStats(performanceData?.failure_stats_by_channel || []),
-    [performanceData]
-  );
-
-  const intentData = useMemo(
-    () => processIntentStats(performanceData?.intent_distribution_by_channel || []),
-    [performanceData]
-  );
-
-  const costData = useMemo(
-    () => processCostStats(performanceData?.cost_per_lead_by_channel || []),
-    [performanceData]
-  );
-
+  const failureData = useMemo(() => processFailureStats(performanceData?.failure_stats_by_channel || []), [performanceData]);
+  const intentData = useMemo(() => processIntentStats(performanceData?.intent_distribution_by_channel || []), [performanceData]);
+  const costData = useMemo(() => processCostStats(performanceData?.cost_per_lead_by_channel || []), [performanceData]);
   const funnelApiResponse = useMemo(() => {
     if (!performanceData) return undefined;
-    return {
-      data: [{ ...performanceData, campaign_id: campaignId || "" }],
-    };
+    return { data: [{ ...performanceData, campaign_id: campaignId || "" }] };
   }, [performanceData, campaignId]);
 
-  // 3. Fetch Leads
+  // 3. Conditional Fetch Leads (Server Pagination & Sorting)
   const {
-    data: leadsData,
+    data: leadsDataRaw,
     isLoading: leadsLoading,
     error: leadsError,
-  } = useSWR<{ items: CampaignLead[]; total: number }>(
-    campaignId ? `campaign-leads-${campaignId}` : null,
-    () => fetchCampaignLeads(campaignId || ""),
+  } = useSWR<{ items: CampaignLead[]; total_number: number }>(
+    campaignId && campaignType 
+      // Include dispositionFilter in SWR cache key so it refetches when it changes
+      ? ['campaign-leads', campaignId, campaignType, currentPage, pageSize, debouncedSearch, sortConfig?.key, sortConfig?.direction, dispositionFilter] 
+      : null,
+    ([_, id, type, page, size, searchStr, sortKey, sortDir, dispFilter]) => 
+      fetchCampaignLeads({
+        campaignId: id as string,
+        campaignType: type as string,
+        page_number: page as number,
+        page_size: size as number,
+        search: searchStr as string,
+        sort_by: sortKey as string | undefined,
+        sort_dir: sortDir as string | undefined,
+        disposition: dispFilter === "all" ? undefined : dispFilter as string // Pass the filter to the API
+      }),
     SWR_OPTIONS
   );
 
-  // Pagination Logic
-  const paginatedLeads = useMemo(() => {
-    if (!leadsData?.items) return [];
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return leadsData.items.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [leadsData, currentPage]);
+  // Server-processed records
+  const serverLeads = leadsDataRaw?.items || [];
+  const totalRecords = leadsDataRaw?.total_number || 0;
+  const totalPages = Math.ceil(totalRecords / pageSize) || 1;
 
-  const totalPages = leadsData?.items ? Math.ceil(leadsData.items.length / ITEMS_PER_PAGE) : 0;
-
+  // Handlers
   const handleNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
   };
 
   const handlePrevPage = () => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
   };
 
-  if (isLoading) {
+  const handleSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+    setCurrentPage(1); // Reset to first page when sorting changes
+  };
+
+  // Helper for rendering sort arrows in headers
+  const getSortIcon = (columnKey: string) => {
+    if (sortConfig?.key !== columnKey) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />;
+    }
+    return sortConfig.direction === "asc" ? (
+      <ChevronUp className="ml-2 h-4 w-4 text-slate-900 dark:text-slate-100" />
+    ) : (
+      <ChevronDown className="ml-2 h-4 w-4 text-slate-900 dark:text-slate-100" />
+    );
+  };
+
+  if (perfLoading) {
     return (
       <div className="flex flex-col w-full space-y-6 px-4 md:px-6 lg:px-8 pb-6 mt-6">
         <div className="space-y-2">
@@ -316,14 +308,14 @@ function CampaignInsightsContent() {
     );
   }
 
-  if (error || !performanceData) {
+  if (perfError || !performanceData) {
     return (
       <div className="flex-1 px-4 md:px-6 lg:px-8 pb-6 w-full mt-6">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
-            {error ? error.message : "No campaign data available."}
+            {perfError ? perfError.message : "No campaign data available."}
           </AlertDescription>
         </Alert>
         <Link href="/">
@@ -364,7 +356,7 @@ function CampaignInsightsContent() {
       </div>
 
       <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-10 w-full mt-8">
-        <Tabs defaultValue="statistics" className="w-full">
+        <Tabs defaultValue="audience" className="w-full">
           <TabsList>
             <TabsTrigger value="statistics">Statistics</TabsTrigger>
             <TabsTrigger value="audience">Audience / Leads</TabsTrigger>
@@ -661,10 +653,10 @@ function CampaignInsightsContent() {
             </Card>
           </TabsContent>
 
-          {/* AUDIENCE TAB CONTENT - Updated with Export & Pagination */}
+          {/* AUDIENCE TAB CONTENT - Filter, Sort, Server Paginate */}
           <TabsContent value="audience" className="space-y-6 mt-6">
             <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <CardHeader className="flex flex-row items-center justify-between pb-4">
+              <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 gap-4">
                 <div className="flex items-center gap-2">
                    <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
                       <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -672,21 +664,69 @@ function CampaignInsightsContent() {
                    <div>
                     <CardTitle className="text-base font-semibold">Campaign Leads</CardTitle>
                     <CardDescription>
-                      View and manage leads from this campaign ({leadsData?.total || 0} total)
+                      View and manage leads from this campaign ({totalRecords} records)
                     </CardDescription>
                    </div>
                 </div>
-                {/* Export Button */}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="gap-2"
-                  disabled={!leadsData?.items?.length}
-                  onClick={() => exportToCSV(leadsData?.items || [], `campaign_leads_${campaignId || 'data'}.csv`)}
-                >
-                  <Download className="h-4 w-4" /> Export
-                </Button>
+
+                {/* Table Tool Bar */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                  {/* Search Input */}
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                    <Input 
+                      placeholder="Search leads..." 
+                      className="pl-8 h-9 w-full bg-slate-50"
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setCurrentPage(1); // Reset to first page on search
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Disposition Filter Dropdown */}
+                  <select
+                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
+                    value={dispositionFilter}
+                    onChange={(e) => {
+                      setDispositionFilter(e.target.value);
+                      setCurrentPage(1); // Reset to first page on filter change
+                    }}
+                  >
+                    <option value="all">Status: All</option>
+                    <option value="queued">Queued</option>
+                    <option value="engaged">Engaged</option>
+                    <option value="contacted">Contacted</option>
+                  </select>
+
+                  {/* Page Size Dropdown */}
+                  <select 
+                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1); // Reset to first page when changing size
+                    }}
+                  >
+                    <option value={10}>10 per page</option>
+                    <option value={25}>25 per page</option>
+                    <option value={50}>50 per page</option>
+                    <option value={100}>100 per page</option>
+                  </select>
+
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2 h-9 w-full sm:w-auto"
+                    disabled={serverLeads.length === 0}
+                    onClick={() => exportToCSV(serverLeads, `campaign_leads_${campaignId || 'data'}.csv`)}
+                  >
+                    <Download className="h-4 w-4" /> Export
+                  </Button>
+                </div>
               </CardHeader>
+              
               <CardContent>
                 {leadsLoading ? (
                   <div className="space-y-4">
@@ -699,9 +739,15 @@ function CampaignInsightsContent() {
                     <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-red-400" />
                     <p>Failed to load leads data</p>
                   </div>
-                ) : !leadsData || leadsData.items.length === 0 ? (
-                  <div className="text-center text-slate-500 py-12 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
-                    No leads found for this campaign
+                ) : !serverLeads || serverLeads.length === 0 ? (
+                  <div className="text-center text-slate-500 py-12 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 flex flex-col items-center">
+                    <Search className="h-8 w-8 text-slate-300 mb-3" />
+                    <p>No matching leads found.</p>
+                    {searchTerm && (
+                      <Button variant="link" onClick={() => setSearchTerm("")} className="mt-2 text-blue-600">
+                        Clear search
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -709,17 +755,54 @@ function CampaignInsightsContent() {
                       <Table>
                         <TableHeader className="bg-slate-50/50">
                           <TableRow>
-                            <TableHead className="w-[200px] font-semibold text-slate-600">Name</TableHead>
-                            <TableHead className="font-semibold text-slate-600">Phone</TableHead>
-                            <TableHead className="font-semibold text-slate-600">Email</TableHead>
-                            <TableHead className="text-center font-semibold text-slate-600">Disposition</TableHead>
-                            <TableHead className="text-center font-semibold text-slate-600">Provider Status</TableHead>
-                            <TableHead className="text-right font-semibold text-slate-600">Last Interaction</TableHead>
+                            {/* Sortable Column Headers */}
+                            <TableHead 
+                              className="w-[200px] font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
+                              onClick={() => handleSort("person_name")}
+                            >
+                              <div className="flex items-center">Name {getSortIcon("person_name")}</div>
+                            </TableHead>
+                            
+                            <TableHead 
+                              className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
+                              onClick={() => handleSort("phone_number")}
+                            >
+                              <div className="flex items-center">Phone {getSortIcon("phone_number")}</div>
+                            </TableHead>
+
+                            <TableHead 
+                              className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
+                              onClick={() => handleSort("email")}
+                            >
+                              <div className="flex items-center">Email {getSortIcon("email")}</div>
+                            </TableHead>
+
+                            <TableHead 
+                              className="text-center font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
+                              onClick={() => handleSort("disposition")}
+                            >
+                              <div className="flex items-center justify-center">Disposition {getSortIcon("disposition")}</div>
+                            </TableHead>
+
+                            <TableHead 
+                              className="text-center font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
+                              onClick={() => handleSort("provider_status")}
+                            >
+                              <div className="flex items-center justify-center">Status {getSortIcon("provider_status")}</div>
+                            </TableHead>
+
+                            <TableHead 
+                              className="text-right font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
+                              onClick={() => handleSort("last_interaction_time")}
+                            >
+                              <div className="flex items-center justify-end">Last Interaction {getSortIcon("last_interaction_time")}</div>
+                            </TableHead>
+
                             <TableHead className="text-right font-semibold text-slate-600">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {paginatedLeads.map((lead, index) => {
+                          {serverLeads.map((lead, index) => {
                             const leadId =
                               lead.pre_sales_lead_id ||
                               lead.post_sales_lead_id ||
@@ -763,24 +846,27 @@ function CampaignInsightsContent() {
                                   {lead.last_interaction_time ? epochToIST(lead.last_interaction_time) : "-"}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!campaignId}
-                                    onClick={() => {
-                                      const effectiveUserId = lead.pre_sales_lead_id || lead.post_sales_lead_id || lead.lead_id || lead.user_id;
-                                      
-                                      if (effectiveUserId && campaignId) {
-                                        setSelectedLead({
-                                          userId: effectiveUserId, 
-                                          personName: lead.person_name,
-                                        });
-                                        setEngagementModalOpen(true);
-                                      }
-                                    }}
-                                  >
-                                    Engagement
-                                  </Button>
+                                  {/* Conditionally hide the button if disposition is "queued" */}
+                                  {lead.disposition?.toLowerCase() !== "queued" && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={!campaignId}
+                                      onClick={() => {
+                                        const effectiveUserId = lead.pre_sales_lead_id || lead.post_sales_lead_id || lead.lead_id || lead.user_id;
+                                        
+                                        if (effectiveUserId && campaignId) {
+                                          setSelectedLead({
+                                            userId: effectiveUserId, 
+                                            personName: lead.person_name,
+                                          });
+                                          setEngagementModalOpen(true);
+                                        }
+                                      }}
+                                    >
+                                      Engagement
+                                    </Button>
+                                  )}
                                 </TableCell>
                               </TableRow>
                             );
@@ -789,10 +875,10 @@ function CampaignInsightsContent() {
                       </Table>
                     </div>
 
-                    {/* Pagination Controls */}
+                    {/* Server Pagination Controls */}
                     <div className="flex items-center justify-between px-2">
-                        <div className="text-sm text-muted-foreground">
-                          Page {currentPage} of {totalPages}
+                        <div className="text-sm text-slate-500">
+                          Showing {totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} entries
                         </div>
                         <div className="flex items-center space-x-2">
                           <Button
@@ -800,16 +886,23 @@ function CampaignInsightsContent() {
                             size="sm"
                             onClick={handlePrevPage}
                             disabled={currentPage === 1}
+                            className="h-8 w-8 p-0"
                           >
-                            <ChevronLeft className="h-4 w-4" /> Previous
+                            <span className="sr-only">Go to previous page</span>
+                            <ChevronLeft className="h-4 w-4" />
                           </Button>
+                          <div className="text-sm font-medium px-2">
+                            Page {currentPage} of {totalPages}
+                          </div>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={handleNextPage}
                             disabled={currentPage >= totalPages}
+                            className="h-8 w-8 p-0"
                           >
-                            Next <ChevronRight className="h-4 w-4" />
+                            <span className="sr-only">Go to next page</span>
+                            <ChevronRight className="h-4 w-4" />
                           </Button>
                         </div>
                     </div>
