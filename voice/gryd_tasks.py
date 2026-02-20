@@ -425,10 +425,17 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
     payload["message_id"] = message_id or generate_uid(session_data)
-    gryd.create_async_task(
-        "post_contact_status", 
-        config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-        kwargs=payload)
+    if payload.get("provider_status") == "attempted":
+        gryd.create_async_task(
+            "post_contact_status", 
+            config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+            kwargs=payload)
+    else: 
+        gryd.create_async_task(
+            "post_contact_status", 
+            config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+            args = (message_id,),
+            kwargs=payload)
     #make this normal function
 
 
