@@ -72,7 +72,6 @@ def gemini_image_generation(
     logger = logger or mlogger
     return gemini_image_generation_task(input_image_url, prompt, number_of_images, logger = logger, **kwargs)
 
-
 @gryd.is_a_task(function_name="openai_image_generation", job_param='job', logger_param='logger')
 def openai_image_generation(
     input_image_url,
@@ -93,13 +92,18 @@ def openai_image_generation(
         import requests
         import tempfile
         import os
+        import uuid
 
         api_key = OPENAI_API_KEY
         if not api_key:
             raise RuntimeError("OPENAI_API_KEY not found or invalid.")
-        tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-        local_img_path = tmp.name
-        tmp.close()
+
+        # ✅ FORCE EXACTLY ONE IMAGE (Gemini-style behavior)
+        fixed_number_of_images = 1
+
+        # -------------------- DOWNLOAD INPUT IMAGE --------------------
+        input_file = f"openai_input_{uuid.uuid4().hex}.png"
+        local_img_path = os.path.join(tempfile.gettempdir(), input_file)
 
         download_file(input_image_url, local_img_path)
 
@@ -118,7 +122,7 @@ def openai_image_generation(
         data = {
             "model": OPENAI_IMAGE_MODEL,
             "prompt": edit_prompt,
-            "n": number_of_images,
+            "n": fixed_number_of_images,  # ✅ Always 1
             "size": kwargs.get("size", OPENAI_IMAGE_SIZE),
         }
 
@@ -141,18 +145,23 @@ def openai_image_generation(
 
         ourls = []
 
+        # -------------------- HANDLE OUTPUT IMAGES --------------------
         for item in output_items:
+
             if 'b64_json' in item:
                 image_bytes = hp.base64.b64decode(item['b64_json'])
 
-                tmp_out = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-                tmp_out.write(image_bytes)
-                tmp_out.close()
+                # ✅ Gemini-style prefix + UUID
+                file_name = f"openai_{uuid.uuid4().hex}.png"
+                tmp_out_path = os.path.join(tempfile.gettempdir(), file_name)
 
-                file_url = func_gryd_file_system(tmp_out.name, media_type='image')
+                with open(tmp_out_path, "wb") as f:
+                    f.write(image_bytes)
+
+                file_url = func_gryd_file_system(tmp_out_path, media_type='image')
 
                 try:
-                    os.remove(tmp_out.name)
+                    os.remove(tmp_out_path)
                 except:
                     pass
 
@@ -163,6 +172,8 @@ def openai_image_generation(
 
         if not ourls:
             raise RuntimeError("Invalid response from OpenAI.")
+
+        # -------------------- USAGE / COST --------------------
         usage = result.get("usage", {})
 
         input_text_token_count = usage.get("input_tokens_details", {}).get("text_tokens", 0)
@@ -184,16 +195,20 @@ def openai_image_generation(
 
         return {
             "image_urls": hp.make_single(ourls),
+
             "input_text_token_count": input_text_token_count,
             "input_image_token_count": input_image_token_count,
             "output_text_token_count": output_text_token_count,
             "output_image_token_count": output_image_token_count,
+
             "input_cost": input_cost,
             "output_cost": output_cost,
             "total_cost": total_cost,
+
             "total_time": hp.time() - start_time,
             "currency": "USD",
         }
+
     return replace_background_with_gpt(
         input_image_url=input_image_url,
         prompt=prompt
@@ -242,11 +257,11 @@ Now validate the prompt:
         logger.error(f"Error validating prompt: {e}")
         return {"valid": False, "reason": str(e)}
 
-if __name__ == "__main__":
-    input_image_url = "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp"
-    prompt = "Change the background to scenic view from the suburbs of Mumbai"
-    number_of_images = 1
-    print(openai_image_generation(input_image_url, prompt, number_of_images))
+# if __name__ == "__main__":
+#     input_image_url = "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp"
+#     prompt = "Change the background to scenic view from the suburbs of Mumbai"
+#     number_of_images = 1
+#     print(openai_image_generation(input_image_url, prompt, number_of_images))
 
     
 
