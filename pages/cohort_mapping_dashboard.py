@@ -195,7 +195,7 @@ with affinity_engine_and_customer_profiling:
                     (c for c in cohorts if c["cohort_id"] == p_cohort), {}
                 )
 
-                results.append({
+                payload = {
                     **interaction,  # preserve original columns first
                     "primary_classified_cohort_id": p_cohort,
                     "primary_classified_cohort_name": classified_cohort_data.get("cohort_name", ""),
@@ -204,7 +204,12 @@ with affinity_engine_and_customer_profiling:
                     "classification_reasoning": reasoning,
                     "confidence_score": confidence_score,
                     "assignment_mode": "ai_assisted",
-                })
+                }
+
+                if "campaign_id" in interaction:
+                    payload["campaign_id"] = interaction["campaign_id"]
+
+                results.append()
 
             except Exception as e:
                 error_trace = traceback.format_exc()
@@ -246,7 +251,7 @@ with affinity_engine_and_customer_profiling:
 
         results = []
         for interaction, cohort in zip(users, tiled):
-            results.append({
+            payload = {
                 **interaction,
                 "primary_classified_cohort_id": cohort.get("cohort_id", ""),
                 "primary_classified_cohort_name": cohort.get("cohort_name", ""),
@@ -255,7 +260,10 @@ with affinity_engine_and_customer_profiling:
                 "classification_reasoning": "Randomly assigned (no AI classification)",
                 "confidence_score": None,
                 "assignment_mode": "random",
-            })
+            }
+            if "campaign_id" in interaction:
+                payload["campaign_id"] = interaction["campaign_id"]
+            results.append(payload)
         return results
 
     def upload_data():
