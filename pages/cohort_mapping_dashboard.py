@@ -16,7 +16,7 @@ from agents.cohort_generation_agent import ProductCohortGenerationAgent
 from agents.cohort_classification_agent import CohortClassificationAgent
 # from agents.campaign_idea_generator_agent import CampaignIdeaGeneratorAgent
 # from agents.conversation_agent import DemoConversationAgent
-from agents.affinity_agent import AffinityEngineAgent
+# from agents.affinity_agent import AffinityEngineAgent
 from collections import defaultdict
 
 logger = get_logger(__name__)
@@ -34,7 +34,7 @@ setup_gryd()
 def setup_header():
     st.set_page_config(page_title="Agentic CX: Campaign Funnel & Lead Nurturing", layout="wide")
     st.subheader("Agentic CX: Campaign Funnel & Lead Nurturing")
-    st.write("Product Knowledge → Cohorts → User Affinity → Campaign → Re-targeting")
+    st.write("Product Knowledge → Cohorts →")
 
 setup_header()
 
@@ -56,6 +56,8 @@ def setup_session_state():
         st.session_state.classification_results = None
     if "failed_rows" not in st.session_state:
         st.session_state.failed_rows = None
+    if "stop_classification" not in st.session_state:
+        st.session_state.stop_classification = False
     if st.sidebar.button("🔄 Reset Pipeline"):
         for key in DEFAULT_KEYS:
             st.session_state[key] = None
@@ -129,7 +131,7 @@ with affinity_engine_and_customer_profiling:
         cohort_rows = []
         for cohort in st.session_state.cohorts:
             logger.info(f"Cohort: {cohort}")
-            kv_dict = {key:value for key, value in cohort.items()}
+            kv_dict = {key : value for key, value in cohort.items()}
             cohort_rows.append(kv_dict)
         cohorts_df = pd.DataFrame(cohort_rows)
         if "idx" in cohorts_df.columns:
@@ -157,6 +159,7 @@ with affinity_engine_and_customer_profiling:
         """
         progress = st.progress(0)
         status = st.empty()
+        stop_btn = st.empty()
         total = len(users)
         results = []
         failed_rows = []
@@ -164,13 +167,19 @@ with affinity_engine_and_customer_profiling:
         for idx, interaction in enumerate(users):
             user_id = interaction.get("user_id", f"u_{str(uuid.uuid4())}")
             status.markdown(f"**Classifying '{user_id}', Record {idx+1}/{total}**")
+
+            if stop_btn.button("⛔ Stop Classification", key=f"stop_btn_{idx}"):
+                st.session_state.stop_classification = True
+                status.warning(f"⛔ Classification stopped by user after {idx} record(s).")
+                break
+
             try:
                 cohort_classification_agent = CohortClassificationAgent(
                     source=interaction,
                     cohorts=cohorts,
                     brochure_url=None,
                     product_website_url=None,
-                    additional_instructions=additional_instructions  # pass instructions to agent
+                    additional_instruction=additional_instructions  # pass instructions to agent
                 )
                 classified: dict = cohort_classification_agent.run()
 
@@ -194,6 +203,7 @@ with affinity_engine_and_customer_profiling:
                     "secondary_classified_cohort_ids": json.dumps(s_cohorts),
                     "classification_reasoning": reasoning,
                     "confidence_score": confidence_score,
+                    "assignment_mode": "ai_assisted",
                 })
 
             except Exception as e:
@@ -207,6 +217,7 @@ with affinity_engine_and_customer_profiling:
 
             progress.progress((idx + 1) / total)
 
+        stop_btn.empty()
         status.empty()
         return results, failed_rows
     
@@ -390,6 +401,9 @@ with affinity_engine_and_customer_profiling:
                     cohorts=st.session_state.cohorts,
                     additional_instructions=additional_instructions
                 )
+            if st.session_state.stop_classification:
+                st.warning(f"⚠️ Classification was stopped early. Showing partial results for {len(results)} classified record(s).")
+            st.session_state.stop_classification = False
             st.session_state.classification_results = results
             st.session_state.failed_rows = failed_rows
 
@@ -416,16 +430,13 @@ with affinity_engine_and_customer_profiling:
             st.dataframe(results_df, use_container_width=True)
 
             # Cohort distribution bar chart
-            if "classified_cohort_name" in results_df.columns:
+            if "primary_classified_cohort_id" in results_df.columns:
                 dist = (
-                    results_df["classified_cohort_name"]
+                    results_df["primary_classified_cohort_id"]
                     .value_counts()
                     .reset_index()
-                    .rename(columns={"index": "Cohort", "classified_cohort_name": "Count"})
                 )
-                # pandas ≥2.0 value_counts() already names columns correctly
-                if dist.columns.tolist() == ["classified_cohort_name", "count"]:
-                    dist.columns = ["Cohort", "Count"]
+                dist.columns = ["Cohort", "Count"]
                 fig = px.bar(
                     dist, x="Cohort", y="Count",
                     title="Cohort Distribution",
@@ -469,3 +480,8 @@ with affinity_engine_and_customer_profiling:
             )
         else:
             st.success("🎉 All records classified successfully — no failures!")
+
+# with askbot:
+#     st.divider()
+#     st.subheader("5️⃣ AskBot")
+#     # askbot()
