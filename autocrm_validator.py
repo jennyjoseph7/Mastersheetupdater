@@ -3,9 +3,8 @@ import json, os, sys
 import requests
 import datetime, time
 
-
-
-
+from gryd_worker import gryd, gryd_helpers as hp
+from config import AUTOCRM_APP_ENTERPRISE_ID
 def calulate_total_billing_func(ins, model, attribute, action, **kwargs):
   
     filter = ''
@@ -30,7 +29,7 @@ def get_transaction_id(ins, *args, **kwargs):
 def get_campaign_end_date_func(ins, campaign_id, campaign_end_date, **kwargs):
     pass
 
-def resolve_and_search_in_model_func(ins,**kwargs):
+def resolve_and_search_in_model_func(ins,_default=None,**kwargs):
 
     model_name = kwargs.pop('model_name', None)
     attribute_name = kwargs.pop('attribute_name', None)
@@ -42,14 +41,15 @@ def resolve_and_search_in_model_func(ins,**kwargs):
     if model_name and lead_id and _get_lead_id:
         lead_model_id=f"{model_name}_id"
         kwargs[lead_model_id]=lead_id
-        
-    return val.search_among_model_func(
-        ins,
-        model_name,
-        attribute_name,
-        **kwargs
-    )
- 
+    m=gryd.base_model.Model(model_name,AUTOCRM_APP_ENTERPRISE_ID)
+    r = hp.make_single(m.list(_page_size=1, _as_option=True,
+                       **kwargs), force=True, default={})
+    if _default is None:
+        _default = ""
+    if attribute_name:
+        return r.get(attribute_name, _default)
+    return r or _default
+
 val.make_function(
     calulate_total_billing_func,
     "calulate_total_billing_amount",
