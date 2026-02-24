@@ -98,7 +98,6 @@ def openai_image_generation(
         if not api_key:
             raise RuntimeError("OPENAI_API_KEY not found or invalid.")
 
-        # ✅ FORCE EXACTLY ONE IMAGE (Gemini-style behavior)
         fixed_number_of_images = 1
 
         # -------------------- DOWNLOAD INPUT IMAGE --------------------
@@ -122,7 +121,7 @@ def openai_image_generation(
         data = {
             "model": OPENAI_IMAGE_MODEL,
             "prompt": edit_prompt,
-            "n": fixed_number_of_images,  # ✅ Always 1
+            "n": fixed_number_of_images,  
             "size": kwargs.get("size", OPENAI_IMAGE_SIZE),
         }
 
@@ -151,7 +150,6 @@ def openai_image_generation(
             if 'b64_json' in item:
                 image_bytes = hp.base64.b64decode(item['b64_json'])
 
-                # ✅ Gemini-style prefix + UUID
                 file_name = f"openai_{uuid.uuid4().hex}.png"
                 tmp_out_path = os.path.join(tempfile.gettempdir(), file_name)
 
