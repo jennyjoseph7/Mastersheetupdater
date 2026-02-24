@@ -10,7 +10,6 @@ import requests
 from pathlib import Path
 from bp_utils import get_logger
 
-
 from agents.variant_feature_agent import (
     ConverterAgent, 
     MasterVariantAgent, 
@@ -24,7 +23,7 @@ from file_loader.gemini_loader import process_brochure_to_structure
 logger = get_logger(__name__)
 HERE = Path(__file__).resolve().parent
 TEMP_DIR = HERE / "temp_files"
-OUTPUT_DIR = HERE.parent / "outputs"  # Ensure this path matches parallel_task.py
+OUTPUT_DIR = HERE.parent / "outputs"  
 MAX_CORRECTION_ATTEMPTS = 3
 
 MAX_RETRIES = 5
@@ -196,11 +195,10 @@ def save_chunk_locally(data, job_id):
     without relying on the database connection.
     """
     try:
-        # Create a unique filename for this chunk
+      
         chunk_id = str(uuid.uuid4())[:8]
         
-        # Define the path: outputs/partials/{job_id}/
-        # This MUST be a path that the Orchestrator (parallel_task.py) can also see.
+        
         save_dir = OUTPUT_DIR / "partials" / str(job_id)
         os.makedirs(save_dir, exist_ok=True)
         
