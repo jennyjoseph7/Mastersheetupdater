@@ -106,7 +106,16 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
 @app.route("/webhook/ses-status", methods=["POST", "GET"])
 def handle_ses_webhook():
     logger.info(f"SES Webhook received")
-    return 
+    payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
+    logger.info(f"SES Webhook payload: {json.dumps(payload, indent=4)}")
+    return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
+
+@app.route("/webhook/sns-incoming-messages", methods=["POST", "GET"])
+def handle_sns_incoming_messages_webhook():
+    logger.info(f"SNS Incoming Messages Webhook received")
+    payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
+    logger.info(f"SNS Incoming Messages Webhook payload: {json.dumps(payload, indent=4)}")
+    return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
 
 @app.route("/webhook/rcs-status", methods = ["GET","POST"])
 def get_rcs_status():

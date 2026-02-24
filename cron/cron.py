@@ -49,8 +49,8 @@ def overall_campaign_summary():
             _fetch=False
         )
 
-        # Count updated rows (force BIGINT)
-        updated_rows = int(list(
+        # Count updated rows
+        row = next(
             pg.yield_results(
                 """
                 SELECT COUNT(*)::BIGINT
@@ -58,15 +58,21 @@ def overall_campaign_summary():
                 WHERE updated >= to_timestamp(%s / 1000.0)
                 """,
                 (before,)
-            )
-        )[0][0])
+            ),
+            None
+        )
+
+        updated_rows = int(row[0]) if row else 0
 
         # Count total rows (force BIGINT)
-        total_rows = int(list(
+        row = next(
             pg.yield_results(
                 "SELECT COUNT(*)::BIGINT FROM campaign_summary"
-            )
-        )[0][0])
+            ),
+            None
+        )
+
+        total_rows = int(row[0]) if row else 0
 
         if updated_rows > 0:
             mlogger.info(

@@ -325,7 +325,7 @@
       "auto_updater": true,
       "default": {
         "args": [
-          "dealership_name",
+          "dealer_name",
           "showroom_name",
           "city"
         ],
