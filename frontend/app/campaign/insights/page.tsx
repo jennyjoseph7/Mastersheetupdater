@@ -18,7 +18,10 @@ import {
   Search,
   ArrowUpDown,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  MessageSquare,
+  PlayCircle,
+  Activity
 } from "lucide-react";
 import {
   BarChart,
@@ -65,6 +68,7 @@ import { EngagementModal } from "@/components/engagement-modal";
 import {
   fetchCampaignPerformanceSummary,
   fetchCampaignLeads,
+  fetchCampaignSessions, 
   epochToIST,
 } from "@/utils/api";
 
@@ -121,6 +125,22 @@ interface CampaignLead {
   [key: string]: any;
 }
 
+interface CampaignSession {
+  session_id: string;
+  user_id?: string;
+  channel?: string;
+  status?: string;
+  start_time?: number;
+  end_time?: number;
+  phone_number?: string;
+  disposition_detail?: string;
+  sentiment_score?: number;
+  emotion_analysis?: any; // Accepting any structure
+  duration?: number;
+  call_recording?: string;
+  [key: string]: any;
+}
+
 // --- Helper Logic ---
 
 function processFailureStats(failureStats: FailureStat[]) {
@@ -154,39 +174,32 @@ function processCostStats(costStats: CostStat[]) {
   }));
 }
 
-function exportToCSV(data: CampaignLead[], filename: string) {
+function exportToCSV(data: any[], filename: string) {
   if (!data || !data.length) return;
 
-  // 1. Extract all unique keys from the data array to create dynamic headers
   const headerSet = new Set<string>();
-  data.forEach(lead => {
-    Object.keys(lead).forEach(key => headerSet.add(key));
+  data.forEach(item => {
+    Object.keys(item).forEach(key => headerSet.add(key));
   });
   const headers = Array.from(headerSet);
   
-  // 2. Map each lead to a row based on the dynamic headers
-  const rows = data.map(lead => {
+  const rows = data.map(item => {
     return headers.map(header => {
-      let value = lead[header];
+      let value = item[header];
 
-      // Format epoch time fields to readable dates
-      if ((header === 'last_interaction_time' || header === 'created' || header === 'updated') && value) {
+      if ((header === 'last_interaction_time' || header === 'start_time' || header === 'end_time' || header === 'created' || header === 'updated') && value) {
         value = epochToIST(value as number);
       }
 
-      // Handle null, undefined, or objects safely
       if (value === null || value === undefined) {
         value = '';
       } else if (typeof value === 'object') {
-        value = JSON.stringify(value); // Stringify nested objects/arrays if they exist
+        value = JSON.stringify(value); 
       } else {
         value = String(value);
       }
 
-      // Escape internal double quotes by doubling them (Standard CSV format)
       value = value.replace(/"/g, '""');
-      
-      // Wrap the value in quotes
       return `"${value}"`;
     });
   });
@@ -207,25 +220,42 @@ function exportToCSV(data: CampaignLead[], filename: string) {
   document.body.removeChild(link);
 }
 
+function formatDuration(seconds?: number) {
+  if (!seconds) return "0s";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
 // --- Inner Component ---
 
 function CampaignInsightsContent() {
   const searchParams = useSearchParams();
   const campaignId = searchParams?.get("campaign_id");
+  const campaignnamecsv = searchParams?.get("campaign_name") || "Campaign";
   const [engagementModalOpen, setEngagementModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<{
     userId: string;
     personName?: string;
   } | null>(null);
 
-  // --- Table & Pagination State ---
+  // --- Leads Table & Pagination State ---
   const [searchTerm, setSearchTerm] = useState("");
   const [dispositionFilter, setDispositionFilter] = useState("all"); 
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // 1. Fetch Performance Data (This determines the Campaign Type)
+  // --- Sessions Table, Filters & Pagination State ---
+  const [sessionSearch, setSessionSearch] = useState("");
+  const [sessionStatus, setSessionStatus] = useState("all"); 
+  const [sessionStartDate, setSessionStartDate] = useState("");
+  const [sessionEndDate, setSessionEndDate] = useState("");
+  const [sessionSortConfig, setSessionSortConfig] = useState<{ key: string; direction: "asc" | "desc" }>({ key: "created", direction: "desc" });
+  const [sessionPageSize, setSessionPageSize] = useState(10);
+  const [sessionCurrentPage, setSessionCurrentPage] = useState(1);
+
+  // 1. Fetch Performance Data
   const {
     data: rawData,
     isLoading: perfLoading,
@@ -243,7 +273,7 @@ function CampaignInsightsContent() {
   const campaignName = performanceData?.campaign_name || "Campaign";
   const campaignType = performanceData?.campaign_type || "";
 
-  // 2. Prepare Data for Charts (Memoized)
+  // 2. Prepare Data for Charts
   const failureData = useMemo(() => processFailureStats(performanceData?.failure_stats_by_channel || []), [performanceData]);
   const intentData = useMemo(() => processIntentStats(performanceData?.intent_distribution_by_channel || []), [performanceData]);
   const costData = useMemo(() => processCostStats(performanceData?.cost_per_lead_by_channel || []), [performanceData]);
@@ -252,14 +282,13 @@ function CampaignInsightsContent() {
     return { data: [{ ...performanceData, campaign_id: campaignId || "" }] };
   }, [performanceData, campaignId]);
 
-  // 3. Conditional Fetch Leads (Server Pagination & Sorting, NO Backend Search)
+  // 3. Conditional Fetch Leads
   const {
     data: leadsDataRaw,
     isLoading: leadsLoading,
     error: leadsError,
   } = useSWR<{ items: CampaignLead[]; total_number: number }>(
     campaignId && campaignType 
-      // Removed search from SWR cache key to prevent backend refetching on type
       ? ['campaign-leads', campaignId, campaignType, currentPage, pageSize, sortConfig?.key, sortConfig?.direction, dispositionFilter] 
       : null,
     ([_, id, type, page, size, sortKey, sortDir, dispFilter]) => 
@@ -275,15 +304,41 @@ function CampaignInsightsContent() {
     SWR_OPTIONS
   );
 
-  // Server-processed records
   const serverLeads = leadsDataRaw?.items || [];
   const totalRecords = leadsDataRaw?.total_number || 0;
   const totalPages = Math.ceil(totalRecords / pageSize) || 1;
 
-  // --- Local Search Filtering (Name, Phone, Email ONLY) ---
+  // 4. Conditional Fetch Sessions
+  // Removed start_date, end_date, and search from the server dependencies.
+  const {
+    data: sessionsDataRaw,
+    isLoading: sessionsLoading,
+    error: sessionsError,
+  } = useSWR<{ items: CampaignSession[]; total_number: number }>(
+    campaignId 
+      ? ['campaign-sessions', campaignId, sessionCurrentPage, sessionPageSize, sessionSortConfig.key, sessionSortConfig.direction, sessionStatus] 
+      : null,
+    ([_, id, page, size, sortKey, sortDir, status]) => 
+      fetchCampaignSessions({
+        campaignId: id as string,
+        page_number: page as number,
+        page_size: size as number,
+        sort_by: sortKey as string,
+        sort_reverse: sortDir === "desc" ? "true" : "false"
+      
+      }),
+    SWR_OPTIONS
+  );
+
+  const serverSessions = sessionsDataRaw?.items || [];
+  const totalSessionRecords = sessionsDataRaw?.total_number || 0;
+  const totalSessionPages = Math.ceil(totalSessionRecords / sessionPageSize) || 1;
+
+  // --- Handlers & Helpers ---
+
+  // Lead Local Search Filter
   const visibleLeads = useMemo(() => {
     if (!searchTerm) return serverLeads;
-    
     const lowerCaseTerm = searchTerm.toLowerCase();
     return serverLeads.filter((lead) =>
       (lead.person_name && lead.person_name.toLowerCase().includes(lowerCaseTerm)) ||
@@ -292,25 +347,61 @@ function CampaignInsightsContent() {
     );
   }, [serverLeads, searchTerm]);
 
-  // Handlers
-  const handleNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
-  };
+  // Session Local Table Filter (Search and Date Range)
+  const visibleSessions = useMemo(() => {
+    let filtered = serverSessions;
 
-  const handlePrevPage = () => {
-    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
-  };
+    // Local text search
+    if (sessionSearch) {
+      const lowerCaseTerm = sessionSearch.toLowerCase();
+      filtered = filtered.filter((session) =>
+        session.phone_number && String(session.phone_number).toLowerCase().includes(lowerCaseTerm)
+      );
+    }
 
+    // Local date filter
+    if (sessionStartDate || sessionEndDate) {
+      filtered = filtered.filter((session) => {
+        if (!session.start_time) return false;
+        const sessionTime = session.start_time * 1000; // Convert to ms
+        let isValid = true;
+
+        if (sessionStartDate) {
+          const start = new Date(sessionStartDate).getTime();
+          if (sessionTime < start) isValid = false;
+        }
+
+        if (sessionEndDate) {
+          const end = new Date(sessionEndDate);
+          end.setHours(23, 59, 59, 999);
+          if (sessionTime > end.getTime()) isValid = false;
+        }
+
+        return isValid;
+      });
+    }
+
+    return filtered;
+  }, [serverSessions, sessionSearch, sessionStartDate, sessionEndDate]);
+
+  // Lead Pagination
+  const handleNextPage = () => { if (currentPage < totalPages) setCurrentPage((prev) => prev + 1); };
+  const handlePrevPage = () => { if (currentPage > 1) setCurrentPage((prev) => prev - 1); };
+  
+  // Session Pagination
+  const handleSessionNextPage = () => { if (sessionCurrentPage < totalSessionPages) setSessionCurrentPage((prev) => prev + 1); };
+  const handleSessionPrevPage = () => { if (sessionCurrentPage > 1) setSessionCurrentPage((prev) => prev - 1); };
+
+  // Lead Sort
   const handleSort = (key: string) => {
     let direction: "asc" | "desc" = "asc";
     if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
       direction = "desc";
     }
     setSortConfig({ key, direction });
-    setCurrentPage(1); // Reset to first page when sorting changes
+    setCurrentPage(1); 
   };
 
-  // Helper for rendering sort arrows in headers
   const getSortIcon = (columnKey: string) => {
     if (sortConfig?.key !== columnKey) {
       return <ArrowUpDown className="ml-2 h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />;
@@ -322,6 +413,28 @@ function CampaignInsightsContent() {
     );
   };
 
+  // Session Sort
+  const handleSessionSort = (key: string) => {
+    let direction: "asc" | "desc" = "asc";
+    if (sessionSortConfig.key === key && sessionSortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSessionSortConfig({ key, direction });
+    setSessionCurrentPage(1);
+  };
+
+  const getSessionSortIcon = (columnKey: string) => {
+    if (sessionSortConfig.key !== columnKey) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />;
+    }
+    return sessionSortConfig.direction === "asc" ? (
+      <ChevronUp className="ml-2 h-4 w-4 text-slate-900 dark:text-slate-100" />
+    ) : (
+      <ChevronDown className="ml-2 h-4 w-4 text-slate-900 dark:text-slate-100" />
+    );
+  };
+
+  // --- Render Error/Loading States ---
   if (perfLoading) {
     return (
       <div className="flex flex-col w-full space-y-6 px-4 md:px-6 lg:px-8 pb-6 mt-6">
@@ -385,11 +498,11 @@ function CampaignInsightsContent() {
           <TabsList>
             <TabsTrigger value="statistics">Statistics</TabsTrigger>
             <TabsTrigger value="audience">Audience / Leads</TabsTrigger>
+            <TabsTrigger value="sessions">Sessions</TabsTrigger>
           </TabsList>
 
+          {/* STATISTICS TAB CONTENT */}
           <TabsContent value="statistics" className="space-y-6 mt-6">
-            
-            {/* 1. Engagement Funnel Card */}
             {performanceData.engagement_stats?.length > 0 && (
               <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                 <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
@@ -411,10 +524,7 @@ function CampaignInsightsContent() {
               </Card>
             )}
 
-            {/* 2. Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Intent Distribution - Donut Chart */}
               <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col col-span-1 lg:col-span-2">
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-2">
@@ -477,7 +587,6 @@ function CampaignInsightsContent() {
                 </CardContent>
               </Card>
 
-              {/* Delivery Issues - Inline Chart */}
               <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
@@ -500,7 +609,6 @@ function CampaignInsightsContent() {
                 <CardContent className="flex-1 overflow-auto pt-4">
                   {failureData.length > 0 ? (
                     <div className="space-y-4">
-                      {/* Chart */}
                       <div className="h-[220px] w-full mb-2">
                          <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={failureData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -543,8 +651,6 @@ function CampaignInsightsContent() {
                             </BarChart>
                          </ResponsiveContainer>
                       </div>
-                      
-                      {/* List View */}
                       <div className="space-y-3">
                         {failureData.map((item, idx) => (
                           <div key={idx} className="flex items-center justify-between text-sm border-b border-slate-50 pb-2 last:border-0 last:pb-0">
@@ -574,7 +680,6 @@ function CampaignInsightsContent() {
               </Card>
             </div>
 
-            {/* 3. Cost Analysis - Vertical Columns */}
             <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -678,7 +783,7 @@ function CampaignInsightsContent() {
             </Card>
           </TabsContent>
 
-          {/* AUDIENCE TAB CONTENT - Filter, Sort, Server Paginate */}
+          {/* AUDIENCE TAB CONTENT */}
           <TabsContent value="audience" className="space-y-6 mt-6">
             <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 gap-4">
@@ -694,9 +799,7 @@ function CampaignInsightsContent() {
                    </div>
                 </div>
 
-                {/* Table Tool Bar */}
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                  {/* Search Input (Local filter only) */}
                   <div className="relative w-full sm:w-64">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                     <Input 
@@ -707,13 +810,12 @@ function CampaignInsightsContent() {
                     />
                   </div>
                   
-                  {/* Disposition Filter Dropdown */}
                   <select
                     className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
                     value={dispositionFilter}
                     onChange={(e) => {
                       setDispositionFilter(e.target.value);
-                      setCurrentPage(1); // Reset to first page on filter change
+                      setCurrentPage(1);
                     }}
                   >
                     <option value="all">Status: All</option>
@@ -722,13 +824,12 @@ function CampaignInsightsContent() {
                     <option value="contacted">Contacted</option>
                   </select>
 
-                  {/* Page Size Dropdown */}
                   <select 
                     className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
                     value={pageSize}
                     onChange={(e) => {
                       setPageSize(Number(e.target.value));
-                      setCurrentPage(1); // Reset to first page when changing size
+                      setCurrentPage(1);
                     }}
                   >
                     <option value={10}>10 per page</option>
@@ -777,28 +878,24 @@ function CampaignInsightsContent() {
                       <Table>
                         <TableHeader className="bg-slate-50/50">
                           <TableRow>
-                            {/* Sortable Column Headers */}
                             <TableHead 
                               className="w-[200px] font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
                               onClick={() => handleSort("person_name")}
                             >
                               <div className="flex items-center">Name {getSortIcon("person_name")}</div>
                             </TableHead>
-                            
                             <TableHead 
                               className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
                               onClick={() => handleSort("phone_number")}
                             >
                               <div className="flex items-center">Phone {getSortIcon("phone_number")}</div>
                             </TableHead>
-
                             <TableHead 
                               className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
                               onClick={() => handleSort("email")}
                             >
                               <div className="flex items-center">Email {getSortIcon("email")}</div>
                             </TableHead>
-
                             <TableHead 
                               className="text-center font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
                               onClick={() => handleSort("disposition")}
@@ -811,16 +908,12 @@ function CampaignInsightsContent() {
                             >
                               <div className="flex items-center justify-center">Disposition Detail{getSortIcon("disposition_detail")}</div>
                             </TableHead>
-
-                            
-
                             <TableHead 
                               className="text-right font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
                               onClick={() => handleSort("last_interaction_time")}
                             >
                               <div className="flex items-center justify-end">Last Interaction {getSortIcon("last_interaction_time")}</div>
                             </TableHead>
-
                             <TableHead className="text-right font-semibold text-slate-600">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -865,7 +958,6 @@ function CampaignInsightsContent() {
                                   {lead.last_interaction_time ? epochToIST(lead.last_interaction_time) : "-"}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  {/* Conditionally hide the button if disposition is "queued" */}
                                   {lead.disposition?.toLowerCase() !== "queued" && (
                                     <Button
                                       variant="outline"
@@ -873,7 +965,6 @@ function CampaignInsightsContent() {
                                       disabled={!campaignId}
                                       onClick={() => {
                                         const effectiveUserId = lead.pre_sales_lead_id || lead.post_sales_lead_id || lead.lead_id || lead.user_id;
-                                        
                                         if (effectiveUserId && campaignId) {
                                           setSelectedLead({
                                             userId: effectiveUserId, 
@@ -894,7 +985,6 @@ function CampaignInsightsContent() {
                       </Table>
                     </div>
 
-                    {/* Server Pagination Controls */}
                     <div className="flex items-center justify-between px-2">
                         <div className="text-sm text-slate-500">
                           Showing {totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} entries
@@ -930,6 +1020,238 @@ function CampaignInsightsContent() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* SESSIONS TAB CONTENT */}
+          <TabsContent value="sessions" className="space-y-6 mt-6">
+            <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              
+              <CardHeader className="flex flex-col xl:flex-row items-start xl:items-center justify-between pb-4 gap-4 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                   <div className="p-2 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
+                      <MessageSquare className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                   </div>
+                   <div>
+                    <CardTitle className="text-base font-semibold">Campaign Sessions</CardTitle>
+                    <CardDescription>
+                      View complete communication sessions and recordings
+                    </CardDescription>
+                   </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+                  
+                  {/* LOCAL Date Filters (Does not trigger server reload) */}
+                  <div className="flex items-center gap-2 border border-slate-200 rounded-md bg-white p-1">
+                    <Input 
+                      type="date" 
+                      className="h-7 w-auto border-0 focus-visible:ring-0 px-2 text-xs" 
+                      value={sessionStartDate}
+                      onChange={(e) => setSessionStartDate(e.target.value)}
+                      title="Start Date"
+                    />
+                    <span className="text-slate-400 text-xs">to</span>
+                    <Input 
+                      type="date" 
+                      className="h-7 w-auto border-0 focus-visible:ring-0 px-2 text-xs" 
+                      value={sessionEndDate}
+                      onChange={(e) => setSessionEndDate(e.target.value)}
+                      title="End Date"
+                    />
+                  </div>
+
+                  {/* LOCAL Text Search (Does not trigger server reload) */}
+                  <div className="relative w-full sm:w-48">
+                    <Search className="absolute left-2.5 top-2 h-4 w-4 text-slate-400" />
+                    <Input 
+                      placeholder="Search phone..." 
+                      className="pl-8 h-9 w-full bg-slate-50 text-sm"
+                      value={sessionSearch}
+                      onChange={(e) => setSessionSearch(e.target.value)}
+                    />
+                  </div>
+
+                  {/* SERVER Status Filter */}
+                  {/* <select
+                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
+                    value={sessionStatus}
+                    onChange={(e) => { setSessionStatus(e.target.value); setSessionCurrentPage(1); }}
+                  >
+                    <option value="all">Status: All</option>
+                    <option value="completed">Completed</option>
+                    <option value="active">Active</option>
+                    <option value="failed">Failed</option>
+                  </select> */}
+
+                  {/* SERVER Page Size */}
+                  <select 
+                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
+                    value={sessionPageSize}
+                    onChange={(e) => { setSessionPageSize(Number(e.target.value)); setSessionCurrentPage(1); }}
+                  >
+                    <option value={10}>10 per page</option>
+                    <option value={20}>20 per page</option>
+                    <option value={50}>50 per page</option>
+                    <option value={100}>100 per page</option>
+                  </select>
+
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2 h-9 w-full sm:w-auto bg-slate-50 hover:bg-slate-100"
+                    disabled={visibleSessions.length === 0}
+                    onClick={() => exportToCSV(visibleSessions, `campaign_sessions_${campaignnamecsv}_${campaignId}.csv`)}
+                  >
+                    <Download className="h-4 w-4 text-slate-500" /> Export
+                  </Button>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="overflow-x-auto pt-6">
+                {sessionsLoading ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                ) : sessionsError ? (
+                  <div className="p-8 text-center text-red-500 bg-red-50 rounded-lg border border-red-100">
+                    <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-red-400" />
+                    <p>Failed to load sessions data</p>
+                  </div>
+                ) : !visibleSessions || visibleSessions.length === 0 ? (
+                  <div className="text-center text-slate-500 py-12 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 flex flex-col items-center">
+                    <MessageSquare className="h-8 w-8 text-slate-300 mb-3" />
+                    <p>No matching sessions found on this page.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-md border border-slate-100 min-w-[1000px] overflow-hidden">
+                      <Table>
+                        <TableHeader className="bg-slate-50/50">
+                          <TableRow>
+                            <TableHead className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group w-[140px]" onClick={() => handleSessionSort("phone_number")}>
+                              <div className="flex items-center">Phone {getSessionSortIcon("phone_number")}</div>
+                            </TableHead>
+                            <TableHead className="font-semibold text-slate-600">Channel</TableHead>
+                            <TableHead className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group text-center" onClick={() => handleSessionSort("status")}>
+                              <div className="flex items-center justify-center">Status {getSessionSortIcon("status")}</div>
+                            </TableHead>
+                            <TableHead className="font-semibold text-slate-600">Intent</TableHead>
+                            <TableHead className="font-semibold text-slate-600 text-center w-[180px]">Emotional Analysis</TableHead>
+                            <TableHead className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group text-right" onClick={() => handleSessionSort("duration")}>
+                              <div className="flex items-center justify-end">Duration {getSessionSortIcon("duration")}</div>
+                            </TableHead>
+                            <TableHead className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group text-right" onClick={() => handleSessionSort("start_time")}>
+                              <div className="flex items-center justify-end">Start Time {getSessionSortIcon("start_time")}</div>
+                            </TableHead>
+                            <TableHead className="font-semibold text-slate-600 text-center w-[220px]">Recording</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {visibleSessions.map((session, index) => (
+                            <TableRow key={session.session_id || index} className="hover:bg-slate-50/50 transition-colors">
+                              <TableCell className="font-medium text-slate-900 text-sm">
+                                {session.phone_number ? `+${session.phone_number.replace(/^\+/, '')}` : "-"}
+                              </TableCell>
+                              <TableCell className="text-slate-500 capitalize text-xs">
+                                {session.channel?.replace('_', ' ') || "-"}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="outline" className={`capitalize font-normal border ${
+                                    session.status === 'completed' ? 'border-green-200 text-green-700 bg-green-50' : 
+                                    session.status === 'active' ? 'border-blue-200 text-blue-700 bg-blue-50' : 
+                                    session.status === 'failed' ? 'border-red-200 text-red-700 bg-red-50' : 
+                                    'border-slate-200 text-slate-500'
+                                  }`}>
+                                  {session.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-slate-600 text-xs truncate max-w-[150px]" title={session.disposition_detail}>
+                                {session.disposition_detail || "-"}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                                  {session.sentiment_score !== undefined && session.sentiment_score !== null && (
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 bg-slate-100 text-slate-600 border border-slate-200">
+                                      Sentiment Score: {session.sentiment_score}
+                                    </Badge>
+                                  )}
+                                  
+                                  {session.emotion_analysis && typeof session.emotion_analysis === 'object' ? (
+                                    <div className="flex flex-wrap items-center justify-center gap-1">
+                                      {Object.entries(session.emotion_analysis).map(([key, value]) => (
+                                        <span key={key} className="text-[9px] font-medium text-slate-500 bg-slate-100 border border-slate-200 px-1 rounded uppercase tracking-wider" title={`${key}: ${value}`}>
+                                          {key}: {String(value)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : session.emotion_analysis ? (
+                                    <span className="text-[9px] text-slate-400">{String(session.emotion_analysis)}</span>
+                                  ) : null}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right text-xs text-slate-500">
+                                {formatDuration(session.duration)}
+                              </TableCell>
+                              <TableCell className="text-right text-xs text-slate-500">
+                                {session.start_time ? epochToIST(session.start_time) : "-"}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {session.call_recording ? (
+                                  <audio 
+                                    controls 
+                                    controlsList="nodownload" 
+                                    className="h-8 w-[200px] mx-auto opacity-80 hover:opacity-100 transition-opacity" 
+                                    src={session.call_recording}
+                                  >
+                                    Your browser does not support audio.
+                                  </audio>
+                                ) : (
+                                  <span className="text-xs text-slate-400 italic">No recording</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <div className="flex items-center justify-between px-2">
+                        <div className="text-sm text-slate-500">
+                          Showing {visibleSessions.length} filtered entries on this page (Total records: {totalSessionRecords})
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleSessionPrevPage}
+                            disabled={sessionCurrentPage === 1}
+                            className="h-8 w-8 p-0"
+                          >
+                            <span className="sr-only">Go to previous page</span>
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <div className="text-sm font-medium px-2">
+                            Page {sessionCurrentPage} of {totalSessionPages}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleSessionNextPage}
+                            disabled={sessionCurrentPage >= totalSessionPages}
+                            className="h-8 w-8 p-0"
+                          >
+                            <span className="sr-only">Go to next page</span>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </div>
 

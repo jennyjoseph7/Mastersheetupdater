@@ -150,6 +150,8 @@ async function extractCsvHeadersAPI(fileUrl) {
       body: JSON.stringify({
         args: [fileUrl],
         kwargs: {},
+        runtime_limit: 3600,
+        cancellable: true,
       }),
     }
   );
@@ -436,6 +438,67 @@ async function fetchCampaignLeads({
   }
 }
 
+// ---- NEW: Added fetchCampaignSessions here ----
+export async function fetchCampaignSessions({
+  campaignId = "",
+  dealershipId = getDealershipId(),
+  page_number = 1,
+  page_size = 10,
+  search = "",
+  sort_by = "created",
+  sort_reverse = "true",
+  disposition = "",
+  start_date = "",
+  end_date = "",
+} = {}) {
+  if (!campaignId || !dealershipId) {
+    return { items: [], total_number: 0 };
+  }
+
+  try {
+    const params = new URLSearchParams({
+      dealership_id: dealershipId,
+      campaign_id: campaignId,
+      page_number: String(page_number),
+      page_size: String(page_size),
+      sort_by: sort_by,
+      sort_reverse: sort_reverse,
+    });
+
+    if (search) params.append("search", search);
+    if (disposition && disposition !== "all") params.append("disposition", disposition);
+    
+    // Handle Date Ranges
+    if (start_date) {
+      const startObj = new Date(start_date);
+      startObj.setHours(0, 0, 0, 0);
+      params.append("start_time", (startObj.getTime() / 1000).toString());
+    }
+    if (end_date) {
+      const endObj = new Date(end_date);
+      endObj.setHours(23, 59, 59, 999);
+      params.append("end_time", (endObj.getTime() / 1000).toString());
+    }
+
+    const url = `${APP_BASE_URL}/gryd/db/objects/session?${params.toString()}`;
+    const response = await authenticatedFetch(url);
+
+    if (!response.ok) throw new Error(`Error fetching campaign sessions`);
+
+    const json = await response.json();
+
+    return {
+      items: json?.data ?? [],
+      total_number: json?.total_number ?? json?.total ?? 0,
+      page_number: json?.page_number ?? page_number,
+      page_size: json?.page_size ?? page_size,
+    };
+  } catch (error) {
+    console.error("[fetchCampaignSessions]", error);
+    return { items: [], total_number: 0 };
+  }
+}
+
 async function fetchUserSessions(
   userId = "",
   campaignId = "",
@@ -483,10 +546,13 @@ async function fetchUserSessions(
  * Headers: X-GRYD-ENTERPRISE-ID: autocrm, X-GRYD-TOKEN, X-GRYD-SESSION-ID, X-GRYD-ROLE: agent, X-GRYD-APPLICATION-ID: autocrm
  * Response: { data: SessionData[], total_number: number, page_number, page_size, is_first, is_last }
  */
-async function fetchActiveSessions(dealershipId = getDealershipId()) {
+// utils/api.ts
+// (Assuming APP_BASE_URL is defined elsewhere in your file)
+
+export async function fetchActiveSessions(dealershipId, params = {}) {
   if (!dealershipId) {
     console.warn("[fetchActiveSessions] No dealershipId provided");
-    return { items: [], total: 0 };
+    return { data: [], total_number: 0, page_number: 1 };
   }
 
   // Get credentials from cookies directly to match curl command exactly
@@ -509,24 +575,55 @@ async function fetchActiveSessions(dealershipId = getDealershipId()) {
 
   if (!token || !sessionId) {
     console.warn("[fetchActiveSessions] Missing credentials");
-    return { items: [], total: 0 };
+    return { data: [], total_number: 0, page_number: 1 };
   }
 
   try {
-    // Build URL - removed status filter to match new curl command
-    const url = `${APP_BASE_URL}/gryd/db/objects/session?session_live=True&dealership_id=${encodeURIComponent(
-      dealershipId
-    )}`;
+    // Dynamically build URL parameters
+    const searchParams = new URLSearchParams();
+    
+    // Default required params
+    searchParams.append("session_live", "True");
+    searchParams.append("dealership_id", dealershipId);
+
+    // Apply Pagination
+    if (params.p) searchParams.append("page_number", params.p);
+    if (params.page_size) searchParams.append("page_size", params.page_size);
+
+    // Apply Sorting
+    if (params.sort_by) searchParams.append("sort_by", params.sort_by);
+    if (params.sort_order) {
+      searchParams.append("sort_reverse", params.sort_order === "desc" ? "true" : "false");
+    } else {
+      searchParams.append("sort_reverse", "true"); 
+    }
+
+    // Apply Filters
+    if (params.search) searchParams.append("search", params.search);
+    if (params.channel) searchParams.append("channel", params.channel);
+    if (params.status) searchParams.append("status", params.status);
+    if (params.campaign_type) searchParams.append("campaign_type", params.campaign_type);
+    
+    // Apply Date Range - Sending TWO 'start_date' parameters to define the range
+    if (params.start_date) {
+      const startObj = new Date(params.start_date);
+      startObj.setHours(0, 0, 0, 0); // Start of the selected day
+      
+      // Divide by 1000 to get seconds, keeping the float format (e.g., 1771372800.0)
+      searchParams.append("created", (startObj.getTime() / 1000).toString());
+    }
+    
+    if (params.end_date) {
+      const endObj = new Date(params.end_date);
+      endObj.setHours(23, 59, 59, 999); // End of the selected day
+      
+      // Divide by 1000, keeping the float format (e.g., 1771459199.999)
+      searchParams.append("start_time", (endObj.getTime() / 1000).toString());
+    }
+
+    const url = `${APP_BASE_URL}/gryd/db/objects/session?${searchParams.toString()}`;
 
     console.log("[fetchActiveSessions] Fetching from URL:", url);
-    console.log(
-      "[fetchActiveSessions] Using token:",
-      token.substring(0, 10) + "..."
-    );
-    console.log(
-      "[fetchActiveSessions] Using sessionId:",
-      sessionId.substring(0, 10) + "..."
-    );
 
     // Make direct fetch call matching curl command exactly
     const response = await fetch(url, {
@@ -545,44 +642,18 @@ async function fetchActiveSessions(dealershipId = getDealershipId()) {
       mode: "cors",
     });
 
-    console.log("[fetchActiveSessions] Response status:", response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(
-        "[fetchActiveSessions] API error:",
-        response.status,
-        errorText
-      );
+      console.error("[fetchActiveSessions] API error:", response.status, errorText);
       throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 
     const json = await response.json();
-    console.log("[fetchActiveSessions] Response data:", {
-      dataLength: json?.data?.length ?? 0,
-      total_number: json?.total_number ?? 0,
-      page_number: json?.page_number,
-      page_size: json?.page_size,
-      fullResponse: json, // Log full response for debugging
-    });
+    return json;
 
-    // Response structure: { data: SessionData[], total_number: number, page_number, page_size, is_first, is_last }
-    const result = {
-      items: json?.data ?? [],
-      total: json?.total_number ?? 0,
-    };
-
-    console.log("[fetchActiveSessions] Returning:", {
-      itemsCount: result.items.length,
-      total: result.total,
-      firstItem: result.items[0] || null,
-    });
-
-    return result;
   } catch (error) {
     console.error("[fetchActiveSessions] Error:", error);
-    console.error("[fetchActiveSessions] Error stack:", error.stack);
-    return { items: [], total: 0 };
+    return { data: [], total_number: 0, page_number: 1 };
   }
 }
 
@@ -609,8 +680,9 @@ export {
   fetchDealershipCampaigns,
   fetchCampaignPerformanceSummary,
   fetchCampaignLeads,
+  // fetchCampaignSessions, // <-- Exported here
   fetchUserSessions,
-  fetchActiveSessions,
+  // fetchActiveSessions,
   epochToIST,
   capitalize,
   getDealershipId,
