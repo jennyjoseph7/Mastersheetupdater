@@ -206,10 +206,10 @@ with affinity_engine_and_customer_profiling:
                     "assignment_mode": "ai_assisted",
                 }
 
-                if "campaign_id" in interaction:
-                    payload["campaign_id"] = interaction["campaign_id"]
+                if "campaign_id" in classified_cohort_data:
+                    payload["campaign_id"] = classified_cohort_data["campaign_id"]
 
-                results.append()
+                results.append(payload)
 
             except Exception as e:
                 error_trace = traceback.format_exc()
@@ -261,8 +261,8 @@ with affinity_engine_and_customer_profiling:
                 "confidence_score": None,
                 "assignment_mode": "random",
             }
-            if "campaign_id" in interaction:
-                payload["campaign_id"] = interaction["campaign_id"]
+            if "campaign_id" in cohort:
+                payload["campaign_id"] = cohort["campaign_id"]
             results.append(payload)
         return results
 
