@@ -17,9 +17,7 @@ except ImportError:
 
 logger = get_logger(__name__)
 
-# ==============================================================================
-# PATHS & CONSTANTS
-# ==============================================================================
+
 HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parent 
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "summary"
@@ -30,9 +28,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(TEMP_DIR, exist_ok=True)
 os.makedirs(MARKER_OUTPUT_DIR, exist_ok=True)
 
-# ==============================================================================
-# HELPER FUNCTIONS
-# ==============================================================================
+
 def prepare_brochure_json(brochure_url: str):
     parsed_url = urllib.parse.urlparse(brochure_url)
     base_name = os.path.splitext(os.path.basename(parsed_url.path))[0]
@@ -85,7 +81,7 @@ def format_for_gryd_vector(vector_summaries: dict, doc_id_prefix: str) -> list:
             }
         }
     
-    # Mapping Logic based on the dictionary returned by Gemini
+ 
     if "brand_model" in vector_summaries:
         gryd_tasks.append(create_payload(vector_summaries["brand_model"], "Brand_Model", "general"))
         
@@ -107,9 +103,7 @@ def format_for_gryd_vector(vector_summaries: dict, doc_id_prefix: str) -> list:
     return gryd_tasks
 
 
-# ==============================================================================
-# TASK LOGIC (Workers and Dispatchers)
-# ==============================================================================
+
 
 def run_summary_dispatcher(brochure_url: str, job_id: str):
     """
@@ -124,7 +118,7 @@ def run_summary_dispatcher(brochure_url: str, job_id: str):
 
     # Dispatch Worker
     worker_payload = [{
-        "task": "summary_worker_task", # Name matches the parallel_task decorator
+        "task": "summary_worker_task", 
         "service": "brochure-pipeline",
         "args": [],
         "kwargs": {"brochure_data": brochure_data, "job_id": job_id}

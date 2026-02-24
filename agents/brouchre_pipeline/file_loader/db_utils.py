@@ -45,8 +45,7 @@ def fetch_chunk_data_by_id(chunk_id):
         if response.status_code == 200:
             data = response.json()
             
-            # DEBUG: Log the keys to ensure we got the right structure
-            # logger.info(f"✅ Data received. Response Keys: {list(data.keys())}")
+         
             
             return data
         else:

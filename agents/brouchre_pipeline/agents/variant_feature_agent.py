@@ -11,9 +11,7 @@ except ImportError:
 
 logger = get_logger(__name__)
 
-# ==========================================
-# LLM SERVICE CONFIGURATION (Gemini Only)
-# ==========================================
+
 
 llm_service = lambda x: ai_service_app.get_llm_response(
     messages=x,
@@ -21,9 +19,7 @@ llm_service = lambda x: ai_service_app.get_llm_response(
     temperature=0.1 
 )
 
-# ==========================================
-# FEATURE ITERATOR UTILITY
-# ==========================================
+
 
 def generate_bulk_questions(car_name: str, feature_name: str, variant_list: list, value_type: str, description: str = "", alias: str = "") -> str:
     """
@@ -61,9 +57,9 @@ def generate_bulk_questions(car_name: str, feature_name: str, variant_list: list
     return header + "\n" + "\n".join(questions)
 
 
-# ==========================================
+
 # AGENT CLASSES
-# ==========================================
+
 
 class ConverterAgent(BaseAgent):
     def __init__(self, **converter_kwargs) -> None:

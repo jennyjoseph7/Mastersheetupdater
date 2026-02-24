@@ -72,6 +72,7 @@ def gemini_image_generation(
     logger = logger or mlogger
     return gemini_image_generation_task(input_image_url, prompt, number_of_images, logger = logger, **kwargs)
 
+
 @gryd.is_a_task(function_name="openai_image_generation", job_param='job', logger_param='logger')
 def openai_image_generation(
     input_image_url,
@@ -84,11 +85,13 @@ def openai_image_generation(
     logger = logger or mlogger
     start_time = hp.time()
 
+    logger.info("===== OpenAI Image Generation Task Started =====")
+    logger.info(f"Prompt: {prompt}")
+    logger.info(f"Input Image URL: {input_image_url}")
+    logger.info(f"Job ID: {getattr(job, 'id', None)}")
+    logger.info(f"Requested number_of_images: {number_of_images}")
+
     def replace_background_with_gpt(input_image_url, prompt):
-        """
-        Uses OpenAI image API to swap image background per prompt,
-        keeping foreground intact.
-        """
         import requests
         import tempfile
         import os
@@ -99,20 +102,33 @@ def openai_image_generation(
             raise RuntimeError("OPENAI_API_KEY not found or invalid.")
 
         fixed_number_of_images = 1
+        logger.info(f"Forced number of images: {fixed_number_of_images}")
 
         # -------------------- DOWNLOAD INPUT IMAGE --------------------
         input_file = f"openai_input_{uuid.uuid4().hex}.png"
         local_img_path = os.path.join(tempfile.gettempdir(), input_file)
 
+        logger.info(f"Downloading input image to: {local_img_path}")
         download_file(input_image_url, local_img_path)
 
+        if not os.path.exists(local_img_path):
+            raise RuntimeError("Downloaded image file not found.")
+
+        logger.info(f"Input image downloaded successfully")
+        logger.info(f"Input image size: {os.path.getsize(local_img_path)} bytes")
+
         edit_prompt = f"{prompt.strip()} (Preserve details and features of the car.)"
+        logger.info(f"Edit prompt: {edit_prompt}")
 
         headers = {
             "Authorization": f"Bearer {api_key}"
         }
 
         api_url = "https://api.openai.com/v1/images/edits"
+
+        logger.info(f"Calling OpenAI Image Edit API: {api_url}")
+        logger.info(f"Model: {OPENAI_IMAGE_MODEL}")
+        logger.info(f"Image size param: {kwargs.get('size', OPENAI_IMAGE_SIZE)}")
 
         files = {
             "image": open(local_img_path, "rb"),
@@ -121,55 +137,73 @@ def openai_image_generation(
         data = {
             "model": OPENAI_IMAGE_MODEL,
             "prompt": edit_prompt,
-            "n": fixed_number_of_images,  
+            "n": fixed_number_of_images,
             "size": kwargs.get("size", OPENAI_IMAGE_SIZE),
         }
 
         resp = requests.post(api_url, headers=headers, files=files, data=data)
 
+        logger.info(f"OpenAI response status: {resp.status_code}")
+
         # Clean input temp file
         try:
             os.remove(local_img_path)
-        except:
-            pass
+            logger.info("Input temp file deleted")
+        except Exception as e:
+            logger.warning(f"Failed to delete input temp file: {e}")
 
         if resp.status_code != 200:
+            logger.error(f"OpenAI API error response: {resp.text}")
             raise RuntimeError(f"OpenAI image edit API error: {resp.text}")
 
         result = resp.json()
+        logger.info(f"OpenAI response keys: {list(result.keys())}")
+
         output_items = result.get("data", [])
+        logger.info(f"Number of images returned: {len(output_items)}")
 
         if not output_items:
             raise RuntimeError("No edited image returned from OpenAI.")
 
         ourls = []
 
-        # -------------------- HANDLE OUTPUT IMAGES --------------------
-        for item in output_items:
+        # -------------------- HANDLE OUTPUT --------------------
+        for idx, item in enumerate(output_items):
+            logger.info(f"Processing image {idx+1}")
 
             if 'b64_json' in item:
+                logger.info("Image received as base64")
+
                 image_bytes = hp.base64.b64decode(item['b64_json'])
 
                 file_name = f"openai_{uuid.uuid4().hex}.png"
                 tmp_out_path = os.path.join(tempfile.gettempdir(), file_name)
 
+                logger.info(f"Saving output image to: {tmp_out_path}")
+
                 with open(tmp_out_path, "wb") as f:
                     f.write(image_bytes)
 
                 file_url = func_gryd_file_system(tmp_out_path, media_type='image')
+                logger.info(f"Uploaded image URL: {file_url}")
 
                 try:
                     os.remove(tmp_out_path)
-                except:
-                    pass
+                    logger.info("Output temp file deleted")
+                except Exception as e:
+                    logger.warning(f"Failed to delete output temp file: {e}")
 
-                ourls.append(file_url)
+                if file_url:
+                    ourls.append(file_url)
 
             elif 'url' in item:
+                logger.info(f"Image URL received directly: {item['url']}")
                 ourls.append(item['url'])
 
         if not ourls:
             raise RuntimeError("Invalid response from OpenAI.")
+
+        logger.info(f"Final image URL list: {ourls}")
 
         # -------------------- USAGE / COST --------------------
         usage = result.get("usage", {})
@@ -178,6 +212,13 @@ def openai_image_generation(
         input_image_token_count = usage.get("input_tokens_details", {}).get("image_tokens", 0)
         output_text_token_count = usage.get("output_tokens_details", {}).get("text_tokens", 0)
         output_image_token_count = usage.get("output_tokens_details", {}).get("image_tokens", 0)
+
+        logger.info(
+            f"Token usage — input_text: {input_text_token_count}, "
+            f"input_image: {input_image_token_count}, "
+            f"output_text: {output_text_token_count}, "
+            f"output_image: {output_image_token_count}"
+        )
 
         input_cost = (
             OPENAI_INPUT_TEXT_TOKEN_PRICE * input_text_token_count +
@@ -189,10 +230,16 @@ def openai_image_generation(
             OPENAI_OUTPUT_IMAGE_TOKEN_PRICE * output_image_token_count
         )
 
-        total_cost = input_cost + output_cost + (hp.time() - start_time) * gryd.EXECUTION_COST
+        total_time = hp.time() - start_time
+        total_cost = input_cost + output_cost + total_time * gryd.EXECUTION_COST
 
-        return {
-            "image_urls": hp.make_single(ourls),
+        logger.info(f"Input cost: {input_cost}")
+        logger.info(f"Output cost: {output_cost}")
+        logger.info(f"Total cost: {total_cost}")
+        logger.info(f"Total time: {total_time:.2f} sec")
+
+        final_result = {
+            "image_urls": ourls,
 
             "input_text_token_count": input_text_token_count,
             "input_image_token_count": input_image_token_count,
@@ -203,14 +250,20 @@ def openai_image_generation(
             "output_cost": output_cost,
             "total_cost": total_cost,
 
-            "total_time": hp.time() - start_time,
+            "total_time": total_time,
             "currency": "USD",
         }
+
+        logger.info(f"Returning final result: {final_result}")
+        logger.info("===== OpenAI Task Completed Successfully =====")
+
+        return final_result
 
     return replace_background_with_gpt(
         input_image_url=input_image_url,
         prompt=prompt
     )
+
 
 @gryd.is_a_task(function_name = "validate_prompt", job_param = 'job', logger_param = 'logger')
 def validate_prompt(prompt: str, car_manufacturer: str = None, car_model: str = None, validate_prompt_model: str = None, job = None, logger = None):
