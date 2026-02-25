@@ -104,6 +104,7 @@ def post_session_process(*args, **kwargs):
     
     updated_lead_data = get_disposition(session_id,session_data) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
     mlogger.info("got disposition as == {}".format(updated_lead_data))
+    
     session_update_data = {"disposition":updated_lead_data.get("disposition"),"disposition_detail":updated_lead_data.get("disposition_detail")}
 
     if sentiment_score != -1:
@@ -701,13 +702,21 @@ def get_disposition(session_id, session_data_cache):
     campaign_objective = campaign_data.get("campaign_objective")
     campaign_purpose = campaign_data.get("purpose")
     campaign_description = campaign_data.get("campaign_description")
-    message_history = session_data_cache.get("messages")
+    messages = session_data_cache.get("messages")
+    message_history = []
+    for message in messages:
+        mlogger.info("message in get_disposition -  {}".format(message))
+        if "intent" in message and message.get("intent") == "llm_response":
+            message_history.append({"role" : "me", "message":message.get("message","")})
+        else:
+            message_history.append({"role" : "customer", "message":message.get("message","")})
+    mlogger.info("message_history in get_disposition -  {}".format(message_history))
     campaign_type = campaign_data.get("campaign_type")
     example_disposition_response =  """{
         "disposition": "converted" or "engaged",
         "disposition_detail": "choose from list above based on history of conversation",
         "prioritization_score" : "number_values_from_0_to_100",
-        "prioritization_category" : "COMPLETE, HOT or WARM or COOL or COLD or INACTIVE"
+        "prioritization_category" : "COMPLETE or HOT or WARM or COOL or COLD or INACTIVE"
     }"""
     disp_details_options = [
                 "Language barrier",
@@ -777,12 +786,14 @@ def get_disposition(session_id, session_data_cache):
     Possible values for disposition_detail:
     {disp_details_options}
     Only pick ONE value from this above list for disposition details.
+
+    The disposition and disposition detail is for the customer and their intent shown in the conversation history.
     Special Cases:-
     - if the user has asked for a callback or requested to speak with a human or a phone call in any way without completing the objective of the campaign then the Disposition Detail would be = 'Callback Requested'.
     Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
     Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
     do NOT prepend labels (like "json"). Output only valid JSON.
-
+    Incase you detect that the messages from the user are from a Voice Mail then disposition should be "engaged" and disposition detail should be "Voicemail".
     Your response should be in the following JSON format:
     {example_disposition_response}
     """
