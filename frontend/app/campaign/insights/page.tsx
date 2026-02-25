@@ -21,7 +21,9 @@ import {
   ChevronDown,
   MessageSquare,
   PlayCircle,
-  Activity
+  Activity,
+  Clock,
+  X 
 } from "lucide-react";
 import {
   BarChart,
@@ -135,13 +137,29 @@ interface CampaignSession {
   phone_number?: string;
   disposition_detail?: string;
   sentiment_score?: number;
-  emotion_analysis?: any; // Accepting any structure
+  emotion_analysis?: any; 
   duration?: number;
   call_recording?: string;
   [key: string]: any;
 }
 
 // --- Helper Logic ---
+
+const getTimeAgo = (timestamp: number): string => {
+  const diffMs = Date.now() - timestamp * 1000;
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? "s" : ""} ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} hr${diffHours !== 1 ? "s" : ""} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) return `${diffMonths} month${diffMonths !== 1 ? "s" : ""} ago`;
+  const diffYears = Math.floor(diffDays / 365);
+  return `${diffYears} year${diffYears !== 1 ? "s" : ""} ago`;
+};
 
 function processFailureStats(failureStats: FailureStat[]) {
   if (!failureStats || failureStats.length === 0) return [];
@@ -239,6 +257,9 @@ function CampaignInsightsContent() {
     personName?: string;
   } | null>(null);
 
+  // Added Audio Player State
+  const [activeRecording, setActiveRecording] = useState<{ url: string; name: string } | null>(null);
+
   // --- Leads Table & Pagination State ---
   const [searchTerm, setSearchTerm] = useState("");
   const [dispositionFilter, setDispositionFilter] = useState("all"); 
@@ -309,23 +330,24 @@ function CampaignInsightsContent() {
   const totalPages = Math.ceil(totalRecords / pageSize) || 1;
 
   // 4. Conditional Fetch Sessions
-  // Removed start_date, end_date, and search from the server dependencies.
+  // Added start_date and end_date to the SWR cache key and parameter list so filtering happens server-side.
   const {
     data: sessionsDataRaw,
     isLoading: sessionsLoading,
     error: sessionsError,
   } = useSWR<{ items: CampaignSession[]; total_number: number }>(
     campaignId 
-      ? ['campaign-sessions', campaignId, sessionCurrentPage, sessionPageSize, sessionSortConfig.key, sessionSortConfig.direction, sessionStatus] 
+      ? ['campaign-sessions', campaignId, sessionCurrentPage, sessionPageSize, sessionSortConfig.key, sessionSortConfig.direction, sessionStatus, sessionStartDate, sessionEndDate] 
       : null,
-    ([_, id, page, size, sortKey, sortDir, status]) => 
+    ([_, id, page, size, sortKey, sortDir, status, startDate, endDate]) => 
       fetchCampaignSessions({
         campaignId: id as string,
         page_number: page as number,
         page_size: size as number,
         sort_by: sortKey as string,
-        sort_reverse: sortDir === "desc" ? "true" : "false"
-      
+        sort_reverse: sortDir === "desc" ? "true" : "false",
+        start_date: startDate as string,
+        end_date: endDate as string
       }),
     SWR_OPTIONS
   );
@@ -347,7 +369,7 @@ function CampaignInsightsContent() {
     );
   }, [serverLeads, searchTerm]);
 
-  // Session Local Table Filter (Search and Date Range)
+  // Session Local Table Filter (Only Search now, Date is Server Side)
   const visibleSessions = useMemo(() => {
     let filtered = serverSessions;
 
@@ -358,31 +380,21 @@ function CampaignInsightsContent() {
         session.phone_number && String(session.phone_number).toLowerCase().includes(lowerCaseTerm)
       );
     }
-
-    // Local date filter
-    if (sessionStartDate || sessionEndDate) {
-      filtered = filtered.filter((session) => {
-        if (!session.start_time) return false;
-        const sessionTime = session.start_time * 1000; // Convert to ms
-        let isValid = true;
-
-        if (sessionStartDate) {
-          const start = new Date(sessionStartDate).getTime();
-          if (sessionTime < start) isValid = false;
-        }
-
-        if (sessionEndDate) {
-          const end = new Date(sessionEndDate);
-          end.setHours(23, 59, 59, 999);
-          if (sessionTime > end.getTime()) isValid = false;
-        }
-
-        return isValid;
-      });
-    }
-
     return filtered;
-  }, [serverSessions, sessionSearch, sessionStartDate, sessionEndDate]);
+  }, [serverSessions, sessionSearch]);
+
+  // Handle Server-Side Date Changes for Sessions
+  const handleSessionDateChange = (type: "start" | "end", value: string) => {
+    if (type === "start") setSessionStartDate(value);
+    if (type === "end") setSessionEndDate(value);
+    setSessionCurrentPage(1); // Reset to page 1 to avoid empty states
+  };
+
+  const clearSessionDates = () => {
+    setSessionStartDate("");
+    setSessionEndDate("");
+    setSessionCurrentPage(1);
+  };
 
   // Lead Pagination
   const handleNextPage = () => { if (currentPage < totalPages) setCurrentPage((prev) => prev + 1); };
@@ -1040,13 +1052,13 @@ function CampaignInsightsContent() {
 
                 <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
                   
-                  {/* LOCAL Date Filters (Does not trigger server reload) */}
+                  {/* SERVER Date Filters */}
                   <div className="flex items-center gap-2 border border-slate-200 rounded-md bg-white p-1">
                     <Input 
                       type="date" 
                       className="h-7 w-auto border-0 focus-visible:ring-0 px-2 text-xs" 
                       value={sessionStartDate}
-                      onChange={(e) => setSessionStartDate(e.target.value)}
+                      onChange={(e) => handleSessionDateChange("start", e.target.value)}
                       title="Start Date"
                     />
                     <span className="text-slate-400 text-xs">to</span>
@@ -1054,12 +1066,21 @@ function CampaignInsightsContent() {
                       type="date" 
                       className="h-7 w-auto border-0 focus-visible:ring-0 px-2 text-xs" 
                       value={sessionEndDate}
-                      onChange={(e) => setSessionEndDate(e.target.value)}
+                      onChange={(e) => handleSessionDateChange("end", e.target.value)}
                       title="End Date"
                     />
+                    {(sessionStartDate || sessionEndDate) && (
+                      <Button 
+                        variant="ghost" 
+                        className="h-5 w-5 p-0 ml-1 rounded-full text-slate-400 hover:text-slate-600" 
+                        onClick={clearSessionDates}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
 
-                  {/* LOCAL Text Search (Does not trigger server reload) */}
+                  {/* LOCAL Text Search */}
                   <div className="relative w-full sm:w-48">
                     <Search className="absolute left-2.5 top-2 h-4 w-4 text-slate-400" />
                     <Input 
@@ -1069,18 +1090,6 @@ function CampaignInsightsContent() {
                       onChange={(e) => setSessionSearch(e.target.value)}
                     />
                   </div>
-
-                  {/* SERVER Status Filter */}
-                  {/* <select
-                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
-                    value={sessionStatus}
-                    onChange={(e) => { setSessionStatus(e.target.value); setSessionCurrentPage(1); }}
-                  >
-                    <option value="all">Status: All</option>
-                    <option value="completed">Completed</option>
-                    <option value="active">Active</option>
-                    <option value="failed">Failed</option>
-                  </select> */}
 
                   {/* SERVER Page Size */}
                   <select 
@@ -1194,18 +1203,28 @@ function CampaignInsightsContent() {
                                 {formatDuration(session.duration)}
                               </TableCell>
                               <TableCell className="text-right text-xs text-slate-500">
-                                {session.start_time ? epochToIST(session.start_time) : "-"}
+                                <div 
+                                  className="flex items-center justify-end gap-1 text-xs text-slate-500 whitespace-nowrap cursor-help"
+                                  title={session.start_time ? epochToIST(session.start_time) : ""}
+                                >
+                                  <Clock className="h-3 w-3" />
+                                  {session.start_time ? epochToIST(session.start_time) : "-"}
+                                </div>
                               </TableCell>
                               <TableCell className="text-center">
                                 {session.call_recording ? (
-                                  <audio 
-                                    controls 
-                                    controlsList="nodownload" 
-                                    className="h-8 w-[200px] mx-auto opacity-80 hover:opacity-100 transition-opacity" 
-                                    src={session.call_recording}
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-8 gap-1.5 px-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border-blue-200"
+                                    onClick={() => setActiveRecording({ 
+                                      url: session.call_recording!, 
+                                      name: session.phone_number ? `+${session.phone_number.replace(/^\+/, '')}` : "Unknown" 
+                                    })}
                                   >
-                                    Your browser does not support audio.
-                                  </audio>
+                                    <PlayCircle className="h-3.5 w-3.5" />
+                                    <span className="text-xs font-medium">Play</span>
+                                  </Button>
                                 ) : (
                                   <span className="text-xs text-slate-400 italic">No recording</span>
                                 )}
@@ -1266,6 +1285,33 @@ function CampaignInsightsContent() {
           campaignId={campaignId}
           personName={selectedLead.personName}
         />
+      )}
+
+      {/* Floating Audio Player */}
+      {activeRecording && (
+        <div className="fixed bottom-6 right-6 z-50 bg-card border shadow-xl rounded-xl p-4 w-[350px] animate-in slide-in-from-bottom-5 bg-white dark:bg-slate-900">
+          <div className="flex items-center justify-between mb-3">
+            <div className="font-semibold text-sm truncate pr-4 text-slate-900 dark:text-slate-100">
+              Playing: {activeRecording.name}
+            </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800" 
+              onClick={() => setActiveRecording(null)}
+            >
+              <X className="h-4 w-4 text-slate-500" />
+            </Button>
+          </div>
+          <audio
+            controls
+            autoPlay
+            src={activeRecording.url}
+            className="w-full h-10 outline-none"
+          >
+            Your browser does not support the audio element.
+          </audio>
+        </div>
       )}
     </div>
   );
