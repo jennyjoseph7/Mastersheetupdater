@@ -19,7 +19,7 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, OPENAI_API_KEY, \
     OPENAI_OUTPUT_IMAGE_TOKEN_PRICE, \
     VALIDATE_PROMPT_MODEL
 from combine_images import merge_layers
-from check_distortion import analyze_image, pad_and_resize_image
+from check_distortion import analyze_image, pad_and_resize_image, compare_images
 from spdl_comfy import comfy_image_generation_task
 from spdl_comfy import gemini_image_generation_task
 from spark_helpers import func_gryd_file_system, download_file
@@ -307,6 +307,18 @@ Now validate the prompt:
     except Exception as e:
         logger.error(f"Error validating prompt: {e}")
         return {"valid": False, "reason": str(e)}
+
+
+@gryd.is_a_task(function_name = "compare_images", job_param = 'job', logger_param = 'logger')
+def compare_images(original_image_url: str, generated_image_url: str, model: str = None, job = None, logger = None):
+    logger = logger or mlogger
+    return compare_images(
+        original_image_url=original_image_url, 
+        generated_image_url=generated_image_url, 
+        model=model, 
+        verbose=False, 
+        logger=logger
+    )
 
 # if __name__ == "__main__":
 #     input_image_url = "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp"
