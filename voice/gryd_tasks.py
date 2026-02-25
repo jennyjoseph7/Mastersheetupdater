@@ -118,34 +118,10 @@ def trigger_voice_call(*args, **kwargs):
         )
         logger.info(f"Created new person object: {person_obj}")
 
-        
-
-    session_model = gryd.base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
-    session_obj = {
-        "user_id": person_obj.get("user_id"),
-        "campaign_id": user_data.get("campaign_id"),
-        "campaign_type": user_data.get("campaign_type"),
-        "lead_id": user_data.get("lead_id"),
-        "status":"attempted",
-        "channel": user_data.get("channel", "voice_phone"),
-        "dealership_id": user_data.get("dealership_id"),
-        "phone_number":format_phone_number(user_data.get("mobile_number")),
-        "start_time": hp.epoch()
-        
-    }
-    session_data = session_model.post(session_obj)
-
-    #if agent_id passed in task kwargs
-    agent_config = {
-        "voice_agent_id": user_data.get("agent_id")
-    }
-
-    logger.info(f"Session created with data: {session_data}")
-    campaign_type = session_data.get("campaign_type")
-    lead_id = session_data.get("lead_id")
-    channel = session_data.get("channel")
-    campaign_id = session_data.get("campaign_id")
-
+    campaign_type = user_data.get("campaign_type")
+    lead_id= user_data.get("lead_id")
+    channel = user_data.get("channel","voice_phone")
+    campaign_id = user_data.get("campaign_id")
     CONFIG_D = {
         "pre-sales": {
             "table": "pre_sales_lead",
@@ -160,31 +136,64 @@ def trigger_voice_call(*args, **kwargs):
     }
 
     config_data = CONFIG_D.get(campaign_type)
-
-    if config_data:
+    
+    session_model = gryd.base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
+    if lead_id and config_data:
         with get_pg_connector() as pg:
-            pg.update(
-                config_data["table"],
-                config_data["pk"],
-                lead_id,
-                {"last_session_channel": channel},
-            )
-            logger.info(
-                f"Updated last_session_channel for {config_data['pk']}: {lead_id} "
-                f"with channel: {channel}"
-            )
+            l=list(pg.list(config_data.get("table"),{f"{config_data.get('pk')}": lead_id}))
+            if not l:
+                logger.info(f"No lead found for lead_id: {lead_id} in model: {config_data.get('table')}")
+            l=l[0] if l else {}
+            l_person_name = l.get("person_name",None)
+            l_campaign_obj_name = l.get("campaign_objective_name",None)
+            l_campaign_name = l.get("campaign_name",None)
+        
+            session_obj = {
+                "user_id": person_obj.get("user_id"),
+                "campaign_id": campaign_id,
+                "campaign_type": campaign_type,
+                "lead_id": lead_id,
+                "status":"attempted",
+                "channel": channel,
+                "person_name": l_person_name or None,
+                "campaign_objective_name": l_campaign_obj_name or None,
+                "campaign_name": l_campaign_name or None,
+                "dealership_id": user_data.get("dealership_id"),
+                "phone_number":format_phone_number(user_data.get("mobile_number")),
+                "start_time": hp.epoch()
+                
+            }
+            session_data = session_model.post(session_obj)
 
-        campaign_model = gryd.base_model.Model(
-            config_data["model"],
-            config.AUTOCRM_APP_ENTERPRISE_ID,
-        )
-        campaign_data = campaign_model.get(campaign_id)
+            #if agent_id passed in task kwargs
+            agent_config = {
+                "voice_agent_id": user_data.get("agent_id")
+            }
 
-        agent_config.update({
-            k: v
-            for k, v in campaign_data.items()
-            if k.startswith("voice_") and v
-        })
+            logger.info(f"Session created with data: {session_data}")
+            if config_data:
+                pg.update(
+                    config_data["table"],
+                    config_data["pk"],
+                    lead_id,
+                    {"last_session_channel": channel},
+                )
+                logger.info(
+                    f"Updated last_session_channel for {config_data['pk']}: {lead_id} "
+                    f"with channel: {channel}"
+                )
+
+                campaign_model = gryd.base_model.Model(
+                    config_data["model"],
+                    config.AUTOCRM_APP_ENTERPRISE_ID,
+                )
+                campaign_data = campaign_model.get(campaign_id)
+
+                agent_config.update({
+                    k: v
+                    for k, v in campaign_data.items()
+                    if k.startswith("voice_") and v
+                })
 
     if user_data.get("generate_prompt", True):
         for x in converse.get_primary_prompt(*args, **{
@@ -425,10 +434,17 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
     payload["message_id"] = message_id or generate_uid(session_data)
-    gryd.create_async_task(
-        "post_contact_status", 
-        config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-        kwargs=payload)
+    if payload.get("provider_status") == "attempted":
+        gryd.create_async_task(
+            "post_contact_status", 
+            config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+            kwargs=payload)
+    else: 
+        gryd.create_async_task(
+            "post_contact_status", 
+            config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+            args = (message_id,),
+            kwargs=payload)
     #make this normal function
 
 

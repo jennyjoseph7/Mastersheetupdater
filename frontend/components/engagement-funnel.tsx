@@ -19,11 +19,21 @@ import { cn } from "@/lib/utils";
 interface EngagementStat {
   total: number;
   channel: string;
-  converted: number;
-  interacted: number;
-  sent_called: number;
-  read_greeted: number;
-  delivered_answered: number;
+  converted?: number;
+  // Channel specific & Combined keys
+  sent?: number;
+  called?: number;
+  sent_called?: number;
+  delivered?: number;
+  ringing?: number;
+  delivered_ringing?: number;
+  read?: number;
+  answered?: number;
+  read_answered?: number;
+  interacted?: number;
+  engaged?: number;
+  interacted_engaged?: number;
+  [key: string]: any; // Fallback for dynamic keys
 }
 
 interface CampaignData {
@@ -45,13 +55,14 @@ interface FunnelStage {
 
 // --- Configuration ---
 
-const FUNNEL_ORDER = [
-  { key: "total", label: "Total Leads" },
-  { key: "sent_called", label: "Sent / Called" },
-  { key: "delivered_answered", label: "Delivered / Answered" },
-  { key: "read_greeted", label: "Read / Greeted" },
-  { key: "interacted", label: "Interacted" },
-  { key: "converted", label: "Converted" },
+// We check these keys in order of preference depending on the channel
+const STAGE_MAPPINGS = [
+  { id: "attempted", keys: ["sent_called", "called", "sent"], fallbackLabel: "Attempted" },
+  { id: "reached", keys: ["delivered_ringing", "ringing", "delivered"], fallbackLabel: "Reached" },
+  { id: "contacted", keys: ["read_answered", "answered", "read"], fallbackLabel: "Contacted" },
+  { id: "engaged", keys: ["interacted_engaged", "engaged", "interacted"], fallbackLabel: "Engaged" },
+  // Added final 'Converted' stage to be rendered as a row
+  { id: "converted", keys: ["converted"], fallbackLabel: "Converted" },
 ] as const;
 
 // --- Helper: Color Generator ---
@@ -81,11 +92,18 @@ function getStageColor(dropoffRate: number, index: number) {
   };
 }
 
+// --- Helper: Format Label ---
+function formatStageLabel(key: string): string {
+  return key
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" / ");
+}
+
 // --- Sub-Component: Legend ---
 function FunnelLegend() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-      {/* Retention Health */}
       <div className="flex flex-col gap-3 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
         <div className="flex items-center gap-2 mb-1">
           <Target className="w-4 h-4 text-indigo-600" />
@@ -107,7 +125,6 @@ function FunnelLegend() {
         </div>
       </div>
 
-      {/* Logic Explained */}
       <div className="flex flex-col gap-3 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
         <div className="flex items-center gap-2 mb-1">
           <Layers className="w-4 h-4 text-slate-400" />
@@ -244,7 +261,6 @@ function FunnelRow({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Label (Left Side) */}
       <div
         className="absolute top-1/2 -translate-y-1/2 flex flex-col items-end pr-6 transition-all duration-300 pointer-events-none"
         style={{ left: 0, width: `${leftEdgePercent}%`, opacity: isHovered ? 1 : 0.6 }}
@@ -255,7 +271,6 @@ function FunnelRow({
         </span>
       </div>
 
-      {/* The Funnel Shape */}
       <div className="relative w-full h-full">
         <div className="absolute inset-0 bg-slate-900/10 blur-md translate-y-2 scale-[0.95]" style={{ clipPath, zIndex: -1 }} />
         <div
@@ -269,7 +284,6 @@ function FunnelRow({
         </div>
       </div>
 
-      {/* Right Side: Arrow & Details */}
       <div className="absolute h-full pointer-events-none" style={{ left: `calc(50% + ${avgWidth / 2}%)` }}>
         {dropoffCount > 0 && (
           <div className="absolute top-1/2 -translate-y-1/2 left-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -304,22 +318,44 @@ export function ProfessionalFunnel({ apiResponse }: { apiResponse?: ApiResponse 
     if (!activeTab && channels.length > 0) setActiveTab(channels[0]);
   }, [channels, activeTab]);
 
+  // Dynamic Funnel Generation
   const funnelData = useMemo<FunnelStage[]>(() => {
     if (!activeTab) return [];
     const currentStat = stats.find((s) => s.channel === activeTab);
     if (!currentStat) return [];
+    
     const totalValue = currentStat.total || 0;
+    
+    // Always start with Total
+    const stages: FunnelStage[] = [
+      { id: "total", stage: "Total Leads", count: totalValue, percentage: 100 }
+    ];
 
-    return FUNNEL_ORDER.map((step) => {
-      // @ts-ignore
-      const count = currentStat[step.key] ?? 0;
-      return {
-        id: step.key,
-        stage: step.label,
-        count: count,
-        percentage: totalValue > 0 ? Math.round((count / totalValue) * 100) : 0,
-      };
+    // Loop through dynamic stages
+    STAGE_MAPPINGS.forEach((mapping) => {
+      // Find the first matching key in our stat payload (e.g., 'sent_called', then 'called', then 'sent')
+      const activeKey = mapping.keys.find((k) => currentStat[k] !== undefined);
+      
+      if (activeKey) {
+        const count = currentStat[activeKey] ?? 0;
+        stages.push({
+          id: mapping.id,
+          stage: formatStageLabel(activeKey), // Formats 'sent_called' into 'Sent / Called'
+          count: count,
+          percentage: totalValue > 0 ? Math.round((count / totalValue) * 100) : 0,
+        });
+      } else {
+        // Fallback if no matching step is found so the funnel doesn't break visually
+        stages.push({
+          id: mapping.id,
+          stage: mapping.fallbackLabel,
+          count: 0,
+          percentage: 0,
+        });
+      }
     });
+
+    return stages;
   }, [stats, activeTab]);
 
   const MAX_WIDTH = 100;
@@ -337,7 +373,7 @@ export function ProfessionalFunnel({ apiResponse }: { apiResponse?: ApiResponse 
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto bg-white rounded-3xl  p-8 pb-12 overflow-visible">
+    <div className="w-full max-w-5xl mx-auto bg-white rounded-3xl p-8 pb-12 overflow-visible">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
@@ -367,7 +403,6 @@ export function ProfessionalFunnel({ apiResponse }: { apiResponse?: ApiResponse 
         )}
       </div>
 
-      {/* NEW UPDATED LEGENDS */}
       <FunnelLegend />
 
       {/* The Funnel Visualization */}
@@ -384,7 +419,7 @@ export function ProfessionalFunnel({ apiResponse }: { apiResponse?: ApiResponse 
               stage={stage}
               prevStage={index > 0 ? funnelData[index - 1] : null}
               index={index}
-              totalStages={funnelData.length}
+              totalStages={funnelData.length} // Correct total count now includes Converted
               topWidth={Math.max(topW, 15)}
               bottomWidth={Math.max(bottomW, 15 * 0.8)}
             />
@@ -397,7 +432,7 @@ export function ProfessionalFunnel({ apiResponse }: { apiResponse?: ApiResponse 
             <div className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 shadow-sm hover:shadow-md transition-shadow cursor-default">
               <Activity className="w-4 h-4" />
               <span className="font-bold tabular-nums text-lg">{funnelData[funnelData.length - 1].count}</span>
-              <span className="text-sm font-medium">Converted</span>
+              <span className="text-sm font-medium">{funnelData[funnelData.length - 1].stage}</span>
             </div>
           </div>
         )}

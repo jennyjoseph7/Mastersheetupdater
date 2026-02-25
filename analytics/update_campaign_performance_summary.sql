@@ -92,64 +92,95 @@ BEGIN
 
     -- engagement stats
     v_sql := format($sql$
-        SELECT jsonb_agg(
-            jsonb_build_object(
-                'channel', channel,
-                'sent_called', sent_called,
-                'delivered_answered', delivered_answered,
-                'read_greeted', read_greeted,
-                'interacted', interacted,
-                'converted', converted,
-                'total', total
-            )
-            ORDER BY channel
+    SELECT jsonb_agg(
+        jsonb_build_object(
+            'channel', channel,
+
+            CASE 
+                WHEN channel = 'voice_phone' THEN 'called'
+                WHEN channel = 'all' THEN 'sent_called'
+                ELSE 'sent'
+            END,
+            sent_called,
+
+            CASE
+                WHEN channel = 'voice_phone' THEN 'ringing'
+                WHEN channel = 'all' THEN 'delivered_ringing'
+                ELSE 'delivered'
+            END,
+            delivered_answered,
+
+            CASE
+                WHEN channel = 'voice_phone' THEN 'answered'
+                WHEN channel = 'all' THEN 'read_answered'
+                ELSE 'read'
+            END,
+            read_greeted,
+
+            CASE
+                WHEN channel = 'voice_phone' THEN 'engaged'
+                WHEN channel = 'all' THEN 'interacted_engaged'
+                ELSE 'interacted'
+            END,
+            interacted,
+
+            'converted', converted,
+
+            'total', total
         )
+        ORDER BY (channel = 'all') DESC, channel
+    )
+    FROM (
+        SELECT
+            CASE
+                WHEN GROUPING(channel) = 1 THEN 'all'
+                ELSE channel
+            END AS channel,
+
+            COUNT(*) FILTER (
+                WHERE status IN (
+                    'attempted','engaged','converted',
+                    'reached','contacted','failed','error'
+                )
+            ) AS sent_called,
+
+            COUNT(*) FILTER (
+                WHERE status IN (
+                    'reached','contacted','engaged','converted'
+                )
+            ) AS delivered_answered,
+
+            COUNT(*) FILTER (
+                WHERE status IN (
+                    'contacted','engaged','converted'
+                )
+            ) AS read_greeted,
+
+            COUNT(*) FILTER (
+                WHERE status IN (
+                    'engaged','converted'
+                )
+            ) AS interacted,
+
+            COUNT(*) FILTER (WHERE status = 'converted') AS converted,
+            COUNT(*) AS total
+
         FROM (
             SELECT
-                COALESCE(channel, 'all') AS channel,
+                LOWER(dict->>'last_session_channel') AS channel,
+                LOWER(dict->>'disposition') AS status
+            FROM %I
+            WHERE dict->>'campaign_id' = $1
+              AND dict->>'campaign_type' = $2
+        ) s
+        GROUP BY GROUPING SETS (
+            (channel),   -- per channel (NULLs skipped automatically)
+            ()           -- ALL rows (includes NULLs)
+        )
+    ) t
+$sql$, p_lead_model);
 
-                COUNT(*) FILTER (
-                    WHERE status IN (
-                        'attempted','engaged','converted',
-                        'reached','contacted','failed','error'
-                    )
-                ) AS sent_called,
 
-                COUNT(*) FILTER (
-                    WHERE status IN (
-                        'reached','contacted','engaged','converted'
-                    )
-                ) AS delivered_answered,
-
-                COUNT(*) FILTER (
-                    WHERE status IN (
-                        'contacted','engaged','converted'
-                    )
-                ) AS read_greeted,
-
-                COUNT(*) FILTER (
-                    WHERE status IN (
-                        'engaged','converted'
-                    )
-                ) AS interacted,
-
-                COUNT(*) FILTER (WHERE status = 'converted') AS converted,
-                COUNT(*) AS total
-
-            FROM (
-                SELECT
-                    LOWER(dict->>'last_session_channel') AS channel,
-                    LOWER(dict->>'disposition') AS status
-                FROM %I
-                WHERE dict->>'campaign_id' = $1
-                AND dict->>'campaign_type' = $2
-            ) s
-            GROUP BY GROUPING SETS (
-                (channel),   -- per channel
-                ()           -- ALL channels
-            )
-        ) t
-    $sql$, p_lead_model);
 
     EXECUTE v_sql
     USING p_campaign_id, p_campaign_type
