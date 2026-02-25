@@ -1138,10 +1138,13 @@ function CampaignInsightsContent() {
                       <Table>
                         <TableHeader className="bg-slate-50/50">
                           <TableRow>
+                             <TableHead className="font-semibold text-slate-600">Name</TableHead>
                             <TableHead className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group w-[140px]" onClick={() => handleSessionSort("phone_number")}>
                               <div className="flex items-center">Phone {getSessionSortIcon("phone_number")}</div>
                             </TableHead>
                             <TableHead className="font-semibold text-slate-600">Channel</TableHead>
+                           
+
                             <TableHead className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group text-center" onClick={() => handleSessionSort("status")}>
                               <div className="flex items-center justify-center">Status {getSessionSortIcon("status")}</div>
                             </TableHead>
@@ -1159,12 +1162,17 @@ function CampaignInsightsContent() {
                         <TableBody>
                           {visibleSessions.map((session, index) => (
                             <TableRow key={session.session_id || index} className="hover:bg-slate-50/50 transition-colors">
+                                <TableCell className="font-medium text-slate-900 text-sm">
+                                {session.person_name?.replace('_', ' ') || "-"}
+                              </TableCell>
                               <TableCell className="font-medium text-slate-900 text-sm">
                                 {session.phone_number ? `+${session.phone_number.replace(/^\+/, '')}` : "-"}
                               </TableCell>
                               <TableCell className="text-slate-500 capitalize text-xs">
                                 {session.channel?.replace('_', ' ') || "-"}
                               </TableCell>
+                             
+
                               <TableCell className="text-center">
                                 <Badge variant="outline" className={`capitalize font-normal border ${
                                     session.status === 'completed' ? 'border-green-200 text-green-700 bg-green-50' : 
