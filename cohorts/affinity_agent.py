@@ -1,5 +1,4 @@
 import json
-from typing import Dict
 from pydantic import BaseModel
 import plotly.graph_objects as go
 from ai_service import ai_service_app
@@ -7,6 +6,9 @@ from utility import UtilityMixin
 from common_utils import get_logger
 from typing import *
 import traceback
+import requests 
+import numpy as np
+from typing import List, Dict
 
 logger = get_logger(__name__)
 
@@ -399,3 +401,112 @@ class AffinityEngineAgent(UtilityMixin):
             "llm_reasoning": parsed["llm_reasoning"],
             "affinity_fig_json": fig_json
         }
+
+
+class EmbeddingAffinityEngine(UtilityMixin):
+    def __init__(
+            self,
+            interaction_json: dict,
+            embedding_url: str = "https://embedding.gryd.in/v1/embeddings",
+            model: str = "bge-large-en-v1.5",
+            custom_affinity_dimensions: List[str] = None,
+        ):
+
+        self.interaction_json : str = json.dumps(self._load_json(interaction_json), indent=2)
+        self.embedding_url = embedding_url
+        self.model = model
+
+
+        default_dimensions = [
+            "adventure",
+            "offroad",
+            "performance",
+            "identity",
+            "family",
+            "price_comfort",
+            "achievement",
+            "community"
+        ]
+
+
+        self.affinity_dimensions = custom_affinity_dimensions or default_dimensions
+        self.dimension_descriptions = self._build_dimension_descriptions()
+
+
+    def _build_dimension_descriptions(self):
+        descriptions = {}
+        if isinstance(self.affinity_dimensions, list):
+            for dim in self.affinity_dimensions:
+                predefined = {
+                    "adventure": "Interest in exploration, road trips, outdoor lifestyle, freedom and travel.",
+                    "offroad": "Interest in rugged terrain, ground clearance, 4x4 driving and rough usage.",
+                    "performance": "Interest in power, torque, acceleration, dynamic driving and thrill.",
+                    "identity": "Interest in vehicle as self-expression, status symbol, personal brand.",
+                    "family": "Interest in safety, spaciousness, comfort and family-oriented features.",
+                    "price_comfort": "Interest in value, features, and practicality.",
+                    "achievement": "Interest in vehicle as success marker, premium brands, and aspirational ownership.",
+                    "community": "Interest in owner groups, brand loyalty, and social connection."
+                }
+                if dim in predefined:
+                    descriptions[dim] = predefined[dim]
+                else:
+                    descriptions[dim] = (
+                        f"Customer interest related to '{dim}'. "
+                        f"This includes behaviors, preferences, motivations and decision drivers "
+                        f"associated with {dim} in vehicle purchase decisions."
+                    )
+            return descriptions
+        elif isinstance(self.affinity_dimensions, dict):
+            for dim, description in self.affinity_dimensions.items():
+                descriptions[dim] = description.lower() 
+            return descriptions
+        else:
+            raise ValueError("affinity_dimensions must be a list or a dictionary.")
+
+    def _get_embedding(self, texts: List[str]) -> List[List[float]]:
+        try:
+            response = requests.post(self.embedding_url,headers={"Content-Type": "application/json"}, json={"input": texts, "model": self.model})
+            response.raise_for_status()
+            data:list[dict] = response.json()["data"]
+            return [item["embedding"] for item in data]
+        except Exception as e:
+            raise e
+
+    @staticmethod
+    def _cosine_similarity(vec1, vec2):
+        v1 = np.array(vec1)
+        v2 = np.array(vec2)
+        return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+    
+    @staticmethod
+    def _dot_product(vec1, vec2):
+        v1 = np.array(vec1)
+        v2 = np.array(vec2)
+        return np.dot(v1, v2)
+    
+    def calculate_affinity(self) -> Dict:
+        interaction_text = self.interaction_json
+        interaction_embedding = self._get_embedding(texts=[interaction_text])[0]
+        dimension_texts = [self.dimension_descriptions[dim] for dim in self.affinity_dimensions]
+        dimension_embeddings = self._get_embedding(texts=dimension_texts)
+        raw_scores = {}
+        for dim, dim_emb in zip(self.affinity_dimensions, dimension_embeddings):
+            similarity = self._cosine_similarity(interaction_embedding, dim_emb)
+            raw_scores[dim] = round(float(similarity), 5)
+        return {
+            "affinity_scores": raw_scores,
+            "reasoning": "Scores generated using cosine similarity between user interaction embedding and semantic affinity dimension embeddings."
+        }
+    
+
+    def _create_spider_chart(self, affinity_scores):
+        return super()._create_spider_chart(affinity_scores)
+
+if __name__ == "__main__":
+
+    with open("Untitled (1).json", "r") as f:
+        data = json.load(f)
+
+    affinity_engine = EmbeddingAffinityEngine(interaction_json=data)
+    affinity_scores = affinity_engine.calculate_affinity()
+    print(json.dumps(affinity_scores, indent=4))
