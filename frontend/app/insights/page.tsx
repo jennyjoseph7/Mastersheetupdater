@@ -45,8 +45,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   fetchActiveSessions,
-  fetchPreSalesCampaigns,
-  fetchPostSalesCampaigns,
   getDealershipId,
 } from "@/utils/api";
 import useSWR from "swr";
@@ -74,13 +72,8 @@ interface SessionData {
   email?: string;
   person_name?: string;
   id_salt?: string;
-}
-
-interface Campaign {
-  id?: string | number;
-  campaign_id?: string | number;
-  name?: string;
   campaign_name?: string;
+  campaign_objective_name?: string;
 }
 
 // --- Utility Functions ---
@@ -149,24 +142,36 @@ const formatTimestamp = (timestamp: number) => {
 };
 
 const getTimeAgo = (timestamp: number): string => {
-  const diffMins = Math.floor((Date.now() - timestamp * 1000) / 60000);
+  const diffMs = Date.now() - timestamp * 1000;
+  const diffMins = Math.floor(diffMs / 60000);
+
   if (diffMins < 1) return "Just now";
+  
   if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? "s" : ""} ago`;
+  
   const diffHours = Math.floor(diffMins / 60);
   if (diffHours < 24) return `${diffHours} hr${diffHours !== 1 ? "s" : ""} ago`;
-  return formatTimestamp(timestamp);
+  
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+  
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) return `${diffMonths} month${diffMonths !== 1 ? "s" : ""} ago`;
+  
+  const diffYears = Math.floor(diffDays / 365);
+  return `${diffYears} year${diffYears !== 1 ? "s" : ""} ago`;
 };
 
 export default function LiveStatusPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [dealershipId, setDealershipId] = useState<string | null>(null);
 
-  // Client-Side Filters
+  // Client-Side Filters (Search Only)
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Server-Side Filters (Dates and Dropdowns)
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-
-  // Server-Side Filters
   const [channelFilter, setChannelFilter] = useState<string>("All Channels");
   const [statusFilter, setStatusFilter] = useState<string>("All Status");
   const [campaignTypeFilter, setCampaignTypeFilter] = useState<string>("All Types");
@@ -194,6 +199,18 @@ export default function LiveStatusPage() {
     setP(1);
   };
 
+  const handleDateChange = (type: "start" | "end", value: string) => {
+    if (type === "start") setStartDate(value);
+    if (type === "end") setEndDate(value);
+    setP(1); // Reset to page 1 whenever date filters change
+  };
+
+  const clearDates = () => {
+    setStartDate("");
+    setEndDate("");
+    setP(1);
+  };
+
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
     setP(1);
@@ -209,7 +226,7 @@ export default function LiveStatusPage() {
     setP(1); 
   };
 
-  // Construct Query Params for SWR (Only server-side parameters)
+  // Construct Query Params for SWR
   const queryParams = useMemo(() => {
     return {
       p,
@@ -219,10 +236,12 @@ export default function LiveStatusPage() {
       campaign_type: campaignTypeFilter !== "All Types" ? campaignTypeFilter.toLowerCase() : undefined,
       sort_by: sortBy,
       sort_order: sortOrder,
+      start_date: startDate || undefined,
+      end_date: endDate || undefined,
     };
-  }, [p, pageSize, channelFilter, statusFilter, campaignTypeFilter, sortBy, sortOrder]);
+  }, [p, pageSize, channelFilter, statusFilter, campaignTypeFilter, sortBy, sortOrder, startDate, endDate]);
 
-  // Fetch API Calls
+  // Main Session API Call
   const {
     data: sessionsData,
     mutate: refreshSessions,
@@ -234,60 +253,29 @@ export default function LiveStatusPage() {
     { refreshInterval: isMounted && dealershipId ? 30000 : 0, revalidateOnFocus: true }
   );
 
-  const { data: preSalesCampaigns } = useSWR("pre-sales-campaigns", () => fetchPreSalesCampaigns(1, 100).catch(() => ({ items: [], total: 0 })), { revalidateOnFocus: false });
-  const { data: postSalesCampaigns } = useSWR("post-sales-campaigns", () => fetchPostSalesCampaigns().catch(() => ({ items: [], total: 0 })), { revalidateOnFocus: false });
-
-  // Map Campaign IDs to Names
-  const campaignMap = useMemo(() => {
-    const map = new Map<string, string>();
-    const campaigns: Campaign[] = [...(preSalesCampaigns?.items || []), ...(postSalesCampaigns?.items || [])];
-    campaigns.forEach((campaign) => {
-      map.set(String(campaign.campaign_id || campaign.id), campaign.name || campaign.campaign_name || "Unknown Campaign");
-    });
-    return map;
-  }, [preSalesCampaigns, postSalesCampaigns]);
-
   // Server Data
   const rawSessions: SessionData[] = sessionsData?.data || [];
   const serverTotalItems = sessionsData?.total_number || 0;
   const totalPages = Math.ceil(serverTotalItems / pageSize);
 
-  // Client-Side Filtering Logic
+  // Client-Side Filtering Logic (Only for Search input now)
   const filteredSessions = useMemo(() => {
     return rawSessions.filter((session) => {
-      // 1. Search Filter
       const searchLower = searchQuery.toLowerCase();
-      const campaignName = (campaignMap.get(session.campaign_id) || "").toLowerCase();
+      const campaignName = (session.campaign_name || "").toLowerCase();
+      const objectiveName = (session.campaign_objective_name || "").toLowerCase();
       const personName = (session.person_name || "").toLowerCase();
       const email = (session.email || "").toLowerCase();
       const phoneFormatted = formatPhoneNumber(session.phone_number);
 
-      const matchesSearch = !searchQuery || 
+      return !searchQuery || 
         campaignName.includes(searchLower) ||
+        objectiveName.includes(searchLower) ||
         personName.includes(searchLower) ||
         email.includes(searchLower) ||
         phoneFormatted.includes(searchQuery);
-
-      // 2. Date Range Filter
-      let matchesDate = true;
-      if (startDate || endDate) {
-        const sessionTime = session.created * 1000; 
-        
-        if (startDate) {
-          const start = new Date(startDate);
-          start.setHours(0, 0, 0, 0);
-          if (sessionTime < start.getTime()) matchesDate = false;
-        }
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          if (sessionTime > end.getTime()) matchesDate = false;
-        }
-      }
-
-      return matchesSearch && matchesDate;
     });
-  }, [rawSessions, searchQuery, startDate, endDate, campaignMap]);
+  }, [rawSessions, searchQuery]);
 
   // Manual Refresh
   const handleRefresh = async () => {
@@ -300,12 +288,13 @@ export default function LiveStatusPage() {
   const handleExportCSV = () => {
     if (!filteredSessions || filteredSessions.length === 0) return;
 
-    const headers = ["Campaign Name", "Channel", "Name", "Phone", "Email", "Status", "Campaign Type", "Created Date", "Recording Link"];
+    const headers = ["Campaign Name", "Objective", "Channel", "Name", "Phone", "Email", "Status", "Campaign Type", "Created Date", "Recording Link"];
     const csvRows = [headers.join(",")];
 
     filteredSessions.forEach((session) => {
       const row = [
-        `"${campaignMap.get(session.campaign_id) || "Unknown Campaign"}"`,
+        `"${session.campaign_name || "Unknown Campaign"}"`,
+        `"${session.campaign_objective_name || "-"}"`,
         `"${formatChannel(session.channel)}"`,
         `"${session.person_name || "-"}"`,
         `"${session.phone_number}"`,
@@ -388,29 +377,29 @@ export default function LiveStatusPage() {
 
               {/* Filters */}
               <div className="flex gap-2 flex-wrap items-center">
-                {/* Client-Side Date Filters */}
+                {/* Server-Side Date Filters */}
                 <div className="flex items-center gap-2 border rounded-md px-3 bg-background">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <Input 
                     type="date" 
                     value={startDate} 
-                    onChange={(e) => setStartDate(e.target.value)} 
+                    onChange={(e) => handleDateChange("start", e.target.value)} 
                     className="h-8 border-0 bg-transparent w-[130px] p-0 focus-visible:ring-0 shadow-none text-sm" 
                   />
                   <span className="text-muted-foreground text-sm">to</span>
                   <Input 
                     type="date" 
                     value={endDate} 
-                    onChange={(e) => setEndDate(e.target.value)} 
+                    onChange={(e) => handleDateChange("end", e.target.value)} 
                     className="h-8 border-0 bg-transparent w-[130px] p-0 focus-visible:ring-0 shadow-none text-sm" 
                   />
                   {(startDate || endDate) && (
                     <Button 
                       variant="ghost" 
                       className="h-6 w-6 p-0 ml-1 rounded-full text-muted-foreground hover:text-foreground" 
-                      onClick={() => { setStartDate(""); setEndDate(""); }}
+                      onClick={clearDates}
                     >
-                      &times;
+                      <X className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
@@ -424,15 +413,15 @@ export default function LiveStatusPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
                     <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "All Channels")}>All Channels</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "WhatsApp")}>WhatsApp</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "Email")}>Email</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "whatsapp_chat")}>WhatsApp</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "email")}>Email</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "SMS")}>SMS</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "Voice")}>Voice</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "voice_phone")}>Voice</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
                 {/* Server-Side Status Filter */}
-                <DropdownMenu>
+                {/* <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="gap-2 h-10">
                       {statusFilter} <ChevronDown className="h-4 w-4" />
@@ -445,7 +434,7 @@ export default function LiveStatusPage() {
                     <DropdownMenuItem onClick={() => handleServerFilterChange(setStatusFilter, "Converted")}>Converted</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleServerFilterChange(setStatusFilter, "Attempted")}>Attempted</DropdownMenuItem>
                   </DropdownMenuContent>
-                </DropdownMenu>
+                </DropdownMenu> */}
 
                 {/* Server-Side Campaign Type Filter */}
                 <DropdownMenu>
@@ -484,7 +473,8 @@ export default function LiveStatusPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <SortableHeader title="Campaign" column="campaign_id" />
+                        <SortableHeader title="Campaign" column="campaign_name" />
+                        <SortableHeader title="Objective" column="campaign_objective_name" />
                         <SortableHeader title="Channel" column="channel" />
                         <SortableHeader title="Name" column="person_name" />
                         <SortableHeader title="Phone" column="phone_number" />
@@ -497,8 +487,11 @@ export default function LiveStatusPage() {
                     <TableBody>
                       {filteredSessions.map((session) => (
                         <TableRow key={session.session_id} className="hover:bg-muted/50 transition-colors">
-                          <TableCell className="font-medium max-w-[200px] truncate" title={campaignMap.get(session.campaign_id)}>
-                            {campaignMap.get(session.campaign_id) || "Unknown Campaign"}
+                          <TableCell className="font-medium max-w-[150px] truncate" title={session.campaign_name}>
+                            {session.campaign_name || "Unknown Campaign"}
+                          </TableCell>
+                          <TableCell className="max-w-[150px] truncate" title={session.campaign_objective_name}>
+                            {session.campaign_objective_name || "-"}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -529,7 +522,10 @@ export default function LiveStatusPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground whitespace-nowrap">
+                            <div 
+                              className="flex items-center gap-1 text-sm text-muted-foreground whitespace-nowrap cursor-help"
+                              title={formatTimestamp(session.created)}
+                            >
                               <Clock className="h-3 w-3" />
                               {getTimeAgo(session.created)}
                             </div>
@@ -544,7 +540,7 @@ export default function LiveStatusPage() {
                 <div className="flex items-center justify-between px-4 py-4 border-x border-b rounded-b-md bg-muted/20 mt-4">
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span>
-                      {searchQuery || startDate || endDate 
+                      {searchQuery
                         ? `Showing ${filteredSessions.length} filtered items (Server total: ${serverTotalItems})`
                         : `Total ${serverTotalItems} items`
                       }

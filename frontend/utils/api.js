@@ -468,16 +468,25 @@ export async function fetchCampaignSessions({
     if (search) params.append("search", search);
     if (disposition && disposition !== "all") params.append("disposition", disposition);
     
-    // Handle Date Ranges
-    if (start_date) {
-      const startObj = new Date(start_date);
-      startObj.setHours(0, 0, 0, 0);
-      params.append("start_time", (startObj.getTime() / 1000).toString());
-    }
-    if (end_date) {
-      const endObj = new Date(end_date);
-      endObj.setHours(23, 59, 59, 999);
-      params.append("end_time", (endObj.getTime() / 1000).toString());
+    // Apply Date Range - Sending as a comma-separated string: created=min,max
+    if (start_date || end_date) {
+      let startEpoch = 0; // Default minimum epoch if no start date is selected
+      let endEpoch = Math.floor(Date.now() / 1000); // Default maximum epoch (current time)
+
+      if (start_date) {
+        const startObj = new Date(start_date);
+        startObj.setHours(0, 0, 0, 0); // Start of the selected day
+        startEpoch = startObj.getTime() / 1000;
+      }
+      
+      if (end_date) {
+        const endObj = new Date(end_date);
+        endObj.setHours(23, 59, 59, 999); // End of the selected day
+        endEpoch = endObj.getTime() / 1000;
+      }
+
+      // Append the single parameter with the comma-separated format
+      params.append("created", `${startEpoch},${endEpoch}`);
     }
 
     const url = `${APP_BASE_URL}/gryd/db/objects/session?${params.toString()}`;
@@ -604,25 +613,29 @@ export async function fetchActiveSessions(dealershipId, params = {}) {
     if (params.status) searchParams.append("status", params.status);
     if (params.campaign_type) searchParams.append("campaign_type", params.campaign_type);
     
-    // Apply Date Range - Sending TWO 'start_date' parameters to define the range
-    if (params.start_date) {
-      const startObj = new Date(params.start_date);
-      startObj.setHours(0, 0, 0, 0); // Start of the selected day
+     
+ // Apply Date Range - Sending as a comma-separated string: created=min,max
+    if (params.start_date || params.end_date) {
+      let startEpoch = 0; // Default minimum epoch if no start date is selected
+      let endEpoch = Math.floor(Date.now() / 1000); // Default maximum epoch (current time)
+
+      if (params.start_date) {
+        const startObj = new Date(params.start_date);
+        startObj.setHours(0, 0, 0, 0); // Start of the selected day
+        startEpoch = startObj.getTime() / 1000;
+      }
       
-      // Divide by 1000 to get seconds, keeping the float format (e.g., 1771372800.0)
-      searchParams.append("created", (startObj.getTime() / 1000).toString());
-    }
-    
-    if (params.end_date) {
-      const endObj = new Date(params.end_date);
-      endObj.setHours(23, 59, 59, 999); // End of the selected day
-      
-      // Divide by 1000, keeping the float format (e.g., 1771459199.999)
-      searchParams.append("start_time", (endObj.getTime() / 1000).toString());
+      if (params.end_date) {
+        const endObj = new Date(params.end_date);
+        endObj.setHours(23, 59, 59, 999); // End of the selected day
+        endEpoch = endObj.getTime() / 1000;
+      }
+
+      // Append the single parameter with the comma-separated format
+      searchParams.append("created", `${startEpoch},${endEpoch}`);
     }
 
     const url = `${APP_BASE_URL}/gryd/db/objects/session?${searchParams.toString()}`;
-
     console.log("[fetchActiveSessions] Fetching from URL:", url);
 
     // Make direct fetch call matching curl command exactly

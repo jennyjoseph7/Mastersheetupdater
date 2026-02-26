@@ -88,6 +88,7 @@ export interface Campaign {
   campaign_id?: string | number;
   name?: string;
   campaign_name?: string;
+  campaign_objective?: string;
   description?: string;
   channels?: string[];
   campaign_status?: string;
@@ -487,6 +488,7 @@ useEffect(() => {
 
     return mergedCampaigns.filter((campaign: Campaign) => {
       const campaignName = campaign.name ?? campaign.campaign_name ?? "";
+      const campaignObjective = campaign.campaign_objective ?? "";
       const matchesSearch = q === "" || campaignName.toLowerCase().includes(q);
 
       const campaignStatus =
@@ -992,6 +994,8 @@ const totalPages = pageCount;
                   <TableRow>
                     <TableHead>Campaign Type</TableHead>
                     <TableHead>Campaign Name</TableHead>
+                    <TableHead>Campaign Objective</TableHead>
+
                     <TableHead>Channels Used</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Launch Date</TableHead>
@@ -1040,10 +1044,26 @@ const totalPages = pageCount;
                           <TableCell className="font-medium capitalize">
                             {campaignType?.replace("_", " ") || "Unknown"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            className="max-w-[250px] truncate"
+                            title={
+                              campaign.name ||
+                              campaign.campaign_name ||
+                              "Unnamed"
+                            }
+                          >
                             {campaign.name ||
                               campaign.campaign_name ||
                               "Unnamed"}
+                          </TableCell>
+
+                          <TableCell
+                            className="max-w-[200px] truncate"
+                            title={
+                              campaign.campaign_objective_name || "Unnamed"
+                            }
+                          >
+                            {campaign.campaign_objective_name || "Unnamed"}
                           </TableCell>
                           <TableCell>
                             {getChannelBadges(campaign.channels)}
@@ -1054,7 +1074,7 @@ const totalPages = pageCount;
                           <TableCell>
                             {campaign.launchDate || campaign.start_date
                               ? epochToIST(
-                                  campaign.launchDate || campaign.start_date
+                                  campaign.launchDate || campaign.start_date,
                                 )
                               : "-"}
                           </TableCell>
