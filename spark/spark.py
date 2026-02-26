@@ -314,7 +314,7 @@ def compare_images_func(original_image_url: str, generated_image_url: str, model
     logger = logger or mlogger
     original_suffix = original_image_url.split('.')[-1]
     generated_suffix = generated_image_url.split('.')[-1]
-    with tempfile.NamedTemporaryFile(model='w', suffix=f'.{original_suffix}') as original_temp_file:
+    with tempfile.NamedTemporaryFile(mode='w', suffix=f'.{original_suffix}') as original_temp_file:
         original_temp_file_path = download_file(original_image_url, original_temp_file.name)
         with tempfile.NamedTemporaryFile(mode='w', suffix=f'.{generated_suffix}') as generated_temp_file:
             generated_temp_file_path = download_file(generated_image_url, generated_temp_file.name)
