@@ -314,18 +314,24 @@ def compare_images_func(original_image_url: str, generated_image_url: str, model
     logger = logger or mlogger
     original_suffix = original_image_url.split('.')[-1]
     generated_suffix = generated_image_url.split('.')[-1]
-    with tempfile.NamedTemporaryFile(mode='w', suffix=f'.{original_suffix}') as original_temp_file:
-        original_temp_file_path = download_file(original_image_url, original_temp_file.name)
-        with tempfile.NamedTemporaryFile(mode='w', suffix=f'.{generated_suffix}') as generated_temp_file:
-            generated_temp_file_path = download_file(generated_image_url, generated_temp_file.name)
-            return compare_images(
-                original_temp_file_path, 
-                generated_temp_file_path, 
-                model=model, 
-                verbose=False, 
-                logger=logger
-            )
-
+    with tempfile.NamedTemporaryFile(mode='w', suffix=f'.{original_suffix}', delete=False) as f:
+        original_temp_file_path = f.name
+    with tempfile.NamedTemporaryFile(mode='w', suffix=f'.{generated_suffix}', delete=False) as f:
+        generated_temp_file_path = f.name
+    try:
+        original_temp_file_path = download_file(original_image_url, original_temp_file_path)
+        generated_temp_file_path = download_file(generated_image_url, generated_temp_file_path)
+        result = compare_images(
+            original_temp_file_path, 
+            generated_temp_file_path, 
+            model=model, 
+            verbose=False, 
+            logger=logger
+        )
+        return result
+    finally:
+        os.remove(original_temp_file_path)
+        os.remove(generated_temp_file_path)
 # if __name__ == "__main__":
 #     input_image_url = "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp"
 #     prompt = "Change the background to scenic view from the suburbs of Mumbai"
