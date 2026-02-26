@@ -319,6 +319,7 @@ def post_contact_status(*args, **data):
 
         existing["provider_status"] = incoming_status
         # existing["message_status"] = incoming_status
+        existing["created"] = time.time()
         existing["updated"] = time.time()
 
         if incoming_status == "failed":
@@ -360,9 +361,7 @@ def update_lead_disposition(pg, incoming_status, user_id=None, **data):
         "error",
         "failed",
         "reached",
-        "contacted",
-        "engaged",
-        "converted",
+        "contacted"
     ]
     
     def can_update_disposition(current, incoming):
