@@ -37,14 +37,14 @@ def distortion_report(image_path: str, model: str = None, min_dim: int = 1024, m
     return analyze_image(image_path, model=model, min_dim=min_dim, max_aspect_ratio=max_aspect_ratio, verbose = True, logger=logger)
 
 @gryd.is_a_task(function_name="merge_layers", job_param='job', logger_param='logger')
-def merge_layers(base_png: str, png_layers: list[tuple[str, float, int, int]] = None, svg_layers: list[tuple[str, float, int, int]] = None, output_path: str = None, job: dict = None, logger: hp.logging.Logger = None):
+def merge_layers_task(base_png: str, png_layers: list[tuple[str, float, int, int]] = None, svg_layers: list[tuple[str, float, int, int]] = None, output_path: str = None, job: dict = None, logger: hp.logging.Logger = None):
     logger = logger or mlogger
     output_path = merge_layers(base_png, png_layers=png_layers, svg_layers=svg_layers, output_path=output_path, job=job, logger=logger)
     cdn_url = func_gryd_file_system(output_path, media_type='image', logger=logger)
     return cdn_url
 
 @gryd.is_a_task(function_name="pad_and_resize_image", job_param='job', logger_param='logger')
-def pad_and_resize_image(image_path: str, output_dimensions: list = None, job: dict = None, logger: hp.logging.Logger = None):
+def pad_and_resize_image_task(image_path: str, output_dimensions: list = None, job: dict = None, logger: hp.logging.Logger = None):
     logger = logger or mlogger
     return pad_and_resize_image(image_path, output_dimensions=output_dimensions, logger=logger)
 
@@ -310,15 +310,21 @@ Now validate the prompt:
 
 
 @gryd.is_a_task(function_name = "compare_images", job_param = 'job', logger_param = 'logger')
-def compare_images(original_image_url: str, generated_image_url: str, model: str = None, job = None, logger = None):
+def compare_images_func(original_image_url: str, generated_image_url: str, model: str = None, job = None, logger = None):
     logger = logger or mlogger
-    return compare_images(
-        original_image_url=original_image_url, 
-        generated_image_url=generated_image_url, 
-        model=model, 
-        verbose=False, 
-        logger=logger
-    )
+    original_suffix = original_image_url.split('.')[-1]
+    generated_suffix = generated_image_url.split('.')[-1]
+    with tempfile.NamedTemporaryFile(suffix=f'.{original_suffix}') as original_temp_file:
+        original_temp_file_path = download_file(original_image_url, original_temp_file.name)
+        with tempfile.NamedTemporaryFile(suffix=f'.{generated_suffix}') as generated_temp_file:
+            generated_temp_file_path = download_file(generated_image_url, generated_temp_file.name)
+            return compare_images(
+                original_temp_file_path, 
+                generated_temp_file_path, 
+                model=model, 
+                verbose=False, 
+                logger=logger
+            )
 
 # if __name__ == "__main__":
 #     input_image_url = "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp"

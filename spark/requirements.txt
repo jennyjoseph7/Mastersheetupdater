@@ -1,2 +1,4 @@
 CairoSVG==2.8.2
 db_routes @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/i2ce_routes/db_routes-0.0.1-py3-none-any.whl
+vertexai==1.71.1
+google-genai==1.65.0
