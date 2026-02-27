@@ -3,63 +3,60 @@ import json
 import uuid
 import urllib.parse
 from pathlib import Path
+import requests
 from bp_utils import get_logger
 from gryd_worker import gryd
 from agents.summary_agent import VectorIngestionAgent
+from dotenv import load_dotenv
 
-# Import utilities
-try:
-    from agents.main import download_file
-    from file_loader.gemini_loader import process_brochure_to_structure
-except ImportError:
-    download_file = None
-    process_brochure_to_structure = None
-
+load_dotenv()
 logger = get_logger(__name__)
-
 
 HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parent 
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "summary"
-TEMP_DIR = PROJECT_ROOT / "temp_files"
-MARKER_OUTPUT_DIR = PROJECT_ROOT / "marker_brochure_output"
-
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(TEMP_DIR, exist_ok=True)
-os.makedirs(MARKER_OUTPUT_DIR, exist_ok=True)
 
 
-def prepare_brochure_json(brochure_url: str):
-    parsed_url = urllib.parse.urlparse(brochure_url)
-    base_name = os.path.splitext(os.path.basename(parsed_url.path))[0]
-    cache_path = MARKER_OUTPUT_DIR / f"{base_name}.json"
+# API CONFIGURATION & HEADERS
 
-    if cache_path.exists():
-        try:
-            with open(cache_path, "r", encoding="utf-8") as f: 
-                return json.load(f)
-        except Exception as e: 
-            logger.warning(f"Cache read error: {e}")
+BASE_URL = os.getenv("GRYD_BASE_URL", "https://autobot-webapp-dev.gryd.in")
 
-    local_pdf_path = None
+
+HEADERS = {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "X-GRYD-ENTERPRISE-ID": os.getenv("GRYD_ENTERPRISE_ID"),
+    "X-GRYD-ROLE": os.getenv("GRYD_ROLE"),
+    "X-GRYD-SESSION-ID": os.getenv("GRYD_SESSION_ID"),
+    "X-GRYD-TOKEN": os.getenv("GRYD_TOKEN"),
+}
+
+def fetch_brochure_text_from_api(document_id: str) -> str:
+    """Fetches extracted chunks from chunk_saver API and concatenates them."""
+    url = f"{BASE_URL}/gryd/db/objects/chunk_saver?document_id={document_id}&page_size=1000"
+    
     try:
-        if not download_file: 
-            return None
-            
-        local_pdf_path = download_file(brochure_url, TEMP_DIR)
+        response = requests.get(url, headers=HEADERS)
+        response.raise_for_status()
+        response_json = response.json()
         
-        if process_brochure_to_structure:
-            raw = process_brochure_to_structure(str(local_pdf_path))
-            data = json.loads(raw) if isinstance(raw, str) else raw
-            with open(cache_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            return data
+        
+        chunks = response_json.get("data", [])
+        
+        extracted_text = []
+        for chunk in chunks:
+            if isinstance(chunk, dict):
+                
+                text = chunk.get("text_content", "")
+                if text:
+                    extracted_text.append(str(text))
+                    
+     
+        return "\n\n".join(extracted_text)
     except Exception as e:
-        logger.error(f"Error preparing brochure JSON: {e}")
-        return None
-    finally:
-        if local_pdf_path and os.path.exists(local_pdf_path): 
-            os.remove(local_pdf_path)
+        logger.error(f"Failed to fetch brochure text from chunk_saver API for {document_id}: {e}")
+        return ""
 
 def format_for_gryd_vector(vector_summaries: dict, doc_id_prefix: str) -> list:
     gryd_tasks = []
@@ -81,7 +78,6 @@ def format_for_gryd_vector(vector_summaries: dict, doc_id_prefix: str) -> list:
             }
         }
     
- 
     if "brand_model" in vector_summaries:
         gryd_tasks.append(create_payload(vector_summaries["brand_model"], "Brand_Model", "general"))
         
@@ -102,26 +98,22 @@ def format_for_gryd_vector(vector_summaries: dict, doc_id_prefix: str) -> list:
 
     return gryd_tasks
 
-
-
-
-def run_summary_dispatcher(brochure_url: str, job_id: str):
+def run_summary_dispatcher(document_id: str, job_id: str):
     """
-    Downloads/parses the PDF and yields a job to the worker for LLM summarization.
+    Fetches the parsed text from API and yields a job to the worker for LLM summarization.
     """
-    logger.info(f"🚀 Dispatching Summary Job: {job_id}")
-    brochure_data = prepare_brochure_json(brochure_url)
+    logger.info(f"🚀 Dispatching Summary Job: {job_id} for Document: {document_id}")
+    brochure_text = fetch_brochure_text_from_api(document_id)
     
-    if not brochure_data: 
-        logger.error("❌ Failed to parse brochure data.")
+    if not brochure_text: 
+        logger.error("❌ Failed to fetch brochure text from API.")
         return {"status": "failed"}
 
-    # Dispatch Worker
     worker_payload = [{
         "task": "summary_worker_task", 
         "service": "brochure-pipeline",
         "args": [],
-        "kwargs": {"brochure_data": brochure_data, "job_id": job_id}
+        "kwargs": {"brochure_text": brochure_text, "job_id": job_id}
     }]
 
     job_iterator = gryd.yield_results(worker_payload)
@@ -129,21 +121,23 @@ def run_summary_dispatcher(brochure_url: str, job_id: str):
 
     return {"status": "completed", "job_id": job_id, "results": results}
 
-
-def run_summary_worker(brochure_data: dict, job_id: str):
+def run_summary_worker(brochure_text: str, job_id: str):
     """
-    Calls Gemini to summarize the JSON structure and saves the formatted payload to disk.
+    Calls Gemini to summarize the text structure and saves the formatted payload to disk.
     """
     logger.info(f"🤖 [Worker] Generating summaries for Job: {job_id}")
     
     agent = VectorIngestionAgent()
-    vector_summaries = agent.run(brochure_data)
+    
+    
+    vector_summaries = agent.run(brochure_text)
     
     if not vector_summaries: 
         logger.error("❌ Vector summaries failed to generate.")
         return {"status": "failed"}
 
-    model_name = brochure_data.get('model', job_id).replace(" ", "_").lower()
+   
+    model_name = job_id.replace(" ", "_").lower()
     gryd_tasks = format_for_gryd_vector(vector_summaries, model_name)
     
     output_path = OUTPUT_DIR / f"summary_{job_id}.json"
@@ -154,7 +148,6 @@ def run_summary_worker(brochure_data: dict, job_id: str):
     logger.info("ℹ️  NOTE: Vector ingestion was NOT triggered automatically.")
     
     return {"status": "success", "file_saved": str(output_path)}
-
 
 def run_vector_ingestion(job_id: str):
     """
