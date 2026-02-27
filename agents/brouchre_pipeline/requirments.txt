@@ -1,5 +1,5 @@
 filelock==3.24.3
-gryd_worker==0.5.0
+
 pandas==3.0.1
 pydantic==2.12.5
 pypdf==6.7.2
