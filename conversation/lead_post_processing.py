@@ -39,6 +39,8 @@ def post_session_process(*args, **kwargs):
     :return: The result of the task.
     """
     session_id = kwargs.get("session_id")
+    mlogger.info("post_session_process called with session_id == {}".format(session_id))
+    
     if not session_id:
         mlogger.info("session_id not passed in kwargs")
         yield from yield_error("error","session_id not passed in kwargs",*args, **kwargs)
@@ -1102,3 +1104,47 @@ def set_feedback(*args, **pass_kwargs):
     
     
     pass
+
+@gryd.is_a_task()
+def post_session_processes(*args, **kwargs):
+    '''
+    This task is called to post process the session data once it is over.
+    It can be called with session_ids, campaign_id or dealership_id.
+    If session_ids is passed, it will call post_session_process for each session_id.
+    If campaign_id is passed, it will fetch all session_ids with campaign_id and call post_session_process for each session_id.
+    If dealership_id is passed, it will fetch all session_ids with dealership_id and call post_session_process for each session_id.
+    :param session_ids: The list of session_ids to be post processed
+    :param campaign_id: The campaign_id to be post processed
+    :param dealership_id: The dealership_id to be post processed
+    :return: The result of the task
+    '''
+    mlogger.info("post_session_processes called with kwargs == {}".format(kwargs))
+    if not kwargs.get("session_ids") and not kwargs.get("campaign_id") and not kwargs.get("dealership_id"):
+        yield from yield_error("error","session_id not found",*args, **kwargs)
+        return
+    if "session_ids" in kwargs and len(kwargs.get("session_ids",[])) == 0:
+        yield from yield_error("error","session_ids not found",*args, **kwargs)
+        return
+    if "session_ids" in kwargs and len(kwargs.get("session_ids",[])) > 0:
+        session_ids = kwargs.get("session_ids")
+        for session_id in session_ids:
+            yield from post_session_process(session_id=session_id)
+        return
+    if "campaign_id" in kwargs:
+        with get_pg_connector() as pg:
+            session_ids = list(pg.list("session",{"campaign_id":kwargs.get("campaign_id")}))
+            mlogger.info("running post_lead_process for session_ids == {}".format(session_ids))
+            for session_data in session_ids:
+                if session_data.get("status") not in ["busy"]:
+                    mlogger.info("running post_lead_process for session_id == {} with status == {}".format(session_data.get("session_id"),session_data.get("status")))
+                    yield from post_session_process(session_id=session_data.get("session_id"))
+        return
+    if "dealership_id" in kwargs:
+        with get_pg_connector() as pg:
+            session_ids = list(pg.list("session",{"dealership_id":kwargs.get("dealership_id")}))
+            mlogger.info("running post_lead_process for session_ids == {}".format(session_ids))
+            for session_data in session_ids:
+                if session_data.get("status") not in ["busy"]:
+                    mlogger.info("running post_lead_process for session_id == {} with status == {}".format(session_data.get("session_id"),session_data.get("status")))
+                    yield from post_session_process(session_id=session_data.get("session_id"))
+        return
