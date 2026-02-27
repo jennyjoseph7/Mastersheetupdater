@@ -3,7 +3,6 @@ import sys
 import json
 import uuid
 import time
-import urllib.parse
 import pandas as pd
 import requests
 import concurrent.futures
@@ -11,7 +10,8 @@ from pathlib import Path
 from filelock import FileLock
 from gryd_worker import gryd
 from bp_utils import get_logger
-
+import re
+from dotenv import load_dotenv
 
 from agents.variant_feature_agent import (
     ConverterAgent, 
@@ -19,18 +19,15 @@ from agents.variant_feature_agent import (
     ValidationAgent, 
     generate_bulk_questions
 )
-
 from agents.postProcessing import process_batch_extraction, finalize_results_json
-
-from file_loader.gemini_loader import process_brochure_to_structure
-import re
-from dotenv import load_dotenv
 
 load_dotenv()
 logger = get_logger(__name__)
 
 
-BASE_URL = os.getenv("GRYD_BASE_URL")
+BASE_URL = os.getenv("GRYD_BASE_URL", "https://autobot-webapp-dev.gryd.in")
+
+
 HEADERS = {
     "Accept": "application/json",
     "Content-Type": "application/json",
@@ -42,6 +39,50 @@ HEADERS = {
 
 VARIANT_API_URL = f"{BASE_URL}/gryd/db/objects/variant"
 UPLOAD_API_URL = f"{BASE_URL}/gryd/db/object/variant_feature"
+
+
+# PATHS & CONSTANTS
+
+HERE = Path(__file__).resolve().parent
+PROJECT_ROOT = HERE.parent 
+OUTPUT_DIR = PROJECT_ROOT / "outputs"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+MAX_FINAL_RETRY = 5
+CHUNK_SIZE = 3
+MAX_CORRECTION_ATTEMPTS = 3
+MAX_RETRIES = 5
+RETRY_DELAY = 10
+
+
+# DB & API HELPER FUNCTIONS
+
+def fetch_brochure_text_from_api(document_id: str) -> str:
+    """Fetches extracted chunks from chunk_saver API and concatenates them."""
+    # Added page_size=1000 to ensure we get all chunks without needing to paginate manually
+    url = f"{BASE_URL}/gryd/db/objects/chunk_saver?document_id={document_id}&page_size=1000"
+    
+    try:
+        response = requests.get(url, headers=HEADERS)
+        response.raise_for_status()
+        response_json = response.json()
+        
+       
+        chunks = response_json.get("data", [])
+        
+        extracted_text = []
+        for chunk in chunks:
+            if isinstance(chunk, dict):
+               
+                text = chunk.get("text_content", "")
+                if text:
+                    extracted_text.append(str(text))
+                    
+       
+        return "\n\n".join(extracted_text)
+    except Exception as e:
+        logger.error(f"Failed to fetch brochure data from chunk_saver API for {document_id}: {e}")
+        return ""
 
 def generate_feature_id(entry):
     fields = [entry.get("feature_category"), entry.get("feature_name"), entry.get("value_type"), entry.get("unit")]
@@ -59,85 +100,41 @@ def fetch_db_variants(car_name: str) -> list:
         logger.error(f"Failed to fetch variants from API: {e}")
     return []
 
-def stream_upload_chunk(extracted_entries: list, car_name: str):
-    """Takes a worker's newly extracted features, expands them, and uploads immediately."""
-    if not extracted_entries: return
+def stream_upload_chunk(expanded_entries: list, document_id: str): # Added document_id here
+    if not expanded_entries: return
     
-    db_variants = fetch_db_variants(car_name)
-    if not db_variants:
-        logger.warning(f"⚠️ No DB variants found for '{car_name}'. Skipping streaming upload.")
-        return
-
     success_count = 0
-    for entry in extracted_entries:
-        base_variant = str(entry.get("variant", entry.get("variant_name", ""))).strip().lower()
-        matched_db_variants = [v for v in db_variants if base_variant in str(v.get("variant_name", "")).lower()]
+    for entry in expanded_entries:
+        if not entry.get("variant_id"):
+            continue
 
-        for db_variant in matched_db_variants:
-            payload = {
-                "variant_id": db_variant.get("variant_id"),
-                "feature_id": generate_feature_id(entry),
-                "vehicle_model_name": db_variant.get("vehicle_model_name"),
-                "variant_name": db_variant.get("variant_name"),
-                "engine_type": db_variant.get("engine_type", ""),
-                "transmission_type": db_variant.get("transmission_type", ""),
-                "drivetrain": db_variant.get("drivetrain", ""),
-                "feature_name": entry.get("feature_name"),
-                "feature_category": entry.get("feature_category"),
-                "value_type": entry.get("value_type"),
-                "unit": entry.get("unit"),
-                "feature_value": entry.get("feature_value"),
-                "source_reference": entry.get("source_reference"),
-                "confidence_score": str(entry.get("confidence_score", 0.0))
-            }
-            try:
-                resp = requests.post(UPLOAD_API_URL, headers=HEADERS, json=payload)
-                if resp.status_code in [200, 201]:
-                    success_count += 1
-            except Exception as e:
-                logger.error(f"Streaming Upload Error: {e}")
-            time.sleep(0.05) # Rate limit protection
+        payload = {
+            "variant_id": entry.get("variant_id"),
+            "feature_id": generate_feature_id(entry),
+            "vehicle_model_name": entry.get("vehicle_model_name"),
+            "variant_name": entry.get("variant_name"),
+            "engine_type": entry.get("engine_type", ""),
+            "transmission_type": entry.get("transmission_type", ""),
+            "drivetrain": entry.get("drivetrain", ""),
+            "feature_name": entry.get("feature_name"),
+            "feature_category": entry.get("feature_category"),
+            "value_type": entry.get("value_type"),
+            "unit": entry.get("unit"),
+            "feature_value": entry.get("feature_value"),
+            "source_reference": entry.get("source_reference"),
+            "source_path": document_id, # ADDED THIS TO MATCH YOUR JSON!
+            "confidence_score": str(entry.get("confidence_score", 0.0))
+        }
+        
+        try:
+            resp = requests.post(UPLOAD_API_URL, headers=HEADERS, json=payload)
+            if resp.status_code in [200, 201]:
+                success_count += 1
+        except Exception as e:
+            logger.error(f"Streaming Upload Error: {e}")
+        time.sleep(0.05) 
             
     logger.info(f"🚀 [Streaming Upload] Successfully posted {success_count} expanded features to DB.")
-
-
-
-# ==============================================================================
-# PATHS & CONSTANTS
-# ==============================================================================
-# Since this file is in tasks/, we need to point to the parent directory (root)
-HERE = Path(__file__).resolve().parent
-PROJECT_ROOT = HERE.parent 
-OUTPUT_DIR = PROJECT_ROOT / "outputs"
-TEMP_DIR = PROJECT_ROOT / "temp_files"
-MARKER_OUTPUT_DIR = PROJECT_ROOT / "marker_brochure_output"
-
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(TEMP_DIR, exist_ok=True)
-os.makedirs(MARKER_OUTPUT_DIR, exist_ok=True)
-
-MAX_FINAL_RETRY = 5
-CHUNK_SIZE = 3
-MAX_CORRECTION_ATTEMPTS = 3
-MAX_RETRIES = 5
-RETRY_DELAY = 10
-
-# ==============================================================================
-# HELPER FUNCTIONS
-# ==============================================================================
-def download_file(url: str, dest_folder: Path) -> Path:
-    if not url: raise ValueError("No URL provided.")
-    try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        filename = os.path.basename(urllib.parse.urlparse(url).path) or "downloaded_file.pdf"
-        local_path = dest_folder / filename
-        with open(local_path, 'wb') as f:
-            f.write(response.content)
-        return local_path
-    except Exception as e:
-        logger.error(f"Error downloading {url}: {e}")
-        raise
 
 def is_model_not_found_error(e: Exception) -> bool:
     msg = str(e).lower()
@@ -166,10 +163,8 @@ def execute_with_retry(func, *args, **kwargs):
 def cleanup_stale_locks(directory: Path):
     if not directory.exists(): return
     for lock_file in directory.glob("*.lock"):
-        try:
-            os.remove(lock_file)
-        except Exception:
-            pass
+        try: os.remove(lock_file)
+        except Exception: pass
 
 def flush_output(path: Path, data):
     for attempt in range(3):
@@ -243,42 +238,6 @@ def harvest_and_merge(job_id, output_path):
         current_data.extend(merged_items)
         flush_output(output_path, current_data)
 
-def prepare_brochure_data(brochure_url):
-    parsed_url = urllib.parse.urlparse(brochure_url)
-    base_name = os.path.splitext(os.path.basename(parsed_url.path) or "unknown.pdf")[0]
-    cache_path = MARKER_OUTPUT_DIR / f"{base_name}.json"
-    brochure_text = ""
-    
-    if cache_path.exists():
-        logger.info(f"[Dispatcher] Found cached Structured output: {cache_path}")
-        try:
-            with open(cache_path, "r", encoding="utf-8") as f:
-                brochure_text = f.read()
-        except Exception: pass
-
-    if not brochure_text:
-        local_pdf_path = None
-        try:
-            local_pdf_path = download_file(brochure_url, TEMP_DIR)
-            brochure_text = process_brochure_to_structure(str(local_pdf_path))
-            if brochure_text:
-                with open(cache_path, "w", encoding="utf-8") as f: f.write(brochure_text)
-        except Exception as e:
-            logger.error(f"Failed to prepare brochure: {e}")
-            return None
-        finally:
-            if local_pdf_path and os.path.exists(local_pdf_path):
-                os.remove(local_pdf_path)
-
-    try:
-        agent = MasterVariantAgent()
-        car_name = agent.identify_car_model(brochure_text)
-        variants = agent.run(brochure_text, car_name=car_name)
-        return {"text": brochure_text, "variants": variants}
-    except Exception as e:
-        logger.error(f"Error identifying variants: {e}")
-        return None
-
 def save_chunk_locally(data, job_id):
     try:
         chunk_id = str(uuid.uuid4())[:8]
@@ -294,10 +253,48 @@ def save_chunk_locally(data, job_id):
         return None
 
 
-# ==============================================================================
-# WORKER LOGIC
-# ==============================================================================
-def process_single_feature(row_data, car_name, brochure_text, brochure_url, master_variants, converter_agent, validation_agent):
+# PIPELINE LOGIC
+
+def prepare_brochure_data(document_id):
+    brochure_text = fetch_brochure_text_from_api(document_id)
+    if not brochure_text: return None
+    try:
+        agent = MasterVariantAgent()
+        car_name = agent.identify_car_model(brochure_text)
+        variants = agent.run(brochure_text, car_name=car_name)
+        return {"text": brochure_text, "variants": variants, "car_name": car_name} # Added car_name
+    except Exception as e:
+        logger.error(f"Error identifying variants: {e}")
+        return None
+    
+
+
+def expand_to_db_variants(entry, real_db_variants):
+    """Maps a single extracted brochure variant to multiple specific DB variants."""
+    expanded_entries = []
+    base_variant = str(entry.get("variant", entry.get("variant_name", ""))).strip().lower()
+
+    matched_db_variants = [
+        db_v for db_v in real_db_variants 
+        if base_variant in str(db_v.get("variant_name", "")).lower()
+    ]
+   
+    if not matched_db_variants:
+        return [entry]
+    
+    for db_variant in matched_db_variants:
+        new_entry = dict(entry) # Deep copy
+        new_entry["variant_name"] = db_variant.get("variant_name")
+        new_entry["variant_id"] = db_variant.get("variant_id")
+        new_entry["engine_type"] = db_variant.get("engine_type", "")
+        new_entry["transmission_type"] = db_variant.get("transmission_type", "")
+        new_entry["drivetrain"] = db_variant.get("drivetrain", "")
+        new_entry["vehicle_model_name"] = db_variant.get("vehicle_model_name", "")
+        expanded_entries.append(new_entry)
+
+    return expanded_entries
+
+def process_single_feature(row_data, car_name, brochure_text, document_id, master_variants, converter_agent, validation_agent, real_db_variants):
     idx, row = row_data
     feature_info = row.to_dict()
     feature_name = feature_info.get("feature_name")
@@ -325,9 +322,10 @@ def process_single_feature(row_data, car_name, brochure_text, brochure_url, mast
             if isinstance(extracted_data_list, list): local_raw.extend(extracted_data_list)
             else: local_raw.append(extracted_data_list)
 
-            enriched_entries = process_batch_extraction(extracted_data_list, feature_info, car_name, brochure_url)
+            enriched_entries = process_batch_extraction(extracted_data_list, feature_info, car_name, document_id)
             
             for entry in enriched_entries:
+                # ... [Validation logic remains exactly the same as your current code until the break] ...
                 attempts = 0
                 status = "Pending"
                 validation_output = {}
@@ -339,7 +337,7 @@ def process_single_feature(row_data, car_name, brochure_text, brochure_url, mast
                     reasoning = str(validation_output.get("reasoning", "")).lower()
 
                     if status == "Value Mismatch":
-                        extracted_val = entry.get("feature_value") # Adjusted for new schema
+                        extracted_val = entry.get("feature_value") 
                         if (extracted_val is True) and ("yes" in reasoning) and (("contradict" in reasoning) or ("mismatch" in reasoning)):
                             status = "Validated" 
                             validation_output["status"] = "Validated"
@@ -369,8 +367,14 @@ def process_single_feature(row_data, car_name, brochure_text, brochure_url, mast
                         
                     if attempts >= MAX_CORRECTION_ATTEMPTS: break
                 
-                local_structured.append(entry)
-                local_validation.append({"entry": entry, "final_validation_report": validation_output})
+                # --- THE MAGIC EXPANSION HAPPENS HERE ---
+                expanded_variants = expand_to_db_variants(entry, real_db_variants)
+                
+                for exp_entry in expanded_variants:
+                    local_structured.append(exp_entry)
+                    local_validation.append({"entry": exp_entry, "final_validation_report": validation_output})
+                # ----------------------------------------
+                    
             success = True 
         except Exception as e:
             attempt_count += 1
@@ -378,34 +382,35 @@ def process_single_feature(row_data, car_name, brochure_text, brochure_url, mast
 
     return local_structured, local_validation, local_raw
 
-def process_brochure_chunk(brochure_url: str, features_chunk: list, cached_text: str = None, job_id: str = "unknown_job"):
+def process_brochure_chunk(document_id: str, features_chunk: list, cached_text: str = None, job_id: str = "unknown_job", real_db_variants: list = None, car_name: str = "Unknown_Car"):
     all_raw_extractions, all_structured_entries, all_validation_results = [], [], []
-    local_pdf_path = None
 
     try:
         master_variant_agent = MasterVariantAgent()
         converter_agent = ConverterAgent()
         validation_agent = ValidationAgent()
 
-        if cached_text:
-            brochure_text = cached_text
-        else:
-            local_pdf_path = download_file(brochure_url, TEMP_DIR)
-            brochure_text = process_brochure_to_structure(str(local_pdf_path))
-            
-        CAR_NAME = execute_with_retry(master_variant_agent.identify_car_model, brochure_text)
-        if not CAR_NAME or len(CAR_NAME) < 2: CAR_NAME = "Unknown_Car"
+        brochure_text = cached_text if cached_text else fetch_brochure_text_from_api(document_id)
         
-        master_variants = execute_with_retry(master_variant_agent.run, brochure_text, CAR_NAME)
+        # We now skip re-identifying the car name if it was passed from orchestrator
+        if car_name == "Unknown_Car":
+            car_name = execute_with_retry(master_variant_agent.identify_car_model, brochure_text)
+            if not car_name or len(car_name) < 2: car_name = "Unknown_Car"
         
+        master_variants = execute_with_retry(master_variant_agent.run, brochure_text, car_name)
+        
+        # Fallback fetch if running the worker directly without orchestrator
+        if real_db_variants is None:
+            real_db_variants = fetch_db_variants(car_name)
+
         rows_to_process = [(i, pd.Series(row_dict)) for i, row_dict in enumerate(features_chunk)]
 
         MAX_WORKERS = min(2, len(rows_to_process))
         with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             future_to_feature = {
                 executor.submit(
-                    process_single_feature, r_data, CAR_NAME, brochure_text, brochure_url, 
-                    master_variants, converter_agent, validation_agent
+                    process_single_feature, r_data, car_name, brochure_text, document_id, 
+                    master_variants, converter_agent, validation_agent, real_db_variants # Pass it down!
                 ): r_data for r_data in rows_to_process
             }
             for future in concurrent.futures.as_completed(future_to_feature):
@@ -418,28 +423,23 @@ def process_brochure_chunk(brochure_url: str, features_chunk: list, cached_text:
                     logger.error(f"Thread execution failed: {e}")
 
         final_result = {"structured": all_structured_entries, "validation": all_validation_results}
+        
         try:
-            logger.info(f"Initiating streaming upload for {len(all_structured_entries)} base entries...")
-            stream_upload_chunk(all_structured_entries, CAR_NAME)
+            logger.info(f"Initiating streaming upload for {len(all_structured_entries)} EXPANDED entries...")
+            stream_upload_chunk(all_structured_entries) # We don't need car_name here anymore!
         except Exception as e:
             logger.error(f"Failed to execute streaming upload: {e}")
 
-        # Continue saving to disk for backup / orchestrator harvesting
         save_chunk_locally(final_result, job_id)
         return final_result
 
     except Exception as e:
         if is_model_not_found_error(e): raise RuntimeError("MODEL_NOT_FOUND") from e
         else: raise e
-    finally:
-        if local_pdf_path and os.path.exists(local_pdf_path):
-            try: os.remove(local_pdf_path)
-            except Exception: pass
 
 
-
-def run_brochure_orchestrator(brochure_url, job_id=None, feature_limit=None):
-    if not brochure_url: return {"status": "error", "message": "Missing brochure_url"}
+def run_brochure_orchestrator(document_id, job_id=None, feature_limit=None):
+    if not document_id: return {"status": "error", "message": "Missing document_id"}
 
     if not job_id:
         job_id = str(uuid.uuid4())
@@ -450,7 +450,7 @@ def run_brochure_orchestrator(brochure_url, job_id=None, feature_limit=None):
     
     output_path = OUTPUT_DIR / f"Final_Extraction_{job_id}.json"
 
-    # Recover orphaned partials
+   
     partials_root = OUTPUT_DIR / "partials"
     if partials_root.exists():
         for job_folder in partials_root.iterdir():
@@ -473,7 +473,6 @@ def run_brochure_orchestrator(brochure_url, job_id=None, feature_limit=None):
     df = pd.read_csv(MASTER_CSV_URL)
     df = df.dropna(subset=["feature_name"]).fillna("") 
     
-    # ---> NEW: Conditional limit logic <---
     if feature_limit is not None:
         feature_limit = int(feature_limit)
         df = df.head(feature_limit)
@@ -482,13 +481,16 @@ def run_brochure_orchestrator(brochure_url, job_id=None, feature_limit=None):
         logger.info(f"📋 Configuration set to process ALL {len(df)} features from CSV.")
         
     all_feature_rows = df.to_dict("records")
-    logger.info(f"📋 Configuration set to process top {feature_limit} features from CSV.")
 
-    prep_data = prepare_brochure_data(brochure_url)
-    if not prep_data: return {"status": "failed", "error": "Dispatcher failed to extract text."}
+    prep_data = prepare_brochure_data(document_id)
+    if not prep_data: return {"status": "failed", "error": "Dispatcher failed to extract text from API."}
     
     extracted_text = prep_data["text"]
     detected_variants = [str(v).strip() for v in prep_data["variants"] if v]
+    car_name = prep_data["car_name"]
+
+    logger.info(f"🔍 Fetching Real DB Variants for {car_name}...")
+    real_db_variants = fetch_db_variants(car_name)
 
     retry_attempt = 0
     while retry_attempt < MAX_FINAL_RETRY:
@@ -522,14 +524,16 @@ def run_brochure_orchestrator(brochure_url, job_id=None, feature_limit=None):
 
         for chunk in chunked_retries:
             retry_jobs.append({
-                "task": "brochure_worker_task", # Maps to parallel_task.py registration
+                "task": "brochure_worker_task", 
                 "service": "brochure-pipeline",
                 "args": [],
                 "kwargs": {
-                    "brochure_url": brochure_url,
+                    "document_id": document_id,
                     "features_chunk": chunk,
                     "job_id": job_id, 
-                    "cached_text": extracted_text  
+                    "cached_text": extracted_text,
+                    "real_db_variants": real_db_variants, 
+                    "car_name": car_name                  
                 }
             })
             
@@ -554,10 +558,6 @@ def run_brochure_orchestrator(brochure_url, job_id=None, feature_limit=None):
         retry_attempt += 1
 
     final_results = safe_read_json(output_path)
-    
-    # Optional: trigger pipeline_uploader here automatically
-    # from pipeline_uploader import expand_and_upload
-    # expand_and_upload(str(output_path), car_name)
 
     return {
         "status": "success",
