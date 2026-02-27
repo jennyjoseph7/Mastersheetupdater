@@ -39,6 +39,8 @@ def post_session_process(*args, **kwargs):
     :return: The result of the task.
     """
     session_id = kwargs.get("session_id")
+    mlogger.info("post_session_process called with session_id == {}".format(session_id))
+    
     if not session_id:
         mlogger.info("session_id not passed in kwargs")
         yield from yield_error("error","session_id not passed in kwargs",*args, **kwargs)
@@ -104,6 +106,7 @@ def post_session_process(*args, **kwargs):
     
     updated_lead_data = get_disposition(session_id,session_data) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
     mlogger.info("got disposition as == {}".format(updated_lead_data))
+    
     session_update_data = {"disposition":updated_lead_data.get("disposition"),"disposition_detail":updated_lead_data.get("disposition_detail")}
 
     if sentiment_score != -1:
@@ -701,13 +704,21 @@ def get_disposition(session_id, session_data_cache):
     campaign_objective = campaign_data.get("campaign_objective")
     campaign_purpose = campaign_data.get("purpose")
     campaign_description = campaign_data.get("campaign_description")
-    message_history = session_data_cache.get("messages")
+    messages = session_data_cache.get("messages")
+    message_history = []
+    for message in messages:
+        mlogger.info("message in get_disposition -  {}".format(message))
+        if "intent" in message and message.get("intent") == "llm_response":
+            message_history.append({"role" : "me", "message":message.get("message","")})
+        else:
+            message_history.append({"role" : "customer", "message":message.get("message","")})
+    mlogger.info("message_history in get_disposition -  {}".format(message_history))
     campaign_type = campaign_data.get("campaign_type")
     example_disposition_response =  """{
         "disposition": "converted" or "engaged",
         "disposition_detail": "choose from list above based on history of conversation",
         "prioritization_score" : "number_values_from_0_to_100",
-        "prioritization_category" : "COMPLETE, HOT or WARM or COOL or COLD or INACTIVE"
+        "prioritization_category" : "COMPLETE or HOT or WARM or COOL or COLD or INACTIVE"
     }"""
     disp_details_options = [
                 "Language barrier",
@@ -777,12 +788,14 @@ def get_disposition(session_id, session_data_cache):
     Possible values for disposition_detail:
     {disp_details_options}
     Only pick ONE value from this above list for disposition details.
+
+    The disposition and disposition detail is for the customer and their intent shown in the conversation history.
     Special Cases:-
     - if the user has asked for a callback or requested to speak with a human or a phone call in any way without completing the objective of the campaign then the Disposition Detail would be = 'Callback Requested'.
     Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
     Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
     do NOT prepend labels (like "json"). Output only valid JSON.
-
+    Incase you detect that the messages from the user are from a Voice Mail then disposition should be "engaged" and disposition detail should be "Voicemail".
     Your response should be in the following JSON format:
     {example_disposition_response}
     """
@@ -1091,3 +1104,47 @@ def set_feedback(*args, **pass_kwargs):
     
     
     pass
+
+@gryd.is_a_task()
+def post_session_processes(*args, **kwargs):
+    '''
+    This task is called to post process the session data once it is over.
+    It can be called with session_ids, campaign_id or dealership_id.
+    If session_ids is passed, it will call post_session_process for each session_id.
+    If campaign_id is passed, it will fetch all session_ids with campaign_id and call post_session_process for each session_id.
+    If dealership_id is passed, it will fetch all session_ids with dealership_id and call post_session_process for each session_id.
+    :param session_ids: The list of session_ids to be post processed
+    :param campaign_id: The campaign_id to be post processed
+    :param dealership_id: The dealership_id to be post processed
+    :return: The result of the task
+    '''
+    mlogger.info("post_session_processes called with kwargs == {}".format(kwargs))
+    if not kwargs.get("session_ids") and not kwargs.get("campaign_id") and not kwargs.get("dealership_id"):
+        yield from yield_error("error","session_id not found",*args, **kwargs)
+        return
+    if "session_ids" in kwargs and len(kwargs.get("session_ids",[])) == 0:
+        yield from yield_error("error","session_ids not found",*args, **kwargs)
+        return
+    if "session_ids" in kwargs and len(kwargs.get("session_ids",[])) > 0:
+        session_ids = kwargs.get("session_ids")
+        for session_id in session_ids:
+            yield from post_session_process(session_id=session_id)
+        return
+    if "campaign_id" in kwargs:
+        with get_pg_connector() as pg:
+            session_ids = list(pg.list("session",{"campaign_id":kwargs.get("campaign_id")}))
+            mlogger.info("running post_lead_process for session_ids == {}".format(session_ids))
+            for session_data in session_ids:
+                if session_data.get("status") not in ["busy"]:
+                    mlogger.info("running post_lead_process for session_id == {} with status == {}".format(session_data.get("session_id"),session_data.get("status")))
+                    yield from post_session_process(session_id=session_data.get("session_id"))
+        return
+    if "dealership_id" in kwargs:
+        with get_pg_connector() as pg:
+            session_ids = list(pg.list("session",{"dealership_id":kwargs.get("dealership_id")}))
+            mlogger.info("running post_lead_process for session_ids == {}".format(session_ids))
+            for session_data in session_ids:
+                if session_data.get("status") not in ["busy"]:
+                    mlogger.info("running post_lead_process for session_id == {} with status == {}".format(session_data.get("session_id"),session_data.get("status")))
+                    yield from post_session_process(session_id=session_data.get("session_id"))
+        return

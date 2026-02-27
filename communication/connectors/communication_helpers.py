@@ -111,13 +111,24 @@ def handle_session_logic(phone_number, channel=None,campaign_details=None, from_
 
             campaign_model= "post_sales_campaign" if campaign_type == "post-sales" else "pre_sales_campaign"
             lead_model = "post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
-            
+            if lead_id and lead_model:
+                l=list(pg.list(lead_model,{f"{lead_model}_id": lead_id}))
+                if not l:
+                    logger.info(f"No lead found for lead_id: {lead_id} in model: {lead_model}")
+                l=l[0] if l else {}
+                l_person_name = l.get("person_name",None)
+                l_campaign_obj_name = l.get("campaign_objective_name",None)
+                l_campaign_name = l.get("campaign_name",None)
+
             payload.update({
                 "campaign_id": campaign_id,
                 "campaign_type": campaign_type,
                 "campaign_model": campaign_model,
                 "lead_id": lead_id,
-                "lead_model": lead_model
+                "lead_model": lead_model,
+                "person_name": l_person_name,
+                "campaign_objective_name": l_campaign_obj_name,
+                "campaign_name": l_campaign_name
             })
         else:
             logger.info(f"No existing campaign association for {phone_number}")
@@ -134,7 +145,7 @@ def handle_session_logic(phone_number, channel=None,campaign_details=None, from_
 
             payload.update({
                 "campaign_id": campaign_id,
-                "campaign_type": campaign_type,
+                "campaign_type": campaign_type
             })
 
         if campaign_id: 
@@ -144,6 +155,8 @@ def handle_session_logic(phone_number, channel=None,campaign_details=None, from_
             if campaign_data:
                 c_data = campaign_data[0]
                 dealership_id = c_data.get("dealership_id")
+                payload["campaign_objective_name"] = c_data.get("campaign_objective_name")
+                payload["campaign_name"] = c_data.get("campaign_name")
                 payload["dealership_id"] = dealership_id
 
                 # get credentials for dealership (skip if "dave")
@@ -232,8 +245,8 @@ def get_or_create_session(data,channel=None):
             if (new_campaign_id != old_campaign_id):
                 logger.info("There is a new triggered campaign for this user. Since there is an existing session, we are ending the existing(old) session and creating a new session..")
                 logger.info(f"OLD SESSIONID--{sessions[0].get('session_id')}")
-                # end the old session
-                end_session(**{"session_id":sessions[0].get("session_id")})
+                # end the old session also check if session end_time
+                end_session(**{"session_id":sessions[0].get("session_id"),"pg":pg})
                 # create new session
                 s=create_new_session(data,channel)
                 return s
@@ -261,20 +274,32 @@ def end_session(*args, **kwargs):
     """
     session_id=kwargs.get("session_id")
     additional_dict=kwargs.get("additional_dict",{})
+    pg=kwargs.get("pg",None)
     additional_dict["session_live"] = additional_dict.get("session_live", False)
     additional_dict["status"] = additional_dict.get("status", "completed")
     additional_dict["end_time"] = additional_dict.get("end_time", time.time())
 
     logger.info(f"Ending session with session_id: {session_id}")
-    with get_pg_connector() as pg:
-        pg.update("session","session_id",session_id,additional_dict)
-        update_session_data_in_lead(session_id,"completed")
+    def _do_db_work(pg_conn):
+        pg_conn.update("session", "session_id", session_id, additional_dict)
+        update_session_data_in_lead(
+            session_id,
+            "completed",
+            pg=pg_conn  
+        )
+
+    if pg:
+        _do_db_work(pg)
+    else:
+        with get_pg_connector() as pg_conn:
+            _do_db_work(pg_conn)
     logger.info(f"Calling post session process task for session_id: {session_id}")
     # post_session_process(**{"session_id":session_id})
     gryd.create_async_task("post_session_process",AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,args=[],kwargs={"session_id":session_id})
     logger.info(f"Session with session_id: {session_id}. Has been ended.")
         
 def create_new_session(data,channel=None):
+    logger.info(f"Creating new session for user_id: {data.get('user_id')} and data: {json.dumps(data,indent=4)}")
     with get_pg_connector() as pg:
         new_session = {
             **data,
@@ -284,11 +309,14 @@ def create_new_session(data,channel=None):
             "disposition": "engaged",
             "campaign_type": data.get("campaign_type","inbound"),
             "campaign_id": data.get("campaign_id",'inbound'),
+            "person_name": data.get("person_name"),
+            "campaign_objective_name": data.get("campaign_objective_name"),
+            "campaign_name": data.get("campaign_name"),
             "created": time.time(),
             "updated": time.time(),
             "start_time": time.time()
         }
-        
+                
         data["updated"] = time.time()
         session_id=generate_uid(data)
         s= pg.update("session","session_id",session_id,new_session)
@@ -303,21 +331,22 @@ def create_new_session(data,channel=None):
         return s 
 
 
-def update_session_data_in_lead(session_id,status):
-    with get_pg_connector() as pg:
-        session_data = list(pg.list("session", {"session_id": session_id}))
-        if not session_data:
-            logger.info(f"Could not find session with session_id: {session_id}")
-        session_data = session_data[0]
-        lead_id = session_data.get("lead_id")
-        campaign_type = session_data.get("campaign_type")
-        last_interaction_time = session_data.get("last_response_time",None)
-        if lead_id:
-            lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
-            lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
-            logger.info(f"Updating session data in lead with session_id: {session_id} and lead_id: {lead_id}")
-            pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
-            logger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
+def update_session_data_in_lead(session_id,status,pg=None):
+    if not pg:
+        logger.error("Postgres connection is required to update session data in lead.")
+        return
+    session_data = list(pg.list("session", {"session_id": session_id}))
+    if not session_data:
+        logger.info(f"Could not find session with session_id: {session_id}")
+    session_data = session_data[0]
+    lead_id = session_data.get("lead_id")
+    campaign_type = session_data.get("campaign_type")
+    last_interaction_time = session_data.get("last_response_time",None)
+    if lead_id:
+        lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
+        lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
+        pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
+        logger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
 
 def get_or_create_person(phone_number):
     """Return person object; create if not exists."""

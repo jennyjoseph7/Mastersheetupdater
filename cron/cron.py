@@ -49,8 +49,8 @@ def overall_campaign_summary():
             _fetch=False
         )
 
-        # Count updated rows (force BIGINT)
-        updated_rows = int(list(
+        # Count updated rows
+        row = next(
             pg.yield_results(
                 """
                 SELECT COUNT(*)::BIGINT
@@ -58,15 +58,21 @@ def overall_campaign_summary():
                 WHERE updated >= to_timestamp(%s / 1000.0)
                 """,
                 (before,)
-            )
-        )[0][0])
+            ),
+            None
+        )
+
+        updated_rows = int(row[0]) if row else 0
 
         # Count total rows (force BIGINT)
-        total_rows = int(list(
+        row = next(
             pg.yield_results(
                 "SELECT COUNT(*)::BIGINT FROM campaign_summary"
-            )
-        )[0][0])
+            ),
+            None
+        )
+
+        total_rows = int(row[0]) if row else 0
 
         if updated_rows > 0:
             mlogger.info(
@@ -98,21 +104,6 @@ def template_summary():
         )
         print(f"[CRON] update_template_summary row count = {rows}")
         return rows
-
-# @gryd.is_a_task(function_name="performance_summary")
-# def performance_summary():
-#     with get_pg_connector() as pg:
-#         pg.execute_write(
-#             "CALL run_campaign_performance_summary();",
-#             _fetch=False
-#         )
-#         rows = list(
-#             pg.yield_results(
-#                 "SELECT COUNT(*) FROM campaign_performance_summary;"
-#             )
-#         )
-#         print(f"[CRON] update_campaign_performance_summary row count = {rows}")
-#         return rows
 
 @gryd.is_a_task(function_name="performance_summary")
 def performance_summary():
@@ -349,7 +340,7 @@ def check_inactive_sessions(*args, **kwargs):
                 )
 
                 # ending the session --------
-                end_session(session_id=session_id)
+                end_session(session_id=session_id, pg=pg)
             else:
                 mlogger.info(
                     f"Session {session_id} still active "
@@ -357,7 +348,7 @@ def check_inactive_sessions(*args, **kwargs):
                 )
         mlogger.info(f"Other channel counts skipped: {len(other_channels)}")
         mlogger.info("************************************************")
-
+        return 
 def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None):
     conditions = [] 
     params = ()
