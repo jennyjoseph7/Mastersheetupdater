@@ -23,6 +23,7 @@ export START_AGENTS=${START_AGENTS:-0}
 export START_WORKERS=${START_WORKERS:-0}
 export DEFAULT_WORKERS=${DEFAULT_WORKERS:-0}
 export SERVER_PORT=${SERVER_PORT:-0}
+export PRIMARY=${PRIMARY:-0}
 
 process_config=`cat start_worker_config.json`
 
@@ -120,7 +121,11 @@ function start_default_workers() {
 			if [ $stat != 0 ];then
 				echo "Process exited or not started. Starting."
 				echo "Starting Cron Worker in BG. Logs are written to ${LOGDIR}/${a}_stderr.log and ${LOGDIR}/${a}_stdout.log"
-				nohup cron_worker --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+				if [ $PRIMARY == 0 ];then
+					nohup cron_worker 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+				else
+					nohup cron_worker --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+				fi
 				w_pid=$!
 				echo "PID is $w_pid"
 				echo $w_pid > $a.pid
@@ -161,7 +166,11 @@ function start_worker_in_bg() {
 					if [ $stat != 0 ];then
 						echo "Process exited or not started. Starting."
 						echo "Setting up $WORKER_NAME in BG. Logs are written to ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stderr.log and ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stdout.log"
-						nohup $worker_path -m agents/$WORKER_ENTRYPOINT -n $WORKER_PARALLEL_THREADS --shutdown-time=$WORKER_SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stderr.log &
+						if [ $PRIMARY == 0 ];then
+							nohup $worker_path -m agents/$WORKER_ENTRYPOINT -n $WORKER_PARALLEL_THREADS --shutdown-time=$WORKER_SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stderr.log &
+						else
+							nohup $worker_path -m agents/$WORKER_ENTRYPOINT -n $WORKER_PARALLEL_THREADS --shutdown-time=$WORKER_SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stderr.log &
+						fi
 						w_pid=$!
 						echo $w_pid > ${WORKER_NAME}_${WORKER_FNAME}.pid
 					else
@@ -197,7 +206,11 @@ function start_worker_in_bg() {
 	
 					if [ $stat != 0 ];then
 						echo "Setting up $WORKER_NAME - '$WORKER_ENTRYPOINT' in BG. Logs are written to ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stderr.log and ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stdout.log"
-						nohup $worker_path -m $WORKER_NAME/$WORKER_ENTRYPOINT -n $WORKER_PARALLEL_THREADS --shutdown-time=$WORKER_SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stderr.log &
+						if [ $PRIMARY == 0 ];then
+							nohup $worker_path -m $WORKER_NAME/$WORKER_ENTRYPOINT -n $WORKER_PARALLEL_THREADS --shutdown-time=$WORKER_SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stderr.log &
+						else
+							nohup $worker_path -m $WORKER_NAME/$WORKER_ENTRYPOINT -n $WORKER_PARALLEL_THREADS --shutdown-time=$WORKER_SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stdout.log 2>> ${LOGDIR}/${WORKER_NAME}_${WORKER_FNAME}_stderr.log &
+						fi
 						w_pid=$!
 						echo $w_pid > ${WORKER_NAME}_${WORKER_FNAME}.pid
 					else
