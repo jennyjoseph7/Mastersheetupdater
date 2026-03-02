@@ -706,7 +706,7 @@ def get_disposition(session_id, session_data_cache):
     campaign_description = campaign_data.get("campaign_description",campaign_data.get("campaign_objective_description"))
     messages = session_data_cache.get("messages")
     p_steps = campaign_data.get("purpose_steps",[])
-    purpose_steps=f"These are the mandatory steps that need to be completed for the campaign purpose to be achieved - {', '.join(p_steps)}" if p_steps else ""
+    purpose_steps=f"These are the mandatory steps that need to be completed for the campaign purpose to be achieved - {', '.join(p_steps)} .If these steps are met in the conversation history with the customer. Then mark the disposition detail as 'converted'." if p_steps else ""
     message_history = []
     for message in messages:
         mlogger.info("message in get_disposition -  {}".format(message))
@@ -954,7 +954,7 @@ def get_extra_data(session_id,session_data_cache):
     do NOT prepend labels (like "json"). Output only valid JSON.
     """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
-    mlogger.info("got extra data response as ===== {}".format(resp))
+    mlogger.info("got extra data response as ===== {} --{}".format(resp,type(resp)))
     if resp and isinstance(resp,str):
         updated_dict = hp.json.loads(resp)
     mlogger.info("getting extra data summary for campaign_type {} and updated_dict {}".format(campaign_type,updated_dict))
