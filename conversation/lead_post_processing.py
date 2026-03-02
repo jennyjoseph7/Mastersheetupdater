@@ -106,7 +106,7 @@ def post_session_process(*args, **kwargs):
     
     updated_lead_data = get_disposition(session_id,session_data) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
     mlogger.info("got disposition as == {}".format(updated_lead_data))
-
+    
     session_update_data = {"disposition":updated_lead_data.get("disposition"),"disposition_detail":updated_lead_data.get("disposition_detail")}
 
     if sentiment_score != -1:
@@ -138,8 +138,9 @@ def post_session_process(*args, **kwargs):
     
     if campaign_type == "pre_sales":
         with get_pg_connector() as pg:
+            mlogger.info("updating person == {}".format(user_or_vehicle_data))
             pg.update("person","user_id",session_data.get("user_data").get("user_id"),user_or_vehicle_data)
-
+    
     with get_pg_connector() as pg:
         updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
         pg.update("session","session_id",session_id,session_update_data)
@@ -175,7 +176,7 @@ def get_summary(session_id,session_data):
             Provide the Summary.
         """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
-    mlogger.info("get_appt_date_time_purpose prompt response ======= {}".format(resp))
+    mlogger.info("get_summary prompt response ======= {}".format(resp))
     return resp
 def get_lead_variables(campaign_type):
     """
@@ -706,7 +707,7 @@ def get_disposition(session_id, session_data_cache):
     campaign_description = campaign_data.get("campaign_description",campaign_data.get("campaign_objective_description"))
     messages = session_data_cache.get("messages")
     p_steps = campaign_data.get("purpose_steps",[])
-    purpose_steps=f"These are the mandatory steps that need to be completed for the campaign purpose to be achieved - {', '.join(p_steps)} .If these steps are met in the conversation history with the customer. Then mark the disposition detail as 'converted'." if p_steps else ""
+    purpose_steps=f"These are the mandatory steps that need to be completed for the campaign purpose to be achieved - {', '.join(p_steps)} . If these steps are met in the conversation history with the customer. Then mark the disposition detail as 'Converted'." if p_steps else ""
     message_history = []
     for message in messages:
         mlogger.info("message in get_disposition -  {}".format(message))
