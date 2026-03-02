@@ -83,7 +83,11 @@ import { AILoader } from "@/components/ui/ai-loader";
 import { Separator } from "@/components/ui/separator";
 
 // --- HELPERS & CONSTANTS ---
-
+const STELLANTIS_AGENT_MAP: Record<string, string> = {
+  english: "agent_5701ka8618cbfxcbdp4wg6xb3x23",
+  hindi: "agent_7601kj7ephbneq9sysg995ezbsny",
+  tamil: "agent_5401kjnevnhte8y9vkvb2c04ehx5",
+};
 const getObjectiveIcon = (objectiveId: string, title: string) => {
   const id = objectiveId?.toLowerCase() || "";
   const titleLower = title?.toLowerCase() || "";
@@ -165,11 +169,13 @@ const channels = [
   },
   {
     id: "voice",
+    name: "Voice Call",
     icon: <Phone className="h-6 w-6" />,
     costPerUnit: 8.56,
   },
   {
     id: "rcs",
+    name: "RCS",
     icon: <MessageSquareText className="h-6 w-6" />,
     costPerUnit: 0.9525,
   },
@@ -226,7 +232,11 @@ function CampaignCreateContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isDealershipSetupComplete } = useAuth();
-
+  // Voice Configuration States
+  const [voiceStartLanguage, setVoiceStartLanguage] = useState("english");
+  const [voiceAgentId, setVoiceAgentId] = useState("");
+// Auto-fill voice agent ID for stellantis-india
+ 
   // Redirect if dealership setup is not complete
   useEffect(() => {
     if (isDealershipSetupComplete === false) {
@@ -337,7 +347,12 @@ function CampaignCreateContent() {
   }, [duration.start]);
 
   // --- Initialization ---
-
+ useEffect(() => {
+    const dealershipId = getDealershipId();
+    if (dealershipId === "stellantis-india" && selectedChannels.includes("voice")) {
+      setVoiceAgentId(STELLANTIS_AGENT_MAP[voiceStartLanguage] || "");
+    }
+  }, [voiceStartLanguage, selectedChannels]);
   useEffect(() => {
     const isNew = searchParams.get("new");
     if (isNew === "true") {
@@ -600,16 +615,22 @@ useEffect(() => {
       return sum + totalAudience * (channelDef?.costPerUnit || 0);
     }, 0);
   };
-
-  const handleProceed = async () => {
+const handleProceed = async () => {
     if (!campaignName || !duration.start || !duration.end) {
       alert("Please fill in Campaign Name and Duration.");
       return;
     }
 
+    // NEW VALIDATION: Check if Voice is selected but agent ID is missing
+    // if (selectedChannels.includes("voice") && !voiceAgentId) {
+    //   alert("Please provide a Voice Agent ID for the Voice Call channel.");
+    //   return;
+    // }
+
     setIsPostingCampaign(true);
 
-    const commonPayload = {
+    // Make this an explicit type so we can append custom keys
+    const commonPayload: Record<string, any> = {
       campaign_name: campaignName,
       campaign_description: campaignDescription,
       campaign_status: "Drafted",
@@ -630,7 +651,14 @@ useEffect(() => {
       campaign_user_source: "file",
     };
 
+    // NEW LOGIC: Append Voice configs if voice is selected
+    if (selectedChannels.includes("voice")) {
+      commonPayload.voice_start_language = voiceStartLanguage;
+      commonPayload.voice_agent_id = voiceAgentId;
+    }
+
     try {
+      
       let endpoint = "";
       let finalPayload = {};
       const dealershipId = getDealershipId();
@@ -1323,6 +1351,42 @@ useEffect(() => {
                                 </Card>
                               ))}
                             </div>
+                            {/* NEW UI: Voice Call Configuration */}
+                            {selectedChannels.includes("voice") && (
+                              <div className="mt-6 space-y-4 p-4 border rounded-md bg-slate-50 dark:bg-slate-900/50">
+                                <h4 className="font-semibold flex items-center gap-2 text-sm">
+                                  <Phone className="h-4 w-4 text-primary" /> Voice Call Configuration
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div className="space-y-2">
+                                    <Label>Voice Start Language</Label>
+                                    <Select value={voiceStartLanguage} onValueChange={setVoiceStartLanguage}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select language" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="english">English</SelectItem>
+                                        <SelectItem value="hindi">Hindi</SelectItem>
+                                        <SelectItem value="tamil">Tamil</SelectItem>
+                                        <SelectItem value="marathi">Marathi</SelectItem>
+                                        <SelectItem value="telugu">Telugu</SelectItem>
+                                        <SelectItem value="kannada">Kannada</SelectItem>
+                                        <SelectItem value="bengali">Bengali</SelectItem>
+                                        <SelectItem value="gujarati">Gujarati</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Voice Agent ID</Label>
+                                    <Input
+                                      value={voiceAgentId}
+                                      onChange={(e) => setVoiceAgentId(e.target.value)}
+                                      placeholder="e.g. agent_..."
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
 
