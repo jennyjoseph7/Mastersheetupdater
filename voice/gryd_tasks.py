@@ -91,9 +91,9 @@ def trigger_voice_call(*args, **kwargs):
         "dave-ai-sociograph-solutions-india": ("tatatele", "agent_5701ka8618cbfxcbdp4wg6xb3x23"),
         "ambal-auto-india": ("tatatele", "agent_0501k747d7s6e3xv5t3xew1rn217")
     }
-
+    import json
     #TODO: Get agent number from dealership model and add in session_data in agent_number
-   
+    # logger.info(f"Received request to trigger voice call with args: {args}, kwargs: {json.dumps(kwargs,indent=4)}")
     user_data = kwargs.get("user_data", {})
     logger.info(f"Triggering voice call with user data: {user_data}")
 
@@ -215,13 +215,16 @@ def trigger_voice_call(*args, **kwargs):
     #     "channel": "voice_phone"
     # }).get("data", [])
 
+    # voice_id = user_data.get("voice_id",None)
+    voice_agent_id= user_data.get("voice_agent_id",None)
+    logger.info(f"Received Voice_agent_id from user data (i.e from campaign model): {voice_agent_id}")
     credentials = get_communication_credential(dealership_id = user_data.get("dealership_id"), channel = "voice_phone")
 
     logger.info(f"Credentials found for dealership_id {user_data.get('dealership_id')}: {credentials}")
 
     if credentials:
         provider = credentials.get("provider_name", "tatatele").replace("-", "").strip().lower()
-        session_data["agent_id"] = credentials.get("bot_name")
+        session_data["agent_id"] = voice_agent_id if voice_agent_id else credentials.get("bot_name")
         session_data["provider_credentials"] = {
             "tatatele_phone_number_api_key": credentials.get("auth_token")
         }
@@ -270,6 +273,7 @@ def trigger_voice_call(*args, **kwargs):
                 logger.info(f"No contact status object found yet for message_id: {session_data['session_id']}, waiting...")
                 continue
             latest = statuses[0]
+            logger.info(f"Latest contact status for message_id: {session_data['session_id']} is: {latest}")
             if latest["provider_status"] in ["attempted"]:
                 if time.time() > attempted_timeout:
                     logger.info(f"Call seems to be not connecting for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}. Ending session.")
