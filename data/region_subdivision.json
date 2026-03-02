@@ -2,8 +2,7 @@
     "name": "region_subdivision",
     "model_type": "default",
     "parents": [
-        "region",
-        "communication_credential"
+        "region"
     ],
     "attributes": [
         {
