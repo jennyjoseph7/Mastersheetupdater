@@ -2,7 +2,7 @@
     "webapp": {
         "port": 5000,
         "url_scheme": "http",
-        "api_threads": 2,
+        "api_threads": 4,
         "name": "app"
     },
     "agents": [
