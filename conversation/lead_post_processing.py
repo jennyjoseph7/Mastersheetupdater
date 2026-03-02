@@ -106,7 +106,7 @@ def post_session_process(*args, **kwargs):
     
     updated_lead_data = get_disposition(session_id,session_data) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
     mlogger.info("got disposition as == {}".format(updated_lead_data))
-    
+
     session_update_data = {"disposition":updated_lead_data.get("disposition"),"disposition_detail":updated_lead_data.get("disposition_detail")}
 
     if sentiment_score != -1:
@@ -703,8 +703,10 @@ def get_disposition(session_id, session_data_cache):
     campaign_data = session_data_cache.get("campaign_data")
     campaign_objective = campaign_data.get("campaign_objective")
     campaign_purpose = campaign_data.get("purpose")
-    campaign_description = campaign_data.get("campaign_description")
+    campaign_description = campaign_data.get("campaign_description",campaign_data.get("campaign_objective_description"))
     messages = session_data_cache.get("messages")
+    p_steps = campaign_data.get("purpose_steps",[])
+    purpose_steps=f"These are the mandatory steps that need to be completed for the campaign purpose to be achieved - {', '.join(p_steps)}" if p_steps else ""
     message_history = []
     for message in messages:
         mlogger.info("message in get_disposition -  {}".format(message))
@@ -773,6 +775,7 @@ def get_disposition(session_id, session_data_cache):
     You are a analyst bot that has the single purpose of looking at the conversation history with my customer and I and check if they completed the objective of my campaign. 
     I am running a campaign with the objective of {campaign_purpose if campaign_purpose else campaign_objective}.
     These are some details of the campaign - {campaign_description}.
+    {purpose_steps}
     I want to know if the purpose of the campaign was met by the customer.
     For example:
         If campaign is about booking a test drive check if the customer booked a test drive.
