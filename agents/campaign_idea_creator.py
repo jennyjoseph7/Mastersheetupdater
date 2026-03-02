@@ -530,52 +530,52 @@ def generate_campaign_idea(campaign_type, campaign_objective, dealership_idea=No
 
             logger.info("Posting to the dealership_idea db")
 
-            # try:
-            #     dim = gryd.base_model.Model('dealership_idea', AUTOCRM_APP_ENTERPRISE_ID)
-            #     logger.info(f"Posting result to model 'dealership_idea' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
-            #     dim.post(result)
-            #     logger.info("Post completed successfully!")
-            # except Exception as db_error:
-            #    logger.error(f"Failed posting to Gryd model: {db_error}")
+            try:
+                dim = gryd.base_model.Model('dealership_idea', AUTOCRM_APP_ENTERPRISE_ID)
+                logger.info(f"Posting result to model 'dealership_idea' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
+                dim.post(result)
+                logger.info("Post completed successfully!")
+            except Exception as db_error:
+               logger.error(f"Failed posting to Gryd model: {db_error}")
 
 
-            import json
+            # import json
 
 
-            url = "https://autobot-webapp-dev.gryd.in/gryd/db/object/dealership_idea"
+            # url = "https://autobot-webapp-dev.gryd.in/gryd/db/object/dealership_idea"
 
-            payload = json.dumps({
-              "ctas": result.get("ctas",[]),
-              "idea": result.get("idea",""),
-              "languages": result.get("languages",[]),
-              "urgency_hook": [
-                result.get("urgency_hook","")
-              ],
-              "campaign_name": result.get("campaign_name",""),
-              "campaign_tone": result.get("campaign_tone",""),
-              "campaign_type": result.get("campaign_type",""),
-              "dealership_id": dealership_id,
-              "campaign_offer": result.get("campaign_offer",""),
-              "campaign_tagline": result.get("campaign_tagline",""),
-              "campaign_objective": [
-                result.get("campaign_objective","")
-              ],
-              "campaign_description": result.get("campaign_description","")
-            })
-            headers = {
-              'Content-Type': 'application/json',
-              'X-GRYD-ENTERPRISE-ID': 'autocrm',
-              'X-GRYD-TOKEN': '53014452-7df1-351c-9b79-af13d3d6b92f',
-              'X-GRYD-SESSION-ID': '94b970d4-5c2b-3762-bf65-272901d0ad53',
-              'Accept': 'application/json',
-              'X-GRYD-ROLE': 'agent',
-              'X-GRYD-APPLICATION-ID': 'autocrm'
-            }
+            # payload = json.dumps({
+            #   "ctas": result.get("ctas",[]),
+            #   "idea": result.get("idea",""),
+            #   "languages": result.get("languages",[]),
+            #   "urgency_hook": [
+            #     result.get("urgency_hook","")
+            #   ],
+            #   "campaign_name": result.get("campaign_name",""),
+            #   "campaign_tone": result.get("campaign_tone",""),
+            #   "campaign_type": result.get("campaign_type",""),
+            #   "dealership_id": dealership_id,
+            #   "campaign_offer": result.get("campaign_offer",""),
+            #   "campaign_tagline": result.get("campaign_tagline",""),
+            #   "campaign_objective": [
+            #     result.get("campaign_objective","")
+            #   ],
+            #   "campaign_description": result.get("campaign_description","")
+            # })
+            # headers = {
+            #   'Content-Type': 'application/json',
+            #   'X-GRYD-ENTERPRISE-ID': 'autocrm',
+            #   'X-GRYD-TOKEN': '53014452-7df1-351c-9b79-af13d3d6b92f',
+            #   'X-GRYD-SESSION-ID': '94b970d4-5c2b-3762-bf65-272901d0ad53',
+            #   'Accept': 'application/json',
+            #   'X-GRYD-ROLE': 'agent',
+            #   'X-GRYD-APPLICATION-ID': 'autocrm'
+            # }
 
-            response = requests.request("POST", url, headers=headers, data=payload)
-            logger.info(f"posted : {payload}")
+            # response = requests.request("POST", url, headers=headers, data=payload)
+            # logger.info(f"posted : {payload}")
 
-            print(response.text)
+            # print(response.text)
 
         
         return result
