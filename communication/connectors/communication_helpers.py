@@ -388,8 +388,8 @@ def generate_uid(data):
         data_str = str(data)
 
     uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
-
-    return uid.hex[:16]   # 16 characters
+    uid=str(uid)
+    return uid 
 
 def get_communication_credential(dealership_id="daveai", channel=None):
     logger.info(f"Getting communication credential for dealership - {dealership_id}")
