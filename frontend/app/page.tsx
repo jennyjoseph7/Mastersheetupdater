@@ -142,7 +142,7 @@ export default function CampaignDashboard() {
   // Fetch campaigns by type and page
  // In page.tsx
 
-// ... existing imports and ITEMS_PER_PAGE constant ...
+ 
 
 // Replace your existing fetchCampaigns function with this:
 const fetchCampaigns = async (type: string, page: number) => {
@@ -728,7 +728,7 @@ const totalPages = pageCount;
               Refresh
             </Button>
             <Button
-              className="gap-2"
+              className="gap-2 cursor-pointer"
               onClick={() => {
                 if (isDealershipSetupComplete === false) {
                   router.push("/dealership/update-details");
