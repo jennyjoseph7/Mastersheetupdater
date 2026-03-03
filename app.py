@@ -8,6 +8,7 @@ from db_routes import db_routes, ai_service_app
 from voice.voice.providers.twilio import app as twilio_routes
 from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_routes
 from voice.voice.providers.elevanlab import app as elevanlab_routes
+from cohorts_new.routes.routes import cohort_bp, gryd_orchestration_bp
 import os
 from flask import Flask,request,jsonify
 from config import *
@@ -180,6 +181,9 @@ app.register_blueprint(elevanlabs_tatatele_routes)
 app.register_blueprint(twilio_routes)
 app.register_blueprint(elevanlab_routes)
 
+
+app.register_blueprint(cohort_bp)
+app.register_blueprint(gryd_orchestration_bp)
 
 
 def verify_webhook_signature(payload_body: bytes, signature: str, secret: str) -> bool:
