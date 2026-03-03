@@ -233,7 +233,7 @@ function CampaignCreateContent() {
   const searchParams = useSearchParams();
   const { isDealershipSetupComplete } = useAuth();
   // Voice Configuration States
-  const [voiceStartLanguage, setVoiceStartLanguage] = useState("english");
+  const [voiceStartLanguage, setVoiceStartLanguage] = useState("en");
   const [voiceAgentId, setVoiceAgentId] = useState("");
 // Auto-fill voice agent ID for stellantis-india
  
