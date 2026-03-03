@@ -84,9 +84,9 @@ import { Separator } from "@/components/ui/separator";
 
 // --- HELPERS & CONSTANTS ---
 const STELLANTIS_AGENT_MAP: Record<string, string> = {
-  english: "agent_5701ka8618cbfxcbdp4wg6xb3x23",
-  hindi: "agent_7601kj7ephbneq9sysg995ezbsny",
-  tamil: "agent_5401kjnevnhte8y9vkvb2c04ehx5",
+  en: "agent_5701ka8618cbfxcbdp4wg6xb3x23",
+  hi: "agent_7601kj7ephbneq9sysg995ezbsny",
+  ta: "agent_5401kjnevnhte8y9vkvb2c04ehx5",
 };
 const getObjectiveIcon = (objectiveId: string, title: string) => {
   const id = objectiveId?.toLowerCase() || "";
@@ -1377,11 +1377,13 @@ const handleProceed = async () => {
                                         <SelectItem value="en">English</SelectItem>
                                         <SelectItem value="hi">Hindi</SelectItem>
                                         <SelectItem value="ta">Tamil</SelectItem>
-                                        <SelectItem value="marathi">Marathi</SelectItem>
-                                        <SelectItem value="telugu">Telugu</SelectItem>
-                                        <SelectItem value="kannada">Kannada</SelectItem>
-                                        <SelectItem value="bengali">Bengali</SelectItem>
-                                        <SelectItem value="gujarati">Gujarati</SelectItem>
+                                        <SelectItem value="ml">Malayalam</SelectItem>
+
+                                        <SelectItem value="mr">Marathi</SelectItem>
+                                        <SelectItem value="te">Telugu</SelectItem>
+                                        <SelectItem value="kn">Kannada</SelectItem>
+                                        <SelectItem value="bn">Bengali</SelectItem>
+                                        <SelectItem value="gu">Gujarati</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </div>
