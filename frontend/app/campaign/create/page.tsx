@@ -520,7 +520,7 @@ useEffect(() => {
             custom_objects: customObjects,
           },
         },
-        _timeout: 120,
+        _timeout: 180,
       };
 
       const data = await api(
