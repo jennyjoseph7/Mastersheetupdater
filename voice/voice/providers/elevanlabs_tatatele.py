@@ -977,7 +977,7 @@ def process():
     xx = gryd_tasks.post_billing_object("completed", session_id, duration)  # call it in async
 
     logger.info(f"Billing record created: {xx}")
-
+    logger.info(f"Received data from tatatele ---> {json.dumps(data, indent=4)} and summary --> {data.get('summary')}")
     session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time()))
     logger.info(f"Triggering post history and actions for session_id: {session_id}")
 
