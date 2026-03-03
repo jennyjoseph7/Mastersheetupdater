@@ -1374,9 +1374,9 @@ const handleProceed = async () => {
                                         <SelectValue placeholder="Select language" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        <SelectItem value="english">English</SelectItem>
-                                        <SelectItem value="hindi">Hindi</SelectItem>
-                                        <SelectItem value="tamil">Tamil</SelectItem>
+                                        <SelectItem value="en">English</SelectItem>
+                                        <SelectItem value="hi">Hindi</SelectItem>
+                                        <SelectItem value="ta">Tamil</SelectItem>
                                         <SelectItem value="marathi">Marathi</SelectItem>
                                         <SelectItem value="telugu">Telugu</SelectItem>
                                         <SelectItem value="kannada">Kannada</SelectItem>
