@@ -200,6 +200,7 @@ def get_next_delay(status: str, attempts: int, workflow_stage: dict):
         next_delay = next_delay * 2 ** (attempts - 1)
     elif next_delay_type == "linear":
         next_delay = next_delay * attempts
+    #TODO: Make sure the delay falls in the calling/messaging timeslot
     return next_delay
 
 def get_remaining_retries(workflow_stage: dict, attempts: int = 0):
@@ -309,6 +310,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
                 if disposition in ["engaged", "converted"]:
                     attempts /= workflow_stage.get('retries', 0) # We need to calculate attempts per contact.
                 next_delay = get_next_delay(highest_status, attempts, workflow_stage)
+                #TODO: If user has requested call-back, then we should get next delay from the lead follow_up_date attribue if available
                 next_retries = get_remaining_retries(workflow_stage, attempts)
                 if next_retries > 0:
                     return channel, channel_identifier, next_delay, None

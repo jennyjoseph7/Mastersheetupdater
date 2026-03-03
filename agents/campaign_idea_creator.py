@@ -16,14 +16,14 @@ if BASE_DIR not in sys.path:
 # PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # sys.path.insert(0, PROJECT_ROOT)
 
-from config import AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
+from config import AUTOCRM_AGENT_SERVICE_NAME, gryd, hp, AutocrmModel
 gryd.SERVICE = "autocrm-short-run-agent"
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 gryd.set_queue_manager()
 QUEUE_MANAGER = gryd.get_queue_manager(AUTOCRM_AGENT_SERVICE_NAME)
 
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
-
+m = AutocrmModel("dealership_idea")
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 
 class CampaignIdeaCreatorAgent(BaseAgent):
@@ -477,11 +477,38 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         picked = random.sample(records, sample_size)
 
         return picked
+    def post_to_model(self, result, dealership_id):
+        payload = {
+              "dealership_id": dealership_id,
+              "ctas": result.get("ctas",[]),
+              "idea": result.get("idea",""),
+              "languages": result.get("languages",[]),
+              "urgency_hook": [
+                result.get("urgency_hook","")
+              ],
+              "campaign_name": result.get("campaign_name",""),
+              "campaign_tone": result.get("campaign_tone",""),
+              "campaign_type": result.get("campaign_type",""),
+              "dealership_id": dealership_id,
+              "campaign_offer": result.get("campaign_offer",""),
+              "campaign_tagline": result.get("campaign_tagline",""),
+              "campaign_objective": [
+                result.get("campaign_objective","")
+              ],
+              "campaign_description": result.get("campaign_description","")
+            }
+        self.logger.info(f"Posting the following data to model: {json.dumps(payload, ensure_ascii=False, indent=2)}")
+        m.post(payload)
+        self.logger.info(f"posted to model successfully")
+        
+
 
     def run(self):
         """Executes generation and handles merging + optional posting."""
         if self.ai_generation is True:
             try:
+                if self.campaign_type not in ["pre-sales", "post-sales"]:
+                    raise ValueError(f"Unsupported campaign type: {self.campaign_type}")
                 fields, normalized_type = self.get_campaign_type_details()
                 final_data = self.source.copy()
 
@@ -491,6 +518,11 @@ class CampaignIdeaCreatorAgent(BaseAgent):
 
                 self.logger.info(f"Campaign generation completed successfully")
                 self.logger.info(f"Final result: {json.dumps(final_data, ensure_ascii=False, indent=2)}")
+
+                self.logger.info("Posting to model...")
+                if self.dealership_id:
+                    self.post_to_model(final_data, self.dealership_id)
+                    self.logger.info("Posted to model successfully!")
 
                 return final_data
 
@@ -514,69 +546,14 @@ def generate_campaign_idea(campaign_type, campaign_objective, dealership_idea=No
         dealership_idea = dealership_idea or {}
         updates = {
             'campaign_type': campaign_type,
-            'campaign_objective': campaign_objective
+            'campaign_objective': campaign_objective,
+            'dealership_id': dealership_id
         }
         for key, val in updates.items():
-            if val is not None:      
-                dealership_idea[key] = val
+            dealership_idea[key] = val
 
         agent = CampaignIdeaCreatorAgent(source=dealership_idea, logger=logger)
         result = agent.run()
-
-        dealership_id = dealership_idea.get("dealership_id",None)
-        
-        #Post to database if dealership_id provided
-        if dealership_id:
-
-            logger.info("Posting to the dealership_idea db")
-
-            # try:
-            #     dim = gryd.base_model.Model('dealership_idea', AUTOCRM_APP_ENTERPRISE_ID)
-            #     logger.info(f"Posting result to model 'dealership_idea' under enterprise '{AUTOCRM_APP_ENTERPRISE_ID}'")
-            #     dim.post(result)
-            #     logger.info("Post completed successfully!")
-            # except Exception as db_error:
-            #    logger.error(f"Failed posting to Gryd model: {db_error}")
-
-
-            import json
-
-
-            url = "https://autobot-webapp-dev.gryd.in/gryd/db/object/dealership_idea"
-
-            payload = json.dumps({
-              "ctas": result.get("ctas",[]),
-              "idea": result.get("idea",""),
-              "languages": result.get("languages",[]),
-              "urgency_hook": [
-                result.get("urgency_hook","")
-              ],
-              "campaign_name": result.get("campaign_name",""),
-              "campaign_tone": result.get("campaign_tone",""),
-              "campaign_type": result.get("campaign_type",""),
-              "dealership_id": dealership_id,
-              "campaign_offer": result.get("campaign_offer",""),
-              "campaign_tagline": result.get("campaign_tagline",""),
-              "campaign_objective": [
-                result.get("campaign_objective","")
-              ],
-              "campaign_description": result.get("campaign_description","")
-            })
-            headers = {
-              'Content-Type': 'application/json',
-              'X-GRYD-ENTERPRISE-ID': 'autocrm',
-              'X-GRYD-TOKEN': '53014452-7df1-351c-9b79-af13d3d6b92f',
-              'X-GRYD-SESSION-ID': '94b970d4-5c2b-3762-bf65-272901d0ad53',
-              'Accept': 'application/json',
-              'X-GRYD-ROLE': 'agent',
-              'X-GRYD-APPLICATION-ID': 'autocrm'
-            }
-
-            response = requests.request("POST", url, headers=headers, data=payload)
-            logger.info(f"posted : {payload}")
-
-            print(response.text)
-
         
         return result
         
