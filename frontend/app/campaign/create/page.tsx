@@ -84,9 +84,9 @@ import { Separator } from "@/components/ui/separator";
 
 // --- HELPERS & CONSTANTS ---
 const STELLANTIS_AGENT_MAP: Record<string, string> = {
-  english: "agent_5701ka8618cbfxcbdp4wg6xb3x23",
-  hindi: "agent_7601kj7ephbneq9sysg995ezbsny",
-  tamil: "agent_5401kjnevnhte8y9vkvb2c04ehx5",
+  en: "agent_5701ka8618cbfxcbdp4wg6xb3x23",
+  hi: "agent_7601kj7ephbneq9sysg995ezbsny",
+  ta: "agent_5401kjnevnhte8y9vkvb2c04ehx5",
 };
 const getObjectiveIcon = (objectiveId: string, title: string) => {
   const id = objectiveId?.toLowerCase() || "";
