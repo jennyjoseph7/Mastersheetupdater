@@ -1377,11 +1377,13 @@ const handleProceed = async () => {
                                         <SelectItem value="en">English</SelectItem>
                                         <SelectItem value="hi">Hindi</SelectItem>
                                         <SelectItem value="ta">Tamil</SelectItem>
-                                        <SelectItem value="marathi">Marathi</SelectItem>
-                                        <SelectItem value="telugu">Telugu</SelectItem>
-                                        <SelectItem value="kannada">Kannada</SelectItem>
-                                        <SelectItem value="bengali">Bengali</SelectItem>
-                                        <SelectItem value="gujarati">Gujarati</SelectItem>
+                                        <SelectItem value="ml">Malayalam</SelectItem>
+
+                                        <SelectItem value="mr">Marathi</SelectItem>
+                                        <SelectItem value="te">Telugu</SelectItem>
+                                        <SelectItem value="kn">Kannada</SelectItem>
+                                        <SelectItem value="bn">Bengali</SelectItem>
+                                        <SelectItem value="gu">Gujarati</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </div>
