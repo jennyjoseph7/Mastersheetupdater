@@ -507,6 +507,8 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         """Executes generation and handles merging + optional posting."""
         if self.ai_generation is True:
             try:
+                if self.campaign_type not in ["pre-sales", "post-sales"]:
+                    raise ValueError(f"Unsupported campaign type: {self.campaign_type}")
                 fields, normalized_type = self.get_campaign_type_details()
                 final_data = self.source.copy()
 
@@ -518,8 +520,9 @@ class CampaignIdeaCreatorAgent(BaseAgent):
                 self.logger.info(f"Final result: {json.dumps(final_data, ensure_ascii=False, indent=2)}")
 
                 self.logger.info("Posting to model...")
-                self.post_to_model(final_data, self.dealership_id)
-                self.logger.info("Posted to model successfully!")
+                if self.dealership_id:
+                    self.post_to_model(final_data, self.dealership_id)
+                    self.logger.info("Posted to model successfully!")
 
                 return final_data
 
