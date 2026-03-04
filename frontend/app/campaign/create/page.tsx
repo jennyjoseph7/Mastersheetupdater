@@ -84,9 +84,9 @@ import { Separator } from "@/components/ui/separator";
 
 // --- HELPERS & CONSTANTS ---
 const STELLANTIS_AGENT_MAP: Record<string, string> = {
-  english: "agent_5701ka8618cbfxcbdp4wg6xb3x23",
-  hindi: "agent_7601kj7ephbneq9sysg995ezbsny",
-  tamil: "agent_5401kjnevnhte8y9vkvb2c04ehx5",
+  en: "agent_5701ka8618cbfxcbdp4wg6xb3x23",
+  hi: "agent_7601kj7ephbneq9sysg995ezbsny",
+  ta: "agent_5401kjnevnhte8y9vkvb2c04ehx5",
 };
 const getObjectiveIcon = (objectiveId: string, title: string) => {
   const id = objectiveId?.toLowerCase() || "";
@@ -233,7 +233,7 @@ function CampaignCreateContent() {
   const searchParams = useSearchParams();
   const { isDealershipSetupComplete } = useAuth();
   // Voice Configuration States
-  const [voiceStartLanguage, setVoiceStartLanguage] = useState("english");
+  const [voiceStartLanguage, setVoiceStartLanguage] = useState("en");
   const [voiceAgentId, setVoiceAgentId] = useState("");
 // Auto-fill voice agent ID for stellantis-india
  
@@ -507,7 +507,7 @@ useEffect(() => {
 
       const payload = {
         args: [
-          campaignType === "presales" ? "pre-sale" : "post-sale",
+          campaignType === "presales" ? "pre-sales" : "post-sales",
           enhancedText,
         ],
         kwargs: {
@@ -520,7 +520,7 @@ useEffect(() => {
             custom_objects: customObjects,
           },
         },
-        _timeout: 120,
+        _timeout: 180,
       };
 
       const data = await api(
@@ -930,60 +930,69 @@ const handleProceed = async () => {
                   </div>
                 </div>
               )}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                  <Edit3 className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold leading-none tracking-tight">
-                    Required Attributes
-                  </h3>
-                </div>
-                {(selectedObjective === "new-car-launch" ||
-                  selectedObjective.includes("launch")) && (
-                  <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-md">
-                    <div className="space-y-2">
-                      <Label>
-                        Car Model <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        value={carModel}
-                        onChange={(e) => setCarModel(e.target.value)}
-                        placeholder="e.g. Grand Vitara"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>
-                        Launch Date <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        type="date"
-                        value={launchDate}
-                        onChange={(e) => setLaunchDate(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-                {selectedObjectiveData?.custom_campaign_attributes?.map(
-                  (attr: any, idx: number) => (
-                    <div key={idx} className="space-y-2">
-                      <Label>{attr.attribute_name}</Label>
-                      <Input
-                        placeholder={`Enter ${attr.attribute_name}`}
-                        value={attr.attribute_value || ""}
-                        onChange={(e) => {
-                          const u = [
-                            ...selectedObjectiveData.custom_campaign_attributes,
-                          ];
-                          u[idx].attribute_value = e.target.value;
-                          setSelectedObjectiveData({
-                            ...selectedObjectiveData,
-                            custom_campaign_attributes: u,
-                          });
-                        }}
-                      />
-                    </div>
-                  )
-                )}
-              </div>
+           {/* --- Replace the "Required Attributes" div with this conditional block --- */}
+
+{((selectedObjective === "new-car-launch" || selectedObjective.includes("launch")) || 
+  (selectedObjectiveData?.custom_campaign_attributes && selectedObjectiveData.custom_campaign_attributes.length > 0)) && (
+  <div className="space-y-4">
+    <div className="flex items-center gap-2 pb-2 border-b">
+      <Edit3 className="h-4 w-4 text-primary" />
+      <h3 className="font-semibold leading-none tracking-tight">
+        Required Attributes
+      </h3>
+    </div>
+
+    {/* Car Model & Launch Date Inputs */}
+    {(selectedObjective === "new-car-launch" ||
+      selectedObjective.includes("launch")) && (
+      <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-md">
+        <div className="space-y-2">
+          <Label>
+            Car Model <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            value={carModel}
+            onChange={(e) => setCarModel(e.target.value)}
+            placeholder="e.g. Grand Vitara"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>
+            Launch Date <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            type="date"
+            value={launchDate}
+            onChange={(e) => setLaunchDate(e.target.value)}
+          />
+        </div>
+      </div>
+    )}
+
+    {/* Dynamic Custom Attributes */}
+    {selectedObjectiveData?.custom_campaign_attributes?.map(
+      (attr: any, idx: number) => (
+        <div key={idx} className="space-y-2">
+          <Label>{attr.attribute_name}</Label>
+          <Input
+            placeholder={`Enter ${attr.attribute_name}`}
+            value={attr.attribute_value || ""}
+            onChange={(e) => {
+              const u = [
+                ...selectedObjectiveData.custom_campaign_attributes,
+              ];
+              u[idx].attribute_value = e.target.value;
+              setSelectedObjectiveData({
+                ...selectedObjectiveData,
+                custom_campaign_attributes: u,
+              });
+            }}
+          />
+        </div>
+      )
+    )}
+  </div>
+)}
             </div>
             <DialogFooter>
               <Button
@@ -1365,14 +1374,16 @@ const handleProceed = async () => {
                                         <SelectValue placeholder="Select language" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        <SelectItem value="english">English</SelectItem>
-                                        <SelectItem value="hindi">Hindi</SelectItem>
-                                        <SelectItem value="tamil">Tamil</SelectItem>
-                                        <SelectItem value="marathi">Marathi</SelectItem>
-                                        <SelectItem value="telugu">Telugu</SelectItem>
-                                        <SelectItem value="kannada">Kannada</SelectItem>
-                                        <SelectItem value="bengali">Bengali</SelectItem>
-                                        <SelectItem value="gujarati">Gujarati</SelectItem>
+                                        <SelectItem value="en">English</SelectItem>
+                                        <SelectItem value="hi">Hindi</SelectItem>
+                                        <SelectItem value="ta">Tamil</SelectItem>
+                                        <SelectItem value="ml">Malayalam</SelectItem>
+
+                                        <SelectItem value="mr">Marathi</SelectItem>
+                                        <SelectItem value="te">Telugu</SelectItem>
+                                        <SelectItem value="kn">Kannada</SelectItem>
+                                        <SelectItem value="bn">Bengali</SelectItem>
+                                        <SelectItem value="gu">Gujarati</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </div>
