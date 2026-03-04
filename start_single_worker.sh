@@ -109,6 +109,7 @@ function start_workers() {
 
 function main() {
     if [ $SETUP_WEBAPP == "True" ];then
+        echo "Setting up webapp."
 		WEBAPP_PORT=$SERVER_PORT
 		WEBAPP_URL_SCHEME=${URL_SCHEME:-https}
 		WEBAPP_API_THREADS=$PARALLEL_THREADS
@@ -141,6 +142,7 @@ function main() {
 			echo "Process execute-cron-continuous is running."
 		fi
     elif [ $START_WORKERS == "True" ];then
+        echo "Starting workers."
         start_workers
     fi
 
