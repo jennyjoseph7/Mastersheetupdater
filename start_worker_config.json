@@ -23,12 +23,6 @@
             "entry_point": "campaign_idea_creator.py",
             "parallel_threads": 1,
             "shutdown_time": 0
-        },
-        {
-            "name": "brochure_pipeline",
-            "entry_point": "brochure_task.py",
-            "parallel_threads":1,
-            "shutdown_time":0
         }
     ],
     "workers": [
@@ -79,6 +73,12 @@
             "entry_point": "spark.py",
             "parallel_threads": 1,
             "shutdown_time": 0
+        },
+        {
+            "name": "brochure_pipeline",
+            "entry_point": "brochure_task.py",
+            "parallel_threads":1,
+            "shutdown_time":0
         }
     ]
 }
