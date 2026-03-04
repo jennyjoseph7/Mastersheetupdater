@@ -119,7 +119,7 @@ function main() {
 
 	    app_pid=$!
 		echo $app_pid > app.pid
-        while [[ -n `jobs -l | grep $worker_pid` ]]; do sleep 300; done
+        while [[ -n `jobs -l | grep $app_pid` ]]; do sleep 300; done
     elif [ $SETUP_CRON_SCHEDULER == "True" ];then
         a=cron_scheduler
     	echo "Starting default workers - $a"
