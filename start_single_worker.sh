@@ -119,7 +119,7 @@ function main() {
 	    app_pid=$!
 		echo $app_pid > app.pid
         while [[ -n `jobs -l | grep $worker_pid` ]]; do sleep 300; done
-    else if [ $SETUP_CRON_SCHEDULER == "True" ];then
+    elif [ $SETUP_CRON_SCHEDULER == "True" ];then
         a=cron_scheduler
     	echo "Starting default workers - $a"
 		pid_filename=$a.pid
@@ -140,7 +140,7 @@ function main() {
 		else
 			echo "Process execute-cron-continuous is running."
 		fi
-    else if [ $START_WORKERS == "True" ]
+    elif [ $START_WORKERS == "True" ];then
         start_workers
     fi
 
@@ -169,6 +169,5 @@ function main() {
 		else
 			echo "Process cron_worker is running."
 		fi
-
     fi
 }
