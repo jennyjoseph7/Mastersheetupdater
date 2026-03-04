@@ -1,0 +1,8 @@
+filelock==3.24.3
+https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/ai_service/ai_service-0.0.7-py3-none-any.whl
+https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/gryd_worker/gryd_worker-0.5.0-py3-none-any.whl
+pandas==3.0.1
+pydantic==2.12.5
+pypdf==6.7.2
+python-dotenv==1.2.1
+Requests==2.32.5
