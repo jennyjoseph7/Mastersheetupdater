@@ -175,6 +175,16 @@ def get_vehicle_id(vehicle_model, row, missing_reason = None, logger = None):
                 row[k] = data[k]
             except Exception as e:
                 missing_reason.append(f"Failed to convert {k} to date-time: {str(e)}")
+    for k in ('customer_score', 'odometer_reading'):
+        # Tackle number type fields
+        if is_valid_value(row, k):
+            row[k] = int(row[k])
+            data[k] = row[k]
+    for k in ('purpose_of_visit',):
+        # Tackle list type fields
+        if is_valid_value(row, k):
+            row[k] = list(map(lambda x: x.strip(), row[k].split(',')))
+            data[k] = row[k]
     vehicles = vehicle_model.list(_as_option=True, _page_size=1, reg_number=row.get('reg_number'))
     if vehicles:
         vehicle_id = vehicles[0].get('vehicle_id')
@@ -232,9 +242,6 @@ def get_vehicle_id(vehicle_model, row, missing_reason = None, logger = None):
         ]:
         if is_valid_value(row, k):
             data[k] = row.get(k)
-    if is_valid_value(row, 'customer_score'):
-        row['customer_score'] = int(row['customer_score'])
-        data['customer_score'] = row['customer_score']
     if not data:
         missing_reason.append("No vehicle data found")
         return row, missing_reason
@@ -1978,12 +1985,13 @@ class VATCalculator:
 if __name__ == "__main__":
 
     #gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-south-india", "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/485b7cbc-55d5-44d2-b5b9-0e6d6e405f4c-692977e5_afinallead.csv", campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943", workshop_id = 12)    
-    for out in gryd_task_import_leads_from_csv(
-            "pre-sales", 
-            "sales-dealership1-india", 
-            "/Users/ggananth/Downloads/stellantis.csv", 
-            #campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
-            audience_name = "Stellantis - test data",
-            campaign_objective_id = "pre-sales-test-drive-booking"
-        ):    
-        print(hp.json.dumps(out, hp.json.OPT_INDENT_2))
+    #for out in gryd_task_import_leads_from_csv(
+    #        "pre-sales", 
+    #        "sales-dealership1-india", 
+    #        "/Users/ggananth/Downloads/stellantis.csv", 
+    #        #campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
+    #        audience_name = "Stellantis - test data",
+    #        campaign_objective_id = "pre-sales-test-drive-booking"
+    #    ):    
+    #    print(hp.json.dumps(out, hp.json.OPT_INDENT_2))
+    gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-india", "/Users/ggananth/Downloads/ambal_sample.csv", campaign_objective_id = "post-sales-service-reminder-ambal-auto-india", audience_name = "Ambal Sample")    
