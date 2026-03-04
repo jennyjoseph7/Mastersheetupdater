@@ -11,6 +11,7 @@ if [ ! -d $LOGDIR ];then
 fi
 
 export SETUP_WEBAPP=${SETUP_WEBAPP:-False}
+export START_WORKERS=${START_WORKERS:-False}
 export SETUP_CRON_SCHEDULER=${SETUP_CRON_SCHEDULER:-False}
 export SETUP_CRON_EXECUTER=${SETUP_CRON_EXECUTER:-False}
 # export RUN_IN_BG=True
