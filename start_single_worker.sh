@@ -95,12 +95,13 @@ function start_workers() {
 	export worker_path="worker"
 	echo "Container is set to true."
 	echo "Creating pid file."
-	echo FG > ./worker.pid	
+	echo FG > ./worker.pid
+	WORKER_FNAME=${WORKER_ENTRYPOINT%.*}
     if [ $PRIMARY == 0 ];then
-    	nohup $worker_path -m $WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+    	nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_FNAME}_stdout.log 2>> ${LOGDIR}/${WORKER_FNAME}_stderr.log &
         worker_pid=$!
 	else
-	    nohup $worker_path -m $WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+	    nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${WORKER_FNAME}_stdout.log 2>> ${LOGDIR}/${WORKER_FNAME}_stderr.log &
         worker_pid=$!
 	fi
 
