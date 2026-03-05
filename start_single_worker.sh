@@ -106,7 +106,9 @@ function start_workers() {
 	fi
 
     echo $worker_pid > ./worker.pid
-    while [[ -n `jobs -rl | grep $worker_pid` ]]; do sleep 1; done
+    while [[ -n `jobs -rl | grep $worker_pid` ]]; do sleep 1; echo `jobs -rl`; done
+    echo "Exitting.."
+    exit
 }
 
 function main() {
