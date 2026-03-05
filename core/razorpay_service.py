@@ -1,6 +1,10 @@
 import datetime
 import razorpay
 import autocrm_validator
+import sys, os
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
 
 from config import (
     RAZORPAY_KEY_ID,
@@ -52,33 +56,44 @@ def get_dealer_by_id(dealer_id: str):
 
 def create_credit_purchase(dealership_id: str, credits: int, currency="INR"):
 
-    from .core import VATCalculator, calculate_currency_rate
+    try:
+        from .core import VATCalculator, calculate_currency_rate
+    except ImportError:
+        from core import VATCalculator, calculate_currency_rate
     if not isinstance(credits, int) or credits <= 0:
         raise ValueError("Credits must be a positive integer")
 
     dealer = get_dealer_by_id(dealership_id)
 
+    final_discount_pct = 0.0
     if dealer.get("region_discount_percentage", 0) > 0:
         final_discount_pct = dealer["region_discount_percentage"]
 
+
     if dealer.get("discount_percentage", 0) > 0:
         final_discount_pct = dealer["discount_percentage"]
+    
 
-    currency_rate_task = calculate_currency_rate(args=[currency])
+    #currency_rate_task = calculate_currency_rate(args=[currency])
+    #currency_rate_task = calculate_currency_rate(currency)
 
-    currency_rate_obj = currency_rate_task.get()
-    unit_price = currency_rate_obj["rate"]
+    #currency_rate_obj = currency_rate_task.get()
+    #unit_price = currency_rate_obj["rate"]
+    unit_price = 200
 
     
-    vat_calculator = VATCalculator("india")
+    # vat_calculator = VATCalculator("india")
+    # print(f"Calculating final cost for credits={credits}, unit_price={unit_price}, discount={final_discount_pct}")
+    # final_cost_obj = vat_calculator.calculate(
+    #     credits,
+    #     unit_price,
+    #     final_discount_pct
+    # )
 
-    final_cost_obj = vat_calculator.calculate(
-        item_quantity=credits,
-        item_price=unit_price,
-        discount_percentage=final_discount_pct
-    )
 
-    total_amount = final_cost_obj["total_amount"]
+    # total_amount = final_cost_obj["total_amount"]
+
+    total_amount = credits
 
     if currency.upper() == "INR":
         amount_gateway = int(round(total_amount * 100))
@@ -112,7 +127,7 @@ def create_credit_purchase(dealership_id: str, credits: int, currency="INR"):
         "campaign_id": "inbound",
         "discount_percentage": final_discount_pct,
     }
-
+    final_cost_obj = { "item_quantity": credits, "item_price": unit_price, "discount_percentage": final_discount_pct, "region_subdivision": "IND" }
     billing_obj.update(final_cost_obj)
 
     billing = BillingModel.post(billing_obj)
