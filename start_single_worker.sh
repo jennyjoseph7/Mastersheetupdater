@@ -121,7 +121,9 @@ function main() {
 
 	    app_pid=$!
 		echo $app_pid > app.pid
-        while [[ -n `jobs -rl | grep $app_pid` ]]; do sleep 300; done
+        while [[ -n `jobs -rl | grep $app_pid` ]]; do sleep 300; echo `jobs -rl`; done
+        echo "Exitting..."
+        exit
     elif [ $SETUP_CRON_SCHEDULER == "True" ];then
         a=cron_scheduler
     	echo "Starting default workers - $a"
@@ -140,7 +142,9 @@ function main() {
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
-            while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; done
+            while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
+            echo "Exitting..."
+            exit
 		else
 			echo "Process execute-cron-continuous is running."
 		fi
@@ -171,7 +175,9 @@ function main() {
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
-            while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; done
+            while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
+            echo "Exitting..."
+            exit
 		else
 			echo "Process cron_worker is running."
 		fi
