@@ -140,7 +140,7 @@ function main() {
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
-            while [[ -n `jobs -rl | grep $worker_pid` ]]; do sleep 1; done
+            while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; done
 		else
 			echo "Process execute-cron-continuous is running."
 		fi
