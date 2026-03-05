@@ -8,10 +8,12 @@ from typing import Union
 import sys
 import hashlib
 from os.path import dirname, abspath, join as joinpath
+
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.append(BASE_DIR)
-from autobot_agents.config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME
+
+from ..config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME
 
 GRYD_SERVICE, GRYD_CONFIG = AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME, {"broker_type" : "sqs", "timeout" : 10, "wait_time_to_shutdown" : 43200}
 
@@ -29,12 +31,6 @@ def get_logger(name, log_level = "info"):
 logger = get_logger(__name__)
 
 def deterministic_uuid(content: Union[str, bytes]) -> str:
-    """Creates deterministic UUID on hash value of string or byte content.
-    Args:
-        content: String or byte representation of data.
-    Returns:
-        UUID of the content.
-    """
     if isinstance(content, str):
         content_bytes = content.encode("utf-8")
     elif isinstance(content, bytes):
@@ -49,20 +45,17 @@ def deterministic_uuid(content: Union[str, bytes]) -> str:
     return content_uuid
 
 def generate_model_id(model_name: str) -> str:
-    """Generate a short, consistent model ID from the model name."""
     if not model_name:
         return None
     short_hash = hashlib.md5(model_name.lower().encode()).hexdigest()[:6].upper()
     return f"MOD_{short_hash}"
 
 def generate_feature_id(feature_name: str, feature_group: str = "") -> str:
-    """Generate a unique, consistent feature ID using feature name and group."""
     base_string = (feature_group or "") + "_" + (feature_name or "")
     short_hash = hashlib.md5(base_string.lower().encode()).hexdigest()[:6].upper()
     return f"FEAT_{short_hash}"
 
 def generate_variant_id(model_id: str, feature_id: str, variant_value: str) -> str:
-    """Generate a unique, consistent variant ID using model ID, feature ID, and variant value."""
     base_string = (model_id or "") + "_" + (feature_id or "") + "_" + (variant_value or "")
     short_hash = hashlib.md5(base_string.lower().encode()).hexdigest()[:6].upper()
     return f"VAR_{short_hash}"
