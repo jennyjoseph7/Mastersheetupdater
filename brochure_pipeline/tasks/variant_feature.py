@@ -20,6 +20,12 @@ from agents.variant_feature_agent import (
     generate_bulk_questions
 )
 from agents.postProcessing import process_batch_extraction, finalize_results_json
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+
+from config import AutocrmModel
 
 load_dotenv()
 logger = get_logger(__name__)
@@ -63,6 +69,8 @@ def fetch_brochure_text_from_api(document_id: str) -> str:
     url = f"{BASE_URL}/gryd/db/objects/chunk_saver?document_id={document_id}&page_size=1000"
     
     try:
+        #chunk_saver_model = AutocrmModel('chunk_saver')
+        #chunk_saver_model.list(document_id)
         response = requests.get(url, headers=HEADERS)
         response.raise_for_status()
         response_json = response.json()

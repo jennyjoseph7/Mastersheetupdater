@@ -6,8 +6,13 @@ import requests
 import uuid
 from typing import Union
 import hashlib
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME
 
-GRYD_SERVICE, GRYD_CONFIG = "brochure-pipeline", {"broker_type" : "sqs", "timeout" : 10, "wait_time_to_shutdown" : 43200}
+GRYD_SERVICE, GRYD_CONFIG = AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME, {"broker_type" : "sqs", "timeout" : 10, "wait_time_to_shutdown" : 43200}
 
 def get_logger(name, log_level = "info"):
     log_level = log_level.upper()

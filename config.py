@@ -7,7 +7,8 @@ AUTOCRM_ADMIN_PASSWORD = os.environ.get("AUTOCRM_ADMIN_PASSWORD", "D@vei2ce")
 AUTOCRM_CRON_SERVICE_NAME = os.environ.get("AUTOCRM_CRON_SERVICE_NAME", "autocrm-cron")
 AUTOCRM_CONVERSATION_SERVICE_NAME = os.environ.get("AUTOCRM_CONVERSATION_SERVICE_NAME", "autocrm-conversation")
 AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME = os.environ.get("AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME", "autocrm-conversation-post-process")
-AUTOCRM_AGENT_SERVICE_NAME = os.environ.get("AUTOBOT_AGENT_SERVICE_NAME", "autocrm-agent")
+AUTOCRM_AGENT_SERVICE_NAME = os.environ.get("AUTOCRM_AGENT_SERVICE_NAME", "autocrm-agent")
+AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME = os.environ.get("AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME", "autocrm-short-run-agent")
 AUTOCRM_VOICE_SERVICE_NAME = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME", "autocrm-voice")
 AUTOCRM_COMMUNICATION_SERVICE_NAME = os.environ.get("AUTOCRM_COMMUNICATION_SERVICE_NAME", "autocrm-communication")
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
@@ -99,6 +100,7 @@ AGENT_NAME="maruti_RFP"
 PHONE_NUMBER_ID="phnum_8201k1anbf9wet6v915q8arr1vmz"
 
 # spark/openai
+AUTOCRM_SPARK_SERVICE_NAME = os.environ.get('AUTOCRM_SPARK_SERVICE_NAME', 'spark')
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1.5")
 OPENAI_IMAGE_SIZE = os.environ.get("OPENAI_IMAGE_SIZE", "1024x1536")
@@ -111,6 +113,10 @@ try:
 except ValueError as e:
     raise ValueError(f"Error parsing OPENAI_INPUT_TEXT_TOKEN_PRICE, OPENAI_OUTPUT_TEXT_TOKEN_PRICE, OPENAI_INPUT_IMAGE_TOKEN_PRICE, OPENAI_OUTPUT_IMAGE_TOKEN_PRICE: {e}")
 
+#brochure pipeline
+AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME', 'brochure-pipeline')
+
+# Common function
 BASE_PATH = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_PATH, "data")
 SERVICE = os.environ.get("SERVICE", "autocrm-app")

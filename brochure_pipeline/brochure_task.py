@@ -21,7 +21,7 @@ GRYD_ENVIRONMENT = os.environ.get("ENVIRONMENT")
 setup_environment(GRYD_ENVIRONMENT)
 
 gryd.SERVICE = GRYD_SERVICE 
-gryd.set_queue_manager(config=GRYD_CONFIG)
+gryd.set_queue_manager()
 
 
 @gryd.is_a_task()
