@@ -13,3 +13,4 @@ except ImportError:
     from base_agent import BaseAgent, gryd
 import whatsapp_template_creator_agent
 import get_whatsapp_template_agent
+import get_rcs_template_agent

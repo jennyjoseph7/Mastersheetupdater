@@ -16,11 +16,9 @@ if BASE_DIR not in sys.path:
 # PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # sys.path.insert(0, PROJECT_ROOT)
 
-from config import AUTOCRM_AGENT_SERVICE_NAME, gryd, hp, AutocrmModel
-gryd.SERVICE = "autocrm-short-run-agent"
-AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
+from config import AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME, gryd, hp, AutocrmModel, AUTOCRM_APP_ENTERPRISE_ID
+gryd.SERVICE = AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME
 gryd.set_queue_manager()
-QUEUE_MANAGER = gryd.get_queue_manager(AUTOCRM_AGENT_SERVICE_NAME)
 
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 m = AutocrmModel("dealership_idea")
