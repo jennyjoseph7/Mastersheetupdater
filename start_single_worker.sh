@@ -164,9 +164,9 @@ function main() {
 			echo "Process exited or not started. Starting."
 			echo "Starting Cron Worker in BG. Logs are written to ${LOGDIR}/${a}_stderr.log and ${LOGDIR}/${a}_stdout.log"
 			if [ $PRIMARY == 0 ];then
-				nohup cron_worker 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+				nohup cron_worker -n $PARALLEL_THREADS 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 			else
-				nohup cron_worker --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+				nohup cron_worker -n $PARALLEL_THREADS --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 			fi
 			w_pid=$!
 			echo "PID is $w_pid"
