@@ -295,9 +295,13 @@ function CampaignCreateContent() {
     any[]
   >([]);
 
-  // Campaign Details
+  
+
+// Campaign Details
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStatusMsg, setGenerationStatusMsg] = useState(""); 
   const [isPostingCampaign, setIsPostingCampaign] = useState(false);
+
   const [campaignData, setCampaignData] = useState<any>(null);
   const [campaignName, setCampaignName] = useState("");
   const [campaignDescription, setCampaignDescription] = useState("");
@@ -479,8 +483,9 @@ useEffect(() => {
 
   // --- Logic ---
 
-  const handleGenerateCampaign = async () => {
+const handleGenerateCampaign = async () => {
     setIsGenerating(true);
+    setGenerationStatusMsg("Submitting campaign generation task...");
     try {
       const objectivesList =
         campaignType === "presales"
@@ -505,6 +510,7 @@ useEffect(() => {
       if (carModel) customObjects["Car Model"] = carModel;
       if (launchDate) customObjects["Launch Date"] = launchDate;
 
+      // 1. Submit the task
       const payload = {
         args: [
           campaignType === "presales" ? "pre-sales" : "post-sales",
@@ -520,15 +526,51 @@ useEffect(() => {
             custom_objects: customObjects,
           },
         },
-        _timeout: 180,
+         runtime_limit: 3600,
+        cancellable: true,
       };
 
-      const data = await api(
-        "/gryd/api/autocrm-short-run-agent/generate_campaign_idea",
+      const taskRes = await api(
+        "/gryd/task/autocrm-short-run-agent/generate_campaign_idea",
         "POST",
         payload
       );
 
+      const taskId = taskRes?.job?.task_id;
+      if (!taskId) {
+        throw new Error("Failed to retrieve task ID from the job queue.");
+      }
+
+      // 2. Poll the status API
+      let isComplete = false;
+      while (!isComplete) {
+        // Wait 2 seconds before each poll
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        
+        const statusRes = await api(`/gryd/status/${taskId}`, "GET");
+        const currentStatus = statusRes?.status?.toLowerCase();
+        
+        // Update UI with incoming status message if available
+        if (statusRes?.message || currentStatus) {
+            setGenerationStatusMsg(statusRes.message || `Status: ${currentStatus}...`);
+        }
+
+        if (currentStatus === "success") {
+          isComplete = true;
+          setGenerationStatusMsg("Retrieving final campaign result...");
+        } else if (currentStatus === "failed" || currentStatus === "error") {
+          isComplete = true;
+          throw new Error(statusRes?.error || "Task generation failed.");
+        }
+      }
+
+      // 3. Fetch the final result
+      const resultRes = await api(`/gryd/result/${taskId}`, "GET");
+      const data = resultRes?.result;
+
+      if (!data) throw new Error("Result data is empty.");
+
+      // Calculate dates
       const today = new Date();
       const nextWeek = new Date(today);
       nextWeek.setDate(today.getDate() + 7);
@@ -538,31 +580,39 @@ useEffect(() => {
         return local.toISOString().split("T")[0];
       };
 
+      // Map back language correctly to short code if API returns full word (e.g., "English" -> "en")
+      const returnedLangLabel = data.languages?.[0];
+      const matchedLang = languageOptions.find(
+        (l) => l.label.toLowerCase() === returnedLangLabel?.toLowerCase()
+      )?.value || "en";
+
       setCampaignData({
         name: data.campaign_name,
         description: data.campaign_description,
         campaignTitle: data.campaign_tagline,
         tone: data.campaign_tone,
         callToAction: data.ctas?.[0] || "Learn More",
-        language: data.languages?.[0] || "English",
+        language: matchedLang,
         campaignOffer: data.campaign_offer,
         urgencyHook: data.urgency_hook,
       });
 
-      setCampaignName(data.campaign_name);
-      setCampaignDescription(data.campaign_description);
-      setUrgencyHook(data.urgency_hook);
-      setCampaignTitle(data.campaign_tagline);
-      setTone(data.campaign_tone);
+      setCampaignName(data.campaign_name || "");
+      setCampaignDescription(data.campaign_description || "");
+      setUrgencyHook(data.urgency_hook || "");
+      setCampaignTitle(data.campaign_tagline || "");
+      setTone(data.campaign_tone || "");
       setCallToAction(data.ctas?.[0] || "Learn More");
-      setLanguage(data.languages?.[0] || "en");
+      setLanguage(matchedLang);
       setDuration({ start: formatDate(today), end: formatDate(nextWeek) });
       setSelectedChannels(["voice", "whatsapp", "email"]);
-    } catch (error) {
+
+    } catch (error: any) {
       console.error(error);
-      alert("Failed to generate campaign. Check console.");
+      alert(`Failed to generate campaign: ${error.message || "Check console for details."}`);
     } finally {
       setIsGenerating(false);
+      setGenerationStatusMsg("");
     }
   };
 
@@ -1187,12 +1237,18 @@ const handleProceed = async () => {
                     </Card>
                   </div>
 
-                  {isGenerating && (
-                    <Card className="py-12">
-                      <AILoader />
-                    </Card>
-                  )}
-
+                 {isGenerating && (
+    <Card className="py-12">
+      <div className="flex flex-col items-center justify-center gap-4">
+        <AILoader />
+        {generationStatusMsg && (
+          <p className="text-sm font-medium text-muted-foreground animate-pulse text-center px-4">
+            {generationStatusMsg}
+          </p>
+        )}
+      </div>
+    </Card>
+  )}
                   {/* DETAILS */}
                   {!isGenerating && campaignData && (
                     <div className="space-y-8 animate-in fade-in duration-500">
