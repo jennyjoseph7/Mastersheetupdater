@@ -158,13 +158,12 @@ def post_session_process(*args, **kwargs):
                 pg.update("person","user_id",pers_id,{"preferred_language":[updated_lead_data.get("follow_up_language")]})
 
             pg.update("vehicle","vehicle_id",session_data.get("user_data").get("vehicle_id"),user_or_vehicle_data)
-    
     if campaign_type == "pre_sales":
         with get_pg_connector() as pg:
             mlogger.info("updating person == {}".format(user_or_vehicle_data))
             if updated_lead_data.get("follow_up_language"):
                 user_or_vehicle_data["preferred_language"] = [updated_lead_data.get("follow_up_language")]
-            pg.update("person","user_id",session_data.get("user_data").get("user_id"),user_or_vehicle_data)
+            pg.update("person","user_id",session_mdl_obj.get("user_id"),user_or_vehicle_data)
     
     with get_pg_connector() as pg:
         updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
