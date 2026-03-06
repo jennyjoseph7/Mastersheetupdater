@@ -44,7 +44,7 @@ if SERVER_URL.endswith('/'):
 app = Blueprint('twilio_routes', __name__)
 twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN) if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN else None
 
-def make_call_twilio(session_data, *args, **kwargs):
+def make_call_twilio_old(session_data, *args, **kwargs):
     number = session_data.get("phone_number", "918850988794") #for test
     session_id = session_data.get('session_id')
     user_id = session_data.get('user_id')
