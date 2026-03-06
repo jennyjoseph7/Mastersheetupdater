@@ -1739,6 +1739,7 @@
                 "Converted",
                 "Bounced",
                 "Unsubscribed",
+                "Call Disconnected",
                 "Spam"
             ],
             "option_others": true
