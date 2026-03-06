@@ -733,12 +733,17 @@ def get_disposition(session_id, session_data_cache):
     p_steps = campaign_data.get("purpose_steps",[])
     purpose_steps=f"These are the mandatory steps that need to be completed for the campaign purpose to be achieved - {', '.join(p_steps)} . If these steps are met in the conversation history with the customer. Then mark the disposition detail as 'Converted'." if p_steps else ""
     message_history = []
+    has_user_message = False
     for message in messages:
         mlogger.info("message in get_disposition -  {}".format(message))
         if "intent" in message and message.get("intent") == "llm_response":
             message_history.append({"role" : "me", "message":message.get("message","")})
         else:
+            if not has_user_message and message.get("message") and len(message.get("message")) > 0:
+                has_user_message = True
             message_history.append({"role" : "customer", "message":message.get("message","")})
+    if not has_user_message:
+        return {"disposition":"contacted","disposition_detail":"Didnt speak","prioritization_score":10,"prioritization_category":"INACTIVE"}
     mlogger.info("message_history in get_disposition -  {}".format(message_history))
     campaign_type = campaign_data.get("campaign_type")
     example_disposition_response =  """{
