@@ -6,7 +6,7 @@ import {
   FILE_UPLOAD_URL,
   FILE_UPLOAD_HEADERS,
 } from "./headers";
-
+import { api } from "@/lib/api";
 /* ---------------------------------------------------
    Utils (Next.js Safe)
 --------------------------------------------------- */
@@ -669,6 +669,75 @@ export async function fetchActiveSessions(dealershipId, params = {}) {
     return { data: [], total_number: 0, page_number: 1 };
   }
 }
+
+
+
+
+/**
+ * Executes an asynchronous task, polls for status, and retrieves the final result.
+ * * @param {string} service - The name of the service (e.g., 'autocrm-short-run-agent')
+ * @param {string} taskName - The task to execute (e.g., 'generate_campaign_idea')
+ * @param {object} payload - The arguments and kwargs for the task
+ * @param {function} onProgress - Optional callback to handle status updates for the UI
+ * @param {object} options - Optional config for polling (intervalMs, maxRetries)
+ * @returns {Promise<any>} The final result object
+ */
+export const executeTaskWithPolling = async (
+  service, 
+  taskName, 
+  payload, 
+  onProgress = null,
+  options = {}
+) => {
+  const { intervalMs = 2000, maxRetries = 60 } = options; // Default: 2 mins total timeout
+  
+  // 1. Submit the task
+  if (onProgress) onProgress("Submitting task to queue...");
+  const taskRes = await api(`/gryd/task/${service}/${taskName}`, "POST", payload);
+  
+  const taskId = taskRes?.job?.task_id || taskRes?.task_id;
+  if (!taskId) {
+    throw new Error("Failed to retrieve task ID from the server response.");
+  }
+
+  // 2. Poll the status API
+  let attempts = 0;
+  let isComplete = false;
+  
+  while (!isComplete && attempts < maxRetries) {
+    attempts++;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    
+    const statusRes = await api(`/gryd/status/${taskId}`, "GET");
+    const currentStatus = statusRes?.status?.toLowerCase();
+    
+    // Trigger the callback to update the UI
+    if (onProgress && (statusRes?.message || currentStatus)) {
+      onProgress(statusRes.message || `Status: ${currentStatus}...`);
+    }
+
+    if (currentStatus === "success" || currentStatus === "completed") {
+      isComplete = true;
+      if (onProgress) onProgress("Task complete. Retrieving results...");
+    } else if (currentStatus === "failed" || currentStatus === "error") {
+      throw new Error(statusRes?.error || statusRes?.message || "Task failed on the server.");
+    }
+  }
+
+  if (!isComplete) {
+    throw new Error("Task timed out while waiting for completion.");
+  }
+
+  // 3. Fetch the final result
+  const resultRes = await api(`/gryd/result/${taskId}`, "GET");
+  
+  if (!resultRes || !resultRes.result) {
+    throw new Error("Failed to retrieve the final result data.");
+  }
+
+  return resultRes.result;
+};
+
 
 /* ---------------------------------------------------
    Exports

@@ -10,6 +10,7 @@ from autocrm_db_helper import get_pg_connector
 json = hp.json
 from conversation.yield_response import yield_result,yield_error, yield_status
 from conversation.prompt import run_prompt_sync
+from datetime import datetime
 
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 gryd.set_queue_manager()
@@ -106,8 +107,26 @@ def post_session_process(*args, **kwargs):
     
     updated_lead_data = get_disposition(session_id,session_data) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
     mlogger.info("got disposition as == {}".format(updated_lead_data))
+        
     
     session_update_data = {"disposition":updated_lead_data.get("disposition"),"disposition_detail":updated_lead_data.get("disposition_detail")}
+    if updated_lead_data.get("disposition_detail") == "Requested Callback":
+        follow_up = get_callback_date_time(session_id,session_data)
+        if isinstance(follow_up,dict):
+            if "follow_up_date" in follow_up:
+                format_string = "%d-%m-%Y %H:%M"
+                try:
+                    timestamp_object = datetime.strptime(follow_up.get("follow_up_date"), format_string)
+                    updated_lead_data["follow_up_date"] = timestamp_object.timestamp()
+                except KeyError as e:
+                    mlogger.info("KeyError == {}".format(e))
+    if updated_lead_data.get("disposition_detail") =="Language barrier":
+        follow_up = get_preffered_language(session_id,session_data)
+        if isinstance(follow_up,dict):
+            if "follow_up_language" in follow_up:
+                updated_lead_data["follow_up_language"] = follow_up.get("follow_up_language")
+
+    mlogger.info("lead data =={}".format(updated_lead_data))
 
     if sentiment_score != -1:
         session_update_data["sentiment_score"] = sentiment_score
@@ -134,12 +153,17 @@ def post_session_process(*args, **kwargs):
     if campaign_type == "post_sales":
         with get_pg_connector() as pg:
             mlogger.info("updating vehicle == {}".format(user_or_vehicle_data))
+            if updated_lead_data.get("follow_up_language"):
+                pers_id = session_mdl_obj.get("user_id")
+                pg.update("person","user_id",pers_id,{"preferred_language":[updated_lead_data.get("follow_up_language")]})
+
             pg.update("vehicle","vehicle_id",session_data.get("user_data").get("vehicle_id"),user_or_vehicle_data)
-    
     if campaign_type == "pre_sales":
         with get_pg_connector() as pg:
             mlogger.info("updating person == {}".format(user_or_vehicle_data))
-            pg.update("person","user_id",session_data.get("user_data").get("user_id"),user_or_vehicle_data)
+            if updated_lead_data.get("follow_up_language"):
+                user_or_vehicle_data["preferred_language"] = [updated_lead_data.get("follow_up_language")]
+            pg.update("person","user_id",session_mdl_obj.get("user_id"),user_or_vehicle_data)
     
     with get_pg_connector() as pg:
         updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
@@ -724,6 +748,10 @@ def get_disposition(session_id, session_data_cache):
         "prioritization_category" : "COMPLETE or HOT or WARM or COOL or COLD or INACTIVE"
     }"""
     disp_details_options = [
+                "Voicemail",
+                "Didnt pickup",
+                "Didnt speak",
+                "Rejected",
                 "Language barrier",
                 "Is not decision maker",
                 "Will decide later, will purchase within 15 days",
@@ -747,29 +775,32 @@ def get_disposition(session_id, session_data_cache):
 
     if campaign_type == "post-sales":
         disp_details_options = [
-            "Vehicle is commercial or part of a fleet",
-            "Vehicle is not being run",
-            "Requires special spare parts",
-            "Others",
-            "Wrong contact number",
-            "Voicemail",
-            "Has sold/given away the car",
-            "Has moved to another location",
-            "Cannot make decision on servicing",
-            "Will call workshop themselves",
-            "Requested Callback",
-            "Looking for a discount",
-            "Language barrier",
-            "Has serviced car in another dealership",
-            "Will decide tomorrow",
-            "Will decide within 1 to 3 days",
-            "Will decide within 4 to 7 days",
-            "Will decide within 8 to 14 days",
-            "Will decide within 15 to 30 days",
-            "Will decide within 31 to 60 days",
-            "Will decide within 61 to 90 days",
-            "Will decide after 90 days",
-            "Converted"
+                "Didnt pickup",
+                "Didnt speak",
+                "Rejected",
+                "Vehicle is commercial or part of a fleet",
+                "Vehicle is not being run",
+                "Requires special spare parts",
+                "Others",
+                "Wrong contact number",
+                "Voicemail",
+                "Has sold/given away the car",
+                "Has moved to another location",
+                "Cannot make decision on servicing",
+                "Will call workshop themselves",
+                "Requested Callback",
+                "Looking for a discount",
+                "Language barrier",
+                "Has serviced car in another dealership",
+                "Will decide tomorrow",
+                "Will decide within 1 to 3 days",
+                "Will decide within 4 to 7 days",
+                "Will decide within 8 to 14 days",
+                "Will decide within 15 to 30 days",
+                "Will decide within 31 to 60 days",
+                "Will decide within 61 to 90 days",
+                "Will decide after 90 days",
+                "Converted"
             ]
 
     prompt = f"""
@@ -795,7 +826,9 @@ def get_disposition(session_id, session_data_cache):
 
     The disposition and disposition detail is for the customer and their intent shown in the conversation history.
     Special Cases:-
-    - if the user has asked for a callback or requested to speak with a human or a phone call in any way without completing the objective of the campaign then the Disposition Detail would be = 'Callback Requested'.
+    - if the user has asked for a callback or requested to speak with a human or a phone call in any way without completing the objective of the campaign then the Disposition Detail would be = 'Requested Callback'.
+    - if the user has not completed the objective of the campaign and has suggested they do not understand the language i am speaking or asked me to switch to a different language, the Disposition Detail would be = 'Language barrier'.
+    - if the user has disconnected the call without completing the conversation, the Disposition Detail would be = 'Call Disconnected'.
     Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
     Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
     do NOT prepend labels (like "json"). Output only valid JSON.
@@ -809,7 +842,6 @@ def get_disposition(session_id, session_data_cache):
     mlogger.info("disposition prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data):
-    from datetime import datetime
     mlogger.info("get_visit_data called with session_data_cache == {}".format(json.dumps(session_data_cache)))
     session_data = session_data_cache
     campaign_data = session_data.get("campaign_data",{})
@@ -885,7 +917,7 @@ def get_appt_date_time_purpose(session_id,session_data_cache):
     The conversation history is as follows:
     {message_history}
     Now check if the customer made a booking for a date time and given any purpose details.
-    for your reference the timestamp for today is {hp.time()}
+    for your reference the timestamp for today is {datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")}
     For example:
     if campaign was to book a service, purpose would be a list of issues they would like to get fixed during the service or list of different services they want.
     if campaign was to book a test drive, purpose would be the aspects of the car they would like to test.
@@ -899,6 +931,98 @@ def get_appt_date_time_purpose(session_id,session_data_cache):
     """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
     mlogger.info("get_appt_date_time_purpose prompt response ======= {}".format(resp))
+    return hp.json.loads(resp)
+
+def get_preffered_language(session_id,session_data_cache):
+    """
+    Retrieves the preffered language from the conversation history.
+
+    Parameters
+    ----------
+    session_id : str
+        The unique identifier of the session.
+    session_data_cache : dict
+        The data of the session.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the preffered language.
+    """
+    campaign_data = session_data_cache.get("campaign_data")
+    message_history = session_data_cache.get("messages")
+    response_example = {
+        "follow_up_language": "en"
+    }
+    prompt = f"""
+    You are an analyst bot that looks at my conversation history with my customer and detects if the customer asks to speak in a different language what language was it.
+    
+
+    The conversation history is as follows:
+    {message_history}
+    For your reference the timestamp for today is {datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")}
+    For example:
+    If the customer says anything 'talk in hindi' you should return the value of follow_up_language as 'hi' which is the google language code for hindi.
+    If the customer just speaks in a different language for example only speaks in tamil. You should return the value of follow_up_language as 'ta' which is the google language code for tamil.
+
+    Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
+    Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
+    do NOT prepend labels (like "json"). Output only valid JSON.
+
+    Your response should be in the following JSON format:
+    {json.dumps(response_example)}
+    """
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    mlogger.info("callback_date_time prompt response ======= {}".format(resp))
+    return hp.json.loads(resp)
+        
+def get_callback_date_time(session_id,session_data_cache):
+    """
+    Retrieves the appointment date time and purpose from the conversation history.
+
+    Parameters
+    ----------
+    session_id : str
+        The unique identifier of the session.
+    session_data_cache : dict
+        The data of the session.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the appointment date, time and purpose.
+    """
+    lead_data = session_data_cache.get("user_data")
+    campaign_data = session_data_cache.get("campaign_data")
+    campaign_objective = campaign_data.get("campaign_objective")
+    campaign_description = campaign_data.get("campaign_description")
+    message_history = session_data_cache.get("messages")
+    campaign_type = campaign_data.get("campaign_type")
+    response_example = {
+        "follow_up_date": "DD-MM-YYYY HH:MM format for the date and time for callback"
+    }
+    prompt = f"""
+    You are an analyst bot that looks at my conversation history with my customer and detects if when i called the customer, and the customer requested to be called back at a later time, what date and time did they ask for the callback.
+    
+
+    The conversation history is as follows:
+    {message_history}
+    For your reference the timestamp for today is {datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")}
+    For example:
+    If the customer says anything like call me tomorrow or day after at 1pm. Return the date time value in the format of DD-MM-YYYY HH:MM where the date month and year is for the date they mentioned and hh mm is for the time they mention.
+    If the customer only says tomorrow, or date but does not mention a time. Return the date time value in the format of DD-MM-YYYY HH:MM where the date month and year is for the date they mentioned and hh mm is for 12pm.
+    If the customer has asks for a callback at just a time. Return the date time value in the format of DD-MM-YYYY HH:MM where the date month and year is for today and hh mm is for the time they mention.
+    If the customer does not mention any date or time. Return the date time value in the format of DD-MM-YYYY HH:MM where the date month and year is for today and hh mm is for 1 hour after the current time.
+    
+    Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
+    Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
+    do NOT prepend labels (like "json"). Output only valid JSON.
+
+    Your response should be in the following JSON format:
+    {json.dumps(response_example)}
+    """
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    mlogger.info("callback_date_time prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
 
