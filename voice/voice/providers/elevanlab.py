@@ -34,7 +34,7 @@ def format_transcript(transcript, start_time_unix):
     
     return session_history
 
-def make_call_elevanlab(session_data, *args, **kwargs):
+def make_call_twilio(session_data, *args, **kwargs):
     elevenlabs_client = ElevenLabs(api_key=API_KEY)
     number = session_data.get("phone_number", "918850988794") #for test
     session_id = session_data.get('session_id')
