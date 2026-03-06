@@ -11,23 +11,30 @@ import traceback
 import os
 import inspect
 
+from config import AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
+GRYD_SERVICE_NAME = AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
+GRYD_CONFIG = {
+    "broker_type" : "sqs", 
+    "timeout" : 10,
+    "wait_time_to_shutdown" : 43200
+}
+
 logger = get_logger(__name__)
 
 def setup_gryd():
     gryd.SERVICE = GRYD_SERVICE_NAME
     gryd.set_queue_manager(config = GRYD_CONFIG)
-    environment = os.getenv("ENVIRONMENT", "-local")
-    if not environment.startswith("-"):
-        environment = f"-{environment}"
-    gryd.ENVIRONMENT = environment
+    # environment = os.getenv("ENVIRONMENT", "-local")
+    # if not environment.startswith("-"):
+    #     environment = f"-{environment}"
+    # gryd.ENVIRONMENT = environment
 
 setup_gryd()
-
+# gryd.ENVIRONMENT = "-local"
 
 @gryd.is_a_task(function_name="post_cohorts_to_model",)
 def post_cohorts_to_model(*args, **kwargs):
     pass 
-
 
 @gryd.is_a_task()
 def cohort_generation_agent_async(*args, **kwargs):
@@ -174,6 +181,10 @@ def affinity_score_agent(*args, **kwargs):
         }
         affinity_score_agent = AffinityEngineAgent(**params_)
         output = affinity_score_agent.run()
+
+        for key in ["affinity_fig_json", "fig_json"]:
+            output.pop(key, None)
+
         return {
             "task": inspect.currentframe().f_code.co_name, 
             **output
@@ -281,6 +292,48 @@ def campaign_idea_generation_agent_async(*args, **kwargs):
     except Exception as e:
         logger.error(f"Campaign Idea Generation Agent Error: {e}")
         raise e     
+
+@gryd.is_a_task(function_name="performance_marketing_campaign_agent")
+def performance_marketing_campaign_agent(*args, **kwargs):
+    _params = {
+        "brand_name" : kwargs.get("brand_name", None),
+        "product_name" : kwargs.get("product_name", None),
+        "objective" : kwargs.get("objective", None),
+        "budget" : kwargs.get("budget", None),
+        "landing_page" : kwargs.get("landing_page", None),
+        "geography" : kwargs.get("geography", None),
+        "model_identifier" : kwargs.get("model_identifier", "azure-gpt-4o")
+    }
+
+    try:
+        from agents.campaign_idea_generation_agent_async import PerformanceMarketingCampaignAgent
+        agent = PerformanceMarketingCampaignAgent(**_params)
+        output = agent.run()
+        return {
+            "task": inspect.currentframe().f_code.co_name, 
+            **output
+        }
+    except Exception as e:
+        logger.error(f"Performance Marketing Campaign Agent Error: {e}")
+        raise e
+
+@gryd.is_a_task(function_name="csv_to_cohort_classification")
+def csv_to_cohort_classification(*args, **kwargs):
+    import uuid
+    _params = {
+        "csv_url": kwargs.get("csv_url", None),
+        "cohorts" : kwargs.get("cohorts", []),
+        "model_identifier" : kwargs.get("model_identifier", "azure-gpt-4o")
+    }
+    task_id = str(uuid.uuid4())
+
+    f_payload = {
+        **_params,
+        "task_id": task_id
+    }
+    gryd.create_async_task()
+    pass 
+
 
 @gryd.is_a_task(function_name="cohort_classification_agent_randomizer", job_param='job', logger_param='logger')
 def cohort_classification_agent_randomizer(*args, **kwargs):
@@ -467,6 +520,47 @@ if __name__ == "__main__":
         }
         ]
     }
+
+
+    from config import post_autocrm_model, AutocrmModel
+
+    # m = post_autocrm_model(model_name="cohort_registry")
+    # print(f"Cohort Registry Model: \n {json.dumps(m, indent=4, default=str)}")
+
+    m = AutocrmModel(model_name="cohort_registry")
+
+    cr = {"cohorts": []}
+    cohort_registry = cohort_registry["cohorts"]
+    for i in cohort_registry:
+        temp = {}
+        for k, v in i.items():
+            if k in ["idx"]:
+                continue
+            else:
+                temp[k] = v
+        
+        cr["cohorts"].append(temp)
+    
+    
+    _payload = {
+        "oem_name": "Tata",
+        "product_name": "Sierra",
+        "cohort_version" : "v1",
+        "cohort_registry": cr
+    }
+
+    # obj = m.post(data = _payload)
+
+    # print(f"Cohort Registry Data: \n {json.dumps(obj, indent=4, default=str)}")
+
+    # assert False
+
+
+    all_data = m.list(_as_optional=True)
+    print(f"Cohort Registry Data: \n {json.dumps(all_data, indent=4, default=str)}")
+
+    assert False
+
 
     # 2. Cohort Classification
     classified_users = cohort_classification_agent(
