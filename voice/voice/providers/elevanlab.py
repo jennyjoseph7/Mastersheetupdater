@@ -47,12 +47,34 @@ def make_call_elevanlab(session_data, *args, **kwargs):
         "dynamic_variables": session_data.get("dynamic_variables", {}),
         "user_id": session_id, 
     }
-    
+    # Set language presets
+    initial_config["conversation_config"] = {
+        "language_presets": {
+            "en": {
+                "overrides": {
+                    "agent": {
+                        "first_message": "",
+                        "language": "en"
+                    }
+                }
+            },
+            "hi": {
+                "overrides": {
+                    "agent": {
+                        "first_message": "",
+                        "language": "hi"
+                    }
+                }
+            }
+        }
+    }
+
+
     if session_data.get("prompt"):
         initial_config["conversation_config_override"] = {
             "agent": {}
         }
-
+      
         initial_config["conversation_config_override"]["agent"].update({
             "prompt": {
                 "prompt": session_data.get("prompt")

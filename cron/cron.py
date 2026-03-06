@@ -13,7 +13,7 @@ from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 from gryd_worker import gryd_db_helper as db
-from communication.connectors.communication_helpers import end_session
+from communication.connectors.communication_helpers import handle_session_post_process_or_end
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 
@@ -161,39 +161,38 @@ def performance_summary():
         return update_count
 
 
-@gryd.is_a_task(function_name="check_inactive_sessions")
-def check_inactive_sessions(*args, **kwargs):
+@gryd.is_a_task(function_name="manage_active_sessions")
+def manage_active_sessions(*args, **kwargs):
+    
     """
-    Check for inactive sessions, and update them accordingly.
+    Checks for sessions which require an update to their history or post-process.
 
-    Parameters:
-        *args: Any additional positional arguments
-        **kwargs: Any additional keyword arguments
+    This task checks for sessions which have a newer last_response_time than the last
+    updated history_time. It then updates the session's history with the new data.
 
-    Keyword Arguments:
-        inactivity_time (int): The number of minutes to consider a session inactive.
-            Defaults to 30.
-        only_for_channels (List[str]): A list of channels to check for inactive sessions.
-            Defaults to [].
-        outbound_timeout_minutes (int): The number of minutes to wait for an outbound response.
-            Defaults to 1440.
+    After updating the history, it checks if the session can be post-processed (i.e. if there
+    is new data to process or if it's been more than POST_PROCESS_INTERVAL_SECONDS seconds since
+    the last post-process time). If so, it calls the handle_session_post_process_or_end function
+    to either post-process the session or end it.
 
-    Returns:
-        None
+    :param args: Not used
+    :param kwargs: Accepts the following keyword arguments:
+        only_for_channels (list): A list of channels to check (default: [])
+        post_process_interval_seconds (int): The interval in seconds between post-process calls (default: 10)
+    :return: None
+    :rtype: NoneType
     """
-
+    
     kwargs_dict = dict(kwargs)
-
-    inactivity_time = kwargs_dict.get("inactivity_time") or 30
     only_for_channels = kwargs_dict.get("only_for_channels") or []
-    outbound_timeout_minutes = kwargs_dict.get("outbound_timeout_minutes") or 1440
+    _post_process_interval_seconds = kwargs_dict.get("post_process_interval_seconds",10)
+    inactivity_timeout_seconds = kwargs_dict.get("inactivity_timeout_seconds", 10)
+    POST_PROCESS_INTERVAL_SECONDS = _post_process_interval_seconds * 60  # by defautl 10 mins..
+    INACTIVITY_TIMEOUT_SECONDS= inactivity_timeout_seconds * 60  # by defautl 10 mins..
 
-    mlogger.info(
-        "------------ Checking for inactive sessions ------------- "
-        f"inactivity_time={inactivity_time}"
-    )
+    mlogger.info("------------ Managing active sessions ------------")
 
-    filters = {"session_live": True, "status": "completed~"}
+    filters = {"session_live": True, "status": "completed~","channel": "voice_phone~"}
     condition, param = apply_filters(**filters)
 
     with get_pg_connector() as pg:
@@ -204,77 +203,46 @@ def check_inactive_sessions(*args, **kwargs):
         mlogger.info(f"Active sessions count: {len(session_list)}")
 
         if not session_list:
-            mlogger.info("No active sessions found.")
+            mlogger.info("No active sessions found. Exiting manage_active_sessions.")
             return
 
         now_epoch = int(time.time())
-        other_channels = []
+
         for session in session_list:
             session_id = session.get("session_id")
             channel = session.get("channel")
-            campaign_type = session.get("campaign_type") or "inbound"
 
-            if channel not in only_for_channels:
-                other_channels.append(channel)
-                # mlogger.info(
-                #     f"Skipping session {session_id} "
-                #     f"(channel={channel})"
-                # )
-                continue
-
-            # last activity time ----------
-            last_response_str = session.get("last_response_time")
-            last_history_str = session.get("history_updated_time")
-            session_created_str = (
-                session.get("created") or session.get("start_time")
-            )
-
-            if last_response_str:
-                last_activity_epoch = int(last_response_str)
-            elif last_history_str:
-                last_activity_epoch = int(last_history_str)
-            elif session_created_str:
-                last_activity_epoch = int(session_created_str)
-            else:
-                mlogger.warning(
-                    f"Session {session_id} has no timestamps; "
-                    "skipping inactivity check"
-                )
+            if only_for_channels and channel not in only_for_channels:
+                mlogger.info(f"Skipping session {session_id} for channel {channel} as it's not in the specified channels list.")
                 continue
 
             last_response_epoch = (
-                int(last_response_str) if last_response_str else None
+                int(session.get("last_response_time"))
+                if session.get("last_response_time")
+                else None
             )
             last_history_epoch = (
-                int(last_history_str) if last_history_str else None
+                int(session.get("history_updated_time"))
+                if session.get("history_updated_time")
+                else None
+            )
+            last_post_process_epoch = (
+                int(session.get("last_post_process_time"))
+                if session.get("last_post_process_time")
+                else None
             )
 
-            # inactivity timeout ----------
-            # if campaign_type != "post-sales":
-            #     session_timeout_seconds = outbound_timeout_minutes * 60
-            # else:
-            #     session_timeout_seconds = inactivity_time * 60
-
-            session_timeout_seconds = inactivity_time * 60 
-            mlogger.info(
-                f"Session {session_id} timeout set to "
-                f"{session_timeout_seconds}s"
-            )
-            inactive_cutoff_epoch = (
-                last_activity_epoch + session_timeout_seconds
-            )
-
+            if last_response_epoch:
+                inactive_cutoff_epoch = last_response_epoch + INACTIVITY_TIMEOUT_SECONDS 
+            history_updated = False
+            last_ts = None
             existing_history = session.get("history", []) or []
 
-            # Only sync history if last_response_time moved forward
-            if (
-                last_response_epoch
-                and (
-                    last_history_epoch is None
-                    or last_response_epoch > last_history_epoch
-                )
-            ):
+            # checking and updating history only when the last_response_time is newer than the last updated history_time...
+            if (last_response_epoch and ( last_history_epoch is None or last_response_epoch > last_history_epoch)):
+                mlogger.info(f"Just updating history for session {session_id}")
                 history_rows = list(
+                    # pg.list_order_by("message", {"session_id": session_id},order_by="created",order="ASC")
                     pg.list("message", {"session_id": session_id})
                 )
 
@@ -283,15 +251,11 @@ def check_inactive_sessions(*args, **kwargs):
                     ts = row.get("created") or row.get("updated")
                     if ts:
                         ts = int(ts)
-                        if (
-                            last_history_epoch is None
-                            or ts > last_history_epoch
-                        ):
+                        if last_history_epoch is None or ts > last_history_epoch:
                             new_records.append(row)
 
                 if new_records:
                     appended_history = []
-                    last_ts = None
 
                     for record in new_records:
                         ts = record.get("created") or record.get("updated")
@@ -316,40 +280,29 @@ def check_inactive_sessions(*args, **kwargs):
                         "session_id",
                         session_id,
                         {
-                            "history": existing_history
-                            + appended_history,
+                            "history": existing_history + appended_history,
                             "history_updated_time": last_ts,
                         },
                     )
-                    # TODO:also update session related data to respective lead_model by passing last_session_id which will update last_session_channel,last_interaction etc..
-                    # update_session_data_in_lead(session_id=session_id,"") 
-                    mlogger.info(
-                        f"Appended {len(appended_history)} messages"
-                        f"for session {session_id}"
-                    )
-                else:
-                    mlogger.info(f"No new history rows for session {session_id}")
-            else:
-                mlogger.info(f"Skipping history sync for session {session_id} (no new responses)")
 
-            # Inactivity Check ----------
-            if now_epoch > inactive_cutoff_epoch:
-                mlogger.info(
-                    f"Ending inactive session {session_id} "
-                    f"(inactive for {now_epoch - last_activity_epoch}s)"
+                    history_updated = True
+
+            # we are calling post_process only when there is a new response (new data to process) or if it's been more than POST_PROCESS_INTERVAL_SECONDS seconds since last post_process_time.
+            can_call_post_process = (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS)
+            mlogger.info("can_call_post_process : {}".format(can_call_post_process))
+            if can_call_post_process:
+                handle_session_post_process_or_end(
+                    session_id=session_id,
+                    pg=pg,
+                    history_updated=history_updated,
+                    can_call_post_process=can_call_post_process,
+                    inactive_cutoff_epoch=inactive_cutoff_epoch
                 )
 
-                # ending the session --------
-                end_session(session_id=session_id, pg=pg)
-            else:
-                mlogger.info(
-                    f"Session {session_id} still active "
-                    f"({inactive_cutoff_epoch - now_epoch}s remaining)"
-                )
-        mlogger.info(f"Other channel counts skipped: {len(other_channels)}")
         mlogger.info("************************************************")
-        return 
-def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None):
+        return
+     
+def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None,):
     conditions = [] 
     params = ()
     if session_id:
@@ -359,8 +312,13 @@ def apply_filters(session_id=None, user_id=None, channel=None, session_live=None
         conditions.append("dict->>'user_id' = %s")
         params += (user_id,)
     if channel:
-        conditions.append("dict->>'channel' = %s")
-        params += (channel,)
+        if channel.endswith('~'):
+            conditions.append("dict->>'channel' <> %s")
+            channel = channel[:-1]
+            params += (channel,)
+        else:
+            conditions.append("dict->>'channel' = %s")
+            params += (channel,)
     if session_live:
         conditions.append("CAST (dict->>'session_live' AS bool) = %s")
         params += (session_live,)
