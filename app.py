@@ -57,10 +57,10 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             )
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
-              task="check_inactive_sessions",
+              task="manage_active_sessions",
               service=AUTOCRM_CRON_SERVICE_NAME,
               schedule = "*/5 * * * *",
-              kwargs={"inactivity_time": 10, "only_for_channels":["whatsapp_chat"],"outbound_timeout_minutes":60},
+              kwargs={"inactivity_timeout_seconds": 10, "only_for_channels":["whatsapp_chat"],"post_process_interval_seconds":10},
               add_schedule_to_queue=False
         )
         cron_worker.add_cron_job(

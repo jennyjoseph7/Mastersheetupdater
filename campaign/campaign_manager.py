@@ -293,6 +293,7 @@ class BaseCampaignCreater:
         
         
         
+        
         return patch_user_data
         
         
@@ -375,6 +376,13 @@ class BaseCustomCampaignManager:
             
             if channel.upper() in ["WHATSAPP_CHAT","RCS"]:
                 logger.info(f"[{count}] Sent {channel} message for {mobile_number}")
+                
+                logger.info("Checking and creating a session for channel: {channel} and user: {mobile_number}")
+                session_data=handle_session_logic(mobile_number,channel.lower())
+                logger.info(f"Session logic result in campaign : {session_data}")
+                if not session_data:
+                    logger.error(f"Failed to create session for channel: {channel} and user: {mobile_number}")
+                    continue
                 #TODO Send async 
                 if is_testing:
                     logger.info(f"[{count}] Sending WhatsApp message synchronously for {campaign_data.get('campaign_id')} for phone_number={campaign_data.get('mobile_number')}")
