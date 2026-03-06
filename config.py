@@ -115,6 +115,7 @@ except ValueError as e:
 
 #brochure pipeline
 AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME', 'brochure-pipeline')
+AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME', 'document-processor')
 
 # Common function
 BASE_PATH = hp.dirname(hp.abspath(__file__))
