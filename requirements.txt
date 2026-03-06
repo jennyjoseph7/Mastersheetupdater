@@ -30,3 +30,4 @@ streamlit
 plotly
 streamlit_chat
 chardet
+docling==2.66.0
