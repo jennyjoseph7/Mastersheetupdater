@@ -196,6 +196,7 @@ const languageOptions = [
   { value: "kn", label: "Kannada" },
   { value: "bn", label: "Bengali" },
   { value: "gu", label: "Gujarati" },
+  { value: "ml", label: "Malayalam" },
 ];
 
 const toEpoch = (dateStr: string) =>
@@ -222,6 +223,7 @@ const mapLanguage = (code: string) => {
     kn: "kannada",
     bn: "bengali",
     gu: "gujarati",
+    ml: "malayalam",
   };
   return map[code] || "english";
 };
