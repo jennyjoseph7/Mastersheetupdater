@@ -536,19 +536,19 @@ class CampaignIdeaCreatorAgent(BaseAgent):
 
 
 @gryd.is_a_task('generate_campaign_idea', logger_param='logger', job_param='job')
-def generate_campaign_idea(campaign_type, campaign_objective, dealership_idea=None, dealership_id=None, logger=None, job=None):
+def generate_campaign_idea(campaign_type, campaign_objective, dealership_idea=None, dealership_id=None, logger=None, job=None, **kwargs):
     logger = logger or gryd.hp.get_logger(__name__)
     logger.info(f"Creating campaign idea for dealership: {dealership_id}")
     
     try:
         dealership_idea = dealership_idea or {}
+        dealership_idea.update({k: v for k, v in kwargs.items() if v is not None})
         updates = {
             'campaign_type': campaign_type,
             'campaign_objective': campaign_objective,
             'dealership_id': dealership_id
         }
-        for key, val in updates.items():
-            dealership_idea[key] = val
+        dealership_idea.update({k: v for k, v in updates.items() if v is not None})
 
         agent = CampaignIdeaCreatorAgent(source=dealership_idea, logger=logger)
         result = agent.run()

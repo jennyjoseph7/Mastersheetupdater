@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // Imports
-import { fetchAudienceTasks ,getDealershipId} from "@/utils/api";
+import { fetchAudienceTasks ,getDealershipId,executeTaskWithPolling} from "@/utils/api";
 import { api } from "@/lib/api";
 
 import {
@@ -485,32 +485,26 @@ useEffect(() => {
 
 const handleGenerateCampaign = async () => {
     setIsGenerating(true);
-    setGenerationStatusMsg("Submitting campaign generation task...");
+    setGenerationStatusMsg("Initializing...");
+
     try {
-      const objectivesList =
-        campaignType === "presales"
-          ? preSalesObjectives
-          : fetchedPostSalesObjectives;
-      const objectiveText =
-        selectedObjective === "custom"
-          ? customObjective
-          : objectivesList.find((o) => o.id === selectedObjective)?.title || "";
+      // Setup payload variables
+      const objectivesList = campaignType === "presales" ? preSalesObjectives : fetchedPostSalesObjectives;
+      const objectiveText = selectedObjective === "custom" 
+        ? customObjective 
+        : objectivesList.find((o) => o.id === selectedObjective)?.title || "";
 
       let enhancedText = objectiveText;
-      if (carModel && selectedObjective.includes("launch"))
-        enhancedText += ` for ${carModel}`;
+      if (carModel && selectedObjective.includes("launch")) enhancedText += ` for ${carModel}`;
 
       const customObjects: Record<string, any> = {};
-      selectedObjectiveData?.custom_campaign_attributes?.forEach(
-        (attr: any) => {
-          if (attr.attribute_name && attr.attribute_value)
-            customObjects[attr.attribute_name] = attr.attribute_value;
-        }
-      );
+      selectedObjectiveData?.custom_campaign_attributes?.forEach((attr: any) => {
+        if (attr.attribute_name && attr.attribute_value) customObjects[attr.attribute_name] = attr.attribute_value;
+      });
       if (carModel) customObjects["Car Model"] = carModel;
       if (launchDate) customObjects["Launch Date"] = launchDate;
 
-      // 1. Submit the task
+      // Construct payload
       const payload = {
         args: [
           campaignType === "presales" ? "pre-sales" : "post-sales",
@@ -519,8 +513,7 @@ const handleGenerateCampaign = async () => {
         kwargs: {
           dealership_idea: {
             languages: [
-              languageOptions.find((l) => l.value === language)?.label ||
-                "English",
+              languageOptions.find((l) => l.value === language)?.label || "English",
             ],
             campaign_offer: campaignDescription,
             custom_objects: customObjects,
@@ -530,47 +523,16 @@ const handleGenerateCampaign = async () => {
         cancellable: true,
       };
 
-      const taskRes = await api(
-        "/gryd/task/autocrm-short-run-agent/generate_campaign_idea",
-        "POST",
-        payload
+      // Call our new global polling function
+      const resultData = await executeTaskWithPolling(
+        "autocrm-short-run-agent", 
+        "generate_campaign_idea", 
+        payload,
+        (statusMessage: string) => setGenerationStatusMsg(statusMessage), // UI Callback
+        { maxRetries: 90 } // Optional: 3 minutes max timeout for this specific heavy task
       );
 
-      const taskId = taskRes?.job?.task_id;
-      if (!taskId) {
-        throw new Error("Failed to retrieve task ID from the job queue.");
-      }
-
-      // 2. Poll the status API
-      let isComplete = false;
-      while (!isComplete) {
-        // Wait 2 seconds before each poll
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        
-        const statusRes = await api(`/gryd/status/${taskId}`, "GET");
-        const currentStatus = statusRes?.status?.toLowerCase();
-        
-        // Update UI with incoming status message if available
-        if (statusRes?.message || currentStatus) {
-            setGenerationStatusMsg(statusRes.message || `Status: ${currentStatus}...`);
-        }
-
-        if (currentStatus === "success") {
-          isComplete = true;
-          setGenerationStatusMsg("Retrieving final campaign result...");
-        } else if (currentStatus === "failed" || currentStatus === "error") {
-          isComplete = true;
-          throw new Error(statusRes?.error || "Task generation failed.");
-        }
-      }
-
-      // 3. Fetch the final result
-      const resultRes = await api(`/gryd/result/${taskId}`, "GET");
-      const data = resultRes?.result;
-
-      if (!data) throw new Error("Result data is empty.");
-
-      // Calculate dates
+      // Calculate dates for the UI
       const today = new Date();
       const nextWeek = new Date(today);
       nextWeek.setDate(today.getDate() + 7);
@@ -580,29 +542,30 @@ const handleGenerateCampaign = async () => {
         return local.toISOString().split("T")[0];
       };
 
-      // Map back language correctly to short code if API returns full word (e.g., "English" -> "en")
-      const returnedLangLabel = data.languages?.[0];
+      // Match language code
+      const returnedLangLabel = resultData.languages?.[0];
       const matchedLang = languageOptions.find(
         (l) => l.label.toLowerCase() === returnedLangLabel?.toLowerCase()
       )?.value || "en";
 
+      // Set Component States
       setCampaignData({
-        name: data.campaign_name,
-        description: data.campaign_description,
-        campaignTitle: data.campaign_tagline,
-        tone: data.campaign_tone,
-        callToAction: data.ctas?.[0] || "Learn More",
+        name: resultData.campaign_name,
+        description: resultData.campaign_description,
+        campaignTitle: resultData.campaign_tagline,
+        tone: resultData.campaign_tone,
+        callToAction: resultData.ctas?.[0] || "Learn More",
         language: matchedLang,
-        campaignOffer: data.campaign_offer,
-        urgencyHook: data.urgency_hook,
+        campaignOffer: resultData.campaign_offer,
+        urgencyHook: resultData.urgency_hook,
       });
 
-      setCampaignName(data.campaign_name || "");
-      setCampaignDescription(data.campaign_description || "");
-      setUrgencyHook(data.urgency_hook || "");
-      setCampaignTitle(data.campaign_tagline || "");
-      setTone(data.campaign_tone || "");
-      setCallToAction(data.ctas?.[0] || "Learn More");
+      setCampaignName(resultData.campaign_name || "");
+      setCampaignDescription(resultData.campaign_description || "");
+      setUrgencyHook(resultData.urgency_hook || "");
+      setCampaignTitle(resultData.campaign_tagline || "");
+      setTone(resultData.campaign_tone || "");
+      setCallToAction(resultData.ctas?.[0] || "Learn More");
       setLanguage(matchedLang);
       setDuration({ start: formatDate(today), end: formatDate(nextWeek) });
       setSelectedChannels(["voice", "whatsapp", "email"]);

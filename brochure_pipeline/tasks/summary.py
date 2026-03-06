@@ -137,7 +137,7 @@ def run_summary_worker(brochure_text: str, job_id: str):
         return {"status": "failed"}
 
    
-    model_name = job_id.replace(" ", "_").lower()
+    model_name = (job_id or str(uuid.uuid4())).replace(" ", "_").lower()
     gryd_tasks = format_for_gryd_vector(vector_summaries, model_name)
     
     output_path = OUTPUT_DIR / f"summary_{job_id}.json"
