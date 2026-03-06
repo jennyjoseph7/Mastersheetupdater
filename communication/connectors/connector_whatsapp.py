@@ -276,7 +276,7 @@ def post_contact_status(*args, **data):
             person = person_d[0]
             user_id = person.get("user_id")
 
-            person_payload = {"previous_contact_channel": channel}
+            person_payload = {}
 
             if channel == "whatsapp_chat":
                 person_payload["last_contacted_whatsapp_number"] = data.get("phone_number")
@@ -295,9 +295,10 @@ def post_contact_status(*args, **data):
                 "updated": time.time(),
             }
             contact_status_id = generate_uid(payload)
+            logger.info(f"[post_contact_status] No message_id provided. Creating new contact_status with contact_status_id={contact_status_id} and payload={payload}")
             pg.update("contact_status", "contact_status_id", contact_status_id, payload)
             
-            update_lead_disposition(pg, incoming_status, user_id=user_id, **data)
+            update_lead_disposition(pg, incoming_status, **data)
             return
         
         records= list(pg.list_order_by(
@@ -348,7 +349,7 @@ def post_contact_status(*args, **data):
             post_billing_obj(**data)
 
         # updating lead disposition
-        update_lead_disposition(pg,incoming_status,**payload)
+        update_lead_disposition(pg,incoming_status,user_id=user_id,**payload)
 
     yield contact_status_id
 def update_lead_disposition(pg, incoming_status, user_id=None, **data):
@@ -424,8 +425,8 @@ def update_lead_disposition(pg, incoming_status, user_id=None, **data):
                 for p in persons
             ]
 
-    elif channel:
-        update_payload["previous_contact_channel"] = channel
+    # elif channel:
+    #     update_payload["previous_contact_channel"] = channel
 
     if can_update_disposition(lead.get("disposition"), incoming_status):
         logger.info(
@@ -433,6 +434,12 @@ def update_lead_disposition(pg, incoming_status, user_id=None, **data):
             f"(current={lead.get('disposition')}, incoming={incoming_status})"
         )
         update_payload["disposition"] = incoming_status
+        #only updating the previous_contact_channel when the diposition is updated and it is higher in sequence than the current diposition
+        update_payload["previous_contact_channel"] = channel 
+        
+        # updating previous_contact_channel for person as well only when the disposition is updated and it is higher in sequence than the current diposition
+        person_payload = {"previous_contact_channel": channel}
+        pg.update("person", "user_id", user_id, person_payload)
     else:
         logger.info(
             "[post_contact_status] Disposition skipped "

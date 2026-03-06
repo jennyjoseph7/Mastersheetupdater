@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // Imports
-import { fetchAudienceTasks ,getDealershipId} from "@/utils/api";
+import { fetchAudienceTasks ,getDealershipId,executeTaskWithPolling} from "@/utils/api";
 import { api } from "@/lib/api";
 
 import {
@@ -295,9 +295,13 @@ function CampaignCreateContent() {
     any[]
   >([]);
 
-  // Campaign Details
+  
+
+// Campaign Details
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStatusMsg, setGenerationStatusMsg] = useState(""); 
   const [isPostingCampaign, setIsPostingCampaign] = useState(false);
+
   const [campaignData, setCampaignData] = useState<any>(null);
   const [campaignName, setCampaignName] = useState("");
   const [campaignDescription, setCampaignDescription] = useState("");
@@ -479,32 +483,28 @@ useEffect(() => {
 
   // --- Logic ---
 
-  const handleGenerateCampaign = async () => {
+const handleGenerateCampaign = async () => {
     setIsGenerating(true);
+    setGenerationStatusMsg("Initializing...");
+
     try {
-      const objectivesList =
-        campaignType === "presales"
-          ? preSalesObjectives
-          : fetchedPostSalesObjectives;
-      const objectiveText =
-        selectedObjective === "custom"
-          ? customObjective
-          : objectivesList.find((o) => o.id === selectedObjective)?.title || "";
+      // Setup payload variables
+      const objectivesList = campaignType === "presales" ? preSalesObjectives : fetchedPostSalesObjectives;
+      const objectiveText = selectedObjective === "custom" 
+        ? customObjective 
+        : objectivesList.find((o) => o.id === selectedObjective)?.title || "";
 
       let enhancedText = objectiveText;
-      if (carModel && selectedObjective.includes("launch"))
-        enhancedText += ` for ${carModel}`;
+      if (carModel && selectedObjective.includes("launch")) enhancedText += ` for ${carModel}`;
 
       const customObjects: Record<string, any> = {};
-      selectedObjectiveData?.custom_campaign_attributes?.forEach(
-        (attr: any) => {
-          if (attr.attribute_name && attr.attribute_value)
-            customObjects[attr.attribute_name] = attr.attribute_value;
-        }
-      );
+      selectedObjectiveData?.custom_campaign_attributes?.forEach((attr: any) => {
+        if (attr.attribute_name && attr.attribute_value) customObjects[attr.attribute_name] = attr.attribute_value;
+      });
       if (carModel) customObjects["Car Model"] = carModel;
       if (launchDate) customObjects["Launch Date"] = launchDate;
 
+      // Construct payload
       const payload = {
         args: [
           campaignType === "presales" ? "pre-sales" : "post-sales",
@@ -513,22 +513,26 @@ useEffect(() => {
         kwargs: {
           dealership_idea: {
             languages: [
-              languageOptions.find((l) => l.value === language)?.label ||
-                "English",
+              languageOptions.find((l) => l.value === language)?.label || "English",
             ],
             campaign_offer: campaignDescription,
             custom_objects: customObjects,
           },
         },
-        _timeout: 180,
+         runtime_limit: 3600,
+        cancellable: true,
       };
 
-      const data = await api(
-        "/gryd/api/autocrm-short-run-agent/generate_campaign_idea",
-        "POST",
-        payload
+      // Call our new global polling function
+      const resultData = await executeTaskWithPolling(
+        "autocrm-short-run-agent", 
+        "generate_campaign_idea", 
+        payload,
+        (statusMessage: string) => setGenerationStatusMsg(statusMessage), // UI Callback
+        { maxRetries: 90 } // Optional: 3 minutes max timeout for this specific heavy task
       );
 
+      // Calculate dates for the UI
       const today = new Date();
       const nextWeek = new Date(today);
       nextWeek.setDate(today.getDate() + 7);
@@ -538,31 +542,40 @@ useEffect(() => {
         return local.toISOString().split("T")[0];
       };
 
+      // Match language code
+      const returnedLangLabel = resultData.languages?.[0];
+      const matchedLang = languageOptions.find(
+        (l) => l.label.toLowerCase() === returnedLangLabel?.toLowerCase()
+      )?.value || "en";
+
+      // Set Component States
       setCampaignData({
-        name: data.campaign_name,
-        description: data.campaign_description,
-        campaignTitle: data.campaign_tagline,
-        tone: data.campaign_tone,
-        callToAction: data.ctas?.[0] || "Learn More",
-        language: data.languages?.[0] || "English",
-        campaignOffer: data.campaign_offer,
-        urgencyHook: data.urgency_hook,
+        name: resultData.campaign_name,
+        description: resultData.campaign_description,
+        campaignTitle: resultData.campaign_tagline,
+        tone: resultData.campaign_tone,
+        callToAction: resultData.ctas?.[0] || "Learn More",
+        language: matchedLang,
+        campaignOffer: resultData.campaign_offer,
+        urgencyHook: resultData.urgency_hook,
       });
 
-      setCampaignName(data.campaign_name);
-      setCampaignDescription(data.campaign_description);
-      setUrgencyHook(data.urgency_hook);
-      setCampaignTitle(data.campaign_tagline);
-      setTone(data.campaign_tone);
-      setCallToAction(data.ctas?.[0] || "Learn More");
-      setLanguage(data.languages?.[0] || "en");
+      setCampaignName(resultData.campaign_name || "");
+      setCampaignDescription(resultData.campaign_description || "");
+      setUrgencyHook(resultData.urgency_hook || "");
+      setCampaignTitle(resultData.campaign_tagline || "");
+      setTone(resultData.campaign_tone || "");
+      setCallToAction(resultData.ctas?.[0] || "Learn More");
+      setLanguage(matchedLang);
       setDuration({ start: formatDate(today), end: formatDate(nextWeek) });
       setSelectedChannels(["voice", "whatsapp", "email"]);
-    } catch (error) {
+
+    } catch (error: any) {
       console.error(error);
-      alert("Failed to generate campaign. Check console.");
+      alert(`Failed to generate campaign: ${error.message || "Check console for details."}`);
     } finally {
       setIsGenerating(false);
+      setGenerationStatusMsg("");
     }
   };
 
@@ -1187,12 +1200,18 @@ const handleProceed = async () => {
                     </Card>
                   </div>
 
-                  {isGenerating && (
-                    <Card className="py-12">
-                      <AILoader />
-                    </Card>
-                  )}
-
+                 {isGenerating && (
+    <Card className="py-12">
+      <div className="flex flex-col items-center justify-center gap-4">
+        <AILoader />
+        {generationStatusMsg && (
+          <p className="text-sm font-medium text-muted-foreground animate-pulse text-center px-4">
+            {generationStatusMsg}
+          </p>
+        )}
+      </div>
+    </Card>
+  )}
                   {/* DETAILS */}
                   {!isGenerating && campaignData && (
                     <div className="space-y-8 animate-in fade-in duration-500">

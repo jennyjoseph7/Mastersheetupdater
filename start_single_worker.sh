@@ -106,7 +106,9 @@ function start_workers() {
 	fi
 
     echo $worker_pid > ./worker.pid
-    while [[ -n `jobs -l | grep $worker_pid` ]]; do sleep 300; done
+    while [[ -n `jobs -rl | grep $worker_pid` ]]; do sleep 1; echo `jobs -rl`; done
+    echo "Exitting.."
+    exit
 }
 
 function main() {
@@ -121,7 +123,9 @@ function main() {
 
 	    app_pid=$!
 		echo $app_pid > app.pid
-        while [[ -n `jobs -l | grep $app_pid` ]]; do sleep 300; done
+        while [[ -n `jobs -rl | grep $app_pid` ]]; do sleep 300; echo `jobs -rl`; done
+        echo "Exitting..."
+        exit
     elif [ $SETUP_CRON_SCHEDULER == "True" ];then
         a=cron_scheduler
     	echo "Starting default workers - $a"
@@ -140,6 +144,9 @@ function main() {
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
+            while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
+            echo "Exitting..."
+            exit
 		else
 			echo "Process execute-cron-continuous is running."
 		fi
@@ -163,13 +170,16 @@ function main() {
 			echo "Process exited or not started. Starting."
 			echo "Starting Cron Worker in BG. Logs are written to ${LOGDIR}/${a}_stderr.log and ${LOGDIR}/${a}_stdout.log"
 			if [ $PRIMARY == 0 ];then
-				nohup cron_worker 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+				nohup cron_worker -n $PARALLEL_THREADS 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 			else
-				nohup cron_worker --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+				nohup cron_worker -n $PARALLEL_THREADS --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 			fi
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
+            while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
+            echo "Exitting..."
+            exit
 		else
 			echo "Process cron_worker is running."
 		fi

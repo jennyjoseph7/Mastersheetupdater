@@ -225,14 +225,16 @@ class get_whatsapp_template_agent(BaseAgent):
 
 
 @gryd.is_a_task('get_whatsapp_template', logger_param='logger', job_param='job')
-def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective = None,dealership_id=None, logger=None, job=None):
+def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective = None,dealership_id=None, logger=None, job=None, **kwargs):
 
         logger = logger or gryd.hp.get_logger(__name__)
         logger.info("Getting WhatsApp Template...")
         # if dealership_id is None:
         #     dealership_id = 'daveai'
+
         try:
             lead_info = lead_info or {}
+            lead_info.update({k: v for k, v in kwargs.items() if v is not None})
             updates = {
                 "id": lead_id,
                 "campaign_type": campaign_type,

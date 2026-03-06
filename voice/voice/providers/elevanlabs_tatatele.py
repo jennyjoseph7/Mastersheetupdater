@@ -432,6 +432,28 @@ class CallSession:
                 "user_id": self.session_data.get("session_id") or self.session_data.get("user_id")
             }
 
+            # Set language presets
+            config_data["conversation_config"] = {
+                "language_presets": {
+                    "en": {
+                        "overrides": {
+                            "agent": {
+                                "first_message": "Hello, how can I help?",
+                                "language": "en"
+                            }
+                        }
+                    },
+                    "hi": {
+                        "overrides": {
+                            "agent": {
+                                "first_message": "",
+                                "language": "hi"
+                            }
+                        }
+                    }
+                }
+            }
+
             if self.session_data.get("prompt"):
                 config_data["conversation_config_override"] = {
                     "agent": {
@@ -440,6 +462,7 @@ class CallSession:
                         "language": self.session_data.get("language", "en")
                     }
                 }
+                
                 
             await self.dave_ws.send(_dumps(config_data))
 
