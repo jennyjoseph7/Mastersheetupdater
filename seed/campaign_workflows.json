@@ -1,4 +1,4 @@
-[
+[[
   {
     "campaign_workflow_id": "workflow-001",
     "campaign_id": "pre-sales-campaign-001",
@@ -105,4 +105,4 @@
     "on_contacted_trigger": {},
     "template_buttons_payload": []
   }
-]
+]]

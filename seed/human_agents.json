@@ -1,165 +1,84 @@
 [
   {
-    "human_agent_id": "agent-001",
-    "agent_name": "Rahul Mehta",
-    "phone_number": "+91-9876543202",
-    "email": "rahul.mehta@nexadelhisouth.com",
-    "role": "Relationship Manager",
+    "role": "Dealership Admin",
+    "email": "vandana+stellantis@iamdave.ai",
     "active": true,
+    "created": 1770383434.9203699,
     "engaged": false,
-    "availability": {
-      "Monday": {
-        "start_time": "09:00",
-        "end_time": "18:00",
-        "is_available": true
-      },
-      "Tuesday": {
-        "start_time": "09:00",
-        "end_time": "18:00",
-        "is_available": true
-      },
-      "Wednesday": {
-        "start_time": "09:00",
-        "end_time": "18:00",
-        "is_available": true
-      },
-      "Thursday": {
-        "start_time": "09:00",
-        "end_time": "18:00",
-        "is_available": true
-      },
-      "Friday": {
-        "start_time": "09:00",
-        "end_time": "18:00",
-        "is_available": true
-      },
-      "Saturday": {
-        "start_time": "10:00",
-        "end_time": "16:00",
-        "is_available": true
-      },
-      "Sunday": {
-        "start_time": "10:00",
-        "end_time": "14:00",
-        "is_available": false
-      }
-    },
-    "channels": [
-      "whatsapp_chat",
-      "phone",
-      "email"
-    ],
-    "created": 1704067200,
-    "updated": 1704067200,
-    "password": null
+    "updated": 1770383434.922932,
+    "password": "$2b$12$8sOApakYXx.RW/MxqF4fLeD7s.9/cWOIV77vzK4IEwWX7vlhqxJpW",
+    "region_id": "india",
+    "agent_name": "Vandana",
+    "dealer_name": "Stellantis",
+    "region_name": "India",
+    "phone_number": "+919980838165",
+    "dealership_id": "stellantis-india",
+    "human_agent_id": "0e74eb51-4761-3320-b2ce-fbc107b74f0a",
+    "password_expiry": 1772975434.922932
   },
   {
-    "human_agent_id": "agent-002",
-    "agent_name": "Sneha Patel",
-    "phone_number": "+91-9876543203",
-    "email": "sneha.patel@nexadelhisouth.com",
-    "role": "Sales Executive",
+    "role": "Dealership Admin",
+    "email": "vandana+stellantisjeep@iamdave.ai",
     "active": true,
+    "created": 1772169487.9558263,
     "engaged": false,
-    "availability": {
-      "Monday": {
-        "start_time": "09:00",
-        "end_time": "19:00",
-        "is_available": true
-      },
-      "Tuesday": {
-        "start_time": "09:00",
-        "end_time": "19:00",
-        "is_available": true
-      },
-      "Wednesday": {
-        "start_time": "09:00",
-        "end_time": "19:00",
-        "is_available": true
-      },
-      "Thursday": {
-        "start_time": "09:00",
-        "end_time": "19:00",
-        "is_available": true
-      },
-      "Friday": {
-        "start_time": "09:00",
-        "end_time": "19:00",
-        "is_available": true
-      },
-      "Saturday": {
-        "start_time": "10:00",
-        "end_time": "20:00",
-        "is_available": true
-      },
-      "Sunday": {
-        "start_time": "10:00",
-        "end_time": "18:00",
-        "is_available": true
-      }
-    },
-    "channels": [
-      "whatsapp_chat",
-      "phone",
-      "email",
-      "web_chat"
-    ],
-    "created": 1704067200,
-    "updated": 1704067200,
-    "password": null
-  },
-  {
-    "human_agent_id": "agent-003",
-    "agent_name": "Anjali Desai",
-    "phone_number": "+91-9876543205",
-    "email": "anjali.desai@nexamumbaiwest.com",
-    "role": "Relationship Manager",
+    "updated": 1772169487.9565177,
+    "password": "$2b$12$FOEuBYSIYP8UWhMmTS7Q1OGR02xCLvaNFn8E813thlSOX3JFidWWS",
+    "region_id": "india",
+    "agent_name": "Vandana",
+    "dealer_name": "Stellantis- Jeep",
+    "region_name": "India",
+    "phone_number": "918401586512",
+    "dealership_id": "stellantis--jeep-india",
+    "human_agent_id": "5f9e405a-8d56-3ab7-b8a4-b1a9221d62ec",
+    "password_expiry": 1774761487.9565177
+  },{
+    "role": "Dealership Admin",
+    "email": "vandana+ambalauto@iamdave.ai",
     "active": true,
+    "created": 1772444201.837529,
     "engaged": false,
-    "availability": {
-      "Monday": {
-        "start_time": "09:00",
-        "end_time": "18:00",
-        "is_available": true
-      },
-      "Tuesday": {
-        "start_time": "09:00",
-        "end_time": "18:00",
-        "is_available": true
-      },
-      "Wednesday": {
-        "start_time": "09:00",
-        "end_time": "18:00",
-        "is_available": true
-      },
-      "Thursday": {
-        "start_time": "09:00",
-        "end_time": "18:00",
-        "is_available": true
-      },
-      "Friday": {
-        "start_time": "09:00",
-        "end_time": "18:00",
-        "is_available": true
-      },
-      "Saturday": {
-        "start_time": "10:00",
-        "end_time": "16:00",
-        "is_available": true
-      },
-      "Sunday": {
-        "start_time": "10:00",
-        "end_time": "14:00",
-        "is_available": false
-      }
-    },
-    "channels": [
-      "whatsapp_chat",
-      "phone",
-      "email"
-    ],
-    "created": 1704067200,
-    "updated": 1704067200,
-    "password": null
+    "updated": 1772444201.8382418,
+    "password": "$2b$12$oYJvZUumrnrzAK7SkjhjCOjqLrKi5dduPo.CNdoz4ASovP7A8L7Zi",
+    "region_id": "india",
+    "agent_name": "Vandana",
+    "dealer_name": "Ambal Auto",
+    "region_name": "India",
+    "phone_number": "918401586512",
+    "dealership_id": "ambal-auto-india",
+    "human_agent_id": "dc4d03d0-5241-329d-8919-e61ac39eacbc",
+    "password_expiry": 1775036201.8382418
+  },{
+    "role": "Dealership Admin",
+    "email": "vandana+anantcars@iamdave.ai",
+    "active": true,
+    "created": 1771506236.0539172,
+    "engaged": false,
+    "updated": 1771506236.0547185,
+    "password": "$2b$12$CaYpTd9MQ8ky85RexP9imezecrv8w607ykbzoiEWSxSa4UCUwImee",
+    "region_id": "india",
+    "agent_name": "Vandana",
+    "dealer_name": "Anant Cars",
+    "region_name": "India",
+    "phone_number": "918401586512",
+    "dealership_id": "anant-cars-india",
+    "human_agent_id": "9d67beea-d971-3ae2-85b3-84f78d9468f1",
+    "password_expiry": 1774098236.0547185
+  },{
+    "role": "Dealership Admin",
+    "email": "usdealership@iamdave.ai",
+    "active": true,
+    "created": 1769749222.4789207,
+    "engaged": false,
+    "updated": 1769749222.480494,
+    "password": "$2b$12$qx28q/cht5j2FvfO1qICdOiPt0tsqNV1PNGo/lk/GaHW1.SEIn4im",
+    "region_id": "united-states",
+    "agent_name": "vandana shah",
+    "dealer_name": "US Dealership",
+    "region_name": "United States",
+    "phone_number": "+19874563215",
+    "dealership_id": "us-dealership-united-states",
+    "human_agent_id": "2d1ed9c2-517b-32fb-b922-7c72791ebee7",
+    "password_expiry": 1772341222.480494
   }
 ]
