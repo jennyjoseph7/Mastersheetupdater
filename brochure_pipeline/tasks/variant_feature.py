@@ -4,7 +4,7 @@ import json
 import uuid
 import time
 import pandas as pd
-import requests
+
 import concurrent.futures
 from pathlib import Path
 from filelock import FileLock
@@ -31,20 +31,7 @@ load_dotenv()
 logger = get_logger(__name__)
 
 
-BASE_URL = os.getenv("GRYD_BASE_URL", "https://autobot-webapp-dev.gryd.in")
 
-
-HEADERS = {
-    "Accept": "application/json",
-    "Content-Type": "application/json",
-    "X-GRYD-ENTERPRISE-ID": os.getenv("GRYD_ENTERPRISE_ID"),
-    "X-GRYD-ROLE": os.getenv("GRYD_ROLE"),
-    "X-GRYD-SESSION-ID": os.getenv("GRYD_SESSION_ID"),
-    "X-GRYD-TOKEN": os.getenv("GRYD_TOKEN"),
-}
-
-VARIANT_API_URL = f"{BASE_URL}/gryd/db/objects/variant"
-UPLOAD_API_URL = f"{BASE_URL}/gryd/db/object/variant_feature"
 
 
 # PATHS & CONSTANTS
@@ -64,29 +51,22 @@ RETRY_DELAY = 10
 # DB & API HELPER FUNCTIONS
 
 def fetch_brochure_text_from_api(document_id: str) -> str:
-    """Fetches extracted chunks from chunk_saver API and concatenates them."""
-    # Added page_size=1000 to ensure we get all chunks without needing to paginate manually
-    url = f"{BASE_URL}/gryd/db/objects/chunk_saver?document_id={document_id}&page_size=1000"
-    
+    """Fetches extracted chunks using AutocrmModel and concatenates them."""
     try:
-        #chunk_saver_model = AutocrmModel('chunk_saver')
-        #chunk_saver_model.list(document_id)
-        response = requests.get(url, headers=HEADERS)
-        response.raise_for_status()
-        response_json = response.json()
-        
-       
-        chunks = response_json.get("data", [])
+        chunk_saver_model = AutocrmModel('chunk_saver')
+        # Assuming .list() returns the data list directly based on your config.py
+        chunks = chunk_saver_model.list(document_id=document_id, page_size=1000)
         
         extracted_text = []
-        for chunk in chunks:
+        # Handle both dict responses (if wrapped in 'data') or direct lists
+        chunk_list = chunks.get("data", []) if isinstance(chunks, dict) else chunks
+        
+        for chunk in chunk_list:
             if isinstance(chunk, dict):
-               
                 text = chunk.get("text_content", "")
                 if text:
                     extracted_text.append(str(text))
                     
-       
         return "\n\n".join(extracted_text)
     except Exception as e:
         logger.error(f"Failed to fetch brochure data from chunk_saver API for {document_id}: {e}")
@@ -99,19 +79,23 @@ def generate_feature_id(entry):
 
 def fetch_db_variants(car_name: str) -> list:
     try:
-        response = requests.get(VARIANT_API_URL, headers=HEADERS)
-        if response.status_code in [200, 201]:
-            data = response.json()
-            variants = data.get("data", []) if isinstance(data, dict) else data
-            return [v for v in variants if str(v.get("vehicle_model_name", "")).lower() == car_name.lower()]
+        variant_model = AutocrmModel('variant')
+        variants = variant_model.list()
+        
+        # Handle dict wrapping just in case
+        variant_list = variants.get("data", []) if isinstance(variants, dict) else variants
+        
+        return [v for v in variant_list if str(v.get("vehicle_model_name", "")).lower() == car_name.lower()]
     except Exception as e:
-        logger.error(f"Failed to fetch variants from API: {e}")
+        logger.error(f"Failed to fetch variants from DB: {e}")
     return []
 
-def stream_upload_chunk(expanded_entries: list, document_id: str): # Added document_id here
+def stream_upload_chunk(expanded_entries: list, document_id: str): 
     if not expanded_entries: return
     
+    variant_feature_model = AutocrmModel('variant_feature')
     success_count = 0
+    
     for entry in expanded_entries:
         if not entry.get("variant_id"):
             continue
@@ -130,14 +114,13 @@ def stream_upload_chunk(expanded_entries: list, document_id: str): # Added docum
             "unit": entry.get("unit"),
             "feature_value": entry.get("feature_value"),
             "source_reference": entry.get("source_reference"),
-            "source_path": document_id, # ADDED THIS TO MATCH YOUR JSON!
+            "source_path": document_id, 
             "confidence_score": str(entry.get("confidence_score", 0.0))
         }
         
         try:
-            resp = requests.post(UPLOAD_API_URL, headers=HEADERS, json=payload)
-            if resp.status_code in [200, 201]:
-                success_count += 1
+            variant_feature_model.post(payload)
+            success_count += 1
         except Exception as e:
             logger.error(f"Streaming Upload Error: {e}")
         time.sleep(0.05) 

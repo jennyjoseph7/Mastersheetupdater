@@ -3,11 +3,11 @@ import json
 import uuid
 import urllib.parse
 from pathlib import Path
-import requests
 from bp_utils import get_logger
 from gryd_worker import gryd
 from agents.summary_agent import VectorIngestionAgent
 from dotenv import load_dotenv
+from config import AutocrmModel
 
 load_dotenv()
 logger = get_logger(__name__)
@@ -18,41 +18,22 @@ OUTPUT_DIR = PROJECT_ROOT / "outputs" / "summary"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
-# API CONFIGURATION & HEADERS
-
-BASE_URL = os.getenv("GRYD_BASE_URL", "https://autobot-webapp-dev.gryd.in")
-
-
-HEADERS = {
-    "Accept": "application/json",
-    "Content-Type": "application/json",
-    "X-GRYD-ENTERPRISE-ID": os.getenv("GRYD_ENTERPRISE_ID"),
-    "X-GRYD-ROLE": os.getenv("GRYD_ROLE"),
-    "X-GRYD-SESSION-ID": os.getenv("GRYD_SESSION_ID"),
-    "X-GRYD-TOKEN": os.getenv("GRYD_TOKEN"),
-}
 
 def fetch_brochure_text_from_api(document_id: str) -> str:
-    """Fetches extracted chunks from chunk_saver API and concatenates them."""
-    url = f"{BASE_URL}/gryd/db/objects/chunk_saver?document_id={document_id}&page_size=1000"
-    
+    """Fetches extracted chunks from chunk_saver model and concatenates them."""
     try:
-        response = requests.get(url, headers=HEADERS)
-        response.raise_for_status()
-        response_json = response.json()
-        
-        
-        chunks = response_json.get("data", [])
+        chunk_saver_model = AutocrmModel('chunk_saver')
+        chunks = chunk_saver_model.list(document_id=document_id, page_size=1000)
         
         extracted_text = []
-        for chunk in chunks:
+        chunk_list = chunks.get("data", []) if isinstance(chunks, dict) else chunks
+        
+        for chunk in chunk_list:
             if isinstance(chunk, dict):
-                
                 text = chunk.get("text_content", "")
                 if text:
                     extracted_text.append(str(text))
                     
-     
         return "\n\n".join(extracted_text)
     except Exception as e:
         logger.error(f"Failed to fetch brochure text from chunk_saver API for {document_id}: {e}")
