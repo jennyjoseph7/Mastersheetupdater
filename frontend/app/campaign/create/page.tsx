@@ -87,6 +87,8 @@ const STELLANTIS_AGENT_MAP: Record<string, string> = {
   en: "agent_5701ka8618cbfxcbdp4wg6xb3x23",
   hi: "agent_7601kj7ephbneq9sysg995ezbsny",
   ta: "agent_5401kjnevnhte8y9vkvb2c04ehx5",
+  ml: "agent_0401kk1n1r6cfdtvym89adrd2b3t",
+
 };
 const getObjectiveIcon = (objectiveId: string, title: string) => {
   const id = objectiveId?.toLowerCase() || "";
