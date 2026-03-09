@@ -1,16 +1,41 @@
 [
   {
+    "channel": "whatsapp_chat",
+    "created": 1763473026.7781062,
+    "updated": 1763473026.780599,
     "provider_name": "Airtel",
     "provider_type": "whatsapp_chat",
-    "communication_provider_id":"airtel_whatsapp_chat",
-    "channel": "whatsapp_chat"
+    "communication_provider_id": "airtel-whatsapp_chat"
   },
   {
+    "channel": "voice_phone",
+    "created": 1763473027.8162901,
+    "updated": 1763473027.818573,
     "provider_name": "Twilio",
     "provider_type": "voice_phone",
-    "communication_provider_id":"twilio_voice_phone",
-    "channel": "voice_phone"
- 
+    "communication_provider_id": "twilio-voice_phone"
+  },
+  {
+    "channel": "email",
+    "created": 1767063969.6170166,
+    "updated": 1767063969.6187148,
+    "provider_name": "AwsSender",
+    "provider_type": "email",
+    "communication_provider_id": "awssender-email"
+  },
+  {
+    "channel": "rcs",
+    "created": 1769514467.4473302,
+    "updated": 1769514467.4484153,
+    "provider_name": "Twilio",
+    "provider_type": "rcs",
+    "communication_provider_id": "twilio-rcs"
+  },
+  {
+    "channel": "voice_phone",
+    "created": 1771130684.1189225,
+    "updated": 1771130684.1196802,
+    "provider_name": "Tatatele",
+    "communication_provider_id": "tatatele-voice_phone"
   }
 ]
-

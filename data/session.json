@@ -250,9 +250,9 @@
         "required": false
       },
       {
-        "name":"last_post_process_time",
-        "type":"number",
-        "required":false
+        "name": "last_post_process_time",
+        "type": "number",
+        "required": false
       },
       {
         "name": "history",
@@ -403,6 +403,19 @@
           "kwargs": {
             "model_name": "{lead_model}",
             "attribute_name": "campaign_objective_name",
+            "lead_id": "{lead_id}",
+            "_get_lead_id": true
+          }
+        }
+      },
+      {
+        "name": "campaign_objective_id",
+        "type": "text",
+        "default": {
+          "function": "resolve_and_search_in_model",
+          "kwargs": {
+            "model_name": "{lead_model}",
+            "attribute_name": "campaign_objective_id",
             "lead_id": "{lead_id}",
             "_get_lead_id": true
           }
