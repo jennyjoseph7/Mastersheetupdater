@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // Imports
-import { fetchAudienceTasks ,getDealershipId} from "@/utils/api";
+import { fetchAudienceTasks ,getDealershipId,executeTaskWithPolling} from "@/utils/api";
 import { api } from "@/lib/api";
 
 import {
@@ -83,7 +83,13 @@ import { AILoader } from "@/components/ui/ai-loader";
 import { Separator } from "@/components/ui/separator";
 
 // --- HELPERS & CONSTANTS ---
+const STELLANTIS_AGENT_MAP: Record<string, string> = {
+  en: "agent_5701ka8618cbfxcbdp4wg6xb3x23",
+  hi: "agent_7601kj7ephbneq9sysg995ezbsny",
+  ta: "agent_5401kjnevnhte8y9vkvb2c04ehx5",
+  ml: "agent_0401kk1n1r6cfdtvym89adrd2b3t",
 
+};
 const getObjectiveIcon = (objectiveId: string, title: string) => {
   const id = objectiveId?.toLowerCase() || "";
   const titleLower = title?.toLowerCase() || "";
@@ -165,11 +171,13 @@ const channels = [
   },
   {
     id: "voice",
+    name: "Voice Call",
     icon: <Phone className="h-6 w-6" />,
     costPerUnit: 8.56,
   },
   {
     id: "rcs",
+    name: "RCS",
     icon: <MessageSquareText className="h-6 w-6" />,
     costPerUnit: 0.9525,
   },
@@ -190,6 +198,7 @@ const languageOptions = [
   { value: "kn", label: "Kannada" },
   { value: "bn", label: "Bengali" },
   { value: "gu", label: "Gujarati" },
+  { value: "ml", label: "Malayalam" },
 ];
 
 const toEpoch = (dateStr: string) =>
@@ -216,6 +225,7 @@ const mapLanguage = (code: string) => {
     kn: "kannada",
     bn: "bengali",
     gu: "gujarati",
+    ml: "malayalam",
   };
   return map[code] || "english";
 };
@@ -226,7 +236,11 @@ function CampaignCreateContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isDealershipSetupComplete } = useAuth();
-
+  // Voice Configuration States
+  const [voiceStartLanguage, setVoiceStartLanguage] = useState("en");
+  const [voiceAgentId, setVoiceAgentId] = useState("");
+// Auto-fill voice agent ID for stellantis-india
+ 
   // Redirect if dealership setup is not complete
   useEffect(() => {
     if (isDealershipSetupComplete === false) {
@@ -285,9 +299,13 @@ function CampaignCreateContent() {
     any[]
   >([]);
 
-  // Campaign Details
+  
+
+// Campaign Details
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStatusMsg, setGenerationStatusMsg] = useState(""); 
   const [isPostingCampaign, setIsPostingCampaign] = useState(false);
+
   const [campaignData, setCampaignData] = useState<any>(null);
   const [campaignName, setCampaignName] = useState("");
   const [campaignDescription, setCampaignDescription] = useState("");
@@ -297,6 +315,7 @@ function CampaignCreateContent() {
   const [tone, setTone] = useState("");
   const [callToAction, setCallToAction] = useState("");
   const [language, setLanguage] = useState("en");
+  const [urgencyHook, setUrgencyHook] = useState("");
 
   // Audience Data
   const [targetAudience, setTargetAudience] = useState<string[]>([]);
@@ -336,7 +355,12 @@ function CampaignCreateContent() {
   }, [duration.start]);
 
   // --- Initialization ---
-
+ useEffect(() => {
+    const dealershipId = getDealershipId();
+    if (dealershipId === "stellantis-india" && selectedChannels.includes("voice")) {
+      setVoiceAgentId(STELLANTIS_AGENT_MAP[voiceStartLanguage] || "");
+    }
+  }, [voiceStartLanguage, selectedChannels]);
   useEffect(() => {
     const isNew = searchParams.get("new");
     if (isNew === "true") {
@@ -402,103 +426,117 @@ function CampaignCreateContent() {
   }, [creationStep, page]);
 
   // Fetch Objectives
-  useEffect(() => {
-    const fetchObjectives = async () => {
-      setIsLoadingObjectives(true);
-      try {
-        const typeParam =
-          campaignType === "presales" ? "pre-sales" : "post-sales";
-        const response = await api(
-          `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}`,
-          "GET"
-        );
-        const data = Array.isArray(response) ? response : response.data || [];
+useEffect(() => {
+  const fetchObjectives = async () => {
+    setIsLoadingObjectives(true);
+    try {
+      const dealershipId = getDealershipId();
+      const typeParam = campaignType === "presales" ? "pre-sales" : "post-sales";
 
-        const mapped = data.map((obj: any, idx: number) => {
-          const id = obj.campaign_objective_id || obj.id || `obj-${idx}`;
-          const title =
-            obj.campaign_objective_name || obj.title || obj.name || "Objective";
-          return {
-            id: id,
-            title: title,
-            campaignSubType: obj.campaign_sub_type || "other",
-            icon: getObjectiveIcon(id, title),
-            fullData: obj,
-          };
-        });
+      // 1. Define both requests
+      const globalUrl = `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}&dealership_id=null`;
+      const specificUrl = `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}&dealership_id=${dealershipId}`;
 
-        mapped.push({
-          id: "custom",
-          title: "Custom Objective",
-          campaignSubType: "Flexible",
-          icon: <Edit3 className="h-6 w-6" />,
-          fullData: null,
-        });
+      // 2. Fire both in parallel
+      const [globalRes, specificRes] = await Promise.all([
+        api(globalUrl, "GET"),
+        api(specificUrl, "GET")
+      ]);
 
-        if (campaignType === "presales") setPreSalesObjectives(mapped);
-        else setFetchedPostSalesObjectives(mapped);
-      } catch (e) {
-        console.error("Error fetching objectives:", e);
-      } finally {
-        setIsLoadingObjectives(false);
-      }
-    };
+      // 3. Extract data from both (handling different potential response shapes)
+      const globalData = Array.isArray(globalRes) ? globalRes : globalRes.data || [];
+      const specificData = Array.isArray(specificRes) ? specificRes : specificRes.data || [];
 
-    if (campaignType) fetchObjectives();
-  }, [campaignType]);
+      // 4. Merge them into one array
+      const combinedData = [...globalData, ...specificData];
+
+      // 5. Map the merged results
+      const mapped = combinedData.map((obj: any, idx: number) => {
+        const id = obj.campaign_objective_id || obj.id || `obj-${idx}`;
+        const title = obj.campaign_objective_name || obj.title || obj.name || "Objective";
+        return {
+          id: id,
+          title: title,
+          campaignSubType: obj.campaign_sub_type || "other",
+          icon: getObjectiveIcon(id, title),
+          fullData: obj,
+        };
+      });
+
+      // 6. Add the Custom option at the end
+      mapped.push({
+        id: "custom",
+        title: "Custom Objective",
+        campaignSubType: "Flexible",
+        icon: <Edit3 className="h-6 w-6" />,
+        fullData: null,
+      });
+
+      if (campaignType === "presales") setPreSalesObjectives(mapped);
+      else setFetchedPostSalesObjectives(mapped);
+
+    } catch (e) {
+      console.error("Error fetching objectives:", e);
+    } finally {
+      setIsLoadingObjectives(false);
+    }
+  };
+
+  if (campaignType) fetchObjectives();
+}, [campaignType]);
 
   // --- Logic ---
 
-  const handleGenerateCampaign = async () => {
+const handleGenerateCampaign = async () => {
     setIsGenerating(true);
+    setGenerationStatusMsg("Initializing...");
+
     try {
-      const objectivesList =
-        campaignType === "presales"
-          ? preSalesObjectives
-          : fetchedPostSalesObjectives;
-      const objectiveText =
-        selectedObjective === "custom"
-          ? customObjective
-          : objectivesList.find((o) => o.id === selectedObjective)?.title || "";
+      // Setup payload variables
+      const objectivesList = campaignType === "presales" ? preSalesObjectives : fetchedPostSalesObjectives;
+      const objectiveText = selectedObjective === "custom" 
+        ? customObjective 
+        : objectivesList.find((o) => o.id === selectedObjective)?.title || "";
 
       let enhancedText = objectiveText;
-      if (carModel && selectedObjective.includes("launch"))
-        enhancedText += ` for ${carModel}`;
+      if (carModel && selectedObjective.includes("launch")) enhancedText += ` for ${carModel}`;
 
       const customObjects: Record<string, any> = {};
-      selectedObjectiveData?.custom_campaign_attributes?.forEach(
-        (attr: any) => {
-          if (attr.attribute_name && attr.attribute_value)
-            customObjects[attr.attribute_name] = attr.attribute_value;
-        }
-      );
+      selectedObjectiveData?.custom_campaign_attributes?.forEach((attr: any) => {
+        if (attr.attribute_name && attr.attribute_value) customObjects[attr.attribute_name] = attr.attribute_value;
+      });
       if (carModel) customObjects["Car Model"] = carModel;
       if (launchDate) customObjects["Launch Date"] = launchDate;
 
+      // Construct payload
       const payload = {
         args: [
-          campaignType === "presales" ? "pre-sale" : "post-sale",
+          campaignType === "presales" ? "pre-sales" : "post-sales",
           enhancedText,
         ],
         kwargs: {
           dealership_idea: {
             languages: [
-              languageOptions.find((l) => l.value === language)?.label ||
-                "English",
+              languageOptions.find((l) => l.value === language)?.label || "English",
             ],
             campaign_offer: campaignDescription,
             custom_objects: customObjects,
           },
         },
-        _timeout: 120,
+         runtime_limit: 3600,
+        cancellable: true,
       };
 
-      const data = await api(
-        "/gryd/api/autocrm-short-run-agent/generate_campaign_idea",
-        "POST",
-        payload
+      // Call our new global polling function
+      const resultData = await executeTaskWithPolling(
+        "autocrm-short-run-agent", 
+        "generate_campaign_idea", 
+        payload,
+        (statusMessage: string) => setGenerationStatusMsg(statusMessage), // UI Callback
+        { maxRetries: 90 } // Optional: 3 minutes max timeout for this specific heavy task
       );
 
+      // Calculate dates for the UI
       const today = new Date();
       const nextWeek = new Date(today);
       nextWeek.setDate(today.getDate() + 7);
@@ -508,30 +546,40 @@ function CampaignCreateContent() {
         return local.toISOString().split("T")[0];
       };
 
+      // Match language code
+      const returnedLangLabel = resultData.languages?.[0];
+      const matchedLang = languageOptions.find(
+        (l) => l.label.toLowerCase() === returnedLangLabel?.toLowerCase()
+      )?.value || "en";
+
+      // Set Component States
       setCampaignData({
-        name: data.campaign_name,
-        description: data.campaign_description,
-        campaignTitle: data.campaign_tagline,
-        tone: data.campaign_tone,
-        callToAction: data.ctas?.[0] || "Learn More",
-        language: data.languages?.[0] || "English",
-        campaignOffer: data.campaign_offer,
-        urgencyHook: data.urgency_hook,
+        name: resultData.campaign_name,
+        description: resultData.campaign_description,
+        campaignTitle: resultData.campaign_tagline,
+        tone: resultData.campaign_tone,
+        callToAction: resultData.ctas?.[0] || "Learn More",
+        language: matchedLang,
+        campaignOffer: resultData.campaign_offer,
+        urgencyHook: resultData.urgency_hook,
       });
 
-      setCampaignName(data.campaign_name);
-      setCampaignDescription(data.campaign_description);
-      setCampaignTitle(data.campaign_tagline);
-      setTone(data.campaign_tone);
-      setCallToAction(data.ctas?.[0] || "Learn More");
-      setLanguage(data.languages?.[0] || "en");
+      setCampaignName(resultData.campaign_name || "");
+      setCampaignDescription(resultData.campaign_description || "");
+      setUrgencyHook(resultData.urgency_hook || "");
+      setCampaignTitle(resultData.campaign_tagline || "");
+      setTone(resultData.campaign_tone || "");
+      setCallToAction(resultData.ctas?.[0] || "Learn More");
+      setLanguage(matchedLang);
       setDuration({ start: formatDate(today), end: formatDate(nextWeek) });
       setSelectedChannels(["voice", "whatsapp", "email"]);
-    } catch (error) {
+
+    } catch (error: any) {
       console.error(error);
-      alert("Failed to generate campaign. Check console.");
+      alert(`Failed to generate campaign: ${error.message || "Check console for details."}`);
     } finally {
       setIsGenerating(false);
+      setGenerationStatusMsg("");
     }
   };
 
@@ -584,16 +632,22 @@ function CampaignCreateContent() {
       return sum + totalAudience * (channelDef?.costPerUnit || 0);
     }, 0);
   };
-
-  const handleProceed = async () => {
+const handleProceed = async () => {
     if (!campaignName || !duration.start || !duration.end) {
       alert("Please fill in Campaign Name and Duration.");
       return;
     }
 
+    // NEW VALIDATION: Check if Voice is selected but agent ID is missing
+    // if (selectedChannels.includes("voice") && !voiceAgentId) {
+    //   alert("Please provide a Voice Agent ID for the Voice Call channel.");
+    //   return;
+    // }
+
     setIsPostingCampaign(true);
 
-    const commonPayload = {
+    // Make this an explicit type so we can append custom keys
+    const commonPayload: Record<string, any> = {
       campaign_name: campaignName,
       campaign_description: campaignDescription,
       campaign_status: "Drafted",
@@ -602,7 +656,7 @@ function CampaignCreateContent() {
       channels: mapChannels(selectedChannels),
       languages: [mapLanguage(language)],
       campaign_offer: campaignData?.campaignOffer || campaignDescription,
-      urgency_hook: campaignData?.urgencyHook || "",
+      urgency_hook: urgencyHook || "",
       ctas: [callToAction],
       number_targeted: 0,
       budget_allocated: 0,
@@ -614,7 +668,14 @@ function CampaignCreateContent() {
       campaign_user_source: "file",
     };
 
+    // NEW LOGIC: Append Voice configs if voice is selected
+    if (selectedChannels.includes("voice")) {
+      commonPayload.voice_start_language = voiceStartLanguage;
+      commonPayload.voice_agent_id = voiceAgentId;
+    }
+
     try {
+      
       let endpoint = "";
       let finalPayload = {};
       const dealershipId = getDealershipId();
@@ -886,60 +947,69 @@ function CampaignCreateContent() {
                   </div>
                 </div>
               )}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                  <Edit3 className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold leading-none tracking-tight">
-                    Required Attributes
-                  </h3>
-                </div>
-                {(selectedObjective === "new-car-launch" ||
-                  selectedObjective.includes("launch")) && (
-                  <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-md">
-                    <div className="space-y-2">
-                      <Label>
-                        Car Model <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        value={carModel}
-                        onChange={(e) => setCarModel(e.target.value)}
-                        placeholder="e.g. Grand Vitara"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>
-                        Launch Date <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        type="date"
-                        value={launchDate}
-                        onChange={(e) => setLaunchDate(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-                {selectedObjectiveData?.custom_campaign_attributes?.map(
-                  (attr: any, idx: number) => (
-                    <div key={idx} className="space-y-2">
-                      <Label>{attr.attribute_name}</Label>
-                      <Input
-                        placeholder={`Enter ${attr.attribute_name}`}
-                        value={attr.attribute_value || ""}
-                        onChange={(e) => {
-                          const u = [
-                            ...selectedObjectiveData.custom_campaign_attributes,
-                          ];
-                          u[idx].attribute_value = e.target.value;
-                          setSelectedObjectiveData({
-                            ...selectedObjectiveData,
-                            custom_campaign_attributes: u,
-                          });
-                        }}
-                      />
-                    </div>
-                  )
-                )}
-              </div>
+           {/* --- Replace the "Required Attributes" div with this conditional block --- */}
+
+{((selectedObjective === "new-car-launch" || selectedObjective.includes("launch")) || 
+  (selectedObjectiveData?.custom_campaign_attributes && selectedObjectiveData.custom_campaign_attributes.length > 0)) && (
+  <div className="space-y-4">
+    <div className="flex items-center gap-2 pb-2 border-b">
+      <Edit3 className="h-4 w-4 text-primary" />
+      <h3 className="font-semibold leading-none tracking-tight">
+        Required Attributes
+      </h3>
+    </div>
+
+    {/* Car Model & Launch Date Inputs */}
+    {(selectedObjective === "new-car-launch" ||
+      selectedObjective.includes("launch")) && (
+      <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-md">
+        <div className="space-y-2">
+          <Label>
+            Car Model <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            value={carModel}
+            onChange={(e) => setCarModel(e.target.value)}
+            placeholder="e.g. Grand Vitara"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>
+            Launch Date <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            type="date"
+            value={launchDate}
+            onChange={(e) => setLaunchDate(e.target.value)}
+          />
+        </div>
+      </div>
+    )}
+
+    {/* Dynamic Custom Attributes */}
+    {selectedObjectiveData?.custom_campaign_attributes?.map(
+      (attr: any, idx: number) => (
+        <div key={idx} className="space-y-2">
+          <Label>{attr.attribute_name}</Label>
+          <Input
+            placeholder={`Enter ${attr.attribute_name}`}
+            value={attr.attribute_value || ""}
+            onChange={(e) => {
+              const u = [
+                ...selectedObjectiveData.custom_campaign_attributes,
+              ];
+              u[idx].attribute_value = e.target.value;
+              setSelectedObjectiveData({
+                ...selectedObjectiveData,
+                custom_campaign_attributes: u,
+              });
+            }}
+          />
+        </div>
+      )
+    )}
+  </div>
+)}
             </div>
             <DialogFooter>
               <Button
@@ -1134,12 +1204,18 @@ function CampaignCreateContent() {
                     </Card>
                   </div>
 
-                  {isGenerating && (
-                    <Card className="py-12">
-                      <AILoader />
-                    </Card>
-                  )}
-
+                 {isGenerating && (
+    <Card className="py-12">
+      <div className="flex flex-col items-center justify-center gap-4">
+        <AILoader />
+        {generationStatusMsg && (
+          <p className="text-sm font-medium text-muted-foreground animate-pulse text-center px-4">
+            {generationStatusMsg}
+          </p>
+        )}
+      </div>
+    </Card>
+  )}
                   {/* DETAILS */}
                   {!isGenerating && campaignData && (
                     <div className="space-y-8 animate-in fade-in duration-500">
@@ -1240,6 +1316,13 @@ function CampaignCreateContent() {
                                   }
                                 />
                               </div>
+                              <div className="space-y-2">
+                                <Label>Urgency Hook</Label>
+                                <Input
+                                  value={urgencyHook}
+                                  onChange={(e) => setUrgencyHook(e.target.value)}
+                                />
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -1300,6 +1383,44 @@ function CampaignCreateContent() {
                                 </Card>
                               ))}
                             </div>
+                            {/* NEW UI: Voice Call Configuration */}
+                            {selectedChannels.includes("voice") && (
+                              <div className="mt-6 space-y-4 p-4 border rounded-md bg-slate-50 dark:bg-slate-900/50">
+                                <h4 className="font-semibold flex items-center gap-2 text-sm">
+                                  <Phone className="h-4 w-4 text-primary" /> Voice Call Configuration
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div className="space-y-2">
+                                    <Label>Voice Start Language</Label>
+                                    <Select value={voiceStartLanguage} onValueChange={setVoiceStartLanguage}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select language" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="en">English</SelectItem>
+                                        <SelectItem value="hi">Hindi</SelectItem>
+                                        <SelectItem value="ta">Tamil</SelectItem>
+                                        <SelectItem value="ml">Malayalam</SelectItem>
+
+                                        <SelectItem value="mr">Marathi</SelectItem>
+                                        <SelectItem value="te">Telugu</SelectItem>
+                                        <SelectItem value="kn">Kannada</SelectItem>
+                                        <SelectItem value="bn">Bengali</SelectItem>
+                                        <SelectItem value="gu">Gujarati</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Voice Agent ID</Label>
+                                    <Input
+                                      value={voiceAgentId}
+                                      onChange={(e) => setVoiceAgentId(e.target.value)}
+                                      placeholder="e.g. agent_..."
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
 

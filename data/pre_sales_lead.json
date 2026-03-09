@@ -154,7 +154,7 @@
                     "supported_brands"
                 ]
             },
-            "type" : "string_list"
+            "type": "string_list"
         },
         {
             "name": "supported_brand_names",
@@ -166,7 +166,7 @@
                     "supported_brand_names"
                 ]
             },
-            "type" : "string_list"
+            "type": "string_list"
         },
         {
             "name": "supported_brands_guidelines",
@@ -656,7 +656,6 @@
                 "commercial",
                 "personal"
             ],
-             
             "required": false
         },
         {
@@ -782,7 +781,6 @@
                 "Used Car Exchange",
                 "Others"
             ]
-            
         },
         {
             "name": "lead_type",
@@ -795,7 +793,6 @@
                 "purchased_elsewhere",
                 "converted"
             ]
-            
         },
         {
             "name": "finance_required",
@@ -1042,7 +1039,6 @@
                     "days_open"
                 ]
             }
-            
         },
         {
             "name": "showroom_facilities_available",
@@ -1260,7 +1256,13 @@
         },
         {
             "name": "follow_up_date",
+            "placeholder": "Follow up timestamp",
             "type": "number"
+        },
+        {
+            "name": "follow_up_language",
+            "placeholder": "Follow up Language",
+            "type": "text"
         },
         {
             "name": "follow_up_count",
@@ -1302,6 +1304,7 @@
                 "Wrong contact number",
                 "Not reachable",
                 "Didnt pickup",
+                "Didnt speak",
                 "Rejected",
                 "Language barrier",
                 "Is not decision maker",
@@ -1322,14 +1325,15 @@
                 "Enquired for Dealership Details",
                 "Enquired for Others",
                 "Comparing with another brand",
+                "Call Disconnected",
                 "Others"
             ],
             "option_others": true
         },
         {
-            "name" : "interested_vehicle_id",
-            "type" : "uid",
-            "refers" : "parents.model_year.model_year_id",
+            "name": "interested_vehicle_id",
+            "type": "uid",
+            "refers": "parents.model_year.model_year_id",
             "default": {
                 "function": "search_in_model",
                 "args": [
@@ -1349,12 +1353,12 @@
             "refers": "parents.model_year.brand_name"
         },
         {
-            "name" : "interested_vehicle_name",
-            "refers" : "parents.model_year.vehicle_model_name"
+            "name": "interested_vehicle_name",
+            "refers": "parents.model_year.vehicle_model_name"
         },
         {
-            "name" : "interested_vehicle_feature_summary",
-            "type" : "text",
+            "name": "interested_vehicle_feature_summary",
+            "type": "text",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1365,16 +1369,16 @@
             }
         },
         {
-          "name" : "interested_vehicle_competitor_vehicles",
-          "type" : "string_list",
-          "default" : {
-            "function" : "get_from_model",
-            "args" : [
-              "model_year",
-              "interested_vehicle_id",
-              "competitor_vehicles"
-            ]
-          }
+            "name": "interested_vehicle_competitor_vehicles",
+            "type": "string_list",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "model_year",
+                    "interested_vehicle_id",
+                    "competitor_vehicles"
+                ]
+            }
         },
         {
             "name": "created",

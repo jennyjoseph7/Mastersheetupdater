@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Razorpay Manual Order Payment</title>
+</head>
+<body>
+    <h2>Trigger Razorpay Payment from JSON</h2>
+
+    <p>Paste your Razorpay order JSON below:</p>
+    <textarea id="order-json" rows="10" cols="60"
+        placeholder='{"order_id":"order_xxx","credits":1000}'></textarea>
+    <br><br>
+
+    <button id="pay-btn">Pay with Razorpay</button>
+
+    <pre id="result"></pre>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+    <script>
+        const key_id = "rzp_test_htVSSrrdDO0Mvj"; // test key
+
+        document.getElementById('pay-btn').onclick = function () {
+            let orderData;
+
+            try {
+                orderData = JSON.parse(
+                    document.getElementById('order-json').value.trim()
+                );
+            } catch (e) {
+                alert("Invalid JSON!");
+                return;
+            }
+
+            if (!orderData.order_id || !orderData.credits) {
+                alert("JSON must contain order id and amount");
+                return;
+            }
+
+            const resultBox = document.getElementById("result");
+            resultBox.textContent = "";
+
+            const options = {
+                key: key_id,
+                amount: orderData.credits,
+                currency: orderData.currency || "INR",
+                name: "Test Store",
+                description: "Manual Razorpay Payment",
+                order_id: orderData.order_id,
+
+                // ✅ PAYMENT SUCCESS
+                handler: function (response) {
+                    const successData = {
+                        status: "SUCCESS",
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_signature: response.razorpay_signature
+                    };
+
+                    console.log("SUCCESS:", successData);
+                    resultBox.textContent = JSON.stringify(successData, null, 2);
+                },
+
+                // 🚫 USER CANCELLED
+                modal: {
+                    ondismiss: function () {
+                        const cancelData = {
+                            status: "CANCELLED",
+                            message: "User closed Razorpay checkout",
+                            order_id: orderData.order_id
+                        };
+
+                        console.log("CANCELLED:", cancelData);
+                        resultBox.textContent = JSON.stringify(cancelData, null, 2);
+                    }
+                },
+
+                prefill: {
+                    name: "John Doe",
+                    email: "john@example.com",
+                    contact: "9999999999"
+                },
+
+                theme: {
+                    color: "#6781aa"
+                }
+            };
+
+            const rzp = new Razorpay(options);
+
+            // ❌ PAYMENT FAILED
+            rzp.on('payment.failed', function (response) {
+                const failData = {
+                    status: "FAILED",
+                    error_code: response.error.code,
+                    error_description: response.error.description,
+                    error_source: response.error.source,
+                    error_step: response.error.step,
+                    error_reason: response.error.reason,
+                    order_id: response.error.metadata.order_id,
+                    payment_id: response.error.metadata.payment_id
+                };
+
+                console.log("FAILED:", failData);
+                resultBox.textContent = JSON.stringify(failData, null, 2);
+            });
+
+            rzp.open();
+        };
+    </script>
+</body>
+</html>

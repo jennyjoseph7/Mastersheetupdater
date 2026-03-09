@@ -32,9 +32,9 @@
           "region_name"
         ],
         "kwargs": {
-          "attribute_join": " ",
+          "attribute_join": "-",
           "is_unique": true,
-          "separator": " ",
+          "separator": "-",
           "case": "title",
           "skip_empty": true
         }
@@ -98,9 +98,9 @@
           "workshop_name"
         ],
         "kwargs": {
-          "attribute_join": " ",
+          "attribute_join": "-",
           "is_unique": true,
-          "separator": " ",
+          "separator": "-",
           "case": "title",
           "skip_empty": true
         }
@@ -353,7 +353,7 @@
         "kwargs": {
           "attribute_join": "-",
           "is_unique": true,
-          "separator": " - ",
+          "separator": "-",
           "skip_empty": true,
           "case": "lower"
         }

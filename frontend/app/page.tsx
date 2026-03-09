@@ -88,6 +88,7 @@ export interface Campaign {
   campaign_id?: string | number;
   name?: string;
   campaign_name?: string;
+  campaign_objective?: string;
   description?: string;
   channels?: string[];
   campaign_status?: string;
@@ -117,6 +118,7 @@ export default function CampaignDashboard() {
   const [page, setPage] = useState<number>(1);
   const [totalReach, setTotalReach] = useState<number>(0);
   const [conversionRate, setConversionRate] = useState<number>(0);
+  const [pageCount, setPageCount] = useState<number>(0); // Add this new state
   const [currentCampaignType, setCurrentCampaignType] =
     useState<string>("post-sales");
 
@@ -140,46 +142,48 @@ export default function CampaignDashboard() {
   // Fetch campaigns by type and page
  // In page.tsx
 
-// ... existing imports and ITEMS_PER_PAGE constant ...
+ 
 
 // Replace your existing fetchCampaigns function with this:
 const fetchCampaigns = async (type: string, page: number) => {
   console.log("[fetchCampaigns] Type:", type, "Page:", page, "Size:", ITEMS_PER_PAGE);
 
-  // 1. Handle Dealership Campaigns
+ // 1. Handle Dealership
   if (type === "dealership") {
     const res = await fetchDealershipCampaigns(page, ITEMS_PER_PAGE);
+    const total = res?.total ?? 0;
     return {
       merged: res?.items ?? [],
-      total: res?.total ?? 0,
+      total: total,
+      pageCount: Math.ceil(total / ITEMS_PER_PAGE), // Add this
     };
   }
 
-  // 2. Handle "Pre-Sales" (Pass page & size!)
+  // 2. Handle Pre-Sales
   if (type === "pre-sales" || type === "pre_sales") {
     const res = await fetchPreSalesCampaigns(page, ITEMS_PER_PAGE);
+    const total = res?.total ?? 0;
     return {
       merged: res?.items ?? [],
-      total: res?.total ?? 0,
+      total: total,
+      pageCount: Math.ceil(total / ITEMS_PER_PAGE), // Add this
     };
   }
 
-  // 3. Handle "Post-Sales" (Pass page & size!)
+  // 3. Handle Post-Sales
   if (type === "post-sales" || type === "post_sales") {
     const res = await fetchPostSalesCampaigns(page, ITEMS_PER_PAGE);
+    const total = res?.total ?? 0;
     return {
       merged: res?.items ?? [],
-      total: res?.total ?? 0,
+      total: total,
+      pageCount: Math.ceil(total / ITEMS_PER_PAGE), // Add this
     };
   }
 
   // 4. Handle "All"
-  // Note: True server-side pagination for "All" is complex because it requires merging 
-  // two different API endpoints. For now, we fetch a larger batch (e.g. 50) 
-  // of each to ensure the client-side list is populated.
- if (type === "all") {
+  if (type === "all") {
     const [preRes, postRes] = await Promise.all([
-      // FIXED: Pass 'page' and 'ITEMS_PER_PAGE' instead of 1 and 50
       fetchPreSalesCampaigns(page, ITEMS_PER_PAGE),
       fetchPostSalesCampaigns(page, ITEMS_PER_PAGE),
     ]);
@@ -188,20 +192,30 @@ const fetchCampaigns = async (type: string, page: number) => {
     const postItems = postRes?.items ?? [];
     const merged = [...preItems, ...postItems];
 
-    // Sort by creation date (newest first)
+    // Sort by creation date
     merged.sort((a, b) => {
       const dateA = a.created || a.start_date || 0;
       const dateB = b.created || b.start_date || 0;
       return dateB - dateA;
     });
 
+    const preTotal = preRes?.total ?? 0;
+    const postTotal = postRes?.total ?? 0;
+
+    // The key fix: The number of pages is determined by the longer list
+    const maxPages = Math.max(
+      Math.ceil(preTotal / ITEMS_PER_PAGE),
+      Math.ceil(postTotal / ITEMS_PER_PAGE)
+    );
+
     return {
       merged: merged,
-      total: (preRes?.total ?? 0) + (postRes?.total ?? 0),
+      total: preTotal + postTotal,
+      pageCount: maxPages, // Use the greater of the two page counts
     };
   }
 
-  return { merged: [], total: 0 };
+  return { merged: [], total: 0, pageCount: 0 };
 };
 
   const { data: counts, mutate: mutateCounts } = useSWR(
@@ -407,10 +421,18 @@ const fetchCampaigns = async (type: string, page: number) => {
   }, [counts, campaignTypeFilter, campaignsData, campaignSummaryData]);
 
   // Update campaigns and total count whenever data or type changes
-  useEffect(() => {
+useEffect(() => {
     if (campaignsData) {
       setMergedCampaigns(campaignsData.merged ?? []);
       setTotalCount(campaignsData.total ?? 0);
+      
+      // Update the page count from the API response
+      if (campaignsData.pageCount !== undefined) {
+        setPageCount(campaignsData.pageCount);
+      } else {
+        // Fallback for initial load or safety
+        setPageCount(Math.ceil((campaignsData.total ?? 0) / ITEMS_PER_PAGE));
+      }
     }
   }, [campaignsData, campaignTypeFilter]);
 
@@ -466,6 +488,7 @@ const fetchCampaigns = async (type: string, page: number) => {
 
     return mergedCampaigns.filter((campaign: Campaign) => {
       const campaignName = campaign.name ?? campaign.campaign_name ?? "";
+      const campaignObjective = campaign.campaign_objective ?? "";
       const matchesSearch = q === "" || campaignName.toLowerCase().includes(q);
 
       const campaignStatus =
@@ -519,20 +542,25 @@ const fetchCampaigns = async (type: string, page: number) => {
 
   // const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 const displaySlice = useMemo(() => {
-    // 1. For "All", we fetch a large batch (e.g. 50+), so we MUST slice client-side
-    //    to show only 5 per page.
+    // 1. For "All", since we now fetch specific pages from the server (e.g. Page 2),
+    // the 'filteredCampaigns' array ONLY contains the data for that page.
+    // We must NOT slice by '(page - 1) * size' anymore, because that offset assumes 
+    // we have the whole list in memory.
+    // Instead, we just take the items we received.
     if (campaignTypeFilter === "all") {
-      const displayStart = (page - 1) * ITEMS_PER_PAGE;
-      return filteredCampaigns.slice(displayStart, displayStart + ITEMS_PER_PAGE);
+      // Optional: Since fetching "All" gets 5 Pre + 5 Post (Total 10), 
+      // you might want to slice (0, 5) to keep the UI consistent, 
+      // or just return 'filteredCampaigns' to show all 10.
+      
+      // Returning all merged items for the current page:
+      return filteredCampaigns; 
     }
 
-    // 2. For specific types (Pre/Post/Dealership), the API already returns
-    //    exactly 5 items for the current page. Do NOT slice again.
+    // 2. For specific types, the API returns exactly 5 items.
     return filteredCampaigns;
-  }, [filteredCampaigns, page, campaignTypeFilter]);
-
-  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
-
+  }, [filteredCampaigns, campaignTypeFilter]);
+  // const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+const totalPages = pageCount;
   // ... continue with rendering ...
   const getStatusBadge = (status?: string) => {
     const variants: Record<
@@ -700,7 +728,7 @@ const displaySlice = useMemo(() => {
               Refresh
             </Button>
             <Button
-              className="gap-2"
+              className="gap-2 cursor-pointer"
               onClick={() => {
                 if (isDealershipSetupComplete === false) {
                   router.push("/dealership/update-details");
@@ -966,6 +994,8 @@ const displaySlice = useMemo(() => {
                   <TableRow>
                     <TableHead>Campaign Type</TableHead>
                     <TableHead>Campaign Name</TableHead>
+                    <TableHead>Campaign Objective</TableHead>
+
                     <TableHead>Channels Used</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Launch Date</TableHead>
@@ -1014,10 +1044,26 @@ const displaySlice = useMemo(() => {
                           <TableCell className="font-medium capitalize">
                             {campaignType?.replace("_", " ") || "Unknown"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            className="max-w-[250px] truncate"
+                            title={
+                              campaign.name ||
+                              campaign.campaign_name ||
+                              "Unnamed"
+                            }
+                          >
                             {campaign.name ||
                               campaign.campaign_name ||
                               "Unnamed"}
+                          </TableCell>
+
+                          <TableCell
+                            className="max-w-[200px] truncate"
+                            title={
+                              campaign.campaign_objective_name || "Unnamed"
+                            }
+                          >
+                            {campaign.campaign_objective_name || "Unnamed"}
                           </TableCell>
                           <TableCell>
                             {getChannelBadges(campaign.channels)}
@@ -1028,7 +1074,7 @@ const displaySlice = useMemo(() => {
                           <TableCell>
                             {campaign.launchDate || campaign.start_date
                               ? epochToIST(
-                                  campaign.launchDate || campaign.start_date
+                                  campaign.launchDate || campaign.start_date,
                                 )
                               : "-"}
                           </TableCell>

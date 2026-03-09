@@ -18,13 +18,15 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
 from communication.connectors.base_connector_communication import *
 
-from communication.connectors.communication_helpers import _wait_for_next_minute,yield_gryd_task_results
+from communication.connectors.communication_helpers import _wait_for_next_minute
 
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 from agents.get_whatsapp_template_agent import get_whatsapp_template
 from agents.get_email_template_agent import get_email_template
+from agents.get_rcs_template_agent import get_rcs_template
 from communication.connectors.email_communication import communication_sender
-from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,WHATSAPP_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
+from communication.connectors.connector_rcs import gryd_send_rcs
+from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
@@ -167,91 +169,103 @@ class BaseCampaignCreater:
         Returns:
             dict: The campaign user data with the updated message status.
         """
+        
+        # logger.info(f"[TESTING RCS] --mobile_number--{mobile_number} campaign_details: {json.dumps(campaign_details,indent=4)} -- campaign_user_data: {json.dumps(campaign_user_data,indent=4)}")
         start_time = time.time()
-        whatsapp_provider = campaign_details.get("provider_name")
+        channel=campaign_details.get("channel")
+        provider_name = campaign_details.get("provider_name")
         sender = campaign_details.get("sender")
         logger.info(
             f"Preparing to send campaign message for lead_id={lead_id}, "
-            f"provider={whatsapp_provider}, number={mobile_number}"
+            f"provider={provider_name}, number={mobile_number}"
         )
-        # logger.info(f"MOBILE NUMBER_---{mobile_number}")
-        # Format mobile number safely
-        mobile_number = self._format_mobile_number(
-            mobile_number,
-            country_code=campaign_user_data.get("country_code", "91") or "91"
-        )
-        patch_user_data = {"mobile_number":mobile_number,"template_message":campaign_details.get("template_message",'').format(**campaign_user_data)}
-        logger.info(f"Campaign Message patch_user_data: {patch_user_data}")
-        # Build payload
-        send_data = self.create_campaign_payload(
-            campaign_details, campaign_user_data, enterprise_id
-        )
-        if not send_data:
-            logger.error(f"Failed to create send_data for campaign user ID {lead_id}")
-            patch_user_data = {
-                "execution_error": True,
-                "execution_error_message": "Failed to create campaign payload",
-                "sent_message": False,
-            }
-            return patch_user_data
-
-        try:
-            # Initialize provider connector
-            provider = WhatsappMessangerConnector.whatsapp(
-                whatsapp_provider, *args, **kwargs
+        patch_user_data={}
+        if channel in ["whatsapp", "whatsapp_chat"]:
+            mobile_number = self._format_mobile_number(
+                mobile_number,
+                country_code=campaign_user_data.get("country_code", "91") or "91"
             )
-
-            # Send WhatsApp message
-            response = provider.send_message_whatsapp(
-                mobile_number, sender, **send_data
+            patch_user_data = {"mobile_number":mobile_number,"template_message":campaign_details.get("template_message",'').format(**campaign_user_data)}
+            # logger.info(f"Campaign Message patch_user_data: {patch_user_data}")
+            send_data = self.create_campaign_payload(
+                campaign_details, campaign_user_data, enterprise_id
             )
-            logger.info(f"Response for campaign user {lead_id}: {response}")
-
-            # Handle successful response
-            if isinstance(response, dict):
-                response_code = response.get("response_code") or response.get("status_code")
-                success = response_code == 200
-                end_time = time.time()
-
+            if not send_data:
+                logger.error(f"Failed to create send_data for campaign user ID {lead_id}")
                 patch_user_data = {
-                    "sent_message": True if success else  False,
-                    "message_status": "initiated" if success else "failed",
-                    "message_triggered_timestamp": hp.now(tz=DB_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S"),
-                    "message_id": response.get("message_id"),
-                    "response_code": response_code,
-                    "time_take_to_process": round(end_time - start_time, 3),
-                    "sent_payload": response.get("sent_payload"),
-                    "api_response_time": response.get("api_response_time"),
-                    "message_request_id": response.get("message_request_id"),
-                    "whatsapp_provider": whatsapp_provider,
-                    "provider_name": whatsapp_provider,
-                }
-
-            else:
-                # Non-dict response
-                logger.warning(f"Unexpected response type for user {lead_id}: {type(response)}")
-                patch_user_data = {
-                    "sent_message": False,
-                    "message_status": "invalid_response",
                     "execution_error": True,
-                    "execution_error_message": f"Unexpected response type: {type(response)}",
+                    "execution_error_message": "Failed to create campaign payload",
+                    "sent_message": False,
                 }
+                return patch_user_data
 
-        except Exception as e:
-            hp.print_error()
-            logger.exception(f"Error sending message for campaign user ID {lead_id}: {e}")
-            patch_user_data = {
-                "execution_error": True,
-                "execution_error_message": str(e),
-                "sent_message": False,
-                "message_status": "error",
-            }
+            try:
+                # Initialize provider connector
+                provider = WhatsappMessangerConnector.whatsapp(
+                    provider_name, *args, **kwargs
+                )
 
-       
-        logger.info(
-            f"Updated campaign user {lead_id} with patch: {patch_user_data}"
-        )
-        
+                # Send WhatsApp message
+                response = provider.send_message_whatsapp(
+                    mobile_number, sender, **send_data
+                )
+                # logger.info(f"Response for campaign user {lead_id}: {response}")
+
+                # Handle successful response
+                if isinstance(response, dict):
+                    response_code = response.get("response_code") or response.get("status_code")
+                    success = response_code == 200
+                    end_time = time.time()
+
+                    patch_user_data = {
+                        "sent_message": True if success else  False,
+                        "message_status": "initiated" if success else "failed",
+                        "message_triggered_timestamp": hp.now(tz=DB_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S"),
+                        "message_id": response.get("message_id"),
+                        "response_code": response_code,
+                        "time_take_to_process": round(end_time - start_time, 3),
+                        "sent_payload": response.get("sent_payload"),
+                        "api_response_time": response.get("api_response_time"),
+                        "message_request_id": response.get("message_request_id"),
+                        "whatsapp_provider": provider_name,
+                        "provider_name": provider_name,
+                    }
+
+                else:
+                    # Non-dict response
+                    logger.warning(f"Unexpected response type for user {lead_id}: {type(response)}")
+                    patch_user_data = {
+                        "sent_message": False,
+                        "message_status": "invalid_response",
+                        "execution_error": True,
+                        "execution_error_message": f"Unexpected response type: {type(response)}",
+                    }
+
+            except Exception as e:
+                hp.print_error()
+                logger.exception(f"Error sending message for campaign user ID {lead_id}: {e}")
+                patch_user_data = {
+                    "execution_error": True,
+                    "execution_error_message": str(e),
+                    "sent_message": False,
+                    "message_status": "error",
+                }
+        elif channel == "rcs":
+            # logger.info(f"RCS mobile_number----{mobile_number}")
+            res=gryd_send_rcs(provider_name,mobile_number,None,campaign_details.get("template_message"))
+            
+            if(isinstance(res,dict)):
+                response=res.get("response",None)
+                # logger.info(f"RESPONSE --{response} , response['status'] --{response['status']}")
+                success = response["status"]=="error"
+                logger.info(f"RESPONSE success --{success}")
+                
+                patch_user_data["message_status"] = "initiated" if success else "failed"
+                patch_user_data["sent_message"] = True if success else False
+        else:
+            logger.error(
+                f"Unsupported channel {channel} for campaign user ID {lead_id}"
+            )
         # logger.info(f"CAMPAIGN MESSAGE STATUS-----: {campaign_details} ,campaign_user_data --{campaign_user_data} ")
         msg_status=WA_TO_DISPOSITION.get(patch_user_data.get("message_status"), None)
         if msg_status:
@@ -264,18 +278,19 @@ class BaseCampaignCreater:
                     "campaign_model":campaign_details.get("campaign_model"),
                     "phone_number":mobile_number,
                     "dealership_id":campaign_details.get("dealership_id"),
-                    "message_id":response.get("message_id",None),
+                    "message_id": (response.get("message_id", None) if channel == "whatsapp_chat" else getattr(response.get("response"), "sid", None)),
                     "provider_status":msg_status,
-                    "channel_provider":whatsapp_provider,
-                    "channel":"whatsapp_chat",
+                    "channel_provider":provider_name,
+                    "channel":patch_user_data.get("channel") or channel
                 }
             
-            # logger.info(f"Calling post_contact_status with data from campaign: {data}")
+            logger.info(f"Calling post_contact_status with data from campaign: {data}")
             gryd.create_async_task(
                 "post_contact_status", 
                 AUTOCRM_COMMUNICATION_SERVICE_NAME, 
                 kwargs=data
             )
+        
         
         
         
@@ -359,8 +374,15 @@ class BaseCustomCampaignManager:
 
             # logger.info(f"process_campaign_users_generic campaign_details---{campaign_data}---campaign_users---{user}")
             
-            if channel.upper()=="WHATSAPP_CHAT":
+            if channel.upper() in ["WHATSAPP_CHAT","RCS"]:
                 logger.info(f"[{count}] Sent {channel} message for {mobile_number}")
+                
+                logger.info("Checking and creating a session for channel: {channel} and user: {mobile_number}")
+                session_data=handle_session_logic(mobile_number,channel.lower())
+                logger.info(f"Session logic result in campaign : {session_data}")
+                if not session_data:
+                    logger.error(f"Failed to create session for channel: {channel} and user: {mobile_number}")
+                    continue
                 #TODO Send async 
                 if is_testing:
                     logger.info(f"[{count}] Sending WhatsApp message synchronously for {campaign_data.get('campaign_id')} for phone_number={campaign_data.get('mobile_number')}")
@@ -388,16 +410,15 @@ class BaseCustomCampaignManager:
                 logger.info(f"[{count}] Sent {channel} message for phone_number:{campaign_data.get('mobile_number')}, campaign_id:{campaign_data.get('campaign_id')}, lead_id:{user.get('lead_id')}")
                 # logger.info(f"[voice_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
                 d={**campaign_data,**campaign_users[0]}
+                # logger.info(f"Voice call payload--{json.dumps(d,indent=4)}")
                 gryd.create_async_task('trigger_voice_call', AUTOCRM_VOICE_SERVICE_NAME, args=[],kwargs={"user_data":d})
-                # send_voice_campaign_message(campaign_user_data.get("mobile_number"),campaign_user_data,campaign_details_data,VOICE_CAMPAIGN_BASE_URL)
-                # TODO call nikit task for voice
-                pass
             elif channel.upper()=="EMAIL":
                 logger.info("Sending Email campaign---")
                 # logger.info(f"[email_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
                 email_p=format_email_payload(campaign_data,campaign_users[0],mobile_number)
                 # logger.info(f"email_p--{json.dumps(email_p,indent=4)}")
                 communication_sender(**email_p)
+            
             else:
                 logger.error(f"Unsupported channel: {channel}")
                 continue
@@ -519,7 +540,7 @@ class BaseCustomCampaignManager:
             channel = kwargs.get("channel", "").upper()
 
             if kwargs.get("retry_failed"):
-                if campaign_users and channel in ["WHATSAPP_CHAT", "VOICE_PHONE", "EMAIL"]:
+                if campaign_users and channel in ["WHATSAPP_CHAT", "VOICE_PHONE", "EMAIL", "RCS"]:
                     self.process_campaign_users_generic(
                         enterprise_id=enterprise_id, 
                         campaign_id=campaign_id, 
@@ -552,7 +573,7 @@ class BaseCustomCampaignManager:
 
                 logger.info(f"campaign_users----{campaign_users}---and channel----{channel}")
                 # Process users based on channel
-                if campaign_users and channel in ["WHATSAPP_CHAT", "VOICE_PHONE", "EMAIL"]:
+                if campaign_users and channel in ["WHATSAPP_CHAT", "VOICE_PHONE", "EMAIL", "RCS"]:
                     self.process_campaign_users_generic(
                         enterprise_id=enterprise_id, 
                         campaign_id=campaign_id, 
@@ -850,6 +871,11 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     sender_name = None
     template_message = None
     buttons = None
+    TEMPLATE_RESOLVERS = {
+        "email": get_email_template,
+        "whatsapp_chat": get_whatsapp_template,
+        "rcs": get_rcs_template,
+    }
     
     if campaign_type == "pre-sales":
         campaign_table = "pre_sales_campaign"
@@ -890,19 +916,14 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     if not channel:
         channel = get_channel(lead_data, campaign_details)
 
+    get_template=TEMPLATE_RESOLVERS.get(channel)
+    logger.info(f"Template resolver for channel={channel}: {get_template}")
     if channel == "voice_phone":
         provider_name = VOICE_PROVIDER_NAME
     elif channel == "email":
-        # email_cred=pg.list("communication_credentials", {"channel": "email"})
-        # email_cred=email_cred[0] if email_cred else None
-        # if not email_cred:
-        #     yield {"status": "Error", "error_description": "No email credentials found"}
-        #     return
-        # sender_name=email_cred.get("sender_name")
         sender_name=EMAIL_SENDER_NAME
         provider_name = EMAIL_PROVIDER_NAME
-        
-        template_data= get_email_template(
+        template_data= get_template(
             lead_id=lead_id,
             campaign_type=campaign_type,
             campaign_objective= [campaign_details.get("campaign_objective_name")] or ["Free Service Due Reminder"] if campaign_details.get("campaign_type") == "post-sales" else ["Test Drive Booking"],
@@ -937,16 +958,12 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         # logger.info("Template Data: %s", template_data)
     elif channel in ("whatsapp_chat", "sms", "rcs"):
         if not templateID:
-            template_data = get_whatsapp_template(
+            template_data = get_template(
                 lead_id=lead_id,
                 campaign_type=campaign_type,
-                # campaign_objective= [campaign_details.get("campaign_objective_name")] if campaign_details.get("campaign_objective_name") else ["Free Service Reminder"],
                 campaign_objective= [campaign_details.get("campaign_objective_name")] or ["Free Service Due Reminder"] if campaign_details.get("campaign_type") == "post-sales" else ["Test Drive Booking"],
-                # dealership_id = lead_data.get("dealership_id"), //for later pass disposition and disposition detail
                 lead_info={}
             )
-            
-            # template_data=testing_whatsapp_template()
             if not template_data:
                 yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
                 return
@@ -961,29 +978,6 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         yield {"status": "Error", "error_description": f"Unsupported channel: {channel}"}
         return
 
-    # if campaign_type == "pre-sales":
-    #     mobile = lead_data.get("phone_number")
-    #     customer_name = lead_data.get("person_name")
-    #     variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data) if template_data else {}
-
-    # else:
-        # persons = lead_data.get("persons_involved") or []
-        # selected_person = None
-
-        # if user_id:
-        #     selected_person = next((p for p in persons if p.get("user_id") == user_id), None)
-        # if not selected_person and persons:
-        #     selected_person = persons[0]
-
-        # if not selected_person:
-        #     yield {"status": "Error", "error_description": f"No valid person for post-sales lead_id={lead_id}"}
-        #     return
-
-        # mobile = selected_person.get("last_contacted_whatsapp_number")
-        # customer_name = selected_person.get("person_name")
-        # variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data, selected_person) if template_data else {}
-    
-    # not using persons_involved for now...
     mobile = lead_data.get("phone_number") 
     logger.info(f"Campaign ID: {campaign_id}, Original Mobile: {mobile}")
     customer_name = "Dear NADA Visitor" if campaign_id == "4c99d5ea-4441-3ce6-841f-de5d7585b3b7" and lead_data.get("person_name") is None else lead_data.get("person_name")
@@ -1002,12 +996,16 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         **variable_mapping
     }
 
-    if template_data and channel == "whatsapp_chat" or channel== "email":
+    if template_data and channel in ("whatsapp_chat", "sms"):
         buttons = template_data.pop("buttons", None)
         template_vars = template_data.get("template_variables", [])
         render_data = {v: template_data.get(v, "") for v in template_vars}
         template_message = template_data.get("template_message", "").format(**render_data)
 
+    if template_data and channel == "rcs":
+        template_vars = template_data.get("template_variables", [])
+        render_data = {v: template_data.get(v, "") for v in template_vars}
+        template_message = template_data.get("init_message", "").format(**render_data)
     logger.info(f"Template Message: {template_message}")
     if channel == "web_chat":
         yield {"placeholder": template_message, "buttons": buttons}

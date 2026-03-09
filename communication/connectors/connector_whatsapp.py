@@ -16,17 +16,17 @@ from flask import request
 # added new instead of
 import sys,os
 import time
-from connectors.communication_helpers import format_box_log,safe_orjson_dumps
+from connectors.communication_helpers import format_box_log,safe_orjson_dumps,generate_uid,get_communication_credential
 from connectors.communication_configs import DB_TIMEZONE
-import config
-from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappReceiverConnector,BaseWebhookConverter
+from config import *
+from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappReceiverConnector
 import json
 from autocrm_db_helper import get_pg_connector
 #  this from connectors.base_connector_communication import *
 
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
-gryd.SERVICE = config.AUTOCRM_COMMUNICATION_SERVICE_NAME
+gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
 
@@ -239,192 +239,6 @@ def send_message_whatsapp(*args,**kwargs):
     res = provider_init.send_message_whatsapp(*args,**kwargs)
     return res
 
-
-# @gryd.is_a_task(function_name="post_contact_status")
-# def post_contact_status(*args, **data):
-    
-#     # lead_id, user_id, campaign_type,campaign_id, message_id
-#     """
-#     Handle and store contact status updates coming from WhatsApp / messaging providers.
-#     Disposition updates for post-sales leads are strictly monotonic.
-#     """
-#     DISPOSITION_SEQUENCE = [
-#         "queued",
-#         "attempted",
-#         "error",
-#         "failed",
-#         "reached",
-#         "contacted",
-#         "engaged",
-#         "converted",
-#     ]
-
-#     def can_update_disposition(current, incoming):
-#         if not incoming or incoming not in DISPOSITION_SEQUENCE:
-#             return False
-#         if not current or current not in DISPOSITION_SEQUENCE:
-#             return True
-#         return DISPOSITION_SEQUENCE.index(incoming) > DISPOSITION_SEQUENCE.index(current)
-
-#     logger.info(f"[post_contact_status] message_status={data.get('message_status')}")
-    
-#     logger.info(f"[post_contact_status] args={args} | data={data}")
-#     message_id = args[0] if args else None
-#     logger.info(f"[post_contact_status] message_id={message_id}")
-
-#     with get_pg_connector() as pg:
-#         user_id = None
-#         lead_id = None
-#         campaign_type = None
-#         channel = None
-#         # update person
-#         # person_d = list(pg.list("person", {"phone_number": data.get("phone_number")}))
-#         person_d = list(pg.list_order_by(
-#                 "person",
-#                 {"phone_number": data.get("phone_number")},
-#                 order_by="updated",
-#                 order="DESC"
-#             ))
-        
-#         if person_d:
-#             person = person_d[0]
-#             user_id = person.get("user_id")
-
-#             person_payload = {
-#                 "previous_contact_channel": (
-#                     "whatsapp_chat"
-#                     if data.get("channel") == "whatsapp_chat"
-#                     else "email"
-                    
-#                 )
-#             }
-
-#             if data.get("channel") == "whatsapp_chat":
-#                 person_payload["last_contacted_whatsapp_number"] = data.get("phone_number")
-#             elif data.get("channel") == "email":
-#                 person_payload["last_contacted_email"] = data.get("email")
-#             elif data.get("channel") == "voice_phone":
-#                 person_payload["last_contacted_phone_number"] = data.get("phone_number")
-#             pg.update("person", "user_id", user_id, person_payload)
-        
-        
-#         update_payload = {}
-        
-#         # Create contact status new record (if No message_id)
-#         if not message_id:
-#             logger.info("[post_contact_status] Creating new contact_status")
-
-#             payload = {
-#                 **data,
-#                 "user_id": user_id,
-#                 "created": time.time(),
-#                 "updated": time.time(),
-#             }
-#             contact_status_id = BaseWebhookConverter().generate_uid(payload)
-
-#             pg.update("contact_status", "contact_status_id", contact_status_id, payload)
-#         else:
-#             records = list(pg.list("contact_status", {"message_id": message_id}))
-#             if not records:
-#                 logger.warning(f"[post_contact_status] No contact_status found for {message_id}")
-#                 return
-
-#             existing = records[0]
-#             existing["provider_status"] = data.get("message_status") or ""
-#             existing["updated"] = time.time()
-            
-#             lead_id = existing.get("lead_id")
-#             campaign_type = existing.get("campaign_type")
-#             channel = existing.get("channel")
-            
-#             if data.get("message_status") == "failed":
-#                 existing["failure_reason"] = "Message not delivered"
-
-#             payload = existing
-#             update_payload = existing
-#             contact_status_id = BaseWebhookConverter().generate_uid(payload)
-
-#             # Avoid duplicate queued / initiated overwrite
-#             if data.get("message_status") not in ["initiated", "queued"]:
-#                 pg.update("contact_status", "contact_status_id", contact_status_id, payload)
-                
-        
-#         # logger.info(f"[post_contact_status] lead_id={lead_id} | provider_status={data.get('message_status')}")
-#          # Lead update
-#         campaign_type = campaign_type or data.get("campaign_type")
-#         channel = channel or data.get("channel") 
-#         lead_table = "post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
-#         lead_pk = "post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
-        
-        
-#         a={lead_pk: lead_id or data.get("lead_id")}
-#         lead_d = list(pg.list(lead_table, a))
-#         # logger.info(f"[post_contact_status] lead_table={lead_table}, a={a}, lead_d={lead_d}")
-#         if not lead_d:
-#             logger.warning(f"[post_contact_status] No lead found for {lead_id or data.get('lead_id')}")
-#             return
-
-#         lead = lead_d[0]
-#         # logger.info(f"[post_contact_status] lead={lead}")
-#         incoming_disp = data.get("message_status")
-
-#         # persons / channel updates
-#         if campaign_type == "post-sales" and user_id:
-#             persons = lead.get("persons_involved", [])
-#             update_payload["persons_involved"] = [
-#                 (
-#                     {
-#                         **p,
-#                         (
-#                             "last_contacted_whatsapp_number"
-#                             if channel == "whatsapp_chat"
-#                             else "last_contacted_email"
-#                         ): (
-#                             data.get("mobile_number") or data.get("phone_number")
-#                             if channel == "whatsapp_chat"
-#                             else data.get("email")
-#                         ),
-#                     }
-#                     if p.get("user_id") == user_id
-#                     else p
-#                 )
-#                 for p in persons
-#             ]
-#         else:
-#             update_payload["previous_contact_channel"] = (
-#                 "whatsapp_chat"
-#                 if channel == "whatsapp_chat"
-#                 else "email"
-#             )
-
-#         # disposition update
-#         if can_update_disposition(lead.get("disposition"), incoming_disp):
-#             update_payload["disposition"] = incoming_disp
-#         else:
-#             logger.info(
-#                 f"[post_contact_status] Disposition skipped "
-#                 f"(current={lead.get('disposition')}, incoming={incoming_disp})"
-#             )
-#         # logger.info(f"[post_contact_status] update_payload={update_payload}")
-    
-#         # logger.info(f"[post_contact_status] lead_table={lead_table}, lead_pk={lead_pk}, lead_id={lead_id or data.get('lead_id')}")
-#         if update_payload:
-#             if update_payload.get("lead_id"):
-#                 logger.info(f"[post_contact_status] Removing lead_id from update_payload")
-#                 update_payload.pop("lead_id")
-            
-#             if update_payload.get("dealership_id"):
-#                 logger.info(f"[post_contact_status] Removing dealership_id from update_payload")
-#                 update_payload.pop("dealership_id")
-#             pg.update(
-#                 lead_table,
-#                 lead_pk,
-#                 lead_id or data.get("lead_id"),
-#                 update_payload,
-#             )
-
-#     return
-
 @gryd.is_a_task(function_name="post_contact_status")
 def post_contact_status(*args, **data):
     """
@@ -432,39 +246,21 @@ def post_contact_status(*args, **data):
     Disposition updates for post-sales leads are strictly monotonic.
     """
 
-    DISPOSITION_SEQUENCE = [
-        "queued",
-        "attempted",
-        "error",
-        "failed",
-        "reached",
-        "contacted",
-        "engaged",
-        "converted",
-    ]
-
     BILLABLE_STATUSES = {"delivered", "reached", "read", "contacted"}
-
-    def can_update_disposition(current, incoming):
-        if not incoming or incoming not in DISPOSITION_SEQUENCE:
-            return False
-        if not current or current not in DISPOSITION_SEQUENCE:
-            return True
-        return DISPOSITION_SEQUENCE.index(incoming) > DISPOSITION_SEQUENCE.index(current)
 
     logger.info(f"[post_contact_status] args={args} | data={data}")
 
     message_id = args[0] if args else None
-    incoming_status = (data.get("message_status") or "").lower()
+    incoming_status = (data.get("message_status") or data.get("provider_status","")).lower()
 
+    logger.info(f"[post_contact_status] Processing message_id={message_id} with incoming_status={incoming_status}")
     raw_channel = data.get("channel")
     channel = raw_channel.strip() if isinstance(raw_channel, str) else None
 
     with get_pg_connector() as pg:
         user_id = None
-        lead_id = None
-        campaign_type = None
-        update_payload = {}
+        # lead_id = None
+        # campaign_type = None
 
         # person update
         person_d = list(
@@ -480,13 +276,13 @@ def post_contact_status(*args, **data):
             person = person_d[0]
             user_id = person.get("user_id")
 
-            person_payload = {"previous_contact_channel": channel}
+            person_payload = {}
 
             if channel == "whatsapp_chat":
                 person_payload["last_contacted_whatsapp_number"] = data.get("phone_number")
             elif channel == "email":
                 person_payload["last_contacted_email"] = data.get("email")
-            elif channel == "voice_phone":
+            elif channel in ["voice_phone" ,"rcs"]:
                 person_payload["last_contacted_phone_number"] = data.get("phone_number")
 
             pg.update("person", "user_id", user_id, person_payload)
@@ -498,8 +294,11 @@ def post_contact_status(*args, **data):
                 "created": time.time(),
                 "updated": time.time(),
             }
-            contact_status_id = BaseWebhookConverter().generate_uid(payload)
+            contact_status_id = generate_uid(payload)
+            logger.info(f"[post_contact_status] No message_id provided. Creating new contact_status with contact_status_id={contact_status_id} and payload={payload}")
             pg.update("contact_status", "contact_status_id", contact_status_id, payload)
+            
+            update_lead_disposition(pg, incoming_status, **data)
             return
         
         records= list(pg.list_order_by(
@@ -520,14 +319,15 @@ def post_contact_status(*args, **data):
         channel = existing.get("channel") or channel
 
         existing["provider_status"] = incoming_status
-        existing["message_status"] = incoming_status
+        # existing["message_status"] = incoming_status
+        existing["created"] = time.time()
         existing["updated"] = time.time()
 
         if incoming_status == "failed":
             existing["failure_reason"] = "Message not delivered"
 
         payload = existing
-        contact_status_id = BaseWebhookConverter().generate_uid(payload)
+        contact_status_id = generate_uid(payload)
 
         if incoming_status not in {"initiated", "queued"}:
             pg.update(
@@ -549,84 +349,114 @@ def post_contact_status(*args, **data):
             post_billing_obj(**data)
 
         # updating lead disposition
-        lead_id = existing.get("lead_id")
-        campaign_type = existing.get("campaign_type") or data.get("campaign_type")
-
-        lead_table = (
-            "post_sales_lead"
-            if campaign_type == "post-sales"
-            else "pre_sales_lead"
-        )
-        lead_pk = (
-            "post_sales_lead_id"
-            if campaign_type == "post-sales"
-            else "pre_sales_lead_id"
-        )
-
-        lead_key = lead_id or data.get("lead_id")
-        lead_d = list(pg.list(lead_table, {lead_pk: lead_key}))
-
-        if not lead_d:
-            logger.warning(f"[post_contact_status] No lead found for {lead_key}")
-            return
-
-        lead = lead_d[0]
-
-        if campaign_type == "post-sales" and user_id and channel:
-            persons = lead.get("persons_involved") or []
-
-            channel_field_map = {
-                "whatsapp_chat": (
-                    "last_contacted_whatsapp_number",
-                    data.get("mobile_number") or data.get("phone_number"),
-                ),
-                "email": ("last_contacted_email", data.get("email")),
-                "voice_phone": (
-                    "last_contacted_phone_number",
-                    data.get("phone_number"),
-                ),
-            }
-
-            field_name, field_value = channel_field_map.get(channel, (None, None))
-
-            if field_name and field_value:
-                update_payload["persons_involved"] = [
-                    (
-                        {**p, field_name: field_value}
-                        if p.get("user_id") == user_id
-                        else p
-                    )
-                    for p in persons
-                ]
-
-        elif channel:
-            update_payload["previous_contact_channel"] = channel
-
-        if can_update_disposition(lead.get("disposition"), incoming_status):
-            update_payload["disposition"] = incoming_status
-        else:
-            logger.info(
-                "[post_contact_status] Disposition skipped "
-                f"(current={lead.get('disposition')}, incoming={incoming_status})"
-            )
-
-        update_payload.pop("lead_id", None)
-        update_payload.pop("dealership_id", None)
-
-        if update_payload:
-            pg.update(
-                lead_table,
-                lead_pk,
-                lead_key,
-                update_payload,
-            )
+        update_lead_disposition(pg,incoming_status,user_id=user_id,**payload)
 
     yield contact_status_id
-       
-@gryd.is_a_task(function_name="check_or_create_session")
-def check_or_create_session(phone_number, campaign_details, from_web_chat): 
-    return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
+def update_lead_disposition(pg, incoming_status, user_id=None, **data):
+    logger.info(f"[update_lead_disposition] Called with incoming_status={incoming_status} for lead_id={data.get('lead_id')}")
+    # logger.info(f"[update_lead_disposition] Attempting to update lead disposition with incoming_status={incoming_status}, user_id={user_id}, data={data}")
+    DISPOSITION_SEQUENCE = [
+        "queued",
+        "attempted",
+        "busy",
+        "error",
+        "failed",
+        "reached",
+        "contacted"
+    ]
+    
+    def can_update_disposition(current, incoming):
+        if not incoming or incoming not in DISPOSITION_SEQUENCE:
+            return False
+        if not current or current not in DISPOSITION_SEQUENCE:
+            return True
+        return DISPOSITION_SEQUENCE.index(incoming) > DISPOSITION_SEQUENCE.index(current)
+    
+    update_payload = {}
+    lead_id = data.get("lead_id")
+    user_id = user_id or data.get("user_id")
+    campaign_type = data.get("campaign_type")
+    channel = data.get("channel")
+    
+    lead_table = (
+        "post_sales_lead"
+        if campaign_type == "post-sales"
+        else "pre_sales_lead"
+    )
+    lead_pk = (
+        "post_sales_lead_id"
+        if campaign_type == "post-sales"
+        else "pre_sales_lead_id"
+    )
 
+    lead_key = lead_id
+    lead_d = list(pg.list(lead_table, {lead_pk: lead_key}))
+
+    if not lead_d:
+        logger.warning(f"[post_contact_status] No lead found for {lead_key}")
+        return
+
+    lead = lead_d[0]
+
+    if campaign_type == "post-sales" and user_id and channel:
+        persons = lead.get("persons_involved") or []
+
+        channel_field_map = {
+            "whatsapp_chat": (
+                "last_contacted_whatsapp_number",
+                data.get("mobile_number") or data.get("phone_number"),
+            ),
+            "email": ("last_contacted_email", data.get("email")),
+            "voice_phone": (
+                "last_contacted_phone_number",
+                data.get("phone_number"),
+            ),
+        }
+
+        field_name, field_value = channel_field_map.get(channel, (None, None))
+
+        if field_name and field_value:
+            update_payload["persons_involved"] = [
+                (
+                    {**p, field_name: field_value}
+                    if p.get("user_id") == user_id
+                    else p
+                )
+                for p in persons
+            ]
+
+    # elif channel:
+    #     update_payload["previous_contact_channel"] = channel
+
+    if can_update_disposition(lead.get("disposition"), incoming_status):
+        logger.info(
+            f"[post_contact_status] Updating disposition for lead_id={lead_id} "
+            f"(current={lead.get('disposition')}, incoming={incoming_status})"
+        )
+        update_payload["disposition"] = incoming_status
+        #only updating the previous_contact_channel when the diposition is updated and it is higher in sequence than the current diposition
+        update_payload["previous_contact_channel"] = channel 
+        
+        # updating previous_contact_channel for person as well only when the disposition is updated and it is higher in sequence than the current diposition
+        person_payload = {"previous_contact_channel": channel}
+        pg.update("person", "user_id", user_id, person_payload)
+    else:
+        logger.info(
+            "[post_contact_status] Disposition skipped "
+            f"(current={lead.get('disposition')}, incoming={incoming_status})"
+        )
+
+    update_payload.pop("lead_id", None)
+    update_payload.pop("dealership_id", None)
+    # logger.info(f"[post_contact_status] update_payload for lead_id={lead_id}: {update_payload}")
+    if update_payload:
+        pg.update(
+            lead_table,
+            lead_pk,
+            lead_key,
+            update_payload,
+        )
+    return update_payload
 def post_billing_obj(**message_dict):
     wa_status=message_dict.get("message_status")
     logger.info(f"Post billing obj for message_id: {message_dict.get('message_id')} and status: {wa_status}---")
@@ -654,6 +484,9 @@ def post_billing_obj(**message_dict):
             lead_model= 'post_sales_lead' if session_data.get('campaign_type') == 'post-sales' else 'pre_sales_lead'
             
         logger.info(f"We have dealership_id: {dealership_id} in contact_status_data")
+        c=get_communication_credential(dealership_id=dealership_id, channel="whatsapp_chat")
+        if c:
+            logger.info(f"Communication Credential found for dealership_id: {dealership_id} and channel whatsapp_chat")
         if lead_id:
             logger.info(f"We have lead_id: {lead_id} in contact_status_data")
             lead_model_id="post_sales_lead_id" if lead_model == "post_sales_lead" else "pre_sales_lead_id"
@@ -661,7 +494,7 @@ def post_billing_obj(**message_dict):
             lead_data=list(pg.list(lead_model,{lead_model_id:lead_id}))[0]
             # logger.info(f"We have lead_data: {lead_data}")
             if lead_data:
-                item_description =f"{lead_data.get('campaign_type', 'unknown')} - {lead_data.get('campaign_objective_name', 'campaign_objective_id')} - {lead_data.get('campaign_name', 'unknown')} - {lead_data.get('channel', 'unknown')} - {config.WHATSAPP_PROVIDER_NAME} - {message_dict.get('mobile_number')}"
+                item_description =f"{lead_data.get('campaign_type', 'unknown')} - {lead_data.get('campaign_objective_name', 'campaign_objective_id')} - {lead_data.get('campaign_name', 'unknown')} - {lead_data.get('channel', 'unknown')} - {c.get('provider_name', 'unknown')} - {message_dict.get('mobile_number')}"
                 campaign_id=lead_data.get('campaign_id')
             else:
                 logger.info(f"Lead data not found for lead_id: {lead_id}")
@@ -674,21 +507,28 @@ def post_billing_obj(**message_dict):
         
         gryd.create_async_task(
             'post_billing',
-            config.AUTOCRM_CORE_SERVICE_NAME,
+            AUTOCRM_CORE_SERVICE_NAME,
             args=[
                 dealership_id,
                 "debit",
-                config.AUTOCRM_MESSAGE_DELIVERED_ITEM,
+                AUTOCRM_MESSAGE_DELIVERED_ITEM,
                 item_description,
                 hp.now(as_datetime=False),
                 1,
-                config.AUTOCRM_MESSAGE_DELIVERED_PRICE,
-                config.AUTOCRM_MESSAGE_DELIVERED_UNITS,
+                AUTOCRM_MESSAGE_DELIVERED_PRICE,
+                AUTOCRM_MESSAGE_DELIVERED_UNITS,
                 "credits",
                 campaign_id,
                 "whatsapp_chat"
             ]
         )
+        logger.info(f"Posted Billing for lead_id: {lead_id} and campaign_id: {campaign_id} with item_description: {item_description}")    
+
+
+# @gryd.is_a_task(function_name="check_or_create_session")
+# def check_or_create_session(phone_number, campaign_details, from_web_chat): 
+#     return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
+
 
     
 if __name__=="__main__":

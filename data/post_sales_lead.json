@@ -165,7 +165,7 @@
                     "supported_brands"
                 ]
             },
-            "type" : "string_list"
+            "type": "string_list"
         },
         {
             "name": "supported_brand_names",
@@ -177,7 +177,7 @@
                     "supported_brand_names"
                 ]
             },
-            "type" : "string_list"
+            "type": "string_list"
         },
         {
             "name": "supported_brands_guidelines",
@@ -289,7 +289,7 @@
             }
         },
         {
-            "name": "campaign_objective_type",    
+            "name": "campaign_objective_type",
             "type": "list",
             "default": {
                 "function": "get_from_model",
@@ -361,7 +361,6 @@
         {
             "type": "text",
             "name": "urgency_hook"
-           
         },
         {
             "name": "why_user_should_avail_this",
@@ -1178,7 +1177,8 @@
                 "person_name",
                 "last_contacted_whatsapp_number",
                 "last_contacted_email",
-                "last_contacted_phone_number"
+                "last_contacted_phone_number",
+                "preferred_language"
             ],
             "auto_updater": true,
             "force_update": "vehicle_id",
@@ -1418,7 +1418,7 @@
         },
         {
             "name": "workshop_operating_hours",
-            "type" : "nested_object",
+            "type": "nested_object",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1618,7 +1618,7 @@
             }
         },
         {
-            "name": "last_interaction_time", 
+            "name": "last_interaction_time",
             "type": "number",
             "auto_updater": true,
             "force_update": "last_session_id",
@@ -1712,6 +1712,7 @@
                 "DND",
                 "Not reachable",
                 "Didnt pickup",
+                "Didnt speak",
                 "Rejected",
                 "Vehicle is commercial or part of a fleet",
                 "Vehicle is not being run",
@@ -1738,12 +1739,23 @@
                 "Converted",
                 "Bounced",
                 "Unsubscribed",
+                "Call Disconnected",
                 "Spam"
             ],
             "option_others": true
         },
         {
             "name": "follow_up_date",
+            "placeholder": "Follow up timestamp",
+            "type": "number"
+        },
+        {
+            "name": "follow_up_language",
+            "placeholder": "Follow up Language",
+            "type": "text"
+        },
+        {
+            "name": "follow_up_count",
             "type": "number"
         },
         {
@@ -1764,6 +1776,6 @@
         }
     ],
     "parents": [
-    "dealership"
-  ]
+        "dealership"
+    ]
 }

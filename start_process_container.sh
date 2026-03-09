@@ -20,13 +20,21 @@ function gen_aws_creds_file() {
 }
 
 function main() {
+
+	if [ $ENVIRONMENT == "production" ];then
+        gen_aws_creds_file
+		source ./start_single_worker.sh
+		main
+		exit
+	fi
+
 	if [ "$DEV_CONTAINER" == "True" ];then
 		if [ "$AWS_ACCESS_KEYS_REQUIRED" == "True" ];then
                 	gen_aws_creds_file
 		fi
 	fi
 	source ./start_worker.sh
-        start_default_workers
+    start_default_workers
 	start_workers
 }
 

@@ -109,6 +109,7 @@ def analyze_image(
         - width: Width of the image.
         - height: Height of the image.
     """
+    logger = logger or mlogger
     start_time = time.time()
     valid_size, width, height = check_image_size(image_path, min_dim, max_aspect_ratio)
     logger.info(f"Valid size for image: {image_path} is {valid_size}, width: {width}, height: {height}")
@@ -160,23 +161,89 @@ def analyze_image(
     logger.info(f"Assessments: {assessments}")
     return assessments
 
+def compare_images(
+    original_image_path: str,
+    generated_image_path: str,
+    model: str = DEFAULT_MODEL,
+    verbose: bool = False,
+    logger: hp.logging.Logger = None,
+) -> Dict[str, Any]:
+    """
+    Compare two images and return a score for the difference between them, speficially in terms of the accuracy of the car in the image.
+    args:
+        original_image_path: Path to the original image file.
+        generated_image_path: Path to the generated image file.
+        model: Model to use for analysis, (default: gcp-gemini-2.0-flash)
+        verbose: Whether to print verbose output, (default: False)
+        logger: Logger to use for logging, (default: mlogger)
+    Returns:
+        A dictionary with the following keys:
+        - score: Score from 0 to 1, where 0 is the images are identical and 1 is the images are completely different in terms of the accuracy of the car in the image.
+        - comments: Why we got this score.
+    """
+    logger = logger or mlogger
+    start_time = time.time()
+    model = model or DEFAULT_MODEL
+    verbose = verbose or False
+    system_prompt = (
+        "You are a very strict expert automobile assessor for the physical accuracy of the car in the image. "
+        "You will be given two images of the same car, but with different backgrounds. "
+        "The first image is the original image and the second image is the generated image. "
+        "The minute details of the car are very important at a pixel level. "
+        "Pay special attention to the brand logo, the model text/logo, tyres, cap and treadings, antenna, bracers, sensors, fog lights, the headlights, tail lights, wheels, mirrors, grill, bumpers, contours, etc. "
+        "Pay attention to the overall clarity, shape, color and dimensions of the car. "
+        "The generated image (second image) should be as close as possible to the original image (first image) in terms of these details. "
+        "Reduce the score if the generated image (second image) is not clear, blurry, or have artefacts. "
+        "Reduce the score if the generated image (second image) looks unnatural or unrealistic. "
+        "You don't give a perfect score even if there are some minor differences in the physical and structural details of the car."
+        "You need to analyze and produce a JSON structured as follows:\n"
+        "{\n"
+        '   "score": <score from 0 to 1, where 1 only and only if the car in the images are exactly identical and 0 if the image of the car are completely different>,\n'
+        '   "<part of the car>": <what the inaccruacies of the <part of the car> in the generated image (second image) are compared to the original image (first image)>,\n'
+        "}\n"
+        "Just return the JSON. Do not add any other text or comments."
+    )
+    logger.info(f"Comparing images: {original_image_path} and {generated_image_path} with model: {model} and verbose: {verbose}")
+    output_txt = ai_service.get_vlm_response(
+        user_query = "Please compare these images.", 
+        images = [original_image_path, generated_image_path], 
+        system_prompt = system_prompt, 
+        temperature=0.2,
+    )
+    logger.info(f"Response: {output_txt}")
+    json_match = re.search(r'(\{.*\})', output_txt, re.DOTALL)
+    logger.info(f"JSON match to response: {json_match}")
+    if not json_match:
+        raise ValueError("Could not find a JSON structure in the model's response.")
+    try:
+        result = json.loads(json_match.group(1))
+        if verbose:
+            result["model"] = model
+            result["time_taken"] = time.time() - start_time
+        return result
+    except Exception as ex:
+        raise ValueError(f"Error parsing result: {ex}, output={output_txt}")
 
 def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="""
-Analyze car image quality and completeness. 
+Analyze car image quality and completeness.. OR
+Compare two images and return a score for the difference between them, speficially in terms of the accuracy of the car in the image.
 In order to install,
 pip install openai
 pip install pillow
 
 To run,
-python test_distort.py <image_path>
+python check_distortion.py 'analyze' <image_path>
+python check_distortion.py 'compare' <original_image_path> <generated_image_path>
 
 Example:
-python test_distort.py data/images/car_1.jpg
+python check_distortion.py data/images/car_1.jpg
 """)
+    parser.add_argument("mode", help="Mode to use", choices=["analyze", "compare"])
     parser.add_argument("image_path", help="Path to an image file")
+    parser.add_argument("--generated_image_path", help="Path to the generated image file")
     parser.add_argument("--model", help="OpenAI model name", default=DEFAULT_MODEL)
     parser.add_argument("--min-dim", help="Minimum dimension of the image", default=1024)
     parser.add_argument("--max-aspect-ratio", help="Maximum aspect ratio of the image", default=3)
@@ -184,17 +251,30 @@ python test_distort.py data/images/car_1.jpg
     args = parser.parse_args()
 
     try:
-        result = analyze_image(
-            args.image_path, 
-            model=args.model, 
-            min_dim=int(args.min_dim), 
-            max_aspect_ratio=float(args.max_aspect_ratio),
-            verbose=args.verbose
-        )
-        print(json.dumps(result, indent=4))
+        if args.mode == "analyze":
+            result = analyze_image(
+                args.image_path, 
+                model=args.model, 
+                min_dim=int(args.min_dim), 
+                max_aspect_ratio=float(args.max_aspect_ratio),
+                verbose=args.verbose
+            )
+        elif args.mode == "compare":
+            if not args.generated_image_path:
+                raise ValueError("Generated image path is required for compare mode")
+            result = compare_images(
+                args.image_path,
+                args.generated_image_path,
+                model=args.model,
+                verbose=args.verbose
+            )
+        else:
+            raise ValueError(f"Invalid mode: {args.mode}")
+        mlogger.info(f"Result: {result}")
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+        mlogger.error(f"Error: {e}")
+        raise(e)
+    mlogger.info("Finished main")
 
 if __name__ == "__main__":
     main()

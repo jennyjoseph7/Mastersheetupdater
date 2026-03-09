@@ -1,5 +1,4 @@
 import json
-from typing import Dict
 from pydantic import BaseModel
 import plotly.graph_objects as go
 from ai_service import ai_service_app
@@ -7,6 +6,9 @@ from utility import UtilityMixin
 from common_utils import get_logger
 from typing import *
 import traceback
+import requests 
+import numpy as np
+from typing import List, Dict
 
 logger = get_logger(__name__)
 
@@ -188,7 +190,8 @@ class AffinityEngineAgent(UtilityMixin):
             brochure_url: str = None, 
             product_website_url: str = None, 
             model_identifier='azure-gpt-4o',
-            domain: str = None
+            domain: str = None,
+            custom_affinity_dimensions:list[str] = None
         ):
         
         try:
@@ -207,8 +210,14 @@ class AffinityEngineAgent(UtilityMixin):
         self.llm:Callable = lambda messages:ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
         self.brochure_url:str = brochure_url
         self.product_website_url:str = product_website_url
-        self.domain:str = domain
+        self.domain:str = domain or "Automotive"
 
+        if custom_affinity_dimensions:
+            self.affinity_dimensions = custom_affinity_dimensions
+        else:
+            self.affinity_dimensions = self.fetch_affinity_dimensions(domain = self.domain)
+
+        logger.info(f"Affinity Dimensions set to: {self.affinity_dimensions}")
         self.brochure_content = self.fetch_brochure_content(brochure_url = self.brochure_url)
         self.product_website_content = self.fetch_product_details_from_website(website_url = self.product_website_url)
         
@@ -249,10 +258,8 @@ class AffinityEngineAgent(UtilityMixin):
         """
         messages = []
         input_type = self._determine_input_type(self.interaction_json)
-        affinity_dimensions = self.fetch_affinity_dimensions(domain="Automotive")
-        logger.info(f"Affinity Dimensions: {affinity_dimensions}")
 
-        
+        # Logic is not yet implemented. This is to modify the prompt based on the input type
         if input_type == "customer":
             context_description = """
                 a customer interaction or lead information JSON containing details about an individual customer's:
@@ -295,7 +302,7 @@ class AffinityEngineAgent(UtilityMixin):
         between 0 and 1 for each dimension listed below.
 
         Dimensions:
-        {", ".join(affinity_dimensions)}
+        {", ".join(self.affinity_dimensions)}
 
         Guidelines:
         - Understand the provided JSON. (Either a customer interaction JSON or a Cohort Classification JSON). If it is a customer interaction JSON, Please understand the customer's profile, behavior, preferences, and goals. It can be a customer lead information or Interaction JSON or Cohort Classification JSON.
@@ -370,14 +377,11 @@ class AffinityEngineAgent(UtilityMixin):
         """
     def run(self):
         prompt = self._build_prompt()
-
         product_context_parts = []
         if self.brochure_content:
             product_context_parts.append(f"PRODUCT BROCHURE:\n{json.dumps(self.brochure_content, indent=2)}")
-
         if self.product_website_content:
             product_context_parts.append(f"PRODUCT WEBSITE:\n{json.dumps(self.product_website_content, indent=2)}")
-
         if product_context_parts:
             product_context = "\n\n".join(product_context_parts)
             prompt.append(
@@ -386,8 +390,6 @@ class AffinityEngineAgent(UtilityMixin):
                     "content": f"{self.additional_product_context}\n{product_context}"
                 }
             )
-        
-
         parsed = self.exec_json_llm_with_retry(self.llm, messages=prompt)
         for k in parsed["affinity_scores"]:
             parsed["affinity_scores"][k] = max(0.0, min(1.0, parsed["affinity_scores"][k]))
@@ -399,3 +401,112 @@ class AffinityEngineAgent(UtilityMixin):
             "llm_reasoning": parsed["llm_reasoning"],
             "affinity_fig_json": fig_json
         }
+
+
+class EmbeddingAffinityEngine(UtilityMixin):
+    def __init__(
+            self,
+            interaction_json: dict,
+            embedding_url: str = "https://embedding.gryd.in/v1/embeddings",
+            model: str = "bge-large-en-v1.5",
+            custom_affinity_dimensions: List[str] = None,
+        ):
+
+        self.interaction_json : str = json.dumps(self._load_json(interaction_json), indent=2)
+        self.embedding_url = embedding_url
+        self.model = model
+
+
+        default_dimensions = [
+            "adventure",
+            "offroad",
+            "performance",
+            "identity",
+            "family",
+            "price_comfort",
+            "achievement",
+            "community"
+        ]
+
+
+        self.affinity_dimensions = custom_affinity_dimensions or default_dimensions
+        self.dimension_descriptions = self._build_dimension_descriptions()
+
+
+    def _build_dimension_descriptions(self):
+        descriptions = {}
+        if isinstance(self.affinity_dimensions, list):
+            for dim in self.affinity_dimensions:
+                predefined = {
+                    "adventure": "Interest in exploration, road trips, outdoor lifestyle, freedom and travel.",
+                    "offroad": "Interest in rugged terrain, ground clearance, 4x4 driving and rough usage.",
+                    "performance": "Interest in power, torque, acceleration, dynamic driving and thrill.",
+                    "identity": "Interest in vehicle as self-expression, status symbol, personal brand.",
+                    "family": "Interest in safety, spaciousness, comfort and family-oriented features.",
+                    "price_comfort": "Interest in value, features, and practicality.",
+                    "achievement": "Interest in vehicle as success marker, premium brands, and aspirational ownership.",
+                    "community": "Interest in owner groups, brand loyalty, and social connection."
+                }
+                if dim in predefined:
+                    descriptions[dim] = predefined[dim]
+                else:
+                    descriptions[dim] = (
+                        f"Customer interest related to '{dim}'. "
+                        f"This includes behaviors, preferences, motivations and decision drivers "
+                        f"associated with {dim} in vehicle purchase decisions."
+                    )
+            return descriptions
+        elif isinstance(self.affinity_dimensions, dict):
+            for dim, description in self.affinity_dimensions.items():
+                descriptions[dim] = description.lower() 
+            return descriptions
+        else:
+            raise ValueError("affinity_dimensions must be a list or a dictionary.")
+
+    def _get_embedding(self, texts: List[str]) -> List[List[float]]:
+        try:
+            response = requests.post(self.embedding_url,headers={"Content-Type": "application/json"}, json={"input": texts, "model": self.model})
+            response.raise_for_status()
+            data:list[dict] = response.json()["data"]
+            return [item["embedding"] for item in data]
+        except Exception as e:
+            raise e
+
+    @staticmethod
+    def _cosine_similarity(vec1, vec2):
+        v1 = np.array(vec1)
+        v2 = np.array(vec2)
+        return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+    
+    @staticmethod
+    def _dot_product(vec1, vec2):
+        v1 = np.array(vec1)
+        v2 = np.array(vec2)
+        return np.dot(v1, v2)
+    
+    def calculate_affinity(self) -> Dict:
+        interaction_text = self.interaction_json
+        interaction_embedding = self._get_embedding(texts=[interaction_text])[0]
+        dimension_texts = [self.dimension_descriptions[dim] for dim in self.affinity_dimensions]
+        dimension_embeddings = self._get_embedding(texts=dimension_texts)
+        raw_scores = {}
+        for dim, dim_emb in zip(self.affinity_dimensions, dimension_embeddings):
+            similarity = self._cosine_similarity(interaction_embedding, dim_emb)
+            raw_scores[dim] = round(float(similarity), 5)
+        return {
+            "affinity_scores": raw_scores,
+            "reasoning": "Scores generated using cosine similarity between user interaction embedding and semantic affinity dimension embeddings."
+        }
+    
+
+    def _create_spider_chart(self, affinity_scores):
+        return super()._create_spider_chart(affinity_scores)
+
+if __name__ == "__main__":
+
+    with open("Untitled (1).json", "r") as f:
+        data = json.load(f)
+
+    affinity_engine = EmbeddingAffinityEngine(interaction_json=data)
+    affinity_scores = affinity_engine.calculate_affinity()
+    print(json.dumps(affinity_scores, indent=4))

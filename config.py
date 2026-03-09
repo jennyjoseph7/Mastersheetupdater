@@ -7,9 +7,11 @@ AUTOCRM_ADMIN_PASSWORD = os.environ.get("AUTOCRM_ADMIN_PASSWORD", "D@vei2ce")
 AUTOCRM_CRON_SERVICE_NAME = os.environ.get("AUTOCRM_CRON_SERVICE_NAME", "autocrm-cron")
 AUTOCRM_CONVERSATION_SERVICE_NAME = os.environ.get("AUTOCRM_CONVERSATION_SERVICE_NAME", "autocrm-conversation")
 AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME = os.environ.get("AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME", "autocrm-conversation-post-process")
-AUTOCRM_AGENT_SERVICE_NAME = os.environ.get("AUTOBOT_AGENT_SERVICE_NAME", "autocrm-agent")
+AUTOCRM_AGENT_SERVICE_NAME = os.environ.get("AUTOCRM_AGENT_SERVICE_NAME", "autocrm-agent")
+AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME = os.environ.get("AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME", "autocrm-short-run-agent")
 AUTOCRM_VOICE_SERVICE_NAME = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME", "autocrm-voice")
 AUTOCRM_COMMUNICATION_SERVICE_NAME = os.environ.get("AUTOCRM_COMMUNICATION_SERVICE_NAME", "autocrm-communication")
+AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME = os.environ.get("AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME", "autocrm-cohort-campaign") # For Cohort Generation, Classification, Affinity Mapping Service.
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
 AUTOCRM_CORE_SERVICE_NAME = os.environ.get("AUTOCRM_CORE_SERVICE_NAME", "autocrm-core")
 AUTOCRM_CAMPAIGN_SERVICE_NAME = os.environ.get("AUTOCRM_CAMPAIGN_SERVICE_NAME", "autocrm-campaign")
@@ -77,6 +79,10 @@ EXCHANGE_RATE_HOST_BASE_URL = os.environ.get("EXCHANGE_RATE_HOST_BASE_URL", "htt
 SESSION_MODEL_NAME = "session"
 BILLING_MODEL_NAME = "billing"
 
+# rcs
+RCS_PROVIDER="twilio"
+RCS_AGENT_ID="rcs:autongage_juw1l8ps_agent"
+
 #razorpay
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET")
@@ -94,6 +100,25 @@ AGENT_ID="agent_5701ka8618cbfxcbdp4wg6xb3x23"
 AGENT_NAME="maruti_RFP"
 PHONE_NUMBER_ID="phnum_8201k1anbf9wet6v915q8arr1vmz"
 
+# spark/openai
+AUTOCRM_SPARK_SERVICE_NAME = os.environ.get('AUTOCRM_SPARK_SERVICE_NAME', 'spark')
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1.5")
+OPENAI_IMAGE_SIZE = os.environ.get("OPENAI_IMAGE_SIZE", "1024x1536")
+VALIDATE_PROMPT_MODEL = os.environ.get("VALIDATE_PROMPT_MODEL", "azure-gpt-4o-mini")
+try:
+    OPENAI_INPUT_TEXT_TOKEN_PRICE = float(os.environ.get("OPENAI_INPUT_TEXT_TOKEN_PRICE", 5.0/1_000_000))
+    OPENAI_OUTPUT_TEXT_TOKEN_PRICE = float(os.environ.get("OPENAI_OUTPUT_TEXT_TOKEN_PRICE", 10.0/1_000_000))
+    OPENAI_INPUT_IMAGE_TOKEN_PRICE = float(os.environ.get("OPENAI_INPUT_IMAGE_TOKEN_PRICE", 8.0/1_000_000))
+    OPENAI_OUTPUT_IMAGE_TOKEN_PRICE = float(os.environ.get("OPENAI_OUTPUT_IMAGE_TOKEN_PRICE", 32.0/1_000_000))
+except ValueError as e:
+    raise ValueError(f"Error parsing OPENAI_INPUT_TEXT_TOKEN_PRICE, OPENAI_OUTPUT_TEXT_TOKEN_PRICE, OPENAI_INPUT_IMAGE_TOKEN_PRICE, OPENAI_OUTPUT_IMAGE_TOKEN_PRICE: {e}")
+
+#brochure pipeline
+AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME', 'brochure-pipeline')
+AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME', 'document-processor')
+
+# Common function
 BASE_PATH = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_PATH, "data")
 SERVICE = os.environ.get("SERVICE", "autocrm-app")
@@ -125,8 +150,9 @@ class AutocrmModel:
         return self.model._model_ref.attributes
 
     def post(self, data):
-        self.model.post(data)
+        ret = self.model.post(data)
         self.logger.info(f"Data posted successfully: {self.model_name}")
+        return ret
 
     def get(self, id):
         return self.model.get(id)

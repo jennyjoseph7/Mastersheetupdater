@@ -79,6 +79,8 @@ def terminate_sessions_for_phone(customer_number: str, agent_number: str, exclud
     phone_key = f"{customer_number}_{agent_number}"
     sessions_to_terminate = []
 
+    logger.info(f"Checking for existing sessions for phone {phone_key} to terminate (exclude_session_id={exclude_session_id})")
+
     with session_lock:
         for session_id, session in list(call_sessions.items()):
             if session_id == exclude_session_id:
@@ -91,6 +93,7 @@ def terminate_sessions_for_phone(customer_number: str, agent_number: str, exclud
     for session_id in sessions_to_terminate:
         logger.info(f"[{session_id}] Terminating old session for phone {phone_key}")
         terminate_session(session_id)
+
 
     return len(sessions_to_terminate)
 
@@ -143,6 +146,7 @@ class CallSession:
                     logger.error(f"[{self.call_id}] Failed to get signed url: %s %s", resp.status, text)
                     raise Exception(f"Failed to get signed URL: {resp.status} {text}")
                 j = await resp.json()
+                logger.info("elevellabs session url {}".format(j))
                 return j["signed_url"]
 
     @staticmethod
@@ -428,6 +432,28 @@ class CallSession:
                 "user_id": self.session_data.get("session_id") or self.session_data.get("user_id")
             }
 
+            # Set language presets
+            config_data["conversation_config"] = {
+                "language_presets": {
+                    "en": {
+                        "overrides": {
+                            "agent": {
+                                "first_message": "Hello, how can I help?",
+                                "language": "en"
+                            }
+                        }
+                    },
+                    "hi": {
+                        "overrides": {
+                            "agent": {
+                                "first_message": "",
+                                "language": "hi"
+                            }
+                        }
+                    }
+                }
+            }
+
             if self.session_data.get("prompt"):
                 config_data["conversation_config_override"] = {
                     "agent": {
@@ -436,6 +462,7 @@ class CallSession:
                         "language": self.session_data.get("language", "en")
                     }
                 }
+                
                 
             await self.dave_ws.send(_dumps(config_data))
 
@@ -479,7 +506,7 @@ class CallSession:
 
                         elif ev == "stop":
                             logger.info(f"[{self.call_id}] Call ended by platform")
-                            
+                            break
 
                         elif ev == "mark":
                             # Marks indicate playback position
@@ -532,6 +559,7 @@ class CallSession:
             self.processed_agent_responses.clear()
             try:
                 if self.dave_ws:
+                    ## TODO send ws.send FLAG TO CLOSE. to say lets close all connections from the room
                     await self.dave_ws.close()
                     self.dave_ws = None
             except Exception as e:
@@ -552,6 +580,7 @@ class CallSession:
             logger.info(f"[{self.call_id}] connecting to {url}")
             try:
                 ws = await websockets.connect(url)
+                self.external_ws = ws
                 logger.info(f"[{self.call_id}] connected to {url}")
                 self.bridge_started = True
             except Exception as conn_error:
@@ -582,6 +611,7 @@ class CallSession:
 
 def run_async_in_thread(coro):
     """Run an async coroutine in a background thread with its own event loop."""
+    #store reference to file/db - status in db then based on status then terminate
     def thread_target():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -748,11 +778,15 @@ def make_call_tatatele(session_data, *args, **kwargs):
     logger.info(f"Making Tatatele call with session data: {session_data}")
     session_data = session_data or {}
     agent_number = session_data.get("agent_number", TATATELE_PHONE_NUMBER)
-    caller_id = session_data.get("caller_id", TATATELE_PHONE_NUMBER)
-    room_id = session_data.get("room_id", "default_room")
+    caller_id = session_data.get("agent_number", TATATELE_PHONE_NUMBER)
     session_id = session_data.get("session_id")
     customer_number = session_data.get("phone_number", "918850988794") #for test
+    tatatele_phone_number_api_key = session_data.get("provider_credentials", {}).get('tatatele_phone_number_api_key')
+
     session_started = False
+
+    session_data["agent_number"] = agent_number
+    session_data["caller_id"] = caller_id
 
     # Terminate any old sessions for this phone number to prevent duplicates
     terminated = terminate_sessions_for_phone(customer_number, agent_number, exclude_session_id=session_id)
@@ -778,6 +812,7 @@ def make_call_tatatele(session_data, *args, **kwargs):
             await session.connect_external_websocket(external_wss)
 
         run_async_in_thread(start_bridge())
+        #we have to check how to disconnect socket from elevanlabs -  
         return True
 
     if session_id and not session_started:
@@ -788,7 +823,8 @@ def make_call_tatatele(session_data, *args, **kwargs):
         response = tatatele_client.click_to_call_support(
             caller_id,
             customer_number,
-            custom_id= session_id #custom_identifier
+            custom_id= session_id, #custom_identifier session_id in this case
+            api_key = tatatele_phone_number_api_key
         )
 
         logger.info(f"Tatatele originate response: {response}")
@@ -918,11 +954,11 @@ def smartflo_webhook():
 
     logger.info(f"[{call_id}] Incoming payload: {json.dumps(payload, indent=4)}")
     import gryd_tasks
-    if  status in ["contacted"]:
+    if  status in ["contacted"]: #after call ended
         session_model = config.AutocrmModel(config.SESSION_MODEL_NAME, logger = logger )
         session_model.update(session_id, {"call_recording": payload.get("recording_url")}) #add more attributes when needed
         gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = session_id,  **{"status": status})
-    elif status in ["reached"]:
+    elif status in ["reached"]: # as soon as call is answered 
         gryd_tasks.post_billing_object(status, session_id)
         gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = session_id,  **{"status": status})
     elif status in ['failed', 'canceled', 'missed', 'busy', 'completed']:
@@ -964,8 +1000,9 @@ def process():
     xx = gryd_tasks.post_billing_object("completed", session_id, duration)  # call it in async
 
     logger.info(f"Billing record created: {xx}")
-
     session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time()))
+    transcript_summary= data.get("analysis",{}).get("transcript_summary")
+    logger.info(f"Transcript summary: {transcript_summary}")
     logger.info(f"Triggering post history and actions for session_id: {session_id}")
 
     gryd_tasks.post_history(session_id, session_history)
@@ -974,7 +1011,8 @@ def process():
         "session_id": session_id,
         "additional_dict":{
             "history": session_history,
-            "status": "completed"
+            "status": "completed",
+            "summary": transcript_summary
         }
     })
     
@@ -1001,3 +1039,20 @@ def format_transcript(transcript, start_time_unix):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)
+
+
+
+    # make_call_tatatele - session_data - prompt, agent, user numbers etc.
+
+    # 1. connect_external_websocket
+    #     - connecting to go server where 11lab response are sent
+    #     - connecting to 11labs websocket and starting the streaming
+    #         1. we send initial config - prompt, user_id, dynamic variables etc.
+    #         2. wait for tatatele to start call and recieve buffer as soon as call is connected
+    
+
+    #credentials 
+    #elevanlanbs labs
+
+
+

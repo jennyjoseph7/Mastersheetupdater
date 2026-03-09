@@ -161,13 +161,6 @@
       "name" : "voice_first_message",
       "type" : "text",
       "required":false
-    },
-    {
-      "name" : "communication_credentials_id",
-      "type" : "uid",
-      "refers" : "parents.communication_credential.communication_credentials_id",
-      "required" : false
     }
-  ],
-  "parents" : ["communication_credential"]
+  ]
 }

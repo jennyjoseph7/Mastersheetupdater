@@ -10,6 +10,7 @@ from autocrm_db_helper import get_pg_connector
 json = hp.json
 from conversation.yield_response import yield_result,yield_error, yield_status
 from conversation.prompt import run_prompt_sync
+from datetime import datetime
 
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 gryd.set_queue_manager()
@@ -39,6 +40,8 @@ def post_session_process(*args, **kwargs):
     :return: The result of the task.
     """
     session_id = kwargs.get("session_id")
+    mlogger.info("post_session_process called with session_id == {}".format(session_id))
+    
     if not session_id:
         mlogger.info("session_id not passed in kwargs")
         yield from yield_error("error","session_id not passed in kwargs",*args, **kwargs)
@@ -46,7 +49,19 @@ def post_session_process(*args, **kwargs):
     session_data = {}
     with get_pg_connector() as pg:
         session_data = pg.get("session_data_cache","session_id",session_id)
-
+        session_mdl_obj = pg.get("session","session_id",session_id)
+    if not session_mdl_obj:
+        mlogger.info("session_id not passed in kwargs")
+        yield from yield_error("error","session_mdl_obj not found",*args, **kwargs)
+        return
+    if session_mdl_obj.get("status") in ["busy",
+                "no-answer",
+                "cancelled",
+                "failed",
+                "pre-initiated"]:
+        mlogger.info("status is {}, Not doing post processing".format(session_mdl_obj.get("status")))
+        return
+        
     if not session_data:
         mlogger.info("session_id not passed in kwargs")
 
@@ -76,6 +91,10 @@ def post_session_process(*args, **kwargs):
     #     return
 
     messages = session_data.get("messages")
+    if not messages or len(messages) == 0:
+        mlogger.info("messages not found in session_data")
+        yield from yield_error("error","messages not found in session_data",*args, **kwargs)
+        return
     sentiment_score = -1
     emotion_analysis = {}
     if messages:
@@ -86,9 +105,28 @@ def post_session_process(*args, **kwargs):
         emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
         mlogger.info(f"sentiment data gave me score = {sentiment_score} and ananlusis = {emotion_analysis}")
     
-    updated_lead_data = get_disposition(session_id,session_data)
+    updated_lead_data = get_disposition(session_id,session_data) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
     mlogger.info("got disposition as == {}".format(updated_lead_data))
+    
+    
     session_update_data = {"disposition":updated_lead_data.get("disposition"),"disposition_detail":updated_lead_data.get("disposition_detail")}
+    if updated_lead_data.get("disposition_detail") == "Requested Callback":
+        follow_up = get_callback_date_time(session_id,session_data)
+        if isinstance(follow_up,dict):
+            if "follow_up_date" in follow_up:
+                format_string = "%d-%m-%Y %H:%M"
+                try:
+                    timestamp_object = datetime.strptime(follow_up.get("follow_up_date"), format_string)
+                    updated_lead_data["follow_up_date"] = timestamp_object.timestamp()
+                except KeyError as e:
+                    mlogger.info("KeyError == {}".format(e))
+    if updated_lead_data.get("disposition_detail") =="Language barrier":
+        follow_up = get_preffered_language(session_id,session_data)
+        if isinstance(follow_up,dict):
+            if "follow_up_language" in follow_up:
+                updated_lead_data["follow_up_language"] = follow_up.get("follow_up_language")
+
+    mlogger.info("lead data =={}".format(updated_lead_data))
 
     if sentiment_score != -1:
         session_update_data["sentiment_score"] = sentiment_score
@@ -115,12 +153,18 @@ def post_session_process(*args, **kwargs):
     if campaign_type == "post_sales":
         with get_pg_connector() as pg:
             mlogger.info("updating vehicle == {}".format(user_or_vehicle_data))
+            if updated_lead_data.get("follow_up_language"):
+                pers_id = session_mdl_obj.get("user_id")
+                pg.update("person","user_id",pers_id,{"preferred_language":[updated_lead_data.get("follow_up_language")]})
+
             pg.update("vehicle","vehicle_id",session_data.get("user_data").get("vehicle_id"),user_or_vehicle_data)
-    
     if campaign_type == "pre_sales":
         with get_pg_connector() as pg:
-            pg.update("person","user_id",session_data.get("user_data").get("user_id"),user_or_vehicle_data)
-
+            mlogger.info("updating person == {}".format(user_or_vehicle_data))
+            if updated_lead_data.get("follow_up_language"):
+                user_or_vehicle_data["preferred_language"] = [updated_lead_data.get("follow_up_language")]
+            pg.update("person","user_id",session_mdl_obj.get("user_id"),user_or_vehicle_data)
+    
     with get_pg_connector() as pg:
         updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
         pg.update("session","session_id",session_id,session_update_data)
@@ -130,8 +174,9 @@ def post_session_process(*args, **kwargs):
             mlogger.info("visit data == {}".format(visit_data))
             if not visit_data:
                 return
-            visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "workshop_visit"
+            visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "service_visit"
             m = AutocrmModel(visit_model)
+            mlogger.info("visit_model == {}".format(visit_model))
             posted = m.post(visit_data)
             mlogger.info("visit posted == {}".format(posted))
     
@@ -155,7 +200,7 @@ def get_summary(session_id,session_data):
             Provide the Summary.
         """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
-    mlogger.info("get_appt_date_time_purpose prompt response ======= {}".format(resp))
+    mlogger.info("get_summary prompt response ======= {}".format(resp))
     return resp
 def get_lead_variables(campaign_type):
     """
@@ -682,16 +727,36 @@ def get_disposition(session_id, session_data_cache):
     lead_data = session_data_cache.get("user_data")
     campaign_data = session_data_cache.get("campaign_data")
     campaign_objective = campaign_data.get("campaign_objective")
-    campaign_description = campaign_data.get("campaign_description")
-    message_history = session_data_cache.get("messages")
+    campaign_purpose = campaign_data.get("purpose")
+    campaign_description = campaign_data.get("campaign_description",campaign_data.get("campaign_objective_description"))
+    messages = session_data_cache.get("messages")
+    p_steps = campaign_data.get("purpose_steps",[])
+    purpose_steps=f"These are the mandatory steps that need to be completed for the campaign purpose to be achieved - {', '.join(p_steps)} . If these steps are met in the conversation history with the customer. Then mark the disposition detail as 'Converted'." if p_steps else ""
+    message_history = []
+    has_user_message = False
+    for message in messages:
+        mlogger.info("message in get_disposition -  {}".format(message))
+        if "intent" in message and message.get("intent") == "llm_response":
+            message_history.append({"role" : "me", "message":message.get("message","")})
+        else:
+            if not has_user_message and message.get("message") and len(message.get("message")) > 0:
+                has_user_message = True
+            message_history.append({"role" : "customer", "message":message.get("message","")})
+    if not has_user_message:
+        return {"disposition":"contacted","disposition_detail":"Didnt speak","prioritization_score":10,"prioritization_category":"INACTIVE"}
+    mlogger.info("message_history in get_disposition -  {}".format(message_history))
     campaign_type = campaign_data.get("campaign_type")
     example_disposition_response =  """{
         "disposition": "converted" or "engaged",
         "disposition_detail": "choose from list above based on history of conversation",
         "prioritization_score" : "number_values_from_0_to_100",
-        "prioritization_category" : "COMPLETE, HOT or WARM or COOL or COLD or INACTIVE"
+        "prioritization_category" : "COMPLETE or HOT or WARM or COOL or COLD or INACTIVE"
     }"""
     disp_details_options = [
+                "Voicemail",
+                "Didnt pickup",
+                "Didnt speak",
+                "Rejected",
                 "Language barrier",
                 "Is not decision maker",
                 "Will decide later, will purchase within 15 days",
@@ -715,35 +780,39 @@ def get_disposition(session_id, session_data_cache):
 
     if campaign_type == "post-sales":
         disp_details_options = [
-            "Vehicle is commercial or part of a fleet",
-            "Vehicle is not being run",
-            "Requires special spare parts",
-            "Others",
-            "Wrong contact number",
-            "Voicemail",
-            "Has sold/given away the car",
-            "Has moved to another location",
-            "Cannot make decision on servicing",
-            "Will call workshop themselves",
-            "Requested Callback",
-            "Looking for a discount",
-            "Language barrier",
-            "Has serviced car in another dealership",
-            "Will decide tomorrow",
-            "Will decide within 1 to 3 days",
-            "Will decide within 4 to 7 days",
-            "Will decide within 8 to 14 days",
-            "Will decide within 15 to 30 days",
-            "Will decide within 31 to 60 days",
-            "Will decide within 61 to 90 days",
-            "Will decide after 90 days",
-            "Converted"
+                "Didnt pickup",
+                "Didnt speak",
+                "Rejected",
+                "Vehicle is commercial or part of a fleet",
+                "Vehicle is not being run",
+                "Requires special spare parts",
+                "Others",
+                "Wrong contact number",
+                "Voicemail",
+                "Has sold/given away the car",
+                "Has moved to another location",
+                "Cannot make decision on servicing",
+                "Will call workshop themselves",
+                "Requested Callback",
+                "Looking for a discount",
+                "Language barrier",
+                "Has serviced car in another dealership",
+                "Will decide tomorrow",
+                "Will decide within 1 to 3 days",
+                "Will decide within 4 to 7 days",
+                "Will decide within 8 to 14 days",
+                "Will decide within 15 to 30 days",
+                "Will decide within 31 to 60 days",
+                "Will decide within 61 to 90 days",
+                "Will decide after 90 days",
+                "Converted"
             ]
 
     prompt = f"""
     You are a analyst bot that has the single purpose of looking at the conversation history with my customer and I and check if they completed the objective of my campaign. 
-    I am running a campaign with the objective of {campaign_objective}.
-    these are some details of the campaign {campaign_description}.
+    I am running a campaign with the objective of {campaign_purpose if campaign_purpose else campaign_objective}.
+    These are some details of the campaign - {campaign_description}.
+    {purpose_steps}
     I want to know if the purpose of the campaign was met by the customer.
     For example:
         If campaign is about booking a test drive check if the customer booked a test drive.
@@ -752,16 +821,23 @@ def get_disposition(session_id, session_data_cache):
 
     The conversation history is as follows:
     {message_history}
-    Now check if the objective of the campaign was met by the customer. and select of the the following disposition detail to be the disposition description. If the disposition is converted the prioritization score should be 100 and prioritization category should be COMPLETE. Other wise determine the interest the have shown during the call and put a score and pick from the categories for prioritization.
+    Now check if the objective of the campaign was met by the customer. 
+    If the objective was met the disposition should be converted.
+    In all other cases it should be engaged.
+    Select of the the following disposition detail to be the disposition description. If the disposition is converted the prioritization score should be 100 and prioritization category should be COMPLETE. Other wise determine the interest the have shown during the call and put a score and pick from the categories for prioritization.
     Possible values for disposition_detail:
     {disp_details_options}
     Only pick ONE value from this above list for disposition details.
+
+    The disposition and disposition detail is for the customer and their intent shown in the conversation history.
     Special Cases:-
-    - if the user has asked for a callback or requested to speak with a human or a phone call in any way without completing the objective of the campaign then the Disposition Detail would be = 'Callback Requested'.
+    - if the user has asked for a callback or requested to speak with a human or a phone call in any way without completing the objective of the campaign then the Disposition Detail would be = 'Requested Callback'.
+    - if the user has not completed the objective of the campaign and has suggested they do not understand the language i am speaking or asked me to switch to a different language, the Disposition Detail would be = 'Language barrier'.
+    - if the user has disconnected the call without completing the conversation, the Disposition Detail would be = 'Call Disconnected'.
     Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
     Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
     do NOT prepend labels (like "json"). Output only valid JSON.
-
+    Incase you detect that the messages from the user are from a Voice Mail then disposition should be "engaged" and disposition detail should be "Voicemail".
     Your response should be in the following JSON format:
     {example_disposition_response}
     """
@@ -771,7 +847,6 @@ def get_disposition(session_id, session_data_cache):
     mlogger.info("disposition prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data):
-    from datetime import datetime
     mlogger.info("get_visit_data called with session_data_cache == {}".format(json.dumps(session_data_cache)))
     session_data = session_data_cache
     campaign_data = session_data.get("campaign_data",{})
@@ -847,7 +922,7 @@ def get_appt_date_time_purpose(session_id,session_data_cache):
     The conversation history is as follows:
     {message_history}
     Now check if the customer made a booking for a date time and given any purpose details.
-    for your reference the timestamp for today is {hp.time()}
+    for your reference the timestamp for today is {datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")}
     For example:
     if campaign was to book a service, purpose would be a list of issues they would like to get fixed during the service or list of different services they want.
     if campaign was to book a test drive, purpose would be the aspects of the car they would like to test.
@@ -861,6 +936,98 @@ def get_appt_date_time_purpose(session_id,session_data_cache):
     """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
     mlogger.info("get_appt_date_time_purpose prompt response ======= {}".format(resp))
+    return hp.json.loads(resp)
+
+def get_preffered_language(session_id,session_data_cache):
+    """
+    Retrieves the preffered language from the conversation history.
+
+    Parameters
+    ----------
+    session_id : str
+        The unique identifier of the session.
+    session_data_cache : dict
+        The data of the session.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the preffered language.
+    """
+    campaign_data = session_data_cache.get("campaign_data")
+    message_history = session_data_cache.get("messages")
+    response_example = {
+        "follow_up_language": "en"
+    }
+    prompt = f"""
+    You are an analyst bot that looks at my conversation history with my customer and detects if the customer asks to speak in a different language what language was it.
+    
+
+    The conversation history is as follows:
+    {message_history}
+    For your reference the timestamp for today is {datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")}
+    For example:
+    If the customer says anything 'talk in hindi' you should return the value of follow_up_language as 'hi' which is the google language code for hindi.
+    If the customer just speaks in a different language for example only speaks in tamil. You should return the value of follow_up_language as 'ta' which is the google language code for tamil.
+
+    Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
+    Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
+    do NOT prepend labels (like "json"). Output only valid JSON.
+
+    Your response should be in the following JSON format:
+    {json.dumps(response_example)}
+    """
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    mlogger.info("callback_date_time prompt response ======= {}".format(resp))
+    return hp.json.loads(resp)
+        
+def get_callback_date_time(session_id,session_data_cache):
+    """
+    Retrieves the appointment date time and purpose from the conversation history.
+
+    Parameters
+    ----------
+    session_id : str
+        The unique identifier of the session.
+    session_data_cache : dict
+        The data of the session.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the appointment date, time and purpose.
+    """
+    lead_data = session_data_cache.get("user_data")
+    campaign_data = session_data_cache.get("campaign_data")
+    campaign_objective = campaign_data.get("campaign_objective")
+    campaign_description = campaign_data.get("campaign_description")
+    message_history = session_data_cache.get("messages")
+    campaign_type = campaign_data.get("campaign_type")
+    response_example = {
+        "follow_up_date": "DD-MM-YYYY HH:MM format for the date and time for callback"
+    }
+    prompt = f"""
+    You are an analyst bot that looks at my conversation history with my customer and detects if when i called the customer, and the customer requested to be called back at a later time, what date and time did they ask for the callback.
+    
+
+    The conversation history is as follows:
+    {message_history}
+    For your reference the timestamp for today is {datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")}
+    For example:
+    If the customer says anything like call me tomorrow or day after at 1pm. Return the date time value in the format of DD-MM-YYYY HH:MM where the date month and year is for the date they mentioned and hh mm is for the time they mention.
+    If the customer only says tomorrow, or date but does not mention a time. Return the date time value in the format of DD-MM-YYYY HH:MM where the date month and year is for the date they mentioned and hh mm is for 12pm.
+    If the customer has asks for a callback at just a time. Return the date time value in the format of DD-MM-YYYY HH:MM where the date month and year is for today and hh mm is for the time they mention.
+    If the customer does not mention any date or time. Return the date time value in the format of DD-MM-YYYY HH:MM where the date month and year is for today and hh mm is for 1 hour after the current time.
+    
+    Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
+    Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
+    do NOT prepend labels (like "json"). Output only valid JSON.
+
+    Your response should be in the following JSON format:
+    {json.dumps(response_example)}
+    """
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    mlogger.info("callback_date_time prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
 
@@ -885,6 +1052,7 @@ def get_extra_data(session_id,session_data_cache):
     lead_data = session_data_cache.get("user_data")
     campaign_data = session_data_cache.get("campaign_data")
     campaign_objective = campaign_data.get("campaign_objective")
+    campaign_purpose = campaign_data.get("campaign_purpose")
     campaign_description = campaign_data.get("campaign_description")
     message_history = session_data_cache.get("messages")
     campaign_type = campaign_data.get("campaign_type")
@@ -894,7 +1062,7 @@ def get_extra_data(session_id,session_data_cache):
     empty_dict = {}
     prompt = f"""
     You are a data identifier bot that helps pick out values i want to save about the user from the conversation history.
-    I am running a campaign with the objective of {campaign_objective}.
+    I am running a campaign with the objective of {campaign_purpose if campaign_purpose else campaign_objective}.
     these are some details of the campaign {campaign_description}.
     This the the information i already have about the user.
     {lead_data}
@@ -911,12 +1079,13 @@ def get_extra_data(session_id,session_data_cache):
     Example if the attributes im looking for include colour and variant_name and the message history contains a message from the user specifying they have a blue car. Your response should be like the following:-
     {example_data}
     if no new data is found then return empty json object.
-    Your response must be ONLY the JSON object string that i can convert to json using json.loads(<your response>). 
+    Your response must be ONLY the JSON object string that i can convert to json using json.loads(<your response string>). 
     Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
     do NOT prepend labels (like "json"). Output only valid JSON.
+    Always make sure the exact response you give as string should be a valid JSON string that can be used for python api json.loads(<your response string>)
     """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
-    mlogger.info("got extra data response as ===== {}".format(resp))
+    mlogger.info("got extra data response as ===== {} --{}".format(resp,type(resp)))
     if resp and isinstance(resp,str):
         updated_dict = hp.json.loads(resp)
     mlogger.info("getting extra data summary for campaign_type {} and updated_dict {}".format(campaign_type,updated_dict))
@@ -1069,3 +1238,47 @@ def set_feedback(*args, **pass_kwargs):
     
     
     pass
+
+@gryd.is_a_task()
+def post_session_processes(*args, **kwargs):
+    '''
+    This task is called to post process the session data once it is over.
+    It can be called with session_ids, campaign_id or dealership_id.
+    If session_ids is passed, it will call post_session_process for each session_id.
+    If campaign_id is passed, it will fetch all session_ids with campaign_id and call post_session_process for each session_id.
+    If dealership_id is passed, it will fetch all session_ids with dealership_id and call post_session_process for each session_id.
+    :param session_ids: The list of session_ids to be post processed
+    :param campaign_id: The campaign_id to be post processed
+    :param dealership_id: The dealership_id to be post processed
+    :return: The result of the task
+    '''
+    mlogger.info("post_session_processes called with kwargs == {}".format(kwargs))
+    if not kwargs.get("session_ids") and not kwargs.get("campaign_id") and not kwargs.get("dealership_id"):
+        yield from yield_error("error","session_id not found",*args, **kwargs)
+        return
+    if "session_ids" in kwargs and len(kwargs.get("session_ids",[])) == 0:
+        yield from yield_error("error","session_ids not found",*args, **kwargs)
+        return
+    if "session_ids" in kwargs and len(kwargs.get("session_ids",[])) > 0:
+        session_ids = kwargs.get("session_ids")
+        for session_id in session_ids:
+            yield from post_session_process(session_id=session_id)
+        return
+    if "campaign_id" in kwargs:
+        with get_pg_connector() as pg:
+            session_ids = list(pg.list("session",{"campaign_id":kwargs.get("campaign_id")}))
+            mlogger.info("running post_lead_process for session_ids == {}".format(session_ids))
+            for session_data in session_ids:
+                if session_data.get("status") not in ["busy"]:
+                    mlogger.info("running post_lead_process for session_id == {} with status == {}".format(session_data.get("session_id"),session_data.get("status")))
+                    yield from post_session_process(session_id=session_data.get("session_id"))
+        return
+    if "dealership_id" in kwargs:
+        with get_pg_connector() as pg:
+            session_ids = list(pg.list("session",{"dealership_id":kwargs.get("dealership_id")}))
+            mlogger.info("running post_lead_process for session_ids == {}".format(session_ids))
+            for session_data in session_ids:
+                if session_data.get("status") not in ["busy"]:
+                    mlogger.info("running post_lead_process for session_id == {} with status == {}".format(session_data.get("session_id"),session_data.get("status")))
+                    yield from post_session_process(session_id=session_data.get("session_id"))
+        return

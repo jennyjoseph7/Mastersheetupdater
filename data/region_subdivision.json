@@ -2,8 +2,7 @@
     "name": "region_subdivision",
     "model_type": "default",
     "parents": [
-        "region",
-        "communication_credential"
+        "region"
     ],
     "attributes": [
         {
@@ -213,20 +212,6 @@
       "name" : "voice_first_message",
       "type" : "text",
       "required":false
-    },
-    {
-      "name" : "communication_credentials_id",
-      "type" : "uid",
-      "refers" : "parents.communication_credential.communication_credentials_id",
-      "required" : false,
-      "default" : {
-        "function" : "get_from_model",
-        "args" : [
-          "region",
-          "region_id",
-          "communication_credentials_id"
-        ]
-      }
     }
     ]
 }

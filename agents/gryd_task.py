@@ -4,7 +4,7 @@ from ai_service import ai_service_app
 from gryd_worker import gryd
 from flask import Flask, jsonify
 from recommendation_agent import *
-gryd.SERVICE = os.environ.get("AUTOBOT_CONVERSATION_SERVICE_NAME","autocrm-agent")
+gryd.SERVICE = os.environ.get("AUTOCRM_CONVERSATION_SERVICE_NAME","autocrm-agent")
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(__name__)
 

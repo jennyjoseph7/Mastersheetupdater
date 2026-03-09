@@ -15,13 +15,14 @@ from os.path import exists as ispath, dirname, basename, join as joinpath, abspa
 # sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
 from communication.connectors.communication_configs import *
-from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NAME
+from config import AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
 from communication.connectors.connector_whatsapp import *
 from communication.connectors.load_providers import load_providers
 from communication.connectors.connector_mail import *
+from communication.connectors.connector_rcs import *
 def WARM_UP():
     logger.info("WARM_UP CALLED")
     with get_pg_connector() as pg:
