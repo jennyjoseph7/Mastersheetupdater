@@ -89,6 +89,13 @@
             "gryd_service":"AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME",
             "parallel_threads": 1,
             "shutdown_time": 0
+        },
+        {
+            "name": "cohorts_new",
+            "entry_point": "tasks.py",
+            "gryd_service":"AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME",
+            "parallel_threads": 1,
+            "shutdown_time": 0
         }
     ]
 }
