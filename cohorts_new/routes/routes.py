@@ -22,10 +22,10 @@ logger = get_logger(__name__)
 def setup_gryd():
     gryd.SERVICE = GRYD_SERVICE_NAME
     gryd.set_queue_manager(config = GRYD_CONFIG)
-    environment = os.getenv("ENVIRONMENT", "-local")
-    if not environment.startswith("-"):
-        environment = f"-{environment}"
-    gryd.ENVIRONMENT = environment
+    # environment = os.getenv("ENVIRONMENT", "-local")
+    # if not environment.startswith("-"):
+    #     environment = f"-{environment}"
+    # gryd.ENVIRONMENT = environment
 
 setup_gryd()
 
