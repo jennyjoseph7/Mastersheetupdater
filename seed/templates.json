@@ -388,44 +388,7 @@
     ],
     "communication_credentials_id": "airtel-917795030574"
   },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book Free Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "created": 1766134824.6714137,
-    "updated": 1767341315.0272827,
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_free_service_notification_reg_number text english post-sales free service due reminder free service reminder good news your vehicle no 1 is eligible for a free service. complete it to keep your vehicle in top condition. would you like to book your free service now",
-    "template_id": "01kcr1z34m7an59wj5gm87kq1z",
-    "campaign_type": "post-sales",
-    "dealership_id": "daveai",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_Free_Service_Notification_Reg_Number",
-    "template_type": "text",
-    "template_message": "Good news! Your vehicle no: {{1}} is eligible for a free service. Complete it to keep your vehicle in top condition. Would you like to book your free service now?",
-    "campaign_objective": [
-      "Free Service Due Reminder",
-      "Free Service Reminder"
-    ],
-    "template_variables": [],
-    "template_button_payloads": [
-      "autobot_free_service_notification_reg_number-book_free_service",
-      "autobot_free_service_notification_reg_number-request_a_callback"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
+ 
   {
     "sender": "917795030574",
     "status": "approved",
@@ -549,41 +512,7 @@
     ],
     "communication_credentials_id": "airtel-917795030574"
   },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book Free Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "created": 1765535639.3129823,
-    "updated": 1767340977.304043,
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_freeservice_generic_v1 text english post-sales free service hello your complimentary vehicle service is available. visit the nearest workshop to redeem your free service.",
-    "template_id": "01kbcp8rfn233zsyca59mr09db",
-    "campaign_type": "post-sales",
-    "dealership_id": "daveai",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_FreeService_generic_v1",
-    "template_type": "text",
-    "template_message": "Hello, Your complimentary vehicle service is available. Visit the nearest workshop to redeem your free service.",
-    "campaign_objective": ["Free service reminder"],
-    "template_variables": [],
-    "template_button_payloads": [
-      "autobot_freeservice_generic_v1-book_free_service",
-      "autobot_freeservice_generic_v1-request_a_callback"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
+  
   {
     "sender": "+14243494750",
     "status": "approved",
@@ -685,41 +614,7 @@
     ],
     "communication_credentials_id": "airtel-917795030574"
   },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book Free Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "created": 1765535651.2927816,
-    "updated": 1767340964.809529,
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_freeservice_generic_v2 text english post-sales free service hello you are eligible for a free vehicle service. make sure to avail it before the offer expires.",
-    "template_id": "01kbcpcmqgpgkqtjfxqny4nbgd",
-    "campaign_type": "post-sales",
-    "dealership_id": "daveai",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_FreeService_generic_v2",
-    "template_type": "text",
-    "template_message": "Hello, You are eligible for a free vehicle service. Make sure to avail it before the offer expires.",
-    "campaign_objective": ["Free service reminder"],
-    "template_variables": [],
-    "template_button_payloads": [
-      "autobot_freeservice_generic_v2-book_free_service",
-      "autobot_freeservice_generic_v2-request_a_callback"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
+  
   {
     "sender": "+14243494750",
     "status": "approved",
@@ -1116,44 +1011,7 @@
     ],
     "communication_credentials_id": "airtel-917795030574"
   },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "created": 1765535600.299961,
-    "updated": 1767340950.4745502,
-    "language": "english",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_free_service_reminder_regnum text english post-sales first service reminder free service reminder hello your vehicle with registration number reg_number has a pending free service. you may get it done at workshop_name of dealer_name at your convenience.",
-    "template_id": "01kb52hzx170wqea4zfwptq1eb",
-    "campaign_type": "post-sales",
-    "dealership_id": "daveai",
-    "provider_name": "Airtel",
-    "template_name": "Autobot_Free_Service_Reminder_Regnum",
-    "template_type": "text",
-    "template_message": "Hello, your vehicle with registration number {{reg_number}} has a pending free service. You may get it done at {{workshop_name}} of {{dealer_name}} at your convenience.",
-    "campaign_objective": [
-      "Free Service Reminder",
-      "Free Service Due Reminder"
-    ],
-    "template_variables": ["reg_number", "workshop_name", "dealer_name"],
-    "template_button_payloads": [
-      "autobot_free_service_regnum-book_a_service",
-      "autobot_free_service_regnum-request_a_callback"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
-  },
+  
   {
     "sender": "917795030574",
     "status": "approved",
@@ -1311,43 +1169,6 @@
     "campaign_objective": ["Inactive Customer Reactivation"],
     "template_variables": [],
     "communication_credentials_id": "twilio-14243494750-rcs"
-  },
-  {
-    "sender": "917795030574",
-    "status": "approved",
-    "buttons": [
-      {
-        "text": "Book a Service",
-        "type": "QUICK_REPLY"
-      },
-      {
-        "text": "Request a Call Back",
-        "type": "QUICK_REPLY"
-      }
-    ],
-    "channel": "whatsapp_chat",
-    "created": 1766058753.5902784,
-    "updated": 1766734214.8717177,
-    "language": "english",
-    "lead_tags": ["service-due", "regular-customer"],
-    "cta_button": "Free service reminder",
-    "dealer_name": "DaveAI",
-    "region_name": "South India",
-    "search_term": "autobot_free_service_due_reminder_regnumber text english post-sales free service due remindergeneral service due reminder hello just a reminder that your vehicle with registration number reg_number is due for its free service soon. keeping up with your service ensures peak performance and safety. schedule your service today and keep your drive smooth",
-    "template_id": "01kcrmqgtcxfpv8prdfkebm7nw",
-    "campaign_type": "post-sales",
-    "dealership_id": "daveai",
-    "provider_name": "Airtel",
-    "template_name": "autobot_free_service_due_reminder_regnumber",
-    "template_type": "text",
-    "template_message": "Hello! Just a reminder that your vehicle with registration number {{reg_number}} is due for its free service soon. Keeping up with your service ensures peak performance and safety. Schedule your service today and keep your drive smooth!",
-    "campaign_objective": "Free service reminder",
-    "template_variables": ["reg_number"],
-    "template_button_payloads": [
-      "autobot_free_service_due_reminder_regnumber-book_a_service",
-      "autobot_free_service_due_reminder_regnumber-request_a_call_back"
-    ],
-    "communication_credentials_id": "airtel-917795030574"
   },
   {
     "sender": "917795030574",
