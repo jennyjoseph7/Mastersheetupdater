@@ -96,7 +96,7 @@
                 ]
             },
             "indexed": true,
-            "auto_updater": true,
+            "auto_updater": false,
             "force_update": "variant_id"
         },
         {
