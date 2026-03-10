@@ -907,30 +907,51 @@
     }
 
     function detectRecording(obj) {
-      // 1. Check known exact column names — accept any non-empty http URL from them
+      // Helper to extract a clean URL even if disguised as JSON array '["https://..."]'
+      function extractUrl(str) {
+        if (!str || typeof str !== 'string') return null;
+        const m = str.match(/(https?:\/\/[^\s"'<>\\[\\]]+)/);
+        return m ? m[1] : null;
+      }
+
+      // 1. Check known exact column names
       const exactNames = ['call_recording', 'recording', 'recording_url', 'call_url',
         'audio_url', 'audio', 'media_url', 'record_url', 'call_record'];
       for (const c of exactNames) {
-        const v = obj[c];
-        if (v && v.startsWith('http')) return v;
+        const url = extractUrl(obj[c]);
+        if (url) return url;
       }
+      
       // 2. Check any column key that contains 'record', 'audio', or 'media'
       for (const [k, v] of Object.entries(obj)) {
         if (!v || k === '__raw') continue;
-        if (/record|audio|media/i.test(k) && v.startsWith('http')) return v;
+        if (/record|audio|media/i.test(k)) {
+          const url = extractUrl(v);
+          if (url) return url;
+        }
       }
-      // 3. Fallback: scan ALL values for cloudphone / /recording keywords
-      for (const val of Object.values(obj)) {
-        if (typeof val === 'string' && val.startsWith('http') &&
-          (val.includes('cloudphone') || val.includes('/recording') ||
-            val.includes('record') || val.includes('audio'))) return val;
+
+      // 3. Fallback: scan ALL raw values aggressively
+      if (Array.isArray(obj.__raw)) {
+        let bestGuess = null;
+        for (const val of obj.__raw) {
+          const url = extractUrl(String(val || ''));
+          if (url) {
+            const lower = url.toLowerCase();
+            // High confidence keywords
+            if (lower.includes('cloudphone') || lower.includes('record') || 
+                lower.includes('audio') || lower.includes('.mp3') || lower.includes('.wav')) {
+              return url;
+            }
+            // Low confidence generic long URL (skip short avatar links)
+            if (url.length > 35 && !bestGuess) {
+              bestGuess = url;
+            }
+          }
+        }
+        if (bestGuess) return bestGuess;
       }
-      // 4. Last resort: any http URL that is long enough to be a recording link
-      //    (avoids matching short profile/avatar image links)
-      for (const [k, val] of Object.entries(obj)) {
-        if (k === '__raw' || k === 'summary' || k === 'lead_summary') continue;
-        if (typeof val === 'string' && val.startsWith('http') && val.length > 30) return val;
-      }
+
       return '';
     }
 
