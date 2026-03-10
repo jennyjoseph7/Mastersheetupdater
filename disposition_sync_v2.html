@@ -774,7 +774,10 @@
       'user did not speak': 2,
     };
     const TERMINAL_THRESHOLD = 9; // priority >= 9 → Exclusion_Flag = YES
-    const CONNECTED_SET = new Set(['contacted', 'engaged', 'converted', 'attempted']);
+    const CONNECTED_SET = new Set([
+      'test drive booked', 'converted', 'not interested', 'dnd', 'wrong number',
+      'interested', 'callback requested', 'call back'
+    ]);
     const NO_RESPONSE_SET = new Set(['busy', 'not connected', 'no revert', 'user did not speak']);
 
     function getDispositionPriority(d) {
@@ -1275,7 +1278,7 @@
     async function copyData() {
       if (!processedData.length) return;
 
-      const lines = [];
+      const lines = [HEADERS_TSV.join('\t')];
       for (const r of processedData) {
         const cols = [
           r.lead_id,
