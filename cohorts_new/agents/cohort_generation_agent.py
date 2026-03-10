@@ -30,13 +30,13 @@ class ProductCohortGenerationAgent(UtilityMixin):
             **kwargs: Arbitrary keyword arguments.
             (brochure_url: str, product_website_url: str, model_identifier: str)
         """
-        try:
-            super().__init__(*args, **kwargs)
-        except Exception as e:
-            print("\n")
-            traceback.print_exc()
-            print("\n Error with super init. Ignoring...")
-            pass 
+        # try:
+        #     super().__init__(*args, **kwargs)
+        # except Exception as e:
+        #     print("\n")
+        #     traceback.print_exc()
+        #     print("\n Error with super init. Ignoring...")
+        #     pass 
 
         self.brochure_url : str = brochure_url
         self.product_website_url : str = product_website_url

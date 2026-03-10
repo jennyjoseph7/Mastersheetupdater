@@ -10,8 +10,9 @@ import json
 import traceback
 import os
 import inspect
-
 from config import AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
+from config import post_autocrm_model, AutocrmModel
+
 GRYD_SERVICE_NAME = AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
 GRYD_CONFIG = {
     "broker_type" : "sqs", 
@@ -33,7 +34,9 @@ setup_gryd()
 # gryd.ENVIRONMENT = "-local"
 
 @gryd.is_a_task(function_name="post_cohorts_to_model",)
-def post_cohorts_to_model(*args, **kwargs):
+def post_cohorts_to_cohorts_registrymodel(*args, **kwargs):
+    def validate_cohorts(cohorts):
+        return all(isinstance(cohort, dict) for cohort in cohorts)
     pass 
 
 @gryd.is_a_task()
@@ -522,7 +525,7 @@ if __name__ == "__main__":
     }
 
 
-    from config import post_autocrm_model, AutocrmModel
+  
 
     # m = post_autocrm_model(model_name="cohort_registry")
     # print(f"Cohort Registry Model: \n {json.dumps(m, indent=4, default=str)}")
