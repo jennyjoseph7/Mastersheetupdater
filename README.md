@@ -66,7 +66,7 @@ Exact column order matching the Zoho Master Sheet:
 | 7 | Campaign_ID | File 1 `campaign_id` | Direct copy |
 | 8 | Call Triggered | File 2 `created` / `start_time` | See formula below |
 | 9 | Outcome | File 1 `disposition` | See formula below |
-| 10 | Disposition | File 1 `disposition` | Deduplicated by priority |
+| 10 | Disposition | File 1 `disposition` | Direct copy |
 | 11 | SUMMARY | File 2 `summary` | See formula below |
 | 12 | Call_Date | File 1 `updated` | Parsed as DD/MM/YYYY |
 | 13 | Number of attempts | File 1 `phone_number` | See formula below |
@@ -118,11 +118,11 @@ Equivalent Zoho formula:
 
 ---
 
-### Disposition Deduplication
-A lead may appear multiple times in File 1 (called on different dates).
-One row per unique phone is kept. The row with the highest priority disposition wins.
+### Exclusion Flag
 
-Priority table:
+Derived from the disposition priority. Terminal dispositions (priority ≥ 9) set `Exclusion_Flag = YES`.
+
+Priority table for exclusion:
 
 | Priority | Disposition | Type |
 |---|---|---|
@@ -137,8 +137,6 @@ Priority table:
 | 3 | Not Connected / No Revert | Interim |
 | 2 | User Did Not Speak | Interim |
 | 1 | Any unlisted value | Interim |
-
-Terminal dispositions (priority ≥ 9) set `Exclusion_Flag = YES`.
 
 ---
 

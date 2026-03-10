@@ -936,27 +936,43 @@
     }
 
     function detectRecording(obj) {
-      // Helper to extract a clean URL even if disguised as JSON array '["https://..."]'
+      function cleanLink(str) {
+        if (!str || typeof str !== 'string') return null;
+        let s = str.trim();
+        const low = s.toLowerCase();
+        if (low === 'null' || low === 'n/a' || low === 'none' || low === '-' || s === '') return null;
+        return s;
+      }
+
       function extractUrl(str) {
         if (!str || typeof str !== 'string') return null;
-        const m = str.match(/(https?:\/\/[^\s"'<>\\[\\]]+)/);
-        return m ? m[1] : null;
+        // Match http://, https://, or s3:// URLs
+        const m = str.match(/(?:https?|s3):\/\/[^\s"'<>\\[\\]]+/i);
+        return m ? m[0] : null;
       }
 
       // 1. Check known exact column names
       const exactNames = ['call_recording', 'recording', 'recording_url', 'call_url',
         'audio_url', 'audio', 'media_url', 'record_url', 'call_record'];
       for (const c of exactNames) {
-        const url = extractUrl(obj[c]);
-        if (url) return url;
+        if (obj[c]) {
+          const val = cleanLink(obj[c]);
+          if (val) {
+            const url = extractUrl(val);
+            return url || val;
+          }
+        }
       }
       
       // 2. Check any column key that contains 'record', 'audio', or 'media'
       for (const [k, v] of Object.entries(obj)) {
         if (!v || k === '__raw') continue;
         if (/record|audio|media/i.test(k)) {
-          const url = extractUrl(v);
+          const clean = cleanLink(v);
+          if (!clean) continue;
+          const url = extractUrl(clean);
           if (url) return url;
+          if (clean.length > 5 && !clean.includes('{')) return clean;
         }
       }
 
@@ -964,7 +980,8 @@
       if (Array.isArray(obj.__raw)) {
         let bestGuess = null;
         for (const val of obj.__raw) {
-          const url = extractUrl(String(val || ''));
+          const s = String(val || '').trim();
+          const url = extractUrl(s);
           if (url) {
             const lower = url.toLowerCase();
             // High confidence keywords
@@ -972,10 +989,12 @@
                 lower.includes('audio') || lower.includes('.mp3') || lower.includes('.wav')) {
               return url;
             }
-            // Low confidence generic long URL (skip short avatar links)
+            // Low confidence generic long URL
             if (url.length > 35 && !bestGuess) {
               bestGuess = url;
             }
+          } else if (s.includes('.mp3') || s.includes('.wav') || s.includes('cloudphone')) {
+             return s;
           }
         }
         if (bestGuess) return bestGuess;
@@ -1236,7 +1255,7 @@
       <td>${esc(r.call_date)}</td>
       <td>${esc(String(r.num_attempts))}</td>
       <td class="${sentClass}">${esc(r.sentiment)}</td>
-      <td>${r.recordings ? `<a class="cell-url" href="${esc(r.recordings)}" target="_blank" title="${esc(r.recordings)}">🔗 Recording</a>` : ''}</td>
+      <td>${r.recordings ? `<a class="cell-url" href="${esc(String(r.recordings).startsWith('http') || String(r.recordings).startsWith('s3:') ? r.recordings : 'https://' + r.recordings)}" target="_blank" title="${esc(r.recordings)}">🔗 Recording</a>` : ''}</td>
       <td>${esc(r.model)}</td>
       <td>${esc(r.seating)}</td>
       <td class="${r.exclusion_flag ? 'cell-terminal' : ''}">${esc(r.exclusion_flag)}</td>
