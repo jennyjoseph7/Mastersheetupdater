@@ -1178,19 +1178,7 @@
           const exclusion = priority >= TERMINAL_THRESHOLD ? 'YES' : '';
 
           // SUMMARY
-          let summary = '';
-          if (NO_RESPONSE_SET.has(dispLower)) {
-            summary = 'No response';
-          } else {
-            const sess = sessionMap[phone];
-            const sessSum = sess?.summary || '';
-            if (sessSum) {
-              summary = sessSum;
-            } else {
-              const leadsSum = row['disposition_detail'] || '';
-              summary = leadsSum;
-            }
-          }
+          let summary = row['disposition_detail'] || '';
 
           // Call_Date
           const callDateRaw = row['updated'] || '';
