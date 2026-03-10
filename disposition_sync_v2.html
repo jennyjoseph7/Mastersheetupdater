@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Disposition Sync — Ambal Auto</title>
+<meta name="description" content="Merges AutoEngage Audience & Leads + Sessions exports and produces a Zoho Master Sheet-ready table."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161d;
+    --surface2: #1a1e28;
+    --border: #252a38;
+    --border-glow: #3b4edd44;
+    --accent: #4f6ef7;
+    --accent2: #8b5cf6;
+    --accent-glow: #4f6ef730;
+    --success: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e8eaf0;
+    --text-dim: #7c8499;
+    --text-muted: #4a5168;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Sora', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* GRADIENT HEADER */
+  header {
+    padding: 2.5rem 2rem 2rem;
+    background: linear-gradient(135deg, #0d0f14 0%, #131828 50%, #0d0f14 100%);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, #4f6ef715 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 30%, #8b5cf610 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .header-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--accent-glow);
+    border: 1px solid #4f6ef740;
+    border-radius: 999px;
+    padding: 0.2rem 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+  }
+  h1 {
+    font-size: clamp(1.5rem, 3vw, 2.2rem);
+    font-weight: 700;
+    background: linear-gradient(135deg, #e8eaf0 30%, #8b9cf8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .header-sub {
+    font-size: 0.875rem;
+    color: var(--text-dim);
+    margin-top: 0.4rem;
+  }
+  .header-steps {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.2rem;
+    flex-wrap: wrap;
+  }
+  .step-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+  .step-pill .num {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-glow);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* MAIN LAYOUT */
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  /* UPLOAD SECTION */
+  .upload-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 700px) { .upload-grid { grid-template-columns: 1fr; } }
+
+  .drop-zone {
+    background: var(--surface);
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background: radial-gradient(ellipse at 50% 0%, var(--accent-glow), transparent 70%);
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent)22, 0 8px 30px #4f6ef715;
+  }
+  .drop-zone:hover::before, .drop-zone.drag-over::before { opacity: 1; }
+  .drop-zone.has-file { border-color: var(--success); border-style: solid; }
+  .drop-zone.has-file::before {
+    background: radial-gradient(ellipse at 50% 0%, #22c55e15, transparent 70%);
+    opacity: 1;
+  }
+
+  .dz-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+  .dz-icon.file1 { background: #4f6ef710; border-color: #4f6ef730; }
+  .dz-icon.file2 { background: #8b5cf610; border-color: #8b5cf630; }
+
+  .dz-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-align: center;
+  }
+  .dz-sublabel {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .dz-cols {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.8;
+  }
+  .dz-status {
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .dz-status.ok { background: #22c55e12; border-color: #22c55e30; color: var(--success); }
+  .dz-status.err { background: #ef444412; border-color: #ef444430; color: var(--danger); }
+
+  input[type=file] { display: none; }
+
+  /* ACTION BAR */
+  .action-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.4rem;
+    border-radius: 10px;
+    font-family: var(--sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #3d5be8);
+    color: #fff;
+    box-shadow: 0 4px 20px #4f6ef730;
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 28px #4f6ef745;
+  }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-success {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: #fff;
+    box-shadow: 0 4px 20px #22c55e25;
+  }
+  .btn-success:hover { transform: translateY(-1px); box-shadow: 0 6px 28px #22c55e35; }
+
+  .status-msg {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    flex: 1;
+    min-width: 200px;
+  }
+  .status-msg.ok { color: var(--success); }
+  .status-msg.err { color: var(--danger); }
+  .status-msg.warn { color: var(--warn); }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    display: none;
+  }
+  .stat-card {
+    flex: 1;
+    min-width: 140px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat-val { font-size: 1.5rem; font-weight: 700; font-family: var(--mono); }
+  .stat-val.blue { color: var(--accent); }
+  .stat-val.purple { color: var(--accent2); }
+  .stat-val.green { color: var(--success); }
+  .stat-val.amber { color: var(--warn); }
+
+  /* TABLE */
+  .table-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    display: none;
+  }
+  .table-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    background: var(--surface2);
+  }
+  .table-title { font-weight: 600; font-size: 0.95rem; }
+  .table-caption {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+  .table-scroll { overflow-x: auto; max-height: 60vh; overflow-y: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    font-family: var(--mono);
+  }
+  thead { position: sticky; top: 0; z-index: 2; }
+  thead th {
+    background: #1a1e2c;
+    color: var(--text-dim);
+    font-weight: 600;
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody td {
+    padding: 0.55rem 0.75rem;
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+    vertical-align: middle;
+  }
+  .cell-phone { color: #7dd3fc; }
+  .cell-connected { color: var(--success); font-weight: 500; }
+  .cell-not-connected { color: var(--danger); }
+  .cell-terminal { color: var(--warn); font-weight: 500; }
+  .cell-url {
+    color: var(--accent);
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+  .cell-sentiment-high { color: var(--success); }
+  .cell-sentiment-mid { color: var(--warn); }
+  .cell-sentiment-low { color: var(--danger); }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 2rem;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    margin-top: 3rem;
+  }
+  footer span { color: var(--text-dim); }
+
+  /* ANIMATE */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.3s ease forwards; }
+
+  /* SPINNER */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid #ffffff40;
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+  .processing-overlay {
+    position: fixed; inset: 0;
+    background: #0d0f14cc;
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    display: none;
+  }
+  .processing-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+  }
+  .processing-card .spinner { width: 32px; height: 32px; border-width: 3px; border-color: var(--accent)40; border-top-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="processing-overlay" id="processingOverlay">
+  <div class="processing-card">
+    <div class="spinner"></div>
+    <span id="processingMsg">Processing files…</span>
+  </div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="header-badge">⚡ Ambal Auto · Lead Ops</div>
+    <h1>Disposition Sync</h1>
+    <div class="header-sub">AutoEngage → Zoho Master Sheet · No backend · No installation</div>
+    <div class="header-steps">
+      <div class="step-pill"><span class="num">1</span> Upload File 1 (Audience &amp; Leads)</div>
+      <div class="step-pill"><span class="num">2</span> Upload File 2 (Sessions)</div>
+      <div class="step-pill"><span class="num">3</span> Process Both Files</div>
+      <div class="step-pill"><span class="num">4</span> Copy All Data → Paste in Zoho</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="upload-grid">
+    <!-- File 1 -->
+    <div class="drop-zone" id="dz1" onclick="document.getElementById('f1').click()" role="button" tabindex="0"
+         aria-label="Upload Audience and Leads CSV">
+      <div class="dz-icon file1">📋</div>
+      <div class="dz-label">File 1 — Audience &amp; Leads</div>
+      <div class="dz-sublabel">AutoEngage → Audience &amp; Leads export</div>
+      <div class="dz-cols">person_name · phone_number · city · campaign_id<br>disposition · updated · interested_vehicle_name<br>seating_capacity_preference · lead_summary</div>
+      <div class="dz-status" id="st1">📁 Drag &amp; drop or click to browse</div>
+      <input type="file" id="f1" accept=".csv,.xlsx,.xls">
+    </div>
+
+    <!-- File 2 -->
+    <div class="drop-zone" id="dz2" onclick="document.getElementById('f2').click()" role="button" tabindex="0"
+         aria-label="Upload Sessions CSV">
+      <div class="dz-icon file2">🎙️</div>
+      <div class="dz-label">File 2 — Sessions</div>
+      <div class="dz-sublabel">AutoEngage → Sessions export</div>
+      <div class="dz-cols">phone_number · created · start_time<br>summary · call_recording · sentiment_score</div>
+      <div class="dz-status" id="st2">📁 Drag &amp; drop or click to browse</div>
+      <input type="file" id="f2" accept=".csv,.xlsx,.xls">
+    </div>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn btn-primary" id="btnProcess" disabled onclick="processFiles()">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      Process Both Files
+    </button>
+    <button class="btn btn-success" id="btnCopy" disabled onclick="copyData()" style="display:none">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Copy All Data
+    </button>
+    <button class="btn btn-secondary" id="btnReset" onclick="resetAll()" style="display:none">Reset</button>
+    <span class="status-msg" id="globalStatus"></span>
+  </div>
+
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-card"><div class="stat-label">Total Leads</div><div class="stat-val blue" id="sTotal">0</div></div>
+    <div class="stat-card"><div class="stat-label">Connected</div><div class="stat-val green" id="sConnected">0</div></div>
+    <div class="stat-card"><div class="stat-label">Not Connected</div><div class="stat-val amber" id="sNotConn">0</div></div>
+    <div class="stat-card"><div class="stat-label">Excluded (Terminal)</div><div class="stat-val purple" id="sExcluded">0</div></div>
+    <div class="stat-card"><div class="stat-label">With Recording</div><div class="stat-val blue" id="sRecording">0</div></div>
+  </div>
+
+  <div class="table-wrapper" id="tableWrapper">
+    <div class="table-header">
+      <div class="table-title">Output Preview</div>
+      <div class="table-caption" id="tableCaption">0 rows</div>
+    </div>
+    <div class="table-scroll">
+      <table id="outputTable">
+        <thead>
+          <tr>
+            <th>Lead_ID</th>
+            <th>Full_Name</th>
+            <th>Phone</th>
+            <th>City</th>
+            <th>Pincode</th>
+            <th>Campaign_ID</th>
+            <th>Call Triggered</th>
+            <th>Outcome</th>
+            <th>Disposition</th>
+            <th>SUMMARY</th>
+            <th>Call_Date</th>
+            <th>No. of Attempts</th>
+            <th>SENTIMENT</th>
+            <th>Recordings</th>
+            <th>Model</th>
+            <th>Seating</th>
+            <th>Exclusion_Flag</th>
+          </tr>
+        </thead>
+        <tbody id="outputBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Disposition Sync v2 &nbsp;·&nbsp; <span>Ambal Auto — Lead Operations Automation</span><br>
+  AI/ML Intern: Kanniga (Jenny Joseph K.) &nbsp;·&nbsp; March 2026 &nbsp;·&nbsp; Runs entirely in browser — no data is uploaded anywhere
+</footer>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let rawFile1 = null;
+let rawFile2 = null;
+let processedData = [];
+
+// ─── PRIORITY TABLE ───────────────────────────────────────────────────────────
+const DISPOSITION_PRIORITY = {
+  'test drive booked': 10,
+  'converted':         10,
+  'not interested':    9,
+  'dnd':               9,
+  'wrong number':      9,
+  'interested':        8,
+  'callback requested':6,
+  'call back':         6,
+  'busy':              4,
+  'not connected':     3,
+  'no revert':         3,
+  'user did not speak':2,
+};
+const TERMINAL_THRESHOLD = 9; // priority >= 9 → Exclusion_Flag = YES
+const CONNECTED_SET = new Set(['contacted','engaged','converted','attempted']);
+const NO_RESPONSE_SET = new Set(['busy','not connected','no revert','user did not speak']);
+
+function getDispositionPriority(d) {
+  if (!d) return 1;
+  const key = d.trim().toLowerCase();
+  return DISPOSITION_PRIORITY[key] ?? 1;
+}
+
+// ─── PHONE NORMALIZATION ──────────────────────────────────────────────────────
+function normalizePhone(raw) {
+  if (!raw) return null;
+  const digits = String(raw).replace(/\D/g, '');
+  if (!digits) return null;
+  if (digits.startsWith('91') && digits.length === 12) return digits.slice(2);
+  if (digits.startsWith('0') && digits.length === 11) return digits.slice(1);
+  if (digits.length === 10) return digits;
+  // Extra: handle 11–12 digit numbers starting with 91 generically
+  if (digits.startsWith('91') && digits.length >= 12) return digits.slice(digits.length - 10);
+  return null;
+}
+
+function isPhoneLike(val) {
+  // 10–12 digit number pattern suitable for a phone
+  return /^\+?[\d\s\-()]{10,15}$/.test(String(val).trim());
+}
+
+// ─── DATE PARSING ──────────────────────────────────────────────────────────────
+// AutoEngage format: "9/3/2026, 7:19:07 pm" → DD/MM/YYYY, H:MM:SS am/pm
+function parseAutoEngageDate(str) {
+  if (!str) return null;
+  const s = String(str).trim();
+  // Primary: DD/MM/YYYY, H:MM:SS am/pm
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2}):(\d{2})\s*(am|pm)?/i);
+  if (m) {
+    let [, dd, mm, yyyy, hh, min, sec, ampm] = m;
+    dd = parseInt(dd,10); mm = parseInt(mm,10); yyyy = parseInt(yyyy,10);
+    hh = parseInt(hh,10); min = parseInt(min,10); sec = parseInt(sec,10);
+    if (ampm) {
+      ampm = ampm.toLowerCase();
+      if (ampm === 'pm' && hh !== 12) hh += 12;
+      if (ampm === 'am' && hh === 12) hh = 0;
+    }
+    return new Date(yyyy, mm - 1, dd, hh, min, sec);
+  }
+  // Fallback: ISO or other browser-parseable
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+
+function formatCallDate(dateObj) {
+  if (!dateObj) return '';
+  const dd = String(dateObj.getDate()).padStart(2,'0');
+  const mm = String(dateObj.getMonth()+1).padStart(2,'0');
+  const yyyy = dateObj.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+function isDateStr(val) {
+  // matches DD/MM/YYYY pattern inside a string
+  return /\d{1,2}\/\d{1,2}\/\d{4}/.test(String(val));
+}
+
+function ordinalSuffix(n) {
+  const s = ['th','st','nd','rd'];
+  const v = n % 100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
+}
+
+function formatTime12(dateObj) {
+  if (!dateObj) return '';
+  let h = dateObj.getHours();
+  const m = dateObj.getMinutes();
+  const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2,'0')}${ampm}`;
+}
+
+const MONTH_NAMES = ['January','February','March','April','May','June',
+                     'July','August','September','October','November','December'];
+
+// ─── FILE READING ──────────────────────────────────────────────────────────────
+function readFileAsArrayBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function parseSheet(ab) {
+  const wb = XLSX.read(ab, { type: 'array', raw: false, cellText: true, cellDates: false });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  // Use header:1 to get array-of-arrays, then manually build objects
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+  if (rows.length < 2) return [];
+  const headers = rows[0].map(h => String(h).trim().toLowerCase().replace(/\s+/g,'_'));
+  const result = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const obj = {};
+    headers.forEach((h, j) => { obj[h] = row[j] !== undefined ? String(row[j]).trim() : ''; });
+    obj.__raw = row; // keep raw array for column-shift scanning
+    result.push(obj);
+  }
+  return result;
+}
+
+// ─── ROBUST COLUMN DETECTION (File 2 column-shift bug fix) ────────────────────
+// Scans ALL values in a row to find phone / recording / date, regardless of which
+// column key they landed in due to CSV column shift caused by JSON `history` field.
+
+function detectPhone(obj) {
+  // 1. Try known column names first
+  const candidates = ['phone_number','phone','mobile','contact','contact_number'];
+  for (const c of candidates) {
+    if (obj[c]) {
+      const n = normalizePhone(obj[c]);
+      if (n) return n;
+    }
+  }
+  // 2. Scan all values
+  for (const val of Object.values(obj)) {
+    if (val && isPhoneLike(val)) {
+      const n = normalizePhone(val);
+      if (n) return n;
+    }
+  }
+  return null;
+}
+
+function detectRecording(obj) {
+  const candidates = ['call_recording','recording','recording_url','call_url'];
+  for (const c of candidates) {
+    const v = obj[c];
+    if (v && (v.includes('cloudphone') || v.includes('/recording') || v.startsWith('http'))) return v;
+  }
+  for (const val of Object.values(obj)) {
+    if (typeof val === 'string' && (val.includes('cloudphone') || val.includes('/recording'))) return val;
+  }
+  return '';
+}
+
+function detectDate(obj) {
+  const candidates = ['created','date','start_time','timestamp','call_date'];
+  for (const c of candidates) {
+    if (obj[c] && isDateStr(obj[c])) return obj[c];
+  }
+  // Scan
+  for (const val of Object.values(obj)) {
+    if (typeof val === 'string' && isDateStr(val)) return val;
+  }
+  return '';
+}
+
+function detectSummary(obj) {
+  const candidates = ['summary','call_summary','conversation_summary','notes'];
+  for (const c of candidates) {
+    if (obj[c] && obj[c].length > 3) return obj[c];
+  }
+  return '';
+}
+
+function detectSentiment(obj) {
+  const candidates = ['sentiment_score','sentiment','score'];
+  for (const c of candidates) {
+    if (obj[c] !== undefined && obj[c] !== '') return obj[c];
+  }
+  return '';
+}
+
+// ─── SEATING DERIVATION ───────────────────────────────────────────────────────
+function deriveSeating(seating, model) {
+  if (seating && seating.trim() !== '') return seating.trim();
+  if (!model) return '';
+  const m = model.toLowerCase();
+  if (m.includes('basalt')) return '5 Seater';
+  if (m.includes('aircross') || m.includes('c3')) return '5 Seater & 7 Seater';
+  if (m.includes('meridian') || m.includes('jeep')) return '5 Seater & 7 Seater';
+  return '';
+}
+
+// ─── CORE PROCESSING ──────────────────────────────────────────────────────────
+async function processFiles() {
+  if (!rawFile1 || !rawFile2) return;
+
+  showOverlay('Parsing files…');
+  await tick();
+
+  try {
+    const [ab1, ab2] = await Promise.all([
+      readFileAsArrayBuffer(rawFile1),
+      readFileAsArrayBuffer(rawFile2)
+    ]);
+
+    showOverlay('Parsing Audience & Leads…');
+    await tick();
+    const rows1 = parseSheet(ab1);
+
+    showOverlay('Parsing Sessions…');
+    await tick();
+    const rows2 = parseSheet(ab2);
+
+    showOverlay('Applying business logic…');
+    await tick();
+
+    // ── PHONE COUNTS (for Number of Attempts) ────────────────────────────────
+    const phoneCountMap = {};
+    for (const r of rows1) {
+      const p = normalizePhone(r['phone_number'] || r['phone'] || r['mobile'] || '');
+      if (p) phoneCountMap[p] = (phoneCountMap[p] || 0) + 1;
+    }
+
+    // ── BUILD FILE 1 MAP: phone → best row (disposition priority dedup) ───────
+    const leadMap = {}; // phone → { row, priority }
+    for (const r of rows1) {
+      const phone = normalizePhone(r['phone_number'] || r['phone'] || r['mobile'] || '');
+      if (!phone) continue;
+      const disp = r['disposition'] || '';
+      const prio = getDispositionPriority(disp);
+      if (!leadMap[phone] || prio > leadMap[phone].priority) {
+        leadMap[phone] = { row: r, priority: prio };
+      }
+    }
+
+    // ── BUILD FILE 2 MAP: phone → best session ────────────────────────────────
+    // Priority: 1) has call_recording 2) has summary 3) most recent
+    const sessionGroups = {}; // phone → [sessions]
+    for (const r of rows2) {
+      const phone = detectPhone(r);
+      if (!phone) continue;
+      if (!sessionGroups[phone]) sessionGroups[phone] = [];
+      sessionGroups[phone].push(r);
+    }
+
+    const sessionMap = {}; // phone → best session object {recording, summary, sentiment, dateStr}
+    for (const [phone, sessions] of Object.entries(sessionGroups)) {
+      let best = null;
+      for (const s of sessions) {
+        const rec = detectRecording(s);
+        if (rec) { best = s; break; }
+      }
+      if (!best) {
+        for (const s of sessions) {
+          const summ = detectSummary(s);
+          if (summ) { best = s; break; }
+        }
+      }
+      if (!best) best = sessions[sessions.length - 1];
+
+      sessionMap[phone] = {
+        recording: detectRecording(best),
+        summary: detectSummary(best),
+        sentiment: detectSentiment(best),
+        dateStr: detectDate(best),
+        startTime: best['start_time'] || '',
+      };
+    }
+
+    // ── CALL TRIGGERED: scan ALL of File 2 for min/max timestamps ─────────────
+    let minDate = null, maxDate = null;
+    for (const r of rows2) {
+      const dStr = detectDate(r) || r['start_time'] || '';
+      const d = parseAutoEngageDate(dStr);
+      if (!d) continue;
+      if (!minDate || d < minDate) minDate = d;
+      if (!maxDate || d > maxDate) maxDate = d;
+    }
+
+    let callTriggered = '';
+    if (minDate && maxDate) {
+      // Use the calendar date of minDate for the label
+      const day   = ordinalSuffix(minDate.getDate());
+      const month = MONTH_NAMES[minDate.getMonth()];
+      const tMin  = formatTime12(minDate);
+      const tMax  = formatTime12(maxDate);
+      callTriggered = `${day} ${month} Calls Triggered From ${tMin} - ${tMax}`;
+    }
+
+    // ── ASSEMBLE OUTPUT ROWS ──────────────────────────────────────────────────
+    const output = [];
+    for (const [phone, { row, priority }] of Object.entries(leadMap)) {
+      const disp = (row['disposition'] || '').trim();
+      const dispLower = disp.toLowerCase();
+
+      // Outcome
+      const outcome = CONNECTED_SET.has(dispLower) ? 'Connected' : 'Not Connected';
+
+      // Exclusion flag
+      const exclusion = priority >= TERMINAL_THRESHOLD ? 'YES' : '';
+
+      // SUMMARY
+      let summary = '';
+      if (NO_RESPONSE_SET.has(dispLower)) {
+        summary = 'No response';
+      } else {
+        const sess = sessionMap[phone];
+        const sessSum = sess?.summary || '';
+        if (sessSum) {
+          summary = sessSum;
+        } else {
+          const leadsSum = row['lead_summary'] || '';
+          summary = leadsSum;
+        }
+      }
+
+      // Call_Date
+      const callDateRaw = row['updated'] || '';
+      const callDateObj = parseAutoEngageDate(callDateRaw);
+      const callDate = formatCallDate(callDateObj);
+
+      // Model & Seating
+      const model = row['interested_vehicle_name'] || '';
+      const seatingRaw = row['seating_capacity_preference'] || '';
+      const seating = deriveSeating(seatingRaw, model);
+
+      // Session data
+      const sess = sessionMap[phone] || {};
+
+      output.push({
+        lead_id:    '',
+        full_name:  row['person_name'] || '',
+        phone,
+        city:       row['city'] || '',
+        pincode:    '',
+        campaign_id: row['campaign_id'] || '',
+        call_triggered: callTriggered,
+        outcome,
+        disposition: disp,
+        summary,
+        call_date: callDate,
+        num_attempts: phoneCountMap[phone] || 1,
+        sentiment:  sess.sentiment || '',
+        recordings: sess.recording || '',
+        model,
+        seating,
+        exclusion_flag: exclusion,
+      });
+    }
+
+    processedData = output;
+
+    // ── RENDER ────────────────────────────────────────────────────────────────
+    renderTable(output);
+    renderStats(output);
+    hideOverlay();
+
+    setStatus('globalStatus', `✅ Done — ${output.length} unique leads processed.`, 'ok');
+    document.getElementById('btnCopy').style.display = '';
+    document.getElementById('btnCopy').disabled = false;
+    document.getElementById('btnReset').style.display = '';
+
+  } catch(e) {
+    hideOverlay();
+    setStatus('globalStatus', `❌ Error: ${e.message}`, 'err');
+    console.error(e);
+  }
+}
+
+// ─── RENDER TABLE ─────────────────────────────────────────────────────────────
+const PREVIEW_LIMIT = 200;
+function renderTable(data) {
+  const tbody = document.getElementById('outputBody');
+  tbody.innerHTML = '';
+  const preview = data.slice(0, PREVIEW_LIMIT);
+
+  for (const r of preview) {
+    const tr = document.createElement('tr');
+
+    const sentNum = parseFloat(r.sentiment);
+    const sentClass = isNaN(sentNum) ? '' :
+                      sentNum >= 0.6 ? 'cell-sentiment-high' :
+                      sentNum >= 0.3 ? 'cell-sentiment-mid' : 'cell-sentiment-low';
+
+    tr.innerHTML = `
+      <td></td>
+      <td>${esc(r.full_name)}</td>
+      <td class="cell-phone">${esc(r.phone)}</td>
+      <td>${esc(r.city)}</td>
+      <td></td>
+      <td>${esc(r.campaign_id)}</td>
+      <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis">${esc(r.call_triggered)}</td>
+      <td class="${r.outcome==='Connected'?'cell-connected':'cell-not-connected'}">${esc(r.outcome)}</td>
+      <td class="${getPrioClass(r.disposition)}">${esc(r.disposition)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(r.summary)}</td>
+      <td>${esc(r.call_date)}</td>
+      <td>${esc(String(r.num_attempts))}</td>
+      <td class="${sentClass}">${esc(r.sentiment)}</td>
+      <td>${r.recordings ? `<a class="cell-url" href="${esc(r.recordings)}" target="_blank" title="${esc(r.recordings)}">🔗 Recording</a>` : ''}</td>
+      <td>${esc(r.model)}</td>
+      <td>${esc(r.seating)}</td>
+      <td class="${r.exclusion_flag?'cell-terminal':''}">${esc(r.exclusion_flag)}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  const cap = data.length > PREVIEW_LIMIT
+    ? `Showing first ${PREVIEW_LIMIT} of ${data.length} rows — full data in copied TSV`
+    : `${data.length} rows`;
+  document.getElementById('tableCaption').textContent = cap;
+  document.getElementById('tableWrapper').style.display = '';
+  document.getElementById('tableWrapper').classList.add('fade-in');
+}
+
+function getPrioClass(disp) {
+  const p = getDispositionPriority(disp);
+  if (p >= 9) return 'cell-terminal';
+  return '';
+}
+
+function esc(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── RENDER STATS ─────────────────────────────────────────────────────────────
+function renderStats(data) {
+  const total     = data.length;
+  const connected = data.filter(r => r.outcome === 'Connected').length;
+  const notConn   = total - connected;
+  const excluded  = data.filter(r => r.exclusion_flag === 'YES').length;
+  const withRec   = data.filter(r => r.recordings).length;
+
+  document.getElementById('sTotal').textContent     = total;
+  document.getElementById('sConnected').textContent = connected;
+  document.getElementById('sNotConn').textContent   = notConn;
+  document.getElementById('sExcluded').textContent  = excluded;
+  document.getElementById('sRecording').textContent = withRec;
+
+  document.getElementById('statsBar').style.display = 'flex';
+  document.getElementById('statsBar').classList.add('fade-in');
+}
+
+// ─── COPY TO CLIPBOARD ────────────────────────────────────────────────────────
+const HEADERS_TSV = ['Lead_ID','Full_Name','Phone','City','Pincode','Campaign_ID',
+                     'Call Triggered','Outcome','Disposition','SUMMARY','Call_Date',
+                     'Number of attempts','SENTIMENT','Recordings','Model','Seating','Exclusion_Flag'];
+
+async function copyData() {
+  if (!processedData.length) return;
+
+  const lines = [HEADERS_TSV.join('\t')];
+  for (const r of processedData) {
+    const cols = [
+      r.lead_id,
+      r.full_name,
+      r.phone,
+      r.city,
+      r.pincode,
+      r.campaign_id,
+      r.call_triggered,
+      r.outcome,
+      r.disposition,
+      r.summary,
+      r.call_date,
+      r.num_attempts,
+      r.sentiment,
+      r.recordings,
+      r.model,
+      r.seating,
+      r.exclusion_flag,
+    ].map(v => String(v ?? '').replace(/\t/g,' ').replace(/\n/g,' '));
+    lines.push(cols.join('\t'));
+  }
+  const tsv = lines.join('\n');
+
+  try {
+    await navigator.clipboard.writeText(tsv);
+    showCopyFeedback('✅ Copied! Paste with Ctrl+V in Zoho.');
+  } catch {
+    // Fallback for file:// protocol
+    const ta = document.createElement('textarea');
+    ta.value = tsv;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      document.execCommand('copy');
+      showCopyFeedback('✅ Copied! Paste with Ctrl+V in Zoho.');
+    } catch {
+      showCopyFeedback('⚠️ Auto-copy failed — manually select and copy the table.', 'warn');
+    }
+    document.body.removeChild(ta);
+  }
+}
+
+function showCopyFeedback(msg, type='ok') {
+  setStatus('globalStatus', msg, type);
+  const btn = document.getElementById('btnCopy');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '✅ Copied!';
+  setTimeout(() => { btn.innerHTML = orig; }, 2000);
+}
+
+// ─── RESET ────────────────────────────────────────────────────────────────────
+function resetAll() {
+  rawFile1 = null; rawFile2 = null; processedData = [];
+  ['f1','f2'].forEach(id => { document.getElementById(id).value = ''; });
+  ['dz1','dz2'].forEach(id => {
+    document.getElementById(id).classList.remove('has-file');
+  });
+  ['st1','st2'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = 'dz-status';
+    el.textContent = '📁 Drag & drop or click to browse';
+  });
+  document.getElementById('outputBody').innerHTML = '';
+  document.getElementById('tableWrapper').style.display = 'none';
+  document.getElementById('statsBar').style.display = 'none';
+  document.getElementById('btnCopy').style.display = 'none';
+  document.getElementById('btnReset').style.display = 'none';
+  document.getElementById('btnProcess').disabled = true;
+  setStatus('globalStatus', '', '');
+}
+
+// ─── UI HELPERS ───────────────────────────────────────────────────────────────
+function setStatus(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+function showOverlay(msg) {
+  document.getElementById('processingMsg').textContent = msg;
+  document.getElementById('processingOverlay').style.display = 'flex';
+}
+
+function hideOverlay() {
+  document.getElementById('processingOverlay').style.display = 'none';
+}
+
+function tick() { return new Promise(r => setTimeout(r, 20)); }
+
+function updateProcessBtn() {
+  document.getElementById('btnProcess').disabled = !(rawFile1 && rawFile2);
+}
+
+function setFileStatus(id, filename, rowHint) {
+  const el = document.getElementById(id);
+  el.className = 'dz-status ok';
+  el.innerHTML = `✅ ${filename}${rowHint ? ` <span style="opacity:.6">(${rowHint})</span>` : ''}`;
+}
+
+// ─── FILE INPUT HANDLING ──────────────────────────────────────────────────────
+document.getElementById('f1').addEventListener('change', async function() {
+  if (!this.files[0]) return;
+  rawFile1 = this.files[0];
+  setFileStatus('st1', rawFile1.name);
+  document.getElementById('dz1').classList.add('has-file');
+  updateProcessBtn();
+});
+
+document.getElementById('f2').addEventListener('change', async function() {
+  if (!this.files[0]) return;
+  rawFile2 = this.files[0];
+  setFileStatus('st2', rawFile2.name);
+  document.getElementById('dz2').classList.add('has-file');
+  updateProcessBtn();
+});
+
+// ─── DRAG AND DROP ────────────────────────────────────────────────────────────
+function setupDragDrop(dzId, fileInputId) {
+  const dz = document.getElementById(dzId);
+  const fi = document.getElementById(fileInputId);
+
+  dz.addEventListener('dragover', e => {
+    e.preventDefault();
+    dz.classList.add('drag-over');
+  });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    // Simulate setting the file input
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fi.files = dt.files;
+    fi.dispatchEvent(new Event('change'));
+  });
+
+  dz.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') fi.click();
+  });
+}
+
+setupDragDrop('dz1', 'f1');
+setupDragDrop('dz2', 'f2');
+</script>
+</body>
+</html>
