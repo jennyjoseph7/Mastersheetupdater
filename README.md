@@ -28,6 +28,7 @@ Columns used:
 | `phone_number` | Phone (match key) |
 | `city` | City |
 | `campaign_id` | Campaign_ID |
+| `lead_source` | Lead_Source |
 | `disposition` | Disposition + Outcome + SUMMARY logic |
 | `updated` | Call_Date |
 | `interested_vehicle_name` | Model |
@@ -61,18 +62,19 @@ Exact column order matching the Zoho Master Sheet:
 | 3 | Phone | File 1 `phone_number` | Normalized to 10 digits |
 | 4 | City | File 1 `city` | Direct copy |
 | 5 | Pincode | — | Left blank. Not in either export file. |
-| 6 | Campaign_ID | File 1 `campaign_id` | Direct copy |
-| 7 | Call Triggered | File 2 `created` / `start_time` | See formula below |
-| 8 | Outcome | File 1 `disposition` | See formula below |
-| 9 | Disposition | File 1 `disposition` | Deduplicated by priority |
-| 10 | SUMMARY | File 2 `summary` | See formula below |
-| 11 | Call_Date | File 1 `updated` | Parsed as DD/MM/YYYY |
-| 12 | Number of attempts | File 1 `phone_number` | See formula below |
-| 13 | SENTIMENT | File 2 `sentiment_score` | Direct copy |
-| 14 | Recordings | File 2 `call_recording` | Direct URL copy |
-| 15 | Model | File 1 `interested_vehicle_name` | Direct copy |
-| 16 | Seating | File 1 `seating_capacity_preference` | See formula below |
-| 17 | Exclusion_Flag | Derived from Disposition priority | YES for terminal dispositions |
+| 6 | Lead_Source | File 1 `lead_source` | Direct copy |
+| 7 | Campaign_ID | File 1 `campaign_id` | Direct copy |
+| 8 | Call Triggered | File 2 `created` / `start_time` | See formula below |
+| 9 | Outcome | File 1 `disposition` | See formula below |
+| 10 | Disposition | File 1 `disposition` | Deduplicated by priority |
+| 11 | SUMMARY | File 2 `summary` | See formula below |
+| 12 | Call_Date | File 1 `updated` | Parsed as DD/MM/YYYY |
+| 13 | Number of attempts | File 1 `phone_number` | See formula below |
+| 14 | SENTIMENT | File 2 `sentiment_score` | Direct copy |
+| 15 | Recordings | File 2 `call_recording` | Direct URL copy |
+| 16 | Model | File 1 `interested_vehicle_name` | Direct copy |
+| 17 | Seating | File 1 `seating_capacity_preference` | See formula below |
+| 18 | Exclusion_Flag | Derived from Disposition priority | YES for terminal dispositions |
 
 ---
 
