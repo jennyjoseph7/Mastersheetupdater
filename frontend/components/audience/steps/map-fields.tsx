@@ -1,10 +1,31 @@
 "use client"
 
-import { useEffect, useCallback, useMemo } from "react"
+import { useEffect, useCallback, useMemo, useState } from "react"
 import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { CheckCircle2, AlertTriangle, Sparkles, Zap } from "lucide-react"
+import { 
+  CheckCircle2, 
+  AlertTriangle, 
+  Sparkles, 
+  Zap, 
+  Search, 
+  Check, 
+  ChevronsUpDown 
+} from "lucide-react"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 import type { DataSourceFormData, FieldMapping } from "../add-data-source-dialog"
 
 interface MapFieldsProps {
@@ -28,7 +49,6 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
     "emi_amount", "insurance", "puc","region_name","phone_number","email","alt_phone_number_2","alt_phone_number_3","alt_phone_number_4"
   ], []);
 
-  // Helper to clean strings of \n, \r, and whitespace
   const cleanString = (str: string) => {
     return str ? str.replace(/\\n|\n|\r/g, "").trim() : "";
   };
@@ -50,14 +70,12 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
 
   const handleAutoMapAll = useCallback(() => {
     const mappedResult = formData.fieldMappings.map(mapping => {
-      // Clean the source field itself to remove \n from the payload keys
       const sanitizedSource = cleanString(mapping.sourceField);
       const match = findBestMatch(sanitizedSource);
-      
       return { 
         ...mapping, 
-        sourceField: sanitizedSource, // FIX: Sanitize the key
-        targetField: cleanString(match), // FIX: Sanitize the value
+        sourceField: sanitizedSource,
+        targetField: cleanString(match),
         enabled: match !== "" 
       };
     });
@@ -66,18 +84,13 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
 
   useEffect(() => {
     if (formData.fieldMappings.length > 0) {
-      // Check if any fields contain newlines
       const needsCleaning = formData.fieldMappings.some(m => m.sourceField.includes('\n') || m.sourceField.includes('\\n'));
-      if (needsCleaning) {
-        handleAutoMapAll();
-      }
+      if (needsCleaning) handleAutoMapAll();
     }
   }, [formData.fieldMappings.length, handleAutoMapAll]);
 
   const updateFieldMapping = (id: string, updates: Partial<FieldMapping>) => {
-    // Ensure any manual updates are also cleaned
     if (updates.targetField) updates.targetField = cleanString(updates.targetField);
-    
     updateFormData({
       fieldMappings: formData.fieldMappings.map((m) => (m.id === id ? { ...m, ...updates } : m)),
     });
@@ -103,15 +116,16 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
           <div className="col-span-6">System Target</div>
         </div>
 
-        <div className="max-h-[480px] overflow-y-auto divide-y divide-slate-100">
+        <div className="max-h-[500px] overflow-y-auto divide-y divide-slate-100">
           {formData.fieldMappings.map((mapping) => {
             const isUnmapped = !mapping.targetField && mapping.enabled;
-            
+            const isMapped = mapping.targetField && mapping.enabled;
+
             return (
               <div 
                 key={mapping.id} 
                 className={`grid grid-cols-12 gap-4 items-center px-6 py-4 transition-all ${
-                  isUnmapped ? "bg-amber-50/50" : "bg-white"
+                  isUnmapped ? "bg-amber-50/40 border-l-4 border-l-amber-400" : "border-l-4 border-l-transparent"
                 } ${!mapping.enabled ? "opacity-40" : ""}`}
               >
                 <div className="col-span-1 flex justify-center">
@@ -129,22 +143,56 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
                 </div>
 
                 <div className="col-span-6 flex flex-col gap-1">
-                  <Select
-                    disabled={!mapping.enabled}
-                    value={mapping.targetField || ""} 
-                    onValueChange={(val) => updateFieldMapping(mapping.id, { targetField: val, enabled: true })}
-                  >
-                    <SelectTrigger className={`h-11 border-slate-200 ${isUnmapped ? 'border-amber-300 ring-2 ring-amber-100' : ''}`}>
-                      <SelectValue placeholder="Select Destination..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {systemTargets.map((field) => (
-                        <SelectItem key={field} value={field} className="text-xs">
-                          {field.replace(/_/g, " ").toUpperCase()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {/* SEARCHABLE COMBOBOX */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        disabled={!mapping.enabled}
+                        className={cn(
+                          "h-11 justify-between text-left font-normal border-slate-200",
+                          isUnmapped && "border-amber-300 ring-2 ring-amber-100",
+                          isMapped && "border-emerald-200 bg-emerald-50/20"
+                        )}
+                      >
+                        <span className="truncate">
+                          {mapping.targetField 
+                            ? mapping.targetField.replace(/_/g, " ").toUpperCase() 
+                            : "Select destination..."}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search system fields..." />
+                        <CommandList>
+                          <CommandEmpty>No field found.</CommandEmpty>
+                          <CommandGroup>
+                            {systemTargets.map((field) => (
+                              <CommandItem
+                                key={field}
+                                value={field}
+                                onSelect={() => {
+                                  updateFieldMapping(mapping.id, { targetField: field, enabled: true });
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    mapping.targetField === field ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {field.replace(/_/g, " ").toUpperCase()}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+
                   {isUnmapped && (
                     <span className="text-[9px] font-bold text-amber-600 flex items-center gap-1">
                       <AlertTriangle className="h-2.5 w-2.5" /> MANUAL ACTION NEEDED
