@@ -1025,16 +1025,12 @@
           if (p) phoneCountMap[p] = (phoneCountMap[p] || 0) + 1;
         }
 
-        // ── BUILD FILE 1 MAP: phone → best row (disposition priority dedup) ───────
-        const leadMap = {}; // phone → { row, priority }
+        // ── BUILD FILE 1 LIST: keep ALL rows (no dedup) ──────────────────────────
+        const allLeads = [];
         for (const r of rows1) {
           const phone = normalizePhone(r['phone_number'] || r['phone'] || r['mobile'] || '');
           if (!phone) continue;
-          const disp = r['disposition'] || '';
-          const prio = getDispositionPriority(disp);
-          if (!leadMap[phone] || prio > leadMap[phone].priority) {
-            leadMap[phone] = { row: r, priority: prio };
-          }
+          allLeads.push({ row: r, phone });
         }
 
         // ── BUILD FILE 2 MAP: phone → best session ────────────────────────────────
@@ -1091,11 +1087,12 @@
           callTriggered = `${day} ${month} Calls Triggered From ${tMin} - ${tMax}`;
         }
 
-        // ── ASSEMBLE OUTPUT ROWS ──────────────────────────────────────────────────
+        // ── ASSEMBLE OUTPUT ROWS (ALL rows, no dedup) ─────────────────────────────
         const output = [];
-        for (const [phone, { row, priority }] of Object.entries(leadMap)) {
+        for (const { row, phone } of allLeads) {
           const disp = (row['disposition'] || '').trim();
           const dispLower = disp.toLowerCase();
+          const priority = getDispositionPriority(disp);
 
           // Outcome
           const outcome = CONNECTED_SET.has(dispLower) ? 'Connected' : 'Not Connected';
@@ -1160,7 +1157,7 @@
         renderStats(output);
         hideOverlay();
 
-        setStatus('globalStatus', `✅ Done — ${output.length} unique leads processed.`, 'ok');
+        setStatus('globalStatus', `✅ Done — ${output.length} leads processed.`, 'ok');
         document.getElementById('btnCopy').style.display = '';
         document.getElementById('btnCopy').disabled = false;
         document.getElementById('btnReset').style.display = '';
