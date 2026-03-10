@@ -977,7 +977,7 @@ function renderTable(data) {
     ? `Showing first ${PREVIEW_LIMIT} of ${data.length} rows — full data in copied TSV`
     : `${data.length} rows`;
   document.getElementById('tableCaption').textContent = cap;
-  document.getElementById('tableWrapper').style.display = '';
+  document.getElementById('tableWrapper').style.display = 'block';
   document.getElementById('tableWrapper').classList.add('fade-in');
 }
 
