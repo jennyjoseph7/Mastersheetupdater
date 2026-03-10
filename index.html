@@ -786,7 +786,12 @@
     // ─── PHONE NORMALIZATION ──────────────────────────────────────────────────────
     function normalizePhone(raw) {
       if (!raw) return null;
-      const digits = String(raw).replace(/\D/g, '');
+      let s = String(raw).trim();
+      // Handle scientific notation like 8.83E+09 or 9.79e+09
+      if (/^\d[\d.]*[eE][+\-]?\d+$/.test(s)) {
+        s = String(Math.round(parseFloat(s)));
+      }
+      const digits = s.replace(/\D/g, '');
       if (!digits) return null;
       if (digits.startsWith('91') && digits.length === 12) return digits.slice(2);
       if (digits.startsWith('0') && digits.length === 11) return digits.slice(1);
