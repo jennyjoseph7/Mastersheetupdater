@@ -878,7 +878,7 @@ async function processFiles() {
         if (sessSum) {
           summary = sessSum;
         } else {
-          const leadsSum = row['lead_summary'] || '';
+          const leadsSum = row['disposition_detail'] || '';
           summary = leadsSum;
         }
       }
