@@ -916,23 +916,43 @@
     // Scans ALL values in a row to find phone / recording / date, regardless of which
     // column key they landed in due to CSV column shift caused by JSON `history` field.
 
-    function detectPhone(obj) {
-      // 1. Try known column names first
-      const candidates = ['phone_number', 'phone', 'mobile', 'contact', 'contact_number'];
-      for (const c of candidates) {
+    function detectPhones(obj) {
+      const phones = new Set();
+      
+      // 1. Try known column names explicitly first
+      const exactNames = ['phone_number', 'phone', 'mobile', 'contact', 'contact_number'];
+      for (const c of exactNames) {
         if (obj[c]) {
           const n = normalizePhone(obj[c]);
-          if (n) return n;
+          if (n) phones.add(n);
         }
       }
-      // 2. Scan all values
-      for (const val of Object.values(obj)) {
-        if (val && isPhoneLike(val)) {
-          const n = normalizePhone(val);
-          if (n) return n;
+
+      // 2. Scan all raw values to find any phone-like numbers
+      const raw = Array.isArray(obj.__raw) ? obj.__raw : Object.values(obj);
+      for (const val of raw) {
+        if (!val) continue;
+        const s = String(val).trim();
+        
+        // Exact cell matches
+        if (isPhoneLike(s)) {
+          const n = normalizePhone(s);
+          if (n) phones.add(n);
+        }
+
+        // Embedded numbers in strings
+        if (s.length > 10) {
+          // Look for 10-12 digit sequences
+          const matches = s.match(/\+?(?:91|0)?[\s\-]?\d{10,12}\b/g);
+          if (matches) {
+            for (const m of matches) {
+              const n = normalizePhone(m);
+              if (n) phones.add(n);
+            }
+          }
         }
       }
-      return null;
+      return Array.from(phones);
     }
 
     function detectRecording(obj) {
@@ -1085,10 +1105,11 @@
         // Priority: 1) has call_recording 2) has summary 3) most recent
         const sessionGroups = {}; // phone → [sessions]
         for (const r of rows2) {
-          const phone = detectPhone(r);
-          if (!phone) continue;
-          if (!sessionGroups[phone]) sessionGroups[phone] = [];
-          sessionGroups[phone].push(r);
+          const phones = detectPhones(r);
+          for (const phone of phones) {
+            if (!sessionGroups[phone]) sessionGroups[phone] = [];
+            sessionGroups[phone].push(r);
+          }
         }
 
         const sessionMap = {}; // phone → best session object {recording, summary, sentiment, dateStr}
