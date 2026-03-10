@@ -775,8 +775,10 @@
     };
     const TERMINAL_THRESHOLD = 9; // priority >= 9 → Exclusion_Flag = YES
     const CONNECTED_SET = new Set([
-      'test drive booked', 'converted', 'not interested', 'dnd', 'wrong number',
-      'interested', 'callback requested', 'call back'
+      'contacted', 'reached', 'engaged', 'converted'
+    ]);
+    const NOT_CONNECTED_SET = new Set([
+      'attempted', 'busy'
     ]);
     const NO_RESPONSE_SET = new Set(['busy', 'not connected', 'no revert', 'user did not speak']);
 
@@ -1122,7 +1124,15 @@
           const priority = getDispositionPriority(disp);
 
           // Outcome
-          const outcome = CONNECTED_SET.has(dispLower) ? 'Connected' : 'Not Connected';
+          let outcome = 'Not Connected'; // Default fallback
+          if (CONNECTED_SET.has(dispLower)) {
+            outcome = 'Connected';
+          } else if (NOT_CONNECTED_SET.has(dispLower)) {
+            outcome = 'Not Connected';
+          } else {
+            // Keep default legacy behavior for old codes if needed, or default strictly to Not Connected
+            outcome = 'Not Connected'; 
+          }
 
           // Exclusion flag
           const exclusion = priority >= TERMINAL_THRESHOLD ? 'YES' : '';
