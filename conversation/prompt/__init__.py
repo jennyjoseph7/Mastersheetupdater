@@ -292,7 +292,7 @@ def setup_primary_prompt(*args, **kwargs):
     possible_states_and_solutions = get_example_states_and_solutions(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     rules = get_rules(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     tone_and_style = get_tone_and_style(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    conversation_history = get_conversation_history(*args,**{"session_data_cache":session_data_cache_data})
+    conversation_history = "No previous history" if kwargs.get("channel","") and kwargs.get("channel","") in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"] else get_conversation_history(*args,**{"session_data_cache":session_data_cache_data})
     output_format = get_output_format(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     mlogger.info("my history data == {}".format(conversation_history))
 
