@@ -871,21 +871,40 @@
     }
 
     function parseSheet(ab) {
-      const wb = XLSX.read(ab, { type: 'array', raw: false, cellText: true, cellDates: false });
+      const wb = XLSX.read(ab, { type: 'array', raw: true, cellText: false, cellDates: false });
       const ws = wb.Sheets[wb.SheetNames[0]];
       // Use header:1 to get array-of-arrays, then manually build objects
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
       if (rows.length < 2) return [];
       const headers = rows[0].map(h => String(h).trim().toLowerCase().replace(/\s+/g, '_'));
       const result = [];
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         const obj = {};
-        headers.forEach((h, j) => { obj[h] = row[j] !== undefined ? String(row[j]).trim() : ''; });
-        obj.__raw = row; // keep raw array for column-shift scanning
+        headers.forEach((h, j) => { obj[h] = cellToString(row[j]); });
+        obj.__raw = row.map(cellToString); // keep raw array for column-shift scanning
         result.push(obj);
       }
       return result;
+    }
+
+    // Convert any cell value to a clean string, preserving full numeric precision
+    function cellToString(val) {
+      if (val === undefined || val === null || val === '') return '';
+      // If it's a raw number, convert to full integer string (no scientific notation)
+      if (typeof val === 'number') {
+        if (Number.isInteger(val)) return String(val);
+        // Large floats that are really integers (e.g., 8825903357.0)
+        if (val > 999999 && Math.abs(val - Math.round(val)) < 0.01) return String(Math.round(val));
+        return String(val);
+      }
+      let s = String(val).trim();
+      // Handle scientific notation in string form (e.g. "8.83E+09")
+      if (/^\d[\d.]*[eE][+\-]?\d+$/.test(s)) {
+        const n = parseFloat(s);
+        if (Number.isFinite(n) && n > 999999) return String(Math.round(n));
+      }
+      return s;
     }
 
     // ─── ROBUST COLUMN DETECTION (File 2 column-shift bug fix) ────────────────────
