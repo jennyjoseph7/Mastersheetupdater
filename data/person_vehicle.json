@@ -88,8 +88,7 @@
                 "function": "name_to_id",
                 "args": [
                     "user_id",
-                    "vehicle_id",
-                    "created"
+                    "vehicle_id"
                 ],
                 "kwargs": {
                     "is_unique": true,
