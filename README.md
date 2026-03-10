@@ -1,4 +1,4 @@
-# Disposition Sync — Ambal Auto Lead Operations Automation
+# Disposition Sync — JEJO Lead Operations Automation
 
 ## What This Is
 
@@ -240,5 +240,5 @@ Fix applied:
 
 ---
 
-*Ambal Auto — Lead Operations Automation*  
+*JEJO — Lead Operations Automation*  
 *AI/ML Intern: Kanniga (Jenny Joseph K.) | March 2026*
