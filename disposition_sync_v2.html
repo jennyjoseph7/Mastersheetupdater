@@ -1361,7 +1361,7 @@
     async function copyData() {
       if (!processedData.length) return;
 
-      const lines = [HEADERS_TSV.join('\t')];
+      const lines = [];
       for (const r of processedData) {
         const cols = [
           r.lead_id,
