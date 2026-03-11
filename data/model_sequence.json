@@ -54,5 +54,6 @@
     "post_showroom",
     "post_workshop",
     "post_buyback_center",
-    "model_year_image"
+    "model_year_image",
+    "chunk_saver"
 ]

@@ -186,10 +186,9 @@ def get_vehicle_id(vehicle_model, row, missing_reason = None, logger = None):
             row[k] = list(map(lambda x: x.strip(), row[k].split(',')))
             data[k] = row[k]
     vehicles = vehicle_model.list(_as_option=True, _page_size=1, reg_number=row.get('reg_number'))
+    vehicle_id = None
     if vehicles:
         vehicle_id = vehicles[0].get('vehicle_id')
-        row['vehicle_id'] = vehicle_id
-        return row, missing_reason
     for k in [
             "reg_number",
             "vehicle_brand_name",
@@ -246,11 +245,16 @@ def get_vehicle_id(vehicle_model, row, missing_reason = None, logger = None):
         missing_reason.append("No vehicle data found")
         return row, missing_reason
     try:
-        vehicle = vehicle_model.post(data)
+        logger.info("Before posting/updating vehicle details: %s", data)
+        if not vehicle_id:
+            vehicle = vehicle_model.post(data)
+        else:
+            vehicle = vehicle_model.patch(vehicle_id, data)
+        logger.info("Updated vehicle details: %s", vehicle)
     except Exception as e:
         missing_reason.append(f"Failed to find suitable vehicle: {str(e)}")
     else:
-        row['vehicle_id'] = vehicle.get('vehicle_id')
+        row['vehicle_id'] = vehicle.get('vehicle_id') or vehicle_id
     return row, missing_reason
 
 def get_rooftop(row, models, model_name, missing_reason = None, rooftop_id = None, logger = None):
@@ -396,6 +400,7 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
     manage_credentials('email')
     if persons_involved:
         persons_involved = get_unique_persons_involved(persons_involved)
+    logger.info("Persons involved are :%s", persons_involved)
     vehicle_id = get_valid_value(row, 'vehicle_id')
     if persons_involved and vehicle_id:
         for person in persons_involved:
@@ -407,21 +412,23 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
                     'relationship_type': 'owner',
                 })
     if not persons_involved:
+        logger.info("Did not find persons involved")
         data = {}
         for k in person_model._model_ref.attr_seq:
             if is_valid_value(row, k):
                 data[k] = row.get(k)
-            try:
-                person = person_model.post(data)
-                if vehicle_id:
-                    person_vehicle = person_vehicle_model.post({
-                        'user_id': person.get('user_id'),
-                        'vehicle_id': vehicle_id
-                    })
-            except Exception as e:
-                missing_reason.append(f"Failed to post person: {str(e)}")
-            else:
-                persons_involved.append(person)
+        try:
+            person = person_model.post(data)
+            if vehicle_id:
+                person_vehicle = person_vehicle_model.post({
+                    'user_id': person.get('user_id'),
+                    'vehicle_id': vehicle_id
+                })
+        except Exception as e:
+            missing_reason.append(f"Failed to post person: {str(e)}")
+        else:
+            logger.info("Added person involved: %s", person)
+            persons_involved.append(person)
     elif missing_emails_phones:
         data = {}
         def manage_missing(typ):
@@ -439,17 +446,18 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
         for k in person_model._model_ref.attr_seq:
             if is_valid_value(row, k) and not any(_ in k for _ in ('phone', 'email')):
                 data[k] = row.get(k)
-            try:
-                person = person_model.post(data)
-                if vehicle_id:
-                    person_vehicle = person_vehicle_model.post({
-                        'user_id': person.get('user_id'),
-                        'vehicle_id': vehicle_id
-                    })
-            except Exception as e:
-                missing_reason.append(f"Failed to post person: {str(e)}")
-            else:
-                persons_involved.append(person)
+        try:
+            person = person_model.post(data)
+            if vehicle_id:
+                person_vehicle = person_vehicle_model.post({
+                    'user_id': person.get('user_id'),
+                    'vehicle_id': vehicle_id
+                })
+        except Exception as e:
+            missing_reason.append(f"Failed to post person: {str(e)}")
+        else:
+            logger.info("Posting person involved: %s", person)
+            persons_involved.append(person)
 
     return row, missing_reason
 
@@ -1994,4 +2002,14 @@ if __name__ == "__main__":
     #        campaign_objective_id = "pre-sales-test-drive-booking"
     #    ):    
     #    print(hp.json.dumps(out, hp.json.OPT_INDENT_2))
-    gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-india", "/Users/ggananth/Downloads/ambal_sample.csv", campaign_objective_id = "post-sales-service-reminder-ambal-auto-india", audience_name = "Ambal Sample")    
+    gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-india", "/Users/ggananth/Downloads/ambal_sample.csv", campaign_objective_id = "post-sales-service-overdue", audience_name = "Ambal Sample", mapping = {
+            "region_name": "region_name",
+            "vin_number": "vin_number",
+            "next_service_due": "next_service_due",
+            "person_name": "first_owner_name",
+            "vehicle_model": "vehicle_model_name",
+            "reg_number": "reg_number",
+            "phone_number": "phone_number",
+            "alt_phone_number_2": "alt_phone_number_2",
+            "odometer_reading": "odometer_reading"
+        })

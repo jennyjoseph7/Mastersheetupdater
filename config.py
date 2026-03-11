@@ -73,7 +73,7 @@ MAX_AUDIENCE_ERRORS = os.environ.get("MAX_AUDIENCE_ERRORS", 10)
 DEFAULT_OTP = os.environ.get("DEFAULT_OTP", "560102")
 ALLOWED_COUNTRY_CODES = list(map(str.strip, os.environ.get("ALLOWED_COUNTRY_CODES", "+971,+966,+62,+63,+91,+1").split(",")))
 OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe")
-EXCHANGE_RATE_HOST_API_KEY = os.environ.get("EXCHANGE_RATE_HOST_API_KEY")
+EXCHANGE_RATE_HOST_API_KEY = os.environ.get("EXCHANGE_RATE_HOST_API_KEY","b6e93843fe72674909722d79859d7c4c")
 EXCHANGE_RATE_HOST_BASE_URL = os.environ.get("EXCHANGE_RATE_HOST_BASE_URL", "https://api.exchangerate.host")
 #model names
 SESSION_MODEL_NAME = "session"

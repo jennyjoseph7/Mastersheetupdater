@@ -58,6 +58,7 @@ def stream_cohorts():
         "product_website_url": data.get("product_website_url"),
         "model_identifier": data.get("model_identifier", "azure-gpt-4o"),
         "num_of_cohorts": data.get("num_of_cohorts", 30),
+        "additional_instruction": data.get("additional_instruction", None),
     }
 
     _batch_size = data.get("batch_size", 10)
@@ -81,6 +82,7 @@ def get_cohorts():
         "product_website_url": data.get("product_website_url"),
         "model_identifier": data.get("model_identifier", "azure-gpt-4o"),
         "num_of_cohorts": data.get("num_of_cohorts", 30),
+        "additional_instruction": data.get("additional_instruction", None),
     }
     _batch_size = data.get("batch_size", 10)
     agent = ProductCohortGenerationAgent(**_params)
@@ -97,6 +99,7 @@ def classify():
         "brochure_url": data.get("brochure_url"),
         "product_website_url": data.get("product_website_url"),
         "model_identifier": data.get("model_identifier", "azure-gpt-4o"),
+        "additional_instruction": data.get("additional_instruction", None),
     }
     agent = CohortClassificationAgent(**_params)
     result = agent.run()
@@ -131,42 +134,96 @@ def embedding_affinity():
     result = affinity_score_agent.calculate_affinity()
     return result
 
+# @cohort_bp.route("/campaign_ideas", methods=["POST"])
+# def campaign_ideas():
+#     from ..agents.campaign_idea_generation_agent import CampaignIdeaGeneratorAgent
+#     data = request.get_json(force=True) or {}
+#     source = data.get("source", None)                                 # Custom Interaction Data in Dict
+#     classified_cohort = data.get("classified_cohort", None)           # Cohort Classification Result 
+#     affinity_score = data.get("affinity_score", None)                 # Custom Affinity Score Result
+#     brochure_url = data.get("brochure_url", None)                     # Brochure URL
+#     product_website_url = data.get("product_website_url", None)       # Product Website URL
+#     num_of_campaign_ideas = data.get("num_of_campaign_ideas", 5)
+#     num_of_campaign_post_sets = data.get("num_of_campaign_post_sets", 5)
+#     num_of_hashtags = data.get("num_of_hashtags", 20)
+
+#     campaign_theme = data.get("campaign_theme", None)
+#     core_message_direction = data.get("core_message_direction", None)
+#     campaign_objective = data.get("campaign_objective", None)
+#     consumer_insight = data.get("consumer_insight", None)
+
+#     model_identifier = data.get("model_identifier", "azure-gpt-4o")
+#     campaign_idea_generation_agent = CampaignIdeaGeneratorAgent(
+#         source=source, 
+#         classified_cohort=classified_cohort, 
+#         affinity_score=affinity_score,
+#         brochure_url=brochure_url,
+#         product_website_url=product_website_url,
+#         model_identifier=model_identifier)
+#     result = campaign_idea_generation_agent.run(
+#         num_of_campaign_ideas = num_of_campaign_ideas,
+#         num_of_campaign_post_sets = num_of_campaign_post_sets, 
+#         num_of_hashtags = num_of_hashtags,
+#         campaign_theme = campaign_theme,
+#         core_message_direction = core_message_direction,
+#         campaign_objective = campaign_objective,
+#         consumer_insight = consumer_insight
+#         )
+#     return result
+
+
 @cohort_bp.route("/campaign_ideas", methods=["POST"])
 def campaign_ideas():
-    from ..agents.campaign_idea_generation_agent import CampaignIdeaGeneratorAgent
+    from ..agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
     data = request.get_json(force=True) or {}
-    source = data.get("source", None)                                 # Custom Interaction Data in Dict
-    classified_cohort = data.get("classified_cohort", None)           # Cohort Classification Result 
-    affinity_score = data.get("affinity_score", None)                 # Custom Affinity Score Result
-    brochure_url = data.get("brochure_url", None)                     # Brochure URL
-    product_website_url = data.get("product_website_url", None)       # Product Website URL
-    num_of_campaign_ideas = data.get("num_of_campaign_ideas", 5)
-    num_of_campaign_post_sets = data.get("num_of_campaign_post_sets", 5)
-    num_of_hashtags = data.get("num_of_hashtags", 20)
 
-    campaign_theme = data.get("campaign_theme", None)
-    core_message_direction = data.get("core_message_direction", None)
-    campaign_objective = data.get("campaign_objective", None)
-    consumer_insight = data.get("consumer_insight", None)
-
-    model_identifier = data.get("model_identifier", "azure-gpt-4o")
-    campaign_idea_generation_agent = CampaignIdeaGeneratorAgent(
-        source=source, 
-        classified_cohort=classified_cohort, 
-        affinity_score=affinity_score,
-        brochure_url=brochure_url,
-        product_website_url=product_website_url,
-        model_identifier=model_identifier)
-    result = campaign_idea_generation_agent.run(
-        num_of_campaign_ideas = num_of_campaign_ideas,
-        num_of_campaign_post_sets = num_of_campaign_post_sets, 
-        num_of_hashtags = num_of_hashtags,
-        campaign_theme = campaign_theme,
-        core_message_direction = core_message_direction,
-        campaign_objective = campaign_objective,
-        consumer_insight = consumer_insight
-        )
+    _params = {
+        "source": data.get("source", None),
+        "classified_cohort": data.get("classified_cohort", None),
+        "affinity_score": data.get("affinity_score", None),
+        "brochure_url": data.get("brochure_url", None),
+        "product_website_url": data.get("product_website_url", None),
+        "campaign_theme": data.get("campaign_theme", None),
+        "core_message_direction": data.get("core_message_direction", None),
+        "campaign_objective": data.get("campaign_objective", None),
+        "consumer_insight": data.get("consumer_insight", None),
+        "additional_instruction": data.get("additional_instruction", None),
+        "num_of_campaign_ideas": data.get("num_of_campaign_ideas", 1),
+        "num_of_campaign_post_sets": data.get("num_of_campaign_post_sets", 2),
+        "num_of_hashtags": data.get("num_of_hashtags", 10),
+        "model_identifier": data.get("model_identifier", "azure-gpt-4o"),
+    }
+    campaign_idea_generation_agent = CampaignIdeaGeneratorAgent(**_params)
+    batch_size = data.get("batch_size", 10)
+    result = campaign_idea_generation_agent.run(batch_size=batch_size)
     return result
+
+@cohort_bp.route("/campaign_ideas_stream", methods=["POST"])
+def campaign_ideas_stream():
+    from ..agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
+    data = request.get_json(force=True) or {}
+
+    _params = {
+        "source": data.get("source", None),
+        "classified_cohort": data.get("classified_cohort", None),
+        "affinity_score": data.get("affinity_score", None),
+        "brochure_url": data.get("brochure_url", None),
+        "product_website_url": data.get("product_website_url", None),
+        "campaign_theme": data.get("campaign_theme", None),
+        "core_message_direction": data.get("core_message_direction", None),
+        "campaign_objective": data.get("campaign_objective", None),
+        "consumer_insight": data.get("consumer_insight", None),
+        "additional_instruction": data.get("additional_instruction", None),
+        "num_of_campaign_ideas": data.get("num_of_campaign_ideas", 1),
+        "num_of_campaign_post_sets": data.get("num_of_campaign_post_sets", 2),
+        "num_of_hashtags": data.get("num_of_hashtags", 10),
+        "model_identifier": data.get("model_identifier", "azure-gpt-4o"),
+    }
+    campaign_idea_generation_agent = CampaignIdeaGeneratorAgent(**_params)
+    batch_size = data.get("batch_size", 10)
+    result = campaign_idea_generation_agent.run_with_events(batch_size=batch_size)
+    for event in result:
+        yield f"data: {json.dumps(event, default=str)}\n\n"
 
 
 @gryd_orchestration_bp.route("/stream", methods=["POST"])
@@ -182,7 +239,7 @@ def gryd_stream_cohorts():
 
     def generate():
         for result in run_gryd_job("cohort_generation_agent_async", _params, stream=True):
-                yield f"data: {json.dumps(result, default=str)}\n\n"
+            yield f"data: {json.dumps(result, default=str)}\n\n"
     return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
 
@@ -260,6 +317,27 @@ def gryd_campaign_ideas():
     result = run_gryd_job("campaign_idea_generation_agent", params_)
     return result
 
+
+@gryd_orchestration_bp.route("/campaign_ideas_stream", methods=["POST"])
+def gryd_campaign_ideas_stream():    
+    data = request.get_json(force=True) or {}
+    params_ = {
+        "source": data.get("source", None),
+        "classified_cohort": data.get("classified_cohort", None),
+        "affinity_score": data.get("affinity_score", None),
+        "brochure_url": data.get("brochure_url", None),
+        "product_website_url": data.get("product_website_url", None),
+        "model_identifier": data.get("model_identifier", "azure-gpt-4o"),
+        "num_of_campaign_ideas": data.get("num_of_campaign_ideas", 5),
+        "num_of_campaign_post_sets": data.get("num_of_campaign_post_sets", 5),
+        "num_of_hashtags": data.get("num_of_hashtags", 20),
+        "campaign_theme": data.get("campaign_theme", None),
+        "core_message_direction": data.get("core_message_direction", None),
+        "campaign_objective": data.get("campaign_objective", None),
+        "consumer_insight": data.get("consumer_insight", None),
+    }
+    result = run_gryd_job("campaign_idea_generation_agent", params_)
+    return result
 
 
 def standardize_cohorts(cohorts : Union[List[Dict[str, Any]], Dict[str, List[Dict[str, Any]]]]):
@@ -346,3 +424,17 @@ def cohorts_assignment():
         logger.exception("Cohort assignment failed \n\n")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+
+# 1. Collection of User Behaviour - Mohit
+# 2. Stitching of Users based on UserID, Gid and FBid - Dinesh
+# 3. Creation of Cohorts (this will be based on Product Brochure + Website content) - Shreyas
+# 4. Classification of Users based on Cohorts, Propensity & Affinity - Shreyas
+# 5. Extract the gid & fbid of the users for each cohort - Dinesh
+# 6. Initiate new re-targeting campaign - List of params for campaign
+# 7. Create entry-points for AutoNgage conversations - Lakshmy + Vandana
+
+
+# 1. Ananoymous uid gets generated for a anonymous visitor. 
+# 2. Stitching of Users based on UserID, Gid and FBid - Dinesh 
+# 3. Sending anonoymous user data to 
