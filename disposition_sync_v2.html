@@ -684,6 +684,12 @@
         </svg>
         Copy All Data
       </button>
+      <button class="btn btn-success" id="btnExport" disabled onclick="exportToExcel()" style="display:none">
+        <svg fill="currentColor" width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 9l-2 3-2-3H6.5l3.25 4.5L6.5 20h2.5l2-3 2 3h2.5l-3.25-4.5L16 11h-3zm4 9H6V4h7v5h5v11z"/>
+        </svg>
+        Export Excel
+      </button>
       <button class="btn btn-secondary" id="btnReset" onclick="resetAll()" style="display:none">Reset</button>
       <span class="status-msg" id="globalStatus"></span>
     </div>
@@ -1228,6 +1234,8 @@
         setStatus('globalStatus', `✅ Done — ${output.length} leads processed.`, 'ok');
         document.getElementById('btnCopy').style.display = '';
         document.getElementById('btnCopy').disabled = false;
+        document.getElementById('btnExport').style.display = '';
+        document.getElementById('btnExport').disabled = false;
         document.getElementById('btnReset').style.display = '';
 
       } catch (e) {
@@ -1311,11 +1319,45 @@
       document.getElementById('statsBar').classList.add('fade-in');
     }
 
-    // ─── COPY TO CLIPBOARD ────────────────────────────────────────────────────────
+    // ─── EXPORT TO EXCEL ──────────────────────────────────────────────────────────
     const HEADERS_TSV = ['Lead_ID', 'Full_Name', 'Phone', 'City', 'Pincode', 'Lead_Source', 'Campaign_ID',
       'Call Triggered', 'Outcome', 'Disposition', 'SUMMARY', 'Call_Date',
       'Number of attempts', 'SENTIMENT', 'Recordings', 'Model', 'Seating', 'Exclusion_Flag'];
 
+    async function exportToExcel() {
+      if (!processedData.length) return;
+
+      const rows = [HEADERS_TSV];
+      for (const r of processedData) {
+        rows.push([
+          r.lead_id,
+          r.full_name,
+          r.phone,
+          r.city,
+          r.pincode,
+          r.lead_source,
+          r.campaign_id,
+          r.call_triggered,
+          r.outcome,
+          r.disposition,
+          r.summary,
+          r.call_date,
+          r.num_attempts,
+          r.sentiment,
+          r.recordings,
+          r.model,
+          r.seating,
+          r.exclusion_flag,
+        ].map(v => typeof v === 'string' ? v.trim() : v));
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Processed Leads");
+      XLSX.writeFile(wb, "JEJO_Disposition_Sync.xlsx");
+    }
+
+    // ─── COPY TO CLIPBOARD ────────────────────────────────────────────────────────
     async function copyData() {
       if (!processedData.length) return;
 
@@ -1391,6 +1433,7 @@
       document.getElementById('tableWrapper').style.display = 'none';
       document.getElementById('statsBar').style.display = 'none';
       document.getElementById('btnCopy').style.display = 'none';
+      document.getElementById('btnExport').style.display = 'none';
       document.getElementById('btnReset').style.display = 'none';
       document.getElementById('btnProcess').disabled = true;
       setStatus('globalStatus', '', '');
