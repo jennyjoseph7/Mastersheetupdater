@@ -1,6 +1,8 @@
 import json
 import sys
 import os
+#python -m cron.cron_test
+
 
 from gryd_worker import gryd
 

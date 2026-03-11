@@ -10,9 +10,11 @@ result = response = gryd.await_result(
     task="get_whatsapp_template",
     service="autocrm-agent",
     kwargs={
-        "lead_id": "extended warranty promotion",
+        "lead_id": "dl9cay4010-sree-saradhambal-automobiles-pvt-ltd-ambal-auto---service-center-keep-your-ride-smooth---service-reminder",
         "campaign_type": "post-sales",
-        "lead_info": {}
+        "campaign_objective" : ["Free Service Due Reminder"],
+        #"lead_info": {},
+        #"dealership_id": "daveai"
     }
 )
 

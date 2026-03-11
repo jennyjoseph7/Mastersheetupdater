@@ -32,27 +32,27 @@ class get_rcs_template_agent(BaseAgent):
 
         self.source = source
         self.template_variables = source.get("template_variables", [])
-        #self.template_variables = self.template_variables[0]
         self.campaign_type = source.get("campaign_type","")
         self.campaign_objective = source.get("campaign_objective",[])
-        #self.dealership_id = source.get("dealership_id","daveai")
+        self.dealership_id = source.get("dealership_id","daveai")
         self.limit = 1
 
         if not isinstance(self.template_variables, list):
             raise ValueError("template_variables must be a list")
 
-    # def retrieve_credentials(self,dealership_id):
-    #     records = list(pg.list(
-    #         table_name="communication_credential",
-    #         where={"dealership_id": dealership_id,
-    #         }
-    #     ))
-    #     communication_credential = records[0]
-    #     communication_credentials_id = communication_credential.get("communication_credentials_id")
-    #     return communication_credentials_id
+    def retrieve_credentials(self,dealership_id):
+        records = list(pg.list(
+            table_name="communication_credential",
+            where={"dealership_id": dealership_id,
+                   'channel': 'rcs'
+            }
+        ))
+        communication_credential = records[0]
+        communication_credentials_id = communication_credential.get("communication_credentials_id")
+        return communication_credentials_id
 
 
-    def pick_from_model(self):
+    def pick_from_model(self, communication_credentials_id):
 
         records = list(pg.list(
             table_name="template",
@@ -60,7 +60,7 @@ class get_rcs_template_agent(BaseAgent):
                    "template_type" : "rcs",
                    #"channel" : "rcs_phone",
                    #"status" : "approved",
-                   #"communication_credentials_id" : communication_credentials_id
+                   "communication_credentials_id" : communication_credentials_id
             }
         ))
 
@@ -218,8 +218,8 @@ class get_rcs_template_agent(BaseAgent):
 
 
     def run(self):
-        #communication_credentials_id = self.retrieve_credentials(self.dealership_id)
-        all_templates = self.pick_from_model()
+        communication_credentials_id = self.retrieve_credentials(self.dealership_id)
+        all_templates = self.pick_from_model(communication_credentials_id)
         best = self.match_templates_strict(all_templates)
         return best
 
@@ -230,8 +230,8 @@ def get_rcs_template(lead_info=None, lead_id=None, campaign_type=None, campaign_
 
         logger = logger or gryd.hp.get_logger(__name__)
         logger.info("Getting rcs Template...")
-        # if dealership_id is None:
-        #     dealership_id = 'daveai'
+        if dealership_id is None:
+            dealership_id = 'daveai'
         try:
             lead_info = lead_info or {}
             lead_info.update({k: v for k, v in kwargs.items() if v is not None})
@@ -261,7 +261,7 @@ def get_rcs_template(lead_info=None, lead_id=None, campaign_type=None, campaign_
                 "campaign_type": campaign_type,
                 "template_variables": attribute_list_sets,
                 "campaign_objective" : campaign_objective,
-                #"dealership_id" : dealership_id
+                "dealership_id" : dealership_id
             }
 
             logger.info(f"Source data : {data}")
