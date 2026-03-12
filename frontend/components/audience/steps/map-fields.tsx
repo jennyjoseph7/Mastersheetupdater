@@ -49,10 +49,24 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
  presales: [
     "phone_number",
     "email",
-    "name",
+    "person_name",
     "last_contacted_whatsapp_number",
     "last_contacted_email",
     "last_contacted_phone_number",
+    "city",
+    "pincode",
+    "budget_range",
+    "feature_preferences",
+    "seating_capacity_preference",
+    "segment_preference",
+    "lead_source",
+    "existing_vehicle_brand",
+    "existing_vehicle_model",
+    "subdivision_name",
+    "alt_phone_number_2",
+    "alt_phone_number_3",
+    "alt_phone_number_4",
+    "showroom_code",
 
     "brand_preference",
     "model_preference",
@@ -77,17 +91,18 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
 
     // VEHICLE INFO
     "reg_number",
-    "vehicle_brand_name",
-    "vehicle_model_name",
+    "vehicle_brand",
+    "vehicle_model",
     "vehicle_model_year",
-    "variant_name",
-    "vehicle_color_name",
+    "vehicle_variant",
+    "vehicle_color",
     "vehicle_category",
     "vehicle_type",
     "transmission",
     "engine_type",
     "engine_capacity_cc",
     "drivetrain",
+    "vehicle_variant",
 
     // VEHICLE IDENTIFIERS
     "vin_number",
@@ -184,6 +199,9 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
     "alt_phone_number_2",
     "alt_phone_number_3",
     "alt_phone_number_4",
+    "workshop_pincode",
+    "workshop_city",
+    "workshop_code",
 
     // REGION
     "region_name"
