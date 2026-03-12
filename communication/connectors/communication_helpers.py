@@ -41,12 +41,13 @@ from validate_email import validate_email
 
 # --- Set import path for internal modules ---
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
-
-from gryd_worker import gryd, gryd_helpers as hp
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
+from gryd_worker import gryd, gryd_helpers as hp,gryd_db_helper as db
 logger=gryd.logger
 
 # ------- Load All Configs ----------------------
 from connectors.communication_configs import *
+# from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 
 # Path to parent folder
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -54,121 +55,445 @@ sys.path.append(PARENT_DIR)
 
 from autocrm_db_helper import get_pg_connector
 
-GRYD_BASE_URL="http://127.0.0.1:5000"
-GRYD_HEADERS= {
-  'Content-Type': 'application/json',
-  'X-GRYD-ENTERPRISE-ID': 'autocrm',
-  'X-GRYD-TOKEN': '53014452-7df1-351c-9b79-af13d3d6b92f',
-  'X-GRYD-SESSION-ID': '94b970d4-5c2b-3762-bf65-272901d0ad53',
-  'Accept': 'application/json',
-  'X-GRYD-ROLE': 'agent'
-}
-
-# import dbConnector
-# from dbConnector import *
-
-# try:
-#     @gryd.is_a_task(function_name="resetdbCreds")
-#     def resetdbCreds(*args, **kwargs):
-#         logger.info("[TASK resetdbCreds] Started task to reload WhatsApp credentials")
-#         try:
-#             dbConnector.LoadGloablWhatsappCreds(*args, **kwargs)
-#             logger.info("[TASK resetdbCreds] WhatsApp credentials reloaded successfully")
-#         except Exception as e:
-#             logger.error(f"[TASK resetdbCreds] Failed to reload credentials: {str(e)}", exc_info=True)
-# except Exception as e:
-#     logger.error("Unable to load reset creds")
-#     pass
-
 # --- Model loaders ---
 default_get_or_load_model = gryd.load_gryd_model
 NullEmptyCheck=[None, "", "null", "None"]
 
+# common functions
 
+def handle_session_logic(phone_number, channel=None,campaign_details=None, from_web_chat=False):
+    payload = {}
+    dealership_id = None
 
-# api methods to use it from Gryd 
+    # 1. PERSON
+    person = get_or_create_person(phone_number)
+    if person:
+        payload.update({
+            "phone_number": phone_number,
+            "user_id": person.get("user_id"),
+            "person_name": person.get("name"),
+            "email": person.get("email")
+        })
 
-def get_all_objects(model_name):
-    payload = {
-        "args": [
-            "list",
-            model_name
-        ]
-    }
-    # logger.info(f"TEST in get_all_objects func- payload-{payload}- GRYD_BASE_URL-{GRYD_BASE_URL}-GRYD_HEADERS-{GRYD_HEADERS}")
+    with get_pg_connector() as pg:
+        logger.info("TEST Loading session logic...------------")
+        # FROM WEB CHAT
+        if from_web_chat and campaign_details:
+            logger.info("Campaign details received from web chat.")
+            payload.update({
+                "campaign_id": campaign_details.get("campaign_id"),
+                "campaign_type": campaign_details.get("campaign_type"),
+                "lead_id": campaign_details.get("lead_id"),
+            })
+            session = get_or_create_session(payload,channel)
+            return {**session}
+
+        logger.info(f"TEST phone_number: {phone_number}")
+        # 3. CONTACT STATUS
+        contact_list = list(
+            pg.list_order_by("contact_status", {
+                "phone_number": phone_number,"channel":channel
+            },order_by="created", order="DESC")
+        )
+        logger.info(f"TEST contact_list present: {len(contact_list)}")
+        
+
+        campaign_id = campaign_type = campaign_model = lead_id = None
+
+        if contact_list:
+            
+            contact = contact_list[0]
+            logger.info(f"Contact found: {contact}")
+
+            campaign_id = contact.get("campaign_id")
+            campaign_type = contact.get("campaign_type")
+            lead_id = contact.get("lead_id")
+
+            campaign_model= "post_sales_campaign" if campaign_type == "post-sales" else "pre_sales_campaign"
+            lead_model = "post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
+            if lead_id and lead_model:
+                l=list(pg.list(lead_model,{f"{lead_model}_id": lead_id}))
+                if not l:
+                    logger.info(f"No lead found for lead_id: {lead_id} in model: {lead_model}")
+                l=l[0] if l else {}
+                l_person_name = l.get("person_name",None)
+                l_campaign_obj_name = l.get("campaign_objective_name",None)
+                l_campaign_name = l.get("campaign_name",None)
+
+            payload.update({
+                "campaign_id": campaign_id,
+                "campaign_type": campaign_type,
+                "campaign_model": campaign_model,
+                "lead_id": lead_id,
+                "lead_model": lead_model,
+                "person_name": l_person_name,
+                "campaign_objective_name": l_campaign_obj_name,
+                "campaign_name": l_campaign_name
+            })
+        else:
+            logger.info(f"No existing campaign association for {phone_number}")
+
+        # 4. CAMPAIGN FLOW
+        # Override if campaign_details provided
+        if campaign_details:
+            logger.info("Overriding campaign with campaign_details.")
+            if not campaign_details.get("campaign_id"):
+                return {"error": "campaign_details missing campaign_id"}
+
+            campaign_id = campaign_details["campaign_id"]
+            campaign_type = campaign_details.get("campaign_type")
+
+            payload.update({
+                "campaign_id": campaign_id,
+                "campaign_type": campaign_type
+            })
+
+        if campaign_id: 
+            model_name = "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
+            campaign_data = list(pg.list(model_name, {"campaign_id": campaign_id}))
+
+            if campaign_data:
+                c_data = campaign_data[0]
+                dealership_id = c_data.get("dealership_id")
+                payload["campaign_objective_name"] = c_data.get("campaign_objective_name")
+                payload["campaign_name"] = c_data.get("campaign_name")
+                payload["dealership_id"] = dealership_id
+
+                # get credentials for dealership (skip if "dave")
+                if dealership_id and dealership_id.lower() != "dave":
+                    _ = list(pg.list("communication_credential", {"dealership_id": dealership_id}))
+
+            logger.info(f"TEST BEFORE SESSION FINAL PAYLOAD: {payload}")
+            session = get_or_create_session(payload,channel)
+            return {**session, "dealership_id": dealership_id}
+
+        # 5. NON-CAMPAIGN FLOW
+        creds = list(pg.list("communication_credential", {"sender": phone_number}))
+        if creds:
+            dealership_id = creds[0].get("dealership_id")
+            payload["dealership_id"] = dealership_id
+
+        session = get_or_create_session(payload,channel)
+        return {**session, "dealership_id": dealership_id}
+
+def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None):
+    conditions = [] 
+    params = ()
+    if session_id:
+        conditions.append("dict->>'session_id' = %s")
+        params += (session_id,)          
+    if user_id:
+        conditions.append("dict->>'user_id' = %s")
+        params += (user_id,)
+    if channel:
+        conditions.append("dict->>'channel' = %s")
+        params += (channel,)
+    if session_live:
+        conditions.append("CAST (dict->>'session_live' AS bool) = %s")
+        params += (session_live,)
+    if status:
+        if status.endswith('~'):
+            conditions.append("dict->>'status' <> %s")
+            status = status[:-1]
+            # first_part += "AND LOWER(CAST(dict->>'status' AS text)) <> LOWER(%s)"
+            params += (status,)
+        else:
+            conditions.append("dict->>'session_live' = %s")
+            params += (session_live,)
+
+    condition = "Where " + " AND ".join(conditions)
+    return condition, params
+
+def get_or_create_session(data,channel=None):
+    """
+    Find active session or create new one.
+    session_live=True AND status != completed
+    """
+    logger.info(f"In create or get session function. User id: {data.get('user_id')}, data: {data}")
     
-    r=requests.post(f'{GRYD_BASE_URL}/gryd/api/db/get_api_functions',
-                headers=GRYD_HEADERS,
-                json=payload)
-    r=r.json()
-    try:
-        data = r.get("data")
-
-        if not data:
-            # logger.info("TEST get_all_objects --- [] (empty result)")
-            return None 
-
-        # logger.info(f"TEST get_all_objects --- {data}")
-        return data[0]
-    
-    except Exception:
-        return {"error": "Invalid JSON response", "text": r.text}
-
-def get_objects_by_filter(model_name, filter):
-    payload = {
-        "args": ["list", model_name],
-        "kwargs": {"data": filter}
+    filters = {
+        "session_id":data.get("session_id"),
+        "user_id":data.get("user_id"),
+        # "campaign_id":data.get("campaign_id"),
+        # "channel": channel or "whatsapp_chat" if data.get("campaign_type")=="post-sales" else None, 
+        "channel": channel or "whatsapp_chat",
+        "session_live": True,
+        "status": "completed~"
     }
+    
+    filters = {k: v for k, v in filters.items() if v is not None}
+    condition, param = apply_filters(**filters)
+    
+    logger.info(f"TEST filters for sessions--{filters}")
+    with get_pg_connector() as pg:
+        sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
+        # logger.info(f'TEST sessions found for {sessions}')
+        if sessions:
+            new_campaign_id = str(data.get("campaign_id")).strip() if data.get("campaign_id") else None
+            old_campaign_id = str(sessions[0].get("campaign_id")).strip() if sessions[0].get("campaign_id") else None
 
-    r = requests.post(
-        f'{GRYD_BASE_URL}/gryd/api/db/get_api_functions',
-        headers=GRYD_HEADERS,
-        json=payload
-    )
-    r = r.json()
+            logger.info(f"Found exisiting session for user_id: {data.get('user_id')}")
+            logger.info(f"Old campaign id: {sessions[0].get('campaign_id')}, New campaign id: {data.get('campaign_id')}")
 
-    try:
-        data = r.get("data")
+            is_previous_session_inbound=False
+            # Handle case where old_campaign_id is 'inbound' and new_campaign_id is None
+            if old_campaign_id == "inbound" and not new_campaign_id:
+                logger.info("Old campaign id is 'inbound' and new campaign id is None. Returning existing session.")
+                is_previous_session_inbound=True
+                return sessions[0]
+            logger.info(f"Is previous session inbound: {is_previous_session_inbound}")
+            if (new_campaign_id != old_campaign_id):
+                logger.info("There is a new triggered campaign for this user. Since there is an existing session, we are ending the existing(old) session and creating a new session..")
+                logger.info(f"OLD SESSIONID--{sessions[0].get('session_id')}")
+                # end the old session also check if session end_time
+                end_session(**{"session_id":sessions[0].get("session_id"),"pg":pg})
+                # create new session
+                s=create_new_session(data,channel)
+                return s
+            else:
+                logger.info("Session has exisiting campaign_id. So we are returning the existing session.")
+                return sessions[0]
 
-        if not data:
-            # logger.info("TEST get_objects_by_filter --- [] (empty result)")
-            return None 
+        logger.info(f"No Existing session found. Creating a new one..")
+        
+        # Create new session
+        s=create_new_session(data,channel)
+        
+        return s
 
-        # logger.info(f"TEST get_objects_by_filter --- {data}")
-        return data[0]
 
-    except Exception as e:
-        return {"error": "Invalid JSON response", "text": str(r)}
+def end_session(*args, **kwargs):
+    """
+    Ends a session and triggers a post session process task.
 
-def post_data(model_name,data):
-    payload={
-        "args": [
-            "post",
-            model_name
-        ],
-        "kwargs": {
-            "data": data
+    Args:
+        session_id (str): The session id to end.
+
+    Returns:
+        None
+    """
+    session_id=kwargs.get("session_id")
+    additional_dict=kwargs.get("additional_dict",{})
+    pg=kwargs.get("pg",None)
+    _call_post_process=kwargs.get("call_post_process",True)
+    additional_dict["session_live"] = additional_dict.get("session_live", False)
+    additional_dict["status"] = additional_dict.get("status", "completed")
+    additional_dict["end_time"] = additional_dict.get("end_time", time.time())
+
+    logger.info(f"Ending session with session_id: {session_id}")
+    def _do_db_work(pg_conn):
+        # if additional_dict has history we will update it in the session model
+        pg_conn.update("session", "session_id", session_id, additional_dict)
+        update_session_data_in_lead(
+            session_id,
+            "completed",
+            pg=pg_conn  
+        )
+
+    if pg:
+        _do_db_work(pg)
+    else:
+        with get_pg_connector() as pg_conn:
+            _do_db_work(pg_conn)
+    logger.info(f"Calling post session process task for session_id: {session_id}")
+    # post_session_process(**{"session_id":session_id})
+    if _call_post_process:
+        gryd.create_async_task("post_session_process",AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,args=[],kwargs={"session_id":session_id})
+    logger.info(f"Session with session_id: {session_id}. Has been ended.")
+
+def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_post_process,inactive_cutoff_epoch):
+    """
+    Handles post session process or end session based on session end date and history update.
+
+    If the end date is reached and there is no new history, the session is ended.
+    If the end date is reached but there is new history, the post session process is triggered.
+    If there is new history and can_call_post_process is True, the post session process is triggered.
+    Also updates the last_post_process_time in the session_model.
+
+    Args:
+        session_id (str): The session id to handle.
+        pg (GrydPGConnector): The database connector.
+        history_updated (bool): Whether there is new history.
+        can_call_post_process (bool): Whether to call the post session process.
+
+    Returns:
+        None
+    """
+    logger.info(f"In Handling session post process or end function. For session_id: {session_id}")
+    session = pg.get("session", "session_id",session_id)
+    if not session:
+        logger.warning(f"Session {session_id} not found")
+        return
+    campaign_model = "pre_sales_campaign" if session.get("campaign_type") == "pre-sales" else "post_sales_campaign"
+    campaign_id=session.get("campaign_id")
+    campaign = pg.get(campaign_model, "campaign_id",campaign_id)
+    if not campaign:
+        logger.warning(f"Campaign {campaign_id} not found for session {session_id}")
+        return
+    end_date_str = campaign.get("end_date")
+    now_epoch = int(time.time())
+    end_date_epoch = int(end_date_str) if end_date_str else None
+
+    # end_session if end_date reached and no history to be updated..
+    if end_date_epoch and now_epoch >= end_date_epoch:
+        if not history_updated and now_epoch > inactive_cutoff_epoch:
+            logger.info(f"End date reached for session {session_id} and no new history and also its been inactive for more than {inactive_cutoff_epoch} seconds. So ending the session.")
+            end_session(**{"session_id":session_id,"call_post_process":False}, pg=pg)
+            return
+
+        logger.info(f"End date reached for session {session_id} but history updated .Since it has been inactive for less than {inactive_cutoff_epoch} seconds. So not ending the session.")
+
+    # call post_session_process only if there is new history 
+    if history_updated or can_call_post_process:
+        logger.info(f"Triggering post_session_process for session {session_id} as history updated.And not ending session.")
+
+        gryd.create_async_task(
+            "post_session_process",
+            AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
+            args=[],
+            kwargs={"session_id": session_id},
+        )
+
+        # also updating the last_post_process_time in session_model..
+        pg.update(
+            "session",
+            "session_id",
+            session_id,
+            {"last_post_process_time": now_epoch},
+        )
+        
+def create_new_session(data,channel=None):
+    logger.info(f"Creating new session for user_id: {data.get('user_id')} and data: {json.dumps(data,indent=4)}")
+    with get_pg_connector() as pg:
+        new_session = {
+            **data,
+            "session_live": True,
+            "channel": channel or "whatsapp_chat",
+            "status": "interacted",
+            "disposition": "engaged",
+            "campaign_type": data.get("campaign_type","inbound"),
+            "campaign_id": data.get("campaign_id",'inbound'),
+            "person_name": data.get("person_name"),
+            "campaign_objective_name": data.get("campaign_objective_name"),
+            "campaign_name": data.get("campaign_name"),
+            "created": time.time(),
+            "updated": time.time(),
+            "start_time": time.time()
         }
-    }
-    r=requests.post(f'{GRYD_BASE_URL}/gryd/api/db/post_api_functions',
-                headers=GRYD_HEADERS,
-                json=payload)
+                
+        data["updated"] = time.time()
+        # logger.info(f"Data for new session: {json.dumps(new_session,indent=4)}")
+        # logger.info(f"Generating session_id for new session with data: {json.dumps(data,indent=4)}")
+        session_id=generate_uid(data)
+        s= pg.update("session","session_id",session_id,new_session)
+        logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. And the session_id is -- {s}")
+        
+        # updating last_session_channel
+        if data.get("campaign_type") == "pre-sales":
+            pg.update("pre_sales_lead","pre_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel,"disposition":"engaged"})
+        elif data.get("campaign_type") == "post-sales":
+            pg.update("post_sales_lead","post_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel,"disposition":"engaged"})
+        # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
+        return s 
+
+
+def update_session_data_in_lead(session_id,status,pg=None):
+    if not pg:
+        logger.error("Postgres connection is required to update session data in lead.")
+        return
+    session_data = list(pg.list("session", {"session_id": session_id}))
+    if not session_data:
+        logger.info(f"Could not find session with session_id: {session_id}")
+    session_data = session_data[0]
+    lead_id = session_data.get("lead_id")
+    campaign_type = session_data.get("campaign_type")
+    last_interaction_time = session_data.get("last_response_time",None)
+    if lead_id:
+        lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
+        lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
+        pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
+        logger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
+
+def get_or_create_person(phone_number):
+    """Return person object; create if not exists."""
+    logger.info(f"Getting or creating person for phone_number: {phone_number}")
     
-    r=r.json()
-    try:
-        data = r.get("data")
+    with get_pg_connector() as pg:
+        # filters={"phone_number":phone_number,"_sort_by": "updated", "_sort_reverse": True}
+        person_list = list(pg.list_order_by(
+            "person",
+            {"phone_number":phone_number},
+            order_by="updated",
+            order="DESC"
+        ))
+        
+        logger.info(f"Person list found: {person_list}")
+        if person_list:
+            logger.info(f"Person already exists for phone_number: {phone_number} and the user_id is {person_list[0].get('user_id')}")
+            return person_list[0]  
+        
+        d={
+            "phone_number": phone_number,
+            "created":time.time(),
+        }
+        # Create new person
+        user_id_attr=generate_uid(d)
+        logger.info(f"user_id_attr: {user_id_attr}")
+        d= pg.update("person","user_id",user_id_attr,{
+            "phone_number": phone_number,
+            "created":time.time(),
+            "updated":time.time()
+            })
+        logger.info(f"Person with phone_number: {phone_number}. Doesnt exist. Created a new one. data: {d}")
+        return d
 
-        if not data:
-            # logger.info("TEST post_data --- [] (empty result)")
-            return None 
+def generate_uid(data):
+    if isinstance(data, (dict, list)):
+        data_str = json.dumps(data, sort_keys=True)
+    else:
+        data_str = str(data)
 
-        # logger.info(f"TEST post_data --- {data}")
-        return data[0]
+    uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
+    uid=str(uid)
+    # logger.info(f"Generated UID: {uid} and type of uid: {type(uid)} for data: {data_str}")
+    return uid
 
-    except Exception as e:
-        return {"error": "Invalid JSON response", "text": str(r)}    
-    
-# ######################## Common Helper ######################################
+def get_communication_credential(dealership_id="daveai", channel=None):
+    logger.info(f"Getting communication credential for dealership - {dealership_id}")
+
+    if not channel:
+        logger.info(
+            f"Channel not provided for dealership - {dealership_id}. Returning None."
+        )
+        return None
+
+    with get_pg_connector() as pg:
+        creds = list(
+            pg.list(
+                "communication_credential",
+                {"dealership_id": dealership_id, "channel": channel}
+            )
+        )
+        if creds:
+            return creds[0]
+
+        # Fallback to default dealership "daveai" if no creds found for the dealership and channel
+        if dealership_id != "daveai":
+            logger.info(
+                f"No credential found for dealership - {dealership_id}. "
+                f"Falling back to default dealership - daveai for channel - {channel}"
+            )
+            creds = list(
+                pg.list(
+                    "communication_credential",
+                    {"dealership_id": "daveai", "channel": channel}
+                )
+            )
+            if creds:
+                return creds[0]
+
+    return None
+
 def reload_model_ref(model_name,enteprise_id):
         logger.info(f"Getting Model Connection for model_name: {model_name} and enteprise_id : {enteprise_id}")
         for model_conn_retry in range(MAX_MODEL_CONN_RETRY):
@@ -200,7 +525,6 @@ def is_within_last_minute(ts: str, fmt: str = "%Y-%m-%dT%H:%M:%S") -> bool:
     now = datetime.utcnow()
     return (now - given_time) <= timedelta(seconds=60)
 
-
 def _wait_for_next_minute(last_minute_ts: str):
     """Sleep until the next minute boundary based on last_minute_ts."""
     last_dt = datetime.fromisoformat(last_minute_ts)
@@ -210,25 +534,6 @@ def _wait_for_next_minute(last_minute_ts: str):
     if wait_seconds > 0:
         logger.info(f"Rate limit reached. Sleeping for {int(wait_seconds)} seconds...")
         time.sleep(wait_seconds + 1)  # +1 sec buffer
-
-def yield_gryd_task_results(*args, **kwargs):
-    task,service_name=args[0],args[1]
-    jobs = [
-        {
-            "task": task,
-            "service": service_name,
-            "kwargs": kwargs,
-            "args": (None)
-        }
-    ]
-    logger.info(f"Jobs: {json.dumps(jobs, indent = 4, default = str)} \n")
-    for job in gryd.yield_results(jobs):
-        task_name, status, result_data = job[1], job[3], job[4]
-        logger.info(f"Task '{task_name}' status: {status} \n")
-        if job[3] == "result":
-            logger.info(f"Task '{task_name}' yielded result: {json.dumps(result_data, indent = 4, default = str)} \n")
-            return result_data.get("result")
-        logger.info("No got any response yet wating....")
 
 # ✅ Universal execution time logger with warning support
 def timelogger(label: Optional[str] = None, warn_threshold: float = 10.0):
@@ -261,119 +566,6 @@ def timelogger(label: Optional[str] = None, warn_threshold: float = 10.0):
         return wrapper
     return decorator
 
-
-def datetime_to_epoch(date_str, tz="Asia/Kolkata"):
-    import time
-    import pytz
-    from datetime import datetime
-    if not date_str: return None
-
-    # Define a comprehensive list of potential date formats
-    date_formats = [
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%d %H:%M",
-        "%Y-%m-%d",
-        "%d-%m-%Y %H:%M:%S",
-        "%d-%m-%Y %H:%M",
-        "%d-%m-%Y",
-        "%m/%d/%Y %I:%M %p",
-        "%m/%d/%Y %H:%M:%S",
-        "%m/%d/%Y %H:%M",
-        "%m/%d/%Y",
-        "%B %d, %Y %H:%M:%S",
-        "%B %d, %Y %H:%M",
-        "%B %d, %Y",
-        "%b %d, %Y %H:%M:%S",  # Abbreviated month name
-        "%b %d, %Y %H:%M",
-        "%b %d, %Y",
-        "%Y-%m-%dT%H:%M:%S",  # ISO 8601
-        "%Y-%m-%dT%H:%M:%S.%f",  # ISO 8601 with milliseconds
-        "%Y/%m/%d %H:%M:%S",
-        "%Y/%m/%d",
-        "%d %B %Y %H:%M:%S",
-        "%d %B %Y",
-        "%d %b %Y %H:%M:%S",  # Abbreviated month name
-        "%d %b %Y",
-        "%Y-%m-%d %I:%M %p",
-        "%Y-%m-%d %H:%M:%S %z",
-        "%Y-%m-%d %H:%M:%S.%f",  # With milliseconds
-        # Add more formats as needed
-    ]
-
-    # Try parsing the date string with the given formats
-    dt = None
-    for fmt in date_formats:
-        try:
-            dt = datetime.strptime(date_str, fmt)
-            break  # Exit loop if parsing is successful
-        except ValueError:
-            continue  # Try the next format
-
-    # If dt is still None, all formats failed
-    if dt is None:
-        raise ValueError("Date string is in an unrecognized format.")
-
-    # Set the timezone based on the provided string
-    local_tz = pytz.timezone(tz)
-
-    # Localize the datetime object to the specified timezone
-    localized_dt = local_tz.localize(dt)
-
-    # Convert to UTC for epoch conversion
-    utc_dt = localized_dt.astimezone(pytz.utc)
-
-    # Convert to epoch time
-    epoch_time = int((utc_dt - datetime(1970, 1, 1, tzinfo=pytz.utc)).total_seconds())
-    return epoch_time
-
-
-def get_date_data(date=None,**kwargs):
-    if date:
-      now=datetime.strptime(date, '%Y-%m-%d')
-    else:  
-        now=hp.now(tz='Asia/Kolkata')
-    cur_date= hp.now(tz='Asia/Kolkata').date()
-    current_date={
-        'now':now,
-        'month_character':now.strftime("%b"),
-        "today_month":now.strftime("%m"),
-        "today_date":now.strftime("%d"),
-        "today_year":now.strftime("%Y"),
-        'date_number': now.day,
-        'current_date':now.date().strftime('%Y-%m-%d'),
-        'next_date':(now+hp.timedelta(days=1)).strftime('%Y-%m-%d'),
-        'dd_format':now.date().strftime('%d-%m-%Y'),
-        "current_time_minus_min":(now-hp.timedelta(minutes=kwargs.get("min_diff",5))).strftime('%Y-%m-%d %H:%M:00 %z'),
-        "current_time_minus_1":(now-hp.timedelta(hours=1)).strftime('%Y-%m-%d %H:00:00 %z'),
-        "current_time_minus_1_z":(now-hp.timedelta(hours=1)).strftime('%Y-%m-%d %H:00:00'),
-        "current_time_round_of":(now).strftime('%Y-%m-%d %H:00:00 %z'),
-        "current_time_round_of_z":(now).strftime('%Y-%m-%d %H:00:00'),
-        'current_time':now.time(),
-        'time_formatted':now.time().strftime('%p'),
-        'previous_date':(now-hp.timedelta(days=1)).strftime('%Y-%m-%d'),
-        'previous_date_dd_format':(now-hp.timedelta(days=1)).strftime('%d-%m-%Y'),
-        "starting_date": hp.datetime(cur_date.year, cur_date.month, 1).date().strftime('%Y-%m-%d'),
-        "first_half_start":datetime.combine(now, datetime.min.time()),
-        "first_half_end":datetime.combine(cur_date, datetime.min.time())+ hp.timedelta(hours=14),
-        "second_half_start":datetime.combine(cur_date, datetime.min.time())+ hp.timedelta(hours=14),
-        "second_half_end":datetime.combine(cur_date + hp.timedelta(days=1), datetime.min.time()),
-        "today":datetime.today()
-        }
-    current_date['new_column_name']=str("{} {}".format(current_date.get("month_character"),current_date.get("date_number")))
-    current_date['current_date_epoch']=datetime_to_epoch(current_date.get("current_date"))
-    today=current_date.get("today")
-    current_month_start = current_date.get("today").replace(day=1)
-    current_date["current_month_start"]=current_month_start.strftime("%Y-%m-%d")
-    current_date["next_month_start"]= (
-        today.replace(year=today.year + 1, month=1, day=1)
-        if today.month == 12
-        else today.replace(month=today.month + 1, day=1)
-    ).strftime("%Y-%m-%d")
-    # jd=hp.json.dumps
-    # logger.info(jd(current_date,indent=4))
-    return current_date
-
-
 def format_box_log(log_dict, message=''):
     # Convert all values to strings first
     str_items = {str(k): str(v) for k, v in log_dict.items()}
@@ -392,8 +584,6 @@ def format_box_log(log_dict, message=''):
     
     log_output = "\n" + "\n".join(lines) + "\n"
     logger.info(f"{message} \n {log_output}")
-
-
 
 def safe_orjson_dumps(obj, pretty: bool = True, sort_keys: bool = False) -> str:
     """
@@ -451,78 +641,6 @@ def get_template_details(template_id):
     with get_pg_connector() as pg:
         template_details=pg.get("template","template_id",template_id)
         return template_details
-
-# ####################### IMPORTANT For Whatsapp Communication ###################################
-# @gryd.is_a_task(function_name="upsert_message_status")
-# @timelogger()
-# def upsert_message_status(
-#     model_name: str = None,
-#     enterprise_id: str = None,
-#     message_id: str = None,
-#     patch_dict: dict = None,
-#     skip_check: bool = False,
-#     id_attr: str = "message_id",
-#     *args,
-#     **kwargs
-# ):
-#     """
-#     Insert or update a message in the specified table using CommonServiceConnector.
-
-#     Args:
-#         model_name (str): Table name (e.g., "whatsapp_message")
-#         enterprise_id (str): Tenant or business ID
-#         message_id (str): Unique ID for the message (optional if skipping check)
-#         patch_dict (dict): Data to insert or update
-#         skip_check (bool): If True, always insert without checking existence
-#         id_attr (str): ID column name (default: "message_id")
-#     """
-#     try:
-#         if not model_name or not enterprise_id or not patch_dict:
-#             raise ValueError("Missing required arguments for upsert_message_status")
-#         connector =  get_connector(enterprise_id, model_name, id_attr)
-#         if not connector:
-
-#             # Initialize connector
-#             connector = CommonServiceConnector(
-#                 enterprise_id=enterprise_id,
-#                 model_name=model_name,
-#                 id_attr=id_attr
-#             )
-
-#         # Skip existence check if flag is set
-#         if not skip_check and message_id:
-#             existing_record = connector.get_record(message_id)
-#         else:
-#             existing_record = None
-#             message_id = patch_dict.get("message_id")
-            
-
-
-#         if existing_record:
-#             logger.info(f"[UPSERT PATCH] {model_name} | {id_attr}={message_id}")
-#         else:
-#             logger.info(f"[UPSERT INSERT] {model_name} | {id_attr}={message_id}")
-
-#         # logger.info(f"patch_dict:: {json.dumps(patch_dict,indent=4,default=str)}")
-
-#         # Use update_record which handles upsert
-#         result = connector.update_record(
-#             table_name=model_name,
-#             record_id=message_id,
-#             data=patch_dict,
-#             id_attr=id_attr
-#         )
-
-#         logger.debug(f"[UPSERT RESULT] {result}")
-#         return result
-
-#     except Exception as e:
-#         logger.error(
-#             f"[ERROR] upsert_message_status | model={model_name}, message_id={message_id} | {e}",
-#             exc_info=True
-#         )
-#         return {"error": str(e)}
-
 
 
 CountyCodeDefaultMapper={
@@ -624,7 +742,6 @@ if __name__ == "__main__":
     #         "mobile_number": "919113687241",
     #         "enterprise_id": "no_code_low_code"
     #     })
-    get_all_objects("communication_credential")
     pass
 
 

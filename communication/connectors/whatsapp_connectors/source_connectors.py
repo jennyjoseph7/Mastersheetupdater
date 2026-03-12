@@ -8,9 +8,11 @@ import re
 # from connectors.communication_helpers import AuthManager,format_box_log,safe_orjson_dumps
 # --
 
+
 from conversation.lead_post_processing import post_session_process
 
-from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NAME,WHATSAPP_PROVIDER_NUMBER
+# from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NUMBER,AUTOCRM_CORE_SERVICE_NAME
+from config import *
 from connectors.communication_helpers import * 
 
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
@@ -22,8 +24,6 @@ PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.
 sys.path.append(PARENT_DIR)
 
 from autocrm_db_helper import get_pg_connector
-
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 
 logger.info("[INIT] Intializing Source Connector inside whatsapp_connector------------")
 def SleepOverMessage():
@@ -339,7 +339,6 @@ class BaseWebhookConverter:
         self.gryd_service_name= gryd.SERVICE
         self.webhook_process_start_time=kwargs.get("webhook_process_start_time",time.time())
         self.webhook_received_timestamp= hp.now(tz=DB_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
-        
     def safe_update_dict(self, updates: dict):
         """
         Safely updates self.default_message_dict with non-empty values from updates.
@@ -505,9 +504,11 @@ class BaseWebhookConverter:
         
         # whatsapp status webhooks received here-----
         if wa_status:
-            logger.info(f"Received {wa_status} status webhook for {message_dict.get('enterprise_id')} enterprise and mobile number: {message_dict.get('recipientAddress',message_dict.get('mobile_number'))}")
+            mob_num=message_dict.get('recipientAddress',message_dict.get('mobile_number'))
+            logger.info(f"Received {wa_status} status webhook for {message_dict.get('enterprise_id')} enterprise and mobile number: {mob_num}")
             message_dict["message_status"]=wa_status
-            logger.info(f"Message dict: {message_dict}")
+            logger.info(f"Calling post_contact_status with Message dict : {message_dict}")
+            logger.info(f"Calling post_contact_status and checking the disposition : {wa_status}")    
             gryd.create_async_task(
                 'post_contact_status',
                 AUTOCRM_COMMUNICATION_SERVICE_NAME,
@@ -519,7 +520,11 @@ class BaseWebhookConverter:
         if msg_status: return {"info":f"Received {msg_status}--->{wa_status} status webhook"}
 
         return {}
+    
+    
     # @timelogger(label="process_message_dict")
+    
+    
     def process_message_dict(self, *args, **kwargs):
         """
         Processes the message dictionary and triggers a conversation workflow.
@@ -544,6 +549,7 @@ class BaseWebhookConverter:
             logger.error("No valid message text found in body or media URL. Cannot process further.")
             return
 
+        # logger.info(f"[process_message_dict] PROCESSING MESSAGE DICT---{json.dumps(message_dict, indent=4)}")
         
         try: 
             self.webhook_process_end_time= time.time() - self.webhook_process_start_time
@@ -573,7 +579,6 @@ class BaseWebhookConverter:
                 "phone_number_id":message_dict.get("phone_number_id")
             }
         }
-        
         webhook_received_time = float(message_dict.get("webhook_received_time",0))
         # logger.info(f"TEST webhook_received_time----{webhook_received_time}")
 
@@ -586,6 +591,7 @@ class BaseWebhookConverter:
        
         logger.info(f"message_media_url (before processing): {message_media_url} | type: {type(message_media_url)}")
 
+        
         if isinstance(message_media_url, dict):
             file_path = message_media_url.get("file_path")
             customer_response = message_media_url.get("customer_response")
@@ -621,7 +627,7 @@ class BaseWebhookConverter:
                 "intent": message_dict.get("intent"),
             })
 
-
+        
         self.converse_payload = {
             "_job": {
                 "task": CONVERS_TASK_NAME,
@@ -633,292 +639,62 @@ class BaseWebhookConverter:
         kwargs["temporary_data"] = temporary_data
         logger.info("Calling session logic...")
         # call session logic here...
-        d=self.handle_session_logic(mobile_number,"whatsapp_chat")
+        d=handle_session_logic(mobile_number,"whatsapp_chat")
         logger.info(f"Session logic result: {d}")
         user_d=temporary_data.get("whatsapp_user_details")
         converse_kwargs.update({
             "session_id":d.get("session_id",None),
             "campaign_id":d.get("campaign_id","inbound"),
-            "campaign_type":d.get("campaign_type",None),
+            "campaign_type":d.get("campaign_type","inbound"),
             "dealershp_id":d.get("dealership_id",None),
             # these 2 we need to check and send for email also..
             "provider":user_d.get("whatsapp_provider",None), 
             "contact":user_d.get("mobile_number",None),
+            "lead_id":"inbound" if not d.get("campaign_id") else d.get("lead_id","inbound"),
             # "lead_id":d.get("lead_id",None),
         })
         # Remove all None values
         converse_kwargs = {k: v for k, v in converse_kwargs.items() if v is not None}
-        logger.info(f"Sending Converse with payload: {safe_orjson_dumps(converse_kwargs)} for service name : {CONVERS_SERVICE_NAME}")
-        res = gryd.create_async_task(
-            CONVERS_TASK_NAME,
-            CONVERS_SERVICE_NAME,
-            kwargs=converse_kwargs
-        )
-
-        logger.info(f"Created Async task result: {res}")
-
-    def handle_session_logic(self,phone_number, channel=None,campaign_details=None, from_web_chat=False):
-        payload = {}
-        dealership_id = None
-
-        # 1. PERSON
-        person = self.get_or_create_person(phone_number)
-        if person:
-            payload.update({
-                "phone_number": phone_number,
-                "user_id": person.get("user_id"),
-                
-            })
-
-        with get_pg_connector() as pg:
-            logger.info("TEST Loading session logic...------------")
-            # FROM WEB CHAT
-            if from_web_chat and campaign_details:
-                logger.info("Campaign details received from web chat.")
-                payload.update({
-                    "campaign_id": campaign_details.get("campaign_id"),
-                    "campaign_type": campaign_details.get("campaign_type"),
-                    "lead_id": campaign_details.get("lead_id"),
-                })
-                session = self.get_or_create_session(payload,channel)
-                return {**session}
-
-            logger.info(f"TEST phone_number: {phone_number}")
-            # 3. CONTACT STATUS
-            contact_list = list(
-                pg.list_order_by("contact_status", {
-                    "phone_number": phone_number
-                },order_by="created", order="DESC")
+        button_payload=message_dict.get("message_dict").get("button").get("payload") if message_dict.get("message_dict").get("button") else None
+        logger.info(f"[process_message_dict] Button payload: {button_payload}       ")
+        if message_text.lower() == "see autongage in action":
+            logger.info(f"Sending Autongage demo template with mobile_number: {mobile_number}")
+            self.send_custom_template(**{"mobile_number":mobile_number,"template_id":"01kg4ntf1ztsa783ss81nq8gqs"})
+            return
+        elif button_payload =="nada_autongage-call":
+            gryd.create_async_task(
+                "nada_pre_sales",
+                AUTOCRM_CAMPAIGN_SERVICE_NAME,
+                args=[],
+                kwargs={"channel":"voice_phone","session_id":d.get("session_id",None)}
             )
-            logger.info(f"TEST contact_list present: {len(contact_list)}")
-            
-
-            campaign_id = campaign_type = campaign_model = lead_id = None
-
-            if contact_list:
-                
-                contact = contact_list[0]
-                logger.info(f"Contact found: {contact}")
-
-                campaign_id = contact.get("campaign_id")
-                campaign_type = contact.get("campaign_type")
-                lead_id = contact.get("lead_id")
-
-                campaign_model= "post_sales_campaign" if campaign_type == "post-sales" else "pre_sales_campaign"
-                lead_model = "post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
-                
-                payload.update({
-                    "campaign_id": campaign_id,
-                    "campaign_type": campaign_type,
-                    "campaign_model": campaign_model,
-                    "lead_id": lead_id,
-                    "lead_model": lead_model
-                })
-            else:
-                logger.info(f"No existing campaign association for {phone_number}")
-
-            # 4. CAMPAIGN FLOW
-            # Override if campaign_details provided
-            if campaign_details:
-                logger.info("Overriding campaign with campaign_details.")
-                if not campaign_details.get("campaign_id"):
-                    return {"error": "campaign_details missing campaign_id"}
-
-                campaign_id = campaign_details["campaign_id"]
-                campaign_type = campaign_details.get("campaign_type")
-
-                payload.update({
-                    "campaign_id": campaign_id,
-                    "campaign_type": campaign_type,
-                })
-
-            if campaign_id: 
-                model_name = "pre_sales_campaign" if campaign_type == "pre_sales" else "post_sales_campaign"
-                campaign_data = list(pg.list(model_name, {"campaign_id": campaign_id}))
-
-                if campaign_data:
-                    c_data = campaign_data[0]
-                    dealership_id = c_data.get("dealership_id")
-                    payload["dealership_id"] = dealership_id
-
-                    # get credentials for dealership (skip if "dave")
-                    if dealership_id and dealership_id.lower() != "dave":
-                        _ = list(pg.list("communication_credential", {"dealership_id": dealership_id}))
-
-                logger.info(f"TEST BEFORE SESSION FINAL PAYLOAD: {payload}")
-                session = self.get_or_create_session(payload,channel)
-                return {**session, "dealership_id": dealership_id}
-
-            # 5. NON-CAMPAIGN FLOW
-            creds = list(pg.list("communication_credential", {"sender": phone_number}))
-            if creds:
-                dealership_id = creds[0].get("dealership_id")
-                payload["dealership_id"] = dealership_id
-
-            session = self.get_or_create_session(payload,channel)
-            return {**session, "dealership_id": dealership_id}
-
-    def get_or_create_person(self,phone_number):
-        """Return person object; create if not exists."""
-        logger.info(f"Getting or creating person for phone_number: {phone_number}")
-        
-        with get_pg_connector() as pg:
-            person_list = list(pg.list(
-                "person", 
-                {"phone_number":phone_number}
-            ))
-            if person_list:
-                logger.info(f"Person already exists for phone_number: {phone_number}")
-                return person_list[0]  
-            
-            d={
-                "phone_number": phone_number,
-                "created":time.time(),
-            }
-            # Create new person
-            user_id_attr=self.generate_uid(d)
-            logger.info(f"user_id_attr: {user_id_attr}")
-            d= pg.update("person","user_id",user_id_attr,{
-                "phone_number": phone_number,
-                "created":time.time(),
-                "updated":time.time()
-                })
-            logger.info(f"Person with phone_number: {phone_number}. Doesnt exist. Created a new one. data: {d}")
-            return d
-
-    def generate_uid(self,data):
-        if isinstance(data, (dict, list)):
-            data_str = json.dumps(data, sort_keys=True)
+        elif button_payload =="nada_autongage-chat":
+            gryd.create_async_task(
+                "nada_pre_sales",
+                AUTOCRM_CAMPAIGN_SERVICE_NAME,
+                args=[],
+                kwargs={"channel":"whatsapp_chat","session_id":d.get("session_id",None)}
+            )            
+        # i will have dealership_id,campaign_id,urgency_hook,user_id, create a pre_sales lead for this.
+        # update the session with this lead id ,campaign id and campaign_type
         else:
-            data_str = str(data)
+            logger.info(f"Sending Converse with payload: {safe_orjson_dumps(converse_kwargs)} for service name : {CONVERS_SERVICE_NAME}")
+            if button_payload=="nada_autongage-yes":
+                converse_kwargs["customer_response"] ="Hi"
+            logger.info(f"Sending Customer Response -- {converse_kwargs.get('customer_response')}")
+            res = gryd.create_async_task(
+                CONVERS_TASK_NAME,
+                CONVERS_SERVICE_NAME,
+                kwargs=converse_kwargs
+            )
 
-        uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
-
-        return uid.hex[:16]   # 16 characters
-      
-    def apply_filters(self, session_id=None, user_id=None, channel=None, session_live=None, status=None):
-        conditions = [] 
-        params = ()
-        if session_id:
-            conditions.append("dict->>'session_id' = %s")
-            params += (session_id,)          
-        if user_id:
-            conditions.append("dict->>'user_id' = %s")
-            params += (user_id,)
-        if channel:
-            conditions.append("dict->>'channel' = %s")
-            params += (channel,)
-        if session_live:
-            conditions.append("CAST (dict->>'session_live' AS bool) = %s")
-            params += (session_live,)
-        if status:
-            if status.endswith('~'):
-                conditions.append("dict->>'status' <> %s")
-                status = status[:-1]
-                # first_part += "AND LOWER(CAST(dict->>'status' AS text)) <> LOWER(%s)"
-                params += (status,)
-            else:
-                conditions.append("dict->>'session_live' = %s")
-                params += (session_live,)
-
-        condition = "Where " + " AND ".join(conditions)
-        return condition, params
+            logger.info(f"Created Async task result: {res}")
     
-    def get_or_create_session(self,data,channel=None):
-        """
-        Find active session or create new one.
-        session_live=True AND status != completed
-        """
-        logger.info(f"In create or get session function. User id: {data.get('user_id')}, data: {data}")
-        filters = {
-            "session_id":data.get("session_id"),
-            "user_id":data.get("user_id"),
-            # "campaign_id":data.get("campaign_id"),
-            "channel": channel or "whatsapp_chat",
-            "session_live": True,
-            "status": "completed~"
-        }
-        
-        # filters = {k: v for k, v in filters.items() if v is not None}
-        condition, param = self.apply_filters(**filters)
-        
-        # logger.info(f"TEST filters for sessions--{filters}")
-        with get_pg_connector() as pg:
-            sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
-            # logger.info(f'TEST sessions found for {sessions}')
-            if sessions:
-                logger.info(f"Found exisiting session for user_id: {data.get('user_id')}")
-                logger.info(f"Old campaign id: {sessions[0].get('campaign_id')}, New campaign id: {data.get('campaign_id')}")
-                if data.get("campaign_id") != sessions[0].get("campaign_id"):
-                    logger.info("There is a new triggered campaign for this user. Since there is an existing session, we are ending the existing(old) session and creating a new session..")
-                    logger.info(f"OLD SESSIONID--{sessions[0].get('session_id')}")
-                    # end the old session
-                    self.end_session(**{"session_id":sessions[0].get("session_id")})
-                    # create new session
-                    s=self.create_new_session(data,channel)
-                    return s
-                else:
-                    logger.info("Session has exisiting campaign_id. So we are returning the existing session.")
-                    return sessions[0]
-
-            logger.info(f"No Existing session found. Creating a new one..")
-            
-            # Create new session
-            s=self.create_new_session(data,channel)
-            
-            return s
-
-    @gryd.is_a_task(function_name="end_session")
-    def end_session(*args, **kwargs):
-        """
-        Ends a session and triggers a post session process task.
-
-        Args:
-            session_id (str): The session id to end.
-
-        Returns:
-            None
-        """
-        session_id=kwargs.get("session_id")
-        logger.info(f"Ending session with session_id: {session_id}")
-        with get_pg_connector() as pg:
-            pg.update("session","session_id",session_id,{"session_live":False,"status":"completed","end_time":time.time()})
-            update_session_data_in_lead(session_id,"completed")
-        logger.info(f"Calling post session process task for session_id: {session_id}")
-        # post_session_process(**{"session_id":session_id})
-        gryd.create_async_task("post_session_process",AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,args=[],kwargs={"session_id":session_id})
-        logger.info(f"Session with session_id: {session_id}. Has been ended.")
-        
     @gryd.is_a_task(function_name="check_or_create_session")
     def check_or_create_session(phone_number, campaign_details, from_web_chat): 
         return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
 
-    def create_new_session(self,data,channel=None):
-        with get_pg_connector() as pg:
-            new_session = {
-                **data,
-                "session_live": True,
-                "channel": channel or "whatsapp_chat",
-                "status": "interacted",
-                "campaign_type": data.get("campaign_type","inbound"),
-                "campaign_id": data.get("campaign_id",'inbound'),
-                "created": time.time(),
-                "updated": time.time(),
-                "start_time": time.time()
-            }
-            
-            data["updated"] = time.time()
-            session_id=self.generate_uid(data)
-            s= pg.update("session","session_id",session_id,new_session)
-            logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. And the session_id is -- {s}")
-            
-            # updating last_session_channel
-            if data.get("campaign_type") == "pre_sales":
-                pg.update("pre_sales_lead","pre_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel})
-            elif data.get("campaign_type") == "post_sales":
-                pg.update("post_sales_lead","post_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel})
-            # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
-            return s 
+    
     def send_otp_template(*args, **kwargs):
         logger.info("Send OTP template called")
 
@@ -961,6 +737,25 @@ class BaseWebhookConverter:
         provider.handle_custom_template(**t_data)
 
         return
+    
+    def send_custom_message(*args, **kwargs):
+        logger.info("Send custom message called")
+        to = kwargs.get("to")
+        message = kwargs.get("message")
+
+        if not to or not message:
+            logger.error("Missing 'to' or 'message' in custom message")
+            return
+
+        provider = WhatsappMessangerConnector.whatsapp(
+            WHATSAPP_PROVIDER_NAME, *args, **kwargs
+        )
+        logger.info(f"Provider: {provider}")
+        logger.info(f"Sending message to {to} with content: {message}")
+        provider._send_text(to, message)
+        return
+    
+    
     
     # @timelogger()
     def process_webhook(self, *args, **kwargs):
@@ -1025,7 +820,27 @@ class BaseWebhookConverter:
         t_data.update({"headers":headers,"base_url":base_url})
         provider.handle_custom_template(**t_data)
         
-        
+    
+    def send_twilio_message(*args,**kwargs):
+        logger.info("Send Twilio message called---")
+        mobile_number=kwargs.get("mobile_number")        
+        message_text=kwargs.get("message_text")        
+        if not mobile_number or not message_text:
+            logger.error("mobile_number or message_text missing")
+            return
+        t_data={
+            "mobile_number":mobile_number,
+            "message_text":message_text,
+        }
+                        
+        provider = WhatsappMessangerConnector.whatsapp(
+                "twilio", *args, **kwargs
+            )
+        headers=BaseWebhookConverter().get_headers("", "")
+        config = PROVIDER_CONFIG.get("twilio", {})
+        base_url = config.get("base_url", "")
+        t_data.update({"headers":headers,"base_url":base_url})
+        provider.handle_twilio_message(**t_data)
 class PayloadBuilder:
     def __init__(self, provider_name, from_number):
         self.provider_name = provider_name
@@ -1085,7 +900,8 @@ class BaseWhatsappMessenger:
             "meta":self.manage_graph_api,
             "gupshup":self.manage_gupshup_api,
             "rml":self.manage_rml_api,  
-            "concord":self.manage_concord_api
+            "concord":self.manage_concord_api,
+            "twilio":self.manage_twilio_api,
         }
         pass
     def manage_concord_api(self,*args,**kwargs):
@@ -1100,6 +916,11 @@ class BaseWhatsappMessenger:
         '''
         raise NotImplementedError("Subclasses must implement the `manage airtel api` method.")
     
+    def manage_twilio_api(self,*args,**kwargs):
+        '''
+        Method to manage twilio api.
+        '''
+        raise NotImplementedError("Subclasses must implement the `manage twilio api` method.")
     def manage_graph_api(self,*args,**kwargs):
         '''
         Method to manage airtel api.
@@ -1582,22 +1403,6 @@ class WhatsappCampaignTemplate:
         
         return source_class(whatsapp_provider=source_type,*args,**kwargs)
 
-
-
-def update_session_data_in_lead(session_id,status):
-    with get_pg_connector() as pg:
-        session_data = list(pg.list("session", {"session_id": session_id}))
-        if not session_data:
-            logger.info(f"Could not find session with session_id: {session_id}")
-        session_data = session_data[0]
-        lead_id = session_data.get("lead_id")
-        campaign_type = session_data.get("campaign_type")
-        last_interaction_time = session_data.get("last_response_time",None)
-        lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
-        lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
-        logger.info(f"Updating session data in lead with session_id: {session_id} and lead_id: {lead_id}")
-        pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
-        logger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
 
 
         

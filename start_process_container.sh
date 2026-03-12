@@ -1,5 +1,7 @@
 #!/bin/bash
 
+AWS_ACCESS_KEYS_REQUIRED=${AWS_ACCESS_KEYS_REQUIRED:-True}
+
 DEV_CONTAINER=${DEV_CONTAINER:-True}
 if [ -e config.sh ];then
 	echo "Found config file. Sourcing it."
@@ -18,11 +20,21 @@ function gen_aws_creds_file() {
 }
 
 function main() {
+
+	if [ $ENVIRONMENT == "production" ];then
+        gen_aws_creds_file
+		source ./start_single_worker.sh
+		main
+		exit
+	fi
+
 	if [ "$DEV_CONTAINER" == "True" ];then
-		gen_aws_creds_file
+		if [ "$AWS_ACCESS_KEYS_REQUIRED" == "True" ];then
+                	gen_aws_creds_file
+		fi
 	fi
 	source ./start_worker.sh
-        start_default_workers
+    start_default_workers
 	start_workers
 }
 

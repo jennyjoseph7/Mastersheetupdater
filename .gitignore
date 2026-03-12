@@ -70,3 +70,7 @@ core/rezorpay_fe_test.html
 core/payment_test.py
 billing.json
 venv/
+spark/fonts
+spark/output
+frontend/app/campaign/create/page copy.tsx
+frontend/app/campaign/create/page copy 2.tsx

@@ -72,6 +72,10 @@
       "refers": "parents.dealership.region_level_guardrails"
     },
     {
+      "name" : "region_subdivision_id",
+      "refers" : "parents.workshop.region_subdivision_id"
+    },
+    {
       "name": "workshop_pincode",
       "refers": "parents.workshop.pincode"
     },
@@ -489,16 +493,251 @@
           "campaign_name",
           "start_date",
           "campaign_type",
-          "campaign_objective"
+          "campaign_objective",
+          "created"
         ]
       },
       "name": "campaign_id",
       "type": "uid",
       "id": true
+    },
+    {
+      "name" : "voice_agent_id",
+      "type" : "text",
+      "default" : {
+        "function" : "set_if_condition",
+        "args" : [
+          {
+            "function" : "get_from_model",
+            "args" : [
+              "region_subdivision",
+              "region_subdivision_id",
+              "voice_agent_id"
+            ]
+          },
+          {
+            "function" : "set_if_condition",
+            "args" : [
+              {
+                "function" : "get_from_model",
+                "args" : [
+                  "region",
+                  "region_id",
+                  "voice_agent_id"
+                ]
+              },
+              null
+            ],
+            "kwargs":{
+              "region_id" : "~null"
+            }
+          }
+        ],
+        "kwargs" : {
+          "subdivision_id" : "~null"
+        }
+      }
+    },
+    {
+      "name" : "voice_id",
+      "type" : "text",
+      "default" : {
+        "function" : "set_if_condition",
+        "args" : [
+          {
+            "function" : "get_from_model",
+            "args" : [
+              "region_subdivision",
+              "region_subdivision_id",
+              "voice_id"
+            ]
+          },
+          {
+            "function" : "set_if_condition",
+            "args" : [
+              {
+                "function" : "get_from_model",
+                "args" : [
+                  "region",
+                  "region_id",
+                  "voice_id"
+                ]
+              },
+              null
+            ],
+            "kwargs":{
+              "region_id" : "~null"
+            }
+          }
+        ],
+        "kwargs" : {
+          "subdivision_id" : "~null"
+        }
+      }
+    },
+    {
+      "name": "voice_start_language",
+      "type": "text",
+      "default": {
+        "function": "set_if_condition",
+        "args": [
+          {
+            "function": "get_from_model",
+            "args": [
+              "region_subdivision",
+              "region_subdivision_id",
+              "voice_start_language"
+            ]
+          },
+          {
+            "function": "set_if_condition",
+            "args": [
+              {
+                "function": "get_from_model",
+                "args": ["region", "region_id", "voice_start_language"]
+              },
+              null
+            ],
+            "kwargs": {
+              "region_id": "~null"
+            }
+          }
+        ],
+        "kwargs": {
+          "subdivision_id": "~null"
+        }
+      },
+      "options": [
+        "Arabic",
+        "Bulgarian",
+        "Chinese",
+        "Croatian",
+        "Czech",
+        "Danish",
+        "Dutch",
+        "English",
+        "Filipino",
+        "Finnish",
+        "French",
+        "German",
+        "Greek",
+        "Hindi",
+        "Hungarian",
+        "Indonesian",
+        "Italian",
+        "Japanese",
+        "Korean",
+        "Malay",
+        "Norwegian",
+        "Polish",
+        "Portuguese (Brazil)",
+        "Portuguese",
+        "Romanian",
+        "Russian",
+        "Slovak",
+        "Spanish",
+        "Swedish",
+        "Tamil",
+        "Turkish",
+        "Ukrainian",
+        "Vietnamese"
+      ],
+      "option_others": true
+    },
+    {
+      "name" : "voice_first_message",
+      "type" : "text",
+      "default" : {
+        "function" : "set_if_condition",
+        "args" : [
+          {
+            "function" : "get_from_model",
+            "args" : [
+              "region_subdivision",
+              "region_subdivision_id",
+              "voice_first_message"
+            ]
+          },
+          {
+            "function" : "set_if_condition",
+            "args" : [
+              {
+                "function" : "get_from_model",
+                "args" : [
+                  "region",
+                  "region_id",
+                  "voice_first_message"
+                ]
+              },
+              null
+            ],
+            "kwargs":{
+              "region_id" : "~null"
+            }
+          }
+        ],
+        "kwargs" : {
+          "subdivision_id" : "~null"
+        }
+      }
+    },
+    {
+      "name" : "purpose",
+      "type" : "text",
+      "require" : false,
+      "default" : {
+        "function" : "get_from_model",
+        "args" : [
+          "campaign_objective",
+          "campaign_objective_id",
+          "purpose"
+        ]
+      }
+    },
+    {
+      "name" : "purpose_steps",
+      "type" : "string_list",
+      "require" : false,
+      "default" : {
+        "function" : "get_from_model",
+        "args" : [
+          "campaign_objective",
+          "campaign_objective_id",
+          "purpose_steps"
+        ]
+      }
+    },
+    {
+      "name" : "custom_conversation_start_pattern",
+      "type" : "string_list",
+      "require" : false,
+      "default" : {
+        "function" : "get_from_model",
+        "args" : [
+          "campaign_objective",
+          "campaign_objective_id",
+          "custom_conversation_start_pattern"
+        ]
+      },
+      "placeholder" : "Custom Conversation Start Pattern Mention what the bot should say in the starting of a conversation and how."
+    },
+    {
+      "name":"doc_data",
+      "type" : "text",
+      "required" : false,
+      "default" : {
+        "function" : "get_from_model",
+        "args" : [
+          "campaign_objective",
+          "campaign_objective_id",
+          "doc_data"
+        ]
+      }
     }
   ],
   "parents": [
     "workshop",
-    "dealership"
+    "dealership",
+    "communication_credential"
   ]
 }

@@ -6,7 +6,7 @@ import {
   FILE_UPLOAD_URL,
   FILE_UPLOAD_HEADERS,
 } from "./headers";
-
+import { api } from "@/lib/api";
 /* ---------------------------------------------------
    Utils (Next.js Safe)
 --------------------------------------------------- */
@@ -143,13 +143,16 @@ async function uploadFileToGryd(file) {
 --------------------------------------------------- */
 
 async function extractCsvHeadersAPI(fileUrl) {
+  const servicename=process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
   const response = await authenticatedFetch(
-    `${APP_BASE_URL}/gryd/task/autocrm-core/extract_csv_headers`,
+    `${APP_BASE_URL}/gryd/task/${servicename}/extract_csv_headers`,
     {
       method: "POST",
       body: JSON.stringify({
         args: [fileUrl],
         kwargs: {},
+        runtime_limit: 3600,
+        cancellable: true,
       }),
     }
   );
@@ -189,9 +192,10 @@ async function startImportTask(
     if (isUuid) kwargs.campaign_id = campaignIdOrObjectiveId;
     else kwargs.campaign_objective_id = campaignIdOrObjectiveId;
   }
+    const servicename=process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
 
   const response = await authenticatedFetch(
-    `${APP_BASE_URL}/gryd/task/autocrm-core/import_leads_from_csv`,
+    `${APP_BASE_URL}/gryd/task/${servicename}/import_leads_from_csv`,
     {
       method: "POST",
       body: JSON.stringify({
@@ -259,35 +263,68 @@ async function getTaskResult(taskId) {
    Campaign Fetchers
 --------------------------------------------------- */
 
-async function fetchPreSalesCampaigns(
+export async function fetchPreSalesCampaigns(
   page = 1,
   pageSize = 50,
+  status = "all",
+  channel = "all",
   dealershipId = getDealershipId()
 ) {
-  const response = await authenticatedFetch(
-    `${APP_BASE_URL}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
-      dealershipId
-    )}`,
-    { headers: { "X-GRYD-ROLE": "admin" } }
-  );
+  // Ensure dealershipId is passed correctly if page/pageSize are provided
+  const dId = dealershipId || getDealershipId();
+  
+  // Base URL
+  let url = `${APP_BASE_URL}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
+    dId
+  )}&sort_by=created&sort_reverse=true`;
+
+  // Dynamically append filters if they are not 'all'
+  if (status && status !== "all") {
+    url += `&campaign_status=${encodeURIComponent(status)}`;
+  }
+  if (channel && channel !== "all") {
+    // Note: Adjust 'channels' if your backend uses a different query key (e.g., 'channel')
+    url += `&channels=${encodeURIComponent(channel)}`; 
+  }
+
+  const response = await authenticatedFetch(url, { 
+    headers: { "X-GRYD-ROLE": "admin" } 
+  });
 
   const json = await response.json();
   return { items: json?.data ?? [], total: json?.total_number ?? 0 };
 }
 
-async function fetchPostSalesCampaigns(dealershipId = getDealershipId()) {
-  if (!dealershipId) return { items: [], total: 0 };
+export async function fetchPostSalesCampaigns(
+  page = 1,
+  pageSize = 50,
+  status = "all",
+  channel = "all",
+  dealershipId = getDealershipId()
+) {
+  // Ensure dealershipId is passed correctly
+  const dId = dealershipId || getDealershipId();
+  if (!dId) return { items: [], total: 0 };
 
-  const response = await authenticatedFetch(
-    `${APP_BASE_URL}/gryd/db/objects/post_sales_campaign?dealership_id=${encodeURIComponent(
-      dealershipId
-    )}`
-  );
+  // Base URL
+  let url = `${APP_BASE_URL}/gryd/db/objects/post_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
+    dId
+  )}&sort_by=created&sort_reverse=true`;
+
+  // Dynamically append filters if they are not 'all'
+  if (status && status !== "all") {
+    url += `&campaign_status=${encodeURIComponent(status)}`;
+  }
+  if (channel && channel !== "all") {
+    // Note: Adjust 'channels' if your backend uses a different query key
+    url += `&channels=${encodeURIComponent(channel)}`;
+  }
+
+  const response = await authenticatedFetch(url);
 
   const json = await response.json();
   return { items: json?.data ?? [], total: json?.total_number ?? 0 };
 }
-
 async function fetchCampaignObjectives(campaignType) {
   return fetchAPIData("campaign_objective", {
     campaign_type: campaignType?.replace(/_/g, "-"),
@@ -320,12 +357,26 @@ async function fetchAudienceTasks(page = 1, pageSize = 50) {
   });
 }
 
-async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
+export async function fetchDealershipCampaigns(
+  page = 1, 
+  pageSize = 50, 
+  status = "all", 
+  channel = "all"
+) {
   try {
-    const response = await authenticatedFetch(
-      `${APP_BASE_URL}/gryd/db/objects/dealership_campaign?page_number=${page}&page_size=${pageSize}`,
-      { headers: { "X-GRYD-ROLE": "admin" } }
-    );
+    let url = `${APP_BASE_URL}/gryd/db/objects/dealership_campaign?page_number=${page}&page_size=${pageSize}`;
+
+    // Dynamically append filters if they are not 'all'
+    if (status && status !== "all") {
+      url += `&campaign_status=${encodeURIComponent(status)}`;
+    }
+    if (channel && channel !== "all") {
+      url += `&channels=${encodeURIComponent(channel)}`;
+    }
+
+    const response = await authenticatedFetch(url, { 
+      headers: { "X-GRYD-ROLE": "admin" } 
+    });
 
     const json = await response.json();
     return { items: json?.data ?? [], total: json?.total_number ?? 0 };
@@ -357,6 +408,375 @@ async function fetchCampaignPerformanceSummary(campaignId = "") {
   }
 }
 
+async function fetchCampaignLeads({
+  campaignId = "",
+  campaignType = "", // Expected: "pre-sales" or "post-sales"
+  dealershipId = getDealershipId(),
+  page_number = 1,
+  page_size = 10,
+  search = "",
+  sort_by = "",
+  sort_dir = "asc",
+  disposition = "", // New filter parameter
+} = {}) {
+  // We now require campaignType to avoid making dual API calls
+  if (!campaignId || !dealershipId || !campaignType) {
+    console.warn("[fetchCampaignLeads] Missing required params:", { campaignId, campaignType });
+    return { items: [], total_number: 0 };
+  }
+
+  try {
+    // Dynamically set the endpoint based on the campaign type
+    // Converts "pre-sales" to "pre_sales_lead" and "post-sales" to "post_sales_lead"
+    const endpointType = campaignType.replace("-", "_");
+    const endpoint = `${endpointType}_lead`;
+
+    // Construct Query Parameters
+    const params = new URLSearchParams({
+      dealership_id: dealershipId,
+      campaign_id: campaignId,
+      page_number: String(page_number),
+      page_size: String(page_size),
+    });
+
+    if (search) {
+      params.append("search", search); 
+    }
+
+    if (sort_by) {
+      params.append("sort_by", sort_by);
+      // Assuming your backend uses 'sort_reverse' boolean like other endpoints in your file
+      params.append("sort_reverse", sort_dir === "desc" ? "true" : "false"); 
+    }
+// Attach disposition filter if one is selected
+    if (disposition) {
+      params.append("disposition", disposition);
+    }
+    const url = `${APP_BASE_URL}/gryd/db/objects/${endpoint}?${params.toString()}`;
+
+    const response = await authenticatedFetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Error fetching leads: ${await response.text()}`);
+    }
+
+    const json = await response.json();
+
+    return {
+      items: json?.data ?? [],
+      total_number: json?.total_number ?? json?.total ?? 0,
+      page_number: json?.page_number ?? page_number,
+      page_size: json?.page_size ?? page_size,
+      is_first: json?.is_first ?? true,
+      is_last: json?.is_last ?? true,
+    };
+  } catch (error) {
+    console.error("[fetchCampaignLeads]", error);
+    return { items: [], total_number: 0 };
+  }
+}
+
+// ---- NEW: Added fetchCampaignSessions here ----
+export async function fetchCampaignSessions({
+  campaignId = "",
+  dealershipId = getDealershipId(),
+  page_number = 1,
+  page_size = 10,
+  search = "",
+  sort_by = "created",
+  sort_reverse = "true",
+  disposition = "",
+  start_date = "",
+  end_date = "",
+} = {}) {
+  if (!campaignId || !dealershipId) {
+    return { items: [], total_number: 0 };
+  }
+
+  try {
+    const params = new URLSearchParams({
+      dealership_id: dealershipId,
+      campaign_id: campaignId,
+      page_number: String(page_number),
+      page_size: String(page_size),
+      sort_by: sort_by,
+      sort_reverse: sort_reverse,
+    });
+
+    if (search) params.append("search", search);
+    if (disposition && disposition !== "all") params.append("disposition", disposition);
+    
+    // Apply Date Range - Sending as a comma-separated string: created=min,max
+    if (start_date || end_date) {
+      let startEpoch = 0; // Default minimum epoch if no start date is selected
+      let endEpoch = Math.floor(Date.now() / 1000); // Default maximum epoch (current time)
+
+      if (start_date) {
+        const startObj = new Date(start_date);
+        startObj.setHours(0, 0, 0, 0); // Start of the selected day
+        startEpoch = startObj.getTime() / 1000;
+      }
+      
+      if (end_date) {
+        const endObj = new Date(end_date);
+        endObj.setHours(23, 59, 59, 999); // End of the selected day
+        endEpoch = endObj.getTime() / 1000;
+      }
+
+      // Append the single parameter with the comma-separated format
+      params.append("created", `${startEpoch},${endEpoch}`);
+    }
+
+    const url = `${APP_BASE_URL}/gryd/db/objects/session?${params.toString()}`;
+    const response = await authenticatedFetch(url);
+
+    if (!response.ok) throw new Error(`Error fetching campaign sessions`);
+
+    const json = await response.json();
+
+    return {
+      items: json?.data ?? [],
+      total_number: json?.total_number ?? json?.total ?? 0,
+      page_number: json?.page_number ?? page_number,
+      page_size: json?.page_size ?? page_size,
+    };
+  } catch (error) {
+    console.error("[fetchCampaignSessions]", error);
+    return { items: [], total_number: 0 };
+  }
+}
+
+async function fetchUserSessions(
+  userId = "",
+  campaignId = "",
+  dealershipId = getDealershipId()
+) {
+  if (!userId || !campaignId || !dealershipId) {
+    return { items: [], total: 0 };
+  }
+
+  try {
+    // Build URL with query parameters matching the curl command
+    const params = new URLSearchParams({
+      
+      dealership_id: dealershipId,
+      campaign_id: campaignId,
+      lead_id: userId,
+      // page_size: "10",
+      _reverse: "updated",
+    });
+
+    const url = `${APP_BASE_URL}/gryd/db/objects/session?${params.toString()}`;
+
+    const response = await authenticatedFetch(url);
+    if (!response.ok) throw new Error(await response.text());
+
+    const json = await response.json();
+
+    return {
+      items: json?.data ?? [],
+      total: json?.total_number ?? 0,
+      page_number: json?.page_number ?? 1,
+      page_size: json?.page_size ?? 10,
+      is_first: json?.is_first ?? true,
+      is_last: json?.is_last ?? true,
+    };
+  } catch (error) {
+    console.error("[fetchUserSessions]", error);
+    return { items: [], total: 0 };
+  }
+}
+
+/**
+ * Fetches active sessions for a dealership
+ * Matches curl: GET /gryd/db/objects/session?session_live=True&dealership_id={id}
+ * Headers: X-GRYD-ENTERPRISE-ID: autocrm, X-GRYD-TOKEN, X-GRYD-SESSION-ID, X-GRYD-ROLE: agent, X-GRYD-APPLICATION-ID: autocrm
+ * Response: { data: SessionData[], total_number: number, page_number, page_size, is_first, is_last }
+ */
+// utils/api.ts
+// (Assuming APP_BASE_URL is defined elsewhere in your file)
+
+export async function fetchActiveSessions(dealershipId, params = {}) {
+  if (!dealershipId) {
+    console.warn("[fetchActiveSessions] No dealershipId provided");
+    return { data: [], total_number: 0, page_number: 1 };
+  }
+
+  // Get credentials from cookies directly to match curl command exactly
+  const getCookie = (name) => {
+    if (typeof document === "undefined") return null;
+    const match = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith(name + "="));
+    return match ? decodeURIComponent(match.split("=")[1]) : null;
+  };
+
+  const token = getCookie("gryd_token");
+  const sessionId = getCookie("gryd_session_id");
+  let applicationId = getCookie("gryd_application_id");
+
+  // Default to autocrm if not set or if it's "gryd"
+  if (!applicationId || applicationId === "gryd") {
+    applicationId = "autocrm";
+  }
+
+  if (!token || !sessionId) {
+    console.warn("[fetchActiveSessions] Missing credentials");
+    return { data: [], total_number: 0, page_number: 1 };
+  }
+
+  try {
+    // Dynamically build URL parameters
+    const searchParams = new URLSearchParams();
+    
+    // Default required params
+    searchParams.append("session_live", "True");
+    searchParams.append("dealership_id", dealershipId);
+
+    // Apply Pagination
+    if (params.p) searchParams.append("page_number", params.p);
+    if (params.page_size) searchParams.append("page_size", params.page_size);
+
+    // Apply Sorting
+    if (params.sort_by) searchParams.append("sort_by", params.sort_by);
+    if (params.sort_order) {
+      searchParams.append("sort_reverse", params.sort_order === "desc" ? "true" : "false");
+    } else {
+      searchParams.append("sort_reverse", "true"); 
+    }
+
+    // Apply Filters
+    if (params.search) searchParams.append("search", params.search);
+    if (params.channel) searchParams.append("channel", params.channel);
+    if (params.status) searchParams.append("status", params.status);
+    if (params.campaign_type) searchParams.append("campaign_type", params.campaign_type);
+    
+     
+ // Apply Date Range - Sending as a comma-separated string: created=min,max
+    if (params.start_date || params.end_date) {
+      let startEpoch = 0; // Default minimum epoch if no start date is selected
+      let endEpoch = Math.floor(Date.now() / 1000); // Default maximum epoch (current time)
+
+      if (params.start_date) {
+        const startObj = new Date(params.start_date);
+        startObj.setHours(0, 0, 0, 0); // Start of the selected day
+        startEpoch = startObj.getTime() / 1000;
+      }
+      
+      if (params.end_date) {
+        const endObj = new Date(params.end_date);
+        endObj.setHours(23, 59, 59, 999); // End of the selected day
+        endEpoch = endObj.getTime() / 1000;
+      }
+
+      // Append the single parameter with the comma-separated format
+      searchParams.append("created", `${startEpoch},${endEpoch}`);
+    }
+
+    const url = `${APP_BASE_URL}/gryd/db/objects/session?${searchParams.toString()}`;
+    console.log("[fetchActiveSessions] Fetching from URL:", url);
+
+    // Make direct fetch call matching curl command exactly
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-GRYD-ENTERPRISE-ID": "autocrm",
+        "X-GRYD-TOKEN": token,
+        "X-GRYD-SESSION-ID": sessionId,
+        Accept: "application/json",
+        "X-GRYD-ROLE": "agent",
+        "X-GRYD-APPLICATION-ID": applicationId,
+      },
+      cache: "no-store",
+      credentials: "omit",
+      mode: "cors",
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[fetchActiveSessions] API error:", response.status, errorText);
+      throw new Error(`API Error ${response.status}: ${errorText}`);
+    }
+
+    const json = await response.json();
+    return json;
+
+  } catch (error) {
+    console.error("[fetchActiveSessions] Error:", error);
+    return { data: [], total_number: 0, page_number: 1 };
+  }
+}
+
+
+
+
+/**
+ * Executes an asynchronous task, polls for status, and retrieves the final result.
+ * * @param {string} service - The name of the service (e.g., 'autocrm-short-run-agent')
+ * @param {string} taskName - The task to execute (e.g., 'generate_campaign_idea')
+ * @param {object} payload - The arguments and kwargs for the task
+ * @param {function} onProgress - Optional callback to handle status updates for the UI
+ * @param {object} options - Optional config for polling (intervalMs, maxRetries)
+ * @returns {Promise<any>} The final result object
+ */
+export const executeTaskWithPolling = async (
+  service, 
+  taskName, 
+  payload, 
+  onProgress = null,
+  options = {}
+) => {
+  const { intervalMs = 2000, maxRetries = 60 } = options; // Default: 2 mins total timeout
+  
+  // 1. Submit the task
+  if (onProgress) onProgress("Submitting task to queue...");
+  const taskRes = await api(`/gryd/task/${service}/${taskName}`, "POST", payload);
+  
+  const taskId = taskRes?.job?.task_id || taskRes?.task_id;
+  if (!taskId) {
+    throw new Error("Failed to retrieve task ID from the server response.");
+  }
+
+  // 2. Poll the status API
+  let attempts = 0;
+  let isComplete = false;
+  
+  while (!isComplete && attempts < maxRetries) {
+    attempts++;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    
+    const statusRes = await api(`/gryd/status/${taskId}`, "GET");
+    const currentStatus = statusRes?.status?.toLowerCase();
+    
+    // Trigger the callback to update the UI
+    if (onProgress && (statusRes?.message || currentStatus)) {
+      onProgress(statusRes.message || `Status: ${currentStatus}...`);
+    }
+
+    if (currentStatus === "success" || currentStatus === "completed") {
+      isComplete = true;
+      if (onProgress) onProgress("Task complete. Retrieving results...");
+    } else if (currentStatus === "failed" || currentStatus === "error") {
+      throw new Error(statusRes?.error || statusRes?.message || "Task failed on the server.");
+    }
+  }
+
+  if (!isComplete) {
+    throw new Error("Task timed out while waiting for completion.");
+  }
+
+  // 3. Fetch the final result
+  const resultRes = await api(`/gryd/result/${taskId}`, "GET");
+  
+  if (!resultRes || !resultRes.result) {
+    throw new Error("Failed to retrieve the final result data.");
+  }
+
+  return resultRes.result;
+};
+
+
 /* ---------------------------------------------------
    Exports
 --------------------------------------------------- */
@@ -373,12 +793,16 @@ export {
   getTaskStatus,
   fetchAudienceTasks,
   getTaskResult,
-  fetchPreSalesCampaigns,
-  fetchPostSalesCampaigns,
+  // fetchPreSalesCampaigns,
+  // fetchPostSalesCampaigns,
   fetchCampaignObjectives,
   fetchCampaignSummary,
-  fetchDealershipCampaigns,
+  // fetchDealershipCampaigns,
   fetchCampaignPerformanceSummary,
+  fetchCampaignLeads,
+  // fetchCampaignSessions, // <-- Exported here
+  fetchUserSessions,
+  // fetchActiveSessions,
   epochToIST,
   capitalize,
   getDealershipId,

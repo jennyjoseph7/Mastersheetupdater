@@ -1,35 +1,51 @@
 from time import time
 import os, sys
-# Add the autobot_agents root directory to path to find config
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+
+import pytz
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from .tatatele import CloudPhoneAPI, TATATELE_API_TOKEN, TATATELE_BASE_URL
 import config
 import json
+try:
+    import orjson
+    _dumps = lambda obj: orjson.dumps(obj).decode("utf-8")  # text frame for websockets
+    _loads = orjson.loads
+except ImportError:
+    _dumps = json.dumps
+    _loads = json.loads
 import base64
 import asyncio
 import logging
 import threading
-from ai_service import ai_service  
-import requests
+from ai_service import ai_service
+import aiohttp  # Async HTTP - much faster than requests
 import websockets
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, Blueprint
-from elevenlabs import ElevenLabs  
+from elevenlabs import ElevenLabs
 from typing import Dict, Any, Optional
-from pydub import AudioSegment
-import audioop
-import io
+import audioop  # Native C extension - fast audio processing
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp
+
 from utils import helpers as vhp
 import utils
 
+# Use uvloop for faster event loop (Linux/macOS only)
+try:
+    import uvloop
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+except ImportError:
+    pass  # uvloop not available, use default event loop
+
 logger = utils.get_logger(__name__)
+
+
 
 # ---- Config / env ----
 load_dotenv()
 API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_3f302b2e36acc353d040152b3d6c9bc7bf728955483bce75")
-AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_0501k747d7s6e3xv5t3xew1rn217")
+AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_5701ka8618cbfxcbdp4wg6xb3x23")
 TATATELE_PHONE_NUMBER = os.environ.get("TATATELE_PHONE_NUMBER", "918065251305")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
@@ -41,116 +57,129 @@ app = Blueprint("tatatelli", __name__)
 
 # Session manager for concurrent calls
 call_sessions: Dict[str, 'CallSession'] = {}
+# Thread lock for session management 
+session_lock = threading.Lock()
 
 
 # ---------- CallSession Class ----------
 
 def terminate_session(call_id: str):
-    if call_id in call_sessions:
-        session = call_sessions[call_id]
-        session.stop_event.set()
-        del call_sessions[call_id]
-        logger.info(f"[{call_id}] Session terminated")
-        return True
-    logger.info(f"[{call_id}] Session not found ignoring...")
+    with session_lock:
+        if call_id in call_sessions:
+            session = call_sessions[call_id]
+            session.stop_event.set()
+            del call_sessions[call_id]
+            logger.info(f"[{call_id}] Session terminated")
+            return True
+        logger.info(f"[{call_id}] Session not found ignoring...")
+        return False
 
-    return False
+def terminate_sessions_for_phone(customer_number: str, agent_number: str, exclude_session_id: str = None):
+    """Terminate any existing sessions for this phone number combination."""
+    phone_key = f"{customer_number}_{agent_number}"
+    sessions_to_terminate = []
+
+    logger.info(f"Checking for existing sessions for phone {phone_key} to terminate (exclude_session_id={exclude_session_id})")
+
+    with session_lock:
+        for session_id, session in list(call_sessions.items()):
+            if session_id == exclude_session_id:
+                continue
+            session_phone_key = f"{session.session_data.get('phone_number', '')}_{session.session_data.get('agent_number', '')}"
+            if session_phone_key == phone_key:
+                sessions_to_terminate.append(session_id)
+
+    # Terminate outside the lock to avoid deadlock (terminate_session also acquires lock)
+    for session_id in sessions_to_terminate:
+        logger.info(f"[{session_id}] Terminating old session for phone {phone_key}")
+        terminate_session(session_id)
+
+
+    return len(sessions_to_terminate)
 
 class CallSession:
     """Manages state for a single call, enabling concurrent call support."""
 
-    def __init__(self, call_id: str):
+    def __init__(self, call_id: str, ws=None):
         self.call_id = call_id
         self.bridge_started = False
-        self.dave_ws: Optional[websockets.WebSocketClientProtocol] = None
+        self.dave_ws: Optional[websockets.WebSocketClientProtocol] = ws
         self.stream_sid: Optional[str] = None
         self.media_buffer = []
         self.processed_agent_responses = set()
         self.processed_audio_events = set()
         self.stop_event = asyncio.Event()
         self.session_data = {}
+        self.call_sid = None
         logger.info(f"[{self.call_id}] Session created")
 
-    async def intent_handler(self, user_message, model_identifier="gcp-gemini-2.5-flash-lite"):
-        """Detects if user wants to end call. Returns True/False."""
-        system_prompt = """You are an intent-detection model.
-        Return ONLY JSON: {"end_call": true/false}
-        true → STOP call (cut, hangup, bye, end, not interested, busy, later)
-        false → CONTINUE call
-        No explanations, only valid JSON."""
 
-        user_prompt = f"User said: '{user_message.get('user_transcript', '')}'"
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-
-        try:
-            output = ai_service.get_llm_response(messages=messages, model_identifier=model_identifier)
-            logger.info(f"[{self.call_id}] Intent detection raw output: %s", output)
-            result = json.loads(output.strip())
-            return result.get("end_call", False)
-        except Exception as e:
-            logger.error(f"[{self.call_id}] Intent parsing error: %s", e)
-            return False
-
-    async def trigger_goodbye_and_hangup(self):
-        """Send goodbye message to bot, wait for speech, then hangup."""
-        if not self.dave_ws:
-            logger.error(f"[{self.call_id}] Cannot hangup: missing dave_ws")
+    async def hangup_tatatele_call(self):
+        """Hang up the TataTele phone call via their REST API."""
+        hangup_id =  self.call_sid 
+        logger.info(f"[{self.call_id}] Attempting to hang up TataTele call with SID: {hangup_id}")
+        if not hangup_id:
+            logger.warning(f"[{self.call_id}] No call ID available for TataTele hangup")
             return
-
-        logger.info(f"[{self.call_id}] END INTENT DETECTED - Sending goodbye message")
-
-        # Override agent prompt for goodbye
-        goodbye_msg = {
-            "type": "conversation_config_override",
-            "conversation_config_override": {
-                "agent": {
-                    "prompt": "User wants to end call. Say polite goodbye like 'Thank you for calling, have a great day! Goodbye.' then STOP talking completely. Do not continue conversation.",
-                    "first_message": None
-                }
-            }
-        }
-
         try:
-            await self.dave_ws.send(json.dumps(goodbye_msg))
-            logger.info(f"[{self.call_id}] Goodbye message sent to ElevenLabs")
-
-            # Wait 6 seconds for goodbye audio to play
-            await asyncio.sleep(6)
-
-            # Hangup call
-            tatatele_client.hangup_call(self.call_id)
-            logger.info(f"[{self.call_id}] Call hung up after goodbye speech")
-
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, tatatele_client.hangup_call, hangup_id)
+            logger.info(f"[{self.call_id}] TataTele hangup response: {result}")
         except Exception as e:
-            logger.error(f"[{self.call_id}] Goodbye/hangup error: %s", e)
+            logger.error(f"[{self.call_id}] Failed to hangup TataTele call: {e}")
 
     async def get_signed_url(self):
+        """Fetch signed URL using async aiohttp - non-blocking."""
+        logger.info(f"{self.session_data} Fetching signed URL for ElevenLabs connection")
+        user_number = self.session_data.get("phone_number")
+        agent_number = self.session_data.get("agent_number")
+        
         agent_id = self.session_data.get("agent_id") or AGENT_ID
         if not agent_id or not API_KEY:
             raise RuntimeError("Missing AGENT_ID or API_KEY")
         url = f"https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id={agent_id}"
-        resp = requests.get(url, headers={"xi-api-key": API_KEY}, timeout=10)
-        if resp.status_code != 200:
-            logger.error(f"[{self.call_id}] Failed to get signed url: %s %s", resp.status_code, resp.text)
-            raise Exception(f"Failed to get signed URL: {resp.status_code} {resp.text}")
-        j = resp.json()
-        return j["signed_url"]
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers={"xi-api-key": API_KEY}, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status != 200:
+                    text = await resp.text()
+                    logger.error(f"[{self.call_id}] Failed to get signed url: %s %s", resp.status, text)
+                    raise Exception(f"Failed to get signed URL: {resp.status} {text}")
+                j = await resp.json()
+                logger.info("elevellabs session url {}".format(j))
+                return j["signed_url"]
 
     @staticmethod
     def pcm16_16k_to_mulaw_8k_base64(b64_pcm16_16k):
-        """Convert 16kHz PCM16 base64 → 8kHz μ-law base64 for telephony."""
+        """Convert 16kHz PCM16 base64 → 8kHz μ-law base64 for telephony.
+        Uses audioop only (C extension) - ~10x faster than pydub."""
         return b64_pcm16_16k
         try:
             raw_pcm16 = base64.b64decode(b64_pcm16_16k)
-            pcm16_8k = audioop.ratecv(raw_pcm16, 2, 1, 16000, 8000, None)[0]
+            # Downsample 16kHz → 8kHz using audioop (native C, very fast)
+            pcm16_8k, _ = audioop.ratecv(raw_pcm16, 2, 1, 16000, 8000, None)
+            # Convert linear PCM to μ-law
             mulaw = audioop.lin2ulaw(pcm16_8k, 2)
             return base64.b64encode(mulaw).decode("utf-8")
         except Exception as e:
-            logger.error("Audio convert error: %s", e)
+            logger.error("Audio convert error (pcm→mulaw): %s", e)
             return None
+
+    @staticmethod
+    def mulaw_8k_to_pcm16_16k_base64(b64_mulaw_8k):
+        """Convert 8kHz μ-law base64 → 16kHz PCM16 base64 for ElevenLabs.
+        Uses audioop only (C extension) - ~10x faster than pydub."""
+        try:
+            mulaw_data = base64.b64decode(b64_mulaw_8k)
+            # Convert μ-law to linear PCM (16-bit)
+            pcm16_8k = audioop.ulaw2lin(mulaw_data, 2)
+            # Upsample 8kHz → 16kHz
+            pcm16_16k, _ = audioop.ratecv(pcm16_8k, 2, 1, 8000, 16000, None)
+            return base64.b64encode(pcm16_16k).decode("utf-8")
+        except Exception as e:
+            logger.error("Audio convert error (mulaw→pcm): %s", e)
+            return None
+
 
     @staticmethod
     def extract_audio_b64_from_dave(msg: dict) -> str | None:
@@ -171,19 +200,13 @@ class CallSession:
         except Exception:
             return None
 
-    async def run_intent_check(self, user_message):
-        """Check intent and trigger goodbye + hangup if needed."""
-        is_end_intent = await self.intent_handler(user_message)
-
-        if is_end_intent:
-            logger.info(f"[{self.call_id}] CUT THE CALL INTENT DETECTED - Triggering goodbye sequence")
-            asyncio.create_task(self.trigger_goodbye_and_hangup())
-        else:
-            logger.info(f"[{self.call_id}] Intent: CONTINUE call")
 
     async def outbound_media_stream(self, wb):
         """Main media bridging logic for this call session."""
         logger.info(f"[{self.call_id}] Tatatele websocket accepted")
+
+        # Counter for audio chunks sent to ElevenLabs
+        chunks_sent_to_elevenlabs = [0]
 
         async def handle_tatatele_media_message(tt_msg: dict):
             payload_b64 = self.extract_media_payload_from_tatatele(tt_msg)
@@ -195,54 +218,205 @@ class CallSession:
                 self.stream_sid = tt_msg.get("streamSid")
                 logger.info(f"[{self.call_id}] *** EXTRACTED stream_sid from media: {self.stream_sid} ***")
 
-            # Buffer if Dave not ready, send immediately if ready
-            if self.dave_ws:
-                try:
-                    await self.dave_ws.send(json.dumps({"user_audio_chunk": payload_b64}))
-                except Exception as e:
-                    logger.error(f"[{self.call_id}] Failed to send to ElevenLabs %s", e)
-            else:
-                self.media_buffer.append(payload_b64)
-                logger.info(f"[{self.call_id}] BUFFERED media chunk (total={len(self.media_buffer)})")
-
-        async def handle_dave_message(raw_msg):
-            try:
-                if isinstance(raw_msg, bytes):
-                    raw_msg = raw_msg.decode("utf-8")
-                msg_data = json.loads(raw_msg)
-                logger.info(f"[{self.call_id}] <- RECEIVED ElevenLabs message: %s", msg_data.get("type"))
-            except:
+            # Convert μ-law 8kHz → PCM16 16kHz for ElevenLabs
+            converted_audio = payload_b64 #self.mulaw_8k_to_pcm16_16k_base64(payload_b64)
+            if not converted_audio:
+                logger.warning(f"[{self.call_id}] Audio conversion failed")
                 return
 
-            # Handle audio from ElevenLabs -> Tatatele
-            audio_b64 = self.extract_audio_b64_from_dave(msg_data)
-            if audio_b64 and self.stream_sid:
-                converted_audio = self.pcm16_16k_to_mulaw_8k_base64(
-                    audio_b64 if isinstance(audio_b64, str) else audio_b64.get("audio_base_64", "")
-                )
-                if converted_audio:
+            # Buffer if Dave not ready, send immediately if ready
+            if self.dave_ws and not self.stop_event.is_set():
+                try:
+                    await self.dave_ws.send(_dumps({"user_audio_chunk": converted_audio}))
+                    chunks_sent_to_elevenlabs[0] += 1
+                    if chunks_sent_to_elevenlabs[0] % 50 == 0:  # Log every 50 chunks
+                        logger.info(f"[{self.call_id}] Sent {chunks_sent_to_elevenlabs[0]} audio chunks to ElevenLabs")
+                except websockets.exceptions.ConnectionClosed:
+                    logger.warning(f"[{self.call_id}] ElevenLabs connection closed, stopping sends (sent {chunks_sent_to_elevenlabs[0]} chunks)")
+                    self.dave_ws = None
+                    self.stop_event.set()
+                except Exception as e:
+                    logger.error(f"[{self.call_id}] Failed to send to ElevenLabs %s", e)
+                    self.dave_ws = None
+            elif not self.stop_event.is_set():
+                self.media_buffer.append(converted_audio)
+                logger.info(f"[{self.call_id}] BUFFERED media chunk (total={len(self.media_buffer)})")
+
+        # Buffer for audio received before stream_sid is ready
+        audio_out_buffer = []
+        chunks_sent_to_tatatele = [0]
+        audio_events_received = [0]
+
+        async def send_audio_to_tatatele(audio_b64: str):
+            """Convert and send audio to TataTele, or buffer if not ready."""
+            converted_audio = self.pcm16_16k_to_mulaw_8k_base64(audio_b64)
+            if not converted_audio:
+                logger.warning(f"[{self.call_id}] Audio conversion to TataTele failed")
+                return
+
+            if self.stream_sid:
+                # Flush any buffered audio first
+                while audio_out_buffer:
+                    buffered = audio_out_buffer.pop(0)
                     try:
                         msg_out = {
                             "event": "media",
                             "streamSid": self.stream_sid,
-                            "media": {"payload": converted_audio}
+                            "media": {"payload": buffered}
                         }
-                        await wb.send(json.dumps(msg_out))
-                        logger.info(f"[{self.call_id}] -> SENT audio TO Tatatele (len={len(converted_audio)})")
+                        await wb.send(_dumps(msg_out))
                     except Exception as e:
-                        logger.error(f"[{self.call_id}] Failed to send to Tatatele: %s", e)
+                        logger.error(f"[{self.call_id}] Failed to flush buffered audio: %s", e)
+
+                # Send current audio
+                try:
+                    msg_out = {
+                        "event": "media",
+                        "streamSid": self.stream_sid,
+                        "media": {"payload": converted_audio}
+                    }
+                    await wb.send(_dumps(msg_out))
+                    chunks_sent_to_tatatele[0] += 1
+                    if chunks_sent_to_tatatele[0] % 50 == 0:  # Log every 50 chunks
+                        logger.info(f"[{self.call_id}] Sent {chunks_sent_to_tatatele[0]} audio chunks to TataTele")
+                except Exception as e:
+                    logger.error(f"[{self.call_id}] Failed to send to Tatatele: %s", e)
+            else:
+                # Buffer until stream_sid is available
+                audio_out_buffer.append(converted_audio)
+                logger.debug(f"[{self.call_id}] Buffered outgoing audio (total={len(audio_out_buffer)})")
+
+        async def send_clear_to_tatatele():
+            """Send clear event to stop any buffered audio on TataTele side."""
+            if self.stream_sid:
+                try:
+                    clear_msg = {
+                        "event": "clear",
+                        "streamSid": self.stream_sid
+                    }
+                    await wb.send(_dumps(clear_msg))
+                    logger.info(f"[{self.call_id}] -> SENT clear TO Tatatele (interruption)")
+                except Exception as e:
+                    logger.error(f"[{self.call_id}] Failed to send clear: %s", e)
+            # Also clear our outgoing buffer
+            audio_out_buffer.clear()
+
+        async def handle_dave_message(raw_msg):
+            try:
+                msg_data = _loads(raw_msg)
+                msg_type = msg_data.get("type")
+                # Log all messages except frequent ones
+                if msg_type not in ("audio", "internal_tentative_agent_response", "vad"):
+                    logger.info(f"[{self.call_id}] <- ElevenLabs: {msg_type}")
+            except Exception as e:
+                logger.error(f"[{self.call_id}] Failed to parse ElevenLabs message: %s", e)
                 return
 
-            # Handle user transcripts for intent detection
-            if msg_data.get("type") == "user_transcript":
-                return
-                user_t = msg_data.get("user_transcription_event", {})
-                logger.info(f"[{self.call_id}] User said: %s", user_t)
+            msg_type = msg_data.get("type")
 
-            elif msg_data.get("type") == "agent_response":
-                return
-                logger.info(f"[{self.call_id}] Agent response (text): %s",
-                          msg_data.get("agent_response_event", {}).get("agent_response"))
+            # ===== AUDIO EVENT - Main audio from agent =====
+            if msg_type == "audio":
+                audio_events_received[0] += 1
+                audio_event = msg_data.get("audio_event", {})
+                audio_b64 = audio_event.get("audio_base_64")
+
+                # Log first few audio events to debug format
+                if audio_events_received[0] <= 3:
+                    logger.info(f"[{self.call_id}] Audio event #{audio_events_received[0]}: msg_keys={list(msg_data.keys())}, audio_event_keys={list(audio_event.keys()) if audio_event else 'None'}, has_audio={bool(audio_b64)}, audio_len={len(audio_b64) if audio_b64 else 0}")
+
+                if audio_b64:
+                    await send_audio_to_tatatele(audio_b64)
+                else:
+                    # Try alternative field name - some API versions use "audio" directly
+                    audio_b64 = msg_data.get("audio")
+                    if audio_b64 and isinstance(audio_b64, str):
+                        logger.info(f"[{self.call_id}] Found audio in 'audio' field")
+                        await send_audio_to_tatatele(audio_b64)
+                    else:
+                        logger.warning(f"[{self.call_id}] Audio event has no audio data: {list(msg_data.keys())}")
+
+            #  INTERRUPTION - User interrupted agent - Importat
+            elif msg_type == "interruption":
+                logger.info(f"[{self.call_id}] USER INTERRUPTED - clearing audio")
+                await send_clear_to_tatatele()
+
+            # CONVERSATION INITIATION METADATA 
+            elif msg_type == "conversation_initiation_metadata":
+                metadata = msg_data.get("conversation_initiation_metadata_event", {})
+                conv_id = metadata.get("conversation_id")
+                logger.info(f"[{self.call_id}] Conversation started: {conv_id}")
+
+            #  USER TRANSCRIPT 
+            elif msg_type == "user_transcript":
+                user_event = msg_data.get("user_transcription_event", {})
+                transcript = user_event.get("user_transcript", "")
+                is_final = user_event.get("is_final", False)
+                if is_final and transcript:
+                    logger.info(f"[{self.call_id}] User said: {transcript}")
+
+            # AGENT RESPONSE (text) 
+            elif msg_type == "agent_response":
+                agent_event = msg_data.get("agent_response_event", {})
+                response = agent_event.get("agent_response", "")
+                if response:
+                    logger.info(f"[{self.call_id}] Agent: {response}")
+
+            #  AGENT RESPONSE CORRECTION 
+            elif msg_type == "agent_response_correction":
+                correction_event = msg_data.get("agent_response_correction_event", {})
+                original = correction_event.get("original_agent_response", "")
+                corrected = correction_event.get("corrected_agent_response", "")
+                logger.info(f"[{self.call_id}] Agent corrected: '{original}' -> '{corrected}'")
+
+            # ===== PING - Keep alive =====
+            elif msg_type == "ping":
+                ping_event = msg_data.get("ping_event", {})
+                event_id = ping_event.get("event_id")
+                # Respond with pong
+                try:
+                    await self.dave_ws.send(_dumps({"type": "pong", "event_id": event_id}))
+                except Exception as e:
+                    logger.error(f"[{self.call_id}] Failed to send pong: %s", e)
+
+            #  CLIENT TOOL CALL 
+            elif msg_type == "agent_tool_response":
+                tool_event = msg_data.get("agent_tool_response", {})
+                tool_name = tool_event.get("tool_name", "unknown")
+                logger.info(f"[{self.call_id}] Tool call requested: {tool_name}")
+                # Handle end-call tool calls from ElevenLabs agent
+                if tool_name in ("end_call", "hang_up", "hangup", "end_conversation", "disconnect"):
+                    logger.info(f"[{self.call_id}] Agent requested call end via tool: {tool_name} - triggering hangup")
+                    self.stop_event.set()
+
+            #  VAD (Voice Activity Detection) 
+            elif msg_type == "vad_score":
+                vad_event = msg_data.get("vad_score", {})
+                vad_type = vad_event.get("type")  # "start" or "stop"
+                logger.debug(f"[{self.call_id}] VAD: {vad_type}")
+
+            #  INTERNAL TENTATIVE AGENT RESPONSE 
+            elif msg_type == "internal_tentative_agent_response":
+                # Ignore tentative responses
+                pass
+
+            #  ERROR EVENT 
+            elif msg_type == "error":
+                error_event = msg_data.get("error", {}) or msg_data
+                error_code = error_event.get("code", "unknown")
+                error_message = error_event.get("message", str(error_event))
+                logger.error(f"[{self.call_id}] ElevenLabs ERROR: code={error_code}, message={error_message} - triggering call hangup")
+                self.stop_event.set()
+
+            #  CONVERSATION END 
+            elif msg_type == "conversation_end":
+                end_event = msg_data.get("conversation_end_event", {})
+                reason = end_event.get("reason", "unknown")
+                logger.info(f"[{self.call_id}] ElevenLabs conversation ended: {reason} - triggering call hangup")
+                self.stop_event.set()
+
+            #  UNKNOWN EVENT 
+            else:
+                logger.info(f"[{self.call_id}] Unknown ElevenLabs event: {msg_type} - {msg_data}")
 
         try:
             # CONNECT TO ELEVENLABS IMMEDIATELY
@@ -258,25 +432,48 @@ class CallSession:
                 "user_id": self.session_data.get("session_id") or self.session_data.get("user_id")
             }
 
+            # Set language presets
+            config_data["conversation_config"] = {
+                "language_presets": {
+                    "en": {
+                        "overrides": {
+                            "agent": {
+                                "first_message": "Hello, how can I help?",
+                                "language": "en"
+                            }
+                        }
+                    },
+                    "hi": {
+                        "overrides": {
+                            "agent": {
+                                "first_message": "",
+                                "language": "hi"
+                            }
+                        }
+                    }
+                }
+            }
+
             if self.session_data.get("prompt"):
                 config_data["conversation_config_override"] = {
                     "agent": {
                         "prompt": {"prompt":self.session_data.get("prompt", "")},
-                        "first_message": self.session_data.get("first_message"),
+                        "first_message": self.session_data.get("voice_first_message"),
                         "language": self.session_data.get("language", "en")
                     }
                 }
                 
-            await self.dave_ws.send(json.dumps(config_data))
+                
+            await self.dave_ws.send(_dumps(config_data))
 
             # Send buffered media immediately - not sure why jay added?.
-            for chunk in self.media_buffer:   
+            for chunk in self.media_buffer:
                 logger.info(f"[{self.call_id}] FLUSHING buffered chunk (len={len(chunk)})")
                 try:
-                    await self.dave_ws.send(json.dumps({"user_audio_chunk": chunk}))
+                    await self.dave_ws.send(_dumps({"user_audio_chunk": chunk}))
                     logger.info(f"[{self.call_id}] -> FLUSHED buffered chunk")
-                except:
-                    pass
+                except Exception as e:
+                    logger.warning(f"[{self.call_id}] Failed to flush buffered chunk: {e}")
             self.media_buffer.clear()
 
             # Start parallel readers
@@ -284,7 +481,7 @@ class CallSession:
                 while True:
                     try:
                         raw = await wb.recv()
-                        tt_msg = json.loads(raw)
+                        tt_msg = _loads(raw)
                         ev = tt_msg.get("event")
 
                         if ev == "media":
@@ -292,29 +489,33 @@ class CallSession:
                         elif ev == "start":
                             logger.info(f"[{self.call_id}] START EVENT: {tt_msg}")
                             self.stream_sid = tt_msg.get("start", {}).get("streamSid", self.stream_sid)
-                            # params = tt_msg.get("start", {}).get("customParameters", {}) or {}
-                            # logger.info(f"[{self.call_id}] Got start event with params: %s", params)
-
-                            # # Send config to ElevenLabs
-                            # config = {
-                            #     "type": "conversation_initiation_client_data",
-                            #     "dynamic_variables": params.get("dynamic_variables", {}),
-                            #     "user_id": params.get("session_id") or params.get("user_id"),
-                            #     "conversation_config_override": {
-                            #         "agent": {
-                            #             "prompt": params.get("prompt", ""),
-                            #             "first_message": params.get("first_message"),
-                            #             "language": params.get("language", "en")
-                            #         }
-                            #     }
-                            # }
-                            # await self.dave_ws.send(json.dumps(config))
-                            # logger.info(f"[{self.call_id}] *** SENT CONFIG TO AGENT ***")
+                            self.call_sid = tt_msg.get("start", {}).get("callSid") #use in hangup call for tatatele
+                            # Flush any buffered outgoing audio now that we have stream _sid
+                            while audio_out_buffer:
+                                buffered = audio_out_buffer.pop(0)
+                                try:
+                                    msg_out = {
+                                        "event": "media",
+                                        "streamSid": self.stream_sid,
+                                        "media": {"payload": buffered}
+                                    }
+                                    await wb.send(_dumps(msg_out))
+                                    logger.debug(f"[{self.call_id}] -> FLUSHED buffered outgoing audio")
+                                except Exception as e:
+                                    logger.error(f"[{self.call_id}] Failed to flush outgoing audio: %s", e)
 
                         elif ev == "stop":
                             logger.info(f"[{self.call_id}] Call ended by platform")
                             break
 
+                        elif ev == "mark":
+                            # Marks indicate playback position
+                            mark_name = tt_msg.get("mark", {}).get("name")
+                            logger.debug(f"[{self.call_id}] Mark: {mark_name}")
+
+                    except asyncio.CancelledError:
+                        logger.info(f"[{self.call_id}] Tatatele reader cancelled")
+                        raise  # Re-raise to properly exit
                     except Exception as e:
                         logger.error(f"[{self.call_id}] Tatatele reader error: %s", e)
                         break
@@ -323,14 +524,34 @@ class CallSession:
                 try:
                     async for raw in self.dave_ws:
                         await handle_dave_message(raw)
+                except websockets.exceptions.ConnectionClosed as e:
+                    logger.error(f"[{self.call_id}] ElevenLabs WS closed: code={e.code}, reason={e.reason}")
                 except Exception as e:
                     logger.error(f"[{self.call_id}] Dave reader error: %s", e)
+                finally:
+                    # Signal that ElevenLabs connection closed
+                    self.stop_event.set()
+                    logger.info(f"[{self.call_id}] ElevenLabs connection closed, signaling stop")
 
-            # Run both readers
-            done, pending = await asyncio.wait([tatatele_reader(), dave_reader()], return_when=asyncio.FIRST_COMPLETED)
-            for t in pending:
-                t.cancel()
-                terminate_session(self.call_id)
+            # Run both readers - cancel the other when one exits
+            tatatele_task = asyncio.create_task(tatatele_reader())
+            dave_task = asyncio.create_task(dave_reader())
+
+            done, pending = await asyncio.wait(
+                [tatatele_task, dave_task],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+
+            # Cancel remaining tasks
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+
+            logger.info(f"[{self.call_id}] Both readers stopped")
+            logger.info(f"[{self.call_id}] STATS: Sent {chunks_sent_to_elevenlabs[0]} chunks to ElevenLabs, received {audio_events_received[0]} audio events, sent {chunks_sent_to_tatatele[0]} chunks to TataTele")
 
         except Exception as e:
             logger.exception(f"[{self.call_id}] Main error: %s", e)
@@ -338,10 +559,15 @@ class CallSession:
             self.processed_agent_responses.clear()
             try:
                 if self.dave_ws:
+                    ## TODO send ws.send FLAG TO CLOSE. to say lets close all connections from the room
                     await self.dave_ws.close()
                     self.dave_ws = None
-            except:
-                pass
+            except Exception as e:
+                logger.warning(f"[{self.call_id}] Error closing ElevenLabs WebSocket: {e}")
+
+            # Hang up the TataTele phone call so the user isn't left on a dead line
+            await self.hangup_tatatele_call()
+
             logger.info(f"[{self.call_id}] Bridge closed")
 
             # Cleanup session
@@ -354,6 +580,7 @@ class CallSession:
             logger.info(f"[{self.call_id}] connecting to {url}")
             try:
                 ws = await websockets.connect(url)
+                self.external_ws = ws
                 logger.info(f"[{self.call_id}] connected to {url}")
                 self.bridge_started = True
             except Exception as conn_error:
@@ -374,8 +601,8 @@ class CallSession:
             try:
                 if ws:
                     await ws.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[{self.call_id}] Error closing external WebSocket: {e}")
             self.bridge_started = False
             logger.info(f"[{self.call_id}] external websocket closed")
 
@@ -384,6 +611,7 @@ class CallSession:
 
 def run_async_in_thread(coro):
     """Run an async coroutine in a background thread with its own event loop."""
+    #store reference to file/db - status in db then based on status then terminate
     def thread_target():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -395,53 +623,6 @@ def run_async_in_thread(coro):
     logger.info("Starting async task in background thread")
     thread = threading.Thread(target=thread_target, daemon=True)
     thread.start()
-
-
-# -----------------------------------------
-# Tata Tele Payload Normalizer
-# -----------------------------------------
-def tatatele_status_map(payload: bytes) -> Dict[str, Any]:
-    TATA_TELE_STATUS_MAP = {
-        "failed": "error",
-        "no-answer": "failed",
-        "canceled": "failed",
-        "missed": "failed",
-        "busy": "failed",
-        "queued": "queued",
-        "initiated": "attempted",
-        "ringing": "reached",
-        "answered": "contacted",
-        "in-progress": "contacted",
-        "completed": "contacted",
-        "Answered by customer": "contacted",
-        "Answered by agent": "queued"
-
-    }
-
-    if not isinstance(payload, (bytes, bytearray)):
-        raise TypeError("Payload must be bytes")
-
-    try:
-        json_str = payload.decode("utf-8")
-    except UnicodeDecodeError:
-        raise ValueError("Invalid UTF-8 JSON payload")
-
-    try:
-        data = json.loads(json_str)
-    except json.JSONDecodeError:
-        raise ValueError("Payload is not valid JSON")
-
-    if not isinstance(data, dict):
-        raise ValueError("JSON must be a dict")
-
-    raw_status = data.get("call_status") or data.get("status")
-    if raw_status is None:
-        raise KeyError("Missing 'call_status' field")
-
-    mapped_status = TATA_TELE_STATUS_MAP.get(raw_status, raw_status)
-    data["status"] = raw_status  # Preserve original
-    data["call_status"] = mapped_status
-    return data
 
 
 def calculate_elevenlabs_billing_usd(callback_data):
@@ -500,16 +681,16 @@ def calculate_elevenlabs_billing_usd(callback_data):
     is_burst = charging.get('is_burst', False)
 
     # Call outcome
-    analysis = callback_data.get('analysis', {})
+    analysis = callback_data.get('analysis', {}) or {}
     call_successful = analysis.get('call_successful', 'unknown')
 
     # Error information (if any)
-    error = metadata.get('error', {})
+    error = metadata.get('error', {}) or {}
     error_code = error.get('code', None)
     error_reason = error.get('reason', None)
 
     # RAG usage
-    rag_usage = metadata.get('rag_usage', {})
+    rag_usage = metadata.get('rag_usage', {}) or {}
     rag_usage_count = rag_usage.get('usage_count', 0)
 
     # Construct complete billing dictionary
@@ -593,33 +774,45 @@ def calculate_elevenlabs_billing_usd(callback_data):
     return billing_breakdown
 
 def make_call_tatatele(session_data, *args, **kwargs):
- 
+
     logger.info(f"Making Tatatele call with session data: {session_data}")
     session_data = session_data or {}
     agent_number = session_data.get("agent_number", TATATELE_PHONE_NUMBER)
-    caller_id = session_data.get("caller_id", TATATELE_PHONE_NUMBER)
-    room_id = session_data.get("room_id", "default_room")
+    caller_id = session_data.get("agent_number", TATATELE_PHONE_NUMBER)
     session_id = session_data.get("session_id")
     customer_number = session_data.get("phone_number", "918850988794") #for test
+    tatatele_phone_number_api_key = session_data.get("provider_credentials", {}).get('tatatele_phone_number_api_key')
+
     session_started = False
 
-    def start_session(call_id):  
-        print('Starting session with call_id:', call_id)
-        if call_id not in call_sessions:
+    session_data["agent_number"] = agent_number
+    session_data["caller_id"] = caller_id
+
+    # Terminate any old sessions for this phone number to prevent duplicates
+    terminated = terminate_sessions_for_phone(customer_number, agent_number, exclude_session_id=session_id)
+    if terminated > 0:
+        logger.info(f"Terminated {terminated} old session(s) for {customer_number}/{agent_number}")
+
+    def start_session(call_id):
+        logger.info(f'Starting session with call_id: {call_id}')
+        with session_lock:
+            if call_id in call_sessions:
+                logger.info(f"[{call_id}] Session already exists, bridge likely running")
+                return True
+
             session = CallSession(call_id)
+            # Ensure phone numbers are in session_data for tracking
             session.session_data = session_data
             call_sessions[call_id] = session
 
-            logger.info(f"[{call_id}] Starting Connection to websocket bridge")
-            external_wss = f"{config.AUTOCRM_WEBSOCKET_BASE_URL}/tatatele/{customer_number}/{agent_number}"
+        logger.info(f"[{call_id}] Starting Connection to websocket bridge")
+        external_wss = f"{config.AUTOCRM_WEBSOCKET_BASE_URL}/tatatele/{customer_number}/{agent_number}_{customer_number}"
 
-            async def start_bridge():
-                await session.connect_external_websocket(external_wss)
+        async def start_bridge():
+            await session.connect_external_websocket(external_wss)
 
-            run_async_in_thread(start_bridge())
-        else:
-            logger.info(f"[{call_id}] Session already exists, bridge likely running")
-
+        run_async_in_thread(start_bridge())
+        #we have to check how to disconnect socket from elevanlabs -  
         return True
 
     if session_id and not session_started:
@@ -630,11 +823,24 @@ def make_call_tatatele(session_data, *args, **kwargs):
         response = tatatele_client.click_to_call_support(
             caller_id,
             customer_number,
-            custom_id= session_id #custom_identifier
+            custom_id= session_id, #custom_identifier session_id in this case
+            api_key = tatatele_phone_number_api_key
         )
 
         logger.info(f"Tatatele originate response: {response}")
         call_id = response.get('ref_id')
+        
+        # Store TataTele ref_id so we can hang up the call later for hangup call
+        # if call_id:
+        #     session_data['tatatele_ref_id'] = call_id
+        #     # Also set directly on the session object in call_sessions,
+        #     # in case session.session_data is a different dict (e.g. session already existed)
+        #     with session_lock:
+        #         session_key = session_id or call_id
+        #         existing_session = call_sessions.get(session_key)
+        #         if existing_session:
+        #             existing_session.session_data['tatatele_ref_id'] = call_id
+
         if call_id and not session_started:
             logger.info(f"No session id provider starting session with call_id: {call_id}")
             start_session(call_id)
@@ -648,6 +854,53 @@ def make_call_tatatele(session_data, *args, **kwargs):
     except Exception as exc:
         logger.exception("Tatatele call initiation failed")
         return {"error": str(exc)}
+
+
+# -----------------------------------------
+# Tata Tele Payload Normalizer
+# -----------------------------------------
+def tatatele_status_map(payload: bytes) -> Dict[str, Any]:
+    TATA_TELE_STATUS_MAP = {
+        "failed": "error",
+        "no-answer": "failed",
+        "canceled": "failed",
+        "missed": "failed",
+        "busy": "failed",
+        "queued": "queued",
+        "initiated": "attempted",
+        "ringing": "reached",
+        "answered": "contacted",
+        "in-progress": "contacted",
+        "completed": "contacted",
+        "Answered by customer": "contacted",
+        "Answered by agent": "reached"
+
+    }
+
+    if not isinstance(payload, (bytes, bytearray)):
+        raise TypeError("Payload must be bytes")
+
+    try:
+        json_str = payload.decode("utf-8")
+    except UnicodeDecodeError:
+        raise ValueError("Invalid UTF-8 JSON payload")
+
+    try:
+        data = json.loads(json_str)
+    except json.JSONDecodeError:
+        raise ValueError("Payload is not valid JSON")
+
+    if not isinstance(data, dict):
+        raise ValueError("JSON must be a dict")
+
+    raw_status = data.get("call_status") or data.get("status")
+    if raw_status is None:
+        raise KeyError("Missing 'call_status' field")
+
+    mapped_status = TATA_TELE_STATUS_MAP.get(raw_status, raw_status)
+    data["status"] = raw_status  # Preserve original
+    data["call_status"] = mapped_status
+    return data
 
 
 
@@ -664,7 +917,7 @@ def create_stream_url(*args, **kwargs):
 
     from_number = data.get("from_number")[1:]
     to_number = data.get("to_number")[1:]
-    wss_url = f"{base_ws_url}/tatatele/{from_number}/{to_number}"
+    wss_url = f"{base_ws_url}/tatatele/{from_number}_{to_number}/{to_number}"
 
     logger.info(f"Generated wss_url: {wss_url}")
     return jsonify({
@@ -688,7 +941,6 @@ def outbound_call(*args, **kwargs):
 
 @app.route("/smartflo/webhook", methods=["POST"])
 def smartflo_webhook():
-    #from voice import gryd_tasks
     raw = request.get_data()
     payload = tatatele_status_map(raw)
 
@@ -701,31 +953,34 @@ def smartflo_webhook():
     status = payload.get("call_status")
 
     logger.info(f"[{call_id}] Incoming payload: {json.dumps(payload, indent=4)}")
-
-    if  payload ["status"] in ["Answered by customer"]:
-        #start_session(call_id, {"room_id":"ambal_auto"})
-        #patch the statuss
-        #gryd_tasks.post_billing_object(status, session_id)
-        pass
-    elif status in ['failed', 'canceled', 'no-answer', 'missed', 'busy', 'completed']:
+    import gryd_tasks
+    if  status in ["contacted"]: #after call ended
+        session_model = config.AutocrmModel(config.SESSION_MODEL_NAME, logger = logger )
+        session_model.update(session_id, {"call_recording": payload.get("recording_url")}) #add more attributes when needed
+        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = session_id,  **{"status": status})
+    elif status in ["reached"]: # as soon as call is answered 
+        gryd_tasks.post_billing_object(status, session_id)
+        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = session_id,  **{"status": status})
+    elif status in ['failed', 'canceled', 'missed', 'busy', 'completed']:
         logger.info(f"[{call_id}] Call ended or failed - cleaning up session")
 
         # Cleanup session
-        #terminate_session(call_id)
-
-        # Post actions (assuming session_id is needed from somewhere)
-        # if session_id:
-        #     gryd_tasks.post_actions(session_id)
+        terminate_session(call_id)
+        # Also try with session_id in case that was used as the key
+        if session_id and session_id != call_id:
+            terminate_session(session_id)
 
     return jsonify({"status": status})
 
 
 @app.route("/tatatele-conversation", methods=["POST"])
 def process():
-    # secret - wsec_ca35c4c015f51dd09074893f1986484145df6c3e662311ce675f4892ffbf155e
     payload = request.get_json()
 
     logger.info(f"Processing payload: {json.dumps(payload, indent=4)}")
+
+    if payload.get("full_audio"):
+        return jsonify({"status": "ignored", "message": "Full audio payloads are ignored to save bandwidth"})
 
     data = payload.get("data", {})
 
@@ -745,13 +1000,59 @@ def process():
     xx = gryd_tasks.post_billing_object("completed", session_id, duration)  # call it in async
 
     logger.info(f"Billing record created: {xx}")
-
+    session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time()))
+    transcript_summary= data.get("analysis",{}).get("transcript_summary")
+    logger.info(f"Transcript summary: {transcript_summary}")
     logger.info(f"Triggering post history and actions for session_id: {session_id}")
-    gryd_tasks.post_history(data)
-    gryd_tasks.post_actions(session_id)
+
+    gryd_tasks.post_history(session_id, session_history)
+    
+    gryd_tasks.end_session(**{
+        "session_id": session_id,
+        "additional_dict":{
+            "history": session_history,
+            "status": "completed",
+            "summary": transcript_summary
+        }
+    })
+    
+    # gryd_tasks.post_actions(session_id) #calling in end_session
 
     return jsonify({"status": "processed"})
 
 
+def format_transcript(transcript, start_time_unix):
+    from datetime import datetime
+    session_history = []
+    if not transcript:
+        return []
+    func = lambda x: datetime.fromtimestamp(start_time_unix+float(x), tz=pytz.timezone("UTC")).strftime("%Y-%m-%d %I:%M:%S %p %z")
+    for msg in transcript:
+        session_history.append({
+            "role":msg.get('role'),
+            "message":msg.get('message','').replace('.','') if msg.get('message') else '',
+            "timestamp": func(msg.get('time_in_call_secs',0.0))
+        })
+    
+    return session_history
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)
+
+
+
+    # make_call_tatatele - session_data - prompt, agent, user numbers etc.
+
+    # 1. connect_external_websocket
+    #     - connecting to go server where 11lab response are sent
+    #     - connecting to 11labs websocket and starting the streaming
+    #         1. we send initial config - prompt, user_id, dynamic variables etc.
+    #         2. wait for tatatele to start call and recieve buffer as soon as call is connected
+    
+
+    #credentials 
+    #elevanlanbs labs
+
+
+

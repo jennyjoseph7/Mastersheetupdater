@@ -7,6 +7,8 @@ from ai_service import ai_service_app
 from db_routes import db_routes, ai_service_app
 from voice.voice.providers.twilio import app as twilio_routes
 from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_routes
+from voice.voice.providers.elevanlab import app as elevanlab_routes
+from cohorts_new.routes.routes import cohort_bp, gryd_orchestration_bp
 import os
 from flask import Flask,request,jsonify
 from config import *
@@ -50,22 +52,22 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="overall_campaign_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/20 * * * *",
+              schedule = "*/10 * * * *",
               add_schedule_to_queue=False
             )
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
-              task="check_inactive_sessions",
+              task="manage_active_sessions",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/15 * * * *",
-              kwargs={"inactivity_time": 1440, "only_for_channels":["whatsapp_chat"],"outbound_timeout_minutes":60},
+              schedule = "*/5 * * * *",
+              kwargs={"inactivity_timeout_seconds": 10, "only_for_channels":["whatsapp_chat"],"post_process_interval_seconds":10},
               add_schedule_to_queue=False
         )
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="template_approval",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/20 * * * *",
+              schedule = "*/10 * * * *",
               add_schedule_to_queue=False
         )
         
@@ -73,7 +75,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="performance_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/20 * * * *",
+              schedule = "*/10 * * * *",
               add_schedule_to_queue=False
         )
         
@@ -82,7 +84,8 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>", methods = ["GET","POST"])
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>/<conversation_id>", methods = ["GET","POST"])
 def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID, conversation_id = None):
-    payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
+    # payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
+    payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
     language = payload.get("language", "english")
     logger.info(f"Webhook received for channel={channel}, provider={channel_provider}, enterprise={enterprise_id}, conversation={conversation_id}, language={language}")
     if channel in ["whatsapp", "whatsapp_chat", "whatsapp_voice_note", "whatsapp_voice_call"]:
@@ -94,6 +97,9 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
     elif channel in ["voice_phone", "voice_call", "voice"]:
         #.... do the stupayloadff ....
         pass
+    elif channel in ["rcs"]:
+        logger.info(f"RCs webhook received for channel={channel}, provider={channel_provider}")
+        gryd.create_async_task("process_rcs_webhook", "autocrm-communication", args=[], kwargs=payload)
     else:
         return gryd_routes.jsonify({"status": "error", "message": "Invalid channel"}), 400, {"Access-Control-Allow-Origin": "*"}
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
@@ -101,7 +107,22 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
 @app.route("/webhook/ses-status", methods=["POST", "GET"])
 def handle_ses_webhook():
     logger.info(f"SES Webhook received")
-    return 
+    payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
+    logger.info(f"SES Webhook payload: {json.dumps(payload, indent=4)}")
+    return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
+
+@app.route("/webhook/sns-incoming-messages", methods=["POST", "GET"])
+def handle_sns_incoming_messages_webhook():
+    logger.info(f"SNS Incoming Messages Webhook received")
+    payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
+    logger.info(f"SNS Incoming Messages Webhook payload: {json.dumps(payload, indent=4)}")
+    return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
+
+@app.route("/webhook/rcs-status", methods = ["GET","POST"])
+def get_rcs_status():
+    payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
+    gryd.create_async_task("get_rcs_status", "autocrm-communication", args=[], kwargs=payload)
+    return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
 
 
 @app.route('/test_voice_agent/<provider>/<session_id>', methods = ["POST"])
@@ -156,9 +177,13 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
 
 # app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
-app.register_blueprint(twilio_routes)
 app.register_blueprint(elevanlabs_tatatele_routes)
+app.register_blueprint(twilio_routes)
+app.register_blueprint(elevanlab_routes)
 
+
+app.register_blueprint(cohort_bp)
+app.register_blueprint(gryd_orchestration_bp)
 
 
 def verify_webhook_signature(payload_body: bytes, signature: str, secret: str) -> bool:

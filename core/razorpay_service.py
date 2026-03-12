@@ -1,6 +1,10 @@
 import datetime
 import razorpay
 import autocrm_validator
+import sys, os
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
 
 from config import (
     RAZORPAY_KEY_ID,
@@ -53,6 +57,10 @@ def get_dealer_by_id(dealer_id: str):
 def create_credit_purchase(dealership_id: str, credits: int, currency="INR"):
     from core import VATCalculator, calculate_currency_rate
 
+    try:
+        from .core import VATCalculator, calculate_currency_rate
+    except ImportError:
+        from core import VATCalculator, calculate_currency_rate
     if not isinstance(credits, int) or credits <= 0:
         raise ValueError("Credits must be a positive integer")
 
@@ -110,6 +118,9 @@ def create_credit_purchase(dealership_id: str, credits: int, currency="INR"):
         "channel": "razorpay",
         "campaign_id": "inbound",
         "discount_percentage": final_discount_pct,
+        "item_final_price" : total_amount,
+        "discount_amount": 0,
+        "item_final_total": total_amount,
     }
 
     # Merge VAT calculation

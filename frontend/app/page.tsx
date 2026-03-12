@@ -67,6 +67,13 @@ import {
   Target,
   UsersIcon,
   BarChart3,
+  RefreshCw,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Download,
 } from "lucide-react";
 
 const swrOptions = {
@@ -82,6 +89,7 @@ export interface Campaign {
   campaign_id?: string | number;
   name?: string;
   campaign_name?: string;
+  campaign_objective?: string;
   description?: string;
   channels?: string[];
   campaign_status?: string;
@@ -92,8 +100,6 @@ export interface Campaign {
   [key: string]: any;
 }
 
-const ITEMS_PER_PAGE = 5;
-
 export default function CampaignDashboard() {
   const router = useRouter();
   const { isDealershipSetupComplete, checkDealershipSetup } = useAuth();
@@ -101,8 +107,7 @@ export default function CampaignDashboard() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
-  const [campaignTypeFilter, setCampaignTypeFilter] =
-    useState<string>("post-sales"); // default
+  const [campaignTypeFilter, setCampaignTypeFilter] = useState<string>("all"); // default to "all" to show both types
 
   const [mergedCampaigns, setMergedCampaigns] = useState<Campaign[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -110,8 +115,10 @@ export default function CampaignDashboard() {
   const [totalCampaignCount, setTotalCampaignCount] = useState<number>(0);
   const [activeCampaignCount, setActiveCampaignCount] = useState<number>(0);
   const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(5); // Feature 2: Page Size State
   const [totalReach, setTotalReach] = useState<number>(0);
   const [conversionRate, setConversionRate] = useState<number>(0);
+  const [pageCount, setPageCount] = useState<number>(0); // Add this new state
   const [currentCampaignType, setCurrentCampaignType] =
     useState<string>("post-sales");
 
@@ -121,6 +128,46 @@ export default function CampaignDashboard() {
     null
   );
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Feature 1: Export CSV Logic
+  const handleExport = () => {
+    if (filteredCampaigns.length === 0) return;
+
+    const headers = [
+      "Campaign Type",
+      "Campaign Name",
+      "Campaign Objective",
+      "Channels Used",
+      "Status",
+      "Launch Date"
+    ];
+
+    const rows = filteredCampaigns.map((campaign) => {
+      const campaignType = Array.isArray(campaign.campaign_type)
+        ? campaign.campaign_type[0]
+        : campaign.campaign_type;
+
+      const typeStr = (campaignType?.replace("_", " ") || "Unknown").replace(/,/g, "");
+      const nameStr = (campaign.name || campaign.campaign_name || "Unnamed").replace(/,/g, "");
+      const objStr = (campaign.campaign_objective_name || "Unnamed").replace(/,/g, "");
+      const channelsStr = (campaign.channels || []).join(" & ");
+      const statusStr = (campaign.campaign_status || "Unknown").replace(/,/g, "");
+      const launchStr = (campaign.launchDate || campaign.start_date)
+        ? epochToIST(campaign.launchDate || campaign.start_date).replace(/,/g, "")
+        : "-";
+
+      return `"${typeStr}","${nameStr}","${objStr}","${channelsStr}","${statusStr}","${launchStr}"`;
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `campaigns_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Fetch counts for header cards
   const fetchCounts = async () => {
@@ -133,62 +180,101 @@ export default function CampaignDashboard() {
   };
 
   // Fetch campaigns by type and page
-  const fetchCampaigns = async (type: string, page: number) => {
-    console.log(
-      "[fetchCampaigns] Fetching campaigns for type:",
-      type,
-      "page:",
-      page
-    );
-    // Handle dealership campaigns separately
+  // Feature 3: Server-side filters passed to the fetch functions
+  const fetchCampaigns = async (
+    type: string,
+    page: number,
+    size: number,
+    status: string,
+    channel: string
+  ) => {
+    console.log("[fetchCampaigns] Type:", type, "Page:", page, "Size:", size, "Status:", status, "Channel:", channel);
+
+    // 1. Handle Dealership
     if (type === "dealership") {
-      const res = await fetchDealershipCampaigns();
+      const res = await fetchDealershipCampaigns(page, size, status, channel);
+      const total = res?.total ?? 0;
       return {
         merged: res?.items ?? [],
-        total: res?.total ?? 0,
+        total: total,
+        pageCount: Math.ceil(total / size), // Add this
       };
     }
 
-    // Handle pre-sales campaigns using the dedicated function
+    // 2. Handle Pre-Sales
     if (type === "pre-sales" || type === "pre_sales") {
-      const res = await fetchPreSalesCampaigns();
+      const res = await fetchPreSalesCampaigns(page, size, status, channel);
+      const total = res?.total ?? 0;
       return {
         merged: res?.items ?? [],
-        total: res?.total ?? 0,
+        total: total,
+        pageCount: Math.ceil(total / size), // Add this
       };
     }
 
-    // Handle post-sales campaigns using the dedicated function
+    // 3. Handle Post-Sales
     if (type === "post-sales" || type === "post_sales") {
-      const res = await fetchPostSalesCampaigns();
+      const res = await fetchPostSalesCampaigns(page, size, status, channel);
+      const total = res?.total ?? 0;
       return {
         merged: res?.items ?? [],
-        total: res?.total ?? 0,
+        total: total,
+        pageCount: Math.ceil(total / size), // Add this
       };
     }
 
-    const params = { page_number: page, page_size: ITEMS_PER_PAGE };
-    const res = await fetchAPIData(
-      type === "pre_sales" ? "pre_sales_campaign" : "post_sales_campaign",
-      params
-    );
+    // 4. Handle "All"
+    if (type === "all") {
+      const [preRes, postRes] = await Promise.all([
+        fetchPreSalesCampaigns(page, size, status, channel),
+        fetchPostSalesCampaigns(page, size, status, channel),
+      ]);
 
-    return {
-      merged: res?.items ?? [],
-      total: res?.total ?? 0,
-    };
+      const preItems = preRes?.items ?? [];
+      const postItems = postRes?.items ?? [];
+      const merged = [...preItems, ...postItems];
+
+      // Sort by creation date
+      merged.sort((a, b) => {
+        const dateA = a.created || a.start_date || 0;
+        const dateB = b.created || b.start_date || 0;
+        return dateB - dateA;
+      });
+
+      const preTotal = preRes?.total ?? 0;
+      const postTotal = postRes?.total ?? 0;
+
+      // The key fix: The number of pages is determined by the longer list
+      const maxPages = Math.max(
+        Math.ceil(preTotal / size),
+        Math.ceil(postTotal / size)
+      );
+
+      return {
+        merged: merged,
+        total: preTotal + postTotal,
+        pageCount: maxPages, // Use the greater of the two page counts
+      };
+    }
+
+    return { merged: [], total: 0, pageCount: 0 };
   };
 
-  const { data: counts } = useSWR("pivot-counts", fetchCounts, swrOptions);
+  const { data: counts, mutate: mutateCounts } = useSWR(
+    "pivot-counts",
+    fetchCounts,
+    swrOptions
+  );
 
+  // Added pageSize, statusFilter, and channelFilter to dependencies
   const {
     data: campaignsData,
     isLoading: loading,
     error,
     mutate: mutateCampaigns,
   } = useSWR(
-    ["campaigns", campaignTypeFilter, page],
-    () => fetchCampaigns(campaignTypeFilter, page),
+    ["campaigns", campaignTypeFilter, page, pageSize, statusFilter, channelFilter],
+    () => fetchCampaigns(campaignTypeFilter, page, pageSize, statusFilter, channelFilter),
     swrOptions
   );
 
@@ -199,7 +285,7 @@ export default function CampaignDashboard() {
       : null;
 
   // Fetch campaign summary data
-  const { data: campaignSummaryData } = useSWR(
+  const { data: campaignSummaryData, mutate: mutateCampaignSummary } = useSWR(
     dealershipId, // If null, this won't run
     fetchCampaignSummary,
     swrOptions
@@ -232,7 +318,8 @@ export default function CampaignDashboard() {
       campaignSummaryData &&
       Array.isArray(campaignSummaryData) &&
       campaignSummaryData.length > 0 &&
-      campaignTypeFilter !== "dealership"
+      campaignTypeFilter !== "dealership" &&
+      campaignTypeFilter !== "all"
     ) {
       return;
     }
@@ -241,7 +328,7 @@ export default function CampaignDashboard() {
     if (campaignTypeFilter === "dealership" && campaignsData) {
       setTotalCount(campaignsData.total ?? 0);
       setTotalCampaignCount(campaignsData.total ?? 0);
-      
+
       const activeDealership = (campaignsData.merged ?? []).filter(
         (c: Campaign) => {
           const status =
@@ -254,11 +341,95 @@ export default function CampaignDashboard() {
           return status === "live";
         }
       ).length;
-      
+
       setActiveCount(activeDealership);
       setActiveCampaignCount(activeDealership);
       setTotalReach(0); // Dealership specific reach if available
       setConversionRate(0); // Dealership specific rate
+      return;
+    }
+
+    // For "all" type, sum both pre-sales and post-sales counts
+    if (campaignTypeFilter === "all") {
+      // Use summary data if available (more accurate than filtering campaigns)
+      if (campaignSummaryData && Array.isArray(campaignSummaryData)) {
+        const preSalesSummary = campaignSummaryData.find(
+          (s: any) =>
+            s.campaign_type === "pre-sales" || s.campaign_type === "pre_sales"
+        );
+        const postSalesSummary = campaignSummaryData.find(
+          (s: any) =>
+            s.campaign_type === "post-sales" || s.campaign_type === "post_sales"
+        );
+
+        // Sum up total and active counts from summaries
+        const totalCountSum =
+          (preSalesSummary?.total_count ?? 0) +
+          (postSalesSummary?.total_count ?? 0);
+        const activeCountSum =
+          (preSalesSummary?.active_count ?? 0) +
+          (postSalesSummary?.active_count ?? 0);
+        const totalReachSum =
+          (preSalesSummary?.total_reach ?? 0) +
+          (postSalesSummary?.total_reach ?? 0);
+        const preRate = preSalesSummary?.conversation_rate ?? 0;
+        const postRate = postSalesSummary?.conversation_rate ?? 0;
+        const avgRate =
+          preSalesSummary && postSalesSummary
+            ? ((preRate < 1 ? preRate * 100 : preRate) +
+                (postRate < 1 ? postRate * 100 : postRate)) /
+              2
+            : (preRate < 1 ? preRate * 100 : preRate) ||
+              (postRate < 1 ? postRate * 100 : postRate);
+
+        setTotalCampaignCount(totalCountSum);
+        setTotalCount(totalCountSum);
+        setActiveCampaignCount(activeCountSum);
+        setActiveCount(activeCountSum);
+        setTotalReach(totalReachSum);
+        setConversionRate(avgRate);
+      } else if (campaignsData) {
+        // Fallback: calculate from campaigns data
+        setTotalCount(campaignsData.total ?? 0);
+        setTotalCampaignCount(campaignsData.total ?? 0);
+
+        const activeAll = (campaignsData.merged ?? []).filter((c: Campaign) => {
+          const status =
+            c.campaign_status ||
+            (c.start_date && c.end_date && Date.now() / 1000 > c.end_date
+              ? "completed"
+              : c.start_date && Date.now() / 1000 >= c.start_date
+              ? "live"
+              : "scheduled");
+          return status === "live" || status === "active";
+        }).length;
+
+        setActiveCount(activeAll);
+        setActiveCampaignCount(activeAll);
+      } else if (counts) {
+        // Fallback to pivot counts
+        let totalForAll = 0;
+        let activeForAll = 0;
+
+        if (typeof counts.total === "object" && counts.total !== null) {
+          totalForAll =
+            (counts.total.pre_sales ?? 0) + (counts.total.post_sales ?? 0);
+        } else {
+          totalForAll = counts.total ?? 0;
+        }
+
+        if (typeof counts.active === "object" && counts.active !== null) {
+          activeForAll =
+            (counts.active.pre_sales ?? 0) + (counts.active.post_sales ?? 0);
+        } else {
+          activeForAll = counts.active ?? 0;
+        }
+
+        setTotalCampaignCount(totalForAll);
+        setTotalCount(totalForAll);
+        setActiveCampaignCount(activeForAll);
+        setActiveCount(activeForAll);
+      }
       return;
     }
 
@@ -297,13 +468,22 @@ export default function CampaignDashboard() {
     if (campaignsData) {
       setMergedCampaigns(campaignsData.merged ?? []);
       setTotalCount(campaignsData.total ?? 0);
+      
+      // Update the page count from the API response
+      if (campaignsData.pageCount !== undefined) {
+        setPageCount(campaignsData.pageCount);
+      } else {
+        // Fallback for initial load or safety
+        setPageCount(Math.ceil((campaignsData.total ?? 0) / pageSize));
+      }
     }
-  }, [campaignsData, campaignTypeFilter]);
+  }, [campaignsData, campaignTypeFilter, pageSize]);
 
   // Process campaign summary data (FIXED: Filter by type instead of sum)
   useEffect(() => {
-    // If we are on dealership tab, the previous useEffect handles it
-    if (campaignTypeFilter === "dealership") return;
+    // If we are on dealership tab or "all" tab, the previous useEffect handles it
+    if (campaignTypeFilter === "dealership" || campaignTypeFilter === "all")
+      return;
 
     if (campaignSummaryData && Array.isArray(campaignSummaryData)) {
       // Find the specific summary for the selected campaign type
@@ -321,10 +501,10 @@ export default function CampaignDashboard() {
         setTotalCampaignCount(currentTypeSummary.total_count ?? 0);
         setActiveCampaignCount(currentTypeSummary.active_count ?? 0);
         setTotalReach(currentTypeSummary.total_reach ?? 0);
-        
+
         const rate = currentTypeSummary.conversation_rate ?? 0;
         setConversionRate(rate < 1 ? rate * 100 : rate);
-        
+
         // Also ensure internal counts match
         setTotalCount(currentTypeSummary.total_count ?? 0);
         setActiveCount(currentTypeSummary.active_count ?? 0);
@@ -351,6 +531,7 @@ export default function CampaignDashboard() {
 
     return mergedCampaigns.filter((campaign: Campaign) => {
       const campaignName = campaign.name ?? campaign.campaign_name ?? "";
+      const campaignObjective = campaign.campaign_objective ?? "";
       const matchesSearch = q === "" || campaignName.toLowerCase().includes(q);
 
       const campaignStatus =
@@ -395,9 +576,28 @@ export default function CampaignDashboard() {
     campaignTypeFilter,
   ]);
 
-  const displayStart = 0;
-  const displaySlice = filteredCampaigns.slice(displayStart, ITEMS_PER_PAGE);
+  const displaySlice = useMemo(() => {
+    // 1. For "All", since we now fetch specific pages from the server (e.g. Page 2),
+    // the 'filteredCampaigns' array ONLY contains the data for that page.
+    // We must NOT slice by '(page - 1) * size' anymore, because that offset assumes 
+    // we have the whole list in memory.
+    // Instead, we just take the items we received.
+    if (campaignTypeFilter === "all") {
+      // Optional: Since fetching "All" gets 5 Pre + 5 Post (Total 10), 
+      // you might want to slice (0, 5) to keep the UI consistent, 
+      // or just return 'filteredCampaigns' to show all 10.
+      
+      // Returning all merged items for the current page:
+      return filteredCampaigns; 
+    }
 
+    // 2. For specific types, the API returns exactly the page size items.
+    return filteredCampaigns;
+  }, [filteredCampaigns, campaignTypeFilter]);
+
+  const totalPages = pageCount;
+
+  // ... continue with rendering ...
   const getStatusBadge = (status?: string) => {
     const variants: Record<
       string,
@@ -526,6 +726,18 @@ export default function CampaignDashboard() {
     }
   };
 
+  const handleRefresh = async () => {
+    try {
+      await Promise.all([
+        mutateCampaigns(),
+        mutateCounts(),
+        mutateCampaignSummary(),
+      ]);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    }
+  };
+
   return (
     <ProtectedRoute>
       <div className="flex flex-col w-full">
@@ -541,7 +753,18 @@ export default function CampaignDashboard() {
           </div>
           <div className="flex gap-3">
             <Button
+              variant="outline"
               className="gap-2"
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />{" "}
+              Refresh
+            </Button>
+            <Button
+              className="gap-2 cursor-pointer"
               onClick={() => {
                 if (isDealershipSetupComplete === false) {
                   router.push("/dealership/update-details");
@@ -572,8 +795,10 @@ export default function CampaignDashboard() {
                 <div className="text-2xl font-bold">{totalCampaignCount}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Current type:{" "}
-                  {campaignTypeFilter === "pre_sales" ||
-                  campaignTypeFilter === "pre-sales"
+                  {campaignTypeFilter === "all"
+                    ? "All Types"
+                    : campaignTypeFilter === "pre_sales" ||
+                      campaignTypeFilter === "pre-sales"
                     ? "Pre-Sales"
                     : campaignTypeFilter === "post-sales"
                     ? "Post-Sales"
@@ -677,25 +902,19 @@ export default function CampaignDashboard() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setStatusFilter("all")}>
+                      <DropdownMenuItem onClick={() => { setStatusFilter("all"); setPage(1); }}>
                         All
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setStatusFilter("Drafted")}
-                      >
+                      <DropdownMenuItem onClick={() => { setStatusFilter("drafted"); setPage(1); }}>
                         Draft
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setStatusFilter("scheduled")}
-                      >
-                        Scheduled
+                      <DropdownMenuItem onClick={() => { setStatusFilter("planned"); setPage(1); }}>
+                        Planned
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setStatusFilter("live")}>
-                        Live
+                      <DropdownMenuItem onClick={() => { setStatusFilter("Active"); setPage(1); }}>
+                        Active
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setStatusFilter("completed")}
-                      >
+                      <DropdownMenuItem onClick={() => { setStatusFilter("completed"); setPage(1); }}>
                         Completed
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -718,22 +937,16 @@ export default function CampaignDashboard() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Filter by Channel</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setChannelFilter("all")}>
+                      <DropdownMenuItem onClick={() => { setChannelFilter("all"); setPage(1); }}>
                         All
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setChannelFilter("whatsapp_chat")}
-                      >
+                      <DropdownMenuItem onClick={() => { setChannelFilter("whatsapp_chat"); setPage(1); }}>
                         WhatsApp
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setChannelFilter("email")}
-                      >
+                      <DropdownMenuItem onClick={() => { setChannelFilter("email"); setPage(1); }}>
                         Email
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setChannelFilter("voice_phone")}
-                      >
+                      <DropdownMenuItem onClick={() => { setChannelFilter("voice_phone"); setPage(1); }}>
                         Voice
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -747,7 +960,9 @@ export default function CampaignDashboard() {
                         className="gap-2 bg-transparent"
                       >
                         Campaign Type:{" "}
-                        {campaignTypeFilter === "pre_sales"
+                        {campaignTypeFilter === "all"
+                          ? "All"
+                          : campaignTypeFilter === "pre_sales"
                           ? "Pre-Sales"
                           : campaignTypeFilter === "post-sales"
                           ? "Post-Sales"
@@ -759,6 +974,14 @@ export default function CampaignDashboard() {
                         Filter by Campaign Type
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setCampaignTypeFilter("all");
+                          setPage(1);
+                        }}
+                      >
+                        All
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => {
                           setCampaignTypeFilter("pre_sales");
@@ -785,6 +1008,15 @@ export default function CampaignDashboard() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  
+                  {/* Export Button */}
+                  <Button 
+                    variant="outline" 
+                    className="gap-2 bg-transparent" 
+                    onClick={handleExport}
+                  >
+                    <Download className="h-4 w-4" /> Export
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -795,9 +1027,12 @@ export default function CampaignDashboard() {
                   <TableRow>
                     <TableHead>Campaign Type</TableHead>
                     <TableHead>Campaign Name</TableHead>
+                    <TableHead>Campaign Objective</TableHead>
+
                     <TableHead>Channels Used</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Launch Date</TableHead>
+                    <TableHead>Analytics</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -806,8 +1041,8 @@ export default function CampaignDashboard() {
                   {loading ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
-                        className="text-center text-muted-foreground"
+                        colSpan={8}
+                        className="text-center text-muted-foreground py-10"
                       >
                         Loading...
                       </TableCell>
@@ -815,8 +1050,8 @@ export default function CampaignDashboard() {
                   ) : error ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
-                        className="text-center text-destructive"
+                        colSpan={8}
+                        className="text-center text-destructive py-10"
                       >
                         {error}
                       </TableCell>
@@ -824,8 +1059,8 @@ export default function CampaignDashboard() {
                   ) : filteredCampaigns.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
-                        className="text-center text-muted-foreground"
+                        colSpan={8}
+                        className="text-center text-muted-foreground py-10"
                       >
                         No campaigns found
                       </TableCell>
@@ -838,16 +1073,30 @@ export default function CampaignDashboard() {
                         : campaign.campaign_type;
 
                       return (
-                        <TableRow
-                          key={campaign.id || campaign.campaign_id}
-                        >
+                        <TableRow key={campaign.id || campaign.campaign_id}>
                           <TableCell className="font-medium capitalize">
                             {campaignType?.replace("_", " ") || "Unknown"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell
+                            className="max-w-[250px] truncate"
+                            title={
+                              campaign.name ||
+                              campaign.campaign_name ||
+                              "Unnamed"
+                            }
+                          >
                             {campaign.name ||
                               campaign.campaign_name ||
                               "Unnamed"}
+                          </TableCell>
+
+                          <TableCell
+                            className="max-w-[200px] truncate"
+                            title={
+                              campaign.campaign_objective_name || "Unnamed"
+                            }
+                          >
+                            {campaign.campaign_objective_name || "Unnamed"}
                           </TableCell>
                           <TableCell>
                             {getChannelBadges(campaign.channels)}
@@ -858,67 +1107,77 @@ export default function CampaignDashboard() {
                           <TableCell>
                             {campaign.launchDate || campaign.start_date
                               ? epochToIST(
-                                  campaign.launchDate || campaign.start_date
+                                  campaign.launchDate || campaign.start_date,
                                 )
                               : "-"}
                           </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 gap-1.5 px-2 text-xs"
+                              onClick={() => handleInsights(campaign)}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              View Analytics
+                            </Button>
+                          </TableCell>
                           <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <span className="sr-only">Open menu</span>
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem
-                                  onClick={() => handleEdit(campaign)}
-                                >
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDuplicate(campaign)}
-                                >
-                                  <Copy className="mr-2 h-4 w-4" />
-                                  Duplicate
-                                </DropdownMenuItem>
-
-                                {campaign.campaign_status === "live" ? (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      handlePauseOrLaunch(campaign, "pause")
-                                    }
+                            <div className="flex items-center justify-end gap-2">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
                                   >
-                                    <Pause className="mr-2 h-4 w-4" /> Pause
-                                  </DropdownMenuItem>
-                                ) : (
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                   <DropdownMenuItem
-                                    onClick={() =>
-                                      handlePauseOrLaunch(campaign, "launch")
-                                    }
+                                    onClick={() => handleEdit(campaign)}
                                   >
-                                    <Play className="mr-2 h-4 w-4" /> Launch
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit
                                   </DropdownMenuItem>
-                                )}
+                                  <DropdownMenuItem
+                                    onClick={() => handleDuplicate(campaign)}
+                                  >
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Duplicate
+                                  </DropdownMenuItem>
 
-                                <DropdownMenuItem
-                                  onClick={() => handleInsights(campaign)}
-                                >
-                                  <BarChart3 className="mr-2 h-4 w-4" />
-                                  Insights
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteClick(campaign)}
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                                  {campaign.campaign_status === "live" ? (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handlePauseOrLaunch(campaign, "pause")
+                                      }
+                                    >
+                                      <Pause className="mr-2 h-4 w-4" /> Pause
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        handlePauseOrLaunch(campaign, "launch")
+                                      }
+                                    >
+                                      <Play className="mr-2 h-4 w-4" /> Launch
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteClick(campaign)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -926,6 +1185,78 @@ export default function CampaignDashboard() {
                   )}
                 </TableBody>
               </Table>
+              
+              {/* Pagination Controls */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+                
+                {/* Rows per page selector */}
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm font-medium text-muted-foreground">Rows per page</p>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="h-8 w-[70px] bg-transparent">
+                        {pageSize}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {[5, 20, 50, 100, 200].map((size) => (
+                        <DropdownMenuItem 
+                          key={size} 
+                          onClick={() => { setPageSize(size); setPage(1); }}
+                        >
+                          {size}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <div className="flex items-center justify-center space-x-2">
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setPage(1)}
+                    disabled={page === 1}
+                  >
+                    <span className="sr-only">Go to first page</span>
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    <span className="sr-only">Go to previous page</span>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                    Page {page} of {totalPages || 1}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                  >
+                    <span className="sr-only">Go to next page</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setPage(totalPages)}
+                    disabled={page >= totalPages || totalPages === 0}
+                  >
+                    <span className="sr-only">Go to last page</span>
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

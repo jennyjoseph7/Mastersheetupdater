@@ -1,813 +1,620 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState, useMemo, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Search,
+  MessageSquare,
+  Mail,
+  Phone,
+  RefreshCw,
+  Filter,
+  ChevronDown,
+  Clock,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUp,
+  ArrowDown,
+  Calendar,
+  PlayCircle,
+  X,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+} from "@/components/ui/dropdown-menu";
 import {
-  Search,
-  Users,
-  TrendingUp,
-  AlertCircle,
-  RefreshCw,
-  MessageSquare,
-  Phone,
-  ChevronDown,
-  Eye,
-  ArrowLeft,
-  Download,
-  Mail,
-} from "lucide-react"
-import { EngagementFunnel } from "@/components/engagement-funnel"
-import { ConversationIntentChart } from "@/components/conversation-intent-chart"
-import { CostPerLeadChart } from "@/components/cost-per-lead-chart"
-import { CampaignFailureChart } from "@/components/campaign-failure-chart"
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import {
+  fetchActiveSessions,
+  getDealershipId,
+} from "@/utils/api";
+import useSWR from "swr";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Sample data for leads
-const sampleLeads = [
-  {
-    userId: "USR001",
-    name: "John Doe",
-    email: "john.doe@example.com",
-    contact: "+1234567890",
-    lastInteraction: "2024-01-15T14:30:00",
-    status: "Converted",
-    disposition: "Converted",
-    duration: "15 min 30 sec",
-    queries: 8,
-    unanswered: 1,
-    sentiment: "Positive",
-    intents: ["Product Inquiry", "Pricing"],
-    escalations: 0,
-    channel: "chat",
-    chatSummary: {
-      sentiment: "Positive",
-      keyIntents: ["Product Inquiry", "Pricing", "Family Coverage"],
-      outcome: "Converted",
-    },
-    transcript: [
-      { type: "user", message: "Hi, I'm interested in your insurance plans", time: "12:21:04" },
-      {
-        type: "bot",
-        message:
-          "Hello! I'd be happy to help you find the right insurance plan. What type of coverage are you looking for?",
-        time: "12:21:04",
-      },
-      { type: "user", message: "I need health insurance for my family", time: "12:21:45" },
-      {
-        type: "bot",
-        message:
-          "Great! We have several family health insurance plans. How many family members would you like to cover?",
-        time: "12:21:46",
-      },
-    ],
-  },
-  {
-    userId: "USR002",
-    name: "Jane Smith",
-    email: "jane.smith@example.com",
-    contact: "+1234567891",
-    lastInteraction: "2024-01-14T10:16:02",
-    status: "Qualified",
-    disposition: "Interacted",
-    duration: "8 min 18 sec",
-    queries: 5,
-    unanswered: 2,
-    sentiment: "Neutral",
-    intents: ["Support Request"],
-    escalations: 1,
-    channel: "voice",
-    callSummary:
-      "Customer called regarding policy renewal. Discussed various options and pricing. Customer requested time to think about the decision. Follow-up scheduled for next week.",
-    callTranscript: [
-      { speaker: "agent", text: "Hello, thank you for calling. How can I help you today?", time: "10:15:02" },
-      {
-        speaker: "customer",
-        text: "Hi, I'm calling about my policy renewal. I wanted to know what options are available.",
-        time: "10:15:08",
-      },
-      {
-        speaker: "agent",
-        text: "Of course! Let me pull up your account. Can I have your policy number please?",
-        time: "10:15:15",
-      },
-      {
-        speaker: "customer",
-        text: "Sure, it's POL-2024-5678.",
-        time: "10:15:20",
-      },
-      {
-        speaker: "agent",
-        text: "Thank you. I can see your policy is up for renewal next month. We have several options available with enhanced coverage.",
-        time: "10:15:28",
-      },
-      {
-        speaker: "customer",
-        text: "What are the pricing differences between the options?",
-        time: "10:15:35",
-      },
-      {
-        speaker: "agent",
-        text: "Our basic renewal would be $450 per month, while our premium plan with additional benefits is $620 per month.",
-        time: "10:15:42",
-      },
-      {
-        speaker: "customer",
-        text: "I see. Can I have some time to think about this?",
-        time: "10:15:50",
-      },
-      {
-        speaker: "agent",
-        text: "I'll send you a detailed comparison via email. Would next week be a good time for a follow-up call?",
-        time: "10:15:55",
-      },
-      {
-        speaker: "customer",
-        text: "Yes, that works for me. Thank you!",
-        time: "10:16:02",
-      },
-    ],
-  },
-  {
-    userId: "USR003",
-    name: "Mike Johnson",
-    email: "mike.johnson@example.com",
-    contact: "+1234567892",
-    lastInteraction: "2024-01-13T14:32:11",
-    status: "Lead",
-    disposition: "Read",
-    duration: "3 min 12 sec",
-    queries: 2,
-    unanswered: 0,
-    sentiment: "Positive",
-    intents: ["Product Inquiry"],
-    escalations: 0,
-    channel: "chat",
-    chatSummary: {
-      sentiment: "Positive",
-      keyIntents: ["Product Inquiry", "Pricing"],
-      outcome: "Follow-up Required",
-    },
-    transcript: [
-      { type: "user", message: "What are your rates?", time: "14:32:10" },
-      {
-        type: "bot",
-        message:
-          "Our rates vary based on coverage type and your specific needs. Would you like me to provide a personalized quote?",
-        time: "14:32:11",
-      },
-    ],
-  },
-]
+interface SessionData {
+  status: string;
+  channel: string;
+  created: number;
+  lead_id: string;
+  updated: number;
+  user_id: string;
+  lead_model: string;
+  session_id: string;
+  start_time: number;
+  campaign_id: string;
+  disposition?: string;
+  phone_number: string;
+  session_live: boolean;
+  campaign_type: string;
+  dealership_id: string;
+  campaign_model: string;
+  call_recording?: string;
+  duration?: number;
+  email?: string;
+  person_name?: string;
+  id_salt?: string;
+  campaign_name?: string;
+  campaign_objective_name?: string;
+}
 
-// Sample data for campaigns
-const sampleCampaigns = [
-  {
-    id: "CMP001",
-    name: "Summer Insurance Promo 2024",
-    createdOn: "2024-01-15",
-    channels: ["WhatsApp", "Email", "SMS"],
-    status: "Live" as const,
-  },
-  {
-    id: "CMP002",
-    name: "Health Coverage Campaign",
-    createdOn: "2024-01-10",
-    channels: ["Email", "Voice"],
-    status: "Completed" as const,
-  },
-  {
-    id: "CMP003",
-    name: "Auto Insurance Renewal",
-    createdOn: "2024-02-01",
-    channels: ["WhatsApp", "SMS"],
-    status: "Scheduled" as const,
-  },
-  {
-    id: "CMP004",
-    name: "Life Insurance Awareness",
-    createdOn: "2024-01-20",
-    channels: ["Email", "WhatsApp", "Voice"],
-    status: "Live" as const,
-  },
-]
+// --- Utility Functions ---
+const formatChannel = (channel: string): string => {
+  const channelMap: Record<string, string> = {
+    whatsapp_chat: "WhatsApp",
+    sms: "SMS",
+    email: "Email",
+    voice: "Voice",
+    voice_phone: "Voice",
+    whatsapp: "WhatsApp",
+  };
+  return channelMap[channel.toLowerCase()] || channel;
+};
 
-export default function CampaignInsights() {
-  const [timeFilter, setTimeFilter] = useState("This Week")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [typeFilter, setTypeFilter] = useState("All Types")
-  const [statusFilter, setStatusFilter] = useState("All Status")
-  const [sentimentFilter, setSentimentFilter] = useState("All Sentiments")
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null)
-  const [selectedLead, setSelectedLead] = useState<(typeof sampleLeads)[0] | null>(null)
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const [transcriptSearch, setTranscriptSearch] = useState("")
-  const [selectedCampaign, setSelectedCampaign] = useState<(typeof sampleCampaigns)[0] | null>(null)
+const getChannelIcon = (channel: string) => {
+  const normalized = channel.toLowerCase();
+  if (normalized.includes("whatsapp")) return <MessageSquare className="h-4 w-4" />;
+  if (normalized.includes("email")) return <Mail className="h-4 w-4" />;
+  if (normalized.includes("voice")) return <Phone className="h-4 w-4" />;
+  if (normalized.includes("sms")) return <MessageSquare className="h-4 w-4" />;
+  return <MessageSquare className="h-4 w-4" />;
+};
 
-  const filteredCampaigns = sampleCampaigns.filter(
-    (campaign) => campaign.status === "Live" || campaign.status === "Completed",
-  )
+const formatPhoneNumber = (phone: string): string => {
+  let cleaned = phone.replace(/^\+/, "").replace(/^91/, "");
+  if (cleaned.length === 10) return `+91 ${cleaned.slice(0, 5)} ${cleaned.slice(5)}`;
+  return `+91 ${cleaned}`;
+};
 
-  const filteredLeads = sampleLeads
-    .filter((lead) => {
-      const matchesSearch =
-        lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        lead.userId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        lead.email.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesType = typeFilter === "All Types" || lead.channel === typeFilter.toLowerCase()
-      const matchesStatus = statusFilter === "All Status" || lead.status === statusFilter
-      const matchesSentiment = sentimentFilter === "All Sentiments" || lead.sentiment === sentimentFilter
-      return matchesSearch && matchesType && matchesStatus && matchesSentiment
-    })
-    .sort((a, b) => {
-      if (!sortOrder) return 0
-      const dateA = new Date(a.lastInteraction).getTime()
-      const dateB = new Date(b.lastInteraction).getTime()
-      return sortOrder === "asc" ? dateA - dateB : dateB - dateA
-    })
+const formatCampaignType = (type: string): string => {
+  return type
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("-");
+};
 
-  const toggleSort = () => {
-    setSortOrder((current) => {
-      if (current === null) return "desc"
-      if (current === "desc") return "asc"
-      return null
-    })
+const getStatusBadge = (status: string, disposition?: string) => {
+  let displayStatus = "Lead";
+  let badgeClass = "bg-amber-100 text-amber-700 border-amber-200";
+
+  if (disposition === "engaged" || status === "interacted") {
+    displayStatus = status === "interacted" && disposition === "engaged" ? "Qualified" : "Lead";
+    badgeClass = displayStatus === "Qualified" ? "bg-blue-100 text-blue-700 border-blue-200" : badgeClass;
+  } else if (disposition === "converted" || status === "converted") {
+    displayStatus = "Converted";
+    badgeClass = "bg-purple-100 text-purple-700 border-purple-200";
+  } else if (status === "attempted") {
+    displayStatus = "Attempted";
+    badgeClass = "bg-gray-100 text-gray-700 border-gray-200";
   }
 
-  const formatLastInteraction = (timestamp: string) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
+  return <Badge className={cn("font-medium border px-3 py-1", badgeClass)}>{displayStatus}</Badge>;
+};
 
-    if (diffMins < 60) {
-      return `${diffMins} min${diffMins !== 1 ? "s" : ""} ago`
-    } else if (diffHours < 24) {
-      return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`
-    } else if (diffDays < 7) {
-      return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`
+const formatTimestamp = (timestamp: number) => {
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
+const getTimeAgo = (timestamp: number): string => {
+  const diffMs = Date.now() - timestamp * 1000;
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins < 1) return "Just now";
+  
+  if (diffMins < 60) return `${diffMins} min${diffMins !== 1 ? "s" : ""} ago`;
+  
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} hr${diffHours !== 1 ? "s" : ""} ago`;
+  
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+  
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) return `${diffMonths} month${diffMonths !== 1 ? "s" : ""} ago`;
+  
+  const diffYears = Math.floor(diffDays / 365);
+  return `${diffYears} year${diffYears !== 1 ? "s" : ""} ago`;
+};
+
+export default function LiveStatusPage() {
+  const [isMounted, setIsMounted] = useState(false);
+  const [dealershipId, setDealershipId] = useState<string | null>(null);
+
+  // Client-Side Filters (Search Only)
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  // Server-Side Filters (Dates and Dropdowns)
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [channelFilter, setChannelFilter] = useState<string>("All Channels");
+  const [statusFilter, setStatusFilter] = useState<string>("All Status");
+  const [campaignTypeFilter, setCampaignTypeFilter] = useState<string>("All Types");
+  
+  // Pagination & Sorting (Server-Side)
+  const [p, setP] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [sortBy, setSortBy] = useState("created");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Audio Player State
+  const [activeRecording, setActiveRecording] = useState<{ url: string; name: string } | null>(null);
+
+  // Mount logic
+  useEffect(() => {
+    setIsMounted(true);
+    setDealershipId(getDealershipId());
+  }, []);
+
+  // Handle server-side filter changes (resets pagination)
+  const handleServerFilterChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
+    setter(value);
+    setP(1);
+  };
+
+  const handleDateChange = (type: "start" | "end", value: string) => {
+    if (type === "start") setStartDate(value);
+    if (type === "end") setEndDate(value);
+    setP(1); // Reset to page 1 whenever date filters change
+  };
+
+  const clearDates = () => {
+    setStartDate("");
+    setEndDate("");
+    setP(1);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setP(1);
+  };
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
-      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      setSortBy(column);
+      setSortOrder("desc");
     }
-  }
+    setP(1); 
+  };
 
-  const getStatusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      Converted: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
-      Qualified: "bg-blue-100 text-blue-700 hover:bg-blue-100",
-      Lead: "bg-amber-100 text-amber-700 hover:bg-amber-100",
-      Losing: "bg-orange-100 text-orange-700 hover:bg-orange-100",
-      Lost: "bg-red-100 text-red-700 hover:bg-red-100",
-    }
-    return <Badge className={colors[status] || ""}>{status}</Badge>
-  }
+  // Construct Query Params for SWR
+  const queryParams = useMemo(() => {
+    return {
+      p,
+      page_size: pageSize,
+      channel: channelFilter !== "All Channels" ? channelFilter : undefined,
+      status: statusFilter !== "All Status" ? statusFilter : undefined,
+      campaign_type: campaignTypeFilter !== "All Types" ? campaignTypeFilter.toLowerCase() : undefined,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+      start_date: startDate || undefined,
+      end_date: endDate || undefined,
+    };
+  }, [p, pageSize, channelFilter, statusFilter, campaignTypeFilter, sortBy, sortOrder, startDate, endDate]);
 
-  const getSentimentBadge = (sentiment: string) => {
-    const colors: Record<string, string> = {
-      Positive: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
-      Neutral: "bg-gray-100 text-gray-700 hover:bg-gray-100",
-      Negative: "bg-red-100 text-red-700 hover:bg-red-100",
-    }
-    return <Badge className={colors[sentiment] || ""}>{sentiment}</Badge>
-  }
+  // Main Session API Call
+  const {
+    data: sessionsData,
+    mutate: refreshSessions,
+    isLoading: isLoadingSessions,
+    error: sessionsError,
+  } = useSWR(
+    isMounted && dealershipId ? ["active-sessions", dealershipId, JSON.stringify(queryParams)] : null,
+    () => fetchActiveSessions(dealershipId!, queryParams), 
+    { refreshInterval: isMounted && dealershipId ? 30000 : 0, revalidateOnFocus: true }
+  );
 
-  const getCampaignStatusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      Live: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
-      Scheduled: "bg-blue-100 text-blue-700 hover:bg-blue-100",
-      Completed: "bg-gray-100 text-gray-700 hover:bg-gray-100",
-    }
-    return <Badge className={colors[status] || ""}>{status}</Badge>
-  }
+  // Server Data
+  const rawSessions: SessionData[] = sessionsData?.data || [];
+  const serverTotalItems = sessionsData?.total_number || 0;
+  const totalPages = Math.ceil(serverTotalItems / pageSize);
 
-  const getChannelIcon = (channel: string) => {
-    switch (channel) {
-      case "WhatsApp":
-        return <MessageSquare className="h-3 w-3" />
-      case "Email":
-        return <Mail className="h-3 w-3" />
-      case "Voice":
-        return <Phone className="h-3 w-3" />
-      case "SMS":
-        return <MessageSquare className="h-3 w-3" />
-      default:
-        return null
-    }
-  }
+  // Client-Side Filtering Logic (Only for Search input now)
+  const filteredSessions = useMemo(() => {
+    return rawSessions.filter((session) => {
+      const searchLower = searchQuery.toLowerCase();
+      const campaignName = (session.campaign_name || "").toLowerCase();
+      const objectiveName = (session.campaign_objective_name || "").toLowerCase();
+      const personName = (session.person_name || "").toLowerCase();
+      const email = (session.email || "").toLowerCase();
+      const phoneFormatted = formatPhoneNumber(session.phone_number);
 
-  const handleDownloadLeads = (format: "csv" | "pdf") => {
-    // Placeholder for download functionality
-    console.log(`Downloading leads as ${format}`)
-  }
+      return !searchQuery || 
+        campaignName.includes(searchLower) ||
+        objectiveName.includes(searchLower) ||
+        personName.includes(searchLower) ||
+        email.includes(searchLower) ||
+        phoneFormatted.includes(searchQuery);
+    });
+  }, [rawSessions, searchQuery]);
 
-  const openHistory = (lead: (typeof sampleLeads)[0]) => {
-    setSelectedLead(lead)
-    setHistoryOpen(true)
-    setTranscriptSearch("")
-  }
+  // Manual Refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshSessions();
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
 
-  if (selectedCampaign) {
-    return (
-      <div className="flex min-h-screen flex-col w-full">
-        {/* Campaign Detail Header */}
-        <div className="border-b bg-background/95 backdrop-blur mb-8">
-          <div className="flex h-20 items-center justify-between px-4 md:px-6 lg:px-8 w-full">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => setSelectedCampaign(null)} className="gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-              <div className="h-8 w-px bg-border" />
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold tracking-tight">{selectedCampaign.name}</h1>
-                {getCampaignStatusBadge(selectedCampaign.status)}
-              </div>
-            </div>
-          </div>
-        </div>
+  // CSV Export Logic
+  const handleExportCSV = () => {
+    if (!filteredSessions || filteredSessions.length === 0) return;
 
-        <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-6 w-full">
-          {/* Tabs for Statistics and Audience */}
-          <Tabs defaultValue="statistics" className="w-full">
-            <TabsList>
-              <TabsTrigger value="statistics">Statistics</TabsTrigger>
-              <TabsTrigger value="audience">Audience / Campaign Leads</TabsTrigger>
-            </TabsList>
+    const headers = ["Campaign Name", "Objective", "Channel", "Name", "Phone", "Email", "Status", "Campaign Type", "Created Date", "Recording Link"];
+    const csvRows = [headers.join(",")];
 
-            {/* Statistics Tab */}
-            <TabsContent value="statistics" className="space-y-6 mt-6">
-              <div className="space-y-6">
-                <h2 className="text-xl font-semibold">Campaign Performance Statistics</h2>
+    filteredSessions.forEach((session) => {
+      const row = [
+        `"${session.campaign_name || "Unknown Campaign"}"`,
+        `"${session.campaign_objective_name || "-"}"`,
+        `"${formatChannel(session.channel)}"`,
+        `"${session.person_name || "-"}"`,
+        `"${session.phone_number}"`,
+        `"${session.email || "-"}"`,
+        `"${session.status}"`,
+        `"${formatCampaignType(session.campaign_type)}"`,
+        `"${formatTimestamp(session.created)}"`,
+        `"${session.call_recording || "No Recording"}"`
+      ];
+      csvRows.push(row.join(","));
+    });
 
-                {/* Engagement Funnel */}
-                <Card className="shadow">
-                  <CardHeader>
-                    <CardTitle>Engagement Funnel</CardTitle>
-                    <CardDescription>Track user journey from initial contact to conversion</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <EngagementFunnel />
-                  </CardContent>
-                </Card>
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `live_sessions_export_${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
-                {/* Failure Reasons Bar Graph */}
-                <Card className="shadow">
-                  <CardHeader>
-                    <CardTitle>Failure Reasons by Channel</CardTitle>
-                    <CardDescription>Distribution of delivery failures across channels</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <CampaignFailureChart />
-                  </CardContent>
-                </Card>
-
-                {/* Analytics Charts */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <Card className="shadow">
-                    <CardHeader>
-                      <CardTitle>Cost per Lead by Channel</CardTitle>
-                      <CardDescription>Average cost to acquire a lead per channel</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <CostPerLeadChart />
-                    </CardContent>
-                  </Card>
-
-                  <Card className="shadow">
-                    <CardHeader>
-                      <CardTitle>Intent Distribution by Channel</CardTitle>
-                      <CardDescription>Distribution of conversation intents across channels</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ConversationIntentChart />
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* Audience / Campaign Leads Tab */}
-            <TabsContent value="audience" className="space-y-6 mt-6">
-              <Card className="shadow">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Campaign Leads / Audience</CardTitle>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="gap-2 bg-transparent">
-                          <Download className="h-4 w-4" />
-                          Download
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleDownloadLeads("csv")}>Download as CSV</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDownloadLeads("pdf")}>Download as PDF</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  {/* Search and Filters */}
-                  <div className="flex flex-col gap-4 mt-4">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Search by name or email..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="gap-2 bg-transparent">
-                            {timeFilter}
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Filter by Time</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setTimeFilter("This Week")}>This Week</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setTimeFilter("Last Week")}>Last Week</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setTimeFilter("This Month")}>This Month</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="gap-2 bg-transparent">
-                            {typeFilter}
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Filter by Type</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setTypeFilter("All Types")}>All Types</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setTypeFilter("Chat")}>Chat</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setTypeFilter("Voice")}>Voice</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="gap-2 bg-transparent">
-                            {statusFilter}
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setStatusFilter("All Status")}>All Status</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setStatusFilter("Lead")}>Lead</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setStatusFilter("Qualified")}>Qualified</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setStatusFilter("Converted")}>Converted</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="gap-2 bg-transparent">
-                            {sentimentFilter}
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Filter by Sentiment</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setSentimentFilter("All Sentiments")}>
-                            All Sentiments
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setSentimentFilter("Positive")}>Positive</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setSentimentFilter("Neutral")}>Neutral</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setSentimentFilter("Negative")}>Negative</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>User ID</TableHead>
-                          <TableHead>Lead Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Contact</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Disposition</TableHead>
-                          <TableHead>Duration</TableHead>
-                          <TableHead>Queries</TableHead>
-                          <TableHead>Unanswered</TableHead>
-                          <TableHead>Sentiment</TableHead>
-                          <TableHead>Intents</TableHead>
-                          <TableHead>Escalations</TableHead>
-                          <TableHead>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={toggleSort}
-                              className="h-8 px-2 hover:bg-transparent"
-                            >
-                              Last Interaction
-                              {sortOrder === "desc" && <span className="ml-1">↓</span>}
-                              {sortOrder === "asc" && <span className="ml-1">↑</span>}
-                            </Button>
-                          </TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredLeads.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={14} className="text-center text-muted-foreground">
-                              No leads found
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          filteredLeads.map((lead) => (
-                            <TableRow key={lead.userId}>
-                              <TableCell className="font-medium">{lead.userId}</TableCell>
-                              <TableCell>{lead.name}</TableCell>
-                              <TableCell>{lead.email}</TableCell>
-                              <TableCell>{lead.contact}</TableCell>
-                              <TableCell>{getStatusBadge(lead.status)}</TableCell>
-                              <TableCell>{lead.disposition}</TableCell>
-                              <TableCell>{lead.duration}</TableCell>
-                              <TableCell>{lead.queries}</TableCell>
-                              <TableCell>{lead.unanswered}</TableCell>
-                              <TableCell>{getSentimentBadge(lead.sentiment)}</TableCell>
-                              <TableCell>
-                                <div className="flex flex-col gap-1">
-                                  {lead.intents.map((intent, idx) => (
-                                    <span key={idx} className="text-xs">
-                                      {intent}
-                                    </span>
-                                  ))}
-                                </div>
-                              </TableCell>
-                              <TableCell>{lead.escalations}</TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {formatLastInteraction(lead.lastInteraction)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button variant="ghost" size="sm" onClick={() => openHistory(lead)}>
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        {/* Interaction History Modal */}
-        <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-          <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                {selectedLead?.channel === "chat" ? (
-                  <MessageSquare className="h-5 w-5" />
-                ) : (
-                  <Phone className="h-5 w-5" />
-                )}
-                Interaction History - {selectedLead?.name}
-              </DialogTitle>
-            </DialogHeader>
-
-            {selectedLead && (
-              <div className="space-y-6">
-                {/* Header Info */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">User ID</p>
-                    <p className="text-sm font-semibold">{selectedLead.userId}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Status</p>
-                    <div className="mt-1">{getStatusBadge(selectedLead.status)}</div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Duration</p>
-                    <p className="text-sm font-semibold">{selectedLead.duration}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Sentiment</p>
-                    <div className="mt-1">{getSentimentBadge(selectedLead.sentiment)}</div>
-                  </div>
-                </div>
-
-                {/* Search Bar */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search within transcript..."
-                    value={transcriptSearch}
-                    onChange={(e) => setTranscriptSearch(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-
-                {/* Transcript or Call Summary */}
-                {selectedLead.channel === "chat" ? (
-                  <div className="space-y-4 max-h-96 overflow-y-auto p-4 border rounded-lg">
-                    {selectedLead.transcript?.map((message, idx) => (
-                      <div key={idx} className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}>
-                        <div
-                          className={`max-w-[80%] rounded-lg p-3 ${
-                            message.type === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-                          }`}
-                        >
-                          <p className="text-sm">{message.message}</p>
-                          <p className="text-xs mt-1 opacity-70">{message.time}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <h3 className="font-semibold">Call Transcript Summary</h3>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                      <p className="text-sm leading-relaxed">{selectedLead.callSummary}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+  // Render Sortable Header Helper
+  const SortableHeader = ({ title, column }: { title: string; column: string }) => (
+    <TableHead onClick={() => handleSort(column)} className="cursor-pointer hover:bg-muted/50 select-none">
+      <div className="flex items-center gap-1">
+        {title}
+        {sortBy === column && (
+          sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+        )}
       </div>
-    )
-  }
+    </TableHead>
+  );
+
+  if (!isMounted) return <div className="min-h-screen w-full bg-background" />;
+  if (!dealershipId) return (
+    <div className="flex min-h-screen w-full bg-background items-center justify-center">
+      <Card className="max-w-md"><CardContent className="pt-6"><p className="text-center text-muted-foreground">Please login to view live status</p></CardContent></Card>
+    </div>
+  );
 
   return (
-    <div className="flex min-h-screen flex-col w-full">
-      {/* Header Section */}
-      <div className="border-b bg-background/95 backdrop-blur mb-8">
+    <div className="flex min-h-screen flex-col w-full bg-background">
+      {/* Header */}
+      <div className="border-b bg-background/95 backdrop-blur sticky top-0 z-10">
         <div className="flex h-20 items-center justify-between px-4 md:px-6 lg:px-8 w-full">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Campaign Insights</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Track campaign performance, engagement metrics, and lead conversion across all channels
-            </p>
+            <h1 className="text-3xl font-bold tracking-tight">Live Status</h1>
+            <p className="text-sm text-muted-foreground mt-1">Real-time campaign activity and performance monitoring</p>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2 bg-transparent">
-                Filter
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Filter by Time</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setTimeFilter("This Week")}>This Week</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTimeFilter("Last Week")}>Last Week</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTimeFilter("This Month")}>This Month</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTimeFilter("Last Month")}>Last Month</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTimeFilter("This Year")}>This Year</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex gap-3">
+            <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-2">
+              <Download className="h-4 w-4" /> Export CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing || isLoadingSessions} className="gap-2">
+              <RefreshCw className={cn("h-4 w-4", (isRefreshing || isLoadingSessions) && "animate-spin")} /> Refresh
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-6 w-full">
-        {/* Top KPI Cards */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
-          <Card className="shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Reach</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">30,000</div>
-              <p className="text-xs text-emerald-600 mt-1">+12% from last period</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">% Engaged</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">62%</div>
-              <p className="text-xs text-emerald-600 mt-1">+5% from last period</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">% Converted</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">9%</div>
-              <p className="text-xs text-emerald-600 mt-1">+2% from last period</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Failed Delivery</CardTitle>
-              <AlertCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">3,800</div>
-              <p className="text-xs text-red-600 mt-1">-3% from last period</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Nudged / Retargeted</CardTitle>
-              <RefreshCw className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">7,100</div>
-              <p className="text-xs text-emerald-600 mt-1">+8% from last period</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Campaigns Overview Section */}
-        <Card className="shadow">
+      <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 py-6 w-full relative">
+        <Card className="shadow-lg border-2">
           <CardHeader>
-            <CardTitle>Campaigns Overview</CardTitle>
-            <CardDescription>View and manage all your campaigns</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Campaign Name</TableHead>
-                    <TableHead>Created On</TableHead>
-                    <TableHead>Channels Used</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCampaigns.map((campaign) => (
-                    <TableRow key={campaign.id}>
-                      <TableCell className="font-medium">{campaign.name}</TableCell>
-                      <TableCell>{new Date(campaign.createdOn).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {campaign.channels.map((channel) => (
-                            <Badge key={channel} variant="outline" className="gap-1">
-                              {getChannelIcon(channel)}
-                              {channel}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getCampaignStatusBadge(campaign.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedCampaign(campaign)}
-                          className="gap-2"
-                        >
-                          <Eye className="h-4 w-4" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <CardTitle className="text-xl font-semibold">Active User Sessions</CardTitle>
+            
+            {/* Filters Row */}
+            <div className="flex flex-col xl:flex-row gap-4 mt-6">
+              {/* Client-Side Search Box */}
+              <div className="relative flex-1 min-w-[250px]">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search table data..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-10"
+                />
+              </div>
+
+              {/* Filters */}
+              <div className="flex gap-2 flex-wrap items-center">
+                {/* Server-Side Date Filters */}
+                <div className="flex items-center gap-2 border rounded-md px-3 bg-background">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={(e) => handleDateChange("start", e.target.value)} 
+                    className="h-8 border-0 bg-transparent w-[130px] p-0 focus-visible:ring-0 shadow-none text-sm" 
+                  />
+                  <span className="text-muted-foreground text-sm">to</span>
+                  <Input 
+                    type="date" 
+                    value={endDate} 
+                    onChange={(e) => handleDateChange("end", e.target.value)} 
+                    className="h-8 border-0 bg-transparent w-[130px] p-0 focus-visible:ring-0 shadow-none text-sm" 
+                  />
+                  {(startDate || endDate) && (
+                    <Button 
+                      variant="ghost" 
+                      className="h-6 w-6 p-0 ml-1 rounded-full text-muted-foreground hover:text-foreground" 
+                      onClick={clearDates}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+
+                {/* Server-Side Channel Filter */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="gap-2 h-10">
+                      <Filter className="h-4 w-4" /> {channelFilter} <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "All Channels")}>All Channels</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "whatsapp_chat")}>WhatsApp</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "email")}>Email</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "SMS")}>SMS</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setChannelFilter, "voice_phone")}>Voice</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Server-Side Status Filter */}
+                {/* <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="gap-2 h-10">
+                      {statusFilter} <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setStatusFilter, "All Status")}>All Status</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setStatusFilter, "Lead")}>Lead</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setStatusFilter, "Qualified")}>Qualified</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setStatusFilter, "Converted")}>Converted</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setStatusFilter, "Attempted")}>Attempted</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu> */}
+
+                {/* Server-Side Campaign Type Filter */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="gap-2 h-10">
+                      {campaignTypeFilter} <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setCampaignTypeFilter, "All Types")}>All Types</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setCampaignTypeFilter, "Pre-Sales")}>Pre-Sales</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleServerFilterChange(setCampaignTypeFilter, "Post-Sales")}>Post-Sales</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
+          </CardHeader>
+
+          <CardContent className="flex flex-col min-h-[500px]">
+            {isLoadingSessions ? (
+              <div className="space-y-4 flex-1">
+                {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
+              </div>
+            ) : sessionsError ? (
+              <div className="text-center py-8 flex-1 flex items-center justify-center">
+                <p className="text-destructive">Error loading sessions: {sessionsError.message}</p>
+              </div>
+            ) : filteredSessions.length === 0 ? (
+              <div className="text-center py-8 flex-1 flex items-center justify-center">
+                <p className="text-muted-foreground">No sessions match your search/date criteria in the current page.</p>
+              </div>
+            ) : (
+              <>
+                {/* Table Data */}
+                <div className="relative w-full overflow-x-auto border rounded-t-md pb-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <SortableHeader title="Campaign" column="campaign_name" />
+                        <SortableHeader title="Objective" column="campaign_objective_name" />
+                        <SortableHeader title="Channel" column="channel" />
+                        <SortableHeader title="Name" column="person_name" />
+                        <SortableHeader title="Phone" column="phone_number" />
+                        <SortableHeader title="Status" column="status" />
+                        <SortableHeader title="Type" column="campaign_type" />
+                        <TableHead>Recording</TableHead>
+                        <SortableHeader title="Created" column="created" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSessions.map((session) => (
+                        <TableRow key={session.session_id} className="hover:bg-muted/50 transition-colors">
+                          <TableCell className="font-medium max-w-[150px] truncate" title={session.campaign_name}>
+                            {session.campaign_name || "Unknown Campaign"}
+                          </TableCell>
+                          <TableCell className="max-w-[150px] truncate" title={session.campaign_objective_name}>
+                            {session.campaign_objective_name || "-"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {getChannelIcon(session.channel)}
+                              <span>{formatChannel(session.channel)}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{session.person_name || "-"}</TableCell>
+                          <TableCell>{formatPhoneNumber(session.phone_number)}</TableCell>
+                          <TableCell>{getStatusBadge(session.status, session.disposition)}</TableCell>
+                          <TableCell>{formatCampaignType(session.campaign_type)}</TableCell>
+                          <TableCell>
+                            {session.call_recording ? (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-8 gap-1.5 px-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border-blue-200"
+                                onClick={() => setActiveRecording({ 
+                                  url: session.call_recording!, 
+                                  name: session.person_name || formatPhoneNumber(session.phone_number) 
+                                })}
+                              >
+                                <PlayCircle className="h-3.5 w-3.5" />
+                                <span className="text-xs font-medium">Play</span>
+                              </Button>
+                            ) : (
+                              <span className="text-muted-foreground text-xs italic pl-2">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div 
+                              className="flex items-center gap-1 text-sm text-muted-foreground whitespace-nowrap cursor-help"
+                              title={formatTimestamp(session.created)}
+                            >
+                              <Clock className="h-3 w-3" />
+                              {getTimeAgo(session.created)}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Server-Side Pagination Footer */}
+                <div className="flex items-center justify-between px-4 py-4 border-x border-b rounded-b-md bg-muted/20 mt-4">
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span>
+                      {searchQuery
+                        ? `Showing ${filteredSessions.length} filtered items (Server total: ${serverTotalItems})`
+                        : `Total ${serverTotalItems} items`
+                      }
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span>Rows per page:</span>
+                      <select 
+                        className="bg-transparent border rounded p-1 cursor-pointer"
+                        value={pageSize}
+                        onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                      >
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-muted-foreground">
+                      Page {p} of {Math.max(1, totalPages)}
+                    </span>
+                    <div className="flex gap-1">
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => setP(prev => Math.max(1, prev - 1))} 
+                        disabled={p === 1 || isLoadingSessions}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => setP(prev => Math.min(totalPages, prev + 1))} 
+                        disabled={p === totalPages || totalPages === 0 || isLoadingSessions}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
+
+        {/* Floating Audio Player */}
+        {activeRecording && (
+          <div className="fixed bottom-6 right-6 z-50 bg-card border shadow-xl rounded-xl p-4 w-[350px] animate-in slide-in-from-bottom-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-semibold text-sm truncate pr-4 text-primary">
+                Playing: {activeRecording.name}
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 rounded-full hover:bg-muted" 
+                onClick={() => setActiveRecording(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <audio
+              controls
+              autoPlay
+              src={activeRecording.url}
+              className="w-full h-10 outline-none"
+            >
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+        )}
       </div>
     </div>
-  )
+  );
 }

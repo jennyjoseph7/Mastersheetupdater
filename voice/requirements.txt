@@ -1,3 +1,8 @@
 db_routes @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/i2ce_routes/db_routes-0.0.1-py3-none-any.whl
 pdfkit==1.0.0
 razorpay
+elevenlabs
+elevenlabs[pyaudio]
+aiohttp>=3.9.0
+uvloop>=0.19.0; sys_platform != "win32"
+orjson

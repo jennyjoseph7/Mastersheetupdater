@@ -38,27 +38,27 @@ import { getDealershipDetails } from "@/lib/api";
 export default function TopNavigation() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const [dealershipId, setDealershipId] = useState<string | null>(null);
+  // const [dealershipId, setDealershipId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchDealershipId = async () => {
-      if (user) {
-        try {
-          const data = await getDealershipDetails();
-          if (data?.dealership_id) {
-            setDealershipId(data.dealership_id);
-          }
-        } catch (error) {
-          console.error(
-            "[TopNavigation] Failed to fetch dealership ID:",
-            error
-          );
-        }
-      }
-    };
+  // useEffect(() => {
+  //   const fetchDealershipId = async () => {
+  //     if (user) {
+  //       try {
+  //         const data = await getDealershipDetails();
+  //         if (data?.dealership_id) {
+  //           setDealershipId(data.dealership_id);
+  //         }
+  //       } catch (error) {
+  //         console.error(
+  //           "[TopNavigation] Failed to fetch dealership ID:",
+  //           error
+  //         );
+  //       }
+  //     }
+  //   };
 
-    fetchDealershipId();
-  }, [user]);
+  //   fetchDealershipId();
+  // }, [user]);
 
   const isActive = (path: string) => {
     return pathname === path;
@@ -70,7 +70,7 @@ export default function TopNavigation() {
     { href: "/template", label: "Template", icon: FileText },
     { href: "/connection", label: "Connection", icon: LinkIcon },
     { href: "/conversions", label: "Conversions", icon: Target },
-    { href: "/insights", label: "Insights", icon: TrendingUp },
+    { href: "/insights", label: "Live Status", icon: TrendingUp },
   ];
 
   if (!user) {
@@ -79,11 +79,11 @@ export default function TopNavigation() {
         <div className="container flex h-16 items-center justify-between px-4 md:px-6">
           <Link href="/" className="flex items-center gap-2 group">
             <Image
-              src="images/logo.png"
+              src="/images/logo.png"
               alt="DaveAI Logo"
               width={120}
               height={24}
-              className="w-auto h-6 transition-transform group-hover:scale-105 dark:invert dark:brightness-200 dark:contrast-200 dark:drop-shadow-[0_0_8px_rgba(139,92,246,0.5),0_0_16px_rgba(255,255,255,0.3)] dark:filter"
+              className="w-auto h-6 transition-transform group-hover:scale-105 "
             />
           </Link>
           <div className="flex items-center gap-3">
@@ -109,11 +109,11 @@ export default function TopNavigation() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group shrink-0">
             <Image
-              src="images/logo.png"
+              src="/images/logo.png"
               alt="DaveAI Logo"
               width={120}
               height={24}
-              className="w-auto h-6 transition-transform group-hover:scale-105 dark:invert dark:brightness-200 dark:contrast-200 dark:drop-shadow-[0_0_8px_rgba(139,92,246,0.5),0_0_16px_rgba(255,255,255,0.3)] dark:filter"
+              className="w-auto h-6 transition-transform group-hover:scale-105 "
             />
           </Link>
 
@@ -203,7 +203,8 @@ export default function TopNavigation() {
                       {user.name}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {dealershipId || user.email}
+{user.dealershipId || user.email}
+
                     </p>
                     <Badge variant="secondary" className="w-fit mt-1">
                       <Coins className="mr-1 h-3 w-3" />
@@ -252,7 +253,6 @@ export default function TopNavigation() {
           </div>
         </div>
       </header>
-
     </>
   );
 }

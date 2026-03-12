@@ -38,233 +38,10 @@ def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], **kw
     return resp
 
 def get_document_data(*args, **kwargs):
-    data = """
-    Maruti Ciaz Data -
-    Maruti Suzuki Ciaz - Complete Information
-1. General Overview
-The Maruti Suzuki Ciaz is a premium mid-size sedan offering a perfect balance of elegance, technology, and efficiency. It boasts spacious interiors, a refined design, and a smooth driving experience.
-
-2. Variant-wise Details
-Sigma: Base variant with essential features
-Delta: Mid-variant with additional tech and convenience features
-Zeta: Higher-end variant with premium offerings
-Alpha: Top variant with all advanced features
-3. Dimensions and Capacity
-Length: 4490 mm
-Width: 1730 mm
-Height: 1485 mm
-Wheelbase: 2650 mm
-Boot Space: 510 L
-Seating Capacity: 5
-4. Engine and Performance
-Petrol Engine
-
-Engine: 1.5L K15 Smart Hybrid Petrol
-Power: 104.6 PS @ 6000 rpm
-Torque: 138 Nm @ 4400 rpm
-Transmission: 5-speed MT / 4-speed AT
-Fuel Efficiency: ~20.65 km/l (MT) / ~20.04 km/l (AT)
-5. Safety Features
-Dual Front Airbags
-ABS with EBD
-Electronic Stability Program (ESP)
-Hill Hold Assist
-ISOFIX Child Seat Anchors
-Reverse Parking Sensors and Camera
-Speed Alert System
-6. Comfort and Convenience
-Automatic Climate Control
-Rear AC Vents
-Cruise Control
-Keyless Entry with Push Start-Stop Button
-Height Adjustable Driver Seat
-Rear Sunshade
-Footwell Lamps
-7. Technology and Connectivity
-7-inch SmartPlay Infotainment System
-Android Auto & Apple CarPlay
-Voice Command System
-Steering-mounted Audio and Calling Controls
-Smart Hybrid Technology (Idle Start-Stop, Torque Assist, Brake Energy Regeneration)
-8. Exterior Features
-LED Projector Headlamps with DRLs
-Chrome Accents on Front Grille
-16-inch Alloy Wheels (Precision Cut in Alpha Variant)
-LED Rear Combination Lamps
-Body-Colored ORVMs with Turn Indicators
-9. Interior Features
-Dual-Tone Premium Interiors
-Leather-Wrapped Steering Wheel (Alpha Variant)
-Rear Center Armrest with Cup Holders
-Adjustable Rear Headrests
-Wooden Finish on Dashboard (with Satin Chrome Finish)
-10. Technical Specifications
-Suspension: MacPherson Strut (Front), Torsion Beam (Rear)
-Brakes: Disc (Front), Drum (Rear)
-Ground Clearance: ~170 mm
-11. Eco-Friendly Features
-BS6-Compliant Engine
-Smart Hybrid Technology for Reduced Emissions
-
-Maruti Invicto Document
-
-Maruti Suzuki Invicto - Complete Overview
-1. General Overview
-The Maruti Suzuki Invicto is a premium MPV designed for sophistication and practicality. It combines luxury, cutting-edge technology, and a spacious cabin to provide an unparalleled driving experience. Built on a robust platform, it ensures top-tier safety and comfort for every journey.
-
-2. Variants
-The Invicto is available in the following variants:
-
-Zeta+ 2.0L Strong Hybrid (7-Seater, 8-Seater)
-Alpha+ 2.0L Strong Hybrid (7-Seater)
-3. Dimensions and Capacity
-Length: 4755 mm
-Width: 1850 mm
-Height: 1790 mm
-Wheelbase: 2850 mm
-Boot Space: 239 L (Expandable)
-Seating Capacity: 7 / 8
-Turning Radius: 5.4 m
-4. Engine and Performance
-2.0L Strong Hybrid Engine
-
-Power: 112 kW @ 6000 rpm (Engine) + 113 kW (Motor Output)
-Torque: 188 Nm @ 4400-5200 rpm (Engine) + 206 Nm (Motor Output)
-Fuel Efficiency: 23.24 km/l
-5. Safety Features
-6 Airbags (Front, Side, Curtain)
-Electronic Stability Program (ESP)
-Hill-Hold Assist
-Rear Parking Sensors & Camera
-ISOFIX Child Seat Anchors
-3-Point ELR Seat Belts for All Seats
-ABS with EBD & Brake Assist
-Suzuki TECT Body for enhanced safety
-6. Comfort and Convenience
-Ventilated Front Seats
-Powered Ottoman Seats (Alpha+ Only)
-Panoramic Sunroof
-Tri-Zone Automatic Climate Control
-Powered Tailgate & Sliding Doors
-Adjustable Second-Row Captain Seats
-Wireless Charging & Multiple USB Ports
-7. Technology and Connectivity
-10.1-inch SmartPlay Pro+ Infotainment System (Wireless Apple CarPlay & Android Auto)
-360-degree Camera View
-Heads-Up Display
-Digital Driver Display
-Connected Car Technology (Suzuki Connect)
-8. Exterior Features
-LED Headlamps & DRLs
-Signature NEXA Grille with Chrome Accents
-Dual-Tone Alloy Wheels
-Auto-Folding ORVMs
-9. Interior Features
-Premium Quilted Leather Upholstery
-Wooden & Metal Finish Dashboard Accents
-Adjustable Ambient Lighting
-Leather-Wrapped Steering Wheel
-10. Technical Specifications
-Transmission Options: e-CVT
-Brakes: Disc (Front & Rear)
-Suspension: MacPherson Strut (Front), Torsion Beam (Rear)
-Tyres: 215/60 R17
-11. Eco-Friendly Features
-Strong Hybrid Technology (Lithium-Ion Battery, Regenerative Braking, EV Mode)
-Idle Start Stop (ISS) Technology
-12. Color Options
-Single Tone: NEXA Blue, Stellar Bronze, Mystic White, Majestic Silver, Midnight Black
-
-
-Maruti WagonR Document
-Maruti Suzuki WagonR: Comprehensive Details
-1. General Overview
-The WagonR is a tall-boy hatchback offering a spacious and practical design for urban driving. It is designed with bold styling, a floating roof, and dual-tone exterior options to match modern aesthetics. Available in Petrol and CNG variants to cater to diverse driving needs.
-
-2. Variants and Pricing
-Variants Available
-
-LXi: Entry-level variant with essential features.
-VXi: Mid-range variant with additional comfort and convenience.
-ZXi: Enhanced features for a better driving experience.
-ZXi+: Top-end variant with premium offerings.
-Available in Manual Transmission (MT) and Auto Gear Shift (AGS) options.
-
-3. Dimensions and Capacity
-Length: 3655 mm
-Width: 1620 mm
-Height: 1675 mm
-Wheelbase: 2435 mm
-Boot Space:
-Petrol: 341 liters
-CNG: 180 liters (water equivalent)
-Seating Capacity: 5 persons
-4. Engine and Performance
-Engine Options
-
-1.0L K-Series Dual Jet, Dual VVT Engine
-1.2L K-Series Engine
-Displacement
-
-998 cc / 1197 cc
-Power Output
-
-1.0L: 49 kW (66.62 PS) @ 5500 rpm
-1.2L: 65.5 kW (88.5 PS) @ 6000 rpm
-Torque
-
-1.0L: 89 Nm @ 3500 rpm
-1.2L: 113 Nm @ 4200 rpm
-Fuel Efficiency
-
-Petrol: Up to 25.19 km/l
-CNG: 33.48 km/kg
-Transmission
-
-5-speed Manual and AGS
-5. Safety Features
-Dual airbags (driver and passenger)
-ABS with EBD
-Electronic Stability Program (ESP) for improved control
-Hill Hold Assist (AGS variants)
-Reverse Parking Assist Sensors
-Speed-sensitive auto door lock
-Seatbelt pre-tensioners with force limiters
-HEARTECT platform for enhanced crash safety
-6. Comfort and Convenience
-Interior Features
-
-Dual-tone interiors with premium upholstery
-Tilt steering adjustment
-60:40 split rear seats for added flexibility
-Convenience Features
-
-Engine push start-stop button (ZXi+)
-Steering-mounted audio and phone controls
-Power windows (front and rear)
-Electrically adjustable and foldable ORVMs with turn indicators
-7. Technology and Connectivity
-Infotainment System
-
-17.78 cm SmartPlay Studio touchscreen with Android Auto and Apple CarPlay
-Smartphone navigation integration
-Four-speaker audio system
-Smart Features
-
-Idle Start-Stop technology for fuel efficiency
-Remote keyless entry
-Alerts for speed, door open, and parking assistance
-8. Exterior Features
-Design Elements
-
-Floating roof design
-Dual-tone color options with black roof
-Stylish alloy wheels
-LED DRLs and projector headlamps
-Bold front grille with chrome accents
-
-End Of Document Data
-"""
+    session_data = kwargs.get("session_data",{})
+    campaign_data = kwargs.get("campaign_data",{})
+    if campaign_data and campaign_data.get("doc_data"):
+        return campaign_data.get("doc_data")
 
     return ""
 
@@ -281,7 +58,7 @@ def get_who_you_represent(*args, **kwargs):
             campaign_data = pg.get(session_data.get("campaign_model"),f"{session_data.get('campaign_model')}_id",session_data.get("campaign_id")) 
     if not campaign_data:
         return "You represent Autobot and all dealers listed with the platform."
-    dealership_name = campaign_data.get("dealer_name")
+    dealership_name = campaign_data.get("dealership_name")
     region = campaign_data.get("region_name")
     dealer_type = ""
     shop_details = ""
@@ -298,31 +75,40 @@ def get_who_you_represent(*args, **kwargs):
 def get_user_info(*args, **kwargs):
     user_data = kwargs.get("user_data")
 
-    return "The following is all the information we currently have about the customer: \n{}\n\n".format(user_data)
+    return "The following is all the information we currently have about the customer (Use the users name from this data): \n{}\n\n".format(user_data)
 
 def get_purpose_and_steps(*args, **kwargs):
     session_data_cache_data = kwargs.get("session_data_cache",{})
     campaign_data = session_data_cache_data.get("campaign_data",{})
     user_data = session_data_cache_data.get("user_data")
     campaign_type = campaign_data.get("campaign_type","inbound")
-
-    purpose_dict = {
-        "test_drive" : ["- Full Name \n- Interested Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time "],
-        "service" : ["- Full Name \n- Car Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time \n- Service Type"]
-        }
-
-    ###TODO create a way to detect the flow to push
+    
+    
     flow = "service" if campaign_type == "post-sales" else "either test drive at the showroom or at home"
     urgency_hooks = campaign_data.get("urgency_hook",[])
     date_now = hp.datetime.now().strftime("%A, %B %d, %Y")
-    offer = campaign_data.get("campaign_offerf","No Offer")
+    offer = campaign_data.get("campaign_offer","No Offer")
+    date_time_ref = f"\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
+
+
+
+    purpose_dict = {
+        "test_drive" : ["- Full Name (if not available as 'person_name' in 'Who is the customer section') \n- Interested Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time "],
+        "service" : ["- Full Name (if not available as 'person_name' in 'Who is the customer section')\n- Car Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time \n- Service Type"]
+        }
+    p_steps = ""
+    if campaign_data.get("purpose"):
+        if campaign_data.get("purpose_steps"):
+            flow = campaign_data.get("purpose")
+            steps = ', \n'.join(campaign_data.get("purpose_steps"))
+            return f"The overall purpose of your conversation with the user is to help the customer {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}.Here are the details you should gather from the user when trying to complete the {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
     if flow == "service":
         steps = ["- Full Name \n- Car Model \n- Date & Time \n- Service Type"]
     else:
         steps = ["- Full Name \n- Interested Model\n- Date & Time "]
     if campaign_type == "inbound":
-        return f"Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy.\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
-    return f"The overall purpose of your conversation with the user is to help them book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user isnt already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy.\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
+        return f"Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy.{date_time_ref}"
+    return f"The overall purpose of your conversation with the user is to help the customer book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
 def get_cta_options(*args, **kwargs):
     ctas = kwargs.get("campaign_data").get("ctas")
     if not ctas:
@@ -355,6 +141,7 @@ def get_example_states_and_solutions(*args, **kwargs):
         "- If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose if the arent already in the purpose flow.",
         "\n- If a purpose flow is completed, you should provide a confirmation message to the user with the details of the booking.",
         "\n- After the purpose is completed already in this conversation, do not urge them again.",
+        "\n- If you have the name of the user in the 'Who is the customer section', you should always use it and do not ask them for their name again.",
         "\n- If the customer provides you a date and time you should always check against the current date time and validate. also you should always provide the DD-MM-YYYY format for the date you want to mention. Do not say today or tomorrow or other such references to date.",
         "\n- If the customer requests a callback or requests to speak with a human or a phone call in any way, you should say - 'Someone will be with you soon'.",
     ]
@@ -402,15 +189,50 @@ def get_tone_and_style(*args, **kwargs):
     return "be descriptive in your explanations, give examples and explanations when asking the user to select any options. try to acheive your goal but dont force the customer."
 
 def get_output_format(*args, **kwargs):
-    return "" if "voice" in kwargs.get("request_data",{}).get("response_channel","text") else "text"
+    return "" if "voice" in kwargs.get("request_data",{}).get("channel","text") else "text"
 def get_conversation_history(*args, **kwargs):
     return hp.json.dumps(kwargs.get("session_data_cache",{}).get("messages",[])).decode("utf-8")
 
 def prune_user_data(user_data):
-    popable = ["created","updated","region_id","vehicle_id","campaign_id","workshop_id","phone_number","audience_name","campaign_name","campaign_type","dealership_id","purchase_date","persons_involved","campaign_sub_type","custom_attributes","alt_phone_number_2","alt_phone_number_3","alt_phone_number_4","alt_phone_number_4","post_sales_lead_id","campaign_objective_id","supported_brand_names","loyalty_contact_number","campaign_objective_name","campaign_objective_type","region_level_guardrails","region_level_guidelines","supported_brands_guidelines","reasons_users_may_not_be_interested"]
+    popable = ["campaign_guardrails_guidelines","conversation_tone","created","updated","region_id","vehicle_id","campaign_id","workshop_id","phone_number","audience_name","campaign_name","campaign_type","dealership_id","purchase_date","persons_involved","campaign_sub_type","custom_attributes","alt_phone_number_2","alt_phone_number_3","alt_phone_number_4","alt_phone_number_4","post_sales_lead_id","campaign_objective_id","supported_brand_names","loyalty_contact_number","campaign_objective_name","campaign_objective_type","region_level_guardrails","region_level_guidelines","supported_brands_guidelines","reasons_users_may_not_be_interested"]
     for p in popable:
         user_data.pop(p, None)
     return user_data
+
+def get_response_channel_info(channel,campaign_id, campaign_data):
+    mlogger.info("got channel == {} and campaign id == {}".format(channel,campaign_id))
+    if campaign_id != "4c99d5ea-4441-3ce6-841f-de5d7585b3b7":
+        if campaign_data.get("custom_conversation_start_pattern"):
+            return "\nConversation Initiation Pattern -\n{}\n".format(campaign_data.get("custom_conversation_start_pattern"))
+        if channel and channel in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
+            mlogger.info("got voice channel")
+            return """
+            \nConversation Initiation Pattern -
+            Start The conversation with the customer by asking them  - "Hello, am i speaking with <name of customer in Who is the customer section>?", if they confirm ask them "Do you have a moment to speak with me?", if they confirm tell them about the offer from the campaign.\n
+            """
+        return ""
+    ret = ""
+    mlogger.info("RUNNING NADA HACK")
+    if channel and channel in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
+        ret = """
+        \nConversation Initiation Pattern -
+        Start The conversation with the customer by asking them  - 
+        - If the 'Who is the Customer' section contains the name of the customer then start with 
+            - "Hello, am i speaking with <name of customer in Who is the customer section>?", 
+        - Else If the 'Who is the Customer' section does not contain the name of the customer then start with 
+            - "Hello, Do you mind telling me your name?", Follow that with "Could you tell me the name of your dealership?", at the end ask them if they mind sharing their email id.
+        - if they confirm ask them "Do you have a moment to speak with me?", 
+        - if they confirm tell them about the offer from the campaign.\n
+        """
+    else:
+        ret = """
+        \nConversation Initiation Pattern -
+        Start The conversation with the customer by asking them  -
+        - If the 'Who is the Customer' section does not contain the name of the customer then start with 
+            - "Hello, Do you mind telling me your name?", Follow that with "Could you tell me the name of your dealership?", at the end ask them if they mind sharing their email id.
+        - Once you have all the above information, tell them about the offer from the campaign. Also inform them about how you can help them. You can use the following campaign information to do so. -- {campaign_data}\n
+        """
+    return ret
 def setup_primary_prompt(*args, **kwargs):
     
     '''
@@ -427,7 +249,7 @@ def setup_primary_prompt(*args, **kwargs):
 
     '''
     
-    
+    mlogger.info("primary_prompt called with data \n {} \n\n ---------------".format(kwargs))
     mlogger.info("session_data_cache_data == {}".format(kwargs.get("session_data_cache",{}).get("data",{}).get("campaign_data").keys()))
     session_data_cache_data = kwargs.get("session_data_cache",{}).get("data",{})
     campaign_data = session_data_cache_data.get("campaign_data")
@@ -440,6 +262,8 @@ def setup_primary_prompt(*args, **kwargs):
     dealer_description = "{dealer_name} is a dealer who sells cars from their showrooms".format(dealer_name=dealer_name) if campaign_type == "pre-sales" else "{dealer_name} has a service center.".format(dealer_name=dealer_name)
     shop_id = campaign_data.get("workshop_id")
     showroom_workshop_desc = ""
+
+
     if not campaign_data:
         campaign_name = "inbound"
         campaign_objective = "inbound"
@@ -468,34 +292,147 @@ def setup_primary_prompt(*args, **kwargs):
     possible_states_and_solutions = get_example_states_and_solutions(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     rules = get_rules(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     tone_and_style = get_tone_and_style(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    conversation_history = get_conversation_history(*args,**{"session_data_cache":session_data_cache_data})
+    conversation_history = "No previous history" if kwargs.get("channel","") and kwargs.get("channel","") in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"] else get_conversation_history(*args,**{"session_data_cache":session_data_cache_data})
     output_format = get_output_format(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
     mlogger.info("my history data == {}".format(conversation_history))
 
+    response_channel_info = get_response_channel_info(kwargs.get("channel",""),campaign_data.get("campaign_id","inbound"),campaign_data)
+    
     if campaign_data.get("campaign_type") == "inbound":
+        mlogger.info("is inbound")
+        whats_is_autongage = """A product that helps dealers run campaigns to targeted audience via phone call whatsapp messages and sms
+        AutoNgage – Consolidated Overview, Real-World Problems & FAQs 
+        1. What is AutoNgage? 
+        AutoNgage is an AI-powered dealership engagement and campaign orchestration platform built 
+        specifically for the automotive ecosystem. It acts as a unified intelligence layer that manages customer 
+        interactions across sales, service, and marketing channels such as WhatsApp, Voice, Web, Email, and 
+        SMS. 
+        Unlike traditional CRMs or basic WhatsApp bots, AutoNgage does not just record data or send 
+        messages. It actively understands customer intent, decides the next best action, selects the right 
+        channel and timing, executes conversations automatically, and continuously learns from outcomes to 
+        improve performance. 
+        In simple terms, AutoNgage functions as an AI Sales and Service Concierge for dealerships. 
+        
+        2. Real-World Problems Faced by Dealerships 
+        2.1 Missed Calls and Delayed Follow-ups 
+        In real dealership operations, incoming calls often go unanswered due to peak hours, understaffed 
+        teams, or manual processes. Even when leads are captured, follow-ups are delayed or forgotten, 
+        leading to lost sales opportunities and customer dissatisfaction. 
+        AutoNgage ensures that every enquiry receives an instant response and follow-up through automated, 
+        intelligent conversations. 
+        
+        2.2 Inefficient Service Booking and High No-Show Rates 
+        Service booking is commonly handled through phone calls or manual CRM updates. Customers wait 
+        on hold, advisors juggle schedules, and rescheduling becomes cumbersome. This results in frustration 
+        and increased no-shows. 
+        AutoNgage enables instant service booking, rescheduling, and confirmation through WhatsApp or 
+        web, reducing dependency on calls and significantly lowering no-show rates. 
+        
+        2.3 Low Response Rates from Calls and SMS 
+        Customers increasingly ignore unknown numbers and generic SMS messages. Traditional outbound 
+        calling and SMS campaigns show poor engagement and low conversion. 
+        AutoNgage prioritizes conversational channels like WhatsApp and intelligently decides when voice 
+        follow-ups are required, improving reach and response rates. 
+        
+        2.4 Poor Lead Conversion from Enquiries 
+        Leads generated from websites, campaigns, or walk-ins often turn cold due to delayed responses, 
+        inconsistent follow-ups, or lack of personalization. 
+        
+        
+        D. Campaign & Marketing FAQs 
+        Q12. Can we run campaigns across multiple channels together?​
+        Yes. AutoNgage supports WhatsApp, Voice, Email, and SMS campaigns from a single dashboard. 
+        Q13. How does AutoNgage decide who should receive which campaign?​
+        It uses segmentation, past behavior, engagement history, and intent signals to select the right audience. 
+        Q14. Can campaigns be scheduled and paused anytime?​
+        Yes. Dealers have full control to schedule, pause, edit, or stop campaigns. 
+        Q15. Does AutoNgage support multilingual campaigns?​
+        Yes. It supports multiple languages and can auto-detect customer language preferences. 
+        
+        E. Dealer Onboarding & Operations FAQs 
+        Q16. How long does dealer onboarding take?​
+        Basic onboarding can be completed quickly once required documents and verification details are 
+        submitted. 
+        Q17. Can multiple outlets or branches be managed under one account?​
+        Yes. AutoNgage supports multi-location dealership setups. 
+        Q18. Can verified dealers start campaigns immediately?​
+        Yes. Once verified, dealers can create and launch campaigns instantly. 
+        
+        F. Control, Compliance & Security FAQs 
+        Q19. Who controls the messaging and tone?​
+        Dealers retain full control. AutoNgage follows pre-approved templates and brand guidelines. 
+        Q20. Is customer data secure?​
+        Yes. AutoNgage follows industry-standard security practices and only uses data for authorized 
+        engagement. 
+        Q21. Can AutoNgage comply with OEM and regional regulations?​
+        Yes. The platform is designed to align with OEM policies and regional compliance requirements. 
+        
+        
+        
+        
+        G. Analytics & ROI FAQs 
+        Q22. What kind of analytics does AutoNgage provide?​
+        It provides engagement metrics, conversion rates, drop-offs, cost per lead, and intent analysis across 
+        channels. 
+        Q23. Can we measure ROI from AutoNgage?​
+        Yes. Dealers can track incremental bookings, conversions, engagement uplift, and operational cost 
+        savings using  dashboard. 
+        
+        H. Scalability & Future Readiness FAQs 
+        Q24. Can AutoNgage scale across brands, regions, and languages?​
+        Yes. AutoNgage is built to scale across multiple OEMs, geographies, and languages. 
+ 
+        """
         primary_prompt = f"""
         Who you are -
-        {who_are_you}
-        Who is the customer -
-        {who_is_the_customer}
-        The purpose of this conversation -
-        {purpose_and_steps}
-        Possible states of the conversation and how to handle -
-        {possible_states_and_solutions}
-        Rules -
-        {rules}
-        Tone and style -
-        {tone_and_style}
-        Dealer description -
-        {showroom_workshop_desc}
-        Documents Data -
-        {doc_data}
-        Conversation History -
+        You are a ai sales assistant for AutoNgage.
+        Your customers are representatives of car dealerships.
+
+        You can answer basic questions about AutoNgage the product. 
+        
+        What is AutoNgage -
+        {whats_is_autongage}
+
+        Your purpose is to push the customer to try and get the customer to do a demo on either whatsapp or over a phone call.
+
+        The conversation History So Far - 
         {conversation_history}
-        Output Format -
-        {output_format}
+        
+        
+        You can do only one of 5 things.
+        1) Answer questions the user has about autongage if the information is available in the section above. the format of this answer should be natural language answer i can send back to the customer.
+        2) If the customer asks for a demo over whatsapp your only response should be - '[WHATSAPP]'
+        3) If the customer asks for a demo over a phone call your only response should be - '[PHONE]'
+        4) If the customer asks for a demo but not a specific mode. Ask them if they want to do the demo over whatsapp or phone call. Once they confirm the mode, You can use above rule #2 and #3 to proceed.
+        5) If the customer asks for anything else you should answer - I dont have an answer to that question.
+
+
         """
+
+        # primary_prompt = f"""
+        # Who you are -
+        # {who_are_you}
+        # Who is the customer -
+        # {who_is_the_customer}
+        # The purpose of this conversation -
+        # {purpose_and_steps}
+        # Possible states of the conversation and how to handle -
+        # {possible_states_and_solutions}
+        # Rules -
+        # {rules}
+        # Tone and style -
+        # {tone_and_style}
+        # Dealer description -
+        # {showroom_workshop_desc}
+        # Documents Data -
+        # {doc_data}
+        # Conversation History -
+        # {conversation_history}
+        # Output Format -
+        # {output_format}
+        # """
         return primary_prompt
+    mlogger.info("is outbound")
     primary_prompt = f"""
     Who you are -
     {who_are_you}
@@ -505,6 +442,7 @@ def setup_primary_prompt(*args, **kwargs):
     {who_is_the_customer}
     The purpose of this conversation -
     {purpose_and_steps}
+    {response_channel_info}
     Possible states of the conversation and how to handle -
     {possible_states_and_solutions}
     Rules -

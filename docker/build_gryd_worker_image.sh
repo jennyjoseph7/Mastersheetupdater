@@ -122,6 +122,7 @@ function build_docker_image() {
 
 function do_registry_authentication() {
     echo "Doing auth for $1"
+    gcloud auth activate-service-account --key-file=/home/ubuntu/firebase.json
 }
 
 function checkout_sha() {

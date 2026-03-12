@@ -496,6 +496,11 @@
                 }
             },
             "auto_updater": true
+        },
+        {
+            "name" : "doc_data",
+            "type" : "text",
+            "require" : false
         }
     ],
     "parents": [

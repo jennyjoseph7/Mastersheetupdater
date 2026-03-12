@@ -20,7 +20,8 @@ BEGIN
         FROM pre_sales_campaign c
         LEFT JOIN campaign_performance_summary s
             ON s.campaign_performance_summary_id =
-               c.dict->>'campaign_id' || '-pre-sales'
+            --    c.dict->>'campaign_id' || '-pre-sales'
+                c.dict->>'campaign_id'
         WHERE
             s.campaign_performance_summary_id IS NULL
             OR c.updated > TO_TIMESTAMP(
@@ -28,7 +29,7 @@ BEGIN
             )
     LOOP
         RAISE NOTICE '[CRON] Updating PRE-SALES campaign: %', r.campaign_id;
-        CALL update_campaign_performance_summary(r.campaign_id, 'pre-sales');
+        CALL update_campaign_performance_summary(r.campaign_id, 'pre-sales','pre_sales_lead');
     END LOOP;
 
 
@@ -39,7 +40,8 @@ BEGIN
         FROM post_sales_campaign c
         LEFT JOIN campaign_performance_summary s
             ON s.campaign_performance_summary_id =
-               c.dict->>'campaign_id' || '-post-sales'
+            --    c.dict->>'campaign_id' || '-post-sales'
+                c.dict->>'campaign_id'
         WHERE
             s.campaign_performance_summary_id IS NULL
             OR c.updated > TO_TIMESTAMP(
@@ -47,7 +49,7 @@ BEGIN
             )
     LOOP
         RAISE NOTICE '[CRON] Updating POST-SALES campaign: %', r.campaign_id;
-        CALL update_campaign_performance_summary(r.campaign_id, 'post-sales');
+        CALL update_campaign_performance_summary(r.campaign_id, 'post-sales','post_sales_lead');
     END LOOP;
 
 END;

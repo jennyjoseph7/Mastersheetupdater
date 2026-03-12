@@ -94,7 +94,7 @@ MIME_TYPES = {
     'csv': 'text/csv',
 }
 
-def func_gryd_file_system(local_path, logger = None, **kwargs):
+def func_gryd_file_system(local_path, media_type = 'document', logger = None):
     """
     Uploads a file to the Gryd File System.
     Args:
@@ -105,8 +105,8 @@ def func_gryd_file_system(local_path, logger = None, **kwargs):
         The URL of the uploaded file.
     """
     logger = logger or mlogger
-    logger.info(f"Uploading file to Gryd File System: {local_path}")
-    url = f"{GRYD_FILE_SERVER_URL}/media/{kwargs.get('media_type','document')}"
+    logger.info(f"Uploading file to Gryd File System: {local_path} with media type: {media_type}")
+    url = f"{GRYD_FILE_SERVER_URL}/media/{media_type}"
 
     ext = os.path.splitext(local_path)[1].replace('.','').lower()
     content_type = MIME_TYPES[ext]
@@ -175,11 +175,20 @@ def get_vehicle_id(vehicle_model, row, missing_reason = None, logger = None):
                 row[k] = data[k]
             except Exception as e:
                 missing_reason.append(f"Failed to convert {k} to date-time: {str(e)}")
+    for k in ('customer_score', 'odometer_reading'):
+        # Tackle number type fields
+        if is_valid_value(row, k):
+            row[k] = int(row[k])
+            data[k] = row[k]
+    for k in ('purpose_of_visit',):
+        # Tackle list type fields
+        if is_valid_value(row, k):
+            row[k] = list(map(lambda x: x.strip(), row[k].split(',')))
+            data[k] = row[k]
     vehicles = vehicle_model.list(_as_option=True, _page_size=1, reg_number=row.get('reg_number'))
+    vehicle_id = None
     if vehicles:
         vehicle_id = vehicles[0].get('vehicle_id')
-        row['vehicle_id'] = vehicle_id
-        return row, missing_reason
     for k in [
             "reg_number",
             "vehicle_brand_name",
@@ -232,18 +241,47 @@ def get_vehicle_id(vehicle_model, row, missing_reason = None, logger = None):
         ]:
         if is_valid_value(row, k):
             data[k] = row.get(k)
-    if is_valid_value(row, 'customer_score'):
-        row['customer_score'] = int(row['customer_score'])
-        data['customer_score'] = row['customer_score']
     if not data:
         missing_reason.append("No vehicle data found")
         return row, missing_reason
     try:
-        vehicle = vehicle_model.post(data)
+        logger.info("Before posting/updating vehicle details: %s", data)
+        if not vehicle_id:
+            vehicle = vehicle_model.post(data)
+        else:
+            vehicle = vehicle_model.patch(vehicle_id, data)
+        logger.info("Updated vehicle details: %s", vehicle)
     except Exception as e:
         missing_reason.append(f"Failed to find suitable vehicle: {str(e)}")
     else:
-        row['vehicle_id'] = vehicle.get('vehicle_id')
+        row['vehicle_id'] = vehicle.get('vehicle_id') or vehicle_id
+    return row, missing_reason
+
+def get_rooftop(row, models, model_name, missing_reason = None, rooftop_id = None, logger = None):
+    logger = logger or mlogger
+    missing_reason = missing_reason or []
+    ws_val = rooftop_id or get_valid_value(row, f'{model_name}_id')
+    def get_ws_val(t):
+        ws_val = hp.make_single(
+            models['rooftop_model'].list(
+                _as_option=True, 
+                _page_size=1,
+                dealership_id = row.get("dealership_id"),
+                workshop_code=f"~{row.get(f'{model_name}_{t}')}"
+            ),
+            force = True,
+            default = {}
+        )
+        ws_val = ws_val.get(f'{model_name}_id')
+        return ws_val
+    if not ws_val:
+        if is_valid_value(row, f"{model_name}_code"):
+            ws_val = get_ws_val('code')
+        elif is_valid_value(row, f'{model_name}_name'):
+            ws_val = get_ws_val('name')
+    if not ws_val:
+        missing_reason.append(f"{model_name} ID or {model_name} code or {model_name} name not found")
+    row[f'{model_name}_id'] = ws_val
     return row, missing_reason
 
 
@@ -251,22 +289,7 @@ def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id =
     logger = logger or mlogger
     logger.info(f"Processing post-sales lead row: {row}")
     missing_reason = missing_reason or []
-    ws_val = rooftop_id or get_valid_value(row, 'workshop_id')
-    if not ws_val:
-        if is_valid_value(row, 'workshop_name'):
-            ws_val = hp.make_single(
-                models['rooftop_model'].list(
-                    _as_option=True, 
-                    _page_size=1,
-                    workshop_name=f"~{row.get('workshop_name')}"
-                ),
-                force = True,
-                default = {}
-            )
-            ws_val = ws_val.get('workshop_id')
-    if not ws_val:
-        missing_reason.append("Workshop ID or workshop_name not found")
-    row['workshop_id'] = ws_val
+    row, missing_reason = get_rooftop(row, models, 'workshop', missing_reason, rooftop_id, logger)
     if not any([get_valid_value(row, k) for k in ['next_service_due', 'warranty_expiry_date', 'insurance_expiry_date', 'extended_warranty_expiry_date']]):
         missing_reason.append("Either one of next service due date, warranty expiry date, or insurance expiry date is required")
     if is_valid_value(row, 'next_service_due'):
@@ -283,6 +306,7 @@ def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = 
     logger = logger or mlogger
     logger.info(f"Processing pre-sales lead row: {row}")
     missing_reason = missing_reason or []
+    row, missing_reason = get_rooftop(row, models, 'showroom', missing_reason, rooftop_id, logger)
     data = row
     for k in [
         "phone_number",
@@ -296,7 +320,28 @@ def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = 
             data[k] = row.get(k)
         else:
             data[k] = None
-
+    for k in [
+        "brand_preference",
+        "model_preference",
+        "variant_preference",
+        "color_preference",
+        "engine_type_preference",
+        "transmission_preference",
+        "range_preference",
+        "feature_preferences",
+        "segment_preference",
+        "competitor_brands",
+        "competitor_models",
+        "emotions",
+        "engagement_events",
+        "previous_interaction_ids",
+        "lead_tags",
+        "interested_vehicle_competitor_vehicles"
+    ]:
+        if is_valid_value(row, k):
+            data[k] = row.get(k).split(',')
+        else:
+            data[k] = None
     lead = models['lead_model'].post(data)
     return lead, ""
 
@@ -340,26 +385,22 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
     if not phone and not email:
         missing_reason.append("Missing phone_number and email, required one of them")
     persons_involved = []
-    for k in ["phone_number", "alt_phone_number_2", "alt_phone_number_3", "alt_phone_number_4"]:
-        phone = get_valid_value(row, k)
-        if phone:
-            for l in ["phone_number", "alt_phone_number_2", "alt_phone_number_3", "alt_phone_number_4"]:
-                persons = person_model.list(_as_option=True, _page_size=1, **{l: f"{phone}^"})
-                if persons:
-                    persons_involved.extend(persons)
-                else:
-                    missing_emails_phones[l] = phone
-    for k in ["email", "alt_email_2", "alt_email_3", "alt_email_4"]:
-        email = get_valid_value(row, k)
-        if email:
-            for l in ["email", "alt_email_2", "alt_email_3", "alt_email_4"]:
-                persons = models['person_model'].list(_as_option=True, _page_size=1, **{l: f"{email}^"})
-                if persons:
-                    persons_involved.extend(persons)
-                else:
-                    missing_emails_phones[l] = email
+    def manage_credentials(typ):
+        opts = [f"{typ}", f"alt_{typ}_2", f"alt_{typ}_3", "alt_{type}_4"]
+        for k in opts:
+            cred = get_valid_value(row, k)
+            if cred:
+                for l in opts:
+                    persons = person_model.list(_as_option=True, _page_size=1, **{l: f"{cred}^"})
+                    if persons:
+                        persons_involved.extend(persons)
+                    else:
+                        missing_emails_phones[l] = cred
+    manage_credentials('phone_number')
+    manage_credentials('email')
     if persons_involved:
         persons_involved = get_unique_persons_involved(persons_involved)
+    logger.info("Persons involved are :%s", persons_involved)
     vehicle_id = get_valid_value(row, 'vehicle_id')
     if persons_involved and vehicle_id:
         for person in persons_involved:
@@ -371,55 +412,52 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
                     'relationship_type': 'owner',
                 })
     if not persons_involved:
+        logger.info("Did not find persons involved")
         data = {}
         for k in person_model._model_ref.attr_seq:
             if is_valid_value(row, k):
                 data[k] = row.get(k)
-            try:
-                person = person_model.post(data)
-                if vehicle_id:
-                    person_vehicle = person_vehicle_model.post({
-                        'user_id': person.get('user_id'),
-                        'vehicle_id': vehicle_id
-                    })
-            except Exception as e:
-                missing_reason.append(f"Failed to post person: {str(e)}")
-            else:
-                persons_involved.append(person)
+        try:
+            person = person_model.post(data)
+            if vehicle_id:
+                person_vehicle = person_vehicle_model.post({
+                    'user_id': person.get('user_id'),
+                    'vehicle_id': vehicle_id
+                })
+        except Exception as e:
+            missing_reason.append(f"Failed to post person: {str(e)}")
+        else:
+            logger.info("Added person involved: %s", person)
+            persons_involved.append(person)
     elif missing_emails_phones:
         data = {}
-        ph_list = ["phone_number", "alt_phone_number_2", "alt_phone_number_3", "alt_phone_number_4"]
-        for i, k in enumerate(ph_list):
-            if k not in row:
-                for j,l in enumerate(ph_list[i+1:]):
-                    if l in missing_emails_phones:
-                        data[k] = missing_emails_phones.get(l)
-                        break
-            else:
-                data[k] = row.get(k)
-        email_list = ["email", "alt_email_2", "alt_email_3", "alt_email_4"]
-        for i, k in enumerate(email_list):
-            if k not in row:
-                for j,l in enumerate(email_list[i+1:]):
-                    if l in missing_emails_phones:
-                        data[k] = missing_emails_phones.get(l)
-                        break
-            else:
-                data[k] = row.get(k)
+        def manage_missing(typ):
+            _list = [f"{typ}", f"alt_{typ}_2", f"alt_{typ}_3", f"alt_{typ}_4"]
+            for i, k in enumerate(_list):
+                if k not in row:
+                    for j,l in enumerate(_list[i+1:]):
+                        if l in missing_emails_phones:
+                            data[k] = missing_emails_phones.get(l)
+                            break
+                else:
+                    data[k] = row.get(k)
+        manage_missing('phone_number')
+        manage_missing('email')
         for k in person_model._model_ref.attr_seq:
             if is_valid_value(row, k) and not any(_ in k for _ in ('phone', 'email')):
                 data[k] = row.get(k)
-            try:
-                person = person_model.post(data)
-                if vehicle_id:
-                    person_vehicle = person_vehicle_model.post({
-                        'user_id': person.get('user_id'),
-                        'vehicle_id': vehicle_id
-                    })
-            except Exception as e:
-                missing_reason.append(f"Failed to post person: {str(e)}")
-            else:
-                persons_involved.append(person)
+        try:
+            person = person_model.post(data)
+            if vehicle_id:
+                person_vehicle = person_vehicle_model.post({
+                    'user_id': person.get('user_id'),
+                    'vehicle_id': vehicle_id
+                })
+        except Exception as e:
+            missing_reason.append(f"Failed to post person: {str(e)}")
+        else:
+            logger.info("Posting person involved: %s", person)
+            persons_involved.append(person)
 
     return row, missing_reason
 
@@ -458,7 +496,7 @@ def process_common_row(campaign_type, row, models, missing_reason = None, dealer
         raise ValueError(f"Invalid campaign type: {campaign_type}")
     return row, missing_reason
 
-def process_headers(headers, mapping, workshop_id, campaign_type, logger = None):
+def process_headers(headers, mapping, rooftop_id, campaign_type, logger = None):
     logger = logger or mlogger
     logger.info(f"Processing headers: {headers}")
     if not headers:
@@ -468,9 +506,12 @@ def process_headers(headers, mapping, workshop_id, campaign_type, logger = None)
     has_contact = any(h in headers for h in required_contact)
     if not has_contact:
         raise ValueError(f"CSV missing at least one required contact field: {required_contact}")
-    if not "workshop_id" in headers and not workshop_id and not "workshop_name" in headers:
-        raise ValueError("Either workshop_id or workshop_name must be present as a column or argument")
+    if campaign_type == "pre-sales":
+        if not "showroom_id" in headers and not rooftop_id and not "showroom_name" in headers and not "showroom_code" in headers:
+            raise ValueError("Either showroom_id or showroom_name/showroom_code must be present as a column or argument")
     if campaign_type == 'post-sales':
+        if not "workshop_id" in headers and not rooftop_id and not "workshop_name" in headers and not "workshop_code" in headers:
+            raise ValueError("Either workshop_id or workshop_name/workshop_code must be present as a column or argument")
         if "reg_number" not in headers:
             raise ValueError("CSV is missing 'reg_number' which is required for post-sales campaign.")
     return headers
@@ -1107,8 +1148,12 @@ def gryd_task_import_leads_from_csv(
     audience_name = kwargs.get('audience_name')
     enterprise_id = kwargs.get("enterprise_id") or AUTOCRM_APP_ENTERPRISE_ID
     mapping = kwargs.get("mapping", {})
-    workshop_id = str(kwargs.get("workshop_id"))
-    showroom_id = str(kwargs.get("showroom_id"))
+    workshop_id = kwargs.get("workshop_id")
+    if workshop_id and not isinstance(workshop_id):
+        workshop_id = str(workshop_id)
+    showroom_id = kwargs.get("showroom_id")
+    if showroom_id and not isinstance(showroom_id):
+        showroom_id = str(showroom_id)
     rooftop_type = "workshop" if workshop_id else "showroom" if showroom_id else "dealership"
     rooftop_id = workshop_id if rooftop_type == 'workshop' else showroom_id if rooftop_type == 'showroom' else dealership_id
     campaign_objective_id = kwargs.get("campaign_objective_id")
@@ -1132,7 +1177,7 @@ def gryd_task_import_leads_from_csv(
             headers = reader.fieldnames
             logger.info(f"Headers: {headers}")
             original_headers = headers
-            headers = process_headers(original_headers, mapping, workshop_id, campaign_type, logger = logger)
+            headers = process_headers(original_headers, mapping, rooftop_id, campaign_type, logger = logger)
             with open(error_csv_path, "w", newline="", encoding="utf-8") as fe:
                 # Error csv
                 error_csv_headers = ["line_num"] + headers + ["_error"]
@@ -1224,7 +1269,7 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
         current_balance = float(dealership.get('credits_balance',0))
         deductable=item_quantity
         if transaction_type == "debit":
-            deductable = -1*item_quantity
+            deductable = -1*item_quantity*item_price
         db.iadd("dealership","dealership_id", dealership_id, "credits_balance", deductable)
     
     
@@ -1264,7 +1309,7 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
         "status" : "success",
         "credit_balance_before" : current_balance,
         "credit_balance_after" : new_balance,
-        "campaing_id" : campaign_id or "inbound",
+        "campaign_id" : campaign_id or "inbound",
         "channel" : channel
     }
     
@@ -1989,13 +2034,23 @@ class VATCalculator:
 if __name__ == "__main__":
 
     #gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-south-india", "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/485b7cbc-55d5-44d2-b5b9-0e6d6e405f4c-692977e5_afinallead.csv", campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943", workshop_id = 12)    
-    for out in gryd_task_import_leads_from_csv(
-            "post-sales", 
-            "vpj-motors-south-india", 
-            "/Users/ggananth/Downloads/voice.csv", 
-            #campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
-            audience_name = "VPJ Motors - Service Center - New data",
-            campaign_objective_id = "post-sales-warranty-expiry-offer-nexa-mumbai-west-nexa-dealer-group-west-india",
-            workshop_id = "vpj motors-workshop1"
-        ):    
-        print(hp.json.dumps(out, hp.json.OPT_INDENT_2))
+    #for out in gryd_task_import_leads_from_csv(
+    #        "pre-sales", 
+    #        "sales-dealership1-india", 
+    #        "/Users/ggananth/Downloads/stellantis.csv", 
+    #        #campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
+    #        audience_name = "Stellantis - test data",
+    #        campaign_objective_id = "pre-sales-test-drive-booking"
+    #    ):    
+    #    print(hp.json.dumps(out, hp.json.OPT_INDENT_2))
+    gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-india", "/Users/ggananth/Downloads/ambal_sample.csv", campaign_objective_id = "post-sales-service-overdue", audience_name = "Ambal Sample", mapping = {
+            "region_name": "region_name",
+            "vin_number": "vin_number",
+            "next_service_due": "next_service_due",
+            "person_name": "first_owner_name",
+            "vehicle_model": "vehicle_model_name",
+            "reg_number": "reg_number",
+            "phone_number": "phone_number",
+            "alt_phone_number_2": "alt_phone_number_2",
+            "odometer_reading": "odometer_reading"
+        })
