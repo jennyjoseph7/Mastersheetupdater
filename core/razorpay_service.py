@@ -126,6 +126,9 @@ def create_credit_purchase(dealership_id: str, credits: int, currency="INR"):
         "channel": "razorpay",
         "campaign_id": "inbound",
         "discount_percentage": final_discount_pct,
+        "item_final_price" : total_amount,
+        "discount_amount": 0,
+        "item_final_total": total_amount,
     }
     final_cost_obj = { "item_quantity": credits, "item_price": unit_price, "discount_percentage": final_discount_pct, "region_subdivision": "IND" }
     billing_obj.update(final_cost_obj)

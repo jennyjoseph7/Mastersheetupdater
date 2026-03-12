@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     }
 
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
-
+    console.log("[autoNgage] reCAPTCHA secret key status:", secretKey ? "Loaded" : "Not found", secretKey);
     const captchaResponse = await axios.post(
       `https://www.google.com/recaptcha/api/siteverify`,
       null,

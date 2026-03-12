@@ -297,8 +297,9 @@ def post_contact_status(*args, **data):
             contact_status_id = generate_uid(payload)
             logger.info(f"[post_contact_status] No message_id provided. Creating new contact_status with contact_status_id={contact_status_id} and payload={payload}")
             pg.update("contact_status", "contact_status_id", contact_status_id, payload)
+            # logger.info(f"Checking data for lead_disposition- Payload new --{json.dumps(data,indent=4)}")
             
-            update_lead_disposition(pg, incoming_status, **data)
+            update_lead_disposition(pg, incoming_status,user_id=user_id, **data)
             return
         
         records= list(pg.list_order_by(
@@ -348,12 +349,13 @@ def post_contact_status(*args, **data):
             logger.info(f"[post_contact_status] Billing triggered | message_id={message_id} | prev={previous_status} → incoming={incoming_status}")
             post_billing_obj(**data)
 
+        # logger.info(f"Checking data for lead_disposition- Payload--{json.dumps(payload,indent=4)}")
         # updating lead disposition
-        update_lead_disposition(pg,incoming_status,user_id=user_id,**payload)
+        update_lead_disposition(pg,incoming_status,**payload)
 
     yield contact_status_id
 def update_lead_disposition(pg, incoming_status, user_id=None, **data):
-    logger.info(f"[update_lead_disposition] Called with incoming_status={incoming_status} for lead_id={data.get('lead_id')}")
+    # logger.info(f"[update_lead_disposition] Called with incoming_status={incoming_status} for lead_id={data.get('lead_id')} and DATA= {json.dumps(data,indent=4)}")
     # logger.info(f"[update_lead_disposition] Attempting to update lead disposition with incoming_status={incoming_status}, user_id={user_id}, data={data}")
     DISPOSITION_SEQUENCE = [
         "queued",

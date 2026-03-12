@@ -24,7 +24,7 @@ filelock==3.24.3
 validators
 bs4
 cleantext
-langchain_community
+# langchain_community
 pypdf
 # streamlit 
 plotly

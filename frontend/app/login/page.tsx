@@ -50,6 +50,7 @@ export default function LoginPage() {
 
   // Get reCAPTCHA site key from environment
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
+  console.log("[autoNgage] reCAPTCHA site key status:", recaptchaSiteKey ? "Loaded" : "Not found" ,recaptchaSiteKey);
   const isRecaptchaEnabled = Boolean(recaptchaSiteKey);
 
   // Debug: Log the site key status (remove in production)

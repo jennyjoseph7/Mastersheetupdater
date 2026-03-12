@@ -22,16 +22,25 @@
     },
 
     {
-      "name": "oem_name",
-      "type": "text",
-      "indexed": true
+      "name": "brand_id",
+      "refers": "parents.brand.brand_id"
     },
 
     {
-      "name": "product_name",
-      "type": "text",
-      "indexed": true
+      "name": "brand_name",
+      "refers": "parents.brand.brand_name"
     },
+    
+    {
+      "name" : "vehicle_model_id",
+      "refers": "parents.vehicle_model.vehicle_model_id"
+    },
+
+    {
+      "name" : "vehicle_model_name",
+      "refers": "parents.vehicle_model.vehicle_model_name"
+    },
+
 
     {
       "name": "cohort_version",
@@ -51,17 +60,19 @@
     {
       "auto_updater": true,
       "default": {
-        "args": ["oem_name", "product_name"],
+        "args": ["brand_name", "vehicle_model_name"],
         "function": "name_to_id",
         "kwargs": {
           "attribute_join": "-",
           "is_unique": true,
-          "separator": "-"
+          "separator": "-",
+          "suffix" : "-cohort_registry"
         }
       },
       "name": "cohort_registry_id",
       "type": "uid",
       "id": true
     }
-  ]
+  ],
+  "parents": ["brand", "vehicle_model"]
 }
