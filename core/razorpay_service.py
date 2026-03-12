@@ -150,57 +150,118 @@ def verify_payment_signature(data: dict) -> bool:
     except Exception as e:
         logger.error(f"[SECURITY] Signature verification failed | {e}")
         return False
-
 def confirm_payment_success(data: dict, webhook=False):
+    logger.info("[PAYMENT] confirm_payment_success called | webhook=%s | payload=%s", webhook, data)
+
     order_id = data["razorpay_order_id"]
+    logger.info("[PAYMENT] Processing order_id=%s", order_id)
 
     if not webhook:
+        logger.info("[PAYMENT] Verifying Razorpay signature for order=%s", order_id)
+
         if not verify_payment_signature(data):
+            logger.error("[PAYMENT] Invalid payment signature | order=%s | payload=%s", order_id, data)
             raise Exception("Invalid payment signature")
+
+        logger.info("[PAYMENT] Signature verified successfully | order=%s", order_id)
+
         payment = client.payment.fetch(data["razorpay_payment_id"])
-    else:
-        payment = data["payment"]
-
-    if payment["status"] != "authorized" and payment["status"] != "captured":
-        return  
-    
-    billing = get_billing_by_order_id(order_id)
-
-    if billing["status"] == "success":
-        return
-
-    if payment["amount"] != billing["amount_paise"]:
-        raise Exception("Amount mismatch")
-    
-    gryd.create_async_task(
-            "post_billing",
-            "autocrm-core",
-            kwargs = {
-                "dealership_id": billing["dealership_id"],
-                "transaction_type": "credit",
-                "item_name": billing["item_name"],
-                "item_description": billing.get("item_description"),
-                "transaction_date": datetime.date.today().isoformat(),
-                "item_quantity": billing["item_quantity"],
-                "item_price": billing["item_price"],
-                "item_unit": "credits",
-                "currency": "credits",
-                "campaign_id": "inbound",
-                "channel": "razorpay",
-
-                "billing_id": billing["billing_id"],
-                "razorpay_order_id": order_id,
-                "razorpay_payment_id": payment["id"],
-                "razorpay_signature": data["razorpay_signature"],
-                "raw_razorpay_payload": payment,
-            }
+        logger.info(
+            "[PAYMENT] Payment fetched from Razorpay | payment_id=%s | status=%s",
+            payment["id"],
+            payment["status"]
         )
 
+    else:
+        payment = data["payment"]
+        logger.info(
+            "[PAYMENT] Webhook payment received | payment_id=%s | status=%s",
+            payment.get("id"),
+            payment.get("status")
+        )
+
+    if payment["status"] not in ["authorized", "captured"]:
+        logger.warning(
+            "[PAYMENT] Ignoring payment due to invalid status | payment_id=%s | status=%s",
+            payment["id"],
+            payment["status"]
+        )
+        return
+
+    logger.info("[PAYMENT] Fetching billing record | order_id=%s", order_id)
+    billing = get_billing_by_order_id(order_id)
+
+    if not billing:
+        logger.error("[PAYMENT] Billing record not found | order_id=%s", order_id)
+        raise Exception("Billing record not found")
+
     logger.info(
-        f"[CREDITS] Credited | dealership={billing['dealership_id']} "
-        f"| credits={billing['item_quantity']} | order={order_id}"
+        "[PAYMENT] Billing fetched | billing_id=%s | status=%s | expected_amount=%s",
+        billing["billing_id"],
+        billing["status"],
+        billing["amount_paise"]
     )
 
+    if billing["status"] == "success":
+        logger.warning(
+            "[PAYMENT] Billing already marked successful | billing_id=%s | order_id=%s",
+            billing["billing_id"],
+            order_id
+        )
+        return
+
+    logger.info(
+        "[PAYMENT] Validating payment amount | razorpay_amount=%s | expected_amount=%s",
+        payment["amount"],
+        billing["amount_paise"]
+    )
+
+    if payment["amount"] != billing["amount_paise"]:
+        logger.error(
+            "[PAYMENT] Amount mismatch | order_id=%s | razorpay_amount=%s | expected=%s",
+            order_id,
+            payment["amount"],
+            billing["amount_paise"]
+        )
+        raise Exception("Amount mismatch")
+
+    logger.info(
+        "[PAYMENT] Creating async billing task | dealership=%s | credits=%s",
+        billing["dealership_id"],
+        billing["item_quantity"]
+    )
+
+    gryd.create_async_task(
+        "post_billing",
+        "autocrm-core",
+        kwargs={
+            "dealership_id": billing["dealership_id"],
+            "transaction_type": "credit",
+            "item_name": billing["item_name"],
+            "item_description": billing.get("item_description"),
+            "transaction_date": datetime.date.today().isoformat(),
+            "item_quantity": billing["item_quantity"],
+            "item_price": billing["item_price"],
+            "item_unit": "credits",
+            "currency": "credits",
+            "campaign_id": "inbound",
+            "channel": "razorpay",
+
+            "billing_id": billing["billing_id"],
+            "razorpay_order_id": order_id,
+            "razorpay_payment_id": payment["id"],
+            "razorpay_signature": data.get("razorpay_signature"),
+            "raw_razorpay_payload": payment,
+        }
+    )
+
+    logger.info(
+        "[CREDITS] Credited | dealership=%s | credits=%s | order=%s | payment_id=%s",
+        billing["dealership_id"],
+        billing["item_quantity"],
+        order_id,
+        payment["id"]
+    )
 def mark_payment_failed(order_id: str, reason: str = ""):
     BillingModel = get_billing_model()
     billing = get_billing_by_order_id(order_id)
