@@ -558,7 +558,7 @@ async function fetchUserSessions(
   try {
     // Build URL with query parameters matching the curl command
     const params = new URLSearchParams({
-      status: "completed",
+      
       dealership_id: dealershipId,
       campaign_id: campaignId,
       lead_id: userId,
