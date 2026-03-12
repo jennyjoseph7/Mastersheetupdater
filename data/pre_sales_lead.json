@@ -220,8 +220,7 @@
                     "campaign_name"
                 ]
             },
-            "auto_updater": true,
-            "force_update": "campaign_id"
+            "auto_updater": true
         },
         {
             "name": "audience_name",
@@ -574,9 +573,7 @@
                     "user_id",
                     "previous_contact_channel"
                 ]
-            },
-            "auto_updater": true,
-            "force_update": "user_id"
+            }
         },
         {
             "name": "budget_range",
@@ -887,7 +884,6 @@
         {
             "name": "showroom_name",
             "type": "text",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -900,7 +896,6 @@
         {
             "name": "showroom_code",
             "type": "text",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -913,7 +908,6 @@
         {
             "name": "showroom_address",
             "type": "text",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -926,7 +920,6 @@
         {
             "name": "showroom_type",
             "type": "text",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -939,7 +932,6 @@
         {
             "name": "showroom_contact_number",
             "type": "text",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -952,7 +944,6 @@
         {
             "name": "showroom_email",
             "type": "text",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -965,7 +956,6 @@
         {
             "name": "showroom_city",
             "type": "text",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -978,7 +968,6 @@
         {
             "name": "showroom_state",
             "type": "text",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -991,7 +980,6 @@
         {
             "name": "showroom_pincode",
             "type": "text",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1004,7 +992,6 @@
         {
             "name": "showroom_geolocation",
             "type": "geolocation",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1017,7 +1004,6 @@
         {
             "name": "showroom_operating_hours",
             "type": "nested_object",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1029,7 +1015,6 @@
         },
         {
             "name": "showroom_days_open",
-            "force_update": "showroom_id",
             "type": "list",
             "default": {
                 "function": "get_from_model",
@@ -1044,7 +1029,6 @@
             "name": "showroom_facilities_available",
             "ui_element": "multiselect",
             "type": "string_list",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1056,7 +1040,6 @@
         },
         {
             "name": "region_subdivision_id",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1069,7 +1052,6 @@
         },
         {
             "name": "subdivision_name",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1082,7 +1064,6 @@
         },
         {
             "name": "languages",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1096,7 +1077,6 @@
         },
         {
             "name": "subdivision_level_guidelines",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1109,7 +1089,6 @@
         },
         {
             "name": "subdivision_level_guardrails",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1123,7 +1102,6 @@
         {
             "name": "showroom_level_guidelines",
             "type": "text",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1136,7 +1114,6 @@
         {
             "name": "showroom_level_guardrails",
             "type": "text",
-            "force_update": "showroom_id",
             "default": {
                 "function": "get_from_model",
                 "args": [

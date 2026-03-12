@@ -460,9 +460,7 @@
                     "vehicle_brand"
                 ]
             },
-            "indexed": true,
-            "auto_updater": true,
-            "force_update": "vehicle_id"
+            "indexed": true
         },
         {
             "name": "vehicle_model",
@@ -474,9 +472,7 @@
                     "vehicle_model"
                 ]
             },
-            "indexed": true,
-            "auto_updater": true,
-            "force_update": "vehicle_id"
+            "indexed": true
         },
         {
             "name": "vehicle_variant",
@@ -488,9 +484,7 @@
                     "vehicle_variant"
                 ]
             },
-            "indexed": true,
-            "auto_updater": true,
-            "force_update": "vehicle_id"
+            "indexed": true
         },
         {
             "name": "variant_color_id",
@@ -518,9 +512,7 @@
                     "vehicle_category"
                 ]
             },
-            "indexed": true,
-            "auto_updater": true,
-            "force_update": "vehicle_id"
+            "indexed": true
         },
         {
             "name": "vehicle_type",
@@ -532,9 +524,7 @@
                     "vehicle_type"
                 ]
             },
-            "indexed": true,
-            "auto_updater": true,
-            "force_update": "vehicle_id"
+            "indexed": true
         },
         {
             "name": "transmission",
@@ -1280,8 +1270,6 @@
                     "workshop_name"
                 ]
             },
-            "auto_updater": true,
-            "force_update": "workshop_id",
             "indexed": true
         },
         {
@@ -1294,8 +1282,6 @@
                     "workshop_full_name"
                 ]
             },
-            "auto_updater": true,
-            "force_update": "workshop_id",
             "indexed": true
         },
         {
@@ -1308,9 +1294,7 @@
                     "workshop_id",
                     "workshop_type"
                 ]
-            },
-            "auto_updater": true,
-            "force_update": "workshop_id"
+            }
         },
         {
             "name": "workshop_contact_number",
@@ -1323,9 +1307,7 @@
                     "contact_number"
                 ]
             },
-            "indexed": true,
-            "auto_updater": true,
-            "force_update": "workshop_id"
+            "indexed": true
         },
         {
             "name": "workshop_email",
@@ -1338,8 +1320,6 @@
                     "email"
                 ]
             },
-            "auto_updater": true,
-            "force_update": "workshop_id",
             "indexed": true
         },
         {
@@ -1352,9 +1332,7 @@
                     "workshop_id",
                     "address"
                 ]
-            },
-            "auto_updater": true,
-            "force_update": "workshop_id"
+            }
         },
         {
             "name": "workshop_city",
@@ -1367,8 +1345,6 @@
                     "city"
                 ]
             },
-            "auto_updater": true,
-            "force_update": "workshop_id",
             "indexed": true
         },
         {
@@ -1382,9 +1358,7 @@
                     "state"
                 ]
             },
-            "indexed": true,
-            "auto_updater": true,
-            "force_update": "workshop_id"
+            "indexed": true
         },
         {
             "name": "workshop_pincode",
@@ -1397,9 +1371,7 @@
                     "pincode"
                 ]
             },
-            "indexed": true,
-            "auto_updater": true,
-            "force_update": "workshop_id"
+            "indexed": true
         },
         {
             "name": "workshop_geolocation",
@@ -1412,8 +1384,6 @@
                     "geolocation"
                 ]
             },
-            "auto_updater": true,
-            "force_update": "workshop_id",
             "indexed": true
         },
         {
@@ -1426,9 +1396,7 @@
                     "workshop_id",
                     "operating_hours"
                 ]
-            },
-            "auto_updater": true,
-            "force_update": "workshop_id"
+            }
         },
         {
             "name": "workshop_days_open",
@@ -1454,9 +1422,7 @@
                     "workshop_id",
                     "facilities_available"
                 ]
-            },
-            "auto_updater": true,
-            "force_update": "workshop_id"
+            }
         },
         {
             "name": "workshop_services_offered",
@@ -1467,9 +1433,7 @@
                     "workshop_id",
                     "services_offered"
                 ]
-            },
-            "auto_updater": true,
-            "force_update": "workshop_id"
+            }
         },
         {
             "name": "region_subdivision_id",
@@ -1481,7 +1445,6 @@
                     "region_subdivision_id"
                 ]
             },
-            "force_update": "workshop_id",
             "type": "text"
         },
         {
@@ -1494,7 +1457,6 @@
                     "subdivision_name"
                 ]
             },
-            "force_update": "workshop_id",
             "type": "text"
         },
         {
@@ -1508,8 +1470,7 @@
                 ]
             },
             "type": "list",
-            "list_type": "text",
-            "force_update": "workshop_id"
+            "list_type": "text"
         },
         {
             "name": "subdivision_level_guidelines",
@@ -1521,8 +1482,7 @@
                     "subdivision_level_guidelines"
                 ]
             },
-            "type": "text",
-            "force_update": "workshop_id"
+            "type": "text"
         },
         {
             "name": "subdivision_level_guardrails",
@@ -1534,7 +1494,6 @@
                     "subdivision_level_guardrails"
                 ]
             },
-            "force_update": "workshop_id",
             "type": "text"
         },
         {
