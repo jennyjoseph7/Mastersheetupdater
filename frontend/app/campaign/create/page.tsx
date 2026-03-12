@@ -526,11 +526,11 @@ const handleGenerateCampaign = async () => {
          runtime_limit: 3600,
         cancellable: true,
       };
-
+    const  servicename=process.env.NEXT_PUBLIC_AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME || "autocrm-short-run-agent";
       // Call our new global polling function
       const resultData = await executeTaskWithPolling(
-        "autocrm-short-run-agent", 
-        "generate_campaign_idea", 
+        servicename,
+        "generate_campaign_idea",
         payload,
         (statusMessage: string) => setGenerationStatusMsg(statusMessage), // UI Callback
         { maxRetries: 90 } // Optional: 3 minutes max timeout for this specific heavy task
@@ -753,8 +753,8 @@ const handleProceed = async () => {
         setLaunchStatus("Triggering campaign engine...");
         const taskType =
           campaignType === "presales" ? "pre-sales" : "post-sales";
-
-        await api("/gryd/task/autocrm-campaign/trigger_campaign", "POST", {
+        const serviceName = process.env.NEXT_PUBLIC_AUTOCRM_CAMPAIGN_TRIGGER_SERVICE_NAME || "autocrm-campaign";
+        await api(`/gryd/task/${serviceName}/trigger_campaign`, "POST", {
           args: [],
           kwargs: { campaign_type: taskType, campaign_id: createdCampaignId },
         });
