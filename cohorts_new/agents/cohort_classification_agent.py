@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 import validators
 import time
 from typing import *
+from collections import OrderedDict
 import random
 
 logger = get_logger(__name__)
@@ -293,33 +294,13 @@ class CohortClassificationAgent(UtilityMixin):
         pass 
 
 
-def random_assign_users(
-        users: List[Dict], 
-        cohorts: List[Dict], 
-        seed=42,
-        weights: List[float] = None 
-    ):
-
+def random_assign_users(users: List[Dict], cohorts: List[Dict], seed=42, weights: List[float] = None) -> Dict:
     """
     Randomly assigns cohorts to users guaranteeing every cohort is used at least once.
-    Strategy:
-      1. Shuffle cohort list with the given seed.
-      2. Tile shuffled cohorts to cover all users (round-robin), then shuffle
-         that full assignment list so the final order is random — not striped.
-      3. Each user gets exactly one cohort; all cohorts appear >= floor(n/k) times
-         and at most ceil(n/k) times, so distribution is as balanced as possible
-         while still being random. 
-    Args:
-        users (List[Dict]): List of user dictionaries.
-        cohorts (List[Dict]): List of cohort dictionaries.
-        seed (int): Seed for random number generator.
-        weights (List[float]): partial weights allowed, e.g. [0.5, 0.3] for 10 cohorts
-    Returns:
-        List[Dict]: List of user dictionaries with assigned cohorts.
     """
-
     rng = random.Random(seed)
-    n, k = len(users), len(cohorts)
+    n = len(users)    # number of users
+    k = len(cohorts)  # number of cohorts
 
     if weights is not None:
         if len(weights) > k:
@@ -328,36 +309,137 @@ def random_assign_users(
             raise ValueError("weights cannot be negative")
         if sum(weights) > 1.0 + 1e-6:
             raise ValueError(f"weights sum ({sum(weights)}) cannot exceed 1.0")
+    
         remaining_weight = 1.0 - sum(weights)
         unspecified = k - len(weights)
-        fill_weight = remaining_weight / unspecified if unspecified > 0 else 0
-        full_weights = weights + [fill_weight] * unspecified
-        pool = []
-        remaining_users = n
-        for i, w in enumerate(full_weights):
-            count = round(w * n) if i < k - 1 else remaining_users
-            remaining_users -= count
-            pool.extend([cohorts[i]] * count)
+        if unspecified > 0:
+            fill_weight = remaining_weight / unspecified
+        else:
+            fill_weight = 0       
+        weights = weights + [fill_weight] * unspecified
+
     else:
-        shuffled_cohorts = cohorts[:]
-        rng.shuffle(shuffled_cohorts)
-        pool = (shuffled_cohorts * (n // k + 1))[:n]
-    rng.shuffle(pool)
+        weights = [1/k] * k
+    
+    weights = [round(w, 2) for w in weights]
+
+
+    distribution = OrderedDict()
+    remaining_users = n
+
+    for i, cohort in enumerate(cohorts):
+        cid = cohort.get("cohort_id", f"cohort_{i}")
+        if i < k - 1:
+            count = round(weights[i] * n)
+        else:
+            count = remaining_users
+        remaining_users -= count
+        distribution[cid] = count
+
+    cohort_list = []
+    for cohort, count in zip(cohorts, distribution.values()):
+        cohort_list.extend([cohort] * count)
+
+    rng.shuffle(cohort_list)
+
     results = []
-    for user, cohort in zip(users, pool):
+    for user, cohort in zip(users, cohort_list):
         payload = {
             **user,
-            "primary_classified_cohort_id": cohort.get("cohort_id", ""),
-            "primary_classified_cohort_name": cohort.get("cohort_name", ""),
+            "primary_classified_cohort_id": cohort.get("cohort_id"),
+            "primary_classified_cohort_name": cohort.get("cohort_name"),
             "primary_classified_cohort_data": json.dumps(cohort),
             "secondary_classified_cohort_ids": "[]",
-            "classification_reasoning": "Randomly assigned (no AI classification)",
+            "classification_reasoning": "Randomly assigned",
             "confidence_score": None,
             "assignment_mode": "random",
         }
-        if "campaign_id" in cohort:
-            payload["campaign_id"] = cohort["campaign_id"]
+
         results.append(payload)
-    return results
+
+    return {
+        "assigned_users": results,
+        "meta": {
+            "seed": seed,
+            "total_customers": n,
+            "total_cohorts": k,
+            "weights": weights,
+            "distribution": distribution
+        }
+    }
+    
+
+
+
+
+    #     remaining_weight = 1.0 - sum(weights)
+    #     unspecified = k - len(weights)
+    #     fill_weight = remaining_weight / unspecified if unspecified > 0 else 0
+    #     full_weights = weights + [fill_weight] * unspecified
+    #     pool = []
+    #     remaining_users = n
+    #     for i, w in enumerate(full_weights):
+    #         if i < k - 1:
+    #             count = round(w * n)
+    #         else:
+    #             count = remaining_users
+    #         remaining_users -= count
+    #         pool.extend([cohorts[i]] * count)
+    # else:
+    #     shuffled_cohorts = cohorts[:]
+    #     rng.shuffle(shuffled_cohorts)
+    #     pool = (shuffled_cohorts * (n // k + 1))[:n]
+    #     full_weights = [1/k] * k
+
+    # rng.shuffle(pool)
+    
+
+    # results = []
+    # distribution = {}
+    # for user, cohort in zip(users, pool):
+    #     cid = cohort.get("cohort_id", "")
+    #     cname = cohort.get("cohort_name", "")
+    #     distribution[cid] = distribution.get(cid, 0) + 1
+
+    #     payload = {
+    #         **user,
+    #         "primary_classified_cohort_id": cohort.get("cohort_id", ""),
+    #         "primary_classified_cohort_name": cohort.get("cohort_name", ""),
+    #         "primary_classified_cohort_data": json.dumps(cohort),
+    #         "secondary_classified_cohort_ids": "[]",
+    #         "classification_reasoning": "Randomly assigned (no AI classification)",
+    #         "confidence_score": None,
+    #         "assignment_mode": "random",
+    #     }
+    #     if "campaign_id" in cohort:
+    #         payload["campaign_id"] = cohort["campaign_id"]
+    #     results.append(payload)
+
+    # debug = True 
+    # if debug:
+    #     verbose = {}
+    #     verbose['seed'] = seed 
+    #     verbose['total_customers'] = n
+    #     verbose['total_cohorts'] = k
+
+    #     final_weights = {}
+    #     for i in range(k):
+    #         cohort = cohorts[i]
+    #         cohort_id = cohort.get("cohort_id")
+    #         if not cohort_id:
+    #             cohort_id = f"cohort_{i}"
+            
+    #         weight_value = round(full_weights[i], 4)
+    #         final_weights[cohort_id] = weight_value
+
+    #     verbose['final_weights'] = final_weights
+    #     verbose['distribution'] = distribution
+
+
+    # return {
+    #     "assigned_users": results,
+    #     "meta": verbose
+    # }
+    # return results
 
 

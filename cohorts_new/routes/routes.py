@@ -387,7 +387,7 @@ def cohorts_assignment():
     """
     Randomly populate lead data with provided cohorts.
     """
-    from agents.cohort_classification_agent import random_assign_users
+    from ..agents.cohort_classification_agent import random_assign_users
 
     try:
         if "lead_file" not in request.files:
@@ -406,10 +406,11 @@ def cohorts_assignment():
 
         cohorts = json.load(cohorts_file)
         cohorts = standardize_cohorts(cohorts)
-        stream = StringIO(lead_file.stream.read().decode("utf-8"))
-        df = pd.read_csv(stream)
+        df = pd.read_csv(lead_file.stream)
         users = df.to_dict(orient="records")
-        assigned_users = random_assign_users(users=users, cohorts=cohorts, seed=seed, weights=weights)
+        random_assigned_user_func_result = random_assign_users(users=users, cohorts=cohorts, seed=seed, weights=weights)
+        assigned_users = random_assigned_user_func_result.get("assigned_users", [])
+        meta = random_assigned_user_func_result.get("meta", {})
         result_df = pd.DataFrame(assigned_users)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
             temp_path = tmp.name
@@ -422,13 +423,15 @@ def cohorts_assignment():
         return jsonify({
             "message": "Cohorts assigned successfully",
             "total_customers": len(assigned_users),
-            "csv_url": csv_url
+            "csv_url": csv_url,
+            "meta": meta
         })
 
     except Exception as e:
         logger.exception("Cohort assignment failed \n\n")
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        trace = traceback.format_exc()
+        return jsonify({"error": str(e), "traceback": trace}), 500
 
 
 # 1. Collection of User Behaviour - Mohit
