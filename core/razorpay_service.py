@@ -51,40 +51,39 @@ def get_dealer_by_id(dealer_id: str):
     return result[0]
 
 def create_credit_purchase(dealership_id: str, credits: int, currency="INR"):
+    from core import VATCalculator, calculate_currency_rate
 
-    from .core import VATCalculator, calculate_currency_rate
     if not isinstance(credits, int) or credits <= 0:
         raise ValueError("Credits must be a positive integer")
 
     dealer = get_dealer_by_id(dealership_id)
 
-    if dealer.get("region_discount_percentage", 0) > 0:
-        final_discount_pct = dealer["region_discount_percentage"]
+    # Determine the highest discount
+    final_discount_pct = max(dealer.get("region_discount_percentage", 0),
+                             dealer.get("discount_percentage", 0))
 
-    if dealer.get("discount_percentage", 0) > 0:
-        final_discount_pct = dealer["discount_percentage"]
-
-    currency_rate_task = calculate_currency_rate(args=[currency])
-
-    currency_rate_obj = currency_rate_task.get()
+    # Get currency rate
+    currency_rate_obj = calculate_currency_rate(currency)
     unit_price = currency_rate_obj["rate"]
 
-    
+    # VAT calculation
     vat_calculator = VATCalculator("india")
-
     final_cost_obj = vat_calculator.calculate(
         item_quantity=credits,
         item_price=unit_price,
         discount_percentage=final_discount_pct
     )
 
+    # Use total_amount from VAT calculator (includes taxes)
     total_amount = final_cost_obj["total_amount"]
 
+    # Gateway amount
     if currency.upper() == "INR":
         amount_gateway = int(round(total_amount * 100))
     else:
         amount_gateway = round(total_amount, 2)
 
+    # Create Razorpay order
     order = client.order.create({
         "amount": amount_gateway,
         "currency": currency,
@@ -101,7 +100,7 @@ def create_credit_purchase(dealership_id: str, credits: int, currency="INR"):
         "item_description": "Purchasing credits",
         "item_quantity": credits,
         "item_price": unit_price,
-        "item_total": round(credits * unit_price, 2),
+        "item_total": final_cost_obj["item_final_total"],   # after discount, before tax
         "item_units": "credits",
         "currency": currency,
         "payment_gateway": "razorpay",
@@ -113,6 +112,7 @@ def create_credit_purchase(dealership_id: str, credits: int, currency="INR"):
         "discount_percentage": final_discount_pct,
     }
 
+    # Merge VAT calculation
     billing_obj.update(final_cost_obj)
 
     billing = BillingModel.post(billing_obj)
