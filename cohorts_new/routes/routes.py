@@ -219,12 +219,14 @@ def campaign_ideas_stream():
         "num_of_hashtags": data.get("num_of_hashtags", 10),
         "model_identifier": data.get("model_identifier", "azure-gpt-4o"),
     }
-    campaign_idea_generation_agent = CampaignIdeaGeneratorAgent(**_params)
     batch_size = data.get("batch_size", 10)
-    result = campaign_idea_generation_agent.run_with_events(batch_size=batch_size)
-    for event in result:
-        yield f"data: {json.dumps(event, default=str)}\n\n"
+    def generate():
+        agent = CampaignIdeaGeneratorAgent(**_params)
+        result = agent.run_with_events(batch_size=batch_size)
+        for event in result:
+            yield f"data: {json.dumps(event, default=str)}\n\n"
 
+    return Response(stream_with_context(generate()),mimetype="text/event-stream")
 
 @gryd_orchestration_bp.route("/stream", methods=["POST"])
 def gryd_stream_cohorts():
@@ -336,8 +338,11 @@ def gryd_campaign_ideas_stream():
         "campaign_objective": data.get("campaign_objective", None),
         "consumer_insight": data.get("consumer_insight", None),
     }
-    result = run_gryd_job("campaign_idea_generation_agent", params_)
-    return result
+
+    def generate():
+        for result in run_gryd_job("campaign_idea_generation_agent", params_, stream=True):
+            yield f"data: {json.dumps(result, default=str)}\n\n"
+    return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
 
 def standardize_cohorts(cohorts : Union[List[Dict[str, Any]], Dict[str, List[Dict[str, Any]]]]):
