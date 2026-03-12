@@ -335,16 +335,28 @@ def random_assign_users(
         pool = []
         remaining_users = n
         for i, w in enumerate(full_weights):
-            count = round(w * n) if i < k - 1 else remaining_users
+            if i < k - 1:
+                count = round(w * n)
+            else:
+                count = remaining_users
             remaining_users -= count
             pool.extend([cohorts[i]] * count)
     else:
         shuffled_cohorts = cohorts[:]
         rng.shuffle(shuffled_cohorts)
         pool = (shuffled_cohorts * (n // k + 1))[:n]
+        full_weights = [1/k] * k
+
     rng.shuffle(pool)
+    
+
     results = []
+    distribution = {}
     for user, cohort in zip(users, pool):
+        cid = cohort.get("cohort_id", "")
+        cname = cohort.get("cohort_name", "")
+        distribution[cid] = distribution.get(cid, 0) + 1
+
         payload = {
             **user,
             "primary_classified_cohort_id": cohort.get("cohort_id", ""),
@@ -358,6 +370,32 @@ def random_assign_users(
         if "campaign_id" in cohort:
             payload["campaign_id"] = cohort["campaign_id"]
         results.append(payload)
-    return results
+
+    debug = True 
+    if debug:
+        verbose = {}
+        verbose['seed'] = seed 
+        verbose['total_customers'] = n
+        verbose['total_cohorts'] = k
+
+        final_weights = {}
+        for i in range(k):
+            cohort = cohorts[i]
+            cohort_id = cohort.get("cohort_id")
+            if not cohort_id:
+                cohort_id = f"cohort_{i}"
+            
+            weight_value = round(full_weights[i], 4)
+            final_weights[cohort_id] = weight_value
+
+        verbose['final_weights'] = final_weights
+        verbose['distribution'] = distribution
+
+
+    return {
+        "assigned_users": results,
+        "meta": verbose
+    }
+    # return results
 
 
