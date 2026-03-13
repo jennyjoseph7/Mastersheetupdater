@@ -1272,7 +1272,7 @@
           const callDate = formatCallDate(callDateObj);
 
           // Model & Seating
-          const model = row['interested_vehicle_name'] || '';
+          const model = row['model_preference'] || '';
           const seatingRaw = row['seating_capacity_preference'] || '';
           const seating = deriveSeating(seatingRaw, model);
 
