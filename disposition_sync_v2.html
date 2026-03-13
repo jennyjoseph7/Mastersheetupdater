@@ -620,14 +620,9 @@
       font-family: var(--mono);
       font-size: 0.875rem;
       font-weight: 600;
-      width: 130px;
+      width: 110px;
       outline: none;
       transition: all 0.2s;
-    }
-
-    .lead-id-input::placeholder {
-      color: var(--text-muted);
-      font-weight: 400;
     }
 
     .lead-id-input:hover {
@@ -637,6 +632,11 @@
     .lead-id-input:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+
+    .lead-id-input::placeholder {
+      color: var(--text-muted);
+      font-weight: 400;
     }
 
     /* FOOTER */
@@ -778,6 +778,10 @@
         </svg>
         Process Both Files
       </button>
+      <div class="lead-id-wrapper">
+        <span class="lang-label">🏷️ Start Lead ID</span>
+        <input type="number" class="lead-id-input" id="leadIdStart" placeholder="e.g. 8173" min="1">
+      </div>
       <div class="lang-select-wrapper">
         <span class="lang-label">🌐 Language</span>
         <select class="lang-select" id="langSelect">
@@ -786,10 +790,6 @@
           <option value="Tamil">Tamil</option>
           <option value="Malayalam">Malayalam</option>
         </select>
-      </div>
-      <div class="lead-id-wrapper">
-        <span class="lang-label">🎫 Start Lead ID</span>
-        <input type="text" class="lead-id-input" id="leadIdStart" placeholder="e.g. L-8173">
       </div>
       <button class="btn btn-success" id="btnCopy" disabled onclick="copyData()" style="display:none">
         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1279,7 +1279,6 @@
 
         // ── ASSEMBLE OUTPUT ROWS (ALL rows, no dedup) ─────────────────────────────
         const output = [];
-        let leadIndex = 0;
         for (const { row, phone } of allLeads) {
           const disp = (row['disposition'] || '').trim();
           const dispLower = disp.toLowerCase();
@@ -1322,19 +1321,8 @@
           const selectedLanguage = document.getElementById('langSelect').value;
 
           // Auto-generate Lead_ID
-          const leadIdInput = document.getElementById('leadIdStart').value.trim();
-          let leadId = '';
-          if (leadIdInput) {
-            const match = leadIdInput.match(/^(.*?)(\d+)$/);
-            if (match) {
-              const prefix = match[1];
-              const startNum = parseInt(match[2], 10);
-              const numLen = match[2].length;
-              leadId = prefix + String(startNum + leadIndex).padStart(numLen, '0');
-            } else {
-              leadId = leadIdInput;
-            }
-          }
+          const startId = parseInt(document.getElementById('leadIdStart').value) || 0;
+          const leadId = startId > 0 ? `L-${startId + output.length}` : '';
 
           output.push({
             lead_id: leadId,
@@ -1357,7 +1345,6 @@
             seating,
             exclusion_flag: exclusion,
           });
-          leadIndex++;
         }
 
         processedData = output;
