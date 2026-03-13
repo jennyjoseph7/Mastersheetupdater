@@ -800,7 +800,8 @@
       </button>
       <button class="btn btn-success" id="btnExport" disabled onclick="exportToExcel()" style="display:none">
         <svg fill="currentColor" width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 9l-2 3-2-3H6.5l3.25 4.5L6.5 20h2.5l2-3 2 3h2.5l-3.25-4.5L16 11h-3zm4 9H6V4h7v5h5v11z"/>
+          <path
+            d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 9l-2 3-2-3H6.5l3.25 4.5L6.5 20h2.5l2-3 2 3h2.5l-3.25-4.5L16 11h-3zm4 9H6V4h7v5h5v11z" />
         </svg>
         Export Excel
       </button>
@@ -847,6 +848,7 @@
               <th>Pincode</th>
               <th>Language</th>
               <th>Lead_Source</th>
+              <th>Cohort</th>
               <th>Campaign_ID</th>
               <th>Call Triggered</th>
               <th>Outcome</th>
@@ -1039,7 +1041,7 @@
 
     function detectPhones(obj) {
       const phones = new Set();
-      
+
       // 1. Try known column names explicitly first
       const exactNames = ['phone_number', 'phone', 'mobile', 'contact', 'contact_number'];
       for (const c of exactNames) {
@@ -1054,7 +1056,7 @@
       for (const val of raw) {
         if (!val) continue;
         const s = String(val).trim();
-        
+
         // Exact cell matches
         if (isPhoneLike(s)) {
           const n = normalizePhone(s);
@@ -1104,7 +1106,7 @@
           }
         }
       }
-      
+
       // 2. Check any column key that contains 'record', 'audio', or 'media'
       for (const [k, v] of Object.entries(obj)) {
         if (!v || k === '__raw') continue;
@@ -1126,8 +1128,8 @@
           if (url) {
             const lower = url.toLowerCase();
             // High confidence keywords
-            if (lower.includes('cloudphone') || lower.includes('record') || 
-                lower.includes('audio') || lower.includes('.mp3') || lower.includes('.wav')) {
+            if (lower.includes('cloudphone') || lower.includes('record') ||
+              lower.includes('audio') || lower.includes('.mp3') || lower.includes('.wav')) {
               return url;
             }
             // Low confidence generic long URL
@@ -1135,7 +1137,7 @@
               bestGuess = url;
             }
           } else if (s.includes('.mp3') || s.includes('.wav') || s.includes('cloudphone')) {
-             return s;
+            return s;
           }
         }
         if (bestGuess) return bestGuess;
@@ -1292,7 +1294,7 @@
             outcome = 'Not Connected';
           } else {
             // Keep default legacy behavior for old codes if needed, or default strictly to Not Connected
-            outcome = 'Not Connected'; 
+            outcome = 'Not Connected';
           }
 
           // Exclusion flag
@@ -1332,6 +1334,7 @@
             pincode: row['pincode'] || '',
             language: selectedLanguage,
             lead_source: row['lead_source'] || '',
+            cohort: row['campaign_objective_name'] || '',
             campaign_id: row['campaign_id'] || '',
             call_triggered: callTriggered,
             outcome,
@@ -1391,6 +1394,7 @@
       <td></td>
       <td>${esc(r.language)}</td>
       <td>${esc(r.lead_source)}</td>
+      <td>${esc(r.cohort)}</td>
       <td>${esc(r.campaign_id)}</td>
       <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis">${esc(r.call_triggered)}</td>
       <td class="${r.outcome === 'Connected' ? 'cell-connected' : 'cell-not-connected'}">${esc(r.outcome)}</td>
@@ -1444,7 +1448,7 @@
     }
 
     // ─── EXPORT TO EXCEL ──────────────────────────────────────────────────────────
-    const HEADERS_TSV = ['Lead_ID', 'Full_Name', 'Phone', 'City', 'Pincode', 'Language', 'Lead_Source', 'Campaign_ID',
+    const HEADERS_TSV = ['Lead_ID', 'Full_Name', 'Phone', 'City', 'Pincode', 'Language', 'Lead_Source', 'Cohort', 'Campaign_ID',
       'Call Triggered', 'Outcome', 'Disposition', 'SUMMARY', 'Call_Date',
       'Number of attempts', 'SENTIMENT', 'Recordings', 'Model', 'Seating', 'Exclusion_Flag'];
 
@@ -1461,6 +1465,7 @@
           r.pincode,
           r.language,
           r.lead_source,
+          r.cohort,
           r.campaign_id,
           r.call_triggered,
           r.outcome,
@@ -1496,6 +1501,7 @@
           r.pincode,
           r.language,
           r.lead_source,
+          r.cohort,
           r.campaign_id,
           r.call_triggered,
           r.outcome,
