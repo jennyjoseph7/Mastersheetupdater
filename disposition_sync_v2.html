@@ -538,6 +538,73 @@
       color: var(--danger);
     }
 
+    /* LANGUAGE DROPDOWN */
+    .lang-select-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .lang-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem 2.4rem 0.65rem 1rem;
+      font-family: var(--sans);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      outline: none;
+    }
+
+    .lang-select:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .lang-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+
+    .lang-select option {
+      background: var(--surface);
+      color: var(--text);
+      padding: 0.5rem;
+    }
+
+    .lang-select-wrapper::after {
+      content: '';
+      position: absolute;
+      right: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 5px solid var(--text-dim);
+      pointer-events: none;
+      transition: border-top-color 0.2s;
+    }
+
+    .lang-select-wrapper:hover::after {
+      border-top-color: var(--accent);
+    }
+
+    .lang-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-right: 0.5rem;
+      font-weight: 600;
+    }
+
     /* FOOTER */
     footer {
       text-align: center;
@@ -677,6 +744,15 @@
         </svg>
         Process Both Files
       </button>
+      <div class="lang-select-wrapper">
+        <span class="lang-label">🌐 Language</span>
+        <select class="lang-select" id="langSelect">
+          <option value="English">English</option>
+          <option value="Hindi">Hindi</option>
+          <option value="Tamil">Tamil</option>
+          <option value="Malayalam">Malayalam</option>
+        </select>
+      </div>
       <button class="btn btn-success" id="btnCopy" disabled onclick="copyData()" style="display:none">
         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path
@@ -731,6 +807,7 @@
               <th>Phone</th>
               <th>City</th>
               <th>Pincode</th>
+              <th>Language</th>
               <th>Lead_Source</th>
               <th>Campaign_ID</th>
               <th>Call Triggered</th>
@@ -1202,12 +1279,16 @@
           // Session data
           const sess = sessionMap[phone] || {};
 
+          // Get selected language from dropdown
+          const selectedLanguage = document.getElementById('langSelect').value;
+
           output.push({
             lead_id: '',
             full_name: row['person_name'] || '',
             phone,
             city: row['city'] || '',
             pincode: '',
+            language: selectedLanguage,
             lead_source: row['lead_source'] || '',
             campaign_id: row['campaign_id'] || '',
             call_triggered: callTriggered,
@@ -1266,6 +1347,7 @@
       <td class="cell-phone">${esc(r.phone)}</td>
       <td>${esc(r.city)}</td>
       <td></td>
+      <td>${esc(r.language)}</td>
       <td>${esc(r.lead_source)}</td>
       <td>${esc(r.campaign_id)}</td>
       <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis">${esc(r.call_triggered)}</td>
@@ -1320,7 +1402,7 @@
     }
 
     // ─── EXPORT TO EXCEL ──────────────────────────────────────────────────────────
-    const HEADERS_TSV = ['Lead_ID', 'Full_Name', 'Phone', 'City', 'Pincode', 'Lead_Source', 'Campaign_ID',
+    const HEADERS_TSV = ['Lead_ID', 'Full_Name', 'Phone', 'City', 'Pincode', 'Language', 'Lead_Source', 'Campaign_ID',
       'Call Triggered', 'Outcome', 'Disposition', 'SUMMARY', 'Call_Date',
       'Number of attempts', 'SENTIMENT', 'Recordings', 'Model', 'Seating', 'Exclusion_Flag'];
 
@@ -1335,6 +1417,7 @@
           r.phone,
           r.city,
           r.pincode,
+          r.language,
           r.lead_source,
           r.campaign_id,
           r.call_triggered,
@@ -1369,6 +1452,7 @@
           r.phone,
           r.city,
           r.pincode,
+          r.language,
           r.lead_source,
           r.campaign_id,
           r.call_triggered,
