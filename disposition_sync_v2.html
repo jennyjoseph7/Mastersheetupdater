@@ -1389,11 +1389,11 @@
             sentNum >= 0.3 ? 'cell-sentiment-mid' : 'cell-sentiment-low';
 
         tr.innerHTML = `
-      <td></td>
+      <td>${esc(r.lead_id)}</td>
       <td>${esc(r.full_name)}</td>
       <td class="cell-phone">${esc(r.phone)}</td>
       <td>${esc(r.city)}</td>
-      <td></td>
+      <td>${esc(r.pincode)}</td>
       <td>${esc(r.language)}</td>
       <td>${esc(r.lead_source)}</td>
       <td>${esc(r.cohort)}</td>
