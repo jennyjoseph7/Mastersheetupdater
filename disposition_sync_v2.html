@@ -854,6 +854,7 @@
               <th>Outcome</th>
               <th>Disposition</th>
               <th>SUMMARY</th>
+              <th>Conversion</th>
               <th>Call_Date</th>
               <th>No. of Attempts</th>
               <th>SENTIMENT</th>
@@ -1340,6 +1341,7 @@
             outcome,
             disposition: disp,
             summary,
+            conversion: '',
             call_date: callDate,
             num_attempts: phoneCountMap[phone] || 1,
             sentiment: sess.sentiment || '',
@@ -1400,6 +1402,7 @@
       <td class="${r.outcome === 'Connected' ? 'cell-connected' : 'cell-not-connected'}">${esc(r.outcome)}</td>
       <td class="${getPrioClass(r.disposition)}">${esc(r.disposition)}</td>
       <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(r.summary)}</td>
+      <td>${esc(r.conversion)}</td>
       <td>${esc(r.call_date)}</td>
       <td>${esc(String(r.num_attempts))}</td>
       <td class="${sentClass}">${esc(r.sentiment)}</td>
@@ -1449,7 +1452,7 @@
 
     // ─── EXPORT TO EXCEL ──────────────────────────────────────────────────────────
     const HEADERS_TSV = ['Lead_ID', 'Full_Name', 'Phone', 'City', 'Pincode', 'Language', 'Lead_Source', 'Cohort', 'Campaign_ID',
-      'Call Triggered', 'Outcome', 'Disposition', 'SUMMARY', 'Call_Date',
+      'Call Triggered', 'Outcome', 'Disposition', 'SUMMARY', 'Conversion', 'Call_Date',
       'Number of attempts', 'SENTIMENT', 'Recordings', 'Model', 'Seating', 'Exclusion_Flag'];
 
     async function exportToExcel() {
@@ -1471,6 +1474,7 @@
           r.outcome,
           r.disposition,
           r.summary,
+          r.conversion,
           r.call_date,
           r.num_attempts,
           r.sentiment,
@@ -1507,6 +1511,7 @@
           r.outcome,
           r.disposition,
           r.summary,
+          r.conversion,
           r.call_date,
           r.num_attempts,
           r.sentiment,
