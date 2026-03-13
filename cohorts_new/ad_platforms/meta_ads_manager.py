@@ -83,7 +83,7 @@ class MetaAdsManager:
         self.ad_account = AdAccount(self.ad_account_id)
         logger.info(f"Meta Ads API initialized for account {self.ad_account_id}")
 
-    def upload_image(self, image_path: str) -> str:
+    def upload_image(self, image_path: str, image_name: Optional[str] = None) -> str:
         """Upload an image to Meta Ads image library.
         Parameters
         ----------
@@ -298,3 +298,45 @@ if __name__ == "__main__":
     )
 
     print(result)
+
+
+    # Step 1. Upload Image
+    image_hash = manager.upload_image(image_path="./generated_images/apartment.png")
+    print("Image Hash:", image_hash)
+
+    # Step 2. Create Campaign
+    campaign = manager.create_campaign(
+        name="Real Estate Campaign",
+        objective="OUTCOME_LEADS"
+    )
+    print("Campaign ID:", campaign.get_id())
+
+    # Step 3. Create AdSet
+    adset = manager.create_ad_set(
+        campaign_id=campaign.get_id(),
+        name="Luxury Apartment AdSet",
+        daily_budget=5000,
+        targeting=targeting
+    )
+
+    print("AdSet ID:", adset.get_id())
+
+    # Step 4. Create AdCreative
+    creative = manager.create_ad_creative(
+        name="Luxury Apartment Creative",
+        image_hash=image_hash,
+        title="Luxury Apartment with Ocean View",
+        body="Discover your dream property today.",
+        link_url="https://example.com/property",
+        call_to_action="LEARN_MORE"
+    )
+
+    print("Creative ID:", creative.get_id())
+
+    # Step 5. Create Ad
+    ad = manager.create_ad(
+        ad_set_id="ADSET_ID_HERE",
+        creative_id=creative.get_id(),
+        name="Luxury Apartment Ad"
+    )   
+
