@@ -488,7 +488,8 @@ export async function dealerLogin(
 
   const baseurl = API_BASE_URL;  
   const loginApiUrl = `${baseurl}/gryd/login`;
-
+  const signupToken = process.env.NEXT_PUBLIC_SIGNUP_API_KEY;
+ 
   // Transform the request to match API requirements
   const requestBody = {
     user_id: data.email,
@@ -510,7 +511,7 @@ export async function dealerLogin(
       "Content-Type": "application/json",
       Accept: "application/json",
       "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
+      "X-GRYD-SIGNUP-TOKEN": signupToken || "",
     },
     body: JSON.stringify(requestBody),
     cache: "no-store",
