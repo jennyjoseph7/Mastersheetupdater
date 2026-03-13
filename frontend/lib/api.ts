@@ -1,11 +1,17 @@
 import { triggerGlobalLogout } from "@/lib/auth-context";
 
 const getApiBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
-    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  const url = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+  if (!url) {
+    throw new Error(
+      "❌ NEXT_PUBLIC_API_BASE_URL is not defined. Please set it in your environment variables."
+    );
   }
 
-  return "https://autobot-webapp-dev.gryd.in";
+  console.log(`[APP_ENV] Using API URL -> ${url}`);
+  return url;
+  
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -479,7 +485,9 @@ export async function dealerLogin(
   data: DealerLoginRequest
 ): Promise<DealerLoginResponse> {
   // Use production API for dealer login
-  const loginApiUrl = "https://autobot-webapp-dev.gryd.in/gryd/login";
+
+  const baseurl = API_BASE_URL;  
+  const loginApiUrl = `${baseurl}/gryd/login`;
 
   // Transform the request to match API requirements
   const requestBody = {

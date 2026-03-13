@@ -1,3 +1,4 @@
+import { APP_BASE_URL } from "@/utils/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 // Helper function to get cookie from request headers
@@ -46,7 +47,8 @@ export async function POST(request: NextRequest) {
 
     // Proxy the request to the backend
     // URL matches the curl command exactly
-    const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/db/object/workshop`;
+    const baseurl= APP_BASE_URL;
+        const backendUrl = `${baseurl}/gryd/db/object/workshop`;
 
     // Headers must match the curl exactly, including X-GRYD-APPLICATION-ID
     const headers: Record<string, string> = {
@@ -161,7 +163,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Proxy the request to the backend
-    const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/db/objects/workshop?dealership_id=${encodeURIComponent(
+    const baseurl = APP_BASE_URL;
+    const backendUrl = `${baseurl}/gryd/db/objects/workshop?dealership_id=${encodeURIComponent(
       dealershipId
     )}`;
 
