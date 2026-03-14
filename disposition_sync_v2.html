@@ -1210,13 +1210,6 @@
         showOverlay('Applying business logic…');
         await tick();
 
-        // ── PHONE COUNTS (for Number of Attempts) ────────────────────────────────
-        const phoneCountMap = {};
-        for (const r of rows1) {
-          const p = normalizePhone(r['phone_number'] || r['phone'] || r['mobile'] || '');
-          if (p) phoneCountMap[p] = (phoneCountMap[p] || 0) + 1;
-        }
-
         // ── BUILD FILE 1 LIST: keep ALL rows (no dedup) ──────────────────────────
         const allLeads = [];
         for (const r of rows1) {
@@ -1282,6 +1275,7 @@
 
         // ── ASSEMBLE OUTPUT ROWS (ALL rows, no dedup) ─────────────────────────────
         const output = [];
+        let rowIndex = 2; // Data rows start at row 2
         for (const { row, phone } of allLeads) {
           const disp = (row['disposition'] || '').trim();
           const dispLower = disp.toLowerCase();
@@ -1343,13 +1337,14 @@
             summary,
             conversion: '',
             call_date: callDate,
-            num_attempts: phoneCountMap[phone] || 1,
+            num_attempts: `=COUNTIF(C:C;C${rowIndex})`,
             sentiment: sess.sentiment || '',
             recordings: sess.recording || '',
             model,
             seating,
             exclusion_flag: exclusion,
           });
+          rowIndex++;
         }
 
         processedData = output;
