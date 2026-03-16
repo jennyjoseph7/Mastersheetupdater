@@ -299,7 +299,240 @@ class AEMIntegrationAgent(BaseAgent):
                 "finance_and_offer": True,
                 "locate_dealer": True,
                 "book_test_drive": True
-            }
+            },
+            "9999e1234-abcd-56ef-9012-3456fc3ac01":{
+                "model": "C5 Aircross",
+                "url": "https://www.citroen.in/c5-aircross",
+                "date": "2025-11-17",
+                "time": "19:00 +530",
+                "hd_view": "on",
+                "exterior": True,
+                "interior": True,
+                "performance": True,
+                "technology": True,
+                "safety": True,
+                "configure": True,
+                "citroen_connect": True,
+                "colours": ["Pearl White","Cumulus Grey","Platinum Grey","Perla Nera Black","Eclipse Blue","Pearl White with Black Roof","Cumulus Grey with Black Roof"],
+                "final_colour": ["Pearl White with Black Roof"],
+                "exterior_views": 6,
+                "interior_views": ["Advanced Comfort Seats with High-Density Foam","Progressive Hydraulic Cushions Suspension","Best-in-Class Rear Seat Modularity (Sliding / Reclining)","Panoramic Sunroof","12.3-inch Digital Instrument Cluster","10-inch Touchscreen with Wireless Connectivity"],
+                "performance_views": ["2.0L Diesel Engine (177 PS, 400 Nm, 8AT)","Multi-Drive Modes (Eco, Normal, Sport)","18-inch Alloy Wheels for Enhanced Ride Comfort"],
+                "safety_views": ["6 Airbags Standard","ABS with EBD and ESP","Blind Spot Monitoring","Front & Rear Park Assist with 180° Camera","Advanced Driver Attention Alert"],
+                "variants_and_pricing": True,
+                "build_your_own": True,
+                "transmission_types": ["automatic"],
+                "powertrains": ["diesel"],
+                "compared_cars": ["Hyundai Tucson","Jeep Compass","Volkswagen Tiguan","Skoda Kodiaq"],
+                "finance_and_offer": True,
+                "locate_dealer": True,
+                "book_test_drive": True
+                },
+            "789e1234-abcd-56ef-9012-3456789c3ac01": {
+                "model": "C3 Aircross",
+                "url": "https://www.citroen.in/c3-aircross",
+                "date": "2025-11-17",
+                "time": "19:20 +530",
+                "hd_view": "on",
+                "exterior": True,
+                "interior": True,
+                "performance": True,
+                "technology": True,
+                "safety": True,
+                "configure": True,
+                "citroen_connect": False,
+                "colours": ["Polar White","Cosmo Blue","Platinum Grey","Steel Grey","Zesty Orange","Polar White with Zesty Orange Roof","Cosmo Blue with Platinum Grey Roof"],
+                "final_colour": ["Polar White with Zesty Orange Roof"],
+                "exterior_views": 6,
+                "interior_views": ["Dual-Tone Premium Dashboard","3rd Row Modular Seating","Large Panoramic Windows","Best-in-Segment 511L Boot Space","Ambient Lighting","Rear AC Vents"],
+                "performance_views": ["1.2L PureTech Turbo Engine (110 PS, 190 Nm)","1.2L PureTech Turbo Engine (110 PS, 205 Nm AT)","Fuel Efficiency 18.5–19.3 kmpl","0–100 kmph in 10.2 sec"],
+                "safety_views": ["High Strength Body Structure","6 Airbags Standard","ESP with Hill Hold Assist","Tyre Pressure Monitoring System (TPMS)","Rear Parking Camera & Sensors"],
+                "variants_and_pricing": True,
+                "build_your_own": True,
+                "transmission_types": ["manual", "automatic"],
+                "powertrains": ["petrol"],
+                "compared_cars": ["Honda Elevate","MG Astor","Nissan Kicks","Kia Seltos","Toyota Urban Cruiser Hyryder"],
+                "finance_and_offer": True,
+                "locate_dealer": True,
+                "book_test_drive": True
+                },
+            "789e7890-abcd-56ef-9982-3456789c3ac01":{
+                "model": "Toyota Camry",
+                "url": "https://www.toyotabharat.com/showroom/camry/",
+                "date": "2025-07-24",
+                "time": "16:30 +530",
+                "hd_view": "off",
+                "exterior": True,
+                "interior": True,
+                "performance": True,
+                "technology": True,
+                "safety": True,
+                "configure": True,
+                "toyota_connect": False,
+                "colours": [
+                    "Platinum White Pearl",
+                    "Attitude Black"
+                ],
+                "final_colour": [
+                    "Platinum White Pearl"
+                ],
+                "exterior_views": 4,
+                "technology_views": [
+                    "Hybrid System Display",
+                    "Wireless Apple CarPlay",
+                    "Premium JBL Audio"
+                ],
+                "safety_views": [
+                    "Toyota Safety Sense",
+                    "Blind Spot Monitor"
+                ],
+                "variants": [],
+                "brochure_download": True,
+                "variants_and_pricing": True,
+                "build_your_own": False,
+                "transmission_types": [
+                    "automatic"
+                ],
+                "powertrains": [
+                    "strong_hybrid"
+                ],
+                "compared_cars": [
+                    "Honda Accord",
+                    "Skoda Superb"
+                ],
+                "finance_and_offer": False,
+                "locate_dealer": False,
+                "book_test_drive": True
+            },
+        "789e1234-abcd-56ef-9012-30056789c9ac09":{
+            "model": "Hyundai Exter",
+            "url": "https://www.hyundai.com/in/en/find-a-car/exter/highlights",
+            "date": "2025-07-24",
+            "time": "16:30 +530",
+            "hd_view": "off",
+            "exterior": True,
+            "interior": True,
+            "performance": False,
+            "technology": True,
+            "safety": True,
+            "configure": False,
+            "suzuki_connect": False,
+            "colours": [
+                "Atlas White",
+                "Ranger Khaki"
+            ],
+            "final_colour": [
+                "Atlas White"
+            ],
+            "exterior_views": 3,
+            "technology_views": [
+                "Voice Enabled Smart Controls",
+                "Dashcam with Dual Camera",
+                "Wireless Charging"
+            ],
+            "safety_views": [
+                "6 Airbags",
+                "Electronic Stability Control"
+            ],
+            "variants": [],
+            "brochure_download": False,
+            "variants_and_pricing": True,
+            "build_your_own": False,
+            "transmission_types": [
+                "manual",
+                "AMT"
+            ],
+            "powertrains": [
+                "petrol",
+                "CNG"
+            ],
+            "compared_cars": [
+                "Tata Punch",
+                "Maruti Ignis"
+            ],
+            "finance_and_offer": False,
+            "locate_dealer": True,
+            "book_test_drive": True
+            },
+        "789e1d23s4-abcd-56ef-9012-3805878dcd9acd09":{
+            "model": "Jeep Wrangler",
+            "url": "https://www.jeep-india.com/wrangler-jl.html",
+            "date": "2025-07-24",
+            "time": "16:30 +530",
+            "hd_view": "off",
+            "exterior": True,
+            "interior": True,
+            "performance": True,
+            "technology": True,
+            "safety": True,
+            "configure": False,
+            "suzuki_connect": False,
+
+            "colours": [
+                "Bright White",
+                "Black",
+                "Firecracker Red",
+                "Granite Crystal",
+                "Hydro Blue"
+            ],
+            "final_colour": [
+                "Bright White"
+            ],
+
+            "exterior_views": 5,
+            "interior_views": 4,
+
+            "performance_views": [
+                "2.0L Turbo Petrol Engine",
+                "4x4 Off-Road Capability",
+                "Command-Trac 4WD System",
+                "Rubicon Off-Road Package"
+            ],
+
+            "technology_views": [
+                "UConnect Touchscreen",
+                "Apple CarPlay & Android Auto",
+                "Premium Alpine Music System",
+                "Digital Instrument Cluster"
+            ],
+
+            "safety_views": [
+                "Dual Front Airbags",
+                "Electronic Stability Control",
+                "Hill Start Assist",
+                "Rear Parking Camera & Sensors"
+            ],
+
+            "variants": [
+                "Wrangler Unlimited",
+                "Wrangler Rubicon"
+            ],
+
+            "brochure_download": True,
+            "variants_and_pricing": True,
+            "build_your_own": False,
+
+            "transmission_types": [
+                "Automatic"
+            ],
+
+            "powertrains": [
+                "Petrol"
+            ],
+
+            "compared_cars": [
+                "Land Rover Defender",
+                "Toyota Fortuner",
+                "Ford Bronco (Global)"
+            ],
+
+            "finance_and_offer": True,
+            "locate_dealer": True,
+            "book_test_drive": True
+        }
+
+
+            
         }
         return mock_interactions.get(uuid, {})
 
