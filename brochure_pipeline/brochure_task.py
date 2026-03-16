@@ -1,6 +1,6 @@
 import os
 from gryd_worker import gryd
-from bp_utils import GRYD_SERVICE, GRYD_CONFIG, get_logger
+from bp_utils import GRYD_SERVICE, get_logger
 
 logger = get_logger(__name__)
 
@@ -9,16 +9,16 @@ from tasks.summary import run_summary_dispatcher, run_summary_worker, run_vector
 from tasks.table_updation import run_table_processor
 
 
-def setup_environment(environment: str = "-local"):
-    if environment is None:
-        environment = "-local"
-    if not environment.startswith("-"):
-        environment = f"-{environment}"
-    gryd.ENVIRONMENT = environment
-    logger.info(f"Environment set to '{environment}'")
+# def setup_environment(environment: str = "-local"):
+#     if environment is None:
+#         environment = "-local"
+#     if not environment.startswith("-"):
+#         environment = f"-{environment}"
+#     gryd.ENVIRONMENT = environment
+#     logger.info(f"Environment set to '{environment}'")
 
-GRYD_ENVIRONMENT = os.environ.get("ENVIRONMENT")
-setup_environment(GRYD_ENVIRONMENT)
+# GRYD_ENVIRONMENT = os.environ.get("ENVIRONMENT")
+# setup_environment(GRYD_ENVIRONMENT)
 
 gryd.SERVICE = GRYD_SERVICE 
 gryd.set_queue_manager()

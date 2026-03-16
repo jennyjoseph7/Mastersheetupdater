@@ -73,6 +73,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Download,
 } from "lucide-react";
 
 const swrOptions = {
@@ -99,8 +100,6 @@ export interface Campaign {
   [key: string]: any;
 }
 
-const ITEMS_PER_PAGE = 5;
-
 export default function CampaignDashboard() {
   const router = useRouter();
   const { isDealershipSetupComplete, checkDealershipSetup } = useAuth();
@@ -116,6 +115,7 @@ export default function CampaignDashboard() {
   const [totalCampaignCount, setTotalCampaignCount] = useState<number>(0);
   const [activeCampaignCount, setActiveCampaignCount] = useState<number>(0);
   const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(5); // Feature 2: Page Size State
   const [totalReach, setTotalReach] = useState<number>(0);
   const [conversionRate, setConversionRate] = useState<number>(0);
   const [pageCount, setPageCount] = useState<number>(0); // Add this new state
@@ -129,6 +129,46 @@ export default function CampaignDashboard() {
   );
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Feature 1: Export CSV Logic
+  const handleExport = () => {
+    if (filteredCampaigns.length === 0) return;
+
+    const headers = [
+      "Campaign Type",
+      "Campaign Name",
+      "Campaign Objective",
+      "Channels Used",
+      "Status",
+      "Launch Date"
+    ];
+
+    const rows = filteredCampaigns.map((campaign) => {
+      const campaignType = Array.isArray(campaign.campaign_type)
+        ? campaign.campaign_type[0]
+        : campaign.campaign_type;
+
+      const typeStr = (campaignType?.replace("_", " ") || "Unknown").replace(/,/g, "");
+      const nameStr = (campaign.name || campaign.campaign_name || "Unnamed").replace(/,/g, "");
+      const objStr = (campaign.campaign_objective_name || "Unnamed").replace(/,/g, "");
+      const channelsStr = (campaign.channels || []).join(" & ");
+      const statusStr = (campaign.campaign_status || "Unknown").replace(/,/g, "");
+      const launchStr = (campaign.launchDate || campaign.start_date)
+        ? epochToIST(campaign.launchDate || campaign.start_date).replace(/,/g, "")
+        : "-";
+
+      return `"${typeStr}","${nameStr}","${objStr}","${channelsStr}","${statusStr}","${launchStr}"`;
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `campaigns_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Fetch counts for header cards
   const fetchCounts = async () => {
     const totalData = await fetchPivotCountForCampaign("total");
@@ -140,83 +180,85 @@ export default function CampaignDashboard() {
   };
 
   // Fetch campaigns by type and page
- // In page.tsx
+  // Feature 3: Server-side filters passed to the fetch functions
+  const fetchCampaigns = async (
+    type: string,
+    page: number,
+    size: number,
+    status: string,
+    channel: string
+  ) => {
+    console.log("[fetchCampaigns] Type:", type, "Page:", page, "Size:", size, "Status:", status, "Channel:", channel);
 
- 
+    // 1. Handle Dealership
+    if (type === "dealership") {
+      const res = await fetchDealershipCampaigns(page, size, status, channel);
+      const total = res?.total ?? 0;
+      return {
+        merged: res?.items ?? [],
+        total: total,
+        pageCount: Math.ceil(total / size), // Add this
+      };
+    }
 
-// Replace your existing fetchCampaigns function with this:
-const fetchCampaigns = async (type: string, page: number) => {
-  console.log("[fetchCampaigns] Type:", type, "Page:", page, "Size:", ITEMS_PER_PAGE);
+    // 2. Handle Pre-Sales
+    if (type === "pre-sales" || type === "pre_sales") {
+      const res = await fetchPreSalesCampaigns(page, size, status, channel);
+      const total = res?.total ?? 0;
+      return {
+        merged: res?.items ?? [],
+        total: total,
+        pageCount: Math.ceil(total / size), // Add this
+      };
+    }
 
- // 1. Handle Dealership
-  if (type === "dealership") {
-    const res = await fetchDealershipCampaigns(page, ITEMS_PER_PAGE);
-    const total = res?.total ?? 0;
-    return {
-      merged: res?.items ?? [],
-      total: total,
-      pageCount: Math.ceil(total / ITEMS_PER_PAGE), // Add this
-    };
-  }
+    // 3. Handle Post-Sales
+    if (type === "post-sales" || type === "post_sales") {
+      const res = await fetchPostSalesCampaigns(page, size, status, channel);
+      const total = res?.total ?? 0;
+      return {
+        merged: res?.items ?? [],
+        total: total,
+        pageCount: Math.ceil(total / size), // Add this
+      };
+    }
 
-  // 2. Handle Pre-Sales
-  if (type === "pre-sales" || type === "pre_sales") {
-    const res = await fetchPreSalesCampaigns(page, ITEMS_PER_PAGE);
-    const total = res?.total ?? 0;
-    return {
-      merged: res?.items ?? [],
-      total: total,
-      pageCount: Math.ceil(total / ITEMS_PER_PAGE), // Add this
-    };
-  }
+    // 4. Handle "All"
+    if (type === "all") {
+      const [preRes, postRes] = await Promise.all([
+        fetchPreSalesCampaigns(page, size, status, channel),
+        fetchPostSalesCampaigns(page, size, status, channel),
+      ]);
 
-  // 3. Handle Post-Sales
-  if (type === "post-sales" || type === "post_sales") {
-    const res = await fetchPostSalesCampaigns(page, ITEMS_PER_PAGE);
-    const total = res?.total ?? 0;
-    return {
-      merged: res?.items ?? [],
-      total: total,
-      pageCount: Math.ceil(total / ITEMS_PER_PAGE), // Add this
-    };
-  }
+      const preItems = preRes?.items ?? [];
+      const postItems = postRes?.items ?? [];
+      const merged = [...preItems, ...postItems];
 
-  // 4. Handle "All"
-  if (type === "all") {
-    const [preRes, postRes] = await Promise.all([
-      fetchPreSalesCampaigns(page, ITEMS_PER_PAGE),
-      fetchPostSalesCampaigns(page, ITEMS_PER_PAGE),
-    ]);
+      // Sort by creation date
+      merged.sort((a, b) => {
+        const dateA = a.created || a.start_date || 0;
+        const dateB = b.created || b.start_date || 0;
+        return dateB - dateA;
+      });
 
-    const preItems = preRes?.items ?? [];
-    const postItems = postRes?.items ?? [];
-    const merged = [...preItems, ...postItems];
+      const preTotal = preRes?.total ?? 0;
+      const postTotal = postRes?.total ?? 0;
 
-    // Sort by creation date
-    merged.sort((a, b) => {
-      const dateA = a.created || a.start_date || 0;
-      const dateB = b.created || b.start_date || 0;
-      return dateB - dateA;
-    });
+      // The key fix: The number of pages is determined by the longer list
+      const maxPages = Math.max(
+        Math.ceil(preTotal / size),
+        Math.ceil(postTotal / size)
+      );
 
-    const preTotal = preRes?.total ?? 0;
-    const postTotal = postRes?.total ?? 0;
+      return {
+        merged: merged,
+        total: preTotal + postTotal,
+        pageCount: maxPages, // Use the greater of the two page counts
+      };
+    }
 
-    // The key fix: The number of pages is determined by the longer list
-    const maxPages = Math.max(
-      Math.ceil(preTotal / ITEMS_PER_PAGE),
-      Math.ceil(postTotal / ITEMS_PER_PAGE)
-    );
-
-    return {
-      merged: merged,
-      total: preTotal + postTotal,
-      pageCount: maxPages, // Use the greater of the two page counts
-    };
-  }
-
-  return { merged: [], total: 0, pageCount: 0 };
-};
+    return { merged: [], total: 0, pageCount: 0 };
+  };
 
   const { data: counts, mutate: mutateCounts } = useSWR(
     "pivot-counts",
@@ -224,14 +266,15 @@ const fetchCampaigns = async (type: string, page: number) => {
     swrOptions
   );
 
+  // Added pageSize, statusFilter, and channelFilter to dependencies
   const {
     data: campaignsData,
     isLoading: loading,
     error,
     mutate: mutateCampaigns,
   } = useSWR(
-    ["campaigns", campaignTypeFilter, page],
-    () => fetchCampaigns(campaignTypeFilter, page),
+    ["campaigns", campaignTypeFilter, page, pageSize, statusFilter, channelFilter],
+    () => fetchCampaigns(campaignTypeFilter, page, pageSize, statusFilter, channelFilter),
     swrOptions
   );
 
@@ -421,7 +464,7 @@ const fetchCampaigns = async (type: string, page: number) => {
   }, [counts, campaignTypeFilter, campaignsData, campaignSummaryData]);
 
   // Update campaigns and total count whenever data or type changes
-useEffect(() => {
+  useEffect(() => {
     if (campaignsData) {
       setMergedCampaigns(campaignsData.merged ?? []);
       setTotalCount(campaignsData.total ?? 0);
@@ -431,10 +474,10 @@ useEffect(() => {
         setPageCount(campaignsData.pageCount);
       } else {
         // Fallback for initial load or safety
-        setPageCount(Math.ceil((campaignsData.total ?? 0) / ITEMS_PER_PAGE));
+        setPageCount(Math.ceil((campaignsData.total ?? 0) / pageSize));
       }
     }
-  }, [campaignsData, campaignTypeFilter]);
+  }, [campaignsData, campaignTypeFilter, pageSize]);
 
   // Process campaign summary data (FIXED: Filter by type instead of sum)
   useEffect(() => {
@@ -533,15 +576,7 @@ useEffect(() => {
     campaignTypeFilter,
   ]);
 
-  // const displayStart = (page - 1) * ITEMS_PER_PAGE;
-  // const displaySlice = filteredCampaigns.slice(
-  //   displayStart,
-  //   displayStart + ITEMS_PER_PAGE
-  // );
-  // const displaySlice = filteredCampaigns;
-
-  // const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
-const displaySlice = useMemo(() => {
+  const displaySlice = useMemo(() => {
     // 1. For "All", since we now fetch specific pages from the server (e.g. Page 2),
     // the 'filteredCampaigns' array ONLY contains the data for that page.
     // We must NOT slice by '(page - 1) * size' anymore, because that offset assumes 
@@ -556,11 +591,12 @@ const displaySlice = useMemo(() => {
       return filteredCampaigns; 
     }
 
-    // 2. For specific types, the API returns exactly 5 items.
+    // 2. For specific types, the API returns exactly the page size items.
     return filteredCampaigns;
   }, [filteredCampaigns, campaignTypeFilter]);
-  // const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
-const totalPages = pageCount;
+
+  const totalPages = pageCount;
+
   // ... continue with rendering ...
   const getStatusBadge = (status?: string) => {
     const variants: Record<
@@ -866,25 +902,19 @@ const totalPages = pageCount;
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setStatusFilter("all")}>
+                      <DropdownMenuItem onClick={() => { setStatusFilter("all"); setPage(1); }}>
                         All
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setStatusFilter("Drafted")}
-                      >
+                      <DropdownMenuItem onClick={() => { setStatusFilter("drafted"); setPage(1); }}>
                         Draft
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setStatusFilter("scheduled")}
-                      >
-                        Scheduled
+                      <DropdownMenuItem onClick={() => { setStatusFilter("planned"); setPage(1); }}>
+                        Planned
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setStatusFilter("live")}>
-                        Live
+                      <DropdownMenuItem onClick={() => { setStatusFilter("Active"); setPage(1); }}>
+                        Active
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setStatusFilter("completed")}
-                      >
+                      <DropdownMenuItem onClick={() => { setStatusFilter("completed"); setPage(1); }}>
                         Completed
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -907,22 +937,16 @@ const totalPages = pageCount;
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Filter by Channel</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setChannelFilter("all")}>
+                      <DropdownMenuItem onClick={() => { setChannelFilter("all"); setPage(1); }}>
                         All
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setChannelFilter("whatsapp_chat")}
-                      >
+                      <DropdownMenuItem onClick={() => { setChannelFilter("whatsapp_chat"); setPage(1); }}>
                         WhatsApp
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setChannelFilter("email")}
-                      >
+                      <DropdownMenuItem onClick={() => { setChannelFilter("email"); setPage(1); }}>
                         Email
                       </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setChannelFilter("voice_phone")}
-                      >
+                      <DropdownMenuItem onClick={() => { setChannelFilter("voice_phone"); setPage(1); }}>
                         Voice
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -984,6 +1008,15 @@ const totalPages = pageCount;
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  
+                  {/* Export Button */}
+                  <Button 
+                    variant="outline" 
+                    className="gap-2 bg-transparent" 
+                    onClick={handleExport}
+                  >
+                    <Download className="h-4 w-4" /> Export
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -1008,8 +1041,8 @@ const totalPages = pageCount;
                   {loading ? (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
-                        className="text-center text-muted-foreground"
+                        colSpan={8}
+                        className="text-center text-muted-foreground py-10"
                       >
                         Loading...
                       </TableCell>
@@ -1017,8 +1050,8 @@ const totalPages = pageCount;
                   ) : error ? (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
-                        className="text-center text-destructive"
+                        colSpan={8}
+                        className="text-center text-destructive py-10"
                       >
                         {error}
                       </TableCell>
@@ -1026,8 +1059,8 @@ const totalPages = pageCount;
                   ) : filteredCampaigns.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
-                        className="text-center text-muted-foreground"
+                        colSpan={8}
+                        className="text-center text-muted-foreground py-10"
                       >
                         No campaigns found
                       </TableCell>
@@ -1152,54 +1185,78 @@ const totalPages = pageCount;
                   )}
                 </TableBody>
               </Table>
-              {/* Pagination */}
-             {/* Pagination Controls */}
-{/* Pagination */}
-<div className="flex items-center justify-center space-x-2 mt-4">
-  <Button
-    variant="outline"
-    className="h-8 w-8 p-0"
-    onClick={() => setPage(1)}
-    disabled={page === 1}
-  >
-    <span className="sr-only">Go to first page</span>
-    <ChevronsLeft className="h-4 w-4" />
-  </Button>
-  
-  <Button
-    variant="outline"
-    className="h-8 w-8 p-0"
-    onClick={() => setPage((p) => Math.max(1, p - 1))}
-    disabled={page === 1}
-  >
-    <span className="sr-only">Go to previous page</span>
-    <ChevronLeft className="h-4 w-4" />
-  </Button>
-  
-  <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-    Page {page} of {totalPages}
-  </div>
-  
-  <Button
-    variant="outline"
-    className="h-8 w-8 p-0"
-    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-    disabled={page === totalPages}
-  >
-    <span className="sr-only">Go to next page</span>
-    <ChevronRight className="h-4 w-4" />
-  </Button>
-  
-  <Button
-    variant="outline"
-    className="h-8 w-8 p-0"
-    onClick={() => setPage(totalPages)}
-    disabled={page === totalPages}
-  >
-    <span className="sr-only">Go to last page</span>
-    <ChevronsRight className="h-4 w-4" />
-  </Button>
-</div>
+              
+              {/* Pagination Controls */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+                
+                {/* Rows per page selector */}
+                <div className="flex items-center space-x-2">
+                  <p className="text-sm font-medium text-muted-foreground">Rows per page</p>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="h-8 w-[70px] bg-transparent">
+                        {pageSize}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {[5, 20, 50, 100, 200].map((size) => (
+                        <DropdownMenuItem 
+                          key={size} 
+                          onClick={() => { setPageSize(size); setPage(1); }}
+                        >
+                          {size}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <div className="flex items-center justify-center space-x-2">
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setPage(1)}
+                    disabled={page === 1}
+                  >
+                    <span className="sr-only">Go to first page</span>
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    <span className="sr-only">Go to previous page</span>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                    Page {page} of {totalPages || 1}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                  >
+                    <span className="sr-only">Go to next page</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setPage(totalPages)}
+                    disabled={page >= totalPages || totalPages === 0}
+                  >
+                    <span className="sr-only">Go to last page</span>
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

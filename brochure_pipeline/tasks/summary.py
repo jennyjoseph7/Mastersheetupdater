@@ -3,56 +3,33 @@ import json
 import uuid
 import urllib.parse
 from pathlib import Path
-import requests
 from bp_utils import get_logger
 from gryd_worker import gryd
 from agents.summary_agent import VectorIngestionAgent
 from dotenv import load_dotenv
+from config import AutocrmModel
 
 load_dotenv()
 logger = get_logger(__name__)
 
-HERE = Path(__file__).resolve().parent
-PROJECT_ROOT = HERE.parent 
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "summary"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
-# API CONFIGURATION & HEADERS
-
-BASE_URL = os.getenv("GRYD_BASE_URL", "https://autobot-webapp-dev.gryd.in")
-
-
-HEADERS = {
-    "Accept": "application/json",
-    "Content-Type": "application/json",
-    "X-GRYD-ENTERPRISE-ID": os.getenv("GRYD_ENTERPRISE_ID"),
-    "X-GRYD-ROLE": os.getenv("GRYD_ROLE"),
-    "X-GRYD-SESSION-ID": os.getenv("GRYD_SESSION_ID"),
-    "X-GRYD-TOKEN": os.getenv("GRYD_TOKEN"),
-}
 
 def fetch_brochure_text_from_api(document_id: str) -> str:
-    """Fetches extracted chunks from chunk_saver API and concatenates them."""
-    url = f"{BASE_URL}/gryd/db/objects/chunk_saver?document_id={document_id}&page_size=1000"
-    
+    """Fetches extracted chunks from chunk_saver model and concatenates them."""
     try:
-        response = requests.get(url, headers=HEADERS)
-        response.raise_for_status()
-        response_json = response.json()
-        
-        
-        chunks = response_json.get("data", [])
+        chunk_saver_model = AutocrmModel('chunk_saver')
+        chunks = chunk_saver_model.list(document_id=document_id, page_size=1000)
         
         extracted_text = []
-        for chunk in chunks:
+        chunk_list = chunks.get("data", []) if isinstance(chunks, dict) else chunks
+        
+        for chunk in chunk_list:
             if isinstance(chunk, dict):
-                
                 text = chunk.get("text_content", "")
                 if text:
                     extracted_text.append(str(text))
                     
-     
         return "\n\n".join(extracted_text)
     except Exception as e:
         logger.error(f"Failed to fetch brochure text from chunk_saver API for {document_id}: {e}")
@@ -123,45 +100,38 @@ def run_summary_dispatcher(document_id: str, job_id: str):
 
 def run_summary_worker(brochure_text: str, job_id: str):
     """
-    Calls Gemini to summarize the text structure and saves the formatted payload to disk.
+    Calls Gemini to summarize the text structure, prints it, and returns the payload.
     """
     logger.info(f"🤖 [Worker] Generating summaries for Job: {job_id}")
     
     agent = VectorIngestionAgent()
-    
-    
     vector_summaries = agent.run(brochure_text)
     
     if not vector_summaries: 
         logger.error("❌ Vector summaries failed to generate.")
         return {"status": "failed"}
 
-   
     model_name = (job_id or str(uuid.uuid4())).replace(" ", "_").lower()
     gryd_tasks = format_for_gryd_vector(vector_summaries, model_name)
     
-    output_path = OUTPUT_DIR / f"summary_{job_id}.json"
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(gryd_tasks, f, indent=2, ensure_ascii=False)
     
-    logger.info(f"✅ [Worker] Saved {len(gryd_tasks)} tasks to {output_path}")
-    logger.info("ℹ️  NOTE: Vector ingestion was NOT triggered automatically.")
+    print(f"\n--- Generated Vector Tasks Payload for {job_id} ---")
+    print(json.dumps(gryd_tasks, indent=2, ensure_ascii=False))
+    print("---------------------------------------------------\n")
     
-    return {"status": "success", "file_saved": str(output_path)}
+    logger.info(f"✅ [Worker] Generated {len(gryd_tasks)} tasks.")
+   
+    
+    
+    return {"status": "success", "tasks_payload": gryd_tasks}
 
-def run_vector_ingestion(job_id: str):
+def run_vector_ingestion(tasks_payload: list):
     """
-    Reads the previously generated summary tasks JSON and fires off vector upload commands.
+    Takes the generated tasks payload directly and fires off vector upload commands.
     """
-    input_file = OUTPUT_DIR / f"summary_{job_id}.json"
-    
-    if not input_file.exists():
-        logger.error(f"❌ File not found: {input_file}")
-        return {"status": "failed", "message": "Summary file not found. Run summary dispatcher first."}
-
-    logger.info(f"📂 Loading tasks from: {input_file}")
-    with open(input_file, "r", encoding="utf-8") as f:
-        tasks_payload = json.load(f)
+    if not tasks_payload:
+        logger.error("❌ No tasks payload provided.")
+        return {"status": "failed", "message": "Empty tasks_payload."}
 
     successful, failed = 0, 0
     logger.info(f"🚀 Starting ingestion of {len(tasks_payload)} items...")
@@ -169,9 +139,9 @@ def run_vector_ingestion(job_id: str):
     for item in tasks_payload:
         try:
             gryd.create_async_task(
-                service=item["service"],
-                function_name=item["function_name"],
-                kwargs=item["kwargs"]
+                service=item.get("service", "vector_document"),
+                function_name=item.get("function_name", "update_vector"),
+                kwargs=item.get("kwargs", {})
             )
             successful += 1
         except Exception as e:

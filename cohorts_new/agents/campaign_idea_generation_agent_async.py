@@ -247,6 +247,50 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
         ]
         """
 
+        system_prompt = None 
+        system_prompt = f"""
+        You are a Product-Driven Campaign & Performance Marketing AI Agent.
+        CRITICAL: Extract the EXACT product name from brochure/website first. Use it consistently everywhere — captions, hooks, slogans, CTAs, messages. Never say "our product" or "this vehicle".
+
+        Generate exactly {len(campaign_batch)} campaigns — one per ID in the batch.
+        Return a strict JSON array only. No markdown, no comments, no extra keys.
+
+        Each campaign schema:
+        {{
+        "campaign_idea_identifier": <exact batch ID>,
+        "campaign_objective": <string>,
+        "campaign_explanation": <string — name product, audience, insight, channels, specs>,
+        "performance_strategy": {{
+            "channels": [{{ "channel": "", "reasoning": "", "ad_formats": [] }}],
+            "budget_allocation": [{{ "channel": "", "budget_percent": 0 }}],
+            "funnel_strategy": {{ "TOF": "", "MOF": "", "BOF": "" }}
+        }},
+        "targeting": {{
+            "age_range": "", "gender": "", "locations": [], "languages": [],
+            "interests": [], "behaviors": [], "life_events": [], "job_titles": []
+        }},
+        "audience": [<string>],
+        "cta": [<string>],         // min 2; ALL must include product name
+        "hashtags": [<string>],    // exactly {self.num_of_hashtags}; ≥60% product/model-specific
+        "campaign_post_sets": [    // exactly {self.num_of_campaign_post_sets} items
+            {{
+            "post_caption": [<string>],  // product name in first 10 words
+            "hooks":        [<string>],  // must reference product name
+            "slogan":       [<string>],  // must reference product name
+            "messages":     [<string>]   // 7-8 sentences; product name in first 2; ≥3 specific features; subtle emojis
+            }}
+        ]
+        }}
+
+        RULES:
+        - Each post set: different feature angle, different emotional trigger
+        - Features must be specific (e.g. "1.2L turbo", not "powerful engine")
+        - Targeting derived from cohort, affinity signals, and product positioning
+        - Channels: Facebook, Instagram, Snapchat, YouTube, Google Ads, TikTok
+        - Personalize using cohort traits, affinity signals, and customer interaction context
+        - "Opportunity Name" = likely customer; "Opportunity Owner" = sales rep
+        """
+        
         shared_user_context = self._build_shared_user_context()
         user_context_parts = [f"Campaign IDs for this batch (generate one idea per ID): {json.dumps(campaign_batch, ensure_ascii=False)}",] + shared_user_context
         user_prompt = "\n\n".join(user_context_parts)
@@ -314,4 +358,111 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
         }
 
 
-        
+
+class PerformanceMarketingCampaignAgent(UtilityMixin):
+    def __init__(
+            self,
+            product_name: str,
+            brand_name: str,
+            objective: str,
+            budget: Union[int, float],
+            landing_page: str,
+            geography: List[str] = ['India', 'UAE', 'USA'],
+            model_identifier: str = 'azure-gpt-4o',
+        ):
+
+        self.product_name = product_name
+        self.brand_name = brand_name
+        self.objective = objective
+        self.budget = budget
+        self.landing_page = landing_page
+        self.geography = geography
+
+        self.model_identifier = model_identifier
+        self.llm = lambda messages: ai_service_app.get_llm_response(
+            messages=messages,
+            model_identifier=self.model_identifier
+        )
+
+    def get_output_schema(self):
+        return {
+            "campaign_name": "",
+            "objective": "",
+            "target_audience": {
+                "age_range": "",
+                "gender": "",
+                "interests": [],
+                "persona_description": ""
+            },
+            "platform_strategy": [
+                {
+                    "platform": "",
+                    "reasoning": ""
+                }
+            ],
+            "budget_allocation": [
+                {
+                    "platform": "",
+                    "budget": 0
+                }
+            ],
+            "ad_creatives": [
+                {
+                    "headline": "",
+                    "primary_text": "",
+                    "cta": "",
+                    "creative_idea": ""
+                }
+            ],
+            "funnel_strategy": {
+                "TOF": "",
+                "MOF": "",
+                "BOF": ""
+            },
+            "retargeting_strategy": "",
+            "kpis": []
+        }
+
+
+    def build_prompt(self):
+
+        schema = json.dumps(self.get_output_schema(), indent=2)
+
+        system_prompt = f"""
+You are an expert performance marketing strategist.
+
+Generate a complete performance marketing campaign.
+
+IMPORTANT RULES:
+
+1. Return ONLY valid JSON
+2. Follow the exact JSON structure below
+3. Do not add extra keys
+4. Fill all fields
+
+JSON STRUCTURE:
+
+{schema}
+"""
+
+        user_prompt = f"""
+Create a campaign with the following details:
+
+Brand: {self.brand_name}
+Product: {self.product_name}
+Objective: {self.objective}
+Total Budget: {self.budget}
+Landing Page: {self.landing_page}
+Target Geography: {self.geography}
+
+Design a high converting performance campaign.
+"""
+
+        return [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+
+    def run(self):
+        messages = self.build_prompt()
+        return self.exec_json_llm_with_retry(self.llm, messages=messages)

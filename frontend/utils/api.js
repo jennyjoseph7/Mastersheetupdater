@@ -143,8 +143,9 @@ async function uploadFileToGryd(file) {
 --------------------------------------------------- */
 
 async function extractCsvHeadersAPI(fileUrl) {
+  const servicename=process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
   const response = await authenticatedFetch(
-    `${APP_BASE_URL}/gryd/task/autocrm-core/extract_csv_headers`,
+    `${APP_BASE_URL}/gryd/task/${servicename}/extract_csv_headers`,
     {
       method: "POST",
       body: JSON.stringify({
@@ -191,9 +192,10 @@ async function startImportTask(
     if (isUuid) kwargs.campaign_id = campaignIdOrObjectiveId;
     else kwargs.campaign_objective_id = campaignIdOrObjectiveId;
   }
+    const servicename=process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
 
   const response = await authenticatedFetch(
-    `${APP_BASE_URL}/gryd/task/autocrm-core/import_leads_from_csv`,
+    `${APP_BASE_URL}/gryd/task/${servicename}/import_leads_from_csv`,
     {
       method: "POST",
       body: JSON.stringify({
@@ -261,22 +263,33 @@ async function getTaskResult(taskId) {
    Campaign Fetchers
 --------------------------------------------------- */
 
-// In utils/api.ts or api.js
-
 export async function fetchPreSalesCampaigns(
   page = 1,
   pageSize = 50,
+  status = "all",
+  channel = "all",
   dealershipId = getDealershipId()
 ) {
   // Ensure dealershipId is passed correctly if page/pageSize are provided
   const dId = dealershipId || getDealershipId();
   
-  const response = await authenticatedFetch(
-    `${APP_BASE_URL}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
-      dId
-    )}&sort_by=created&sort_reverse=true`,
-    { headers: { "X-GRYD-ROLE": "admin" } }
-  );
+  // Base URL
+  let url = `${APP_BASE_URL}/gryd/db/objects/pre_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
+    dId
+  )}&sort_by=created&sort_reverse=true`;
+
+  // Dynamically append filters if they are not 'all'
+  if (status && status !== "all") {
+    url += `&campaign_status=${encodeURIComponent(status)}`;
+  }
+  if (channel && channel !== "all") {
+    // Note: Adjust 'channels' if your backend uses a different query key (e.g., 'channel')
+    url += `&channels=${encodeURIComponent(channel)}`; 
+  }
+
+  const response = await authenticatedFetch(url, { 
+    headers: { "X-GRYD-ROLE": "admin" } 
+  });
 
   const json = await response.json();
   return { items: json?.data ?? [], total: json?.total_number ?? 0 };
@@ -285,22 +298,33 @@ export async function fetchPreSalesCampaigns(
 export async function fetchPostSalesCampaigns(
   page = 1,
   pageSize = 50,
+  status = "all",
+  channel = "all",
   dealershipId = getDealershipId()
 ) {
   // Ensure dealershipId is passed correctly
   const dId = dealershipId || getDealershipId();
   if (!dId) return { items: [], total: 0 };
 
-  const response = await authenticatedFetch(
-    `${APP_BASE_URL}/gryd/db/objects/post_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
-      dId
-    )}&sort_by=created&sort_reverse=true`
-  );
+  // Base URL
+  let url = `${APP_BASE_URL}/gryd/db/objects/post_sales_campaign?page_number=${page}&page_size=${pageSize}&dealership_id=${encodeURIComponent(
+    dId
+  )}&sort_by=created&sort_reverse=true`;
+
+  // Dynamically append filters if they are not 'all'
+  if (status && status !== "all") {
+    url += `&campaign_status=${encodeURIComponent(status)}`;
+  }
+  if (channel && channel !== "all") {
+    // Note: Adjust 'channels' if your backend uses a different query key
+    url += `&channels=${encodeURIComponent(channel)}`;
+  }
+
+  const response = await authenticatedFetch(url);
 
   const json = await response.json();
   return { items: json?.data ?? [], total: json?.total_number ?? 0 };
 }
-
 async function fetchCampaignObjectives(campaignType) {
   return fetchAPIData("campaign_objective", {
     campaign_type: campaignType?.replace(/_/g, "-"),
@@ -333,12 +357,26 @@ async function fetchAudienceTasks(page = 1, pageSize = 50) {
   });
 }
 
-async function fetchDealershipCampaigns(page = 1, pageSize = 50) {
+export async function fetchDealershipCampaigns(
+  page = 1, 
+  pageSize = 50, 
+  status = "all", 
+  channel = "all"
+) {
   try {
-    const response = await authenticatedFetch(
-      `${APP_BASE_URL}/gryd/db/objects/dealership_campaign?page_number=${page}&page_size=${pageSize}`,
-      { headers: { "X-GRYD-ROLE": "admin" } }
-    );
+    let url = `${APP_BASE_URL}/gryd/db/objects/dealership_campaign?page_number=${page}&page_size=${pageSize}`;
+
+    // Dynamically append filters if they are not 'all'
+    if (status && status !== "all") {
+      url += `&campaign_status=${encodeURIComponent(status)}`;
+    }
+    if (channel && channel !== "all") {
+      url += `&channels=${encodeURIComponent(channel)}`;
+    }
+
+    const response = await authenticatedFetch(url, { 
+      headers: { "X-GRYD-ROLE": "admin" } 
+    });
 
     const json = await response.json();
     return { items: json?.data ?? [], total: json?.total_number ?? 0 };
@@ -520,7 +558,7 @@ async function fetchUserSessions(
   try {
     // Build URL with query parameters matching the curl command
     const params = new URLSearchParams({
-      status: "completed",
+      
       dealership_id: dealershipId,
       campaign_id: campaignId,
       lead_id: userId,
@@ -759,7 +797,7 @@ export {
   // fetchPostSalesCampaigns,
   fetchCampaignObjectives,
   fetchCampaignSummary,
-  fetchDealershipCampaigns,
+  // fetchDealershipCampaigns,
   fetchCampaignPerformanceSummary,
   fetchCampaignLeads,
   // fetchCampaignSessions, // <-- Exported here

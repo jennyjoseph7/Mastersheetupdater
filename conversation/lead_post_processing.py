@@ -107,7 +107,7 @@ def post_session_process(*args, **kwargs):
     
     updated_lead_data = get_disposition(session_id,session_data) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
     mlogger.info("got disposition as == {}".format(updated_lead_data))
-        
+    
     
     session_update_data = {"disposition":updated_lead_data.get("disposition"),"disposition_detail":updated_lead_data.get("disposition_detail")}
     if updated_lead_data.get("disposition_detail") == "Requested Callback":
@@ -1079,9 +1079,10 @@ def get_extra_data(session_id,session_data_cache):
     Example if the attributes im looking for include colour and variant_name and the message history contains a message from the user specifying they have a blue car. Your response should be like the following:-
     {example_data}
     if no new data is found then return empty json object.
-    Your response must be ONLY the JSON object string that i can convert to json using json.loads(<your response>). 
+    Your response must be ONLY the JSON object string that i can convert to json using json.loads(<your response string>). 
     Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
     do NOT prepend labels (like "json"). Output only valid JSON.
+    Always make sure the exact response you give as string should be a valid JSON string that can be used for python api json.loads(<your response string>)
     """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
     mlogger.info("got extra data response as ===== {} --{}".format(resp,type(resp)))

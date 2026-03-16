@@ -894,6 +894,10 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         return
 
     campaign_details = campaign_details[0]
+    campaign_objective_name=campaign_details.get("campaign_objective_name") 
+    if not campaign_objective_name:
+        yield {"status": "Error", "error_description": f"No campaign objective name found for campaign_id={campaign_id}"}
+        return
     # logger.info(f"Campaign details: {json.dumps(campaign_details,indent=4)}")
     if isinstance(lead, dict):
         lead_data = lead
@@ -926,7 +930,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         template_data= get_template(
             lead_id=lead_id,
             campaign_type=campaign_type,
-            campaign_objective= [campaign_details.get("campaign_objective_name")] or ["Free Service Due Reminder"] if campaign_details.get("campaign_type") == "post-sales" else ["Test Drive Booking"],
+            campaign_objective= [campaign_objective_name] or [],
             lead_info={}
         )
         if not template_data:
@@ -961,7 +965,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
             template_data = get_template(
                 lead_id=lead_id,
                 campaign_type=campaign_type,
-                campaign_objective= [campaign_details.get("campaign_objective_name")] or ["Free Service Due Reminder"] if campaign_details.get("campaign_type") == "post-sales" else ["Test Drive Booking"],
+                campaign_objective= [campaign_objective_name] or [],
                 lead_info={}
             )
             if not template_data:

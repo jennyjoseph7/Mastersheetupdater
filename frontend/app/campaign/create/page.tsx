@@ -87,6 +87,8 @@ const STELLANTIS_AGENT_MAP: Record<string, string> = {
   en: "agent_5701ka8618cbfxcbdp4wg6xb3x23",
   hi: "agent_7601kj7ephbneq9sysg995ezbsny",
   ta: "agent_5401kjnevnhte8y9vkvb2c04ehx5",
+  ml: "agent_0401kk1n1r6cfdtvym89adrd2b3t",
+
 };
 const getObjectiveIcon = (objectiveId: string, title: string) => {
   const id = objectiveId?.toLowerCase() || "";
@@ -196,6 +198,7 @@ const languageOptions = [
   { value: "kn", label: "Kannada" },
   { value: "bn", label: "Bengali" },
   { value: "gu", label: "Gujarati" },
+  { value: "ml", label: "Malayalam" },
 ];
 
 const toEpoch = (dateStr: string) =>
@@ -222,6 +225,7 @@ const mapLanguage = (code: string) => {
     kn: "kannada",
     bn: "bengali",
     gu: "gujarati",
+    ml: "malayalam",
   };
   return map[code] || "english";
 };
@@ -522,11 +526,11 @@ const handleGenerateCampaign = async () => {
          runtime_limit: 3600,
         cancellable: true,
       };
-
+    const  servicename=process.env.NEXT_PUBLIC_AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME || "autocrm-short-run-agent";
       // Call our new global polling function
       const resultData = await executeTaskWithPolling(
-        "autocrm-short-run-agent", 
-        "generate_campaign_idea", 
+        servicename,
+        "generate_campaign_idea",
         payload,
         (statusMessage: string) => setGenerationStatusMsg(statusMessage), // UI Callback
         { maxRetries: 90 } // Optional: 3 minutes max timeout for this specific heavy task
@@ -749,8 +753,8 @@ const handleProceed = async () => {
         setLaunchStatus("Triggering campaign engine...");
         const taskType =
           campaignType === "presales" ? "pre-sales" : "post-sales";
-
-        await api("/gryd/task/autocrm-campaign/trigger_campaign", "POST", {
+        const serviceName = process.env.NEXT_PUBLIC_AUTOCRM_CAMPAIGN_TRIGGER_SERVICE_NAME || "autocrm-campaign";
+        await api(`/gryd/task/${serviceName}/trigger_campaign`, "POST", {
           args: [],
           kwargs: { campaign_type: taskType, campaign_id: createdCampaignId },
         });

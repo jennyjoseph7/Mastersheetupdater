@@ -1,16 +1,1 @@
-[
-  {
-    "session_id": "session-001",
-    "user_id": "person-001",
-    "created": 1704067200,
-    "updated": 1704067200,
-    "history": []
-  },
-  {
-    "session_id": "session-002",
-    "user_id": "person-002",
-    "created": 1704153600,
-    "updated": 1704153600,
-    "history": []
-  }
-]
+[]

@@ -257,7 +257,6 @@ function CampaignInsightsContent() {
     personName?: string;
   } | null>(null);
 
-  // Added Audio Player State
   const [activeRecording, setActiveRecording] = useState<{ url: string; name: string } | null>(null);
 
   // --- Leads Table & Pagination State ---
@@ -291,7 +290,8 @@ function CampaignInsightsContent() {
     ? rawData.data[0] 
     : rawData;
 
-  const campaignName = performanceData?.campaign_name || "Campaign";
+  // Added fallbacks here so the header works even if the fetch hasn't completed
+  const campaignName = performanceData?.campaign_name || campaignnamecsv || "Campaign";
   const campaignType = performanceData?.campaign_type || "";
 
   // 2. Prepare Data for Charts
@@ -309,8 +309,9 @@ function CampaignInsightsContent() {
     isLoading: leadsLoading,
     error: leadsError,
   } = useSWR<{ items: CampaignLead[]; total_number: number }>(
-    campaignId && campaignType 
-      ? ['campaign-leads', campaignId, campaignType, currentPage, pageSize, sortConfig?.key, sortConfig?.direction, dispositionFilter] 
+    // Changed dependency to fetch independently of campaignType being loaded
+    campaignId
+      ? ['campaign-leads', campaignId, campaignType || '', currentPage, pageSize, sortConfig?.key, sortConfig?.direction, dispositionFilter] 
       : null,
     ([_, id, type, page, size, sortKey, sortDir, dispFilter]) => 
       fetchCampaignLeads({
@@ -330,14 +331,13 @@ function CampaignInsightsContent() {
   const totalPages = Math.ceil(totalRecords / pageSize) || 1;
 
   // 4. Conditional Fetch Sessions
-  // Added start_date and end_date to the SWR cache key and parameter list so filtering happens server-side.
   const {
     data: sessionsDataRaw,
     isLoading: sessionsLoading,
     error: sessionsError,
   } = useSWR<{ items: CampaignSession[]; total_number: number }>(
     campaignId 
-      ? ['campaign-sessions', campaignId, sessionCurrentPage, sessionPageSize, sessionSortConfig.key, sessionSortConfig.direction, sessionStatus, sessionStartDate, sessionEndDate] 
+      ? ['campaign-sessions', campaignId, sessionCurrentPage, sessionPageSize, sessionSortConfig.key, sessionSortConfig.direction, 'all', sessionStartDate, sessionEndDate] 
       : null,
     ([_, id, page, size, sortKey, sortDir, status, startDate, endDate]) => 
       fetchCampaignSessions({
@@ -358,7 +358,6 @@ function CampaignInsightsContent() {
 
   // --- Handlers & Helpers ---
 
-  // Lead Local Search Filter
   const visibleLeads = useMemo(() => {
     if (!searchTerm) return serverLeads;
     const lowerCaseTerm = searchTerm.toLowerCase();
@@ -369,11 +368,8 @@ function CampaignInsightsContent() {
     );
   }, [serverLeads, searchTerm]);
 
-  // Session Local Table Filter (Only Search now, Date is Server Side)
   const visibleSessions = useMemo(() => {
     let filtered = serverSessions;
-
-    // Local text search
     if (sessionSearch) {
       const lowerCaseTerm = sessionSearch.toLowerCase();
       filtered = filtered.filter((session) =>
@@ -383,11 +379,10 @@ function CampaignInsightsContent() {
     return filtered;
   }, [serverSessions, sessionSearch]);
 
-  // Handle Server-Side Date Changes for Sessions
   const handleSessionDateChange = (type: "start" | "end", value: string) => {
     if (type === "start") setSessionStartDate(value);
     if (type === "end") setSessionEndDate(value);
-    setSessionCurrentPage(1); // Reset to page 1 to avoid empty states
+    setSessionCurrentPage(1); 
   };
 
   const clearSessionDates = () => {
@@ -396,15 +391,12 @@ function CampaignInsightsContent() {
     setSessionCurrentPage(1);
   };
 
-  // Lead Pagination
   const handleNextPage = () => { if (currentPage < totalPages) setCurrentPage((prev) => prev + 1); };
   const handlePrevPage = () => { if (currentPage > 1) setCurrentPage((prev) => prev - 1); };
   
-  // Session Pagination
   const handleSessionNextPage = () => { if (sessionCurrentPage < totalSessionPages) setSessionCurrentPage((prev) => prev + 1); };
   const handleSessionPrevPage = () => { if (sessionCurrentPage > 1) setSessionCurrentPage((prev) => prev - 1); };
 
-  // Lead Sort
   const handleSort = (key: string) => {
     let direction: "asc" | "desc" = "asc";
     if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
@@ -425,7 +417,6 @@ function CampaignInsightsContent() {
     );
   };
 
-  // Session Sort
   const handleSessionSort = (key: string) => {
     let direction: "asc" | "desc" = "asc";
     if (sessionSortConfig.key === key && sessionSortConfig.direction === "asc") {
@@ -446,36 +437,7 @@ function CampaignInsightsContent() {
     );
   };
 
-  // --- Render Error/Loading States ---
-  if (perfLoading) {
-    return (
-      <div className="flex flex-col w-full space-y-6 px-4 md:px-6 lg:px-8 pb-6 mt-6">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-[250px]" />
-        </div>
-        <Skeleton className="h-[400px] w-full" />
-      </div>
-    );
-  }
-
-  if (perfError || !performanceData) {
-    return (
-      <div className="flex-1 px-4 md:px-6 lg:px-8 pb-6 w-full mt-6">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            {perfError ? perfError.message : "No campaign data available."}
-          </AlertDescription>
-        </Alert>
-        <Link href="/">
-          <Button variant="outline" className="mt-4">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
-          </Button>
-        </Link>
-      </div>
-    );
-  }
+  // --- Early Render Logic REMOVED. Page Structure now loads independently ---
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-slate-50/50 dark:bg-slate-950/50">
@@ -493,12 +455,14 @@ function CampaignInsightsContent() {
               <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
                 {campaignName}
               </h1>
-              <Badge
-                variant={campaignType === "post-sales" ? "default" : "secondary"}
-                className="rounded-full px-3 font-normal"
-              >
-                {campaignType === "post-sales" ? "Post-Sales" : "Pre-Sales"}
-              </Badge>
+              {campaignType && (
+                <Badge
+                  variant={campaignType === "post-sales" ? "default" : "secondary"}
+                  className="rounded-full px-3 font-normal"
+                >
+                  {campaignType === "post-sales" ? "Post-Sales" : "Pre-Sales"}
+                </Badge>
+              )}
             </div>
             <p className="text-sm text-slate-500 mt-0.5">Performance Overview</p>
           </div>
@@ -515,287 +479,310 @@ function CampaignInsightsContent() {
 
           {/* STATISTICS TAB CONTENT */}
           <TabsContent value="statistics" className="space-y-6 mt-6">
-            {performanceData.engagement_stats?.length > 0 && (
-              <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg">
-                      <TrendingUp className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                        Engagement Funnel
-                      </CardTitle>
-                      <CardDescription>Conversion journey breakdown</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <ProfessionalFunnel apiResponse={funnelApiResponse as any} />
-                </CardContent>
-              </Card>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col col-span-1 lg:col-span-2">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
-                      <PieIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base font-semibold">Intent Distribution</CardTitle>
-                      <CardDescription>Customer responses by category</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-[300px] flex items-center justify-center">
-                  {intentData.length > 0 ? (
-                    <div className="w-full h-[320px] flex flex-row items-center">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={intentData}
-                            cx="40%" 
-                            cy="50%"
-                            innerRadius={70} 
-                            outerRadius={100}
-                            paddingAngle={3}
-                            dataKey="value"
-                            stroke="none"
-                          >
-                            {intentData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.fill} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            contentStyle={{ 
-                              backgroundColor: 'white', 
-                              borderRadius: '8px', 
-                              border: '1px solid #e2e8f0',
-                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                            }}
-                            itemStyle={{ color: '#1e293b', fontSize: '13px', fontWeight: 500 }}
-                          />
-                          <Legend 
-                            layout="vertical" 
-                            verticalAlign="middle" 
-                            align="right"
-                            wrapperStyle={{ 
-                              paddingLeft: "20px",
-                              fontSize: "13px",
-                              lineHeight: "26px",
-                              maxWidth: "55%" 
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="text-slate-400 text-sm flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4" /> No intent data
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 bg-red-50 dark:bg-red-950/30 rounded-lg">
-                        <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base font-semibold">Delivery Issues</CardTitle>
-                        <CardDescription>Top failure reasons</CardDescription>
-                      </div>
-                    </div>
-                    {failureData.length > 0 && (
-                      <Badge variant="outline" className="border-red-200 text-red-700 bg-red-50">
-                        {failureData.reduce((a, b) => a + b.count, 0)} Failed
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-auto pt-4">
-                  {failureData.length > 0 ? (
-                    <div className="space-y-4">
-                      <div className="h-[220px] w-full mb-2">
-                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={failureData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                                <XAxis 
-                                  dataKey="channelName" 
-                                  axisLine={false} 
-                                  tickLine={false} 
-                                  tick={{ fontSize: 12, fill: '#64748b' }} 
-                                  dy={10} 
-                                />
-                                <YAxis 
-                                  allowDecimals={false}
-                                  axisLine={false} 
-                                  tickLine={false} 
-                                  tick={{ fontSize: 12, fill: '#64748b' }} 
-                                  width={30}
-                                />
-                                <Tooltip 
-                                  cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                                  content={({ active, payload }) => {
-                                    if (active && payload && payload.length) {
-                                      const data = payload[0].payload;
-                                      return (
-                                        <div className="bg-white border rounded p-2 shadow-sm text-xs">
-                                          <p className="font-semibold mb-1">{data.channelName}</p>
-                                          <p className="text-slate-500">{data.message}</p>
-                                          <p className="font-bold mt-1">{data.count} failed</p>
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  }}
-                                />
-                                <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={24} maxBarSize={40}>
-                                  {failureData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                                  ))}
-                                </Bar>
-                            </BarChart>
-                         </ResponsiveContainer>
-                      </div>
-                      <div className="space-y-3">
-                        {failureData.map((item, idx) => (
-                          <div key={idx} className="flex items-center justify-between text-sm border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-                             <div className="flex flex-col max-w-[70%]">
-                                <span className="font-medium text-slate-700 capitalize flex items-center gap-2">
-                                  <span 
-                                    className="w-2 h-2 rounded-full" 
-                                    style={{ backgroundColor: item.fill }}
-                                  />
-                                  {item.channelName}
-                                </span>
-                                <span className="text-xs text-slate-500 truncate pl-4" title={item.message}>
-                                  {item.message}
-                                </span>
-                             </div>
-                             <div className="font-bold text-slate-900">{item.count}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-                      No failures recorded
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-                      <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base font-semibold">Cost Analysis</CardTitle>
-                      <CardDescription>Cost Per Lead (CPL) by Channel</CardDescription>
-                    </div>
-                  </div>
-                  {costData.length > 0 && (
-                    <div className="text-right">
-                       <p className="text-xs text-slate-500 uppercase tracking-wide">Total Spend</p>
-                       <p className="text-xl font-bold text-slate-900">
-                         ₹{costData.reduce((acc, item) => acc + item.total, 0).toLocaleString()}
-                       </p>
-                    </div>
-                  )}
+            
+            {/* INLINE LOADING AND ERROR STATES FOR STATISTICS ONLY */}
+            {perfLoading ? (
+              <div className="space-y-6">
+                <Skeleton className="h-[250px] w-full rounded-xl" />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <Skeleton className="h-[350px] w-full lg:col-span-2 rounded-xl" />
+                  <Skeleton className="h-[350px] w-full rounded-xl" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                {costData.length > 0 ? (
-                  <div className="h-[320px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={costData}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                        barCategoryGap="30%" 
-                      >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis 
-                          dataKey="name" 
-                          axisLine={false} 
-                          tickLine={false} 
-                          tick={{ fill: '#64748b', fontSize: 13, fontWeight: 500 }}
-                          dy={10}
-                        />
-                        <YAxis 
-                          axisLine={false} 
-                          tickLine={false} 
-                          tick={{ fill: '#64748b', fontSize: 12 }}
-                          tickFormatter={(value) => `₹${value}`}
-                        />
-                        <Tooltip
-                          cursor={{ fill: 'rgba(241, 245, 249, 0.4)' }}
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              const data = payload[0].payload;
-                              return (
-                                <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-lg min-w-[150px]">
-                                  <p className="font-semibold text-slate-900 mb-2">{data.name}</p>
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between text-sm">
-                                      <span className="text-slate-500">CPL:</span>
-                                      <span className="font-medium text-emerald-600">₹{data.cpl.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-xs text-slate-400">
-                                      <span>Total Cost:</span>
-                                      <span>₹{data.total.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-xs text-slate-400">
-                                      <span>Leads:</span>
-                                      <span>{data.leads}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Bar 
-                          dataKey="cpl" 
-                          radius={[6, 6, 0, 0]} 
-                          maxBarSize={60}
-                        >
-                          {costData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                          <LabelList 
-                            dataKey="cpl" 
-                            position="top" 
-                            formatter={(val: any) => typeof val === 'number' ? `₹${val.toFixed(0)}` : ''} 
-                            style={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
-                          />
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                   <div className="h-[200px] flex flex-col items-center justify-center text-slate-400">
-                      <div className="p-3 bg-slate-50 rounded-full mb-3">
-                         <DollarSign className="h-6 w-6 text-slate-300" />
+                <Skeleton className="h-[350px] w-full rounded-xl" />
+              </div>
+            ) : perfError || !performanceData ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Statistics Unavailable</AlertTitle>
+                <AlertDescription>
+                  {perfError ? perfError.message : "No statistics data available for this campaign."}
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <>
+                {performanceData.engagement_stats?.length > 0 && (
+                  <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg">
+                          <TrendingUp className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                            Engagement Funnel
+                          </CardTitle>
+                          <CardDescription>Conversion journey breakdown</CardDescription>
+                        </div>
                       </div>
-                      <p>No cost data recorded</p>
-                   </div>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <ProfessionalFunnel apiResponse={funnelApiResponse as any} />
+                    </CardContent>
+                  </Card>
                 )}
-              </CardContent>
-            </Card>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col col-span-1 lg:col-span-2">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
+                          <PieIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base font-semibold">Intent Distribution</CardTitle>
+                          <CardDescription>Customer responses by category</CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 min-h-[300px] flex items-center justify-center">
+                      {intentData.length > 0 ? (
+                        <div className="w-full h-[320px] flex flex-row items-center">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={intentData}
+                                cx="40%" 
+                                cy="50%"
+                                innerRadius={70} 
+                                outerRadius={100}
+                                paddingAngle={3}
+                                dataKey="value"
+                                stroke="none"
+                              >
+                                {intentData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                              </Pie>
+                              <Tooltip 
+                                contentStyle={{ 
+                                  backgroundColor: 'white', 
+                                  borderRadius: '8px', 
+                                  border: '1px solid #e2e8f0',
+                                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                                }}
+                                itemStyle={{ color: '#1e293b', fontSize: '13px', fontWeight: 500 }}
+                              />
+                              <Legend 
+                                layout="vertical" 
+                                verticalAlign="middle" 
+                                align="right"
+                                wrapperStyle={{ 
+                                  paddingLeft: "20px",
+                                  fontSize: "13px",
+                                  lineHeight: "26px",
+                                  maxWidth: "55%" 
+                                }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <div className="text-slate-400 text-sm flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4" /> No intent data
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                            <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-base font-semibold">Delivery Issues</CardTitle>
+                            <CardDescription>Top failure reasons</CardDescription>
+                          </div>
+                        </div>
+                        {failureData.length > 0 && (
+                          <Badge variant="outline" className="border-red-200 text-red-700 bg-red-50">
+                            {failureData.reduce((a, b) => a + b.count, 0)} Failed
+                          </Badge>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 overflow-auto pt-4">
+                      {failureData.length > 0 ? (
+                        <div className="space-y-4">
+                          <div className="h-[220px] w-full mb-2">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={failureData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
+                                    <XAxis 
+                                      dataKey="channelName" 
+                                      axisLine={false} 
+                                      tickLine={false} 
+                                      tick={{ fontSize: 12, fill: '#64748b' }} 
+                                      dy={10} 
+                                    />
+                                    <YAxis 
+                                      allowDecimals={false}
+                                      axisLine={false} 
+                                      tickLine={false} 
+                                      tick={{ fontSize: 12, fill: '#64748b' }} 
+                                      width={30}
+                                    />
+                                    <Tooltip 
+                                      cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                                      content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                          const data = payload[0].payload;
+                                          return (
+                                            <div className="bg-white border rounded p-2 shadow-sm text-xs">
+                                              <p className="font-semibold mb-1">{data.channelName}</p>
+                                              <p className="text-slate-500">{data.message}</p>
+                                              <p className="font-bold mt-1">{data.count} failed</p>
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                      }}
+                                    />
+                                    <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={24} maxBarSize={40}>
+                                      {failureData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                                      ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="space-y-3">
+                            {failureData.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between text-sm border-b border-slate-50 pb-2 last:border-0 last:pb-0">
+                                <div className="flex flex-col max-w-[70%]">
+                                    <span className="font-medium text-slate-700 capitalize flex items-center gap-2">
+                                      <span 
+                                        className="w-2 h-2 rounded-full" 
+                                        style={{ backgroundColor: item.fill }}
+                                      />
+                                      {item.channelName}
+                                    </span>
+                                    <span className="text-xs text-slate-500 truncate pl-4" title={item.message}>
+                                      {item.message}
+                                    </span>
+                                </div>
+                                <div className="font-bold text-slate-900">{item.count}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                          No failures recorded
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                          <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-base font-semibold">Cost Analysis</CardTitle>
+                          <CardDescription>Cost Per Lead (CPL) by Channel</CardDescription>
+                        </div>
+                      </div>
+                      {costData.length > 0 && (
+                        <div className="text-right">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide">Total Spend</p>
+                          <p className="text-xl font-bold text-slate-900">
+                            ₹{costData.reduce((acc, item) => acc + item.total, 0).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {costData.length > 0 ? (
+                      <div className="h-[320px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={costData}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            barCategoryGap="30%" 
+                          >
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis 
+                              dataKey="name" 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fill: '#64748b', fontSize: 13, fontWeight: 500 }}
+                              dy={10}
+                            />
+                            <YAxis 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fill: '#64748b', fontSize: 12 }}
+                              tickFormatter={(value) => `₹${value}`}
+                            />
+                            <Tooltip
+                              cursor={{ fill: 'rgba(241, 245, 249, 0.4)' }}
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const data = payload[0].payload;
+                                  return (
+                                    <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-lg min-w-[150px]">
+                                      <p className="font-semibold text-slate-900 mb-2">{data.name}</p>
+                                      <div className="space-y-1">
+                                        <div className="flex justify-between text-sm">
+                                          <span className="text-slate-500">CPL:</span>
+                                          <span className="font-medium text-emerald-600">₹{data.cpl.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs text-slate-400">
+                                          <span>Total Cost:</span>
+                                          <span>₹{data.total.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs text-slate-400">
+                                          <span>Leads:</span>
+                                          <span>{data.leads}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Bar 
+                              dataKey="cpl" 
+                              radius={[6, 6, 0, 0]} 
+                              maxBarSize={60}
+                            >
+                              {costData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                              ))}
+                              <LabelList 
+                                dataKey="cpl" 
+                                position="top" 
+                                formatter={(val: any) => typeof val === 'number' ? `₹${val.toFixed(0)}` : ''} 
+                                style={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
+                              />
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="h-[200px] flex flex-col items-center justify-center text-slate-400">
+                          <div className="p-3 bg-slate-50 rounded-full mb-3">
+                            <DollarSign className="h-6 w-6 text-slate-300" />
+                          </div>
+                          <p>No cost data recorded</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </TabsContent>
 
-          {/* AUDIENCE TAB CONTENT */}
+          {/* AUDIENCE TAB CONTENT (Unchanged) */}
           <TabsContent value="audience" className="space-y-6 mt-6">
             <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 gap-4">
@@ -1033,7 +1020,7 @@ function CampaignInsightsContent() {
             </Card>
           </TabsContent>
 
-          {/* SESSIONS TAB CONTENT */}
+          {/* SESSIONS TAB CONTENT (Unchanged) */}
           <TabsContent value="sessions" className="space-y-6 mt-6">
             <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               

@@ -15,7 +15,7 @@ if BASE_DIR not in sys.path:
 
 from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME
 
-GRYD_SERVICE, GRYD_CONFIG = AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME, {"broker_type" : "sqs", "timeout" : 10, "wait_time_to_shutdown" : 43200}
+GRYD_SERVICE = AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME
 
 def get_logger(name, log_level = "info"):
     log_level = log_level.upper()

@@ -36,8 +36,8 @@
                 ]
             },
             "indexed": true,
-            "auto_updater": true,
-            "force_update": "variant_id"
+            "auto_updater": false,
+            "force_update": false
         },
         {
             "name": "variant_full_name",
@@ -51,8 +51,8 @@
                 ]
             },
             "indexed": true,
-            "auto_updater": true,
-            "force_update": "variant_id"
+            "auto_updater": false,
+            "force_update": false
         },
         {
             "name": "variant_aliases",
@@ -66,8 +66,8 @@
                 ]
             },
             "indexed": true,
-            "auto_updater": true,
-            "force_update": "variant_id"
+            "auto_updater": false,
+            "force_update": false
         },
         {
             "name": "vehicle_model_id",
@@ -96,8 +96,8 @@
                 ]
             },
             "indexed": true,
-            "auto_updater": true,
-            "force_update": "variant_id"
+            "auto_updater": false,
+            "force_update": false
         },
         {
             "name": "vehicle_brand_id",
@@ -126,8 +126,8 @@
                 ]
             },
             "indexed": true,
-            "auto_updater": true,
-            "force_update": "variant_id"
+            "auto_updater": false,
+            "force_update": false
         },
         {
             "name": "vehicle_model_year",
@@ -140,8 +140,8 @@
                     "vehicle_model_year"
                 ]
             },
-            "auto_updater": true,
-            "force_update": "variant_id"
+            "auto_updater": false,
+            "force_update": false
         },
         {
             "name": "vehicle_color_id",
@@ -158,8 +158,8 @@
                     "color_name"
                 ]
             },
-            "auto_updater": true,
-            "force_update": "variant_color_id"
+            "auto_updater": false,
+            "force_update": false
         },
         {
             "name": "reg_number",

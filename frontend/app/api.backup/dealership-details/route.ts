@@ -1,3 +1,4 @@
+import { APP_BASE_URL } from "@/utils/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 // Helper function to get cookie from request headers
@@ -37,7 +38,8 @@ export async function GET(request: NextRequest) {
 
     // Proxy the request to the backend
     // Use production URL instead of localhost to avoid backend cursor errors
-    const backendUrl = `https://autobot-webapp-dev.gryd.in/get-dealership-details/${userId}`;
+    const baseurl= APP_BASE_URL;
+        const backendUrl = `${baseurl}/get-dealership-details/${userId}`;
 
     console.log("[Dealership Details API] Calling backend:", backendUrl);
     console.log("[Dealership Details API] Using user_id:", userId);
