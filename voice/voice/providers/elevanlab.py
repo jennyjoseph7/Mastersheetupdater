@@ -20,6 +20,8 @@ AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_6501kg4h48mbfhp8cryeh1a66t3
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
 
+# enterprise api key - sk_e232d2802c87154961d0fcdf71f5b418735282cc9a61a179
+
 def format_transcript(transcript, start_time_unix):
     session_history = []
     if not transcript:
