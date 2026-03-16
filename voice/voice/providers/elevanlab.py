@@ -87,9 +87,12 @@ def make_call_twilio(session_data, *args, **kwargs):
         if session_data.get("language"):
             initial_config["conversation_config_override"]["agent"].update({"language": session_data.get("language")})
 
+    logger.info(f"Initiating call with config: {json.dumps(initial_config, indent=2)}")
+    logger.info(f"Using phone number: {number} and agent_id: {agent_id}")
+    logger.info(f"Using phone number ID: {PHONE_NUMBER_ID}")
     response = elevenlabs_client.conversational_ai.twilio.outbound_call(
-        agent_id=agent_id,
-        agent_phone_number_id=PHONE_NUMBER_ID,
+        agent_id= agent_id,
+        agent_phone_number_id= session_data.get("agent_number", PHONE_NUMBER_ID),
         to_number=number,
         conversation_initiation_client_data=initial_config
     )

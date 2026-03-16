@@ -5,7 +5,7 @@ from . import elevanlab
 import requests
 
 PROVIDERS = {
-    'twilio': twilio,
+    'twilio': elevanlab, #twilio,
     'tatatele': elevanlabs_tatatele,
     'elevanlab': elevanlab,
 }
