@@ -24,20 +24,7 @@ class BaseAgent:
         self.args = args
         self.kwargs = kwargs
 
-<<<<<<< HEAD
-    def return_data(self,purpose = "",flags = {},message = "",data = {}):
-        return {"purpose":purpose,"flags" : flags,"message" : message,"data" : data}
-    def return_converse_response(self,pl,intent):
-        return {"placeholder":pl,"intent" : intent}
-    def return_thinking_response(self,pl,title,image_url):
-        return {"placeholder":pl,"title" : title,"image_url":image_url}
-    def return_error_response(self,pl):
-        return {"placeholder":pl,"intent" : "error"}
-    
-    def _load_json(self, source : Union[Dict[str, Any], str]) -> Dict[str, Any]:
-=======
     def _load_json(self, source : Union[Dict[str, Any], str, None]) -> Dict[str, Any]:
->>>>>>> 58a7aa97328e83fa1bc7551219071ee799f0471d
         """Load JSON from a dict, local path, or URL."""
         if source is None:
             return {}
@@ -90,11 +77,6 @@ class BaseAgent:
                     json_str = response[start:i + 1]
                     try:
                         return json.loads(json_str)
-<<<<<<< HEAD
-                    except Exception:
-                        return None
-        return None
-=======
                     except Exception as e:
                         raise ValueError(f"Invalid JSON content: {e}")
 
@@ -164,4 +146,3 @@ class BaseAgent:
                     logger.info(f"Temporary PDF file deleted: {temp_pdf_path}")
         else:
             return None
->>>>>>> 58a7aa97328e83fa1bc7551219071ee799f0471d
