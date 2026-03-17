@@ -7,6 +7,7 @@ import {
   FILE_UPLOAD_HEADERS,
 } from "./headers";
 import { api } from "@/lib/api";
+
 /* ---------------------------------------------------
    Utils (Next.js Safe)
 --------------------------------------------------- */
@@ -476,7 +477,6 @@ async function fetchCampaignLeads({
   }
 }
 
-// ---- NEW: Added fetchCampaignSessions here ----
 export async function fetchCampaignSessions({
   campaignId = "",
   dealershipId = getDealershipId(),
@@ -558,7 +558,6 @@ async function fetchUserSessions(
   try {
     // Build URL with query parameters matching the curl command
     const params = new URLSearchParams({
-      
       dealership_id: dealershipId,
       campaign_id: campaignId,
       lead_id: userId,
@@ -586,15 +585,6 @@ async function fetchUserSessions(
     return { items: [], total: 0 };
   }
 }
-
-/**
- * Fetches active sessions for a dealership
- * Matches curl: GET /gryd/db/objects/session?session_live=True&dealership_id={id}
- * Headers: X-GRYD-ENTERPRISE-ID: autocrm, X-GRYD-TOKEN, X-GRYD-SESSION-ID, X-GRYD-ROLE: agent, X-GRYD-APPLICATION-ID: autocrm
- * Response: { data: SessionData[], total_number: number, page_number, page_size, is_first, is_last }
- */
-// utils/api.ts
-// (Assuming APP_BASE_URL is defined elsewhere in your file)
 
 export async function fetchActiveSessions(dealershipId, params = {}) {
   if (!dealershipId) {
@@ -776,6 +766,43 @@ export const executeTaskWithPolling = async (
   return resultRes.result;
 };
 
+/* ---------------------------------------------------
+   Billing & Payments
+--------------------------------------------------- */
+
+export async function createCreditPurchaseOrder(credits, dealershipId = getDealershipId()) {
+  if (!dealershipId) {
+    throw new Error("Dealership ID is required to purchase credits.");
+  }
+
+  const servicename = process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
+  const url = `${APP_BASE_URL}/gryd/api/${servicename}/payment_service`;
+
+  try {
+    // We use authenticatedFetch here because it likely handles the 
+    // X-GRYD-TOKEN and X-GRYD-SESSION-ID headers automatically.
+    const response = await authenticatedFetch(url, {
+      method: "POST",
+      body: JSON.stringify({
+        args: ["purchase_credit"],
+        kwargs: {
+          dealership_id: dealershipId,
+          credits: Number(credits),
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create order: ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("[createCreditPurchaseOrder] Error:", error);
+    throw error;
+  }
+}
 
 /* ---------------------------------------------------
    Exports
@@ -793,18 +820,14 @@ export {
   getTaskStatus,
   fetchAudienceTasks,
   getTaskResult,
-  // fetchPreSalesCampaigns,
-  // fetchPostSalesCampaigns,
   fetchCampaignObjectives,
   fetchCampaignSummary,
-  // fetchDealershipCampaigns,
   fetchCampaignPerformanceSummary,
   fetchCampaignLeads,
-  // fetchCampaignSessions, // <-- Exported here
   fetchUserSessions,
-  // fetchActiveSessions,
   epochToIST,
   capitalize,
   getDealershipId,
   getBrands,
+  // createCreditPurchaseOrder, // <-- New billing export added here
 };

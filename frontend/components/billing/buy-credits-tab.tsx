@@ -1,12 +1,20 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowRight, ArrowLeft, CreditCard, Building2, Smartphone } from "lucide-react"
+import { ArrowRight, ArrowLeft, CreditCard, Loader2, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { createCreditPurchaseOrder } from "@/utils/api" // Import the API function we made
+
+// Add Razorpay to the Window interface
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 const creditPacks = [
   { credits: 500, price: 500, label: "Starter" },
@@ -18,32 +26,112 @@ export function BuyCreditsTab() {
   const [step, setStep] = useState(1)
   const [selectedPack, setSelectedPack] = useState<number | null>(1000)
   const [customCredits, setCustomCredits] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [paymentResult, setPaymentResult] = useState<any>(null)
+  
   const [billingDetails, setBillingDetails] = useState({
     name: "John Doe",
     email: "john.doe@example.com",
+    contact: "9999999999", // Added contact for Razorpay prefill
     company: "ABC Auto Sales",
     gstin: "",
     address: "",
   })
-  const [paymentMethod, setPaymentMethod] = useState("card")
 
   const selectedCredits = selectedPack !== null ? selectedPack : Number.parseInt(customCredits) || 0
   const selectedPackData = creditPacks.find((p) => p.credits === selectedPack)
-  const pricePerCredit = selectedPack !== null ? (selectedPackData?.price || 0) / (selectedPackData?.credits || 1) : 1
   const subtotal = selectedPack !== null ? selectedPackData?.price || 0 : Number.parseInt(customCredits) || 0
   const tax = subtotal * 0.18
   const total = subtotal + tax
 
+  // Load Razorpay Script
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleRazorpayPayment = async () => {
+    setIsLoading(true);
+    setPaymentResult(null);
+
+    const isScriptLoaded = await loadRazorpayScript();
+    if (!isScriptLoaded) {
+      alert("Failed to load Razorpay. Please check your connection.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // 1. Call backend API to create order
+      const orderData = await createCreditPurchaseOrder(selectedCredits);
+
+      // 2. Initialize Razorpay options
+      const options = {
+        key: "rzp_test_htVSSrrdDO0Mvj", // Use process.env.NEXT_PUBLIC_RAZORPAY_KEY in production
+        amount: Math.round(orderData.amount * 100), 
+        currency: orderData.currency || "INR",
+        name: "Autocrm",
+        description: `Purchase ${orderData.credits} Credits`,
+        order_id: orderData.order_id,
+        handler: function (response: any) {
+          const successData = {
+            status: "SUCCESS",
+            payment_id: response.razorpay_payment_id,
+            order_id: response.razorpay_order_id,
+          };
+          setPaymentResult(successData);
+          setStep(4); // Move to a success screen (optional)
+        },
+        modal: {
+          ondismiss: function () {
+            setIsLoading(false);
+          },
+        },
+        prefill: {
+          name: billingDetails.name,
+          email: billingDetails.email,
+          contact: billingDetails.contact,
+        },
+        theme: {
+          color: "#ea580c", // matches orange-600
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+
+      rzp.on("payment.failed", function (response: any) {
+        setPaymentResult({ status: "FAILED", reason: response.error.description });
+        setIsLoading(false);
+      });
+
+      rzp.open();
+    } catch (error: any) {
+      console.error("Payment flow error:", error);
+      setPaymentResult({ status: "ERROR", message: error.message });
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Step indicator */}
-      <div className="text-xl font-semibold">
-        Step {step} of 3: {step === 1 ? "Choose Credits" : step === 2 ? "Billing Details" : "Payment"}
-      </div>
+      {step < 4 && (
+        <div className="text-xl font-semibold">
+          Step {step} of 3: {step === 1 ? "Choose Credits" : step === 2 ? "Billing Details" : "Review & Pay"}
+        </div>
+      )}
 
       {step === 1 && (
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Main content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Credit Packs */}
             <Card>
@@ -123,14 +211,14 @@ export function BuyCreditsTab() {
             </Card>
 
             <div className="flex justify-end">
-              <Button size="lg" onClick={() => setStep(2)} disabled={!selectedCredits} className="gap-2">
+              <Button size="lg" onClick={() => setStep(2)} disabled={!selectedCredits || selectedCredits < 100} className="gap-2">
                 Continue
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-          {/* Order Summary */}
+          {/* Order Summary Sidebar */}
           <div className="lg:col-span-1">
             <Card>
               <CardContent className="pt-6 space-y-4">
@@ -141,17 +229,14 @@ export function BuyCreditsTab() {
                     <span className="text-muted-foreground">Credits</span>
                     <span className="font-medium">{selectedCredits.toLocaleString()}</span>
                   </div>
-
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span className="font-medium">₹{subtotal.toLocaleString()}</span>
                   </div>
-
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">GST (18%)</span>
                     <span className="font-medium">₹{tax.toFixed(2)}</span>
                   </div>
-
                   <div className="border-t pt-3">
                     <div className="flex justify-between">
                       <span className="font-semibold">Total Amount</span>
@@ -176,71 +261,44 @@ export function BuyCreditsTab() {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Full Name <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    value={billingDetails.name}
-                    onChange={(e) => setBillingDetails({ ...billingDetails, name: e.target.value })}
-                  />
+                  <Label htmlFor="name">Full Name <span className="text-destructive">*</span></Label>
+                  <Input id="name" value={billingDetails.name} onChange={(e) => setBillingDetails({ ...billingDetails, name: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">
-                    Email <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={billingDetails.email}
-                    onChange={(e) => setBillingDetails({ ...billingDetails, email: e.target.value })}
-                  />
+                  <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
+                  <Input id="email" type="email" value={billingDetails.email} onChange={(e) => setBillingDetails({ ...billingDetails, email: e.target.value })} />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="company">
-                  Company <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="company"
-                  value={billingDetails.company}
-                  onChange={(e) => setBillingDetails({ ...billingDetails, company: e.target.value })}
-                />
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contact">Phone Number <span className="text-destructive">*</span></Label>
+                  <Input id="contact" value={billingDetails.contact} onChange={(e) => setBillingDetails({ ...billingDetails, contact: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="company">Company <span className="text-destructive">*</span></Label>
+                  <Input id="company" value={billingDetails.company} onChange={(e) => setBillingDetails({ ...billingDetails, company: e.target.value })} />
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="gstin">GST/Tax ID (Optional)</Label>
-                <Input
-                  id="gstin"
-                  placeholder="e.g., 22AAAAA0000A1Z5"
-                  value={billingDetails.gstin}
-                  onChange={(e) => setBillingDetails({ ...billingDetails, gstin: e.target.value })}
-                />
+                <Input id="gstin" placeholder="e.g., 22AAAAA0000A1Z5" value={billingDetails.gstin} onChange={(e) => setBillingDetails({ ...billingDetails, gstin: e.target.value })} />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">
-                  Address <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="address"
-                  placeholder="Complete billing address"
-                  value={billingDetails.address}
-                  onChange={(e) => setBillingDetails({ ...billingDetails, address: e.target.value })}
-                />
+                <Label htmlFor="address">Address <span className="text-destructive">*</span></Label>
+                <Input id="address" placeholder="Complete billing address" value={billingDetails.address} onChange={(e) => setBillingDetails({ ...billingDetails, address: e.target.value })} />
               </div>
             </CardContent>
           </Card>
 
           <div className="flex justify-between">
             <Button variant="ghost" onClick={() => setStep(1)} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back
+              <ArrowLeft className="h-4 w-4" /> Back
             </Button>
             <Button size="lg" onClick={() => setStep(3)} className="gap-2">
-              Proceed to Payment
-              <ArrowRight className="h-4 w-4" />
+              Review Order <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -251,102 +309,86 @@ export function BuyCreditsTab() {
           <Card>
             <CardContent className="pt-6 space-y-6">
               <div>
-                <h3 className="font-semibold text-lg mb-1">Payment Methods</h3>
-                <p className="text-sm text-muted-foreground">Choose your preferred payment method</p>
+                <h3 className="font-semibold text-lg mb-1">Review & Confirm</h3>
+                <p className="text-sm text-muted-foreground">Verify your details before securely proceeding to payment.</p>
               </div>
 
-              {/* Payment method selection */}
-              <div className="grid md:grid-cols-3 gap-4">
-                <button
-                  onClick={() => setPaymentMethod("upi")}
-                  className={`p-6 rounded-lg border-2 transition-all text-center ${
-                    paymentMethod === "upi" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <Smartphone className="h-8 w-8 mx-auto mb-3 text-green-600" />
-                  <div className="font-semibold mb-1">UPI Payment</div>
-                  <div className="text-xs text-muted-foreground">Instant & Secure</div>
-                </button>
+              <div className="grid md:grid-cols-2 gap-8 border rounded-lg p-6 bg-muted/20">
+                {/* Billing Summary */}
+                <div className="space-y-2 text-sm">
+                  <h4 className="font-semibold text-base mb-3">Billing Information</h4>
+                  <p><span className="text-muted-foreground">Name:</span> {billingDetails.name}</p>
+                  <p><span className="text-muted-foreground">Email:</span> {billingDetails.email}</p>
+                  <p><span className="text-muted-foreground">Company:</span> {billingDetails.company}</p>
+                  {billingDetails.gstin && <p><span className="text-muted-foreground">GSTIN:</span> {billingDetails.gstin}</p>}
+                </div>
 
-                <button
-                  onClick={() => setPaymentMethod("card")}
-                  className={`p-6 rounded-lg border-2 transition-all text-center ${
-                    paymentMethod === "card" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <CreditCard className="h-8 w-8 mx-auto mb-3 text-primary" />
-                  <div className="font-semibold mb-1">Card Payment</div>
-                  <div className="text-xs text-muted-foreground">Credit/Debit Card</div>
-                </button>
-
-                <button
-                  onClick={() => setPaymentMethod("netbanking")}
-                  className={`p-6 rounded-lg border-2 transition-all text-center ${
-                    paymentMethod === "netbanking"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <Building2 className="h-8 w-8 mx-auto mb-3 text-blue-600" />
-                  <div className="font-semibold mb-1">Net Banking</div>
-                  <div className="text-xs text-muted-foreground">All Major Banks</div>
-                </button>
-              </div>
-
-              {/* Card payment form */}
-              {paymentMethod === "card" && (
-                <div className="space-y-4 p-6 border-2 border-primary rounded-lg bg-primary/5">
-                  <div className="space-y-2">
-                    <Label htmlFor="card-number">
-                      Card Number <span className="text-destructive">*</span>
-                    </Label>
-                    <Input id="card-number" placeholder="1234 5678 9012 3456" />
+                {/* Order Summary */}
+                <div className="space-y-3 text-sm">
+                   <h4 className="font-semibold text-base mb-3">Order Details</h4>
+                  <div className="flex justify-between border-b pb-2">
+                    <span className="text-muted-foreground">Credits Requested:</span>
+                    <span className="font-medium">{selectedCredits.toLocaleString()}</span>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="expiry">
-                        Expiry Date <span className="text-destructive">*</span>
-                      </Label>
-                      <Input id="expiry" placeholder="MM/YY" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="cvv">
-                        CVV <span className="text-destructive">*</span>
-                      </Label>
-                      <Input id="cvv" placeholder="123" type="password" maxLength={3} />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="cardholder">
-                      Cardholder Name <span className="text-destructive">*</span>
-                    </Label>
-                    <Input id="cardholder" placeholder="Name on card" />
+                  <div className="flex justify-between pt-2">
+                    <span className="font-semibold text-base">Total Amount to Pay:</span>
+                    <span className="font-bold text-lg text-primary">₹{total.toFixed(2)}</span>
                   </div>
                 </div>
-              )}
-
-              {/* Total amount display */}
-              <div className="flex justify-between items-center pt-4 border-t">
-                <span className="font-semibold">Total Amount</span>
-                <span className="text-2xl font-bold text-primary">₹{total.toFixed(2)}</span>
               </div>
+
+              {/* Error Message Display */}
+              {paymentResult?.status === "ERROR" || paymentResult?.status === "FAILED" ? (
+                <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm border border-red-200">
+                  Payment Failed: {paymentResult.reason || paymentResult.message}
+                </div>
+              ) : null}
+
             </CardContent>
           </Card>
 
-          {/* Action buttons */}
-          <div className="space-y-4">
-            <Button size="lg" className="w-full hover:bg-orange-700 text-white text-lg bg-primary h-11">
-              Pay ₹{total.toFixed(2)}
+          <div className="flex justify-between items-center">
+            <Button variant="ghost" onClick={() => setStep(2)} className="gap-2" disabled={isLoading}>
+              <ArrowLeft className="h-4 w-4" /> Back
             </Button>
 
-            <Button variant="ghost" onClick={() => setStep(2)} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back
+            <Button 
+              size="lg" 
+              onClick={handleRazorpayPayment} 
+              disabled={isLoading}
+              className="gap-2 bg-green-600 hover:bg-green-700 text-white min-w-[200px]"
+            >
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <CreditCard className="h-5 w-5" />
+              )}
+              {isLoading ? "Connecting to secure gateway..." : `Pay ₹${total.toFixed(2)} Securely`}
             </Button>
           </div>
         </div>
+      )}
+
+      {/* SUCCESS SCREEN */}
+      {step === 4 && (
+        <Card className="max-w-xl mx-auto mt-12 border-green-200 bg-green-50/50">
+          <CardContent className="pt-10 pb-10 text-center space-y-4">
+            <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
+            <h2 className="text-2xl font-bold text-green-900">Payment Successful!</h2>
+            <p className="text-green-700 mb-6">
+              Your account has been credited with <strong>{selectedCredits.toLocaleString()}</strong> credits.
+            </p>
+            <div className="text-sm text-green-800 bg-white p-4 rounded-md border border-green-100 inline-block text-left mb-6">
+               <p><strong>Order ID:</strong> {paymentResult?.order_id}</p>
+               <p><strong>Payment ID:</strong> {paymentResult?.payment_id}</p>
+            </div>
+            <div>
+              <Button onClick={() => window.location.reload()} className="bg-green-600 hover:bg-green-700">
+                Return to Dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
