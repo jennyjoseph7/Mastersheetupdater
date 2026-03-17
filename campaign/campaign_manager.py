@@ -266,7 +266,7 @@ class BaseCampaignCreater:
             logger.error(
                 f"Unsupported channel {channel} for campaign user ID {lead_id}"
             )
-        # logger.info(f"CAMPAIGN MESSAGE STATUS-----: {campaign_details} ,campaign_user_data --{campaign_user_data} ")
+        # logger.info(f"CAMPAIGN MESSAGE STATUS-----: {json.dumps(campaign_details,indent=4)} ,campaign_user_data --{json.dumps(campaign_user_data,indent=4)} ")
         msg_status=WA_TO_DISPOSITION.get(patch_user_data.get("message_status"), None)
         if msg_status:
             # logger.info(f"TEST MESSAGE_STATUS ------{msg_status} response--{response}")
@@ -281,7 +281,8 @@ class BaseCampaignCreater:
                     "message_id": (response.get("message_id", None) if channel == "whatsapp_chat" else getattr(response.get("response"), "sid", None)),
                     "provider_status":msg_status,
                     "channel_provider":provider_name,
-                    "channel":patch_user_data.get("channel") or channel
+                    "channel":patch_user_data.get("channel") or channel,
+                    "template_message":campaign_details.get("template_message")
                 }
             
             logger.info(f"Calling post_contact_status with data from campaign: {data}")
@@ -378,11 +379,14 @@ class BaseCustomCampaignManager:
                 logger.info(f"[{count}] Sent {channel} message for {mobile_number}")
                 
                 logger.info("Checking and creating a session for channel: {channel} and user: {mobile_number}")
-                session_data=handle_session_logic(mobile_number,channel.lower())
-                logger.info(f"Session logic result in campaign : {session_data}")
+                campaign_d={**campaign_data,**user}
+                session_data=handle_session_logic(mobile_number,channel.lower(),False,campaign_d)
                 if not session_data:
                     logger.error(f"Failed to create session for channel: {channel} and user: {mobile_number}")
                     continue
+                # logger.info(f"Session logic result in campaign : {session_data}")
+                user["session_id"]=session_data.get("session_id")
+                
                 #TODO Send async 
                 if is_testing:
                     logger.info(f"[{count}] Sending WhatsApp message synchronously for {campaign_data.get('campaign_id')} for phone_number={campaign_data.get('mobile_number')}")
@@ -895,6 +899,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
 
     campaign_details = campaign_details[0]
     campaign_objective_name=campaign_details.get("campaign_objective_name") 
+    logger.info(f"campaign_objective_name: {campaign_objective_name}")
     if not campaign_objective_name:
         yield {"status": "Error", "error_description": f"No campaign objective name found for campaign_id={campaign_id}"}
         return

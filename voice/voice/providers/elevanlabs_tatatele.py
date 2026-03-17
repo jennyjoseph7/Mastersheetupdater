@@ -28,7 +28,6 @@ from typing import Dict, Any, Optional
 import audioop  # Native C extension - fast audio processing
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp
 
-from utils import helpers as vhp
 import utils
 
 # Use uvloop for faster event loop (Linux/macOS only)
