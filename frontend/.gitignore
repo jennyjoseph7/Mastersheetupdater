@@ -39,3 +39,6 @@ coverage/
 bun.lockb
 bun-debug.log
 .vercel
+
+.core/payment_test.py
+core/payment_test.py

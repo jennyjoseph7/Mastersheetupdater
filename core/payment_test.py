@@ -40,10 +40,10 @@ gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 logger = mlogger
-from core.core import payment_service
+# from core.core import payment_service
 
 source = {
-    "dealership_id": "daveai",
+    "dealership_id": "arya_raj-south-india",
         "credits": 500
 }
 

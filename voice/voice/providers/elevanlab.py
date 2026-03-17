@@ -20,6 +20,8 @@ AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_6501kg4h48mbfhp8cryeh1a66t3
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
 
+# enterprise api key - sk_e232d2802c87154961d0fcdf71f5b418735282cc9a61a179
+
 def format_transcript(transcript, start_time_unix):
     session_history = []
     if not transcript:
@@ -34,7 +36,7 @@ def format_transcript(transcript, start_time_unix):
     
     return session_history
 
-def make_call_elevanlab(session_data, *args, **kwargs):
+def make_call_twilio(session_data, *args, **kwargs):
     elevenlabs_client = ElevenLabs(api_key=API_KEY)
     number = session_data.get("phone_number", "918850988794") #for test
     session_id = session_data.get('session_id')
@@ -87,9 +89,12 @@ def make_call_elevanlab(session_data, *args, **kwargs):
         if session_data.get("language"):
             initial_config["conversation_config_override"]["agent"].update({"language": session_data.get("language")})
 
+    logger.info(f"Initiating call with config: {json.dumps(initial_config, indent=2)}")
+    logger.info(f"Using phone number: {number} and agent_id: {agent_id}")
+    logger.info(f"Using phone number ID: {PHONE_NUMBER_ID}")
     response = elevenlabs_client.conversational_ai.twilio.outbound_call(
-        agent_id=agent_id,
-        agent_phone_number_id=PHONE_NUMBER_ID,
+        agent_id= agent_id,
+        agent_phone_number_id= session_data.get("agent_number", PHONE_NUMBER_ID),
         to_number=number,
         conversation_initiation_client_data=initial_config
     )

@@ -67,6 +67,7 @@ AWSCLIV2.pkg
 
 core/testBillModel.py
 core/rezorpay_fe_test.html
+core/payment_test.py
 billing.json
 venv/
 spark/fonts
