@@ -161,7 +161,12 @@ Target the "Specific_Feature_DeepDive" level.
    - ❌ NO Roadside Assistance.
    - ❌ NO Showroom/Dealer information.
 
-4. "DETAILS" FIELD - REWRITE RULE:
+4. "AVAILABILITY" FIELD - STRICT RULE:
+   - ❌ NEVER use vague terms like "higher variants", "top models", or "standard".
+   - ✅ ALWAYS explicitly list the EXACT base variant names where the feature is present separated by commas (e.g., "Availability": "Zeta, Alpha").
+   - If it is in all variants, write: "Availability": "All Variants".
+
+5. "DETAILS" FIELD - REWRITE RULE:
    - **Do NOT copy brochure text.**
    - ❌ Remove marketing fluff (e.g., "first-in-class", "revolutionary", "smooth glide").
    - ✅ Rewrite to explain the FUNCTION or MEANING of the feature in simple terms.

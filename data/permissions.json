@@ -1,161 +1,281 @@
 {
-  "post_buyback_center": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "post_workshop": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "post_showroom": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "autosphere_template": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "brand": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "post_idea": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "campaign_objective": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "audience_task": [
-    {
-      "read_access": true,
-      "role": "human_agent",
-      "write_access": true
-    }
-  ],
-  "region": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "region_subdivision": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "dealer_group": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "dealership": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "workshop": [
-    {
-      "read_access": true,
-      "role": "human_agent",
-      "write_access": true,
-      "delete_access": true
-    }
-  ],
-  "showroom": [
-    {
-      "read_access": true,
-      "role": "human_agent",
-      "write_access": true,
-      "delete_access": true
-    }
-  ],
-  "buyback_center": [
-    {
-      "read_access": true,
-      "role": "human_agent",
-      "write_access": true,
-      "delete_access": true
-    }
-  ],
-  "post_sales_campaign": [
-    {
-      "read_access": true,
-      "write_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "campaign_summary": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "pre_sales_campaign": [
-    {
-      "read_access": true,
-      "write_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "template": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "campaign_performance_summary": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "session": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "pre_sales_lead": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "post_sales_lead": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "service_visit": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ],
-  "showroom_visit": [
-    {
-      "read_access": true,
-      "role": "human_agent"
-    }
-  ]
+    "post_buyback_center": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "post_workshop": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "post_showroom": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "autosphere_template": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "data_admin",
+            "write_access": true,
+            "delete_access": true
+        }
+    ],
+    "brand": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "data_admin",
+            "write_access": true
+        }
+    ],
+    "post_idea": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "write_access": true,
+            "role": "data_admin"
+        }
+    ],
+    "campaign_objective": [
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true,
+            "write_filter": {
+                "dealership_id": "{dealership_id}"
+            }
+        },
+        {
+            "read_access": true,
+            "role": "data_admin",
+            "write_access": true,
+            "delete_access": true
+        }
+    ],
+    "audience_task": [
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true
+        }
+    ],
+    "region": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "data_admin"
+        }
+    ],
+    "region_subdivision": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "data_admin",
+            "write_access": true
+        }
+    ],
+    "dealer_group": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "data_admin"
+        }
+    ],
+    "dealership": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "data_admin",
+            "write_access": true
+        }
+    ],
+    "workshop": [
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true,
+            "delete_access": true
+        },
+        {
+            "read_access": true,
+            "role": "data_admin"
+        }
+    ],
+    "showroom": [
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true,
+            "delete_access": true
+        },
+        {
+            "read_access": true,
+            "role": "data_admin"
+        }
+    ],
+    "buyback_center": [
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true,
+            "delete_access": true
+        },
+        {
+            "read_access": true,
+            "role": "data_admin"
+        }
+    ],
+    "post_sales_campaign": [
+        {
+            "read_access": true,
+            "write_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "campaign_summary": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "pre_sales_campaign": [
+        {
+            "read_access": true,
+            "write_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "template": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "campaign_performance_summary": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "session": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "pre_sales_lead": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "post_sales_lead": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "service_visit": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "showroom_visit": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ],
+    "oem": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "data_admin"
+        }
+    ],
+    "vehicle_model": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true
+        }
+    ],
+    "model_year": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true
+        }
+    ],
+    "variant": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true
+        }
+    ],
+    "variant_feature": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "human_agent",
+            "write_access": true
+        }
+    ],
+    "feature": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "human_agent"
+        }
+    ]
 }

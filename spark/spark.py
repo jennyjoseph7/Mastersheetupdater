@@ -17,8 +17,9 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, OPENAI_API_KEY, \
     OPENAI_OUTPUT_TEXT_TOKEN_PRICE, \
     OPENAI_INPUT_IMAGE_TOKEN_PRICE, \
     OPENAI_OUTPUT_IMAGE_TOKEN_PRICE, \
-    VALIDATE_PROMPT_MODEL
-from combine_images import merge_layers
+    VALIDATE_PROMPT_MODEL, \
+    AutocrmModel
+from combine_images import merge_layers, DEFAULT_PNG_ELEMENTS, DEFAULT_SVG_ELEMENTS, replace_svg_text_by_id
 from check_distortion import analyze_image, pad_and_resize_image, compare_images
 from spdl_comfy import comfy_image_generation_task
 from spdl_comfy import gemini_image_generation_task
@@ -26,7 +27,7 @@ from spark_helpers import func_gryd_file_system, download_file
 SERVICE = 'spark'
 gryd.SERVICE = SERVICE
 gryd.set_queue_manager()
-DEFAULT_OUTPUT_PATH = joinpath(APP_DIR, "output", "openai_image_generation")
+DEFAULT_OUTPUT_PATH = joinpath(APP_DIR, "output")
 hp.mkdir_p(DEFAULT_OUTPUT_PATH)
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
@@ -35,6 +36,104 @@ mlogger = gryd.hp.get_logger(gryd.SERVICE)
 def distortion_report(image_path: str, model: str = None, min_dim: int = 1024, max_aspect_ratio: float = 3, job: dict = None, logger: hp.logging.Logger = None):
     logger = logger or mlogger
     return analyze_image(image_path, model=model, min_dim=min_dim, max_aspect_ratio=max_aspect_ratio, verbose = True, logger=logger)
+
+@gryd.is_a_task(function_name="create_rooftop_template", job_param='job', logger_param='logger')
+def create_rooftop_template(region_id: str, brand_id: str, rooftop_type: str, base_png: str = None, rooftop_id: str = None, template_id: str = None, offer = None, campaign_details = None, rooftop_params: dict = None, template_params: dict = None, job: dict = None, logger: hp.logging.Logger = None):
+    logger = logger or mlogger
+    offer = offer or {
+        "offer_currency": "₹",
+        "offer_amount": 10.55,
+        "offer_units": "Lakh",
+        "offer_terms": "*Valid for limited time only"
+    }
+    campaign_details = campaign_details or {
+        "title": "Limited Time Offer",
+        "hook": "Save Big on Your Next Purchase",
+        "message": "Don't miss out on this limited time offer. Act now to get the best price on your next purchase.",
+        "hashtags": "#LimitedTimeOffer #SaveBig #ActNow",
+        "caption": "Limited Time Offer: Save Big on Your Next Purchase"
+    }
+    base_png = base_png or joinpath(DEFAULT_OUTPUT_PATH, "rooftop_base.png")
+    if rooftop_type == "workshop":
+        rooftop_model = AutocrmModel('workshop')
+    elif rooftop_type == "showroom":
+        rooftop_model = AutocrmModel('showroom')
+    elif rooftop_type == "dealership":
+        rooftop_model = AutocrmModel('dealership')
+    else:
+        raise ValueError(f"Invalid rooftop type: {rooftop_type}")
+    brand_model = AutocrmModel('brand')
+    brand = brand_model.get(brand_id)
+    template_model = AutocrmModel('autosphere_template')
+    dealership_model = AutocrmModel('dealership')
+    rooftop_params = rooftop_params or {"region_id": region_id, "brand_id": brand_id}
+    if rooftop_id:
+        rooftop_params.update({"rooftop_id": rooftop_id})
+    template_params = template_params or {"region_id": region_id, "brand_id": brand_id}
+    if template_id:
+        template_params.update({"template_id": template_id})
+    def do_download(url, files_to_delete):
+        file_name = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+        files_to_delete.append(file_name.name)
+        return download_file(url, file_name.name)
+    def manage_svg(element: str, rooftop: dict, template: dict, files_to_delete: list):
+        element_svg_path = DEFAULT_SVG_ELEMENTS[element]['url']
+        text_to_ids = DEFAULT_SVG_ELEMENTS[element]['ids']
+        element_svg_path = do_download(element_svg_path, files_to_delete)
+        replace_svg_text_by_id(element_svg_path, {
+            template.get(k): rooftop.get(v, "") for k, v in text_to_ids.items() if rooftop.get(v)
+        }, logger=logger)
+        return element_svg_path
+    def get_logo(brand, template, files_to_delete):
+        if template.get('theme_type') == 'light':
+            return do_download(brand.get('light_logo_url') or brand.get('logo_url'), files_to_delete)
+        elif template.get('theme_type') == 'dark':
+            return do_download(brand.get('dark_logo_url') or brand.get('logo_url'), files_to_delete)
+        else:
+            return do_download(brand.get('logo_url'), files_to_delete)
+    any_rooftops = 0
+    any_templates = 0
+    for rooftop in rooftop_model.list(**rooftop_params):
+        any_rooftops += 1
+        dealership = dealership_model.get(rooftop.get('dealership_id'))
+        for template in template_model.list(**template_params):
+            any_templates += 1
+            files_to_delete = []
+            try:
+                dealership_details_svg_path = manage_svg("dealership_details", rooftop, template, files_to_delete)
+                offer_details_svg_path = manage_svg("offer_details", offer, template, files_to_delete)
+                slogan_svg_path = manage_svg("slogan", campaign_details, template, files_to_delete)
+                base_png = do_download(base_png, files_to_delete)
+                brand_png = get_logo(brand, template)
+                dealership_png = get_logo(dealership, template)
+                output_path = joinpath(DEFAULT_OUTPUT_PATH, f"{rooftop_type}_{hp.uuid.uuid4()}.png")
+                merge_layers(base_png, [
+                    (brand_png, template.get('brand_logo_scale', 1.0), template.get('brand_logo_position_x', 0.0), template.get('brand_logo_position_y', 0.0)),
+                    (dealership_png, template.get('dealership_logo_scale', 1.0), template.get('dealership_logo_position_x', 0.0), template.get('dealership_logo_position_y', 0.0)),
+                ], [
+                    (dealership_details_svg_path, 1.0, 0, 0),
+                    (offer_details_svg_path, 1.0, 0, 0),
+                    (slogan_svg_path, 1.0, 0, 0),
+                ], output_path=output_path, job=job, logger=logger)
+                cdn_url = func_gryd_file_system(output_path, media_type='image', logger=logger)
+                result = {
+                    "rooftop_type": rooftop_type,
+                    "template_id": template.get('template_id'),
+                    "dealership_id": dealership.get('dealership_id'),
+                    "region_id": dealership.get('region_id'),
+                    "brand_id": brand.get('brand_id'),
+                    "cdn_url": cdn_url,
+                }
+                result[f"{rooftop_type}_id"]: rooftop.get(f'{rooftop_type}_id')
+                yield result
+            finally:
+                for file in files_to_delete:
+                    os.remove(file)
+    if not any_rooftops:
+        raise ValueError(f"No rooftops found for type: {rooftop_type} with params: {rooftop_params}")
+    if not any_templates:
+        raise ValueError(f"No templates found  with params: {template_params}")
+    return {'rooftops': any_rooftops, 'templates': any_templates}
 
 @gryd.is_a_task(function_name="merge_layers", job_param='job', logger_param='logger')
 def merge_layers_task(base_png: str, png_layers: list[tuple[str, float, int, int]] = None, svg_layers: list[tuple[str, float, int, int]] = None, output_path: str = None, job: dict = None, logger: hp.logging.Logger = None):

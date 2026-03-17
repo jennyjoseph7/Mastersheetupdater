@@ -1,3 +1,4 @@
+import { APP_BASE_URL } from "@/utils/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 // Helper function to get cookie from request headers
@@ -41,7 +42,8 @@ export async function POST(request: NextRequest) {
     console.log("[Create Showroom API] Using user credentials from cookies");
 
     // Proxy the request to the backend
-    const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/db/object/showroom`;
+    const baseurl= APP_BASE_URL;
+        const backendUrl = `${baseurl}/gryd/db/object/showroom`;
 
     // Headers must match the curl exactly, including X-GRYD-APPLICATION-ID
     const headers: Record<string, string> = {
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
       "X-GRYD-SESSION-ID": sessionId,
       "X-GRYD-APPLICATION-ID": application_id || "autocrm",
       "X-GRYD-ROLE": "agent",
-      "X-GRYD-APPLICATION-ID": "autocrm",
+      
     };
 
     console.log("=".repeat(80));
@@ -145,7 +147,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Proxy the request to the backend
-    const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/db/objects/showroom?dealership_id=${encodeURIComponent(
+    const baseurl = APP_BASE_URL;
+    const backendUrl = `${baseurl}/gryd/db/objects/showroom?dealership_id=${encodeURIComponent(
       dealershipId
     )}`;
 

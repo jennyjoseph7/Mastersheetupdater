@@ -1251,7 +1251,16 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
     Returns:
     None
     """
+    logger.info(
+        "[BILLING] post_billing called | dealership=%s | type=%s | item=%s | quantity=%s",
+        dealership_id,
+        transaction_type,
+        item_name,
+        item_quantity
+    )
+
     if not dealership_id:
+        logger.error("[BILLING] Missing dealership_id")
         raise ValueError("Post Billing called without dealership_id")
 
     timmm = hp.time()
@@ -1276,7 +1285,13 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
     
     m = AutocrmModel("billing", logger = logger)
 
-    if transaction_type == "credit":        
+    if transaction_type == "credit":  
+        logger.info(
+            "[BILLING] Processing CREDIT transaction | dealership=%s | credits=%s",
+            dealership_id,
+            item_quantity
+        )
+
         update_data = {
             "status" : "success",
             "razorpay_order_id": kwarg.get("razorpay_order_id"),
@@ -1286,11 +1301,27 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
             "credit_balance_before" : current_balance,
             "credit_balance_after" : current_balance + item_quantity,
         }
-
+        logger.info(
+            "[BILLING] Updating billing record | billing_id=%s | before=%s | after=%s",
+            kwarg.get("billing_id"),
+            current_balance,
+            current_balance + item_quantity
+        )
         m.update(kwarg.get("billing_id"),update_data)
+        logger.info(
+            "[BILLING] Credit transaction completed | dealership=%s | billing_id=%s",
+            dealership_id,
+            kwarg.get("billing_id")
+        )
         return
 
     new_balance = current_balance - item_quantity
+    logger.info(
+        "[BILLING] Debit calculation | dealership=%s | before=%s | after=%s",
+        dealership_id,
+        current_balance,
+        new_balance
+    )
     if new_balance <= 0:
         logger.info(f"Dealership {dealership_id} has no credits left")
         ##TODO maybe send email or some action here.

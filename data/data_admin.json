@@ -1,5 +1,5 @@
 {
-    "name": "human_agent",
+    "name": "data_admin",
     "timezone": "Asia/Kolkata",
     "model_type": "default",
     "attributes": [
@@ -21,7 +21,7 @@
             }
         },
         {
-            "name": "agent_name",
+            "name": "admin_name",
             "type": "text",
             "required": true,
             "indexed": true
@@ -86,102 +86,25 @@
             "name": "role",
             "type": "text",
             "options": [
-                "Dealership Admin",
-                "Workshop Manager",
-                "Relationship Manager",
-                "Sales Executive",
-                "Service Executive",
-                "Customer Support Executive",
-                "Marketing Executive",
-                "Other"
+                "Spark Admin",
+                "Brochure Admin"
             ],
             "option_others": true
         },
         {
-            "name": "active",
-            "type": "bool",
-            "default": true
-        },
-        {
-            "name": "engaged",
-            "type": "bool",
-            "default": false
-        },
-        {
-            "name": "availability",
-            "type": "nested_object",
-            "dict_keys": [
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-                "Sunday"
-            ]
-        },
-        {
-            "name": "channels",
-            "type": "string_list",
-            "options": [
-                "rcs",
-                "email",
-                "web_chat",
-                "web_chat_voice",
-                "fb_chat",
-                "insta_chat",
-                "twitter_chat",
-                "voice_phone",
-                "whatsapp_chat",
-                "whatsapp_voice_note",
-                "whatsapp_voice_call",
-                "zoom_bot",
-                "ms_teams"
-            ],
-            "ui_element": "multiselect"
-        },
-        {
-            "name": "dealership_id",
-            "refers": "parents.dealership.dealership_id"
-        },
-        {
-            "name": "dealer_name",
-            "refers": "parents.dealership.dealer_name"
-        },
-        {
-            "name": "dealer_name",
-            "refers": "parents.dealership.dealer_name"
-        },
-        {
-            "name": "dealer_group_id",
-            "refers": "parents.dealership.dealer_group_id"
-        },
-        {
-            "name": "region_id",
-            "refers": "parents.dealership.region_id"
-        },
-        {
-            "name": "region_name",
-            "refers": "parents.dealership.region_name"
-        },
-        {
-            "name": "human_agent_id",
+            "name": "data_admin_id",
             "type": "uid",
             "id": true,
             "auto_updater": true,
             "default": {
                 "function": "make_uuid3",
                 "args": [
-                    "agent_name",
-                    "dealership_id",
+                    "admin_name",
                     "phone_number",
                     "email"
                 ]
             }
         }
-    ],
-    "parents": [
-        "dealership"
     ],
     "has_login": true
 }

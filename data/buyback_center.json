@@ -167,6 +167,63 @@
             "type": "geolocation"
         },
         {
+            "name": "logo_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "image",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "logo_url"
+                ]
+            }
+        },
+        {
+            "name": "dark_theme_logo_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "image",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dark_theme_logo_url"
+                ]
+            }
+        },
+        {
+            "name": "light_theme_logo_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "image",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "light_theme_logo_url"
+                ]
+            }
+        },
+        {
             "name": "operating_hours",
             "type": "nested_object",
             "dict_keys": [

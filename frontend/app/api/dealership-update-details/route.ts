@@ -19,13 +19,16 @@ function getCookieFromRequest(
 
 // Determine API base URL
 const getApiBaseUrl = () => {
-  // Check for explicit environment variable override
-  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
-    return process.env.NEXT_PUBLIC_API_BASE_URL;
+   const url = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+  if (!url) {
+    throw new Error(
+      "❌ NEXT_PUBLIC_API_BASE_URL is not defined. Please set it in your environment variables."
+    );
   }
 
-  // Use production URL
-  return "https://autobot-webapp-dev.gryd.in";
+  console.log(`[APP_ENV] Using API URL -> ${url}`);
+  return url;
 };
 
 const API_BASE_URL = getApiBaseUrl();
