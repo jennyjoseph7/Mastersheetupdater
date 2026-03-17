@@ -127,7 +127,7 @@ def post_session_process(*args, **kwargs):
                 updated_lead_data["follow_up_language"] = follow_up.get("follow_up_language")
 
     mlogger.info("lead data =={}".format(updated_lead_data))
-    return
+    
     if sentiment_score != -1:
         session_update_data["sentiment_score"] = sentiment_score
     if emotion_analysis:
