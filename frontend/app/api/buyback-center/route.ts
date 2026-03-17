@@ -1,3 +1,4 @@
+import { APP_BASE_URL } from "@/utils/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 // Helper function to get cookie from request headers
@@ -52,7 +53,8 @@ export async function POST(request: NextRequest) {
     console.log("[Create Buyback Center API] Application ID (fixed):", applicationId);
 
     // Proxy the request to the backend
-    const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/db/object/buyback_center`;
+    const baseurl= APP_BASE_URL;
+    const backendUrl = `${baseurl}/gryd/db/object/buyback_center`;
 
     // Headers must include X-GRYD-APPLICATION-ID to prevent backend defaulting to "gryd"
     // Postman curl doesn't show it, but backend requires it to avoid "Unauthorized user for application_id gryd!" error
@@ -165,8 +167,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Proxy the request to the backend
-    const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/db/objects/buyback_center?dealership_id=${encodeURIComponent(
+   const baseurl= APP_BASE_URL;
+    const backendUrl = `${baseurl}/gryd/db/objects/buyback_center?dealership_id=${encodeURIComponent(
       dealershipId,
     )}`;
 

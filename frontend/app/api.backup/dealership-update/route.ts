@@ -1,3 +1,4 @@
+import { APP_BASE_URL } from "@/utils/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 // Helper function to get cookie from request headers
@@ -37,7 +38,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Proxy the request to the backend
-    const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/api/autocrm-core/dealership_update_details`;
+    const baseurl= APP_BASE_URL;
+        const backendUrl = `${baseurl}/gryd/api/autocrm-core/dealership_update_details`;
 
     console.log("[Dealership Update API] Calling backend:", backendUrl);
     console.log(

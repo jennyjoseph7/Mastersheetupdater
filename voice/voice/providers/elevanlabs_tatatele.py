@@ -955,7 +955,11 @@ def smartflo_webhook():
     import gryd_tasks
     if  status in ["contacted"]: #after call ended
         session_model = config.AutocrmModel(config.SESSION_MODEL_NAME, logger = logger )
-        session_model.update(session_id, {"call_recording": payload.get("recording_url")}) #add more attributes when needed
+        session_model.update(session_id, 
+                             {
+                                "call_recording": payload.get("recording_url"), 
+                                "duration": float(payload.get("duration", 0.0))
+                            }) #add more attributes when needed
         gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = session_id,  **{"status": status})
     elif status in ["reached"]: # as soon as call is answered 
         gryd_tasks.post_billing_object(status, session_id)
@@ -1025,7 +1029,7 @@ def format_transcript(transcript, start_time_unix):
     session_history = []
     if not transcript:
         return []
-    func = lambda x: datetime.fromtimestamp(start_time_unix+float(x), tz=pytz.timezone("UTC")).strftime("%Y-%m-%d %I:%M:%S %p %z")
+    func = lambda x: start_time_unix + float(x)
     for msg in transcript:
         session_history.append({
             "role":msg.get('role'),

@@ -100,6 +100,7 @@ def converse(*args, **kargs):
     pass_kwargs["channel"] = channel
     pass_kwargs["session_data_cache"] = setup_session_data_cache(*args, **pass_kwargs)
     pass_kwargs["responses"] = []
+    pass_kwargs["first_message_timestamp"] = hp.time()
     dealership_id = pass_kwargs.get("session_data_cache",{}).get("data").get("campaign_data",{}).get("dealership_id")
     # if not dealership_id:
     #     yield from yield_error("error","dealer_id not set in campaign data",*args, **pass_kwargs)
@@ -256,8 +257,8 @@ def post_messages_data(*args, **pass_kwargs):
             "message_id":pass_kwargs.get("reply_to") or in_message_id,
             "message":pass_kwargs.get("customer_response") or pass_kwargs.get("request_data",{}).get("customer_response",""),
             "session_id":pass_kwargs.get("session_id"),
-            "created" : hp.time(),
-            "updated" : hp.time(),
+            "created" : pass_kwargs.get("first_message_time") or hp.time(),
+            "updated" : pass_kwargs.get("first_message_time") or hp.time(),
             "index" : 0
             }
         # mlogger.info("incoming_message {}".format(incoming_message))

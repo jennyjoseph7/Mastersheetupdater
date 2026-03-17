@@ -4,13 +4,16 @@ import { NextResponse } from "next/server";
 import { APP_BASE_URL, createApiHeaders } from "@/utils/headers"; // Adjust path to where header.ts is located
 
 const getApiBaseUrl = () => {
-  // Check for explicit environment variable override
-  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
-    return process.env.NEXT_PUBLIC_API_BASE_URL;
+   const url = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
+  if (!url) {
+    throw new Error(
+      "❌ NEXT_PUBLIC_API_BASE_URL is not defined. Please set it in your environment variables."
+    );
   }
 
-  // Always use production URL
-  return "https://autobot-webapp-dev.gryd.in";
+  console.log(`[APP_ENV] Using API URL -> ${url}`);
+  return url;
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -47,6 +50,9 @@ export const API_BASE_URL = getApiBaseUrl();
     });
 
     console.log("[Audience Task API] Application ID used:", headers["X-GRYD-APPLICATION-ID"]);
+
+    // Define campaignType (replace 'defaultType' with the actual value you want)
+    const campaignType = "";
 
     const url = `${API_BASE_URL}/campaign_objective?campaign_type=${campaignType}`;
     console.log("[API Route] Fetching from:", url);

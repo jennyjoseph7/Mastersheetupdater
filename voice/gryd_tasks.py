@@ -111,7 +111,7 @@ def trigger_voice_call(*args, **kwargs):
 
         person_obj = person_model.post(
             {
-                "phone_number": user_data.get("mobile_number", user_data.get("phone_number")),
+                "phone_number": format_phone_number(user_data.get("mobile_number")),
                 "name": user_data.get("customer_name", "Unknown"),
                 "email": user_data.get("email"),
             }
@@ -377,6 +377,9 @@ def post_history(session_id, session_history):
     agent_msgs = [d for d in session_history if d.get("role") == "agent"]
     user_msgs = [d for d in session_history if d.get("role") == "user"]
 
+    #in zero'th index add empty user message for better indexing
+    user_msgs.insert(0, {"role": "user", "content": "__init__"})
+
     if len(agent_msgs) != len(user_msgs):
         logger.error(
             f"post_history: agent ({len(agent_msgs)}) and user ({len(user_msgs)}) message counts do not match"
@@ -408,7 +411,7 @@ def post_history(session_id, session_history):
         })
 
     logger.info(f"Calling task post_all_messages_for_session with history: {history}")
-    gryd.await_result(
+    gryd.create_async_task(
         "post_all_messages_for_session",
         config.AUTOCRM_CONVERSATION_SERVICE_NAME,
         args=[],
@@ -416,6 +419,7 @@ def post_history(session_id, session_history):
             "history": history
         }
     )
+    #await_results
 
 def post_actions(session_id):
    logger.info(f'Calling post session process task for session_id: {session_id}')
@@ -464,41 +468,51 @@ def end_session(*args, **kwargs):
 
 if __name__ == "__main__":
 
-
     #provider based on dealershiop id-
 
     #+919920297124 -Ankita +919833885948- Arshiya
 
     data = {'_is_testing': False,
  'ctas': ['book-test-drive'],
- 'created': 1771319555.5044339,
- 'updated': 1771319771.8698568,
+ 'mobile_number': '918401586512',
+ 'created': 1772785341.039532,
+ 'purpose': 'Confirm Test drive',
+ 'updated': 1772785440.9737067,
  'channels': ['voice_phone'],
- 'end_date': 1771891200,
+ 'end_date': 1773360000,
  'languages': ['english'],
- 'region_id': 'south-india',
- 'start_date': 1771286400,
- 'campaign_id': 'c579e167-b270-39ff-8202-d39fe0d46844',
- 'region_name': 'South India',
- 'urgency_hook': 'Limited slots available — book your test drive now!',
- 'campaign_name': 'Bassalt Test Drive Bonanza',
+ 'region_id': 'united-states',
+ 'start_date': 1772755200,
+ 'campaign_id': '2abffd92-e5d7-3a1b-8fa5-78d4e6590fd8',
+ 'region_name': 'United States',
+ 'urgency_hook': 'Slots for the Basalt test drive are filling up fast—confirm yours now!',
+ 'campaign_name': 'Basalt Test Drive Confirmation Event',
  'campaign_type': 'pre-sales',
  'cost_per_lead': 0.0,
- 'dealership_id': 'sales-dealership1-india',
- 'campaign_offer': 'Join us for an unforgettable test drive experience with the Bassalt! Feel the power, comfort, and style that this car offers. Don’t miss your chance to take it for a spin!',
+ 'dealership_id': 'us-dealership-united-states',
+ 'purpose_steps': ['- Ask if user is interedted in booking test drive',
+  '\\n - if customer says yes',
+  "get the pincode of customer from 'Who is the customer section' and cofirm if the customer is in this pincode",
+  '\\n - Once they confirm the pincode',
+  "you should say 'Thank you. We'll arrange a test drive at your nearest dealership. You'll hear from our team shortly to coordinate the details'"],
+ 'campaign_offer': "Ready to experience the all-new Basalt? Don't just read about its features, get behind the wheel! Secure your personalized test drive slot now to truly understand what makes the Basalt stand out from the competition.",
  'campaign_status': 'Active',
- 'dealership_name': 'deepaklogin3',
+ 'dealership_name': 'US Dealership',
  'number_targeted': 1,
  'budget_allocated': 8.56,
- 'supported_brands': ['hyundai'],
+ 'supported_brands': ['ford-united-states',
+  'toyota-usa-united-states',
+  'chevrolet-united-states',
+  'general-motors-truck-company-united-states',
+  'hyundai-motor-america-united-states'],
  'vehicle_category': 'Passenger Vehicle',
  'campaign_sub_type': 'other',
- 'conversation_tone': 'Be on-point, warm, confident, polite, conversational, and very crisp - like a friendly local representative. Avoid being pushy or overly sales oriented. Incorporate natural conversational elements like brief affirmations to maintain engagement. End every conversation politely, with warmth and gratitude. Speak at a medium pace, easy to follow, with positive, empathetic, and reassuring emotion (not robotic).',
- 'campaign_description': 'Join us for an unforgettable test drive experience with the Bassalt! Feel the power, comfort, and style that this car offers. Don’t miss your chance to take it for a spin!',
+ 'conversation_tone': 'Always use simple sentence construction with easy to understand grammar.\nBe on-point, warm, confident, polite, conversational, and very crisp - like a friendly local representative. Avoid being pushy or overly sales oriented. Incorporate natural conversational elements like brief affirmations to maintain engagement. End every conversation politely, with warmth and gratitude. use a medium pace, easy to follow, with positive, empathetic, and reassuring emotion (not robotic).',
+ 'campaign_description': "Ready to experience the all-new Basalt? Don't just read about its features, get behind the wheel! Secure your personalized test drive slot now to truly understand what makes the Basalt stand out from the competition.",
  'campaign_user_source': {'source_type': 'default',
-  'campaign_users': [{'lead_id': 'nikit-918850988794-deepaklogin3-south-india-c579e167-b270-39ff-8202-d39fe0d46844',
-    'mobile_number': '918850988794',
-    'customer_name': 'Nikit',
+  'campaign_users': [{'lead_id': 'vandana-8401586512-us-dealership-united-states-2abffd92-e5d7-3a1b-8fa5-78d4e6590fd8',
+    'mobile_number': '8401586512',
+    'customer_name': 'Vandana',
     'email': None,
     'contact_channel': 'voice_phone',
     'template_id': None,
@@ -511,27 +525,29 @@ if __name__ == "__main__":
    'contact_channel': 'contact_channel',
    'reg_num': 'reg_num'},
   'config': {'batch_size': 100, '_skip_sent_message': True}},
- 'campaign_objective_id': 'pre-sales-test-drive-booking',
- 'campaign_objective_name': 'Test Drive Booking',
+ 'voice_start_language': 'en',
+ 'campaign_objective_id': 'pre-sales-confirm-test-drive',
+ 'campaign_objective_name': 'Confirm Test Drive',
  'conversion_rate_percent': 0.0,
- 'region_level_guardrails': 'Maintain professional communication standards. Respect regional languages.',
- 'region_level_guidelines': 'Emphasize technology features and premium quality. Highlight safety ratings.',
- 'why_user_should_avail_this': "Find 1-2 standout features from the vehicle knowledge base that make a strong case for buying this car.If They Mention a Specific Aspect: Talk 1-2 highlights about the aspect and push for test drive. Don't be salesy",
+ 'region_level_guardrails': '- Maintain professional communication standards. Ensure clear communication. Respect regional languages. Provide local language support. Be mindful of potential network issues or poor call quality \n -Trigger calls between 10am to 7pm',
+ 'region_level_guidelines': 'Avoid slang, sarcasm, or culturally sensitive humor. Use polite, respectful, and neutral tone. Prefer simple sentences suitable for Tier-2/Tier-3 customers',
+ 'why_user_should_avail_this': "Give  5-7 word short description from the interested_vehicle_feature_summary from the 'Who is the customer ' section that make a strong case for buying this car.If They Mention a Specific Aspect: Talk 1-2 highlights about the aspect and push for test drive. Don't be salesy",
  'supported_brands_guidelines': {},
  'reasons_for_non_applicability': "- If the customer has already purchased a vehicle from another brand, you should say, 'Oh okay, congratulations on your new car! Just out of curiosity, what made you go with that brand? Your feedback helps us improve. And if you ever consider another vehicle in the future, feel free to reach out.' \\n - If the customer has already purchased from your brand, you should say, 'That's great to hear! Congratulations on your purchase. Hope you're enjoying the ride. If you ever need any support or have questions about service, feel free to connect with us anytime.' \\n - If the customer says they are no longer interested in buying a car, you should say, 'No problem at all. Can I ask what changed? Just trying to understand so we can serve you better if your plans change in the future. And if you know anyone looking for a vehicle, we'd love to help them out.' \\n - If the customer's contact number is wrong or belongs to someone else, you should say, 'Oh, I see. Sorry for the confusion. Could you help me with the correct contact number for [customer name], or let me know if they're no longer interested so we can update our records?' \\n - If the customer has relocated to a different city or country, you should say, 'Understood. If your new location has our dealership, I can connect you with the team there. Otherwise, I'll update our records. Safe travels, and feel free to reach out if you're ever back in the area.'",
- 'campaign_objective_description': 'Your goal is to have natural, human-like conversations with customers who have shown interest in the vehicle and guide them smoothly towards booking a test drive. You are also knowledgeable about the vehicle so focuse on giving the customer a smooth and pleasant experience.',
+ 'campaign_guardrails_guidelines': "You should try get the customer to confirm that they would like to book a test drive and then confirm the pincode available in 'Who is the customer' section",
+ 'campaign_objective_description': "Your goal is to have natural, human-like conversations with customers who have shown interest in the vehicle and guide them smoothly towards confirming test drive and also get the pincode of customer from 'Who is the customer section' and cofirm if the customer is in this pincode. You are also knowledgeable about the vehicle so focus on giving the customer a smooth and pleasant experience.",
  'reasons_users_may_not_be_interested': "- If the customer says they are busy or asks for a callback later, you should say, 'Sure, I completely understand. When would be a good time to call you back? I just wanted to make sure you don't miss out on the current offers and available test drive slots before they fill up.' \\n - If the customer says they are just browsing or not ready to buy yet, you should say, 'No worries at all! Most of our customers take their time. How about I book a test drive for you? There's no commitment, and it helps you get a real feel of the vehicle. Would this weekend work for you?' \\n - If the customer says the price is too high or out of budget, you should say, 'I understand budget is important. We have some flexible financing options and exchange offers that might work better for you. Can I share those details? It might bring the monthly payment to something more comfortable.' \\n - If the customer is comparing with other brands, you should say, 'That's smart to compare. Many of our customers also looked at competitor. What I can do is share a quick features highlight of vehicle and after-sales benefits, so you have all the info to make the right choice. Would that help?' \\n - If the customer says they want to wait for the next model or year, you should say, 'I get that. Just so you know, the current model has some launch offers and immediate delivery options that the next one might not have. Plus, waiting could mean 6-8 months. But happy to keep you updated on both. What matters most to you - features or timing?' \\n - If the customer mentions they are getting a better deal elsewhere, you should say, 'I appreciate you being upfront. Let me check what we can do to match or improve that offer. Can you share what package they offered? I'd like to see if we can work something out for you.' \\n -If the customer had a bad experience with the brand before, you should say, 'I'm really sorry to hear that. Things have improved a lot, especially in service and support. I'd love the chance to change that impression. How about a test drive and a chat with our service team so you can see the difference yourself?' \\n - If the customer says they need to discuss with family first, you should say, 'Absolutely, that makes sense. Would it help if I sent you a detailed brochure and financing options you can review together? Or would you prefer to bring your family for a test drive so everyone can experience it?' \\n - If the customer is worried about maintenance costs, you should say, 'That's a valid concern. Our vehicles come with a warranty and service packages that keep costs predictable. I can share the exact maintenance schedule and costs upfront, so there are no surprises later.' \\n - If the customer prefers to buy during festival season or year-end, you should say, 'That's a common choice. Just a heads up - current stock and offers might not be available then, and prices could change. But I can note your interest and reach out closer to that time with the best deals. Does that work?' \\n - If the customer recently test drive and didn't like something, you should say, 'Thanks for sharing that feedback. Can you tell me what specifically didn't feel right? Sometimes it's about the variant or settings. I'd like to address that or maybe suggest a different variant that might suit you better.' \\n - If the customer is unsure about which variant to choose, you should say, 'No problem, that's very common. Let me ask you a few quick questions about how you'll use the car - city driving, highway, family size - and I can recommend the variant that fits your needs and budget best.' \\n - If the customer wants to think about it, you should say, 'Of course, take your time. Just so you have all the information, let me send you the brochure, a video walkthrough, and current offers. And I'm here anytime if questions come up. Should I follow up in a couple of days or would you prefer to reach out when ready? \\n - If the customer asks about exchange value for their old vehicle, you should say, 'Sure, I can arrange for our exchange team to evaluate your current vehicle. Can you share the make, model, year, and approximate kms driven? We'll give you the best possible value.",
  'channel': 'voice_phone',
  'sender': None,
  'provider_name': 'tata-tele',
  'template_message': None,
- 'lead_id': 'nikit-918850988794-deepaklogin3-south-india-c579e167-b270-39ff-8202-d39fe0d46844',
- 'mobile_number': '918850988794',
- 'customer_name': 'Nikit',
+ 'lead_id': 'vandana-8401586512-us-dealership-united-states-2abffd92-e5d7-3a1b-8fa5-78d4e6590fd8',
+ 'customer_name': 'Vandana',
  'email': None,
  'contact_channel': 'voice_phone',
  'template_id': None,
  'template_details': None}
+
     
     gryd.create_async_task(
         "trigger_voice_call",
@@ -541,47 +557,6 @@ if __name__ == "__main__":
             "user_data": data
         }
     )
-
-
-    # for x in trigger_voice_call(**{"user_data":data}):
-    #     print(x)
-
-    # from gryd_worker import gryd
-    # from communication.connectors.load_providers import load_providers
-        
-    # load_providers(["whatsapp","email"])
-    # gryd.create_async_task(
-    #         "process_single_lead",
-    #         "autocrm-campaign",
-    #         args=["voice_phone", "tn37dm7087-ambal-auto-scheduled-service-reminder","post-sales","74f260b8-e8dc-3c52-ab8d-31bd0fc49943"],
-    #         kwargs={}
-    #     )
-
-
-{'_is_testing': False, 'ctas': ['book-test-drive'], 'created': 1771122373.4420457, 'updated': 1771122534.6489363, 'channels': ['voice_phone'], 'end_date': 1771718400, 'languages': ['english'], 'region_id': 'india', 'start_date': 1771113600, 'campaign_id': 'fb72d256-2294-3a32-8c4c-80a3e31c9eec', 'region_name': 'India', 'urgency_hook': 'Slots are filling up fast — book your test drive now!', 'campaign_name': 'Get Behind the Wheel!', 'campaign_type': 'pre-sales', 'cost_per_lead': 0.0, 'dealership_id': 'sales-dealership1-india', 'campaign_offer': "Don't just imagine driving your dream car—experience it! Book a test drive today and feel the difference. Our team is ready to assist you in making the best choice for your next vehicle.", 'campaign_status': 'Active', 'dealership_name': 'Sales Dealership1', 'number_targeted': 1, 'budget_allocated': 8.56, 'supported_brands': ['jeep-jeep-india', 'citroen-citroen-india'], 'vehicle_category': 'Passenger Vehicle', 'campaign_sub_type': 'other', 'conversation_tone': 'Friendly', 'campaign_description': "Don't just imagine driving your dream car—experience it! Book a test drive today and feel the difference. Our team is ready to assist you in making the best choice for your next vehicle.", 'campaign_user_source': {'source_type': 'default', 'campaign_users': [{'lead_id': 'nikit-918850988794-sales-dealership1-india-fb72d256-2294-3a32-8c4c-80a3e31c9eec', 'mobile_number': '918850988794', 'customer_name': 'Nikit', 'email': None, 'contact_channel': 'voice_phone', 'template_id': None, 'template_details': None}], 'field_mapping': {'lead_id': 'lead_id', 'mobile_number': 'mobile_number', 'customer_name': 'customer_name', 'template_id': 'template_id', 'template_details': 'template_details', 'contact_channel': 'contact_channel', 'reg_num': 'reg_num'}, 'config': {'batch_size': 100, '_skip_sent_message': True}}, 'campaign_objective_id': 'pre-sales-test-drive-booking-nexa-delhi-south-nexa-dealer-group-north-india', 'campaign_objective_name': 'Test Drive Booking', 'conversion_rate_percent': 0.0, 'region_level_guardrails': '- Maintain professional communication standards. Ensure clear communication. Respect regional languages. Provide local language support. Be mindful of potential network issues or poor call quality in India \\n -Trigger calls between 10am to 7pm.', 'region_level_guidelines': 'Avoid slang, sarcasm, or culturally sensitive humor. Use polite, respectful, and neutral tone. Prefer simple sentences suitable for Tier-2/Tier-3 customers', 'why_user_should_avail_this': 'Experience the premium features and performance of NEXA vehicles with no obligation', 'other_important_information': 'Test drives are free and include home pickup/drop service. No pressure sales approach.', 'supported_brands_guidelines': {}, 'reasons_for_non_applicability': 'Already purchased, outside service area, not eligible for test drive', 'campaign_objective_description': 'Generate test drive bookings by encouraging potential customers to experience the vehicle firsthand', 'reasons_users_may_not_be_interested': 'Not ready to purchase, already test driven, preference for other models', 'channel': 'voice_phone', 'sender': None, 'provider_name': 'tata-tele', 'template_message': None, 'lead_id': 'nikit-918850988794-sales-dealership1-india-fb72d256-2294-3a32-8c4c-80a3e31c9eec', 'mobile_number': '918850988794', 'customer_name': 'Nikit', 'email': None, 'contact_channel': 'voice_phone', 'template_id': None, 'template_details': None}
-
-
-#answered by agent
-
-{
-    "uuid": "69882f281b4b0",
-    "call_to_number": "+919594778746",
-    "caller_id_number": "+918065251305",
-    "start_stamp": "2026-02-08 12:07:18",
-    "answer_agent_number": "+919594778746",
-    "call_id": "h11.08-1770532638.2135633",
-    "billing_circle": {
-        "operator": "Idea",
-        "circle": "Mumbai"
-    },
-    "call_status": "queued",
-    "direction": "click_to_call",
-    "customer_no_with_prefix ": "+919594778746",
-    "ref_id": "5c4113fa-538e-422b-8925-685bdc6915c0",
-    "custom_identifier": "1ca7c3d1-9545-3413-80c2-8956b256e716",
-    "status": "Answered by agent"
-}
-
 
 
 

@@ -209,7 +209,7 @@ export function EngagementModal({
                             {session.channel?.replace(/_/g, " ") || "WhatsApp Chat"}
                           </span>
                           <span className="text-[10px] font-medium text-slate-400 shrink-0">
-                            {session.duration ? `${Math.floor(session.duration / 60)}m` : "N/A"}
+                            {session.duration ? `${Math.floor(session.duration)}s` : "N/A"}
                           </span>
                         </div>
                         <div className="flex items-center gap-3 text-[11px] text-slate-500">

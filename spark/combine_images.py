@@ -176,6 +176,60 @@ def main():
         output_path=args.output
     )
 
+DEFAULT_PNG_ELEMENTS = ["brand_logo", "dealership_logo", "qr_code"]
+DEFAULT_SVG_ELEMENTS = {
+    "dealership_details": {
+        "url": "dealership_details_url",
+        "ids": {
+            "dealership_details_id": "address",
+            "dealership_phone_number_id": "contact_number",
+            "dealership_email_id": "email"
+        }
+    },
+    "offer_details": {
+        "url": "offer_details_url",
+        "ids": {
+            "offer_currency_id": "offer_currency",
+            "offer_amount_id": "offer_amount",
+            "offer_units_id": "offer_units",
+            "offer_terms_id": "offer_terms"
+        }
+    },
+    "slogan": {
+        "url": "slogan_url",
+        "ids": {
+            "slogan_1_id": "title",
+            "slogan_2_id": "hook",
+            "slogan_3_id": "message",
+            "slogan_4_id": "hashtags",
+            "slogan_5_id": "caption"
+        }
+    }
+}
+import bs4
+def replace_svg_text_by_id(svg_path: str, text_to_ids: dict, logger: hp.logging.Logger = None):
+    logger = logger or mlogger
+    with open(svg_path, 'r') as f:
+        soup = bs4.BeautifulSoup(f, 'xml')
+    for id_, text_to_replace in text_to_ids.items():
+        if isinstance(text_to_replace, str):
+            text_to_replace = text_to_replace.strip()
+        else:
+            text_to_replace = ""
+        el = soup.find(id=id_)
+        if el:
+            while len(list(el.children)) > 0:
+                cel = list(el.children)[0]
+                if cel.name:
+                    el = cel
+                    continue
+                break
+            el.string = text_to_replace
+        else:
+            logger.warning(f"Element with id {id_} not found in SVG file {svg_path}")
+    with open(svg_path, 'w') as f:
+        f.write(soup.prettify())
+    return svg_path
 
 if __name__ == "__main__":
     main()

@@ -44,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getCookie } from "@/lib/cookies";
+import { APP_BASE_URL } from "@/utils/headers";
 
 export default function ProfilePage() {
   const [dealershipData, setDealershipData] =
@@ -127,7 +128,8 @@ export default function ProfilePage() {
 
       // Call API directly from page.tsx
       // Use hardcoded token and session_id for dealership update API
-      const backendUrl = `https://autobot-webapp-dev.gryd.in/gryd/api/autocrm-core/dealership_update_details`;
+      const baseurl= APP_BASE_URL;
+          const backendUrl = `${baseurl}/gryd/api/autocrm-core/dealership_update_details`;
       const token = "53014452-7df1-351c-9b79-af13d3d6b92f";
       const sessionId = "94b970d4-5c2b-3762-bf65-272901d0ad53";
 

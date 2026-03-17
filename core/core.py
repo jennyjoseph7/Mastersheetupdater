@@ -1251,7 +1251,16 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
     Returns:
     None
     """
+    logger.info(
+        "[BILLING] post_billing called | dealership=%s | type=%s | item=%s | quantity=%s",
+        dealership_id,
+        transaction_type,
+        item_name,
+        item_quantity
+    )
+
     if not dealership_id:
+        logger.error("[BILLING] Missing dealership_id")
         raise ValueError("Post Billing called without dealership_id")
 
     timmm = hp.time()
@@ -1276,7 +1285,13 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
     
     m = AutocrmModel("billing", logger = logger)
 
-    if transaction_type == "credit":        
+    if transaction_type == "credit":  
+        logger.info(
+            "[BILLING] Processing CREDIT transaction | dealership=%s | credits=%s",
+            dealership_id,
+            item_quantity
+        )
+
         update_data = {
             "status" : "success",
             "razorpay_order_id": kwarg.get("razorpay_order_id"),
@@ -1286,11 +1301,27 @@ def post_billing(dealership_id, transaction_type, item_name, item_description, t
             "credit_balance_before" : current_balance,
             "credit_balance_after" : current_balance + item_quantity,
         }
-
+        logger.info(
+            "[BILLING] Updating billing record | billing_id=%s | before=%s | after=%s",
+            kwarg.get("billing_id"),
+            current_balance,
+            current_balance + item_quantity
+        )
         m.update(kwarg.get("billing_id"),update_data)
+        logger.info(
+            "[BILLING] Credit transaction completed | dealership=%s | billing_id=%s",
+            dealership_id,
+            kwarg.get("billing_id")
+        )
         return
 
     new_balance = current_balance - item_quantity
+    logger.info(
+        "[BILLING] Debit calculation | dealership=%s | before=%s | after=%s",
+        dealership_id,
+        current_balance,
+        new_balance
+    )
     if new_balance <= 0:
         logger.info(f"Dealership {dealership_id} has no credits left")
         ##TODO maybe send email or some action here.
@@ -1565,8 +1596,44 @@ class VATCalculator:
         return self._region_method(
             item_quantity, item_price, discount_percentage, region_subdivision
         )
+    
+    def _base_amounts(self, item_quantity, item_price, discount_percentage=0):
+        """
+        Calculates base amounts for an item: total, discount, and final total.
 
-    def _calc_default(self, item_quantity, item_price, discount_percentage=0, **kwargs):
+        Args:
+            item_quantity (int or float): Number of units.
+            item_price (float): Price per unit.
+            discount_percentage (float): Discount percentage (0-100).
+
+        Returns:
+            dict: {
+                "item_total": float,       # quantity * unit price
+                "discount_amount": float,  # total discount
+                "item_final_total": float, # total after discount
+                "item_final_price": float  # per-unit price after discount
+            }
+        """
+        # Total before discount
+        item_total = item_quantity * item_price
+
+        # Discount amount
+        discount_amount = item_total * (discount_percentage / 100.0)
+
+        # Final total after discount
+        item_final_total = item_total - discount_amount
+
+        # Final price per unit
+        item_final_price = item_final_total / item_quantity if item_quantity else 0.0
+
+        return {
+            "item_total": item_total,
+            "discount_amount": discount_amount,
+            "item_final_total": item_final_total,
+            "item_final_price": item_final_price
+        }
+
+    def _calc_default(self, item_quantity, item_price, discount_percentage=0, region_subdivision=None, **kwargs):
         b = self._base_amounts(item_quantity, item_price, discount_percentage)
         # No VAT or country info
         return {
@@ -1582,32 +1649,37 @@ class VATCalculator:
             "total_amount": round(b['item_final_total'], 2)
         }
 
-    def _calc_india(self, item_quantity, item_price, discount_percentage=0, **kwargs):
-        # For SaaS/software, HSN code = 998315; Typical GST 18% (CGST 9% + SGST 9%)
+    def _calc_india(self, item_quantity, item_price, discount_percentage=0, region_subdivision=None, **kwargs):
         HSN_SAAS = "998315"
         CGST_PCT = 9.0
         SGST_PCT = 9.0
         GST_PCT = CGST_PCT + SGST_PCT
+
         b = self._base_amounts(item_quantity, item_price, discount_percentage)
 
         cgst_amount = b['item_final_total'] * CGST_PCT / 100.0
         sgst_amount = b['item_final_total'] * SGST_PCT / 100.0
         gst_amount = cgst_amount + sgst_amount
 
+        total_amount = b['item_final_total'] + gst_amount
+
         return {
-            "item_final_price": round(b['item_final_price'], 2),
+            "item_final_price": round(b['item_final_price'], 2),      # per unit after discount
             "discount_amount": round(b['discount_amount'], 2),
-            "item_total": round(b['item_total'], 2),
-            "item_final_total": round(b['item_final_total'], 2),
+            "item_total": round(b['item_total'], 2),                  # pre-discount total
+            "item_final_total": round(b['item_final_total'], 2),      # after discount, before tax
             "hsn_code": HSN_SAAS,
             "cgst_percentage": CGST_PCT,
             "cgst_amount": round(cgst_amount, 2),
             "sgst_percentage": SGST_PCT,
             "sgst_amount": round(sgst_amount, 2),
             "gst_amount": round(gst_amount, 2),
+            "total_tax_percentage": GST_PCT,
+            "total_tax_amount": round(gst_amount, 2),
+            "total_amount": round(total_amount, 2),                  # after tax
         }
-
-    def _calc_saudi_arabia(self, item_quantity, item_price, discount_percentage=0):
+    
+    def _calc_saudi_arabia(self, item_quantity, item_price, discount_percentage=0, region_subdivision=None):
         # VAT is 15%, HSN for SAAS: 998439
         VAT_PCT = 15.0
         HSN_SAAS = "998439"

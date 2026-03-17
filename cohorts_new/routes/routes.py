@@ -219,12 +219,14 @@ def campaign_ideas_stream():
         "num_of_hashtags": data.get("num_of_hashtags", 10),
         "model_identifier": data.get("model_identifier", "azure-gpt-4o"),
     }
-    campaign_idea_generation_agent = CampaignIdeaGeneratorAgent(**_params)
     batch_size = data.get("batch_size", 10)
-    result = campaign_idea_generation_agent.run_with_events(batch_size=batch_size)
-    for event in result:
-        yield f"data: {json.dumps(event, default=str)}\n\n"
+    def generate():
+        agent = CampaignIdeaGeneratorAgent(**_params)
+        result = agent.run_with_events(batch_size=batch_size)
+        for event in result:
+            yield f"data: {json.dumps(event, default=str)}\n\n"
 
+    return Response(stream_with_context(generate()),mimetype="text/event-stream")
 
 @gryd_orchestration_bp.route("/stream", methods=["POST"])
 def gryd_stream_cohorts():
@@ -336,8 +338,11 @@ def gryd_campaign_ideas_stream():
         "campaign_objective": data.get("campaign_objective", None),
         "consumer_insight": data.get("consumer_insight", None),
     }
-    result = run_gryd_job("campaign_idea_generation_agent", params_)
-    return result
+
+    def generate():
+        for result in run_gryd_job("campaign_idea_generation_agent", params_, stream=True):
+            yield f"data: {json.dumps(result, default=str)}\n\n"
+    return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
 
 def standardize_cohorts(cohorts : Union[List[Dict[str, Any]], Dict[str, List[Dict[str, Any]]]]):
@@ -382,7 +387,7 @@ def cohorts_assignment():
     """
     Randomly populate lead data with provided cohorts.
     """
-    from agents.cohort_classification_agent import random_assign_users
+    from ..agents.cohort_classification_agent import random_assign_users
 
     try:
         if "lead_file" not in request.files:
@@ -401,10 +406,11 @@ def cohorts_assignment():
 
         cohorts = json.load(cohorts_file)
         cohorts = standardize_cohorts(cohorts)
-        stream = StringIO(lead_file.stream.read().decode("utf-8"))
-        df = pd.read_csv(stream)
+        df = pd.read_csv(lead_file.stream)
         users = df.to_dict(orient="records")
-        assigned_users = random_assign_users(users=users, cohorts=cohorts, seed=seed, weights=weights)
+        random_assigned_user_func_result = random_assign_users(users=users, cohorts=cohorts, seed=seed, weights=weights)
+        assigned_users = random_assigned_user_func_result.get("assigned_users", [])
+        meta = random_assigned_user_func_result.get("meta", {})
         result_df = pd.DataFrame(assigned_users)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
             temp_path = tmp.name
@@ -417,13 +423,15 @@ def cohorts_assignment():
         return jsonify({
             "message": "Cohorts assigned successfully",
             "total_customers": len(assigned_users),
-            "csv_url": csv_url
+            "csv_url": csv_url,
+            "meta": meta
         })
 
     except Exception as e:
         logger.exception("Cohort assignment failed \n\n")
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        trace = traceback.format_exc()
+        return jsonify({"error": str(e), "traceback": trace}), 500
 
 
 # 1. Collection of User Behaviour - Mohit
