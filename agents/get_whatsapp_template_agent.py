@@ -1,5 +1,6 @@
 import json
 import os, sys
+import re
 import random
 
 try:
@@ -22,6 +23,25 @@ from agents.data_attributes_retriever_agent import data_attribute_retriever
 from pprint import pprint
 
 
+def slugify_disposition_detail(detail: str) -> str:
+    """'Cannot make decision on servicing' → 'Cannot-make-decision-on-servicing'"""
+    return re.sub(r"[\s_]+", "-", detail.strip())
+
+
+def build_disposition_tags(disposition: str, disposition_details: str) -> list[str]:
+    """
+    Build disposition_tags list from a disposition key and free-text
+    disposition_details.  The detail string is hyphenated so it lines up
+    with the slugs stored on templates, enabling the existing subset
+    comparison in filter_by_disposition.
+
+    Example:
+        build_disposition_tags("engaged", "Cannot make decision on servicing")
+        → ["engaged", "Cannot-make-decision-on-servicing"]
+    """
+    detail_slug = slugify_disposition_detail(disposition_details)
+    return [disposition, detail_slug]
+
 
 class get_whatsapp_template_agent(BaseAgent):
     def __init__(self, source, *args, **kwargs):
@@ -35,6 +55,8 @@ class get_whatsapp_template_agent(BaseAgent):
         self.campaign_type = source.get("campaign_type","")
         self.campaign_objective = source.get("campaign_objective",[])
         self.dealership_id = source.get("dealership_id","daveai")
+        self.is_disposition = source.get("is_disposition", False)
+        self.disposition_tags = source.get("disposition_tags", [])
         self.limit = 1
 
         if not isinstance(self.template_variables, list):
@@ -93,6 +115,33 @@ class get_whatsapp_template_agent(BaseAgent):
         return []
     
     
+    def filter_by_disposition(self, templates):
+        filtered = []
+        if self.is_disposition:
+            input_tags = set(
+                tag.strip().lower() if isinstance(tag, str) else tag
+                for tag in self.disposition_tags
+            )
+            for tpl in templates:
+                tpl_tags_raw = tpl.get("disposition_tags", [])
+                tpl_tags = self.normalize_vars(tpl_tags_raw)
+                if not tpl_tags:
+                    continue
+                tpl_tags_set = set(
+                    tag.strip().lower() if isinstance(tag, str) else tag
+                    for tag in tpl_tags
+                )
+                if tpl_tags_set.issubset(input_tags):
+                    filtered.append(tpl)
+        else:
+            for tpl in templates:
+                tpl_tags_raw = tpl.get("disposition_tags", [])
+                tpl_tags = self.normalize_vars(tpl_tags_raw)
+                if not tpl_tags:
+                    filtered.append(tpl)
+        return filtered
+
+
     def match_templates_strict(self, templates):
         limit = self.limit
 
@@ -223,18 +272,27 @@ class get_whatsapp_template_agent(BaseAgent):
     def run(self):
         communication_credentials_id = self.retrieve_credentials(self.dealership_id)
         all_templates = self.pick_from_model(communication_credentials_id)
+        all_templates = self.filter_by_disposition(all_templates)
         best = self.match_templates_strict(all_templates)
         return best
 
 
 
 @gryd.is_a_task('get_whatsapp_template', logger_param='logger', job_param='job')
-def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective = None,dealership_id=None, logger=None, job=None, **kwargs):
+def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective=None, dealership_id=None, is_disposition=None, disposition_tags=None, disposition=None, disposition_details=None, logger=None, job=None, **kwargs):
 
         logger = logger or gryd.hp.get_logger(__name__)
         logger.info("Getting WhatsApp Template...")
         if dealership_id is None:
             dealership_id = 'daveai'
+
+        if is_disposition:
+            if disposition and disposition_details and not disposition_tags:
+                disposition_tags = build_disposition_tags(disposition, disposition_details)
+                logger.info(f"Built disposition_tags from user input: {disposition_tags}")
+
+            if not disposition_tags or not isinstance(disposition_tags, list) or len(disposition_tags) == 0:
+                raise ValueError("disposition_tags must be a non-empty list when is_disposition is True")
 
         try:
             lead_info = lead_info or {}
@@ -242,7 +300,7 @@ def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, camp
             updates = {
                 "id": lead_id,
                 "campaign_type": campaign_type,
-                
+                "is_disposition": is_disposition
             }
 
             for k, v in updates.items():
@@ -258,14 +316,15 @@ def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, camp
             if not attribute_list_sets:
                 raise ValueError("No attribute sets extracted by data_attribute_retriever")
 
-            attribute_list_sets
             logger.info(f"Template variables : {attribute_list_sets}")
 
             data = {
                 "campaign_type": campaign_type,
                 "template_variables": attribute_list_sets,
                 "campaign_objective" : campaign_objective,
-                "dealership_id" : dealership_id
+                "dealership_id" : dealership_id,
+                "is_disposition": is_disposition,
+                "disposition_tags": disposition_tags or []
             }
 
             logger.info(f"Source data : {data}")
@@ -273,6 +332,9 @@ def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, camp
             # 2. Template Selector Agent
             template_agent = get_whatsapp_template_agent(source=data, logger=logger)
             result = template_agent.run()
+
+            if not result:
+                return "No template found for this input"
 
             return result
 
