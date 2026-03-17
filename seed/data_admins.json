@@ -1,0 +1,16 @@
+[
+    {
+        "admin_name": "Deepak Kumar Sinha",
+        "phone_number": "7004610503",
+        "email": "deepak.kumar@iamdave.ai",
+        "role": "Spark Admin",
+        "password": "Dpk5!n4@"
+    },
+    {
+        "admin_name": "Faisal",
+        "phone_number": "7004610503",
+        "email": "faisal.ahmed@iamdave.ai",
+        "role": "Brochure Admin",
+        "password": "F@1salA4m3d"
+    }
+]

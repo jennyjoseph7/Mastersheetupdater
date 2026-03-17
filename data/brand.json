@@ -109,7 +109,7 @@
       "ui_element": "image"
     },
     {
-      "name": "dark_logo_url",
+      "name": "dark_theme_logo_url",
       "type": "text",
       "constraint": {
         "function": "url_validator"
@@ -120,7 +120,7 @@
       "ui_element": "image"
     },
     {
-      "name": "light_logo_url",
+      "name": "light_theme_logo_url",
       "type": "text",
       "constraint": {
         "function": "url_validator"

@@ -38,6 +38,7 @@
     "showroom_visit",
     "service_visit",
     "human_agent",
+    "data_admin",
     "feedback",
     "review",
     "paragraph",
