@@ -57,6 +57,7 @@ class get_whatsapp_template_agent(BaseAgent):
         self.dealership_id = source.get("dealership_id","daveai")
         self.is_disposition = source.get("is_disposition", False)
         self.disposition_tags = source.get("disposition_tags", [])
+        self.language = source.get("language", "english")
         self.limit = 1
 
         if not isinstance(self.template_variables, list):
@@ -86,7 +87,8 @@ class get_whatsapp_template_agent(BaseAgent):
                    "template_type" : "text",
                    "channel" : "whatsapp_chat",
                    "status" : "approved",
-                   "communication_credentials_id" : communication_credentials_id
+                   "communication_credentials_id" : communication_credentials_id,
+                   "language" : self.language
             }
         ))
 
@@ -279,7 +281,7 @@ class get_whatsapp_template_agent(BaseAgent):
 
 
 @gryd.is_a_task('get_whatsapp_template', logger_param='logger', job_param='job')
-def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective=None, dealership_id=None, is_disposition=None, disposition_tags=None, disposition=None, disposition_details=None, logger=None, job=None, **kwargs):
+def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective=None, dealership_id=None, is_disposition=None, disposition_tags=None, disposition=None, disposition_details=None,language = None, logger=None, job=None, **kwargs):
 
         logger = logger or gryd.hp.get_logger(__name__)
         logger.info("Getting WhatsApp Template...")
@@ -324,7 +326,8 @@ def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, camp
                 "campaign_objective" : campaign_objective,
                 "dealership_id" : dealership_id,
                 "is_disposition": is_disposition,
-                "disposition_tags": disposition_tags or []
+                "disposition_tags": disposition_tags or [],
+                "language": language or "english"
             }
 
             logger.info(f"Source data : {data}")
