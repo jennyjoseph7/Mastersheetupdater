@@ -20,6 +20,14 @@ GRYD_CONFIG = {
     "wait_time_to_shutdown" : 43200
 }
 
+from config import AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
+GRYD_SERVICE_NAME = AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
+GRYD_CONFIG = {
+    "broker_type" : "sqs", 
+    "timeout" : 10,
+    "wait_time_to_shutdown" : 43200
+}
+
 logger = get_logger(__name__)
 
 def setup_gryd():
@@ -525,7 +533,7 @@ if __name__ == "__main__":
     }
 
 
-  
+    from config import post_autocrm_model, AutocrmModel
 
     # m = post_autocrm_model(model_name="cohort_registry")
     # print(f"Cohort Registry Model: \n {json.dumps(m, indent=4, default=str)}")

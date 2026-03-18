@@ -194,13 +194,6 @@ def get_conversation_history(*args, **kwargs):
     return hp.json.dumps(kwargs.get("session_data_cache",{}).get("messages",[])).decode("utf-8")
 
 def prune_user_data(user_data):
-    def rephrase(text):
-        o_text = "{}".format(text) 
-        n_text = ""
-        for t in o_text:
-            n_text = "{} {}".format(n_text,t)
-        return n_text
-    rephraser = ["reg_number", "vin_number","workshop_pincode","showroom_pincode","pincode","phone_number","existing_odometer_reading"]
     popable = ["campaign_guardrails_guidelines","conversation_tone","created","updated","region_id","vehicle_id","campaign_id","workshop_id","phone_number","audience_name","campaign_name","campaign_type","dealership_id","purchase_date","persons_involved","campaign_sub_type","custom_attributes","alt_phone_number_2","alt_phone_number_3","alt_phone_number_4","alt_phone_number_4","post_sales_lead_id","campaign_objective_id","supported_brand_names","loyalty_contact_number","campaign_objective_name","campaign_objective_type","region_level_guardrails","region_level_guidelines","supported_brands_guidelines","reasons_users_may_not_be_interested"]
     for p in popable:
         user_data.pop(p, None)
