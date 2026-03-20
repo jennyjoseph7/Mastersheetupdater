@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
+      "X-GRYD-SIGNUP-TOKEN": process.env.NEXT_PUBLIC_SIGNUP_API_KEY || "",
     };
 
     const res = await fetch(backendUrl, {
