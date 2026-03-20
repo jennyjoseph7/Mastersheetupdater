@@ -23,24 +23,7 @@ from agents.data_attributes_retriever_agent import data_attribute_retriever
 from pprint import pprint
 
 
-def slugify_disposition_detail(detail: str) -> str:
-    """'Cannot make decision on servicing' → 'Cannot-make-decision-on-servicing'"""
-    return re.sub(r"[\s_]+", "-", detail.strip())
 
-
-def build_disposition_tags(disposition: str, disposition_details: str) -> list[str]:
-    """
-    Build disposition_tags list from a disposition key and free-text
-    disposition_details.  The detail string is hyphenated so it lines up
-    with the slugs stored on templates, enabling the existing subset
-    comparison in filter_by_disposition.
-
-    Example:
-        build_disposition_tags("engaged", "Cannot make decision on servicing")
-        → ["engaged", "Cannot-make-decision-on-servicing"]
-    """
-    detail_slug = slugify_disposition_detail(disposition_details)
-    return [disposition, detail_slug]
 
 
 class get_whatsapp_template_agent(BaseAgent):
@@ -56,7 +39,9 @@ class get_whatsapp_template_agent(BaseAgent):
         self.campaign_objective = source.get("campaign_objective",[])
         self.dealership_id = source.get("dealership_id","daveai")
         self.is_disposition = source.get("is_disposition", False)
-        self.disposition_tags = source.get("disposition_tags", [])
+        if self.is_disposition:
+            self.disposition = source.get("disposition", "")
+            self.disposition_details = source.get("disposition_details", "")
         self.language = source.get("language", "english")
         self.limit = 1
 
@@ -78,19 +63,38 @@ class get_whatsapp_template_agent(BaseAgent):
         communication_credentials_id = communication_credential.get("communication_credentials_id")
         return communication_credentials_id
 
+    def slugify_disposition_detail(self,detail: str) -> str:
+        """'Cannot make decision on servicing' → 'Cannot-make-decision-on-servicing'"""
+        return re.sub(r"[\s_]+", "-", detail.strip().lower())
 
     def pick_from_model(self,communication_credentials_id):
 
-        records = list(pg.list(
-            table_name="template",
-            where={"campaign_type": self.campaign_type,
-                   "template_type" : "text",
-                   "channel" : "whatsapp_chat",
-                   "status" : "approved",
-                   "communication_credentials_id" : communication_credentials_id,
-                   "language" : self.language
-            }
-        ))
+        if self.is_disposition :
+            records = list(pg.list(
+                table_name="all_template",
+                where={"campaign_type": self.campaign_type,
+                       "campaign_objective_name" : self.campaign_objective[0],
+                       "template_type" : "text",
+                        "channel" : "whatsapp_chat",
+                        "status" : "approved",
+                        "communication_credentials_id" : communication_credentials_id,
+                        "language" : self.language,
+                        "disposition" : self.disposition,
+                        "disposition_details" : self.slugify_disposition_detail(self.disposition_details)
+                }
+            ))
+        else:
+            records = list(pg.list(
+                table_name="all_template",
+                where={"campaign_type": self.campaign_type,
+                       "campaign_objective_name" : self.campaign_objective[0],
+                       "template_type" : "text",
+                       "channel" : "whatsapp_chat",
+                       "status" : "approved",
+                       "communication_credentials_id" : communication_credentials_id,
+                       "language" : self.language
+                }
+            ))
 
         #print("records",records)
 
@@ -116,47 +120,15 @@ class get_whatsapp_template_agent(BaseAgent):
 
         return []
     
-    
-    def filter_by_disposition(self, templates):
-        filtered = []
-        if self.is_disposition:
-            input_tags = set(
-                tag.strip().lower() if isinstance(tag, str) else tag
-                for tag in self.disposition_tags
-            )
-            for tpl in templates:
-                tpl_tags_raw = tpl.get("disposition_tags", [])
-                tpl_tags = self.normalize_vars(tpl_tags_raw)
-                if not tpl_tags:
-                    continue
-                tpl_tags_set = set(
-                    tag.strip().lower() if isinstance(tag, str) else tag
-                    for tag in tpl_tags
-                )
-                if tpl_tags_set.issubset(input_tags):
-                    filtered.append(tpl)
-        else:
-            for tpl in templates:
-                tpl_tags_raw = tpl.get("disposition_tags", [])
-                tpl_tags = self.normalize_vars(tpl_tags_raw)
-                if not tpl_tags:
-                    filtered.append(tpl)
-        return filtered
 
 
     def match_templates_strict(self, templates):
         limit = self.limit
 
-        # Normalize input objectives: strip whitespace and convert to lowercase
-        input_objectives = set(
-            obj.strip().lower() if isinstance(obj, str) else obj
-            for obj in (self.campaign_objective or [])
-        )
-        print("input_objectives",input_objectives)
         # template_variables is a list of lists - process each list
         data_attrs_list = self.template_variables or []
 
-        print("data_attrs_list",data_attrs_list)
+        print("data_attrs_list", data_attrs_list)
 
         if not isinstance(data_attrs_list, list):
             data_attrs_list = [data_attrs_list]
@@ -168,31 +140,11 @@ class get_whatsapp_template_agent(BaseAgent):
             # Normalize current attribute set
             data_attrs = set(data_attrs_raw) if isinstance(data_attrs_raw, list) else set([data_attrs_raw])
 
-            exact_matches = []  # Both objectives AND variables match exactly
-            obj_partial_var_exact = []  # Objectives partial, variables exact
-            obj_exact_var_near = []  # Objectives exact, variables near
-            obj_partial_var_near = []  # Objectives partial, variables near
-            obj_partial_no_vars = []  # Objectives partial, no variables
+            exact_matches = []          # variables match exactly
+            var_near_matches = []       # variables near
+            no_vars_matches = []        # no variables
 
             for tpl in templates:
-                # ---- Campaign Objective Processing ----
-                tpl_objectives = tpl.get("campaign_objective") or []
-                tpl_objectives = tpl_objectives if isinstance(tpl_objectives, list) else [tpl_objectives]
-
-                # Normalize template objectives: strip whitespace and convert to lowercase
-                tpl_objectives = set(
-                    obj.strip().lower() if isinstance(obj, str) else obj
-                    for obj in tpl_objectives
-                )
-
-                # Determine objective match type
-                obj_exact = tpl_objectives == input_objectives and tpl_objectives
-                obj_partial = bool(tpl_objectives & input_objectives)
-
-                # Skip if no objective match at all
-                if not (obj_exact or obj_partial):
-                    continue
-                
                 # ---- Template Variable Processing ----
                 tpl_vars_raw = tpl.get("template_variables", [])
                 tpl_vars = self.normalize_vars(tpl_vars_raw)
@@ -201,7 +153,7 @@ class get_whatsapp_template_agent(BaseAgent):
                 # Reject templates with extra variables not in input
                 if tpl_set and not tpl_set.issubset(data_attrs):
                     continue
-                
+
                 # Determine variable match type
                 var_exact = tpl_set == data_attrs and tpl_set
                 var_near = bool(tpl_set & data_attrs) if tpl_set else False
@@ -210,50 +162,27 @@ class get_whatsapp_template_agent(BaseAgent):
                 # Calculate overlap for sorting near matches
                 overlap = len(tpl_set & data_attrs) if tpl_set else 0
 
-                # ---- Categorize by Match Quality ----
-                if obj_exact and var_exact:
-                    # Best: both exact
+                # ---- Categorize by Variable Match Quality ----
+                if var_exact:
                     exact_matches.append(tpl)
-                elif obj_exact and var_near:
-                    # Objectives exact, variables partial
-                    obj_exact_var_near.append((overlap, tpl))
-                elif obj_exact and var_none:
-                    # Objectives exact, no variables
-                    obj_exact_var_near.append((0, tpl))
-                elif obj_partial and var_exact:
-                    # Objectives partial, variables exact
-                    obj_partial_var_exact.append((len(tpl_objectives & input_objectives), tpl))
-                elif obj_partial and var_near:
-                    # Objectives partial, variables partial
-                    obj_score = len(tpl_objectives & input_objectives)
-                    obj_partial_var_near.append((obj_score, overlap, tpl))
-                elif obj_partial and var_none:
-                    # Worst: objectives partial, no variables
-                    obj_score = len(tpl_objectives & input_objectives)
-                    obj_partial_no_vars.append((obj_score, tpl))
+                elif var_near:
+                    var_near_matches.append((overlap, tpl))
+                elif var_none:
+                    no_vars_matches.append(tpl)
 
             # ---- Collect Results in Priority Order for this attribute set ----
             current_results = []
 
-            # 1. Exact matches (both objectives and variables)
+            # 1. Exact variable matches
             if exact_matches:
                 current_results.extend(exact_matches[:limit])
-            # 2. Objective partial, variable exact (sorted by objective overlap)
-            elif obj_partial_var_exact:
-                obj_partial_var_exact.sort(key=lambda x: x[0], reverse=True)
-                current_results.extend([tpl for _, tpl in obj_partial_var_exact][:limit])
-            # 3. Objective exact, variable near (sorted by variable overlap)
-            elif obj_exact_var_near:
-                obj_exact_var_near.sort(key=lambda x: x[0], reverse=True)
-                current_results.extend([tpl for _, tpl in obj_exact_var_near][:limit])
-            # 4. Objective partial, variable near (sorted by objective, then variable overlap)
-            elif obj_partial_var_near:
-                obj_partial_var_near.sort(key=lambda x: (x[0], x[1]), reverse=True)
-                current_results.extend([tpl for _, _, tpl in obj_partial_var_near][:limit])
-            # 5. Objective partial, no variables (sorted by objective overlap)
-            elif obj_partial_no_vars:
-                obj_partial_no_vars.sort(key=lambda x: x[0], reverse=True)
-                current_results.extend([tpl for _, tpl in obj_partial_no_vars][:limit])
+            # 2. Variable near matches (sorted by overlap)
+            elif var_near_matches:
+                var_near_matches.sort(key=lambda x: x[0], reverse=True)
+                current_results.extend([tpl for _, tpl in var_near_matches][:limit])
+            # 3. No variable templates
+            elif no_vars_matches:
+                current_results.extend(no_vars_matches[:limit])
 
             all_results.extend(current_results)
 
@@ -261,40 +190,34 @@ class get_whatsapp_template_agent(BaseAgent):
         seen = set()
         unique_results = []
         for tpl in all_results:
-            tpl_id = id(tpl)  # Use object identity
+            tpl_id = tpl.get("template_id", id(tpl))
             if tpl_id not in seen:
                 seen.add(tpl_id)
                 unique_results.append(tpl)
                 if len(unique_results) >= limit:
                     break
-                
+
         return unique_results
 
 
     def run(self):
         communication_credentials_id = self.retrieve_credentials(self.dealership_id)
         all_templates = self.pick_from_model(communication_credentials_id)
-        all_templates = self.filter_by_disposition(all_templates)
         best = self.match_templates_strict(all_templates)
         return best
 
 
 
 @gryd.is_a_task('get_whatsapp_template', logger_param='logger', job_param='job')
-def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective=None, dealership_id=None, is_disposition=None, disposition_tags=None, disposition=None, disposition_details=None,language = None, logger=None, job=None, **kwargs):
+def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective=None, dealership_id=None, is_disposition=None, disposition=None, disposition_details=None,language = None, logger=None, job=None, **kwargs):
 
         logger = logger or gryd.hp.get_logger(__name__)
         logger.info("Getting WhatsApp Template...")
         if dealership_id is None:
             dealership_id = 'daveai'
 
-        if is_disposition:
-            if disposition and disposition_details and not disposition_tags:
-                disposition_tags = build_disposition_tags(disposition, disposition_details)
-                logger.info(f"Built disposition_tags from user input: {disposition_tags}")
-
-            if not disposition_tags or not isinstance(disposition_tags, list) or len(disposition_tags) == 0:
-                raise ValueError("disposition_tags must be a non-empty list when is_disposition is True")
+        if is_disposition and (not disposition or not disposition_details):
+            raise ValueError("disposition and disposition_details must be provided when is_disposition is True")
 
         try:
             lead_info = lead_info or {}
@@ -326,7 +249,8 @@ def get_whatsapp_template(lead_info=None, lead_id=None, campaign_type=None, camp
                 "campaign_objective" : campaign_objective,
                 "dealership_id" : dealership_id,
                 "is_disposition": is_disposition,
-                "disposition_tags": disposition_tags or [],
+                "disposition": disposition or "",
+                "disposition_details": disposition_details or "",
                 "language": language or "english"
             }
 
