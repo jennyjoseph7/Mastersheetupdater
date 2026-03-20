@@ -19,12 +19,19 @@ import {
   Download, 
   Calendar, 
   Clock, 
-  PhoneIncoming, // Added for Recording
-  BarChart3,     // Added for Sentiment
-  Smile          // Added for Emotions
+  Play,        
+  Volume2,    
+  X,           
+  BarChart3,     
+  Smile,
+  FileText,
+  Copy,
+  Check
 } from "lucide-react";
 import { fetchUserSessions, epochToIST } from "@/utils/api";
 import { cn } from "@/lib/utils";
+
+// --- Interfaces ---
 
 interface Message {
   role: string;
@@ -41,12 +48,11 @@ interface Session {
   status: string;
   channel: string;
   disposition?: string;
-  // --- New Fields Added (Optional) ---
   disposition_detail?: string;
   sentiment_score?: number;
   emotion_analysis?: Record<string, string | number>;
   call_recording?: string;
-  // -----------------------------------
+  summary?: string;
   created: number;
   updated: number;
   start_time: number;
@@ -78,6 +84,9 @@ export function EngagementModal({
   campaignId,
   personName,
 }: EngagementModalProps) {
+  const [copied, setCopied] = useState(false);
+  const [showPlayer, setShowPlayer] = useState(false); // Controls the inline player
+  
   const {
     data: sessionsData,
     isLoading,
@@ -93,6 +102,11 @@ export function EngagementModal({
   const sessions = sessionsData?.items ?? [];
   const [selectedSessionIndex, setSelectedSessionIndex] = useState(0);
 
+  // Reset player when changing sessions
+  useEffect(() => {
+    setShowPlayer(false);
+  }, [selectedSessionIndex]);
+
   useEffect(() => {
     if (sessions.length > 0 && selectedSessionIndex >= sessions.length) {
       setSelectedSessionIndex(0);
@@ -105,6 +119,14 @@ export function EngagementModal({
     if (!selectedSession?.history) return [];
     return [...selectedSession.history].sort((a, b) => a.timestamp - b.timestamp);
   }, [selectedSession]);
+
+  // --- Handlers ---
+
+  const handleCopySummary = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleDownload = () => {
     if (!selectedSession) return;
@@ -132,24 +154,51 @@ export function EngagementModal({
         {/* Modal Header */}
         <DialogHeader className="px-6 py-4 border-b flex flex-row items-center justify-between space-y-0 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-xl font-semibold">
-            <MessageSquare className="h-5 w-5 text-primary" />
+            <MessageSquare className="h-5 w-5 text-indigo-600" />
             Engagement History
             {personName && (
-              <span className="text-muted-foreground font-normal ml-1">
-                — {personName}
-              </span>
+              <span className="text-slate-400 font-normal ml-1">— {personName}</span>
             )}
           </DialogTitle>
-          <div className="flex items-center gap-3 pr-8">
-            {/* Added: Recording Button (Only shows if link exists) */}
+
+          <div className="flex items-center gap-4 pr-10">
+            {/* Inline Audio Player Logic */}
             {selectedSession?.call_recording && (
-              <Button variant="ghost" size="sm" asChild className="text-primary hover:bg-primary/5">
-                <a href={selectedSession.call_recording} target="_blank" rel="noreferrer">
-                  <PhoneIncoming className="h-4 w-4 mr-2" />
-                  Recording
-                </a>
-              </Button>
+              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 transition-all">
+                {!showPlayer ? (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-7 gap-2 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                    onClick={() => setShowPlayer(true)}
+                  >
+                    <Play className="h-3.5 w-3.5 fill-current" />
+                    <span className="text-xs font-bold">Play Recording</span>
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-2">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Volume2 className="h-3.5 w-3.5" />
+                      <audio 
+                        src={selectedSession.call_recording} 
+                        controls 
+                        autoPlay 
+                        className="h-7 w-48 md:w-64 accent-indigo-600"
+                      />
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 rounded-full hover:bg-slate-200"
+                      onClick={() => setShowPlayer(false)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
+
             <Button 
               variant="outline" 
               size="sm" 
@@ -157,7 +206,7 @@ export function EngagementModal({
               disabled={!selectedSession || sortedMessages.length === 0}
               className="h-9 px-4 border-slate-200 hover:bg-slate-50 transition-colors"
             >
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-2 text-slate-500" />
               Download Transcript
             </Button>
           </div>
@@ -197,16 +246,16 @@ export function EngagementModal({
                         className={cn(
                           "w-full text-left p-4 rounded-xl transition-all border group relative",
                           selectedSessionIndex === index
-                            ? "bg-white border-primary shadow-sm ring-1 ring-primary/5"
+                            ? "bg-white border-indigo-600 shadow-sm ring-1 ring-indigo-600/5"
                             : "bg-transparent border-transparent hover:bg-slate-100/80"
                         )}
                       >
                         <div className="flex justify-between items-start mb-1">
                           <span className={cn(
                             "text-sm font-bold capitalize truncate pr-2",
-                            selectedSessionIndex === index ? "text-primary" : "text-slate-700"
+                            selectedSessionIndex === index ? "text-indigo-600" : "text-slate-700"
                           )}>
-                            {session.channel?.replace(/_/g, " ") || "WhatsApp Chat"}
+                            {session.channel?.replace(/_/g, " ") || "Voice Phone"}
                           </span>
                           <span className="text-[10px] font-medium text-slate-400 shrink-0">
                             {session.duration ? `${Math.floor(session.duration)}s` : "N/A"}
@@ -232,17 +281,14 @@ export function EngagementModal({
               <main className="flex-1 flex flex-col bg-white overflow-hidden relative">
                 {selectedSession && (
                   <>
-                    {/* UPDATED: Sticky Session Metrics Bar with new Stats */}
+                    {/* Sticky Session Metrics Bar */}
                     <div className="grid grid-cols-4 gap-8 px-8 py-5 border-b bg-white shrink-0">
-                      
-                      {/* 1. Disposition (Prioritizes detailed view if available) */}
                       <MetricItem 
                         label="Disposition" 
                         value={selectedSession.disposition_detail || selectedSession.disposition} 
                         isBadge={!selectedSession.disposition_detail} 
                       />
 
-                      {/* 2. Duration (Preserved) */}
                       <MetricItem 
                         label="Duration" 
                         value={selectedSession.duration 
@@ -250,7 +296,6 @@ export function EngagementModal({
                           : "N/A"} 
                       />
 
-                      {/* 3. Sentiment Score (New) */}
                       <div className="space-y-1.5">
                         <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Sentiment</p>
                         {selectedSession.sentiment_score !== undefined ? (
@@ -263,7 +308,6 @@ export function EngagementModal({
                         )}
                       </div>
 
-                      {/* 4. Emotion Analysis (New - takes up remaining space) */}
                       <div className="space-y-1.5">
                         <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Emotions</p>
                         <div className="flex flex-wrap gap-2">
@@ -279,8 +323,35 @@ export function EngagementModal({
                           )}
                         </div>
                       </div>
-
                     </div>
+
+                    {/* AI Summary Section */}
+                    {selectedSession.summary && (
+                      <div className="px-8 py-4 bg-slate-50/80 border-b border-slate-100 shrink-0">
+                        <div className="max-w-4xl mx-auto flex items-start gap-4">
+                          <div className="p-2 bg-white rounded-lg border border-slate-200 shadow-sm shrink-0">
+                            <FileText className="h-4 w-4 text-indigo-600" />
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Call Summary</h4>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 px-2 text-[10px] text-slate-400 hover:text-indigo-600"
+                                onClick={() => handleCopySummary(selectedSession.summary!)}
+                              >
+                                {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+                                {copied ? "Copied" : "Copy"}
+                              </Button>
+                            </div>
+                            <p className="text-sm text-slate-600 leading-relaxed italic">
+                              "{selectedSession.summary}"
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Scrollable Chat Area */}
                     <ScrollArea className="flex-1 h-full w-full bg-slate-50/30">
@@ -300,7 +371,6 @@ export function EngagementModal({
                                   isUser ? "flex-row-reverse" : "flex-row"
                                 )}
                               >
-                                {/* Avatar Icons */}
                                 <div className={cn(
                                   "h-9 w-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm",
                                   isUser ? "bg-indigo-600 text-white border-indigo-700" : "bg-white text-slate-500 border-slate-200"
@@ -308,7 +378,6 @@ export function EngagementModal({
                                   {isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                                 </div>
 
-                                {/* Message Bubbles */}
                                 <div className={cn(
                                   "flex flex-col max-w-[75%] gap-1.5",
                                   isUser ? "items-end" : "items-start"
@@ -331,7 +400,6 @@ export function EngagementModal({
                             );
                           })
                         )}
-                        {/* Buffer at the bottom */}
                         <div className="h-4" />
                       </div>
                     </ScrollArea>
@@ -346,7 +414,6 @@ export function EngagementModal({
   );
 }
 
-// Helper component for session metrics
 function MetricItem({ label, value, isBadge, isMono }: { label: string, value?: string, isBadge?: boolean, isMono?: boolean }) {
   return (
     <div className="space-y-1.5">
