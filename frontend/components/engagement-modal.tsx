@@ -355,7 +355,7 @@ export function EngagementModal({
 
                     {/* Scrollable Chat Area */}
                     <ScrollArea className="flex-1 h-full w-full bg-slate-50/30">
-                      <div className="p-8 space-y-8 max-w-4xl mx-auto min-h-full">
+                      <div className="p-8 space-y-8 max-w-4xl mx-auto min-h-full mb-[15rem]">
                         {sortedMessages.length === 0 ? (
                           <div className="flex flex-col items-center justify-center h-64 text-slate-400 italic">
                             No messages found in this session.
