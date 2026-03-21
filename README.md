@@ -29,11 +29,12 @@ Columns used:
 | `city` | City |
 | `campaign_id` | Campaign_ID |
 | `lead_source` | Lead_Source |
-| `disposition` | Disposition + Outcome + SUMMARY logic |
+| `disposition` | Disposition + Outcome + Exclusion_Flag logic |
+| `disposition_detail` | SUMMARY |
 | `updated` | Call_Date |
-| `interested_vehicle_name` | Model |
+| `model_preference` | Model |
 | `seating_capacity_preference` | Seating (primary source) |
-| `lead_summary` | SUMMARY fallback if File 2 has none |
+| `campaign_objective_name` | Cohort |
 
 ### File 2 — Sessions Export
 Downloaded from AutoEngage → Sessions section.
@@ -57,24 +58,27 @@ Exact column order matching the Zoho Master Sheet:
 
 | # | Column | Source | Logic |
 |---|---|---|---|
-| 1 | Lead_ID | — | Left blank. Filled manually in Zoho. |
+| 1 | Lead_ID | — | Auto-generated (L-{number}) or filled manually in Zoho |
 | 2 | Full_Name | File 1 `person_name` | Direct copy |
 | 3 | Phone | File 1 `phone_number` | Normalized to 10 digits |
 | 4 | City | File 1 `city` | Direct copy |
 | 5 | Pincode | — | Left blank. Not in either export file. |
-| 6 | Lead_Source | File 1 `lead_source` | Direct copy |
-| 7 | Campaign_ID | File 1 `campaign_id` | Direct copy |
-| 8 | Call Triggered | File 2 `created` / `start_time` | See formula below |
-| 9 | Outcome | File 1 `disposition` | See formula below |
-| 10 | Disposition | File 1 `disposition` | Direct copy |
-| 11 | SUMMARY | File 2 `summary` | See formula below |
-| 12 | Call_Date | File 1 `updated` | Parsed as DD/MM/YYYY |
-| 13 | Number of attempts | File 1 `phone_number` | See formula below |
-| 14 | SENTIMENT | File 2 `sentiment_score` | Direct copy |
-| 15 | Recordings | File 2 `call_recording` | Direct URL copy |
-| 16 | Model | File 1 `interested_vehicle_name` | Direct copy |
-| 17 | Seating | File 1 `seating_capacity_preference` | See formula below |
-| 18 | Exclusion_Flag | Derived from Disposition priority | YES for terminal dispositions |
+| 6 | Language | User dropdown selection | Selected at runtime |
+| 7 | Lead_Source | File 1 `lead_source` | Direct copy |
+| 8 | Cohort | File 1 `campaign_objective_name` | Direct copy |
+| 9 | Campaign_ID | File 1 `campaign_id` | Direct copy |
+| 10 | Call Triggered | File 2 `created` / `start_time` | See formula below |
+| 11 | Outcome | File 1 `disposition` | See formula below |
+| 12 | Disposition | File 1 `disposition` | Direct copy |
+| 13 | SUMMARY | File 1 `disposition_detail` | See formula below |
+| 14 | Conversion | — | Left blank |
+| 15 | Call_Date | File 1 `updated` | Parsed as DD/MM/YYYY |
+| 16 | Number of attempts | File 1 `phone_number` | Count of matching phones |
+| 17 | SENTIMENT | File 2 `sentiment_score` | Direct copy |
+| 18 | Recordings | File 2 `call_recording` | Direct URL copy |
+| 19 | Model | File 1 `model_preference` | Cleaned (brackets/quotes removed) |
+| 20 | Seating | File 1 `seating_capacity_preference` | See formula below |
+| 21 | Exclusion_Flag | Derived from Disposition priority | YES for terminal dispositions |
 
 ---
 
@@ -109,12 +113,16 @@ which would misread `9/3/2026` as September 3rd instead of March 9th.
 ---
 
 ### Outcome
-Equivalent Zoho formula:
-```
-=IF(OR(TRIM(LOWER(Disposition))="contacted", TRIM(LOWER(Disposition))="engaged",
-       TRIM(LOWER(Disposition))="converted", TRIM(LOWER(Disposition))="attempted"),
-   "Connected", "Not Connected")
-```
+Connected dispositions → "Connected":
+- contacted
+- reached
+- engaged
+- converted
+
+Not Connected dispositions → "Not Connected":
+- attempted
+- busy
+- any other value (default)
 
 ---
 
@@ -132,9 +140,11 @@ Priority table for exclusion:
 | 9 | DND | Terminal |
 | 9 | Wrong Number | Terminal |
 | 8 | Interested | Interim |
-| 6 | Callback Requested / Call Back | Interim |
+| 6 | Callback Requested | Interim |
+| 6 | Call Back | Interim |
 | 4 | Busy | Interim |
-| 3 | Not Connected / No Revert | Interim |
+| 3 | Not Connected | Interim |
+| 3 | No Revert | Interim |
 | 2 | User Did Not Speak | Interim |
 | 1 | Any unlisted value | Interim |
 
@@ -142,14 +152,8 @@ Priority table for exclusion:
 
 ### SUMMARY
 ```
-if disposition in ['busy', 'not connected', 'no revert', 'user did not speak']:
-    SUMMARY = "No response"
-else:
-    SUMMARY = File 2 session summary
-    if File 2 summary is empty:
-        SUMMARY = File 1 lead_summary
-    if both empty:
-        SUMMARY = ""
+if disposition_detail is not empty → use it directly
+else → "No Response"
 ```
 
 ---
@@ -221,7 +225,6 @@ Fix applied:
 ## Known Limitations
 
 - Pincode is not present in either AutoEngage export file. Must be filled manually in Zoho.
-- Lead_ID is not generated. Must be assigned manually in Zoho.
 - SENTIMENT and Recordings will be empty for sessions where AutoEngage did not capture them.
 - Table preview is capped at 200 rows for performance. Full data is always in the copied TSV.
 - Only tested with AutoEngage CSV exports. XLSX export from AutoEngage may behave differently.

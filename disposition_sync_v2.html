@@ -10,291 +10,258 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
+    /* ── DESIGN TOKENS ─────────────────────────────────────────────────── */
     :root {
-      --bg: #0d0f14;
-      --surface: #13161d;
-      --surface2: #1a1e28;
-      --border: #252a38;
-      --border-glow: #3b4edd44;
-      --accent: #4f6ef7;
-      --accent2: #8b5cf6;
-      --accent-glow: #4f6ef730;
-      --success: #22c55e;
-      --warn: #f59e0b;
-      --danger: #ef4444;
-      --text: #e8eaf0;
-      --text-dim: #7c8499;
-      --text-muted: #4a5168;
-      --mono: 'DM Mono', monospace;
-      --sans: 'Sora', sans-serif;
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #1a1a1a;
+      --surface3: #222222;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(255, 173, 58, 0.5);
+      --accent: #ffad3a;
+      --accent-dim: #e79400;
+      --accent-soft: rgba(255, 173, 58, 0.12);
+      --success: #5ad7a1;
+      --success-soft: rgba(90, 215, 161, 0.12);
+      --warn: #ffc857;
+      --warn-soft: rgba(255, 200, 87, 0.12);
+      --danger: #ff6b6b;
+      --danger-soft: rgba(255, 107, 107, 0.12);
+      --text: #f5f5f5;
+      --text-dim: #adaaaa;
+      --text-muted: #6b6b6b;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'Manrope', 'Inter', sans-serif;
+      --body: 'Inter', sans-serif;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 16px;
     }
 
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
 
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: var(--sans);
+      font-family: var(--body);
       min-height: 100vh;
       line-height: 1.6;
+      overflow-x: hidden;
     }
 
-    /* GRADIENT HEADER */
+    /* ── HEADER ────────────────────────────────────────────────────────── */
     header {
-      padding: 2.5rem 2rem 2rem;
-      background: linear-gradient(135deg, #0d0f14 0%, #131828 50%, #0d0f14 100%);
+      padding: 1.75rem 2rem 1.5rem;
       border-bottom: 1px solid var(--border);
-      position: relative;
-      overflow: hidden;
-    }
-
-    header::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse at 20% 50%, #4f6ef715 0%, transparent 60%),
-        radial-gradient(ellipse at 80% 30%, #8b5cf610 0%, transparent 50%);
-      pointer-events: none;
+      background: var(--surface);
     }
 
     .header-inner {
       max-width: 1400px;
       margin: 0 auto;
-      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
     }
+
+    .header-left { display: flex; align-items: center; gap: 1rem; }
 
     .header-badge {
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      background: var(--accent-glow);
-      border: 1px solid #4f6ef740;
+      gap: 0.35rem;
+      background: var(--accent-soft);
+      border: 1px solid rgba(255, 173, 58, 0.3);
       border-radius: 999px;
-      padding: 0.2rem 0.75rem;
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
+      padding: 0.25rem 0.7rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--accent);
-      margin-bottom: 0.75rem;
     }
 
     h1 {
-      font-size: clamp(1.5rem, 3vw, 2.2rem);
-      font-weight: 700;
-      background: linear-gradient(135deg, #e8eaf0 30%, #8b9cf8 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      letter-spacing: -0.02em;
-      line-height: 1.2;
+      font-family: var(--sans);
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.03em;
     }
 
     .header-sub {
-      font-size: 0.875rem;
+      font-size: 0.82rem;
       color: var(--text-dim);
-      margin-top: 0.4rem;
     }
 
     .header-steps {
       display: flex;
-      gap: 1rem;
-      margin-top: 1.2rem;
+      gap: 0.5rem;
       flex-wrap: wrap;
     }
 
     .step-pill {
       display: flex;
       align-items: center;
-      gap: 0.4rem;
-      background: var(--surface);
+      gap: 0.35rem;
+      background: var(--surface2);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.35rem 0.75rem;
-      font-size: 0.78rem;
+      border-radius: var(--radius-sm);
+      padding: 0.3rem 0.65rem;
+      font-size: 0.72rem;
       color: var(--text-dim);
+      font-family: var(--body);
     }
 
     .step-pill .num {
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: var(--accent-glow);
-      border: 1px solid var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid rgba(255, 173, 58, 0.35);
       color: var(--accent);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       font-weight: 700;
       flex-shrink: 0;
     }
 
-    /* MAIN LAYOUT */
+    /* ── MAIN ──────────────────────────────────────────────────────────── */
     main {
       max-width: 1400px;
       margin: 0 auto;
-      padding: 2rem;
+      padding: 1.75rem 2rem 3rem;
     }
 
-    /* UPLOAD SECTION */
+    /* ── UPLOAD GRID ──────────────────────────────────────────────────── */
     .upload-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 1.25rem;
-      margin-bottom: 1.5rem;
-    }
-
-    @media (max-width: 700px) {
-      .upload-grid {
-        grid-template-columns: 1fr;
-      }
+      gap: 1rem;
+      margin-bottom: 1.25rem;
     }
 
     .drop-zone {
       background: var(--surface);
-      border: 2px dashed var(--border);
-      border-radius: 16px;
-      padding: 2rem 1.5rem;
+      border: 2px dashed rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem 1.25rem;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 0.75rem;
+      gap: 0.65rem;
       cursor: pointer;
-      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .drop-zone::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      background: radial-gradient(ellipse at 50% 0%, var(--accent-glow), transparent 70%);
-      transition: opacity 0.3s;
-      pointer-events: none;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
     }
 
     .drop-zone:hover,
     .drop-zone.drag-over {
       border-color: var(--accent);
-      box-shadow: 0 0 0 1px var(--accent)22, 0 8px 30px #4f6ef715;
-    }
-
-    .drop-zone:hover::before,
-    .drop-zone.drag-over::before {
-      opacity: 1;
+      background: rgba(255, 173, 58, 0.04);
+      transform: translateY(-2px);
     }
 
     .drop-zone.has-file {
       border-color: var(--success);
       border-style: solid;
-    }
-
-    .drop-zone.has-file::before {
-      background: radial-gradient(ellipse at 50% 0%, #22c55e15, transparent 70%);
-      opacity: 1;
+      background: var(--success-soft);
     }
 
     .dz-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.5rem;
-      background: var(--surface2);
-      border: 1px solid var(--border);
+      font-size: 1.3rem;
     }
 
     .dz-icon.file1 {
-      background: #4f6ef710;
-      border-color: #4f6ef730;
+      background: var(--accent-soft);
+      border: 1px solid rgba(255, 173, 58, 0.25);
     }
 
     .dz-icon.file2 {
-      background: #8b5cf610;
-      border-color: #8b5cf630;
+      background: rgba(77, 208, 225, 0.1);
+      border: 1px solid rgba(77, 208, 225, 0.25);
     }
 
     .dz-label {
-      font-weight: 600;
-      font-size: 0.95rem;
-      text-align: center;
+      font-weight: 700;
+      font-size: 0.92rem;
+      font-family: var(--sans);
     }
 
     .dz-sublabel {
-      font-size: 0.75rem;
+      font-size: 0.78rem;
       color: var(--text-dim);
-      text-align: center;
     }
 
     .dz-cols {
       font-family: var(--mono);
-      font-size: 0.68rem;
+      font-size: 0.65rem;
       color: var(--text-muted);
-      text-align: center;
-      line-height: 1.8;
+      line-height: 1.7;
+      padding: 0.6rem 0.75rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
     }
 
     .dz-status {
-      font-size: 0.78rem;
-      font-weight: 500;
-      padding: 0.25rem 0.75rem;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
       border-radius: 999px;
       background: var(--surface2);
       border: 1px solid var(--border);
       color: var(--text-dim);
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.3rem;
     }
 
     .dz-status.ok {
-      background: #22c55e12;
-      border-color: #22c55e30;
+      background: var(--success-soft);
+      border-color: rgba(90, 215, 161, 0.3);
       color: var(--success);
     }
 
     .dz-status.err {
-      background: #ef444412;
-      border-color: #ef444430;
+      background: var(--danger-soft);
+      border-color: rgba(255, 107, 107, 0.3);
       color: var(--danger);
     }
 
-    input[type=file] {
-      display: none;
-    }
+    input[type=file] { display: none; }
 
-    /* ACTION BAR */
+    /* ── ACTION BAR ───────────────────────────────────────────────────── */
     .action-bar {
       display: flex;
-      gap: 1rem;
+      gap: 0.75rem;
       align-items: center;
       flex-wrap: wrap;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
     }
 
     .btn {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.65rem 1.4rem;
-      border-radius: 10px;
-      font-family: var(--sans);
-      font-size: 0.875rem;
+      gap: 0.45rem;
+      padding: 0.6rem 1.2rem;
+      border-radius: var(--radius);
+      font-family: var(--body);
+      font-size: 0.82rem;
       font-weight: 600;
       cursor: pointer;
       border: none;
@@ -302,25 +269,28 @@
       white-space: nowrap;
     }
 
-    .btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-      pointer-events: none;
-    }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 
     .btn-primary {
-      background: linear-gradient(135deg, var(--accent), #3d5be8);
-      color: #fff;
-      box-shadow: 0 4px 20px #4f6ef730;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #1a0e00;
+      box-shadow: 0 4px 16px rgba(255, 173, 58, 0.25);
     }
 
     .btn-primary:hover {
       transform: translateY(-1px);
-      box-shadow: 0 6px 28px #4f6ef745;
+      box-shadow: 0 6px 24px rgba(255, 173, 58, 0.35);
     }
 
-    .btn-primary:active {
-      transform: translateY(0);
+    .btn-success {
+      background: linear-gradient(135deg, var(--success), #3ecf8e);
+      color: #082018;
+      box-shadow: 0 4px 16px rgba(90, 215, 161, 0.2);
+    }
+
+    .btn-success:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(90, 215, 161, 0.3);
     }
 
     .btn-secondary {
@@ -334,113 +304,154 @@
       color: var(--accent);
     }
 
-    .btn-success {
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-      color: #fff;
-      box-shadow: 0 4px 20px #22c55e25;
+    /* ── CONTROLS ──────────────────────────────────────────────────────── */
+    .control-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
     }
 
-    .btn-success:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 28px #22c55e35;
+    .control-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
     }
+
+    .lang-select-wrapper {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .lang-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 2rem 0.5rem 0.75rem;
+      font-family: var(--body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .lang-select:hover,
+    .lang-select:focus { border-color: var(--accent); }
+
+    .lang-select option { background: var(--surface); color: var(--text); }
+
+    .lang-select-wrapper::after {
+      content: '';
+      position: absolute;
+      right: 0.65rem;
+      top: 50%;
+      transform: translateY(-50%);
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 4px solid var(--text-muted);
+      pointer-events: none;
+    }
+
+    .lead-id-input {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      font-weight: 500;
+      width: 100px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .lead-id-input:hover,
+    .lead-id-input:focus { border-color: var(--accent); }
+
+    .lead-id-input::placeholder { color: var(--text-muted); font-weight: 400; }
 
     .status-msg {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--text-dim);
       flex: 1;
-      min-width: 200px;
+      min-width: 180px;
     }
 
-    .status-msg.ok {
-      color: var(--success);
-    }
+    .status-msg.ok { color: var(--success); }
+    .status-msg.err { color: var(--danger); }
+    .status-msg.warn { color: var(--warn); }
 
-    .status-msg.err {
-      color: var(--danger);
-    }
-
-    .status-msg.warn {
-      color: var(--warn);
-    }
-
-    /* STATS BAR */
+    /* ── STATS BAR ────────────────────────────────────────────────────── */
     .stats-bar {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-bottom: 1.5rem;
       display: none;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
     }
 
     .stat-card {
       flex: 1;
-      min-width: 140px;
+      min-width: 130px;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1rem 1.25rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.2rem;
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
     }
 
     .stat-label {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.08em;
+      font-weight: 600;
     }
 
     .stat-val {
-      font-size: 1.5rem;
+      font-size: 1.6rem;
       font-weight: 700;
       font-family: var(--mono);
+      margin-top: 0.15rem;
     }
 
-    .stat-val.blue {
-      color: var(--accent);
-    }
+    .stat-val.blue { color: var(--accent); }
+    .stat-val.purple { color: #a78bfa; }
+    .stat-val.green { color: var(--success); }
+    .stat-val.amber { color: var(--warn); }
 
-    .stat-val.purple {
-      color: var(--accent2);
-    }
-
-    .stat-val.green {
-      color: var(--success);
-    }
-
-    .stat-val.amber {
-      color: var(--warn);
-    }
-
-    /* TABLE */
+    /* ── TABLE ─────────────────────────────────────────────────────────── */
     .table-wrapper {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: var(--radius-lg);
       overflow: hidden;
       display: none;
     }
 
     .table-header {
-      padding: 1rem 1.5rem;
+      padding: 0.85rem 1.25rem;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 0.75rem;
+      gap: 0.5rem;
       background: var(--surface2);
     }
 
     .table-title {
-      font-weight: 600;
-      font-size: 0.95rem;
+      font-weight: 700;
+      font-size: 0.9rem;
+      font-family: var(--sans);
     }
 
     .table-caption {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-dim);
       font-family: var(--mono);
     }
@@ -454,7 +465,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       font-family: var(--mono);
     }
 
@@ -465,14 +476,14 @@
     }
 
     thead th {
-      background: #1a1e2c;
+      background: #1a1e28;
       color: var(--text-dim);
       font-weight: 600;
       text-align: left;
-      padding: 0.6rem 0.75rem;
+      padding: 0.55rem 0.7rem;
       white-space: nowrap;
       border-bottom: 1px solid var(--border);
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
@@ -482,248 +493,98 @@
       transition: background 0.1s;
     }
 
-    tbody tr:hover {
-      background: var(--surface2);
-    }
-
-    tbody tr:last-child {
-      border-bottom: none;
-    }
+    tbody tr:hover { background: rgba(255, 173, 58, 0.04); }
+    tbody tr:last-child { border-bottom: none; }
 
     tbody td {
-      padding: 0.55rem 0.75rem;
+      padding: 0.5rem 0.7rem;
       white-space: nowrap;
-      max-width: 220px;
+      max-width: 200px;
       overflow: hidden;
       text-overflow: ellipsis;
       color: var(--text);
       vertical-align: middle;
     }
 
-    .cell-phone {
-      color: #7dd3fc;
-    }
+    .cell-phone { color: #7dd3fc; }
+    .cell-connected { color: var(--success); font-weight: 600; }
+    .cell-not-connected { color: var(--danger); }
+    .cell-terminal { color: var(--warn); font-weight: 600; }
+    .cell-url { color: var(--accent); max-width: 140px; overflow: hidden; text-overflow: ellipsis; display: block; }
+    .cell-sentiment-high { color: var(--success); }
+    .cell-sentiment-mid { color: var(--warn); }
+    .cell-sentiment-low { color: var(--danger); }
 
-    .cell-connected {
-      color: var(--success);
-      font-weight: 500;
-    }
-
-    .cell-not-connected {
-      color: var(--danger);
-    }
-
-    .cell-terminal {
-      color: var(--warn);
-      font-weight: 500;
-    }
-
-    .cell-url {
-      color: var(--accent);
-      max-width: 160px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: block;
-    }
-
-    .cell-sentiment-high {
-      color: var(--success);
-    }
-
-    .cell-sentiment-mid {
-      color: var(--warn);
-    }
-
-    .cell-sentiment-low {
-      color: var(--danger);
-    }
-
-    /* LANGUAGE DROPDOWN */
-    .lang-select-wrapper {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-    }
-
-    .lang-select {
-      appearance: none;
-      -webkit-appearance: none;
-      background: var(--surface2);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 0.65rem 2.4rem 0.65rem 1rem;
-      font-family: var(--sans);
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      outline: none;
-    }
-
-    .lang-select:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    .lang-select:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px var(--accent-glow);
-    }
-
-    .lang-select option {
-      background: var(--surface);
-      color: var(--text);
-      padding: 0.5rem;
-    }
-
-    .lang-select-wrapper::after {
-      content: '';
-      position: absolute;
-      right: 0.85rem;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 0;
-      height: 0;
-      border-left: 5px solid transparent;
-      border-right: 5px solid transparent;
-      border-top: 5px solid var(--text-dim);
-      pointer-events: none;
-      transition: border-top-color 0.2s;
-    }
-
-    .lang-select-wrapper:hover::after {
-      border-top-color: var(--accent);
-    }
-
-    .lang-label {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-right: 0.5rem;
-      font-weight: 600;
-    }
-
-    /* LEAD ID INPUT */
-    .lead-id-wrapper {
-      display: inline-flex;
-      align-items: center;
-    }
-
-    .lead-id-input {
-      background: var(--surface2);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 0.65rem 1rem;
-      font-family: var(--mono);
-      font-size: 0.875rem;
-      font-weight: 600;
-      width: 110px;
-      outline: none;
-      transition: all 0.2s;
-    }
-
-    .lead-id-input:hover {
-      border-color: var(--accent);
-    }
-
-    .lead-id-input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px var(--accent-glow);
-    }
-
-    .lead-id-input::placeholder {
-      color: var(--text-muted);
-      font-weight: 400;
-    }
-
-    /* FOOTER */
+    /* ── FOOTER ────────────────────────────────────────────────────────── */
     footer {
       text-align: center;
-      padding: 2rem;
-      font-size: 0.72rem;
+      padding: 1.5rem 2rem;
+      font-size: 0.7rem;
       color: var(--text-muted);
       border-top: 1px solid var(--border);
-      margin-top: 3rem;
     }
 
-    footer span {
-      color: var(--text-dim);
-    }
+    footer span { color: var(--text-dim); }
 
-    /* ANIMATE */
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(8px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .fade-in {
-      animation: fadeIn 0.3s ease forwards;
-    }
-
-    /* SPINNER */
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid #ffffff40;
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      display: inline-block;
-    }
-
+    /* ── PROCESSING OVERLAY ───────────────────────────────────────────── */
     .processing-overlay {
       position: fixed;
       inset: 0;
-      background: #0d0f14cc;
-      backdrop-filter: blur(4px);
-      display: flex;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+      display: none;
       align-items: center;
       justify-content: center;
       z-index: 9999;
-      display: none;
     }
 
     .processing-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: var(--radius-lg);
       padding: 2rem 2.5rem;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 1rem;
-      font-size: 0.9rem;
       color: var(--text-dim);
+      font-size: 0.9rem;
     }
 
-    .processing-card .spinner {
-      width: 32px;
-      height: 32px;
-      border-width: 3px;
-      border-color: var(--accent)40;
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(255, 173, 58, 0.2);
       border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* ── ANIMATIONS ────────────────────────────────────────────────────── */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in { animation: fadeIn 0.3s ease forwards; }
+
+    /* ── RESPONSIVE ────────────────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      .upload-grid { grid-template-columns: 1fr; }
+      .header-inner { flex-direction: column; align-items: flex-start; }
+      .header-steps { display: none; }
+      .action-bar { flex-direction: column; align-items: stretch; }
+      .btn { width: 100%; justify-content: center; }
+      header, main, footer { padding-left: 1rem; padding-right: 1rem; }
     }
   </style>
 </head>
 
 <body>
 
+  <!-- Processing Overlay -->
   <div class="processing-overlay" id="processingOverlay">
     <div class="processing-card">
       <div class="spinner"></div>
@@ -731,75 +592,83 @@
     </div>
   </div>
 
+  <!-- Header -->
   <header>
     <div class="header-inner">
-      <div class="header-badge">⚡ Jenny Helper</div>
-      <h1>Disposition Sync</h1>
-      <div class="header-sub">AutoEngage → Zoho Master Sheet · No backend · No installation</div>
+      <div class="header-left">
+        <div>
+          <div class="header-badge">⚡ JEJO</div>
+          <h1>Disposition Sync</h1>
+          <div class="header-sub">AutoEngage → Zoho Master Sheet · No backend · No installation</div>
+        </div>
+      </div>
       <div class="header-steps">
-        <div class="step-pill"><span class="num">1</span> Upload File 1 (Audience &amp; Leads)</div>
-        <div class="step-pill"><span class="num">2</span> Upload File 2 (Sessions)</div>
+        <div class="step-pill"><span class="num">1</span> Upload Audience & Leads</div>
+        <div class="step-pill"><span class="num">2</span> Upload Sessions</div>
         <div class="step-pill"><span class="num">3</span> Process Both Files</div>
-        <div class="step-pill"><span class="num">4</span> Copy All Data → Paste in Zoho</div>
+        <div class="step-pill"><span class="num">4</span> Copy → Paste in Zoho</div>
       </div>
     </div>
   </header>
 
+  <!-- Main Content -->
   <main>
+    <!-- Upload Zones -->
     <div class="upload-grid">
-      <!-- File 1 -->
       <div class="drop-zone" id="dz1" onclick="document.getElementById('f1').click()" role="button" tabindex="0"
         aria-label="Upload Audience and Leads CSV">
         <div class="dz-icon file1">📋</div>
-        <div class="dz-label">File 1 — Audience &amp; Leads</div>
-        <div class="dz-sublabel">AutoEngage → Audience &amp; Leads export</div>
+        <div class="dz-label">File 1 — Audience & Leads</div>
+        <div class="dz-sublabel">AutoEngage → Audience & Leads export</div>
         <div class="dz-cols">person_name · phone_number · city · campaign_id<br>lead_source · disposition · updated ·
-          interested_vehicle_name<br>seating_capacity_preference · lead_summary</div>
-        <div class="dz-status" id="st1">📁 Drag &amp; drop or click to browse</div>
+          model_preference<br>seating_capacity_preference · disposition_detail</div>
+        <div class="dz-status" id="st1">📁 Drag & drop or click to browse</div>
         <input type="file" id="f1" accept=".csv,.xlsx,.xls">
       </div>
 
-      <!-- File 2 -->
       <div class="drop-zone" id="dz2" onclick="document.getElementById('f2').click()" role="button" tabindex="0"
         aria-label="Upload Sessions CSV">
         <div class="dz-icon file2">🎙️</div>
         <div class="dz-label">File 2 — Sessions</div>
         <div class="dz-sublabel">AutoEngage → Sessions export</div>
         <div class="dz-cols">phone_number · created · start_time<br>summary · call_recording · sentiment_score</div>
-        <div class="dz-status" id="st2">📁 Drag &amp; drop or click to browse</div>
+        <div class="dz-status" id="st2">📁 Drag & drop or click to browse</div>
         <input type="file" id="f2" accept=".csv,.xlsx,.xls">
       </div>
     </div>
 
+    <!-- Action Bar -->
     <div class="action-bar">
       <button class="btn btn-primary" id="btnProcess" disabled onclick="processFiles()">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
         </svg>
         Process Both Files
       </button>
-      <div class="lead-id-wrapper">
-        <span class="lang-label">🏷️ Start Lead ID</span>
+      <div class="control-group">
+        <span class="control-label">Lead ID</span>
         <input type="number" class="lead-id-input" id="leadIdStart" placeholder="e.g. 8173" min="1">
       </div>
-      <div class="lang-select-wrapper">
-        <span class="lang-label">🌐 Language</span>
-        <select class="lang-select" id="langSelect">
-          <option value="English">English</option>
-          <option value="Hindi">Hindi</option>
-          <option value="Tamil">Tamil</option>
-          <option value="Malayalam">Malayalam</option>
-        </select>
+      <div class="control-group">
+        <span class="control-label">Language</span>
+        <div class="lang-select-wrapper">
+          <select class="lang-select" id="langSelect">
+            <option value="English">English</option>
+            <option value="Hindi">Hindi</option>
+            <option value="Tamil">Tamil</option>
+            <option value="Malayalam">Malayalam</option>
+          </select>
+        </div>
       </div>
       <button class="btn btn-success" id="btnCopy" disabled onclick="copyData()" style="display:none">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path
             d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
         Copy All Data
       </button>
       <button class="btn btn-success" id="btnExport" disabled onclick="exportToExcel()" style="display:none">
-        <svg fill="currentColor" width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <svg fill="currentColor" width="14" height="14" viewBox="0 0 24 24">
           <path
             d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 9l-2 3-2-3H6.5l3.25 4.5L6.5 20h2.5l2-3 2 3h2.5l-3.25-4.5L16 11h-3zm4 9H6V4h7v5h5v11z" />
         </svg>
@@ -809,6 +678,7 @@
       <span class="status-msg" id="globalStatus"></span>
     </div>
 
+    <!-- Stats Bar -->
     <div class="stats-bar" id="statsBar">
       <div class="stat-card">
         <div class="stat-label">Total Leads</div>
@@ -832,6 +702,7 @@
       </div>
     </div>
 
+    <!-- Table -->
     <div class="table-wrapper" id="tableWrapper">
       <div class="table-header">
         <div class="table-title">Output Preview</div>
@@ -870,6 +741,7 @@
     </div>
   </main>
 
+  <!-- Footer -->
   <footer>
     Disposition Sync v2 &nbsp;·&nbsp; <span>JEJO — Lead Operations Automation</span><br>
     AI/ML Intern: Kanniga (Jenny Joseph K.) &nbsp;·&nbsp; March 2026 &nbsp;·&nbsp; Runs entirely in browser — no data is
@@ -881,6 +753,7 @@
     let rawFile1 = null;
     let rawFile2 = null;
     let processedData = [];
+    let isProcessing = false;
 
     // ─── PRIORITY TABLE ───────────────────────────────────────────────────────────
     const DISPOSITION_PRIORITY = {
@@ -897,26 +770,19 @@
       'no revert': 3,
       'user did not speak': 2,
     };
-    const TERMINAL_THRESHOLD = 9; // priority >= 9 → Exclusion_Flag = YES
-    const CONNECTED_SET = new Set([
-      'contacted', 'reached', 'engaged', 'converted'
-    ]);
-    const NOT_CONNECTED_SET = new Set([
-      'attempted', 'busy'
-    ]);
-    const NO_RESPONSE_SET = new Set(['busy', 'not connected', 'no revert', 'user did not speak']);
+    const TERMINAL_THRESHOLD = 9;
+    const CONNECTED_SET = new Set(['contacted', 'reached', 'engaged', 'converted']);
+    const NOT_CONNECTED_SET = new Set(['attempted', 'busy']);
 
     function getDispositionPriority(d) {
       if (!d) return 1;
-      const key = d.trim().toLowerCase();
-      return DISPOSITION_PRIORITY[key] ?? 1;
+      return DISPOSITION_PRIORITY[d.trim().toLowerCase()] ?? 1;
     }
 
     // ─── PHONE NORMALIZATION ──────────────────────────────────────────────────────
     function normalizePhone(raw) {
       if (!raw) return null;
       let s = String(raw).trim();
-      // Handle scientific notation like 8.83E+09 or 9.79e+09
       if (/^\d[\d.]*[eE][+\-]?\d+$/.test(s)) {
         s = String(Math.round(parseFloat(s)));
       }
@@ -925,22 +791,18 @@
       if (digits.startsWith('91') && digits.length === 12) return digits.slice(2);
       if (digits.startsWith('0') && digits.length === 11) return digits.slice(1);
       if (digits.length === 10) return digits;
-      // Extra: handle 11–12 digit numbers starting with 91 generically
       if (digits.startsWith('91') && digits.length >= 12) return digits.slice(digits.length - 10);
       return null;
     }
 
     function isPhoneLike(val) {
-      // 10–12 digit number pattern suitable for a phone
       return /^\+?[\d\s\-()]{10,15}$/.test(String(val).trim());
     }
 
     // ─── DATE PARSING ──────────────────────────────────────────────────────────────
-    // AutoEngage format: "9/3/2026, 7:19:07 pm" → DD/MM/YYYY, H:MM:SS am/pm
     function parseAutoEngageDate(str) {
       if (!str) return null;
       const s = String(str).trim();
-      // Primary: DD/MM/YYYY, H:MM:SS am/pm
       const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2}):(\d{2})\s*(am|pm)?/i);
       if (m) {
         let [, dd, mm, yyyy, hh, min, sec, ampm] = m;
@@ -953,7 +815,6 @@
         }
         return new Date(yyyy, mm - 1, dd, hh, min, sec);
       }
-      // Fallback: ISO or other browser-parseable
       const d = new Date(str);
       return isNaN(d) ? null : d;
     }
@@ -967,7 +828,6 @@
     }
 
     function isDateStr(val) {
-      // matches DD/MM/YYYY pattern inside a string
       return /\d{1,2}\/\d{1,2}\/\d{4}/.test(String(val));
     }
 
@@ -1002,7 +862,6 @@
     function parseSheet(ab) {
       const wb = XLSX.read(ab, { type: 'array', raw: true, cellText: false, cellDates: false });
       const ws = wb.Sheets[wb.SheetNames[0]];
-      // Use header:1 to get array-of-arrays, then manually build objects
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
       if (rows.length < 2) return [];
       const headers = rows[0].map(h => String(h).trim().toLowerCase().replace(/\s+/g, '_'));
@@ -1011,24 +870,20 @@
         const row = rows[i];
         const obj = {};
         headers.forEach((h, j) => { obj[h] = cellToString(row[j]); });
-        obj.__raw = row.map(cellToString); // keep raw array for column-shift scanning
+        obj.__raw = row.map(cellToString);
         result.push(obj);
       }
       return result;
     }
 
-    // Convert any cell value to a clean string, preserving full numeric precision
     function cellToString(val) {
       if (val === undefined || val === null || val === '') return '';
-      // If it's a raw number, convert to full integer string (no scientific notation)
       if (typeof val === 'number') {
         if (Number.isInteger(val)) return String(val);
-        // Large floats that are really integers (e.g., 8825903357.0)
         if (val > 999999 && Math.abs(val - Math.round(val)) < 0.01) return String(Math.round(val));
         return String(val);
       }
       let s = String(val).trim();
-      // Handle scientific notation in string form (e.g. "8.83E+09")
       if (/^\d[\d.]*[eE][+\-]?\d+$/.test(s)) {
         const n = parseFloat(s);
         if (Number.isFinite(n) && n > 999999) return String(Math.round(n));
@@ -1037,13 +892,8 @@
     }
 
     // ─── ROBUST COLUMN DETECTION (File 2 column-shift bug fix) ────────────────────
-    // Scans ALL values in a row to find phone / recording / date, regardless of which
-    // column key they landed in due to CSV column shift caused by JSON `history` field.
-
     function detectPhones(obj) {
       const phones = new Set();
-
-      // 1. Try known column names explicitly first
       const exactNames = ['phone_number', 'phone', 'mobile', 'contact', 'contact_number'];
       for (const c of exactNames) {
         if (obj[c]) {
@@ -1051,22 +901,15 @@
           if (n) phones.add(n);
         }
       }
-
-      // 2. Scan all raw values to find any phone-like numbers
       const raw = Array.isArray(obj.__raw) ? obj.__raw : Object.values(obj);
       for (const val of raw) {
         if (!val) continue;
         const s = String(val).trim();
-
-        // Exact cell matches
         if (isPhoneLike(s)) {
           const n = normalizePhone(s);
           if (n) phones.add(n);
         }
-
-        // Embedded numbers in strings
         if (s.length > 10) {
-          // Look for 10-12 digit sequences
           const matches = s.match(/\+?(?:91|0)?[\s\-]?\d{10,12}\b/g);
           if (matches) {
             for (const m of matches) {
@@ -1090,12 +933,10 @@
 
       function extractUrl(str) {
         if (!str || typeof str !== 'string') return null;
-        // Match http://, https://, or s3:// URLs
-        const m = str.match(/(?:https?|s3):\/\/[^\s"'<>\\[\\]]+/i);
+        const m = str.match(/(?:https?|s3):\/\/[^\s"'<>\\[\]]+/i);
         return m ? m[0] : null;
       }
 
-      // 1. Check known exact column names
       const exactNames = ['call_recording', 'recording', 'recording_url', 'call_url',
         'audio_url', 'audio', 'media_url', 'record_url', 'call_record'];
       for (const c of exactNames) {
@@ -1108,7 +949,6 @@
         }
       }
 
-      // 2. Check any column key that contains 'record', 'audio', or 'media'
       for (const [k, v] of Object.entries(obj)) {
         if (!v || k === '__raw') continue;
         if (/record|audio|media/i.test(k)) {
@@ -1120,7 +960,6 @@
         }
       }
 
-      // 3. Fallback: scan ALL raw values aggressively
       if (Array.isArray(obj.__raw)) {
         let bestGuess = null;
         for (const val of obj.__raw) {
@@ -1128,15 +967,11 @@
           const url = extractUrl(s);
           if (url) {
             const lower = url.toLowerCase();
-            // High confidence keywords
             if (lower.includes('cloudphone') || lower.includes('record') ||
               lower.includes('audio') || lower.includes('.mp3') || lower.includes('.wav')) {
               return url;
             }
-            // Low confidence generic long URL
-            if (url.length > 35 && !bestGuess) {
-              bestGuess = url;
-            }
+            if (url.length > 35 && !bestGuess) bestGuess = url;
           } else if (s.includes('.mp3') || s.includes('.wav') || s.includes('cloudphone')) {
             return s;
           }
@@ -1152,7 +987,6 @@
       for (const c of candidates) {
         if (obj[c] && isDateStr(obj[c])) return obj[c];
       }
-      // Scan
       for (const val of Object.values(obj)) {
         if (typeof val === 'string' && isDateStr(val)) return val;
       }
@@ -1210,7 +1044,7 @@
         showOverlay('Applying business logic…');
         await tick();
 
-        // ── BUILD FILE 1 LIST: keep ALL rows (no dedup) ──────────────────────────
+        // ── BUILD FILE 1 LIST ──────────────────────────────────────────────────
         const allLeads = [];
         for (const r of rows1) {
           const phone = normalizePhone(r['phone_number'] || r['phone'] || r['mobile'] || '');
@@ -1218,9 +1052,8 @@
           allLeads.push({ row: r, phone });
         }
 
-        // ── BUILD FILE 2 MAP: phone → best session ────────────────────────────────
-        // Priority: 1) has call_recording 2) has summary 3) most recent
-        const sessionGroups = {}; // phone → [sessions]
+        // ── BUILD FILE 2 MAP ────────────────────────────────────────────────────
+        const sessionGroups = {};
         for (const r of rows2) {
           const phones = detectPhones(r);
           for (const phone of phones) {
@@ -1229,7 +1062,7 @@
           }
         }
 
-        const sessionMap = {}; // phone → best session object {recording, summary, sentiment, dateStr}
+        const sessionMap = {};
         for (const [phone, sessions] of Object.entries(sessionGroups)) {
           let best = null;
           for (const s of sessions) {
@@ -1253,7 +1086,7 @@
           };
         }
 
-        // ── CALL TRIGGERED: scan ALL of File 2 for min/max timestamps ─────────────
+        // ── CALL TRIGGERED ─────────────────────────────────────────────────────
         let minDate = null, maxDate = null;
         for (const r of rows2) {
           const dStr = detectDate(r) || r['start_time'] || '';
@@ -1265,7 +1098,6 @@
 
         let callTriggered = '';
         if (minDate && maxDate) {
-          // Use the calendar date of minDate for the label
           const day = ordinalSuffix(minDate.getDate());
           const month = MONTH_NAMES[minDate.getMonth()];
           const tMin = formatTime12(minDate);
@@ -1273,51 +1105,35 @@
           callTriggered = `${day} ${month} Calls Triggered From ${tMin} - ${tMax}`;
         }
 
-        // ── ASSEMBLE OUTPUT ROWS (ALL rows, no dedup) ─────────────────────────────
+        // ── ASSEMBLE OUTPUT ROWS ───────────────────────────────────────────────
         const output = [];
-        let rowIndex = 2; // Data rows start at row 2
+        let rowIndex = 2;
         for (const { row, phone } of allLeads) {
           const disp = (row['disposition'] || '').trim();
           const dispLower = disp.toLowerCase();
           const priority = getDispositionPriority(disp);
 
-          // Outcome
-          let outcome = 'Not Connected'; // Default fallback
+          let outcome = 'Not Connected';
           if (CONNECTED_SET.has(dispLower)) {
             outcome = 'Connected';
-          } else if (NOT_CONNECTED_SET.has(dispLower)) {
-            outcome = 'Not Connected';
-          } else {
-            // Keep default legacy behavior for old codes if needed, or default strictly to Not Connected
-            outcome = 'Not Connected';
           }
 
-          // Exclusion flag
           const exclusion = priority >= TERMINAL_THRESHOLD ? 'YES' : '';
 
-          // SUMMARY
           let summary = row['disposition_detail'] || '';
-          if (!summary.trim()) {
-            summary = 'No Response';
-          }
+          if (!summary.trim()) summary = 'No Response';
 
-          // Call_Date
           const callDateRaw = row['updated'] || '';
           const callDateObj = parseAutoEngageDate(callDateRaw);
           const callDate = formatCallDate(callDateObj);
 
-          // Model & Seating
           const model = (row['model_preference'] || '').replace(/[\[\]"']/g, '').trim();
           const seatingRaw = row['seating_capacity_preference'] || '';
           const seating = deriveSeating(seatingRaw, model);
 
-          // Session data
           const sess = sessionMap[phone] || {};
 
-          // Get selected language from dropdown
           const selectedLanguage = document.getElementById('langSelect').value;
-
-          // Auto-generate Lead_ID
           const startId = parseInt(document.getElementById('leadIdStart').value) || 0;
           const leadId = startId > 0 ? `L-${startId + output.length}` : '';
 
@@ -1349,12 +1165,11 @@
 
         processedData = output;
 
-        // ── RENDER ────────────────────────────────────────────────────────────────
         renderTable(output);
         renderStats(output);
         hideOverlay();
 
-        setStatus('globalStatus', `✅ Done — ${output.length} leads processed.`, 'ok');
+        setStatus('globalStatus', `✅ ${output.length} leads processed — ready to copy or export.`, 'ok');
         document.getElementById('btnCopy').style.display = '';
         document.getElementById('btnCopy').disabled = false;
         document.getElementById('btnExport').style.display = '';
@@ -1377,40 +1192,39 @@
 
       for (const r of preview) {
         const tr = document.createElement('tr');
-
         const sentNum = parseFloat(r.sentiment);
         const sentClass = isNaN(sentNum) ? '' :
           sentNum >= 0.6 ? 'cell-sentiment-high' :
             sentNum >= 0.3 ? 'cell-sentiment-mid' : 'cell-sentiment-low';
 
         tr.innerHTML = `
-      <td>${esc(r.lead_id)}</td>
-      <td>${esc(r.full_name)}</td>
-      <td class="cell-phone">${esc(r.phone)}</td>
-      <td>${esc(r.city)}</td>
-      <td>${esc(r.pincode)}</td>
-      <td>${esc(r.language)}</td>
-      <td>${esc(r.lead_source)}</td>
-      <td>${esc(r.cohort)}</td>
-      <td>${esc(r.campaign_id)}</td>
-      <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis">${esc(r.call_triggered)}</td>
-      <td class="${r.outcome === 'Connected' ? 'cell-connected' : 'cell-not-connected'}">${esc(r.outcome)}</td>
-      <td class="${getPrioClass(r.disposition)}">${esc(r.disposition)}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(r.summary)}</td>
-      <td>${esc(r.conversion)}</td>
-      <td>${esc(r.call_date)}</td>
-      <td>${esc(String(r.num_attempts))}</td>
-      <td class="${sentClass}">${esc(r.sentiment)}</td>
-      <td>${r.recordings ? `<a class="cell-url" href="${esc(String(r.recordings).startsWith('http') || String(r.recordings).startsWith('s3:') ? r.recordings : 'https://' + r.recordings)}" target="_blank" title="${esc(r.recordings)}">🔗 Recording</a>` : ''}</td>
-      <td>${esc(r.model)}</td>
-      <td>${esc(r.seating)}</td>
-      <td class="${r.exclusion_flag ? 'cell-terminal' : ''}">${esc(r.exclusion_flag)}</td>
-    `;
+          <td>${esc(r.lead_id)}</td>
+          <td>${esc(r.full_name)}</td>
+          <td class="cell-phone">${esc(r.phone)}</td>
+          <td>${esc(r.city)}</td>
+          <td>${esc(r.pincode)}</td>
+          <td>${esc(r.language)}</td>
+          <td>${esc(r.lead_source)}</td>
+          <td>${esc(r.cohort)}</td>
+          <td>${esc(r.campaign_id)}</td>
+          <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${esc(r.call_triggered)}</td>
+          <td class="${r.outcome === 'Connected' ? 'cell-connected' : 'cell-not-connected'}">${esc(r.outcome)}</td>
+          <td class="${getPrioClass(r.disposition)}">${esc(r.disposition)}</td>
+          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(r.summary)}</td>
+          <td>${esc(r.conversion)}</td>
+          <td>${esc(r.call_date)}</td>
+          <td>${esc(String(r.num_attempts))}</td>
+          <td class="${sentClass}">${esc(r.sentiment)}</td>
+          <td>${r.recordings ? `<a class="cell-url" href="${esc(String(r.recordings).startsWith('http') || String(r.recordings).startsWith('s3:') ? r.recordings : 'https://' + r.recordings)}" target="_blank" title="${esc(r.recordings)}">🔗 Recording</a>` : ''}</td>
+          <td>${esc(r.model)}</td>
+          <td>${esc(r.seating)}</td>
+          <td class="${r.exclusion_flag ? 'cell-terminal' : ''}">${esc(r.exclusion_flag)}</td>
+        `;
         tbody.appendChild(tr);
       }
 
       const cap = data.length > PREVIEW_LIMIT
-        ? `Showing first ${PREVIEW_LIMIT} of ${data.length} rows — full data in copied TSV`
+        ? `Showing first ${PREVIEW_LIMIT} of ${data.length} rows`
         : `${data.length} rows`;
       document.getElementById('tableCaption').textContent = cap;
       document.getElementById('tableWrapper').style.display = 'block';
@@ -1418,9 +1232,7 @@
     }
 
     function getPrioClass(disp) {
-      const p = getDispositionPriority(disp);
-      if (p >= 9) return 'cell-terminal';
-      return '';
+      return getDispositionPriority(disp) >= 9 ? 'cell-terminal' : '';
     }
 
     function esc(str) {
@@ -1452,34 +1264,15 @@
 
     async function exportToExcel() {
       if (!processedData.length) return;
-
       const rows = [HEADERS_TSV];
       for (const r of processedData) {
         rows.push([
-          r.lead_id,
-          r.full_name,
-          r.phone,
-          r.city,
-          r.pincode,
-          r.language,
-          r.lead_source,
-          r.cohort,
-          r.campaign_id,
-          r.call_triggered,
-          r.outcome,
-          r.disposition,
-          r.summary,
-          r.conversion,
-          r.call_date,
-          r.num_attempts,
-          r.sentiment,
-          r.recordings,
-          r.model,
-          r.seating,
-          r.exclusion_flag,
+          r.lead_id, r.full_name, r.phone, r.city, r.pincode, r.language,
+          r.lead_source, r.cohort, r.campaign_id, r.call_triggered,
+          r.outcome, r.disposition, r.summary, r.conversion, r.call_date,
+          r.num_attempts, r.sentiment, r.recordings, r.model, r.seating, r.exclusion_flag,
         ].map(v => typeof v === 'string' ? v.trim() : v));
       }
-
       const ws = XLSX.utils.aoa_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Processed Leads");
@@ -1489,31 +1282,13 @@
     // ─── COPY TO CLIPBOARD ────────────────────────────────────────────────────────
     async function copyData() {
       if (!processedData.length) return;
-
       const lines = [];
       for (const r of processedData) {
         const cols = [
-          r.lead_id,
-          r.full_name,
-          r.phone,
-          r.city,
-          r.pincode,
-          r.language,
-          r.lead_source,
-          r.cohort,
-          r.campaign_id,
-          r.call_triggered,
-          r.outcome,
-          r.disposition,
-          r.summary,
-          r.conversion,
-          r.call_date,
-          r.num_attempts,
-          r.sentiment,
-          r.recordings,
-          r.model,
-          r.seating,
-          r.exclusion_flag,
+          r.lead_id, r.full_name, r.phone, r.city, r.pincode, r.language,
+          r.lead_source, r.cohort, r.campaign_id, r.call_triggered,
+          r.outcome, r.disposition, r.summary, r.conversion, r.call_date,
+          r.num_attempts, r.sentiment, r.recordings, r.model, r.seating, r.exclusion_flag,
         ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '));
         lines.push(cols.join('\t'));
       }
@@ -1521,9 +1296,8 @@
 
       try {
         await navigator.clipboard.writeText(tsv);
-        showCopyFeedback('✅ Copied! Paste with Ctrl+V in Zoho.');
+        showCopyFeedback('ok');
       } catch {
-        // Fallback for file:// protocol
         const ta = document.createElement('textarea');
         ta.value = tsv;
         ta.style.position = 'fixed';
@@ -1533,19 +1307,22 @@
         ta.select();
         try {
           document.execCommand('copy');
-          showCopyFeedback('✅ Copied! Paste with Ctrl+V in Zoho.');
+          showCopyFeedback('ok');
         } catch {
-          showCopyFeedback('⚠️ Auto-copy failed — manually select and copy the table.', 'warn');
+          showCopyFeedback('warn');
         }
         document.body.removeChild(ta);
       }
     }
 
-    function showCopyFeedback(msg, type = 'ok') {
+    function showCopyFeedback(type) {
+      const msg = type === 'ok'
+        ? '✅ Copied! Paste with Ctrl+V in Zoho.'
+        : '⚠️ Auto-copy failed — manually select and copy the table.';
       setStatus('globalStatus', msg, type);
       const btn = document.getElementById('btnCopy');
       const orig = btn.innerHTML;
-      btn.innerHTML = '✅ Copied!';
+      btn.textContent = '✓ Copied';
       setTimeout(() => { btn.innerHTML = orig; }, 2000);
     }
 
@@ -1553,9 +1330,7 @@
     function resetAll() {
       rawFile1 = null; rawFile2 = null; processedData = [];
       ['f1', 'f2'].forEach(id => { document.getElementById(id).value = ''; });
-      ['dz1', 'dz2'].forEach(id => {
-        document.getElementById(id).classList.remove('has-file');
-      });
+      ['dz1', 'dz2'].forEach(id => { document.getElementById(id).classList.remove('has-file'); });
       ['st1', 'st2'].forEach(id => {
         const el = document.getElementById(id);
         el.className = 'dz-status';
@@ -1574,16 +1349,19 @@
     // ─── UI HELPERS ───────────────────────────────────────────────────────────────
     function setStatus(id, msg, type) {
       const el = document.getElementById(id);
+      if (!el) return;
       el.textContent = msg;
       el.className = 'status-msg' + (type ? ' ' + type : '');
     }
 
     function showOverlay(msg) {
+      isProcessing = true;
       document.getElementById('processingMsg').textContent = msg;
       document.getElementById('processingOverlay').style.display = 'flex';
     }
 
     function hideOverlay() {
+      isProcessing = false;
       document.getElementById('processingOverlay').style.display = 'none';
     }
 
@@ -1593,14 +1371,15 @@
       document.getElementById('btnProcess').disabled = !(rawFile1 && rawFile2);
     }
 
-    function setFileStatus(id, filename, rowHint) {
+    function setFileStatus(id, filename) {
       const el = document.getElementById(id);
+      if (!el) return;
       el.className = 'dz-status ok';
-      el.innerHTML = `✅ ${filename}${rowHint ? ` <span style="opacity:.6">(${rowHint})</span>` : ''}`;
+      el.textContent = `✅ ${filename}`;
     }
 
     // ─── FILE INPUT HANDLING ──────────────────────────────────────────────────────
-    document.getElementById('f1').addEventListener('change', async function () {
+    document.getElementById('f1').addEventListener('change', function () {
       if (!this.files[0]) return;
       rawFile1 = this.files[0];
       setFileStatus('st1', rawFile1.name);
@@ -1608,7 +1387,7 @@
       updateProcessBtn();
     });
 
-    document.getElementById('f2').addEventListener('change', async function () {
+    document.getElementById('f2').addEventListener('change', function () {
       if (!this.files[0]) return;
       rawFile2 = this.files[0];
       setFileStatus('st2', rawFile2.name);
@@ -1631,7 +1410,6 @@
         dz.classList.remove('drag-over');
         const file = e.dataTransfer.files[0];
         if (!file) return;
-        // Simulate setting the file input
         const dt = new DataTransfer();
         dt.items.add(file);
         fi.files = dt.files;
