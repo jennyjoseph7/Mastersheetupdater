@@ -42,9 +42,17 @@
       --radius-lg: 16px;
     }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-    html { scroll-behavior: smooth; }
+    html {
+      scroll-behavior: smooth;
+    }
 
     body {
       background: var(--bg);
@@ -72,7 +80,11 @@
       gap: 1rem;
     }
 
-    .header-left { display: flex; align-items: center; gap: 1rem; }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
 
     .header-badge {
       display: inline-flex;
@@ -243,7 +255,9 @@
       color: var(--danger);
     }
 
-    input[type=file] { display: none; }
+    input[type=file] {
+      display: none;
+    }
 
     /* ── ACTION BAR ───────────────────────────────────────────────────── */
     .action-bar {
@@ -269,7 +283,11 @@
       white-space: nowrap;
     }
 
-    .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
 
     .btn-primary {
       background: linear-gradient(135deg, var(--accent), var(--accent-dim));
@@ -341,9 +359,14 @@
     }
 
     .lang-select:hover,
-    .lang-select:focus { border-color: var(--accent); }
+    .lang-select:focus {
+      border-color: var(--accent);
+    }
 
-    .lang-select option { background: var(--surface); color: var(--text); }
+    .lang-select option {
+      background: var(--surface);
+      color: var(--text);
+    }
 
     .lang-select-wrapper::after {
       content: '';
@@ -372,9 +395,14 @@
     }
 
     .lead-id-input:hover,
-    .lead-id-input:focus { border-color: var(--accent); }
+    .lead-id-input:focus {
+      border-color: var(--accent);
+    }
 
-    .lead-id-input::placeholder { color: var(--text-muted); font-weight: 400; }
+    .lead-id-input::placeholder {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
 
     .status-msg {
       font-size: 0.78rem;
@@ -383,9 +411,17 @@
       min-width: 180px;
     }
 
-    .status-msg.ok { color: var(--success); }
-    .status-msg.err { color: var(--danger); }
-    .status-msg.warn { color: var(--warn); }
+    .status-msg.ok {
+      color: var(--success);
+    }
+
+    .status-msg.err {
+      color: var(--danger);
+    }
+
+    .status-msg.warn {
+      color: var(--warn);
+    }
 
     /* ── STATS BAR ────────────────────────────────────────────────────── */
     .stats-bar {
@@ -419,10 +455,21 @@
       margin-top: 0.15rem;
     }
 
-    .stat-val.blue { color: var(--accent); }
-    .stat-val.purple { color: #a78bfa; }
-    .stat-val.green { color: var(--success); }
-    .stat-val.amber { color: var(--warn); }
+    .stat-val.blue {
+      color: var(--accent);
+    }
+
+    .stat-val.purple {
+      color: #a78bfa;
+    }
+
+    .stat-val.green {
+      color: var(--success);
+    }
+
+    .stat-val.amber {
+      color: var(--warn);
+    }
 
     /* ── TABLE ─────────────────────────────────────────────────────────── */
     .table-wrapper {
@@ -493,8 +540,13 @@
       transition: background 0.1s;
     }
 
-    tbody tr:hover { background: rgba(255, 173, 58, 0.04); }
-    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover {
+      background: rgba(255, 173, 58, 0.04);
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
 
     tbody td {
       padding: 0.5rem 0.7rem;
@@ -506,15 +558,48 @@
       vertical-align: middle;
     }
 
-    .cell-phone { color: #7dd3fc; }
-    .cell-connected { color: var(--success); font-weight: 600; }
-    .cell-not-connected { color: var(--danger); }
-    .cell-terminal { color: var(--warn); font-weight: 600; }
-    .cell-url { color: var(--accent); max-width: 140px; overflow: hidden; text-overflow: ellipsis; display: block; }
-    .cell-unknown { color: var(--warn); font-style: italic; }
-    .cell-sentiment-high { color: var(--success); }
-    .cell-sentiment-mid { color: var(--warn); }
-    .cell-sentiment-low { color: var(--danger); }
+    .cell-phone {
+      color: #7dd3fc;
+    }
+
+    .cell-connected {
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    .cell-not-connected {
+      color: var(--danger);
+    }
+
+    .cell-terminal {
+      color: var(--warn);
+      font-weight: 600;
+    }
+
+    .cell-url {
+      color: var(--accent);
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+
+    .cell-unknown {
+      color: var(--warn);
+      font-style: italic;
+    }
+
+    .cell-sentiment-high {
+      color: var(--success);
+    }
+
+    .cell-sentiment-mid {
+      color: var(--warn);
+    }
+
+    .cell-sentiment-low {
+      color: var(--danger);
+    }
 
     /* ── FOOTER ────────────────────────────────────────────────────────── */
     footer {
@@ -525,7 +610,9 @@
       border-top: 1px solid var(--border);
     }
 
-    footer span { color: var(--text-dim); }
+    footer span {
+      color: var(--text-dim);
+    }
 
     /* ── PROCESSING OVERLAY ───────────────────────────────────────────── */
     .processing-overlay {
@@ -552,7 +639,11 @@
       font-size: 0.9rem;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
 
     .spinner {
       width: 28px;
@@ -565,20 +656,52 @@
 
     /* ── ANIMATIONS ────────────────────────────────────────────────────── */
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
-    .fade-in { animation: fadeIn 0.3s ease forwards; }
+    .fade-in {
+      animation: fadeIn 0.3s ease forwards;
+    }
 
     /* ── RESPONSIVE ────────────────────────────────────────────────────── */
     @media (max-width: 700px) {
-      .upload-grid { grid-template-columns: 1fr; }
-      .header-inner { flex-direction: column; align-items: flex-start; }
-      .header-steps { display: none; }
-      .action-bar { flex-direction: column; align-items: stretch; }
-      .btn { width: 100%; justify-content: center; }
-      header, main, footer { padding-left: 1rem; padding-right: 1rem; }
+      .upload-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .header-inner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .header-steps {
+        display: none;
+      }
+
+      .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      header,
+      main,
+      footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
     }
   </style>
 </head>
@@ -744,9 +867,7 @@
 
   <!-- Footer -->
   <footer>
-    Disposition Sync v2 &nbsp;·&nbsp; <span>JEJO — Lead Operations Automation</span><br>
-    AI/ML Intern: Kanniga (Jenny Joseph K.) &nbsp;·&nbsp; March 2026 &nbsp;·&nbsp; Runs entirely in browser — no data is
-    uploaded anywhere
+    Disposition Sync v2 &nbsp;·&nbsp; <span>JEJO — Disposition Automation</span><br>
   </footer>
 
   <script>
