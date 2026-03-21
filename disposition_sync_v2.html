@@ -511,6 +511,7 @@
     .cell-not-connected { color: var(--danger); }
     .cell-terminal { color: var(--warn); font-weight: 600; }
     .cell-url { color: var(--accent); max-width: 140px; overflow: hidden; text-overflow: ellipsis; display: block; }
+    .cell-unknown { color: var(--warn); font-style: italic; }
     .cell-sentiment-high { color: var(--success); }
     .cell-sentiment-mid { color: var(--warn); }
     .cell-sentiment-low { color: var(--danger); }
@@ -1113,9 +1114,14 @@
           const dispLower = disp.toLowerCase();
           const priority = getDispositionPriority(disp);
 
-          let outcome = 'Not Connected';
+          let outcome;
           if (CONNECTED_SET.has(dispLower)) {
             outcome = 'Connected';
+          } else if (NOT_CONNECTED_SET.has(dispLower) || DISPOSITION_PRIORITY.hasOwnProperty(dispLower)) {
+            outcome = 'Not Connected';
+          } else {
+            outcome = 'Unknown';
+            console.warn(`[Disposition Sync] Unknown disposition "${disp}" for phone ${phone} — mapped to "Unknown". Check for typos or add to DISPOSITION_PRIORITY / CONNECTED_SET / NOT_CONNECTED_SET.`);
           }
 
           const exclusion = priority >= TERMINAL_THRESHOLD ? 'YES' : '';
@@ -1208,7 +1214,7 @@
           <td>${esc(r.cohort)}</td>
           <td>${esc(r.campaign_id)}</td>
           <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${esc(r.call_triggered)}</td>
-          <td class="${r.outcome === 'Connected' ? 'cell-connected' : 'cell-not-connected'}">${esc(r.outcome)}</td>
+          <td class="${r.outcome === 'Connected' ? 'cell-connected' : r.outcome === 'Unknown' ? 'cell-unknown' : 'cell-not-connected'}">${esc(r.outcome)}</td>
           <td class="${getPrioClass(r.disposition)}">${esc(r.disposition)}</td>
           <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(r.summary)}</td>
           <td>${esc(r.conversion)}</td>
@@ -1321,9 +1327,9 @@
         : '⚠️ Auto-copy failed — manually select and copy the table.';
       setStatus('globalStatus', msg, type);
       const btn = document.getElementById('btnCopy');
-      const orig = btn.innerHTML;
+      if (!btn.dataset.origContent) btn.dataset.origContent = btn.innerHTML;
       btn.textContent = '✓ Copied';
-      setTimeout(() => { btn.innerHTML = orig; }, 2000);
+      setTimeout(() => { btn.innerHTML = btn.dataset.origContent; }, 2000);
     }
 
     // ─── RESET ────────────────────────────────────────────────────────────────────

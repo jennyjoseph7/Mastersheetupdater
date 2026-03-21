@@ -114,15 +114,20 @@ which would misread `9/3/2026` as September 3rd instead of March 9th.
 
 ### Outcome
 Connected dispositions → "Connected":
-- contacted
-- reached
-- engaged
-- converted
+- Contacted
+- Reached
+- Engaged
+- Converted
 
 Not Connected dispositions → "Not Connected":
-- attempted
-- busy
-- any other value (default)
+- Attempted
+- Busy
+- Any value listed in the Exclusion Flag priority table below
+
+Unrecognized dispositions → "Unknown":
+- Any value not listed in either set above or in the priority table
+- A console warning is logged when this occurs (check browser DevTools)
+- Indicates a possible typo or a new disposition that should be added to the code
 
 ---
 
