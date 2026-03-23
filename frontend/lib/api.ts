@@ -280,7 +280,7 @@ export async function generateOTP(contact: string, type: "whatsapp" | "email") {
     headers: {
       "Content-Type": "application/json",
       "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
+      "X-GRYD-SIGNUP-TOKEN": process.env.NEXT_PUBLIC_SIGNUP_API_KEY || "",
     },
     body: JSON.stringify(requestBody),
     cache: "no-store",
@@ -326,7 +326,7 @@ export async function dealershipSignup(data: DealershipSignupRequest) {
     headers: {
       "Content-Type": "application/json",
       "X-GRYD-ENTERPRISE-ID": "autocrm",
-      "X-GRYD-SIGNUP-TOKEN": "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
+      "X-GRYD-SIGNUP-TOKEN": process.env.NEXT_PUBLIC_SIGNUP_API_KEY || "",
     },
     body: JSON.stringify(data),
     cache: "no-store",

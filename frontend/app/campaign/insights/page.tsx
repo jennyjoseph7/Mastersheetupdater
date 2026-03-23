@@ -39,7 +39,12 @@ import {
   Legend,
   LabelList,
 } from "recharts";
-
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { FileText } from "lucide-react";
 // --- UI Component Imports ---
 import {
   Card,
@@ -1136,6 +1141,7 @@ function CampaignInsightsContent() {
                               <div className="flex items-center justify-center">Status {getSessionSortIcon("status")}</div>
                             </TableHead>
                             <TableHead className="font-semibold text-slate-600">Intent</TableHead>
+                         <TableHead className="font-semibold text-slate-600 w-[220px]">Summary</TableHead>
                             <TableHead className="font-semibold text-slate-600 text-center w-[180px]">Emotional Analysis</TableHead>
                             <TableHead className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group text-right" onClick={() => handleSessionSort("duration")}>
                               <div className="flex items-center justify-end">Duration {getSessionSortIcon("duration")}</div>
@@ -1173,6 +1179,35 @@ function CampaignInsightsContent() {
                               <TableCell className="text-slate-600 text-xs truncate max-w-[150px]" title={session.disposition_detail}>
                                 {session.disposition_detail || "-"}
                               </TableCell>
+{/* ... after the Intent Cell */}
+<TableCell className="max-w-[220px]">
+  {session.summary ? (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="flex items-start gap-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 p-1.5 rounded-md transition-all group w-full">
+          <FileText className="h-3.5 w-3.5 mt-0.5 text-slate-400 group-hover:text-indigo-500 shrink-0" />
+          <span className="line-clamp-2 text-[11px] leading-relaxed text-slate-500 group-hover:text-slate-900 dark:group-hover:text-slate-200">
+            {session.summary}
+          </span>
+        </button>
+      </PopoverTrigger>
+      
+      <PopoverContent className="w-80 shadow-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-0 overflow-hidden">
+        <div className="bg-slate-50 dark:bg-slate-900/50 px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+          <FileText className="h-3.5 w-3.5 text-indigo-500" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Call Summary</span>
+        </div>
+        <div className="p-4">
+          <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+            {session.summary}
+          </p>
+        </div>
+      </PopoverContent>
+    </Popover>
+  ) : (
+    <span className="text-slate-300 text-xs italic pl-2">No summary</span>
+  )}
+</TableCell>
                               <TableCell className="text-center">
                                 <div className="flex flex-col items-center justify-center gap-1.5 py-1">
                                   {session.sentiment_score !== undefined && session.sentiment_score !== null && (

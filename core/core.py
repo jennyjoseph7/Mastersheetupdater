@@ -1377,7 +1377,8 @@ def payment_service(*args, **kwargs):
             payment_service(
                 "purchase_credit",
                 dealership_id=daveai,
-                credits=50
+                credits=50,
+                currency=INR
             )
 
     2. "verify_payment"
@@ -1437,13 +1438,14 @@ def payment_service(*args, **kwargs):
 
     if service == "purchase_credit":
         validate_kwargs(
-            ["dealership_id", "credits"],
+            ["dealership_id", "credits", "currency"],
             kwargs
         )
 
         return create_credit_purchase(
             kwargs["dealership_id"],
-            kwargs["credits"]
+            kwargs["credits"],
+            kwargs["currency"]
         )
 
     elif service == "verify_payment":

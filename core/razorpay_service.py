@@ -85,13 +85,13 @@ def create_credit_purchase(dealership_id: str, credits: int, currency="INR"):
     # Use total_amount from VAT calculator (includes taxes)
     total_amount = final_cost_obj["total_amount"]
 
-    # Gateway amount
-    if currency.upper() == "INR":
-        amount_gateway = int(round(total_amount * 100))
-    else:
-        amount_gateway = round(total_amount, 2)
+    ZERO_DECIMAL_CURRENCIES = {"JPY", "KRW", "VND"}
 
-    # Create Razorpay order
+    if currency.upper() in ZERO_DECIMAL_CURRENCIES:
+        amount_gateway = int(total_amount)
+    else:
+        amount_gateway = int(round(total_amount * 100))
+
     order = client.order.create({
         "amount": amount_gateway,
         "currency": currency,
