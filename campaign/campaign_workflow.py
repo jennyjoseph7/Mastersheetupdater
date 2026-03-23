@@ -112,6 +112,11 @@ CHANNEL_LAST_CONTACTED_MAP = {
 }
 
 CAMPAIGN_WORKFLOW = {
+    "queued": {
+        "retries": 10,
+        "delay": 0,
+        "trigger": None
+    },
     "failed": {
         "retries": 10,
         "delay_type": "exponential",
@@ -124,12 +129,12 @@ CAMPAIGN_WORKFLOW = {
     },
     "attempted": {
         "retries": 3,
-        "delay": 3600,
+        "delay": 300,
         "trigger": "switch_to_next_credential"
     },
     "reached": {
         "retries": 0,
-        "delay": 3600,
+        "delay": 1200,
         "trigger": "switch_to_next_channel"
     },
     "contacted": {
@@ -191,7 +196,7 @@ def sort_channel_by_cheapest(channels: list, current_channel: str = None):
 def get_highest_status(statuses: list):
     if not statuses:
         return "queued"
-    mstatuses = set(map(lambda x: x.get('status'), statuses))
+    mstatuses = set(map(lambda x: DISPOSITION_MAP.get(x.get('status'), x.get('status')), statuses))
     for k in ["contacted", "reached", "attempted", "failed", "error", "queued"]:
         if k in mstatuses:
             return k
@@ -203,7 +208,7 @@ def get_attempts(statuses: list, status: str):
 def get_next_delay(status: str, attempts: int, workflow_stage: dict, timezone: str = None):
     timezone = timezone or "Asia/Kolkata"
     next_delay_type = workflow_stage.get('delay_type', 'linear')
-    next_delay = workflow_stage.get('delay', 0)
+    next_delay = workflow_stage.get('delay', 1) or 1
     if next_delay_type == "exponential":
         next_delay = next_delay * 2 ** (attempts - 1)
     elif next_delay_type == "linear":
@@ -217,7 +222,7 @@ def get_next_delay(status: str, attempts: int, workflow_stage: dict, timezone: s
     return next_delay
 
 def get_remaining_retries(workflow_stage: dict, attempts: int = 0):
-    return max(0, workflow_stage.get('retries', 0) - attempts)
+    return max(0, (workflow_stage.get('retries', 0) or 0) - attempts)
 
 def get_statuses(channel: str, channel_type: str, channel_identifier: str, status_model: AutocrmModel = None, campaign_id: str = None, dealership_id: str = None, logger=None):
     logger = logger or mlogger
@@ -227,13 +232,11 @@ def get_statuses(channel: str, channel_type: str, channel_identifier: str, statu
     if not channel_type:
         raise ValueError(f"Invalid channel: {channel}, doing nothing.")
     kws = {"channel": channel, channel_type: channel_identifier, "_sort_by": "updated", "_sort_reverse": True, "_as_option":True, "_page_size":100}
-    if channel_type == "phone_number":
-        kws["channel"] = channel
     if campaign_id:
         kws["campaign_id"] = campaign_id
     if dealership_id:
         kws["dealership_id"] = dealership_id
-    statuses = DEBUG_STATUS or status_model.list(**kws)
+    statuses = list(filter(lambda x: x.get('channel') == channel, DEBUG_STATUS)) if DEBUG_STATUS else status_model.list(**kws)
     if not statuses and dealership_id:
         kws.pop("dealership_id", None)
         statuses = status_model.list(**kws)
@@ -249,12 +252,13 @@ def get_channel_identifier_from_lead(channel: str, lead: dict, channel_identifie
     logger = logger or mlogger
     st = hp.time()
     channel_identifier_list = []
-    if channel == "phone_number":
-        channel_identifier_list = get_phone_number_identifier_from_lead(channel, lead, logger=logger)
-    elif channel == "email":
+    channel_type = CHANNEL_IDENTIFIER_MAP.get(channel)
+    if channel_type == "phone_number":
+        channel_identifier_list = get_phone_number_identifier_from_lead(channel_type, lead, logger=logger)
+    elif channel_type == "email":
         channel_identifier_list = get_email_identifier_from_lead(lead, logger=logger)
     else:
-        logger.error(f"Invalid channel: {channel}, doing nothing.")
+        logger.error(f"Invalid channel: {channel}, doing nothing. channel_type: {channel_type}")
     if channel_identifier:
         channel_identifier_list = channel_identifier_list[channel_identifier_list.index(channel_identifier):]
     logger.info(f"Time taken to get channel identifier: {hp.time() - st} seconds")
@@ -280,6 +284,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
         or None if no next action is found, we have to continue with the same action.
     """
     logger = logger or mlogger
+    auth = auth or {}
     st = hp.time()
     logger.info("Loading models for get_channel_from_lead")
     enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
@@ -288,6 +293,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
     region_model = AutocrmModel('region')
     region_subdivision_model = AutocrmModel('region_subdivision')
     workflow = workflow or CAMPAIGN_WORKFLOW
+    logger.debug(f"Workflow: {workflow}")
     disposition = disposition or "queued"
     logger.info(f"Loaded models for get_channel_from_lead in {hp.time() - st} seconds")
     channels = campaign_details.get('channels') or ["voice_phone"]
@@ -298,6 +304,8 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
     else:
         region = region_model.get(campaign_details.get('region_id'))
         timezone = hp.make_single(region.get('timezones'), default = "Asia/Kolkata", force = True)
+    current_channel = current_channel or lead.get('last_contacted_channel')
+    logger.info(f"Current channel: {current_channel}")
     channels = sort_channel_by_cheapest(channels, current_channel=current_channel)
     logger.info(f"Checking for channels: {channels} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
     for channel in channels:
@@ -316,6 +324,9 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
                 return channel, channel_identifier, 0, None
             last_status = hp.make_single(statuses, force = True)
             highest_status = get_highest_status(statuses)
+            logger.info(f"Highest status: {highest_status}")
+            if highest_status == "queued":
+                return channel, channel_identifier, 0, None
             if highest_status != "contacted":
                 attempts = get_attempts(statuses, highest_status)
                 workflow_stage = (workflow or {}).get(highest_status) or CAMPAIGN_WORKFLOW.get(highest_status)
@@ -328,12 +339,17 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
             else:
                 # We have connected, so we need to follow up with the contact.
                 workflow_stage = (workflow or {}).get(disposition) or CAMPAIGN_WORKFLOW.get(disposition)
+                logger.info(f"Workflow stage for disposition: {disposition} is {workflow_stage}")
                 attempts = get_attempts(statuses, "contacted") # We need to count the number of times we have contacted.
+                logger.info(f"Attempts: {attempts}")
                 if disposition in ["engaged", "converted"]:
                     attempts /= workflow_stage.get('retries', 0) # We need to calculate attempts per contact.
+                    logger.info(f"Attempts per contact: {attempts}")
                 next_delay = get_next_delay(highest_status, attempts, workflow_stage)
+                logger.info(f"Next delay: {next_delay}")
                 #TODO: If user has requested call-back, then we should get next delay from the lead follow_up_date attribue if available
                 next_retries = get_remaining_retries(workflow_stage, attempts)
+                logger.info(f"Next retries: {next_retries}")
                 if next_retries > 0:
                     return channel, channel_identifier, next_delay, None
                 trigger = workflow_stage.get('trigger', 'follow_up_contact')
@@ -417,6 +433,8 @@ def remap_workflow(workflows: dict, campaign_id: str, dealership_id: str, campai
     logger = logger or mlogger
     st = hp.time()
     ret = {}
+    if not workflows:
+        return CAMPAIGN_WORKFLOW
     def get_right_workflow(status):
         kws = {
             "dealership_id": dealership_id,
@@ -426,11 +444,11 @@ def remap_workflow(workflows: dict, campaign_id: str, dealership_id: str, campai
         }
         opts = ["dealership_id", "campaign_objective_id", "campaign_type", "status"]
         for k in range(len(opts)):
-            rws = filter(lambda x: all(x.get(o) == kws.get(o) for o in opts), workflows)
+            rws = list(filter(lambda x: all(x.get(o) == kws.get(o) for o in opts), workflows))
             if rws:
-                return hp.make_single(rws)
+                return hp.make_single(rws, force = True)
             opts.pop(0)
-        return CAMPAIGN_WORKFLOW
+        return CAMPAIGN_WORKFLOW.get(status)
 
     for status in PROVIDER_STATUS_MAP:
         workflow = get_right_workflow(status)
@@ -459,13 +477,14 @@ def get_values_from_details(campaign_type, lead_id, lead_id_attr, lead_model, us
             _id_value = lead.get(_id_attr)
             _detail = _debug or _model.get(_id_value)
         if not _detail:
-            str_msg = f"No {_model.name} found for {_id_attr}={_id_value}, campaign_type={campaign_type}, enterprise_id={enterprise_id}"
+            str_msg = f"No {_model.name} found for {_id_attr}={_id_value}, campaign_type={campaign_type}, enterprise_id={AUTOCRM_APP_ENTERPRISE_ID}"
             logger.error(str_msg)
             raise ValueError(str_msg)
         _values[_name] = {
             "id": _id_value,
             "object": _detail
         }
+    return _values
 
 @gryd.is_a_task(function_name="determine_campaign_next_action", job_param='job', auth_param='auth', logger_param='logger')
 def determine_campaign_next_action(
@@ -514,15 +533,17 @@ def determine_campaign_next_action(
         }
         or None if no next action is found.
     """
+    auth = auth or {}
     enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
     logger = logger or mlogger
+    st = hp.time()
     campaign_type = campaign_type.lower().replace('_', '-')
     if isinstance(channel, str):
         channel = channel.lower()
     campaign_model, lead_model, user_model, user_id_attr, lead_id_attr = get_model_and_attrs(campaign_type)
     dealership_model = gryd.base_model.Model('dealership', enterprise_id)
     campaign_objective_model = gryd.base_model.Model('campaign_objective', enterprise_id)
-    _values = get_values_from_details(campaign_type, lead_id, lead, lead_id_attr, lead_model, user_id_attr, user_model, campaign_model, dealership_model, campaign_objective_model, logger)
+    _values = get_values_from_details(campaign_type, lead_id, lead_id_attr, lead_model, user_id_attr, user_model, campaign_model, dealership_model, campaign_objective_model, logger = logger)
     lead = _values.get('lead', {}).get('object')
     campaign_details = _values.get('campaign', {}).get('object')
     campaign_id = _values.get('campaign', {}).get('id') 
@@ -533,7 +554,7 @@ def determine_campaign_next_action(
     workflow_model = gryd.base_model.Model('campaign_workflow', enterprise_id)
     if not disposition:
         disposition = "queued"
-    dispostion = dispostion.lower() 
+    disposition = disposition.lower() 
     disposition = DISPOSITION_MAP.get(disposition)
     if not disposition:
         str_msg = f"Invalid disposition: {disposition} for campaign_type={campaign_type}, channel={channel}, enterprise_id={enterprise_id}"
@@ -552,13 +573,17 @@ def determine_campaign_next_action(
         campaign_objective_id=_values.get('campaign_objective', {}).get('id'),
         workflow_stage=workflow_stage
     )
+    logger.info(f"Workflows before remapping: {workflows}")
     workflow = remap_workflow(workflows, campaign_id=campaign_details.get('campaign_id'), dealership_id=dealership_id, campaign_objective_id=campaign_details.get('campaign_objective_id'), campaign_type=campaign_type, logger=logger)
+    logger.info(f"Workflow after remapping: {workflow}")
     channel, channel_identifier, delay, trigger = get_channel_from_lead(lead, campaign_details, workflow=workflow, channel=channel, disposition=disposition, logger=logger)
+    logger.info(f"Channel: {channel}, Channel identifier: {channel_identifier}, Delay: {delay}, Trigger: {trigger}")
+    logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
     if kwargs.get('debug', False):
         return {
             "next_channel": channel,
             "next_channel_identifier": channel_identifier,
-            "next_schedule_time": hp.now() + hp.timedelta(seconds=delay),
+            "next_schedule_time": str(hp.now() + hp.timedelta(seconds=delay)),
             "trigger": trigger
         }
     if channel and channel_identifier:
@@ -628,7 +653,7 @@ if __name__ == "__main__":
         },
         {
             "status": "contacted",
-            "channel": "whatsapp_chat",
+            "channel": "voice_phone",
         },
         {
             "status": "attempted",
@@ -690,8 +715,8 @@ if __name__ == "__main__":
         "campaign_objective_description": "To engage digitally influenced buyers who prioritize infotainment, connectivity, and in-car technology, and drive Test Drive bookings through structured WhatsApp engagement.",
         "reasons_users_may_not_be_interested": "If customer seems low on tech interest - Don't ask to learn but speak to test a hypothesis and guage if they maybe interested in safety or family or another key feature. And then lead into it. Keep pitch warm and short. \n - If customer is busy “No problem at all. When would be a better time to call you back?” (Optional)  “I just want to make sure you don’t miss available test drive slots.” \n - If customer is just browsing “That’s completely fine. A test drive usually helps people decide faster.” “There’s no commitment at all.” “Would this weekend work, or sometime next week?” \n - If price feels high “I understand. Budget matters.” “There are financing and exchange options that often surprise people.” “Would you like me to quickly check what might work better for you?” \n - If comparing with other brands “That’s smart.” “Many customers compare before deciding.” “Instead of explaining, I’d suggest a short test drive — it gives real clarity.” “Would you like me to arrange that?”  \n - If they want to wait “I get that.” “Just so you know, current offers and availability may change later.” “I can keep you updated.” “What’s more important for you — timing or features?” \n - If they got a better deal elsewhere “Thanks for sharing that.” “Let me see what we can do on our side.” “What exactly did they offer?” \n - if they had a bad past experience “I’m really sorry to hear that.” “A lot has changed, especially service-wise.” “I’d love to give you a fresh experience — even just a drive.” \n - If family decision is involved “Of course, that makes sense.” “Would it help if everyone experienced the car together?” “I can arrange a family test drive.” \n - If worried about maintenance “That’s a valid concern.” “We have clear service packages — no surprises.” “I can explain that briefly or share it on WhatsApp.” \n - If unsure about variant “No worries — that’s very common.” “Let me ask you one or two quick questions and I’ll suggest what fits best.” \n - If they want time to think “Absolutely.” “I’ll send you the brochure and a short video.” “Would you like me to follow up, or should I wait for you to reach out?” "
     }
-    DEBUG_LEAD["disposition"] = DISPOSITION_MAP[DEBUG_STATUS[0]["status"]]
-    DEBUG_LEAD["last_session_channel"] = DEBUG_STATUS[0]["channel"]
+    DEBUG_LEAD["disposition"] = get_highest_status(DEBUG_STATUS) or DISPOSITION_MAP[DEBUG_STATUS[0]["status"]]
+    DEBUG_LEAD["last_session_channel"] = get_previous_contacted_channel(DEBUG_STATUS)
     DEBUG_LEAD["last_interaction_time"] = hp.now()
     DEBUG_USER = {
         "user_id": "123",
@@ -826,7 +851,7 @@ if __name__ == "__main__":
         lead_id="123",
         channel="whatsapp_chat",
         channel_identifier="+919876543210",
-        disposition="queued",
+        disposition="attempted",
         disposition_detail="Test Disposition Detail",
         debug = True
     ))
