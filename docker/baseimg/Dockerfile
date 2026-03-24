@@ -13,4 +13,4 @@ RUN pip install pyaudio
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 RUN pip install -U pip setuptools
 RUN pip install --ignore-installed -r requirements.txt
-RUN pip install --ignore-installed -r spark/requirements.txt
+RUN pip install --ignore-installed -r spark_requirements.txt
