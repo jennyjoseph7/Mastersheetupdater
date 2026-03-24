@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -yy
 RUN apt install software-properties-common zip unzip python3-pip redis-tools libpq-dev curl jq -yy
