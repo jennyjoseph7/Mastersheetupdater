@@ -1104,13 +1104,17 @@ export default function CampaignDashboard() {
                           <TableCell>
                             {getStatusBadge(campaign.campaign_status)}
                           </TableCell>
-                          <TableCell>
-                            {campaign.launchDate || campaign.start_date
-                              ? epochToIST(
-                                  campaign.launchDate || campaign.start_date,
-                                )
-                              : "-"}
-                          </TableCell>
+                       <TableCell>
+                        {campaign.launchDate || campaign.start_date
+                          ? new Date(
+                              Number(campaign.launchDate || campaign.start_date) * 1000
+                            ).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            })
+                          : "-"}
+                      </TableCell>
                           <TableCell>
                             <Button
                               variant="ghost"
