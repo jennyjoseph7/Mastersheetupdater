@@ -38,7 +38,7 @@ from os.path import (
 )
 
 from validate_email import validate_email
-
+from campaign.campaign_workflow import determine_campaign_next_action
 # --- Set import path for internal modules ---
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME
@@ -218,7 +218,7 @@ def get_or_create_session(data,channel=None,engaged=False):
     Find active session or create new one.
     session_live=True AND status != completed
     """
-    logger.info(f"In create or get session function. User id: {data.get('user_id')}, data: {data}")
+    logger.info(f"In create or get session function. User id: {data.get('user_id')}, data: {data} and engaged flag:{engaged}")
     
     filters = {
         "session_id":data.get("session_id"),
@@ -263,10 +263,12 @@ def get_or_create_session(data,channel=None,engaged=False):
                 logger.info("Session has exisiting campaign_id. So we are returning the existing session.")
                 previous_disposition = sessions[0].get("disposition")
                 session_id = sessions[0].get("session_id")
+                # TODO:check condition for voice_phone also
                 if channel in ["whatsapp_chat","rcs"]:
                     channel_identifier=sessions[0].get("phone_number")
                 elif channel in ["email"]:
                     channel_identifier=sessions[0].get("email")
+                    
                 # Case 1: already engaged → do nothing
                 if previous_disposition == "engaged":
                     logger.info(f"Session {session_id} already engaged. Nothing to do.")
@@ -277,9 +279,10 @@ def get_or_create_session(data,channel=None,engaged=False):
                     call_next_campaign_workflow_task(sessions[0].get("campaign_id"),sessions[0].get("campaign_type"),sessions[0].get("lead_id"),sessions[0].get("channel"),channel_identifier,data.get("disposition"),pg=pg)
                 # Case 3: anything else → update the disposition to engaged
                 else:
-                    logger.info(f"Since the user has interacted . Updating the disposition from {previous_disposition} to engaged for session {session_id}.")
-                    logger.info(f"Calling determine_campaign_next_action for the session_id: {session_id}--> diposition is set to engaged.")
-                    call_next_campaign_workflow_task(sessions[0].get("campaign_id"),sessions[0].get("campaign_type"),sessions[0].get("lead_id"),sessions[0].get("channel"),channel_identifier,"engaged",pg=pg)
+                    if engaged:
+                        logger.info(f"Since the user has interacted . Updating the disposition from {previous_disposition} to engaged for session {session_id}.")
+                        logger.info(f"Calling determine_campaign_next_action for the session_id: {session_id}--> diposition is set to engaged.")
+                        call_next_campaign_workflow_task(sessions[0].get("campaign_id"),sessions[0].get("campaign_type"),sessions[0].get("lead_id"),sessions[0].get("channel"),channel_identifier,"engaged",pg=pg)
 
                     pg.update("session","session_id",session_id,{"disposition":"engaged"})
                     
@@ -531,12 +534,12 @@ def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,c
     if not campaign_id:
         logger.error(f"campaign_id is required for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
         return
-    
+    campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
     def _do_db_work(pg_conn):
-        a=list(pg_conn.list("campaign", campaign_id, {"status": "Active"}))
-        if not a:
-            logger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
-            return
+        a=list(pg_conn.list(campaign_model, {"campaign_status": "Active"}))
+        # if not a:
+        #     logger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
+        #     return
         # TODO:before calling ananth task check the campaign status and then call.. 
         logger.info(f"Calling next campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
         gryd.create_async_task(
@@ -545,6 +548,7 @@ def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,c
             args=[campaign_type,lead_id,channel,channel_identifier,disposition],
             kwargs={}
         )
+        # determine_campaign_next_action(campaign_type,lead_id,channel,channel_identifier,disposition,pg_conn)
 
     if pg:
         _do_db_work(pg)

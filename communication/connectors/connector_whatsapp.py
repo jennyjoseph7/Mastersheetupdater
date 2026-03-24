@@ -428,7 +428,6 @@ def update_lead_disposition(pg, incoming_status, user_id=None, **data):
     campaign_type = data.get("campaign_type")
     campaign_id = data.get("campaign_id")
     channel = data.get("channel")
-    
     session_id = data.get("session_id") or None
     
     lead_table = (
@@ -514,7 +513,7 @@ def update_lead_disposition(pg, incoming_status, user_id=None, **data):
     # call determine_campaign_next_action task
     if incoming_status not in [ "queued" ]: #call even for status queued.
         logger.info(f"[post_contact_status] Calling determine_campaign_next_action for lead_id={lead_id} and incoming_status={incoming_status}-----")
-        call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,data.get("mobile_number"),incoming_status,pg=pg)
+        call_next_campaign_workflow_task(campaign_id,campaign_model,campaign_type,lead_id,channel,data.get("mobile_number"),incoming_status,pg=pg)
     return update_payload
 
 def post_billing_obj(**message_dict):
