@@ -822,10 +822,14 @@ function CampaignInsightsContent() {
                       setCurrentPage(1);
                     }}
                   >
-                    <option value="all">Status: All</option>
+                    <option value="all">Disposition: All</option>
                     <option value="queued">Queued</option>
                     <option value="engaged">Engaged</option>
                     <option value="contacted">Contacted</option>
+                    <option value="busy">Busy</option>
+                    <option value="reached">Reached</option>
+                    <option value="converted">Converted</option>
+
                   </select>
 
                   <select 
