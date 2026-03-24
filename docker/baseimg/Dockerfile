@@ -10,7 +10,9 @@ RUN apt-get update && apt-get install -y \
     vim 
 RUN pip install pyaudio
 
+COPY requirements.txt /tmp
+COPY spark_requirements.txt /tmp
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 RUN pip install -U pip setuptools
-RUN pip install --ignore-installed -r requirements.txt
-RUN pip install --ignore-installed -r spark_requirements.txt
+RUN pip install --ignore-installed -r /tmp/requirements.txt
+RUN pip install --ignore-installed -r /tmp/spark_requirements.txt
