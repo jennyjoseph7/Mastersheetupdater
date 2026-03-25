@@ -24,6 +24,11 @@ export PROCESS_SEARCH_STRING=${PROCESS_SEARCH_STRING:-$WORKER_ENTRYPOINT}
 export SERVER_PORT=${SERVER_PORT:-0}
 export PRIMARY=${PRIMARY:-0}
 
+export WAITRESS_PATH=waitress-serve
+export CRON_SCHEDULER_PATH=execute-cron-continuous
+export CRON_WORKER_PATH=cron_worker
+
+
 function stop_workers() {
 
     pid_file_path=$BASE_PATH/$APP_NAME/worker.pid
@@ -92,7 +97,7 @@ function start_workers() {
         exist
     fi
 
-	export worker_path="worker"
+	export worker_path=$WORKER_PATH
 	echo "Container is set to true."
 	echo "Creating pid file."
 	echo FG > ./worker.pid
@@ -112,14 +117,21 @@ function start_workers() {
 }
 
 function main() {
+    if [ $PYTHON_VENV != 0 ];then
+    	export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
+    	export WORKER_PATH=$PYTHON_VENV/bin/worker
+    	export CRON_SCHEDULER_PATH=$PYTHON_VENV/bin/execute-cron-continuous
+    	export CRON_WORKER_PATH=$PYTHON_VENV/bin/cron_worker
+    fi
+
     if [ $SETUP_WEBAPP == "True" ];then
         echo "Setting up webapp."
 		WEBAPP_PORT=$SERVER_PORT
 		WEBAPP_URL_SCHEME=${URL_SCHEME:-https}
 		WEBAPP_API_THREADS=$PARALLEL_THREADS
 		WEBAPP_APP_NAME=${APP_NAME:-app}
-			
-		nohup waitress-serve --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log &
+	
+		nohup $WAITRESS_PATH --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log &
 
 	    app_pid=$!
 		echo $app_pid > app.pid
@@ -140,7 +152,7 @@ function main() {
 		if [ $stat != 0 ];then
 			echo "Process exited or not started. Starting."
 			echo "Starting Cron Continuous in BG. Logs are written to ${LOGDIR}/${a}_stderr.log and ${LOGDIR}/${a}_stdout.log"
-			nohup execute-cron-continuous 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+			nohup $CRON_SCHEDULER_PATH 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
@@ -170,9 +182,9 @@ function main() {
 			echo "Process exited or not started. Starting."
 			echo "Starting Cron Worker in BG. Logs are written to ${LOGDIR}/${a}_stderr.log and ${LOGDIR}/${a}_stdout.log"
 			if [ $PRIMARY == 0 ];then
-				nohup cron_worker -n $PARALLEL_THREADS 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+				nohup $CRON_WORKER_PATH -n $PARALLEL_THREADS 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 			else
-				nohup cron_worker -n $PARALLEL_THREADS --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+				nohup $CRON_WORKER_PATH -n $PARALLEL_THREADS --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 			fi
 			w_pid=$!
 			echo "PID is $w_pid"
