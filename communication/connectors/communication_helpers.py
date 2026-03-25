@@ -41,7 +41,7 @@ from validate_email import validate_email
 from campaign.campaign_workflow import determine_campaign_next_action
 # --- Set import path for internal modules ---
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID
 from gryd_worker import gryd, gryd_helpers as hp,gryd_db_helper as db
 logger=gryd.logger
 
@@ -546,7 +546,7 @@ def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,c
             "determine_campaign_next_action",
             AUTOCRM_CAMPAIGN_SERVICE_NAME,
             args=[campaign_type,lead_id,channel,channel_identifier,disposition],
-            kwargs={}
+            kwargs={"enterprise_id": AUTOCRM_APP_ENTERPRISE_ID},
         )
         # determine_campaign_next_action(campaign_type,lead_id,channel,channel_identifier,disposition,pg_conn)
 

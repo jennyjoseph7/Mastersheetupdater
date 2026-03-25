@@ -450,22 +450,11 @@ def update_lead_disposition(pg, incoming_status, user_id=None, **data):
 
     lead = lead_d[0]
 
+    field_name, field_value = get_channel_field(channel,data)
+
     if campaign_type == "post-sales" and user_id and channel:
         persons = lead.get("persons_involved") or []
 
-        channel_field_map = {
-            "whatsapp_chat": (
-                "last_contacted_whatsapp_number",
-                data.get("mobile_number") or data.get("phone_number"),
-            ),
-            "email": ("last_contacted_email", data.get("email")),
-            "voice_phone": (
-                "last_contacted_phone_number",
-                data.get("phone_number"),
-            ),
-        }
-
-        field_name, field_value = channel_field_map.get(channel, (None, None))
 
         if field_name and field_value:
             update_payload["persons_involved"] = [
@@ -510,11 +499,30 @@ def update_lead_disposition(pg, incoming_status, user_id=None, **data):
             update_payload,
         )
     
+    logger.info(f"Field value for {channel} is {field_value}")
     # call determine_campaign_next_action task
     if incoming_status not in [ "queued" ]: #call even for status queued.
         logger.info(f"[post_contact_status] Calling determine_campaign_next_action for lead_id={lead_id} and incoming_status={incoming_status}-----")
-        call_next_campaign_workflow_task(campaign_id,campaign_model,campaign_type,lead_id,channel,data.get("mobile_number"),incoming_status,pg=pg)
+        _number=data.get("phone_number") or data.get("mobile_number")
+        call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,_number,incoming_status,pg=pg)
     return update_payload
+
+def get_channel_field(channel, data):
+    channel_field_map = {
+        "whatsapp_chat": (
+            "last_contacted_whatsapp_number",
+            data.get("mobile_number") or data.get("phone_number"),
+        ),
+        "email": (
+            "last_contacted_email",
+            data.get("email")
+        ),
+        "voice_phone": (
+            "last_contacted_phone_number",
+            data.get("phone_number"),
+        ),
+    }
+    return channel_field_map.get(channel, (None, None))
 
 def post_billing_obj(**message_dict):
     wa_status=message_dict.get("message_status")
