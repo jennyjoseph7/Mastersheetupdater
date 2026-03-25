@@ -4,7 +4,7 @@ export BASE_PATH=${BASE_PATH:-$(dirname `pwd`)}
 export APP_NAME=${APP_NAME:-$(basename `pwd`)}
 export ENVIRONMENT=${ENVIRONMENT:-production}
 export POSTGRES_URL=${POSTGRES_URL}
-export PYTHON_VENV=${PYTHON_VENV:-"./pyenv"}
+export PYTHON_VENV=${PYTHON_VENV:-0}
 export PARALLEL_THREADS=${PARALLEL_THREADS:-10}
 export SHUTDOWN_TIME=${SHUTDOWN_TIME:-55}
 export PROCESS_SEARCH_STRING=${PROCESS_SEARCH_STRING:-$WORKER_ENTRYPOINT}
@@ -345,6 +345,9 @@ function start_workers() {
 }
 
 function main() {
+	if [ $PYTHON_VENV != 0 ];then
+		source $PYTHON_VENV/bin/activate
+	fi
 	start_default_workers
 	start_workers
 }
