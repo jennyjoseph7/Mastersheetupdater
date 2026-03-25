@@ -3,6 +3,7 @@ import os, sys, json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 import utils
 from flask import Flask, app, request, jsonify, Blueprint
+from ..utils import helpers as voice_helpers
 import datetime
 from datetime import datetime
 import pytz
@@ -15,7 +16,7 @@ logger = utils.get_logger(__name__)
 
 app = Blueprint('elevanlab_provider', __name__)
 
-API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_3f302b2e36acc353d040152b3d6c9bc7bf728955483bce75")
+API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_e232d2802c87154961d0fcdf71f5b418735282cc9a61a179")
 AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_6501kg4h48mbfhp8cryeh1a66t3j")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
@@ -23,10 +24,11 @@ PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8
 # enterprise api key - sk_e232d2802c87154961d0fcdf71f5b418735282cc9a61a179
 
 def format_transcript(transcript, start_time_unix):
+    from datetime import datetime
     session_history = []
     if not transcript:
         return []
-    func = lambda x: datetime.fromtimestamp(start_time_unix+float(x), tz=pytz.timezone("UTC")).strftime("%Y-%m-%d %I:%M:%S %p %z")
+    func = lambda x: start_time_unix + float(x)
     for msg in transcript:
         session_history.append({
             "role":msg.get('role'),
@@ -93,7 +95,7 @@ def make_call_twilio(session_data, *args, **kwargs):
     logger.info(f"Using phone number: {number} and agent_id: {agent_id}")
     logger.info(f"Using phone number ID: {PHONE_NUMBER_ID}")
     response = elevenlabs_client.conversational_ai.twilio.outbound_call(
-        agent_id= agent_id,
+        agent_id=agent_id,
         agent_phone_number_id= session_data.get("agent_number", PHONE_NUMBER_ID),
         to_number=number,
         conversation_initiation_client_data=initial_config
@@ -110,49 +112,58 @@ def process():
 
 
 def twilio_callback_events(data: dict):
+    import gryd_tasks
     data = dict(data)
-    logger.info(f"Twilio callback event data: {dict(data)}")
+    body = data.get("data", {})
+    if data.get("type") == "post_call_audio":
+        session_id = body.get("user_id", "2f7a2c16541d3348")
+        local_path = voice_helpers.save_audio_buffer_to_file(body.get("full_audio", ""), ext="mp3")
+        audio_url = voice_helpers.func_gryd_file_system(local_path, media_type="audio")
+        os.remove(local_path)
+        body["recording_url"] = audio_url
 
-    if data.get('full_audio'):
-        return 
-    
-    session_history = format_transcript(data.get('transcript'), data.get('metadata', {}).get('accepted_time_unix_secs'))
-    if data.get('failure_reason'):
-        data = data.get('metadata', {}).get('body', {})
-        logger.info(f"Twilio callback event data from metadata: {dict(data)}")
-    elif data.get('status')=="done":
-        logger.info("call status done")
-        data["CallSid"] = data.get("metadata",{}).get('phone_call',{}).get('call_sid')
-        data["CallStatus"] = "completed"
+        session_model = config.AutocrmModel(config.SESSION_MODEL_NAME, logger = logger )
+        session_model.update(session_id, {"call_recording": body.get("recording_url")})
+        return     
 
-    logger.info(f"Final Twilio callback event data: {json.dumps(data, indent=2)}")
+    if data.get('type') == "call_initiation_failure":
+        session_id = body.get("user_id", "2f7a2c16541d3348")
+        body = body.get('metadata', {}).get('body', {})
+        logger.info(f"Twilio callback event data from metadata: {dict(body)}")
+    elif data.get("type")=="post_call_transcription":
+        session_id = body.get("user_id", "2f7a2c16541d3348")
+        body["CallSid"] = body.get("metadata",{}).get('phone_call',{}).get('call_sid')
+        body["CallStatus"] = "completed"
 
+    logger.info(f"Final Twilio callback event data: {json.dumps(body, indent=2)}")
 
-    call_status = data.get('CallStatus')
-    
-    if call_status in ["queued", 'initiated', 'ringing', 'answered',"in-progress"]:
-        pass
-    elif call_status in ['completed', 'done']:
-       logger.info(f"End voice session")
-       gryd.create_async_task(
-           "end_voice_session",
-           config.AUTOCRM_VOICE_SERVICE_NAME,
-           kwargs= {
-               "session_id":data["session_id"],
-               "history":session_history,
-               "status":"completed"
-           },
-           args = []
-       )
+    call_status = body.get('CallStatus')
+
+    if call_status in ['completed', 'done']:
+        ## NOTE: updating billing for reached in post call because we dont get events/callbacks when call is connected.
+        yy = gryd_tasks.post_billing_object("reached", session_id)
+
+        duration = float(body.get("metadata", {}).get("call_duration_secs", 0.0))
+        xx = gryd_tasks.post_billing_object("completed", session_id, duration)
+
+        session_history = format_transcript(body.get('transcript'), body.get('metadata', {}).get('accepted_time_unix_secs'))
+        logger.info(f"SESSION_HISTOR: {session_history}")
+        transcript_summary = body.get("analysis",{}).get("transcript_summary")
+
+        gryd_tasks.post_history(session_id, session_history)
+        
+        gryd_tasks.end_session(**{
+                "session_id": session_id,
+                "additional_dict":{
+                    "history": session_history,
+                    "status": "completed",
+                    "summary": transcript_summary,
+                    "duration":duration
+                }
+            }) 
+    elif call_status in ["queued", 'initiated', 'ringing', 'answered',"in-progress"]:
+        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id=session_id, **{"status": call_status})
     elif call_status in ["no-answer", "busy", "canceled", 'failed', 'error', 'unknown']:
-        gryd.create_async_task(
-            "end_voice_session",
-            config.AUTOCRM_VOICE_SERVICE_NAME,
-            kwargs= {
-                "session_id":data["session_id"],
-                "history":[],
-                "status":"failed"
-            },
-            args = []
-        )
+        gryd_tasks.post_contact_status_voice(session_id = session_id, message_id=session_id, **{"status": call_status})
+
 

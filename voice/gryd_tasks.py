@@ -251,7 +251,7 @@ def trigger_voice_call(*args, **kwargs):
 
     from voice import providers
     response = providers.make_call(provider, session_data, *args, **kwargs)
-
+    logger.info(f"Response from provider {provider}: {response}")
     yield {
         "success": response.get("success"),
         "call_sid": response.get("call_sid"),
@@ -263,6 +263,9 @@ def trigger_voice_call(*args, **kwargs):
 
     post_contact_status_voice(user_data, message_id=session_data["session_id"])
 
+    if provider.lower() in ["twilio", "elevanlab"]:
+        #as we are making direct call from provider.
+        return response
 
     timeout = time.time() + float(user_data.get("call_timeout", 600))  # 10 minutes
 
@@ -474,7 +477,7 @@ if __name__ == "__main__":
 
     data = {'_is_testing': False,
  'ctas': ['book-test-drive'],
- 'mobile_number': '918401586512',
+ 'mobile_number': '918850988794',
  'created': 1772785341.039532,
  'purpose': 'Confirm Test drive',
  'updated': 1772785440.9737067,
