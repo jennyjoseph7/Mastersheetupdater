@@ -44,7 +44,8 @@ logger = mlogger
 
 source = {
     "dealership_id": "arya_raj-south-india",
-        "credits": 500
+        "credits": 500,
+        "currency": "USD"
 }
 
 res = gryd.create_async_task('payment_service', AUTOCRM_CORE_SERVICE_NAME,args=["purchase_credit"],kwargs=source)
