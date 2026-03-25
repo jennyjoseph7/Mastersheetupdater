@@ -1,16 +1,23 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -yy
-RUN apt install software-properties-common zip unzip python3-pip redis-tools libpq-dev curl jq -yy
-RUN apt-get install ffmpeg -yy
-RUN apt-get update && apt-get install -y \
-    portaudio19-dev \
-    python3-dev \
-    build-essential \
-    vim 
-RUN pip install pyaudio
+RUN apt install build-essential software-properties-common zip unzip python3-pip python3.12-venv python3-dev curl libpq-dev jq -yy
+#RUN apt-get install ffmpeg -yy
+#RUN apt-get update && apt-get install -y \
+#    portaudio19-dev \
+#    vim 
 
+#ADD https://astral.sh/uv/install.sh /uv-installer.sh
+#RUN sh /uv-installer.sh && rm /uv-installer.sh
+#ENV PATH="/root/.local/bin/:$PATH"
+
+WORKDIR /root/
+RUN python3 -m venv pyenv
+ENV PYENV_PATH=pyenv
+
+COPY requirements.txt /tmp
+COPY spark_requirements.txt /tmp
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
-RUN pip install -U pip setuptools
-RUN pip install --ignore-installed -r requirements.txt
-RUN pip install --ignore-installed -r spark/requirements.txt
+RUN /root/pyenv/bin/pip install -U pip setuptools
+RUN /root/pyenv/bin/pip install --ignore-installed -r /tmp/requirements.txt
+RUN /root/pyenv/bin/pip install --ignore-installed -r /tmp/spark_requirements.txt
