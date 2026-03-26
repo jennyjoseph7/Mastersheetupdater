@@ -34,6 +34,12 @@ process_config=`cat start_worker_config.json`
 echo "APP Config"
 echo $process_config
 
+if [ $PYTHON_VENV != 0 ];then
+	export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
+	export WORKER_PATH=$PYTHON_VENV/bin/worker
+	export CRON_SCHEDULER_PATH=$PYTHON_VENV/bin/execute-cron-continuous
+	export CRON_WORKER_PATH=$PYTHON_VENV/bin/cron_worker
+fi
 
 function stop_workers() {
 
@@ -348,13 +354,9 @@ function start_workers() {
 	fi
 }
 
+
+
 function main() {
-	if [ $PYTHON_VENV != 0 ];then
-		export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
-		export WORKER_PATH=$PYTHON_VENV/bin/worker
-		export CRON_SCHEDULER_PATH=$PYTHON_VENV/bin/execute-cron-continuous
-		export CRON_WORKER_PATH=$PYTHON_VENV/bin/cron_worker
-	fi
 	start_default_workers
 	start_workers
 }
