@@ -120,7 +120,11 @@ AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_DOCUM
 
 #AI Models
 # Add tuples in the below list in the format ---> ("<model_identifier>", "<model_type>")
-AI_MODELS_REQUIRED = [( 'azure-gpt-4o-mini','llm')]
+AI_MODELS_REQUIRED = [
+    ('azure-gpt-4o-mini','llm'),
+    ('azure-gpt-4o','llm'),
+    ('gcp-gemini-2.5-flash','llm'),
+]
 
 # Common function
 BASE_PATH = hp.dirname(hp.abspath(__file__))
