@@ -101,7 +101,7 @@ def get_purpose_and_steps(*args, **kwargs):
         if campaign_data.get("purpose_steps"):
             flow = campaign_data.get("purpose")
             steps = ', \n'.join(campaign_data.get("purpose_steps"))
-            return f"The overall purpose of your conversation with the user is to help the customer {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}.Here are the details you should gather from the user when trying to complete the {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
+            return f"The overall purpose of your conversation with the user is to help the customer {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}.Here are the steps you should go through to complete the purpose {flow}  :- \n{steps}\n\nRun through the flow one time. and in the sequence specified. Once complete continue assist the user with other questions.\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow and has not completed the purpose yet, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
     if flow == "service":
         steps = ["- Full Name \n- Car Model \n- Date & Time \n- Service Type"]
     else:
@@ -166,7 +166,7 @@ def get_rules(*args, **kwargs):
     campaign_data = session_data_cache_data.get("campaign_data",{})
     user_data = session_data_cache_data.get("user_data",{})
     mlogger.info("campaign_data == {}".format(session_data_cache_data))
-    rules = "Always be polite, be helpful, if the customer is rude, avoid confrontation, do not be pushy."
+    rules = "Always be polite, be helpful, if the customer is rude, avoid confrontation, do not be pushy.\nIf the customer has completed their purpose, you should not ask them to do the purpose steps again."
     if campaign_data.get("dealership_guardrails"):
         rules = campaign_data.get("dealership_guardrails")
     if campaign_data.get("dealership_guidelines"):
