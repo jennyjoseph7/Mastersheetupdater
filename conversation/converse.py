@@ -261,7 +261,7 @@ def post_messages_data(*args, **pass_kwargs):
             "updated" : pass_kwargs.get("first_message_time") or hp.time(),
             "index" : 0
             }
-        
+        # mlogger.info("incoming_message {}".format(incoming_message))
         first_message = pg.update("message","message_id",pass_kwargs.get("reply_to"),incoming_message)
         new_messages.append(first_message)
         mlogger.info("first_message {}".format(first_message))
@@ -274,9 +274,10 @@ def post_messages_data(*args, **pass_kwargs):
                     "session_id":pass_kwargs.get("session_id"),
                     "intent" : message.get("intent","unknown_intent"),
                     "index" : message.get("index",0),
-                    "created" : message.get("created",hp.now()),
-                    "updated" : message.get("updated",hp.now())
+                    "created" : message.get("created",hp.time()),
+                    "updated" : message.get("updated",hp.time())
                 }
+            # mlogger.info(f"out_message --{out_message}")
             respper = pg.update("message","message_id",message_id,out_message)
             new_messages.append(respper)
         mlogger.info("session_id in post_messages_data {}".format(pass_kwargs.get("session_id")))

@@ -251,7 +251,7 @@ def trigger_voice_call(*args, **kwargs):
 
     from voice import providers
     response = providers.make_call(provider, session_data, *args, **kwargs)
-
+    logger.info(f"Response from provider {provider}: {response}")
     yield {
         "success": response.get("success"),
         "call_sid": response.get("call_sid"),
@@ -263,6 +263,9 @@ def trigger_voice_call(*args, **kwargs):
 
     post_contact_status_voice(user_data, message_id=session_data["session_id"])
 
+    if provider.lower() in ["twilio", "elevanlab"]:
+        #as we are making direct call from provider.
+        return response
 
     timeout = time.time() + float(user_data.get("call_timeout", 600))  # 10 minutes
 
@@ -464,7 +467,32 @@ def end_session(*args, **kwargs):
     logger.info(f"Ending session with args: {args}, kwargs: {kwargs}")
     return end_voice_session(*args, **kwargs)
 
+@gryd.is_a_task(function_name="post_lanuage_change_func")
+def post_lanuage_change_func(*args, **kwargs):    
+    language = kwargs.get("changed_language")
+    session_data = kwargs.get("session_data", {})
+    lead_model_name = session_data.get("lead_model")
+    lead_id = session_data.get("lead_id")
+    with get_pg_connector() as pg:
+        x = pg.update(
+            lead_model_name,
+            f"{lead_model_name}_id",
+            lead_id,
+            {"follow_up_language": language}
+        )
+        logger.info(f"Updated lead with new language preference: {x}")
 
+def post_lanuage_change(session_data, changed_language):
+    # logger.info(f"Calling task post_lanuage_change_func with session_data: {session_data}, changed_language: {changed_language}")
+    gryd.create_async_task(
+        "post_lanuage_change_func",
+       config.AUTOCRM_VOICE_SERVICE_NAME,
+        args = [],
+        kwargs = {
+            "changed_language": changed_language,
+            "session_data": session_data
+        }
+    )
 
 if __name__ == "__main__":
 
@@ -474,7 +502,7 @@ if __name__ == "__main__":
 
     data = {'_is_testing': False,
  'ctas': ['book-test-drive'],
- 'mobile_number': '918401586512',
+ 'mobile_number': '918850988794',
  'created': 1772785341.039532,
  'purpose': 'Confirm Test drive',
  'updated': 1772785440.9737067,
@@ -489,7 +517,7 @@ if __name__ == "__main__":
  'campaign_name': 'Basalt Test Drive Confirmation Event',
  'campaign_type': 'pre-sales',
  'cost_per_lead': 0.0,
- 'dealership_id': 'us-dealership-united-states',
+ 'dealership_id': 'stellantis--jeep-india',
  'purpose_steps': ['- Ask if user is interedted in booking test drive',
   '\\n - if customer says yes',
   "get the pincode of customer from 'Who is the customer section' and cofirm if the customer is in this pincode",

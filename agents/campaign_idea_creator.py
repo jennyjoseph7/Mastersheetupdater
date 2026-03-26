@@ -99,7 +99,7 @@ class CampaignIdeaCreatorAgent(BaseAgent):
         self.ai_generation = source.get("ai_generation",True)
         self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
 
-        self.model_identifier =  "azure-gpt-4o-mini" #"gcp-gemini-2.5-flash-lite" 
+        self.model_identifier =  "azure-gpt-4o-mini" #"gcp-gemini-2.5-flash-lite" #"azure-gpt-4o-mini"
 
     def validate_campaign_type(self, campaign_type):
         """Validate campaign type with proper error message."""

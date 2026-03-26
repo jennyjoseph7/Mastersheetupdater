@@ -27,8 +27,7 @@ from elevenlabs import ElevenLabs
 from typing import Dict, Any, Optional
 import audioop  # Native C extension - fast audio processing
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp
-
-from utils import helpers as vhp
+import gryd_tasks
 import utils
 
 # Use uvloop for faster event loop (Linux/macOS only)
@@ -44,7 +43,7 @@ logger = utils.get_logger(__name__)
 
 # ---- Config / env ----
 load_dotenv()
-API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_3f302b2e36acc353d040152b3d6c9bc7bf728955483bce75")
+API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_e232d2802c87154961d0fcdf71f5b418735282cc9a61a179")
 AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_5701ka8618cbfxcbdp4wg6xb3x23")
 TATATELE_PHONE_NUMBER = os.environ.get("TATATELE_PHONE_NUMBER", "918065251305")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
@@ -379,14 +378,25 @@ class CallSession:
                     logger.error(f"[{self.call_id}] Failed to send pong: %s", e)
 
             #  CLIENT TOOL CALL 
+            elif msg_type == "agent_tool_request":
+                tool_request_event = msg_data.get("agent_tool_request", {})
+                logger.info(f"too_request_event {msg_data}")
+
             elif msg_type == "agent_tool_response":
+                #user agent monitoring for context update
                 tool_event = msg_data.get("agent_tool_response", {})
                 tool_name = tool_event.get("tool_name", "unknown")
                 logger.info(f"[{self.call_id}] Tool call requested: {tool_name}")
                 # Handle end-call tool calls from ElevenLabs agent
                 if tool_name in ("end_call", "hang_up", "hangup", "end_conversation", "disconnect"):
                     logger.info(f"[{self.call_id}] Agent requested call end via tool: {tool_name} - triggering hangup")
-                    self.stop_event.set()
+                    self.stop_event.set() 
+
+                if tool_name in ["language_detection"]:
+                    gryd_tasks.post_lanuage_change(
+                        self.session_data, 
+                        "language_changed"
+                    )    
 
             #  VAD (Voice Activity Detection) 
             elif msg_type == "vad_score":
