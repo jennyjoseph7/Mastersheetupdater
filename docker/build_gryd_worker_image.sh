@@ -156,8 +156,12 @@ function push_image_to_registry() {
     do_registry_authentication $DOCKER_REGISTRY
 
     echo "Tagging $WORKER_DOCKER_IMAGE_NAME as $imagePushTag."
-	docker tag $WORKER_DOCKER_IMAGE_NAME $imagePushTag
-	docker push $imagePushTag
+    docker tag $WORKER_DOCKER_IMAGE_NAME $imagePushTag
+    docker push $imagePushTag
+
+    build_env_tag=$rname:$BUILD_ENVIRONMENT
+    docker tag $WORKER_DOCKER_IMAGE_NAME $build_env_tag
+    docker push $build_env_tag
 
     if [ $PUSH_AS_LATEST == 1 ];then
         echo "Adding latest tag to this image and pushing."
