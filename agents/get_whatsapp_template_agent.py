@@ -77,7 +77,7 @@ class get_whatsapp_template_agent(BaseAgent):
                        "template_type" : "text",
                         "channel" : "whatsapp_chat",
                         "status" : "approved",
-                        "communication_credentials_id" : communication_credentials_id,
+                        # "communication_credentials_id" : communication_credentials_id,
                         "language" : self.language,
                         "disposition" : self.disposition,
                         "disposition_details" : self.slugify_disposition_detail(self.disposition_details)
@@ -91,7 +91,7 @@ class get_whatsapp_template_agent(BaseAgent):
                        "template_type" : "text",
                        "channel" : "whatsapp_chat",
                        "status" : "approved",
-                       "communication_credentials_id" : communication_credentials_id,
+                    #    "communication_credentials_id" : communication_credentials_id,
                        "language" : self.language
                 }
             ))
