@@ -127,7 +127,8 @@ def post_session_process(*args, **kwargs):
                 updated_lead_data["follow_up_language"] = follow_up.get("follow_up_language")
 
     mlogger.info("lead data =={}".format(updated_lead_data))
-    return
+    # yield {"lead_data":updated_lead_data,"session_id":session_id,"session_summary":session_mdl_obj.get("summary",""),"session_transcript":session_mdl_obj.get("history",[])}
+    # return
     if sentiment_score != -1:
         session_update_data["sentiment_score"] = sentiment_score
     if emotion_analysis:
@@ -737,7 +738,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj):
     for message in messages:
         mlogger.info("message in get_disposition -  {}".format(message))
         if "intent" in message and message.get("intent") == "llm_response":
-            message_history.append({"role" : "me", "message":message.get("message","")})
+            message_history.append({"role" : "my agent", "message":message.get("message","")})
         else:
             if not has_user_message and message.get("message") and len(message.get("message")) > 0:
                 has_user_message = True
@@ -754,15 +755,15 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj):
         "prioritization_category" : "COMPLETE or HOT or WARM or COOL or COLD or INACTIVE"
     }"""
     disp_details_options = {
-                "Voicemail":"If the customer has asked to leave a message or voicemail.",
+                "Voicemail":"The customer response might be along the lines of '...leave a message...' this would imply the call was placed and picked up by a voicemail service.",
                 "Rejected":"If the customer has rejected the offer or to even speak with the agent.",
                 "Language barrier":"If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
                 "Is not decision maker":"the customer said they are not the right person to speak to about this in their family.",
                 "Will decide later, will purchase within 15 days":"The customer said they would decide to buy the vehicle within 15 days.",
                 "Will decide later, will purchase within 1 to 3 months":"The customer said they would decide to buy the vehicle within 1 to 3 months.",
                 "Will decide later, exploring options":"The customer said they will decide on the purchase of the vehicle at a later time and are only exploring all their options now.",
-                "No buying intent":"the customer Do not want to purchase a car. Neither are the interested in the car.",
-                "Just Exploring":"the customer Only want to know about the vehicle but do not show intent to buy.",
+                "No buying intent":"the customer said they Do not want to purchase a car. Neither are the interested in the car.",
+                "Just Exploring":"the customer Only want to know about the vehicle but do not show intent to buy. This will only happen if the customer has actually asked about the car or related features but shows no interest in the purpose of the call.",
                 "Will call showroom themselves":"the customer will contact the dealership or showroom themselves.",
                 "Requested Callback":"the customer Asked to call back at a later date and or time.",
                 "Purchased elsewhere":"the customer Already purchased a vehicle elsewhere.",
@@ -774,7 +775,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj):
                 "Enquired for Dealership Details":"the customer by themselves asked for dealership details.",
                 "Enquired for Others":"the customer by themselves asked for other details not listed above.",
                 "Comparing with another brand":"The customer by themselves is comparing the vehicle with another brand.",
-                "Call Disconnected":"The customer by themselves has disconnected the call.",
+                "Call Disconnected":"Conversation was incomplete. Customer did not respond or the the agents requests or statements were unanswered.",
                 "Others":"All other disposition details not listed above.",
                 "General Inquiry":"the customer is Asking generic questions not specific to the purpose of the campaign or the vehicle.",
                 "Not Interested":"the customer Specifically said they are not interested in the vehicle.",
@@ -784,6 +785,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj):
                 "Test Drive Completed":"the customer Already completed a test drive.",
                 "Invalid Lead":"the customer Not a valid lead.",
                 "Purchase Postponed":"the customer indicates that the Purchase has been postponed",
+                "Audio Issue":"There was issues with hearing the customer or the agent for either party.",
                 "Showroom Visit Planned":"the customer Already booked a showroom visit.",
                 "Converted":"The customer completes the purpose of the campaign and provides the necessary information."
     }
@@ -845,6 +847,8 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj):
 
     # The summary of my conversation with the customer is as follows:\n
     {session_summary}\n
+    # The conversation history between my agent and the costomer is ask follows:\n
+    {message_history}\n
     # Now check if the objective of the campaign was met by the customer. 
     If the objective was met the disposition should be converted.
     In all other cases it should be engaged.

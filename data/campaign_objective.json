@@ -57,18 +57,54 @@
       "ui_element": "select",
       "indexed": true
     },
-    {
-      "name": "campaign_objective_name",
-      "type": "text",
-      "title": "Campaign Objective Name",
-      "required": true
-    },
-    {
-      "name": "campaign_objective_description",
-      "type": "text",
-      "title": "Objective Description",
-      "required": true
-    },
+	    {
+	      "name": "campaign_objective_name",
+	      "type": "text",
+	      "title": "Campaign Objective Name",
+	      "required": true
+	    },
+	    {
+	      "name": "search_term",
+	      "type": "text",
+	      "indexed": true,
+	      "force_update": [
+	        "campaign_type",
+	        "campaign_sub_type",
+	        "campaign_objective_name",
+	        "campaign_objective_description",
+	        "guardrails_guidelines",
+	        "target_audience_tags",
+	        "dealer_name",
+	        "brand_id"
+	      ],
+	      "auto_updater": true,
+	      "default": {
+	        "function": "name_to_id",
+	        "args": [
+	          "campaign_type",
+	          "campaign_sub_type",
+	          "campaign_objective_name",
+	          "campaign_objective_description",
+	          "guardrails_guidelines",
+	          "target_audience_tags",
+	          "dealer_name",
+	          "brand_id"
+	        ],
+	        "kwargs": {
+	          "attribute_join": " ",
+	          "is_unique": true,
+	          "separator": " ",
+	          "skip_empty": true,
+	          "case": "lower"
+	        }
+	      }
+	    },
+	    {
+	      "name": "campaign_objective_description",
+	      "type": "text",
+	      "title": "Objective Description",
+	      "required": true
+	    },
     {
       "name": "conversation_tone",
       "type": "text",
