@@ -28,17 +28,59 @@
         "name": "region_name",
         "refers": "parents.region.region_name"
       },
-      {
-        "name": "campaign_name",
-        "type": "text",
-        "indexed": true
-      },
-      {
-        "name": "campaign_type",
-        "type": "list",
-        "options": ["pre-sales", "post-sales", "dealership"],
-        "default": "dealership"
-      },
+	      {
+	        "name": "campaign_name",
+	        "type": "text",
+	        "indexed": true
+	      },
+	      {
+	        "name": "search_term",
+	        "type": "text",
+	        "indexed": true,
+	        "force_update": [
+	          "region_name",
+	          "campaign_name",
+	          "campaign_type",
+	          "campaign_objective",
+	          "campaign_offer",
+	          "campaign_description",
+	          "start_date",
+	          "end_date",
+	          "channels",
+	          "language",
+	          "campaign_status"
+	        ],
+	        "auto_updater": true,
+	        "default": {
+	          "function": "name_to_id",
+	          "args": [
+	            "region_name",
+	            "campaign_name",
+	            "campaign_type",
+	            "campaign_objective",
+	            "campaign_offer",
+	            "campaign_description",
+	            "start_date",
+	            "end_date",
+	            "channels",
+	            "language",
+	            "campaign_status"
+	          ],
+	          "kwargs": {
+	            "attribute_join": " ",
+	            "is_unique": true,
+	            "separator": " ",
+	            "skip_empty": true,
+	            "case": "lower"
+	          }
+	        }
+	      },
+	      {
+	        "name": "campaign_type",
+	        "type": "list",
+	        "options": ["pre-sales", "post-sales", "dealership"],
+	        "default": "dealership"
+	      },
       {
         "name": "campaign_user_source",
         "type": "nested_object",

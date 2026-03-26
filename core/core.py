@@ -594,7 +594,7 @@ def validate_campaign_or_campaign_objective_id(campaign_id, audience_name, campa
 @gryd.is_a_task(function_name="extract_csv_headers", job_param='job', logger_param='logger')
 def extract_csv_headers(csv_file_link, job = None, logger = None):
     csv_path = create_csv_path(csv_file_link, logger = logger)
-    with open(csv_path, encoding="utf-8") as f:
+    with open(csv_path, encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         headers = reader.fieldnames
         logger.info(f"Headers: {headers}")
@@ -1172,7 +1172,7 @@ def gryd_task_import_leads_from_csv(
         total = 0
         error = 0
         processed = 0
-        with open(csv_path, encoding="utf-8") as f:
+        with open(csv_path, encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             headers = reader.fieldnames
             logger.info(f"Headers: {headers}")

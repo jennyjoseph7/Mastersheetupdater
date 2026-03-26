@@ -100,18 +100,80 @@
       "type": "string_list",
       "list_type": "text"
     },
-    {
-      "name": "campaign_name",
-      "type": "text",
-      "required": true,
-      "indexed": true
-    },
-    {
-      "name": "campaign_type",
-      "type": "text",
-      "auto_updater": true,
-      "default": "post-sales"
-    },
+	    {
+	      "name": "campaign_name",
+	      "type": "text",
+	      "required": true,
+	      "indexed": true
+	    },
+	    {
+	      "name": "search_term",
+	      "type": "text",
+	      "indexed": true,
+	      "force_update": [
+	        "dealer_name",
+	        "region_name",
+	        "workshop_pincode",
+	        "supported_brands",
+	        "campaign_name",
+	        "campaign_type",
+	        "campaign_sub_type",
+	        "campaign_objective_name",
+	        "campaign_objective_type",
+	        "campaign_objective_description",
+	        "campaign_description",
+	        "campaign_offer",
+	        "offer_applicability",
+	        "target_audience_tags",
+	        "start_date",
+	        "end_date",
+	        "channels",
+	        "languages",
+	        "campaign_status",
+	        "voice_start_language",
+	        "voice_first_message"
+	      ],
+	      "auto_updater": true,
+	      "default": {
+	        "function": "name_to_id",
+	        "args": [
+	          "dealer_name",
+	          "region_name",
+	          "workshop_pincode",
+	          "supported_brands",
+	          "campaign_name",
+	          "campaign_type",
+	          "campaign_sub_type",
+	          "campaign_objective_name",
+	          "campaign_objective_type",
+	          "campaign_objective_description",
+	          "campaign_description",
+	          "campaign_offer",
+	          "offer_applicability",
+	          "target_audience_tags",
+	          "start_date",
+	          "end_date",
+	          "channels",
+	          "languages",
+	          "campaign_status",
+	          "voice_start_language",
+	          "voice_first_message"
+	        ],
+	        "kwargs": {
+	          "attribute_join": " ",
+	          "is_unique": true,
+	          "separator": " ",
+	          "skip_empty": true,
+	          "case": "lower"
+	        }
+	      }
+	    },
+	    {
+	      "name": "campaign_type",
+	      "type": "text",
+	      "auto_updater": true,
+	      "default": "post-sales"
+	    },
     {
       "name": "campaign_user_source",
       "type": "text",

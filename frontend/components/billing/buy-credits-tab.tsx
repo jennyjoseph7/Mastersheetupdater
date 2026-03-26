@@ -7,19 +7,19 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { createCreditPurchaseOrder } from "@/utils/api" // Import the API function we made
+import { createCreditPurchaseOrder } from "@/utils/api"
 
-// Add Razorpay to the Window interface
 declare global {
   interface Window {
     Razorpay: any;
   }
 }
 
+// Updated: All prices are now 1:1 with credits (No discounts)
 const creditPacks = [
   { credits: 500, price: 500, label: "Starter" },
-  { credits: 1000, price: 900, originalPrice: 1000, savings: 100, label: "Value Pack", popular: true },
-  { credits: 5000, price: 4000, originalPrice: 5000, savings: 1000, label: "Best Value" },
+  { credits: 1000, price: 1000, label: "Standard" },
+  { credits: 5000, price: 5000, label: "Business" },
 ]
 
 export function BuyCreditsTab() {
@@ -32,7 +32,7 @@ export function BuyCreditsTab() {
   const [billingDetails, setBillingDetails] = useState({
     name: "John Doe",
     email: "john.doe@example.com",
-    contact: "9999999999", // Added contact for Razorpay prefill
+    contact: "9999999999",
     company: "ABC Auto Sales",
     gstin: "",
     address: "",
@@ -40,11 +40,12 @@ export function BuyCreditsTab() {
 
   const selectedCredits = selectedPack !== null ? selectedPack : Number.parseInt(customCredits) || 0
   const selectedPackData = creditPacks.find((p) => p.credits === selectedPack)
+  
+  // Logic remains consistent: Subtotal is strictly based on credit count
   const subtotal = selectedPack !== null ? selectedPackData?.price || 0 : Number.parseInt(customCredits) || 0
   const tax = subtotal * 0.18
   const total = subtotal + tax
 
-  // Load Razorpay Script
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
       if (window.Razorpay) {
@@ -71,15 +72,13 @@ export function BuyCreditsTab() {
     }
 
     try {
-      // 1. Call backend API to create order
       const orderData = await createCreditPurchaseOrder(selectedCredits);
 
-      // 2. Initialize Razorpay options
       const options = {
-        key: "rzp_test_htVSSrrdDO0Mvj", // Use process.env.NEXT_PUBLIC_RAZORPAY_KEY in production
+        key: "rzp_test_htVSSrrdDO0Mvj", 
         amount: Math.round(orderData.amount * 100), 
         currency: orderData.currency || "INR",
-        name: "Autocrm",
+        name: "AutoNgage",
         description: `Purchase ${orderData.credits} Credits`,
         order_id: orderData.order_id,
         handler: function (response: any) {
@@ -89,7 +88,7 @@ export function BuyCreditsTab() {
             order_id: response.razorpay_order_id,
           };
           setPaymentResult(successData);
-          setStep(4); // Move to a success screen (optional)
+          setStep(4);
         },
         modal: {
           ondismiss: function () {
@@ -102,17 +101,15 @@ export function BuyCreditsTab() {
           contact: billingDetails.contact,
         },
         theme: {
-          color: "#ea580c", // matches orange-600
+          color: "##c6bdff",
         },
       };
 
       const rzp = new window.Razorpay(options);
-
       rzp.on("payment.failed", function (response: any) {
         setPaymentResult({ status: "FAILED", reason: response.error.description });
         setIsLoading(false);
       });
-
       rzp.open();
     } catch (error: any) {
       console.error("Payment flow error:", error);
@@ -123,7 +120,6 @@ export function BuyCreditsTab() {
 
   return (
     <div className="space-y-6">
-      {/* Step indicator */}
       {step < 4 && (
         <div className="text-xl font-semibold">
           Step {step} of 3: {step === 1 ? "Choose Credits" : step === 2 ? "Billing Details" : "Review & Pay"}
@@ -133,12 +129,11 @@ export function BuyCreditsTab() {
       {step === 1 && (
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            {/* Credit Packs */}
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div>
                   <h3 className="font-semibold text-lg mb-1">Credit Packs</h3>
-                  <p className="text-sm text-muted-foreground">Choose from our popular credit packages</p>
+                  <p className="text-sm text-muted-foreground">Select a package to add credits to your account</p>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-4">
@@ -155,37 +150,23 @@ export function BuyCreditsTab() {
                           : "border-border hover:border-primary/50"
                       }`}
                     >
-                      {pack.popular && (
-                        <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary">Most Popular</Badge>
-                      )}
-                      {pack.label && !pack.popular && (
+                      {pack.label && (
                         <Badge variant="secondary" className="absolute -top-2 left-1/2 -translate-x-1/2">
                           {pack.label}
                         </Badge>
-                      )}
-                      {pack.label === "Best Value" && (
-                        <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-green-600">Best Value</Badge>
                       )}
 
                       <div className="text-4xl font-bold text-primary mt-2">{pack.credits.toLocaleString()}</div>
                       <div className="text-sm text-muted-foreground mb-4">Credits</div>
 
                       <div className="text-2xl font-bold">₹{pack.price.toLocaleString()}</div>
-                      {pack.originalPrice && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-sm text-muted-foreground line-through">
-                            ₹{pack.originalPrice.toLocaleString()}
-                          </span>
-                          <span className="text-sm text-green-600 font-medium">Save ₹{pack.savings}</span>
-                        </div>
-                      )}
+                      {/* Removed originalPrice and savings display */}
                     </button>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Custom Pack */}
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div>
@@ -218,12 +199,10 @@ export function BuyCreditsTab() {
             </div>
           </div>
 
-          {/* Order Summary Sidebar */}
           <div className="lg:col-span-1">
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <h3 className="font-semibold text-lg">Order Summary</h3>
-
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Credits</span>
@@ -250,6 +229,7 @@ export function BuyCreditsTab() {
         </div>
       )}
 
+      {/* Steps 2, 3, and 4 follow the same logic as your original code */}
       {step === 2 && (
         <div className="max-w-3xl space-y-6">
           <Card>
@@ -314,7 +294,6 @@ export function BuyCreditsTab() {
               </div>
 
               <div className="grid md:grid-cols-2 gap-8 border rounded-lg p-6 bg-muted/20">
-                {/* Billing Summary */}
                 <div className="space-y-2 text-sm">
                   <h4 className="font-semibold text-base mb-3">Billing Information</h4>
                   <p><span className="text-muted-foreground">Name:</span> {billingDetails.name}</p>
@@ -323,7 +302,6 @@ export function BuyCreditsTab() {
                   {billingDetails.gstin && <p><span className="text-muted-foreground">GSTIN:</span> {billingDetails.gstin}</p>}
                 </div>
 
-                {/* Order Summary */}
                 <div className="space-y-3 text-sm">
                    <h4 className="font-semibold text-base mb-3">Order Details</h4>
                   <div className="flex justify-between border-b pb-2">
@@ -337,13 +315,11 @@ export function BuyCreditsTab() {
                 </div>
               </div>
 
-              {/* Error Message Display */}
               {paymentResult?.status === "ERROR" || paymentResult?.status === "FAILED" ? (
                 <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm border border-red-200">
                   Payment Failed: {paymentResult.reason || paymentResult.message}
                 </div>
               ) : null}
-
             </CardContent>
           </Card>
 
@@ -369,7 +345,6 @@ export function BuyCreditsTab() {
         </div>
       )}
 
-      {/* SUCCESS SCREEN */}
       {step === 4 && (
         <Card className="max-w-xl mx-auto mt-12 border-green-200 bg-green-50/50">
           <CardContent className="pt-10 pb-10 text-center space-y-4">
