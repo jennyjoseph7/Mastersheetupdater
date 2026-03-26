@@ -801,7 +801,7 @@ class AuthManager:
 if __name__ == "__main__":
     # reset_rml_creds()
     
-    # yield_gryd_task_results("createPerson",CONVERS_SERVICE_NAME,**{
+    # yield_gryd_task_results("createPerson",AUTOCRM_CONVERSATION_SERVICE_NAME,**{
     #         "mobile_number": "919113687241",
     #         "enterprise_id": "no_code_low_code"
     #     })

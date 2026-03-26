@@ -175,7 +175,7 @@ def process_webhook(*args, **kwargs):
     calls the converse task to get the response back.
     gryd.create_async_task(
             CONVERS_TASK_NAME,
-            CONVERS_SERVICE_NAME,
+            AUTOCRM_CONVERSATION_SERVICE_NAME,
             kwargs=converse_kwargs
         )
 
