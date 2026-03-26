@@ -486,6 +486,50 @@
             "indexed": true
         },
         {
+            "name": "search_term",
+            "type": "text",
+            "indexed": true,
+            "force_update": [
+                "person_name",
+                "phone_number",
+                "email",
+                "dealer_name",
+                "campaign_name",
+                "audience_name",
+                "interested_vehicle_name",
+                "model_preference",
+                "variant_preference",
+                "lead_tags",
+                "lead_summary",
+                "disposition"
+            ],
+            "auto_updater": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "person_name",
+                    "phone_number",
+                    "email",
+                    "dealer_name",
+                    "campaign_name",
+                    "audience_name",
+                    "interested_vehicle_name",
+                    "model_preference",
+                    "variant_preference",
+                    "lead_tags",
+                    "lead_summary",
+                    "disposition"
+                ],
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " ",
+                    "skip_empty": true,
+                    "case": "lower"
+                }
+            }
+        },
+        {
             "name": "city",
             "default": {
                 "function": "get_from_model",
@@ -1192,6 +1236,7 @@
             "type": "text",
             "options": [
                 "whatsapp",
+                "whatsapp_chat",
                 "email",
                 "voice_phone",
                 "web_chat",

@@ -118,6 +118,10 @@ except ValueError as e:
 AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME', 'brochure-pipeline')
 AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME', 'document-processor')
 
+#AI Models
+# Add tuples in the below list in the format ---> ("<model_identifier>", "<model_type>")
+AI_MODELS_REQUIRED = [( 'azure-gpt-4o-mini','llm')]
+
 # Common function
 BASE_PATH = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_PATH, "data")

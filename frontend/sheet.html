@@ -1,0 +1,1581 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Disposition Sync — autoNgage</title>
+  <meta name="description"
+    content="Merges AutoEngage Audience & Leads + Sessions exports and produces a Zoho Master Sheet-ready table." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    /* ── DESIGN TOKENS ─────────────────────────────────────────────────── */
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #1a1a1a;
+      --surface3: #222222;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(255, 173, 58, 0.5);
+      --accent: #ffad3a;
+      --accent-dim: #e79400;
+      --accent-soft: rgba(255, 173, 58, 0.12);
+      --success: #5ad7a1;
+      --success-soft: rgba(90, 215, 161, 0.12);
+      --warn: #ffc857;
+      --warn-soft: rgba(255, 200, 87, 0.12);
+      --danger: #ff6b6b;
+      --danger-soft: rgba(255, 107, 107, 0.12);
+      --text: #f5f5f5;
+      --text-dim: #adaaaa;
+      --text-muted: #6b6b6b;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'Manrope', 'Inter', sans-serif;
+      --body: 'Inter', sans-serif;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 16px;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── HEADER ────────────────────────────────────────────────────────── */
+    header {
+      padding: 1.75rem 2rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .header-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: var(--accent-soft);
+      border: 1px solid rgba(255, 173, 58, 0.3);
+      border-radius: 999px;
+      padding: 0.25rem 0.7rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h1 {
+      font-family: var(--sans);
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.03em;
+    }
+
+    .header-sub {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+    }
+
+    .header-steps {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .step-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.3rem 0.65rem;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-family: var(--body);
+    }
+
+    .step-pill .num {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      border: 1px solid rgba(255, 173, 58, 0.35);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* ── MAIN ──────────────────────────────────────────────────────────── */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.75rem 2rem 3rem;
+    }
+
+    /* ── UPLOAD GRID ──────────────────────────────────────────────────── */
+    .upload-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .drop-zone {
+      background: var(--surface);
+      border: 2px dashed rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(255, 173, 58, 0.04);
+      transform: translateY(-2px);
+    }
+
+    .drop-zone.has-file {
+      border-color: var(--success);
+      border-style: solid;
+      background: var(--success-soft);
+    }
+
+    .dz-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    .dz-icon.file1 {
+      background: var(--accent-soft);
+      border: 1px solid rgba(255, 173, 58, 0.25);
+    }
+
+    .dz-icon.file2 {
+      background: rgba(77, 208, 225, 0.1);
+      border: 1px solid rgba(77, 208, 225, 0.25);
+    }
+
+    .dz-label {
+      font-weight: 700;
+      font-size: 0.92rem;
+      font-family: var(--sans);
+    }
+
+    .dz-sublabel {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    .dz-cols {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      padding: 0.6rem 0.75rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+
+    .dz-status {
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .dz-status.ok {
+      background: var(--success-soft);
+      border-color: rgba(90, 215, 161, 0.3);
+      color: var(--success);
+    }
+
+    .dz-status.err {
+      background: var(--danger-soft);
+      border-color: rgba(255, 107, 107, 0.3);
+      color: var(--danger);
+    }
+
+    input[type=file] {
+      display: none;
+    }
+
+    /* ── ACTION BAR ───────────────────────────────────────────────────── */
+    .action-bar {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.6rem 1.2rem;
+      border-radius: var(--radius);
+      font-family: var(--body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #1a0e00;
+      box-shadow: 0 4px 16px rgba(255, 173, 58, 0.25);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(255, 173, 58, 0.35);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success), #3ecf8e);
+      color: #082018;
+      box-shadow: 0 4px 16px rgba(90, 215, 161, 0.2);
+    }
+
+    .btn-success:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(90, 215, 161, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── CONTROLS ──────────────────────────────────────────────────────── */
+    .control-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .control-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    .lang-select-wrapper {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .lang-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 2rem 0.5rem 0.75rem;
+      font-family: var(--body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .lang-select:hover,
+    .lang-select:focus {
+      border-color: var(--accent);
+    }
+
+    .lang-select option {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .lang-select-wrapper::after {
+      content: '';
+      position: absolute;
+      right: 0.65rem;
+      top: 50%;
+      transform: translateY(-50%);
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 4px solid var(--text-muted);
+      pointer-events: none;
+    }
+
+    .lead-id-input {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      font-weight: 500;
+      width: 100px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .lead-id-input:hover,
+    .lead-id-input:focus {
+      border-color: var(--accent);
+    }
+
+    .lead-id-input::placeholder {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .status-msg {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .status-msg.ok {
+      color: var(--success);
+    }
+
+    .status-msg.err {
+      color: var(--danger);
+    }
+
+    .status-msg.warn {
+      color: var(--warn);
+    }
+
+    /* ── STATS BAR ────────────────────────────────────────────────────── */
+    .stats-bar {
+      display: none;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.25rem;
+    }
+
+    .stat-card {
+      flex: 1;
+      min-width: 130px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    .stat-val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      font-family: var(--mono);
+      margin-top: 0.15rem;
+    }
+
+    .stat-val.blue {
+      color: var(--accent);
+    }
+
+    .stat-val.purple {
+      color: #a78bfa;
+    }
+
+    .stat-val.green {
+      color: var(--success);
+    }
+
+    .stat-val.amber {
+      color: var(--warn);
+    }
+
+    /* ── TABLE ─────────────────────────────────────────────────────────── */
+    .table-wrapper {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      display: none;
+    }
+
+    .table-header {
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      background: var(--surface2);
+    }
+
+    .table-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      font-family: var(--sans);
+    }
+
+    .table-caption {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-family: var(--mono);
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      font-family: var(--mono);
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    thead th {
+      background: #1a1e28;
+      color: var(--text-dim);
+      font-weight: 600;
+      text-align: left;
+      padding: 0.55rem 0.7rem;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.65rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 173, 58, 0.04);
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    tbody td {
+      padding: 0.5rem 0.7rem;
+      white-space: nowrap;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+      vertical-align: middle;
+    }
+
+    .cell-phone {
+      color: #7dd3fc;
+    }
+
+    .cell-connected {
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    .cell-not-connected {
+      color: var(--danger);
+    }
+
+    .cell-terminal {
+      color: var(--warn);
+      font-weight: 600;
+    }
+
+    .cell-url {
+      color: var(--accent);
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+
+    .cell-unknown {
+      color: var(--warn);
+      font-style: italic;
+    }
+
+    .cell-sentiment-high {
+      color: var(--success);
+    }
+
+    .cell-sentiment-mid {
+      color: var(--warn);
+    }
+
+    .cell-sentiment-low {
+      color: var(--danger);
+    }
+
+    /* ── FOOTER ────────────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 1.5rem 2rem;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+
+    footer span {
+      color: var(--text-dim);
+    }
+
+    /* ── PROCESSING OVERLAY ───────────────────────────────────────────── */
+    .processing-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .processing-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2rem 2.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(255, 173, 58, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* ── ANIMATIONS ────────────────────────────────────────────────────── */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.3s ease forwards;
+    }
+
+    /* ── RESPONSIVE ────────────────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      .upload-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .header-inner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .header-steps {
+        display: none;
+      }
+
+      .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      header,
+      main,
+      footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Processing Overlay -->
+  <div class="processing-overlay" id="processingOverlay">
+    <div class="processing-card">
+      <div class="spinner"></div>
+      <span id="processingMsg">Processing files…</span>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <div>
+          <div class="header-badge">⚡ autoNgage</div>
+          <h1>Disposition Sync</h1>
+          <div class="header-sub">AutoEngage → Zoho Master Sheet · No backend · No installation</div>
+        </div>
+      </div>
+      <div class="header-steps">
+        <div class="step-pill"><span class="num">1</span> Upload Audience & Leads</div>
+        <div class="step-pill"><span class="num">2</span> Upload Sessions</div>
+        <div class="step-pill"><span class="num">3</span> Process Both Files</div>
+        <div class="step-pill"><span class="num">4</span> Copy → Paste in Zoho</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Upload Zones -->
+    <div class="upload-grid">
+      <div class="drop-zone" id="dz1" onclick="document.getElementById('f1').click()" role="button" tabindex="0"
+        aria-label="Upload Audience and Leads CSV">
+        <div class="dz-icon file1">📋</div>
+        <div class="dz-label">File 1 — Audience & Leads</div>
+        <div class="dz-sublabel">AutoEngage → Audience & Leads export</div>
+        <div class="dz-cols">person_name · phone_number · city · campaign_id<br>lead_source · disposition · updated ·
+          model_preference<br>seating_capacity_preference · disposition_detail</div>
+        <div class="dz-status" id="st1">📁 Drag & drop or click to browse</div>
+        <input type="file" id="f1" accept=".csv,.xlsx,.xls">
+      </div>
+
+      <div class="drop-zone" id="dz2" onclick="document.getElementById('f2').click()" role="button" tabindex="0"
+        aria-label="Upload Sessions CSV">
+        <div class="dz-icon file2">🎙️</div>
+        <div class="dz-label">File 2 — Sessions</div>
+        <div class="dz-sublabel">AutoEngage → Sessions export</div>
+        <div class="dz-cols">phone_number · created · start_time<br>summary · call_recording · sentiment_score</div>
+        <div class="dz-status" id="st2">📁 Drag & drop or click to browse</div>
+        <input type="file" id="f2" accept=".csv,.xlsx,.xls">
+      </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <button class="btn btn-primary" id="btnProcess" disabled onclick="processFiles()">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+        </svg>
+        Process Both Files
+      </button>
+      <div class="control-group">
+        <span class="control-label">Lead ID</span>
+        <input type="number" class="lead-id-input" id="leadIdStart" placeholder="e.g. 8173" min="1">
+      </div>
+      <div class="control-group">
+        <span class="control-label">Language</span>
+        <div class="lang-select-wrapper">
+          <select class="lang-select" id="langSelect">
+            <option value="English">English</option>
+            <option value="Hindi">Hindi</option>
+            <option value="Tamil">Tamil</option>
+            <option value="Malayalam">Malayalam</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-success" id="btnCopy" disabled onclick="copyData()" style="display:none">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        Copy All Data
+      </button>
+      <button class="btn btn-success" id="btnExport" disabled onclick="exportToExcel()" style="display:none">
+        <svg fill="currentColor" width="14" height="14" viewBox="0 0 24 24">
+          <path
+            d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 9l-2 3-2-3H6.5l3.25 4.5L6.5 20h2.5l2-3 2 3h2.5l-3.25-4.5L16 11h-3zm4 9H6V4h7v5h5v11z" />
+        </svg>
+        Export Excel
+      </button>
+      <button class="btn btn-secondary" id="btnReset" onclick="resetAll()" style="display:none">Reset</button>
+      <span class="status-msg" id="globalStatus"></span>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar" id="statsBar">
+      <div class="stat-card">
+        <div class="stat-label">Total Leads</div>
+        <div class="stat-val blue" id="sTotal">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Connected</div>
+        <div class="stat-val green" id="sConnected">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Not Connected</div>
+        <div class="stat-val amber" id="sNotConn">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Excluded (Terminal)</div>
+        <div class="stat-val purple" id="sExcluded">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">With Recording</div>
+        <div class="stat-val blue" id="sRecording">0</div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrapper" id="tableWrapper">
+      <div class="table-header">
+        <div class="table-title">Output Preview</div>
+        <div class="table-caption" id="tableCaption">0 rows</div>
+      </div>
+      <div class="table-scroll">
+        <table id="outputTable">
+          <thead>
+            <tr>
+              <th>Lead_ID</th>
+              <th>Full_Name</th>
+              <th>Phone</th>
+              <th>City</th>
+              <th>Pincode</th>
+              <th>Language</th>
+              <th>Lead_Source</th>
+              <th>Cohort</th>
+              <th>Campaign_ID</th>
+              <th>Call Triggered</th>
+              <th>Outcome</th>
+              <th>Disposition</th>
+              <th>SUMMARY</th>
+              <th>Conversion</th>
+              <th>Call_Date</th>
+              <th>No. of Attempts</th>
+              <th>SENTIMENT</th>
+              <th>Recordings</th>
+              <th>Model</th>
+              <th>Seating</th>
+              <th>Exclusion_Flag</th>
+            </tr>
+          </thead>
+          <tbody id="outputBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    Disposition Sync v2 &nbsp;·&nbsp; <span>autoNgage — Disposition Automation</span><br>
+  </footer>
+
+  <script>
+    // ─── STATE ───────────────────────────────────────────────────────────────────
+    let rawFile1 = null;
+    let rawFile2 = null;
+    let processedData = [];
+    let isProcessing = false;
+
+    // ─── PRIORITY TABLE ───────────────────────────────────────────────────────────
+    const DISPOSITION_PRIORITY = {
+      'test drive booked': 10,
+      'converted': 10,
+      'not interested': 9,
+      'dnd': 9,
+      'wrong number': 9,
+      'interested': 8,
+      'callback requested': 6,
+      'call back': 6,
+      'busy': 4,
+      'not connected': 3,
+      'no revert': 3,
+      'user did not speak': 2,
+    };
+    const TERMINAL_THRESHOLD = 9;
+    const CONNECTED_SET = new Set(['contacted', 'reached', 'engaged', 'converted']);
+    const NOT_CONNECTED_SET = new Set(['attempted', 'busy']);
+
+    function getDispositionPriority(d) {
+      if (!d) return 1;
+      return DISPOSITION_PRIORITY[d.trim().toLowerCase()] ?? 1;
+    }
+function detectHistory(obj) {
+  const candidates = ['history', 'conversation', 'transcript', 'chat_history'];
+  for (const c of candidates) {
+    if (obj[c] && obj[c].length > 2) return obj[c];
+  }
+  return '';
+}
+
+function formatHistory(rawJson) {
+  try {
+    if (!rawJson || rawJson === '[]') return '';
+    // Handle cases where it might already be an object or a string
+    const data = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
+    return data
+      .filter(item => item.message && item.message.trim() !== '')
+      .map(item => `${item.role === 'agent' ? 'Agent' : 'User'}: ${item.message}`)
+      .join(' | '); // Using pipe as a separator for Excel compatibility
+  } catch (e) {
+    return String(rawJson); 
+  }
+}
+    // ─── PHONE NORMALIZATION ──────────────────────────────────────────────────────
+    function normalizePhone(raw) {
+      if (!raw) return null;
+      let s = String(raw).trim();
+      if (/^\d[\d.]*[eE][+\-]?\d+$/.test(s)) {
+        s = String(Math.round(parseFloat(s)));
+      }
+      const digits = s.replace(/\D/g, '');
+      if (!digits) return null;
+      if (digits.startsWith('91') && digits.length === 12) return digits.slice(2);
+      if (digits.startsWith('0') && digits.length === 11) return digits.slice(1);
+      if (digits.length === 10) return digits;
+      if (digits.startsWith('91') && digits.length >= 12) return digits.slice(digits.length - 10);
+      return null;
+    }
+
+    function isPhoneLike(val) {
+      return /^\+?[\d\s\-()]{10,15}$/.test(String(val).trim());
+    }
+
+    // ─── DATE PARSING ──────────────────────────────────────────────────────────────
+    function parseAutoEngageDate(str) {
+      if (!str) return null;
+      const s = String(str).trim();
+      const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2}):(\d{2})\s*(am|pm)?/i);
+      if (m) {
+        let [, dd, mm, yyyy, hh, min, sec, ampm] = m;
+        dd = parseInt(dd, 10); mm = parseInt(mm, 10); yyyy = parseInt(yyyy, 10);
+        hh = parseInt(hh, 10); min = parseInt(min, 10); sec = parseInt(sec, 10);
+        if (ampm) {
+          ampm = ampm.toLowerCase();
+          if (ampm === 'pm' && hh !== 12) hh += 12;
+          if (ampm === 'am' && hh === 12) hh = 0;
+        }
+        return new Date(yyyy, mm - 1, dd, hh, min, sec);
+      }
+      const d = new Date(str);
+      return isNaN(d) ? null : d;
+    }
+
+    function formatCallDate(dateObj) {
+      if (!dateObj) return '';
+      const dd = String(dateObj.getDate()).padStart(2, '0');
+      const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const yyyy = dateObj.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
+
+    function isDateStr(val) {
+      return /\d{1,2}\/\d{1,2}\/\d{4}/.test(String(val));
+    }
+
+    function ordinalSuffix(n) {
+      const s = ['th', 'st', 'nd', 'rd'];
+      const v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    }
+
+    function formatTime12(dateObj) {
+      if (!dateObj) return '';
+      let h = dateObj.getHours();
+      const m = dateObj.getMinutes();
+      const ampm = h >= 12 ? 'pm' : 'am';
+      h = h % 12 || 12;
+      return `${h}:${String(m).padStart(2, '0')}${ampm}`;
+    }
+
+    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+
+    // ─── FILE READING ──────────────────────────────────────────────────────────────
+    function readFileAsArrayBuffer(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function parseSheet(ab) {
+      const wb = XLSX.read(ab, { type: 'array', raw: true, cellText: false, cellDates: false });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+      if (rows.length < 2) return [];
+      const headers = rows[0].map(h => String(h).trim().toLowerCase().replace(/\s+/g, '_'));
+      const result = [];
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const obj = {};
+        headers.forEach((h, j) => { obj[h] = cellToString(row[j]); });
+        obj.__raw = row.map(cellToString);
+        result.push(obj);
+      }
+      return result;
+    }
+
+    function cellToString(val) {
+      if (val === undefined || val === null || val === '') return '';
+      if (typeof val === 'number') {
+        if (Number.isInteger(val)) return String(val);
+        if (val > 999999 && Math.abs(val - Math.round(val)) < 0.01) return String(Math.round(val));
+        return String(val);
+      }
+      let s = String(val).trim();
+      if (/^\d[\d.]*[eE][+\-]?\d+$/.test(s)) {
+        const n = parseFloat(s);
+        if (Number.isFinite(n) && n > 999999) return String(Math.round(n));
+      }
+      return s;
+    }
+
+    // ─── ROBUST COLUMN DETECTION (File 2 column-shift bug fix) ────────────────────
+    function detectPhones(obj) {
+      const phones = new Set();
+      const exactNames = ['phone_number', 'phone', 'mobile', 'contact', 'contact_number'];
+      for (const c of exactNames) {
+        if (obj[c]) {
+          const n = normalizePhone(obj[c]);
+          if (n) phones.add(n);
+        }
+      }
+      const raw = Array.isArray(obj.__raw) ? obj.__raw : Object.values(obj);
+      for (const val of raw) {
+        if (!val) continue;
+        const s = String(val).trim();
+        if (isPhoneLike(s)) {
+          const n = normalizePhone(s);
+          if (n) phones.add(n);
+        }
+        if (s.length > 10) {
+          const matches = s.match(/\+?(?:91|0)?[\s\-]?\d{10,12}\b/g);
+          if (matches) {
+            for (const m of matches) {
+              const n = normalizePhone(m);
+              if (n) phones.add(n);
+            }
+          }
+        }
+      }
+      return Array.from(phones);
+    }
+
+    function detectRecording(obj) {
+      function cleanLink(str) {
+        if (!str || typeof str !== 'string') return null;
+        let s = str.trim();
+        const low = s.toLowerCase();
+        if (low === 'null' || low === 'n/a' || low === 'none' || low === '-' || s === '') return null;
+        return s;
+      }
+
+      function extractUrl(str) {
+        if (!str || typeof str !== 'string') return null;
+        const m = str.match(/(?:https?|s3):\/\/[^\s"'<>\\[\]]+/i);
+        return m ? m[0] : null;
+      }
+
+      const exactNames = ['call_recording', 'recording', 'recording_url', 'call_url',
+        'audio_url', 'audio', 'media_url', 'record_url', 'call_record'];
+      for (const c of exactNames) {
+        if (obj[c]) {
+          const val = cleanLink(obj[c]);
+          if (val) {
+            const url = extractUrl(val);
+            return url || val;
+          }
+        }
+      }
+
+      for (const [k, v] of Object.entries(obj)) {
+        if (!v || k === '__raw') continue;
+        if (/record|audio|media/i.test(k)) {
+          const clean = cleanLink(v);
+          if (!clean) continue;
+          const url = extractUrl(clean);
+          if (url) return url;
+          if (clean.length > 5 && !clean.includes('{')) return clean;
+        }
+      }
+
+      if (Array.isArray(obj.__raw)) {
+        let bestGuess = null;
+        for (const val of obj.__raw) {
+          const s = String(val || '').trim();
+          const url = extractUrl(s);
+          if (url) {
+            const lower = url.toLowerCase();
+            if (lower.includes('cloudphone') || lower.includes('record') ||
+              lower.includes('audio') || lower.includes('.mp3') || lower.includes('.wav')) {
+              return url;
+            }
+            if (url.length > 35 && !bestGuess) bestGuess = url;
+          } else if (s.includes('.mp3') || s.includes('.wav') || s.includes('cloudphone')) {
+            return s;
+          }
+        }
+        if (bestGuess) return bestGuess;
+      }
+
+      return '';
+    }
+
+    function detectDate(obj) {
+      const candidates = ['created', 'date', 'start_time', 'timestamp', 'call_date'];
+      for (const c of candidates) {
+        if (obj[c] && isDateStr(obj[c])) return obj[c];
+      }
+      for (const val of Object.values(obj)) {
+        if (typeof val === 'string' && isDateStr(val)) return val;
+      }
+      return '';
+    }
+
+    function detectSummary(obj) {
+      const candidates = ['summary', 'call_summary', 'conversation_summary', 'notes'];
+      for (const c of candidates) {
+        if (obj[c] && obj[c].length > 3) return obj[c];
+      }
+      return '';
+    }
+
+    function detectSentiment(obj) {
+      const candidates = ['sentiment_score', 'sentiment', 'score'];
+      for (const c of candidates) {
+        if (obj[c] !== undefined && obj[c] !== '') return obj[c];
+      }
+      return '';
+    }
+
+    // ─── SEATING DERIVATION ───────────────────────────────────────────────────────
+    function deriveSeating(seating, model) {
+      if (seating && seating.trim() !== '') return seating.trim();
+      if (!model) return '';
+      const m = model.toLowerCase();
+      if (m.includes('basalt')) return '5 Seater';
+      if (m.includes('aircross') || m.includes('c3')) return '5 Seater & 7 Seater';
+      if (m.includes('meridian') || m.includes('jeep')) return '5 Seater & 7 Seater';
+      return '';
+    }
+
+    // ─── CORE PROCESSING ──────────────────────────────────────────────────────────
+    async function processFiles() {
+      if (!rawFile1 || !rawFile2) return;
+
+      showOverlay('Parsing files…');
+      await tick();
+
+      try {
+        const [ab1, ab2] = await Promise.all([
+          readFileAsArrayBuffer(rawFile1),
+          readFileAsArrayBuffer(rawFile2)
+        ]);
+
+        showOverlay('Parsing Audience & Leads…');
+        await tick();
+        const rows1 = parseSheet(ab1);
+
+        showOverlay('Parsing Sessions…');
+        await tick();
+        const rows2 = parseSheet(ab2);
+
+        showOverlay('Applying business logic…');
+        await tick();
+
+        // ── BUILD FILE 1 LIST ──────────────────────────────────────────────────
+        const allLeads = [];
+        for (const r of rows1) {
+          const phone = normalizePhone(r['phone_number'] || r['phone'] || r['mobile'] || '');
+          if (!phone) continue;
+          allLeads.push({ row: r, phone });
+        }
+
+        // ── BUILD FILE 2 MAP ────────────────────────────────────────────────────
+        const sessionGroups = {};
+        for (const r of rows2) {
+          const phones = detectPhones(r);
+          for (const phone of phones) {
+            if (!sessionGroups[phone]) sessionGroups[phone] = [];
+            sessionGroups[phone].push(r);
+          }
+        }
+
+        const sessionMap = {};
+        for (const [phone, sessions] of Object.entries(sessionGroups)) {
+          let best = null;
+          for (const s of sessions) {
+            const rec = detectRecording(s);
+            if (rec) { best = s; break; }
+          }
+          if (!best) {
+            for (const s of sessions) {
+              const summ = detectSummary(s);
+              if (summ) { best = s; break; }
+            }
+          }
+          if (!best) best = sessions[sessions.length - 1];
+
+          sessionMap[phone] = {
+            recording: detectRecording(best),
+            summary: detectSummary(best),
+            sentiment: detectSentiment(best),
+            dateStr: detectDate(best),
+            startTime: best['start_time'] || '',
+            history: formatHistory(detectHistory(best))
+          };
+        }
+
+        // ── CALL TRIGGERED ─────────────────────────────────────────────────────
+        let minDate = null, maxDate = null;
+        for (const r of rows2) {
+          const dStr = detectDate(r) || r['start_time'] || '';
+          const d = parseAutoEngageDate(dStr);
+          if (!d) continue;
+          if (!minDate || d < minDate) minDate = d;
+          if (!maxDate || d > maxDate) maxDate = d;
+        }
+
+        let callTriggered = '';
+        if (minDate && maxDate) {
+          const day = ordinalSuffix(minDate.getDate());
+          const month = MONTH_NAMES[minDate.getMonth()];
+          const tMin = formatTime12(minDate);
+          const tMax = formatTime12(maxDate);
+          callTriggered = `${day} ${month} Calls Triggered From ${tMin} - ${tMax}`;
+        }
+
+        // ── ASSEMBLE OUTPUT ROWS ───────────────────────────────────────────────
+        const output = [];
+        let rowIndex = 2;
+        for (const { row, phone } of allLeads) {
+          const disp = (row['disposition'] || '').trim();
+          const dispLower = disp.toLowerCase();
+          const priority = getDispositionPriority(disp);
+
+          let outcome;
+          if (CONNECTED_SET.has(dispLower)) {
+            outcome = 'Connected';
+          } else if (NOT_CONNECTED_SET.has(dispLower) || DISPOSITION_PRIORITY.hasOwnProperty(dispLower)) {
+            outcome = 'Not Connected';
+          } else {
+            outcome = 'Unknown';
+            console.warn(`[Disposition Sync] Unknown disposition "${disp}" for phone ${phone} — mapped to "Unknown". Check for typos or add to DISPOSITION_PRIORITY / CONNECTED_SET / NOT_CONNECTED_SET.`);
+          }
+
+          const exclusion = priority >= TERMINAL_THRESHOLD ? 'YES' : '';
+
+          let summary = row['disposition_detail'] || '';
+          if (!summary.trim()) summary = 'No Response';
+
+          const callDateRaw = row['updated'] || '';
+          const callDateObj = parseAutoEngageDate(callDateRaw);
+          const callDate = formatCallDate(callDateObj);
+
+          const model = (row['model_preference'] || '').replace(/[\[\]"']/g, '').trim();
+          const seatingRaw = row['seating_capacity_preference'] || '';
+          const seating = deriveSeating(seatingRaw, model);
+
+          const sess = sessionMap[phone] || {};
+
+          const selectedLanguage = document.getElementById('langSelect').value;
+          const startId = parseInt(document.getElementById('leadIdStart').value) || 0;
+          const leadId = startId > 0 ? `L-${startId + output.length}` : '';
+
+          output.push({
+            lead_id: leadId,
+            full_name: row['person_name'] || '',
+            phone,
+            city: row['city'] || '',
+            pincode: row['pincode'] || '',
+            language: selectedLanguage,
+            lead_source: row['lead_source'] || '',
+            cohort: row['campaign_objective_name'] || '',
+            campaign_id: row['campaign_id'] || '',
+            call_triggered: callTriggered,
+            outcome,
+            disposition: disp,
+            summary,
+            conversion: '',
+            history: sess.history || '',
+            call_date: callDate,
+            num_attempts: `=COUNTIF(C:C;C${rowIndex})`,
+            sentiment: sess.sentiment || '',
+            recordings: sess.recording || '',
+            model,
+            seating,
+            exclusion_flag: exclusion,
+          });
+          rowIndex++;
+        }
+
+        processedData = output;
+
+        renderTable(output);
+        renderStats(output);
+        hideOverlay();
+
+        setStatus('globalStatus', `✅ ${output.length} leads processed — ready to copy or export.`, 'ok');
+        document.getElementById('btnCopy').style.display = '';
+        document.getElementById('btnCopy').disabled = false;
+        document.getElementById('btnExport').style.display = '';
+        document.getElementById('btnExport').disabled = false;
+        document.getElementById('btnReset').style.display = '';
+
+      } catch (e) {
+        hideOverlay();
+        setStatus('globalStatus', `❌ Error: ${e.message}`, 'err');
+        console.error(e);
+      }
+    }
+
+    // ─── RENDER TABLE ─────────────────────────────────────────────────────────────
+    const PREVIEW_LIMIT = 200;
+    function renderTable(data) {
+      const tbody = document.getElementById('outputBody');
+      tbody.innerHTML = '';
+      const preview = data.slice(0, PREVIEW_LIMIT);
+
+      for (const r of preview) {
+        const tr = document.createElement('tr');
+        const sentNum = parseFloat(r.sentiment);
+        const sentClass = isNaN(sentNum) ? '' :
+          sentNum >= 0.6 ? 'cell-sentiment-high' :
+            sentNum >= 0.3 ? 'cell-sentiment-mid' : 'cell-sentiment-low';
+
+        tr.innerHTML = `
+          <td>${esc(r.lead_id)}</td>
+          <td>${esc(r.full_name)}</td>
+          <td class="cell-phone">${esc(r.phone)}</td>
+          <td>${esc(r.city)}</td>
+          <td>${esc(r.pincode)}</td>
+          <td>${esc(r.language)}</td>
+          <td>${esc(r.lead_source)}</td>
+          <td>${esc(r.cohort)}</td>
+          <td>${esc(r.campaign_id)}</td>
+          <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${esc(r.call_triggered)}</td>
+          <td class="${r.outcome === 'Connected' ? 'cell-connected' : r.outcome === 'Unknown' ? 'cell-unknown' : 'cell-not-connected'}">${esc(r.outcome)}</td>
+          <td class="${getPrioClass(r.disposition)}">${esc(r.disposition)}</td>
+          
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(r.summary)}</td>
+        <td>${esc(r.conversion)}</td>
+        <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.history)}">${esc(r.history)}</td> 
+        <td>${esc(r.call_date)}</td>
+          <td>${esc(String(r.num_attempts))}</td>
+          <td class="${sentClass}">${esc(r.sentiment)}</td>
+          <td>${r.recordings ? `<a class="cell-url" href="${esc(String(r.recordings).startsWith('http') || String(r.recordings).startsWith('s3:') ? r.recordings : 'https://' + r.recordings)}" target="_blank" title="${esc(r.recordings)}">🔗 Recording</a>` : ''}</td>
+          <td>${esc(r.model)}</td>
+          <td>${esc(r.seating)}</td>
+          <td class="${r.exclusion_flag ? 'cell-terminal' : ''}">${esc(r.exclusion_flag)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      const cap = data.length > PREVIEW_LIMIT
+        ? `Showing first ${PREVIEW_LIMIT} of ${data.length} rows`
+        : `${data.length} rows`;
+      document.getElementById('tableCaption').textContent = cap;
+      document.getElementById('tableWrapper').style.display = 'block';
+      document.getElementById('tableWrapper').classList.add('fade-in');
+    }
+
+    function getPrioClass(disp) {
+      return getDispositionPriority(disp) >= 9 ? 'cell-terminal' : '';
+    }
+
+    function esc(str) {
+      return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ─── RENDER STATS ─────────────────────────────────────────────────────────────
+    function renderStats(data) {
+      const total = data.length;
+      const connected = data.filter(r => r.outcome === 'Connected').length;
+      const notConn = total - connected;
+      const excluded = data.filter(r => r.exclusion_flag === 'YES').length;
+      const withRec = data.filter(r => r.recordings).length;
+
+      document.getElementById('sTotal').textContent = total;
+      document.getElementById('sConnected').textContent = connected;
+      document.getElementById('sNotConn').textContent = notConn;
+      document.getElementById('sExcluded').textContent = excluded;
+      document.getElementById('sRecording').textContent = withRec;
+
+      document.getElementById('statsBar').style.display = 'flex';
+      document.getElementById('statsBar').classList.add('fade-in');
+    }
+
+    // ─── EXPORT TO EXCEL ──────────────────────────────────────────────────────────
+   const HEADERS_TSV = ['Lead_ID', 'Full_Name', 'Phone', 'City', 'Pincode', 'Language', 'Lead_Source', 'Cohort', 'Campaign_ID', 'Call Triggered', 'Outcome', 'Disposition', 'SUMMARY', 'Conversion', 'History', 'Call_Date', 'No. of Attempts', 'SENTIMENT', 'Recordings', 'Model', 'Seating', 'Exclusion_Flag'];
+
+    async function exportToExcel() {
+      if (!processedData.length) return;
+      const rows = [HEADERS_TSV];
+      for (const r of processedData) {
+        rows.push([
+       r.lead_id, r.full_name, r.phone, r.city, r.pincode, r.language,
+  r.lead_source, r.cohort, r.campaign_id, r.call_triggered,
+  r.outcome, r.disposition, r.summary, r.conversion, 
+  r.history, // Add this
+  r.call_date, r.num_attempts, r.sentiment, r.recordings, 
+  r.model, r.seating, r.exclusion_flag,
+        ].map(v => typeof v === 'string' ? v.trim() : v));
+      }
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Processed Leads");
+      XLSX.writeFile(wb, "autoNgage_Disposition_Sync.xlsx");
+    }
+
+    // ─── COPY TO CLIPBOARD ────────────────────────────────────────────────────────
+    async function copyData() {
+      if (!processedData.length) return;
+      const lines = [];
+      for (const r of processedData) {
+        const cols = [
+          r.lead_id, r.full_name, r.phone, r.city, r.pincode, r.language,
+          r.lead_source, r.cohort, r.campaign_id, r.call_triggered,
+          r.outcome, r.disposition, r.summary, r.conversion, r.call_date,
+          r.num_attempts, r.sentiment, r.recordings, r.model, r.seating, r.exclusion_flag,
+        ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '));
+        lines.push(cols.join('\t'));
+      }
+      const tsv = lines.join('\n');
+
+      try {
+        await navigator.clipboard.writeText(tsv);
+        showCopyFeedback('ok');
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = tsv;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+          document.execCommand('copy');
+          showCopyFeedback('ok');
+        } catch {
+          showCopyFeedback('warn');
+        }
+        document.body.removeChild(ta);
+      }
+    }
+
+    function showCopyFeedback(type) {
+      const msg = type === 'ok'
+        ? '✅ Copied! Paste with Ctrl+V in Zoho.'
+        : '⚠️ Auto-copy failed — manually select and copy the table.';
+      setStatus('globalStatus', msg, type);
+      const btn = document.getElementById('btnCopy');
+      if (!btn.dataset.origContent) btn.dataset.origContent = btn.innerHTML;
+      btn.textContent = '✓ Copied';
+      setTimeout(() => { btn.innerHTML = btn.dataset.origContent; }, 2000);
+    }
+
+    // ─── RESET ────────────────────────────────────────────────────────────────────
+    function resetAll() {
+      rawFile1 = null; rawFile2 = null; processedData = [];
+      ['f1', 'f2'].forEach(id => { document.getElementById(id).value = ''; });
+      ['dz1', 'dz2'].forEach(id => { document.getElementById(id).classList.remove('has-file'); });
+      ['st1', 'st2'].forEach(id => {
+        const el = document.getElementById(id);
+        el.className = 'dz-status';
+        el.textContent = '📁 Drag & drop or click to browse';
+      });
+      document.getElementById('outputBody').innerHTML = '';
+      document.getElementById('tableWrapper').style.display = 'none';
+      document.getElementById('statsBar').style.display = 'none';
+      document.getElementById('btnCopy').style.display = 'none';
+      document.getElementById('btnExport').style.display = 'none';
+      document.getElementById('btnReset').style.display = 'none';
+      document.getElementById('btnProcess').disabled = true;
+      setStatus('globalStatus', '', '');
+    }
+
+    // ─── UI HELPERS ───────────────────────────────────────────────────────────────
+    function setStatus(id, msg, type) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = msg;
+      el.className = 'status-msg' + (type ? ' ' + type : '');
+    }
+
+    function showOverlay(msg) {
+      isProcessing = true;
+      document.getElementById('processingMsg').textContent = msg;
+      document.getElementById('processingOverlay').style.display = 'flex';
+    }
+
+    function hideOverlay() {
+      isProcessing = false;
+      document.getElementById('processingOverlay').style.display = 'none';
+    }
+
+    function tick() { return new Promise(r => setTimeout(r, 20)); }
+
+    function updateProcessBtn() {
+      document.getElementById('btnProcess').disabled = !(rawFile1 && rawFile2);
+    }
+
+    function setFileStatus(id, filename) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = 'dz-status ok';
+      el.textContent = `✅ ${filename}`;
+    }
+
+    // ─── FILE INPUT HANDLING ──────────────────────────────────────────────────────
+    document.getElementById('f1').addEventListener('change', function () {
+      if (!this.files[0]) return;
+      rawFile1 = this.files[0];
+      setFileStatus('st1', rawFile1.name);
+      document.getElementById('dz1').classList.add('has-file');
+      updateProcessBtn();
+    });
+
+    document.getElementById('f2').addEventListener('change', function () {
+      if (!this.files[0]) return;
+      rawFile2 = this.files[0];
+      setFileStatus('st2', rawFile2.name);
+      document.getElementById('dz2').classList.add('has-file');
+      updateProcessBtn();
+    });
+
+    // ─── DRAG AND DROP ────────────────────────────────────────────────────────────
+    function setupDragDrop(dzId, fileInputId) {
+      const dz = document.getElementById(dzId);
+      const fi = document.getElementById(fileInputId);
+
+      dz.addEventListener('dragover', e => {
+        e.preventDefault();
+        dz.classList.add('drag-over');
+      });
+      dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+      dz.addEventListener('drop', e => {
+        e.preventDefault();
+        dz.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fi.files = dt.files;
+        fi.dispatchEvent(new Event('change'));
+      });
+
+      dz.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') fi.click();
+      });
+    }
+
+    setupDragDrop('dz1', 'f1');
+    setupDragDrop('dz2', 'f2');
+  </script>
+</body>
+
+</html>

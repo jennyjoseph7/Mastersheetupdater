@@ -106,7 +106,9 @@ function build_docker_image() {
 
     export WORKER_DOCKER_IMAGE_NAME=$WORKER_NAME:$WORKER_DOCKER_IMAGE_TAG
 
-    cp -v $GCP_CREDS_PATH ./
+    if [ $GCP_CREDS_PATH != 0 ];then
+    	cp -v $GCP_CREDS_PATH ./
+    fi
 
     docker build -t $WORKER_DOCKER_IMAGE_NAME .
     image_build_status=$?
@@ -176,13 +178,11 @@ function main() {
 
     if [ $GCP_CREDS_DIR == 0 ];then
 	    echo "GCP Creds dir not set."
-	    exit 1
-    fi
-
-    export GCP_CREDS_PATH="$GCP_CREDS_DIR/$BUILD_ENVIRONMENT/credentials.json"
-    if [[ ! -f $GCP_CREDS_PATH ]];then
-        echo "GCP Creds Not Found in $GCP_CREDS_PATH."
-        exit 1
+    else
+    	export GCP_CREDS_PATH="$GCP_CREDS_DIR/$BUILD_ENVIRONMENT/credentials.json"
+    	if [[ ! -f $GCP_CREDS_PATH ]];then
+    	    echo "GCP Creds Not Found in $GCP_CREDS_PATH."
+    	fi
     fi
 
     if [ $WORKER_NAME == 0 ];then
@@ -194,7 +194,7 @@ function main() {
     fi
 	
     if [ $ONLY_PUSH == 0 ];then
-	    echo "Patching zipname."
+	echo "Patching zipname."
     	sed "s/<zipname>/$WORKER_NAME/g" Dockerfile.wk > Dockerfile
         zip_repo $WORKER_DIR $WORKER_NAME.zip
         build_docker_image
