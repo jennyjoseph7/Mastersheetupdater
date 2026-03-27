@@ -84,7 +84,7 @@ class get_email_template_agent(BaseAgent):
             ))
         else:
             records = list(pg.list(
-                table_name="all_template",
+                table_name="template",
                 where={"campaign_type": self.campaign_type,
                        "campaign_objective_name" : self.campaign_objective[0],
                        "template_type" : "text",
