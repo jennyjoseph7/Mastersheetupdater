@@ -54,6 +54,7 @@ class get_email_template_agent(BaseAgent):
         records = list(pg.list(
             table_name="communication_credential",
             where={"dealership_id": dealership_id,
+                   'channel': 'email'
             }
         ))
         communication_credential = records[0]
