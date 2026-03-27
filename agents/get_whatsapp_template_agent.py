@@ -71,7 +71,7 @@ class get_whatsapp_template_agent(BaseAgent):
 
         if self.is_disposition :
             records = list(pg.list(
-                table_name="all_template",
+                table_name="template",
                 where={"campaign_type": self.campaign_type,
                        "campaign_objective_name" : self.campaign_objective[0],
                        "template_type" : "text",
