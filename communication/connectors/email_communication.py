@@ -159,7 +159,7 @@ class Communication:
             "delete_after_send": delete_after_send,
             "communication_id": com_obj["communication_id"],
             "gryd_hook": "communication_hook",
-            "gryd_hook_service": GRYD_COMMUNICATION_SERVICE,
+            "gryd_hook_service": AUTOCRM_COMMUNICATION_SERVICE_NAME,
             "reply_email": kwargs.get("reply_email", {}),
             "to_track":kwargs.get("to_track",False)
         }
@@ -197,7 +197,7 @@ class Communication:
             d=kwargs.get("lead_data",{})
             d["email"]=recipient
             if  kwargs.get("_run_async",True):
-                res =gryd.create_async_task(START_MAIL_TASK, GRYD_COMMUNICATION_SERVICE, args=args, kwargs={**d,**task_kwargs})
+                res =gryd.create_async_task(START_MAIL_TASK, AUTOCRM_COMMUNICATION_SERVICE_NAME, args=args, kwargs={**d,**task_kwargs})
                 communication_ids.append({
                                         "communication_id":task_kwargs.get("communication_id"),
                                         "task_id":res.get("job",{}).get("task_id"),

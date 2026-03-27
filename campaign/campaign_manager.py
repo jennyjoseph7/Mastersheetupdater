@@ -967,12 +967,13 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         # logger.info("Template Data: %s", template_data)
     elif channel in ("whatsapp_chat", "sms", "rcs"):
         if not templateID:
-            template_data = get_template(
-                lead_id=lead_id,
-                campaign_type=campaign_type,
-                campaign_objective= [campaign_objective_name] or [],
-                lead_info={}
-            )
+            # template_data = get_template(
+            #     lead_id=lead_id,
+            #     campaign_type=campaign_type,
+            #     campaign_objective= [campaign_objective_name] or [],
+            #     lead_info={}
+            # )
+            template_data=testing_whatsapp_template()
             if not template_data:
                 yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
                 return
@@ -1207,7 +1208,7 @@ def testing_whatsapp_template():
             "provider_name": "Airtel",
             "template_name": "nada_autoNgage_demo1",
             "template_type": "text",
-            "template_message": "",
+            "template_message": "Hi Welcome this is Test Message",
             "campaign_objective": [],
             "template_variables": [],
             "template_button_payloads": [

@@ -6,6 +6,7 @@ import sys
 from urllib.parse import urlparse
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from communication_helpers import *
+from config import AUTOCRM_COMMUNICATION_SERVICE_NAME
 logger=hp.get_logger(__name__)
 
 import re
@@ -22,7 +23,7 @@ def do_validate_email(email):
 class Mailsender(object):
     def __init__(self, sender = None, gryd_hook = None, gryd_hook_service =None,blacklist_hook = None, credentials = None, receive_hook = None, request_hook = None):
         self.gryd_hook= gryd_hook
-        self.gryd_hook_service= gryd_hook_service or GRYD_COMMUNICATION_SERVICE
+        self.gryd_hook_service= gryd_hook_service or AUTOCRM_COMMUNICATION_SERVICE_NAME
         self.sent_hook = gryd_hook
         self.receive_hook = receive_hook or gryd_hook
         self.blacklist_hook = blacklist_hook
