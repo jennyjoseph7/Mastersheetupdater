@@ -20,18 +20,82 @@
                 "function": "now_ctime"
             }
         },
-        {
-            "name": "dealer_name",
-            "type": "text",
-            "indexed": true,
-            "required": true
-        },
-        {
-            "name": "credits_balance",
-            "type": "number",
-            "units": "credits",
-            "default": 0
-        },
+	        {
+	            "name": "dealer_name",
+	            "type": "text",
+	            "indexed": true,
+	            "required": true
+	        },
+	        {
+	            "name": "search_term",
+	            "type": "text",
+	            "indexed": true,
+	            "force_update": [
+	                "dealer_name",
+	                "dealership_legal_name",
+	                "dealership_type",
+	                "supported_brands",
+	                "supported_brand_names",
+	                "languages",
+	                "channels",
+	                "dealership_description",
+	                "dealer_group_name",
+	                "region_name",
+	                "billing_address",
+	                "billing_contact_name",
+	                "billing_contact_email",
+	                "billing_contact_phone",
+	                "primary_contact_name",
+	                "primary_contact_email",
+	                "primary_contact_phone",
+	                "secondary_contact_name",
+	                "secondary_contact_email",
+	                "secondary_contact_phone",
+	                "dealer_status",
+	                "hashtags"
+	            ],
+	            "auto_updater": true,
+	            "default": {
+	                "function": "name_to_id",
+	                "args": [
+	                    "dealer_name",
+	                    "dealership_legal_name",
+	                    "dealership_type",
+	                    "supported_brands",
+	                    "supported_brand_names",
+	                    "languages",
+	                    "channels",
+	                    "dealership_description",
+	                    "dealer_group_name",
+	                    "region_name",
+	                    "billing_address",
+	                    "billing_contact_name",
+	                    "billing_contact_email",
+	                    "billing_contact_phone",
+	                    "primary_contact_name",
+	                    "primary_contact_email",
+	                    "primary_contact_phone",
+	                    "secondary_contact_name",
+	                    "secondary_contact_email",
+	                    "secondary_contact_phone",
+	                    "dealer_status",
+	                    "hashtags"
+	                ],
+	                "kwargs": {
+	                    "attribute_join": " ",
+	                    "is_unique": true,
+	                    "separator": " ",
+	                    "skip_empty": true,
+	                    "case": "lower"
+	                }
+	            }
+	        },
+	        {
+	            "name": "credits_balance",
+	            "type": "number",
+	            "units": "credits",
+	            "default": 0
+	        },
         {
             "name": "pan_number",
             "type": "text"

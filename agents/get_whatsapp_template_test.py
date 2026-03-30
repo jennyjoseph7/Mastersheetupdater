@@ -10,11 +10,11 @@ result = response = gryd.await_result(
     task="get_whatsapp_template",
     service="autocrm-agent",
     kwargs={
-        "lead_id": "dl9cay4010-sree-saradhambal-automobiles-pvt-ltd-ambal-auto---service-center-keep-your-ride-smooth---service-reminder",
-        "campaign_type": "post-sales",
-        "campaign_objective" : ["Free Service Due Reminder"],
+        "lead_id": "test-user-8248913170-stellantis-india-52975526-a76b-3fd5-956d-1c1db2c4a318",
+        "campaign_type": "pre-sales",
+        "campaign_objective" : ["Test Drive Booking"],
         #"lead_info": {},
-        #"dealership_id": "daveai"
+        "dealership_id": "daveai"
     }
 )
 

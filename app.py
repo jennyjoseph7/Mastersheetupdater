@@ -90,7 +90,7 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
     logger.info(f"Webhook received for channel={channel}, provider={channel_provider}, enterprise={enterprise_id}, conversation={conversation_id}, language={language}")
     if channel in ["whatsapp", "whatsapp_chat", "whatsapp_voice_note", "whatsapp_voice_call"]:
         arg_d=(channel, conversation_id)
-        gryd.create_async_task("process_forwarded_webhook", "autocrm-communication",args=arg_d , kwargs=payload)
+        gryd.create_async_task("process_forwarded_webhook", AUTOCRM_COMMUNICATION_SERVICE_NAME,args=arg_d , kwargs=payload)
     elif channel == "email":
         #.... do the stuff .... 
         pass
@@ -99,7 +99,7 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
         pass
     elif channel in ["rcs"]:
         logger.info(f"RCs webhook received for channel={channel}, provider={channel_provider}")
-        gryd.create_async_task("process_rcs_webhook", "autocrm-communication", args=[], kwargs=payload)
+        gryd.create_async_task("process_rcs_webhook", AUTOCRM_COMMUNICATION_SERVICE_NAME, args=[], kwargs=payload)
     else:
         return gryd_routes.jsonify({"status": "error", "message": "Invalid channel"}), 400, {"Access-Control-Allow-Origin": "*"}
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
@@ -121,7 +121,7 @@ def handle_sns_incoming_messages_webhook():
 @app.route("/webhook/rcs-status", methods = ["GET","POST"])
 def get_rcs_status():
     payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
-    gryd.create_async_task("get_rcs_status", "autocrm-communication", args=[], kwargs=payload)
+    gryd.create_async_task("get_rcs_status", AUTOCRM_COMMUNICATION_SERVICE_NAME, args=[], kwargs=payload)
     return gryd_routes.jsonify({"status": "ok"}), 200, {"Access-Control-Allow-Origin": "*"}
 
 

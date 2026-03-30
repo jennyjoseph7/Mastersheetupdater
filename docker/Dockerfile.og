@@ -1,24 +1,8 @@
-FROM ubuntu:22.04
-ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update -yy
-RUN apt install software-properties-common zip unzip python3-pip redis-tools libpq-dev curl jq -yy
-RUN apt-get install ffmpeg -yy
-RUN apt-get update && apt-get install -y \
-    portaudio19-dev \
-    python3-dev \
-    build-essential \
-    vim 
-RUN pip install pyaudio
-
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
+FROM asia-south1-docker.pkg.dev/dave-70c8e/autobot-base-image/base_image:latest
 
 WORKDIR /root/
 COPY <zipname>.zip /root/
 RUN unzip <zipname>.zip -d app/
 WORKDIR /root/app/
-COPY credentials.json ./
 
-RUN pip install -U pip setuptools
-RUN pip install --ignore-installed -r requirements.txt
-RUN pip install --ignore-installed -r spark/requirements.txt
 CMD [ "bash" , "./start_process_container.sh" ]

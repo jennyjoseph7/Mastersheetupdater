@@ -51,23 +51,61 @@
       "title": "Campaign Objective Name",
       "required": false
     },
-    {
-      "name": "audience_name",
-      "type": "text",
-      "title": "Audience Name",
-      "required": true,
-      "indexed": true
-    },
-    {
-      "name": "tags",
-      "type": "string_list",
-      "title": "Tags",
-      "list_type": "text",
-      "ui_element": "tags",
-      "options": ["Active Customers", "premium leads", "Test Audience"],
-      "option_others": true,
-      "required": false
-    },
+	    {
+	      "name": "audience_name",
+	      "type": "text",
+	      "title": "Audience Name",
+	      "required": true,
+	      "indexed": true
+	    },
+	    {
+	      "name": "search_term",
+	      "type": "text",
+	      "indexed": true,
+	      "force_update": [
+	        "campaign_type",
+	        "campaign_objective_id",
+	        "campaign_objective_name",
+	        "audience_name",
+	        "tags",
+	        "source_name",
+	        "campaign_name",
+	        "csv_status",
+	        "source_type"
+	      ],
+	      "auto_updater": true,
+	      "default": {
+	        "function": "name_to_id",
+	        "args": [
+	          "campaign_type",
+	          "campaign_objective_id",
+	          "campaign_objective_name",
+	          "audience_name",
+	          "tags",
+	          "source_name",
+	          "campaign_name",
+	          "csv_status",
+	          "source_type"
+	        ],
+	        "kwargs": {
+	          "attribute_join": " ",
+	          "is_unique": true,
+	          "separator": " ",
+	          "skip_empty": true,
+	          "case": "lower"
+	        }
+	      }
+	    },
+	    {
+	      "name": "tags",
+	      "type": "string_list",
+	      "title": "Tags",
+	      "list_type": "text",
+	      "ui_element": "tags",
+	      "options": ["Active Customers", "premium leads", "Test Audience"],
+	      "option_others": true,
+	      "required": false
+	    },
     {
       "name": "csv_file_url",
       "type": "text",

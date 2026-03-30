@@ -175,7 +175,7 @@ def process_webhook(*args, **kwargs):
     calls the converse task to get the response back.
     gryd.create_async_task(
             CONVERS_TASK_NAME,
-            CONVERS_SERVICE_NAME,
+            AUTOCRM_CONVERSATION_SERVICE_NAME,
             kwargs=converse_kwargs
         )
 
@@ -504,7 +504,7 @@ def update_lead_disposition(pg, incoming_status, user_id=None, **data):
     if incoming_status not in [ "queued" ]: #call even for status queued.
         logger.info(f"[post_contact_status] Calling determine_campaign_next_action for lead_id={lead_id} and incoming_status={incoming_status}-----")
         _number=data.get("phone_number") or data.get("mobile_number")
-        call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,_number,incoming_status,pg=pg)
+        # call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,_number,incoming_status,pg=pg)
     return update_payload
 
 def get_channel_field(channel, data):
