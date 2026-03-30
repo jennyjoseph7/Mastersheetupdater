@@ -51,7 +51,7 @@ def _elapsed_ms(t0: float) -> float:
     return (monotonic() - t0) * 1000.0
 
 
-def _append_bridge_timing_jsonl(record: Dict[str, Any]) -> None:
+def _append_bridge_timing_jsonl(record: Dict[str, Any], agent_number: str  = "dave", customer_number: str = "test") -> None:
     if not BRIDGE_TIMING_LOG_PATH:
         return
     try:
@@ -60,6 +60,9 @@ def _append_bridge_timing_jsonl(record: Dict[str, Any]) -> None:
             _parent = os.path.dirname(BRIDGE_TIMING_LOG_PATH)
             if _parent:
                 os.makedirs(_parent, exist_ok=True)
+            
+            if not os.path.exists(BRIDGE_TIMING_LOG_PATH):
+                BRIDGE_TIMING_LOG_PATH = os.path.join(_parent, f"voice_session_timing_{agent_number}_{customer_number}_{time()}.json")
             with open(BRIDGE_TIMING_LOG_PATH, "a", encoding="utf-8") as f:
                 f.write(line)
     except Exception as e:
