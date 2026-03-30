@@ -1,4 +1,4 @@
-from time import time
+from time import time, monotonic
 import os, sys
 
 import pytz
@@ -39,6 +39,86 @@ except ImportError:
 
 logger = utils.get_logger(__name__)
 
+# Set ENABLE_BRIDGE_TIMING=1 to log monotonic latency milestones to the logger (TataTele ↔ ElevenLabs).
+ENABLE_BRIDGE_TIMING = os.environ.get("ENABLE_BRIDGE_TIMING", "1") == "1"
+# Append one JSON object per call to this path (JSON Lines) for offline stats. Creates parent dirs on first write.
+BRIDGE_TIMING_LOG_PATH = os.environ.get("BRIDGE_TIMING_LOG_PATH", "").strip()
+ENABLE_BRIDGE_TIMING_COLLECT = ENABLE_BRIDGE_TIMING or bool(BRIDGE_TIMING_LOG_PATH)
+bridge_timing_log_lock = threading.Lock()
+
+
+def _elapsed_ms(t0: float) -> float:
+    return (monotonic() - t0) * 1000.0
+
+
+def _append_bridge_timing_jsonl(record: Dict[str, Any], agent_number: str  = "dave", customer_number: str = "test") -> None:
+    if not BRIDGE_TIMING_LOG_PATH:
+        return
+    try:
+        line = json.dumps(record, ensure_ascii=False) + "\n"
+        with bridge_timing_log_lock:
+            _parent = os.path.dirname(BRIDGE_TIMING_LOG_PATH)
+            if _parent:
+                os.makedirs(_parent, exist_ok=True)
+            
+            if not os.path.exists(BRIDGE_TIMING_LOG_PATH):
+                BRIDGE_TIMING_LOG_PATH = os.path.join(_parent, f"voice_session_timing_{agent_number}_{customer_number}_{time()}.json")
+            with open(BRIDGE_TIMING_LOG_PATH, "a", encoding="utf-8") as f:
+                f.write(line)
+    except Exception as e:
+        logger.warning("BRIDGE_TIMING_LOG_PATH write failed: %s", e)
+
+
+def _build_bridge_timing_record(
+    call_id: str,
+    session_data: Optional[dict],
+    bt: dict,
+    chunks_to_el: int,
+    audio_events: int,
+    chunks_to_tt: int,
+    error: Optional[str],
+) -> dict:
+    session_data = session_data or {}
+
+    def _delta(a: Optional[float], b: Optional[float]) -> Optional[float]:
+        if a is None or b is None:
+            return None
+        return round(a - b, 3)
+
+    cumulative_ms = {
+        "signed_url": bt.get("signed_url_ms"),
+        "el_ws_connect": bt.get("el_ws_connect_ms"),
+        "config_sent": bt.get("config_sent_ms"),
+        "first_tt_media_in": bt.get("first_tt_media_in_ms"),
+        "first_chunk_to_el": bt.get("first_chunk_to_el_ms"),
+        "first_el_audio": bt.get("first_el_audio_ms"),
+        "first_tt_out": bt.get("first_tt_out_ms"),
+    }
+    derived_ms = {
+        "first_user_to_first_agent_ms": _delta(bt.get("first_el_audio_ms"), bt.get("first_chunk_to_el_ms")),
+        "config_to_first_tt_media_ms": _delta(bt.get("first_tt_media_in_ms"), bt.get("config_sent_ms")),
+        "first_el_audio_to_first_tt_out_ms": _delta(bt.get("first_tt_out_ms"), bt.get("first_el_audio_ms")),
+    }
+    return {
+        "schema": "bridge_timing_v1",
+        "ts_unix": time(),
+        "call_id": call_id,
+        "session_id": session_data.get("session_id"),
+        "phone_number": session_data.get("phone_number"),
+        "agent_number": session_data.get("agent_number"),
+        "signed_url_http_ms": bt.get("signed_url_http_ms"),
+        "el_ws_handshake_ms": bt.get("el_ws_handshake_ms"),
+        "conversation_init_step_ms": bt.get("conversation_init_step_ms"),
+        "cumulative_ms": cumulative_ms,
+        "first_el_audio_since_user_ms": bt.get("first_el_audio_since_user_ms"),
+        "stats": {
+            "chunks_to_elevenlabs": chunks_to_el,
+            "audio_events_from_elevenlabs": audio_events,
+            "chunks_to_tatatele": chunks_to_tt,
+        },
+        "derived_ms": derived_ms,
+        "error": error,
+    }
 
 
 # ---- Config / env ----
@@ -204,6 +284,25 @@ class CallSession:
         """Main media bridging logic for this call session."""
         logger.info(f"[{self.call_id}] Tatatele websocket accepted")
 
+        bridge_timing = None
+        if ENABLE_BRIDGE_TIMING_COLLECT:
+            bridge_timing = {
+                "t0": monotonic(),
+                "signed_url_ms": None,
+                "signed_url_http_ms": None,
+                "el_ws_connect_ms": None,
+                "el_ws_handshake_ms": None,
+                "config_sent_ms": None,
+                "conversation_init_step_ms": None,
+                "first_tt_media_in_ms": None,
+                "first_chunk_to_el_ms": None,
+                "first_el_audio_ms": None,
+                "first_el_audio_mono": None,
+                "first_el_audio_since_user_ms": None,
+                "first_tt_out_ms": None,
+                "last_user_chunk_mono": None,
+            }
+
         # Counter for audio chunks sent to ElevenLabs
         chunks_sent_to_elevenlabs = [0]
 
@@ -211,6 +310,14 @@ class CallSession:
             payload_b64 = self.extract_media_payload_from_tatatele(tt_msg)
             if not payload_b64:
                 return
+
+            if bridge_timing is not None and bridge_timing["first_tt_media_in_ms"] is None:
+                bridge_timing["first_tt_media_in_ms"] = _elapsed_ms(bridge_timing["t0"])
+                if ENABLE_BRIDGE_TIMING:
+                    logger.info(
+                        f"[{self.call_id}] [bridge_timing] first_tatatele_media_in "
+                        f"elapsed_ms={bridge_timing['first_tt_media_in_ms']:.1f}"
+                    )
 
             # Extract streamSid immediately from media event
             if not self.stream_sid:
@@ -226,6 +333,15 @@ class CallSession:
             # Buffer if Dave not ready, send immediately if ready
             if self.dave_ws and not self.stop_event.is_set():
                 try:
+                    if bridge_timing is not None:
+                        bridge_timing["last_user_chunk_mono"] = monotonic()
+                        if bridge_timing["first_chunk_to_el_ms"] is None:
+                            bridge_timing["first_chunk_to_el_ms"] = _elapsed_ms(bridge_timing["t0"])
+                            if ENABLE_BRIDGE_TIMING:
+                                logger.info(
+                                    f"[{self.call_id}] [bridge_timing] first_user_chunk_to_elevenlabs "
+                                    f"elapsed_ms={bridge_timing['first_chunk_to_el_ms']:.1f}"
+                                )
                     await self.dave_ws.send(_dumps({"user_audio_chunk": converted_audio}))
                     chunks_sent_to_elevenlabs[0] += 1
                     if chunks_sent_to_elevenlabs[0] % 50 == 0:  # Log every 50 chunks
@@ -263,7 +379,19 @@ class CallSession:
                             "streamSid": self.stream_sid,
                             "media": {"payload": buffered}
                         }
+                        t_send = monotonic()
                         await wb.send(_dumps(msg_out))
+                        if bridge_timing is not None and bridge_timing["first_tt_out_ms"] is None:
+                            bridge_timing["first_tt_out_ms"] = _elapsed_ms(bridge_timing["t0"])
+                            extra = ""
+                            if bridge_timing.get("first_el_audio_mono") is not None:
+                                el_to_wire_ms = (t_send - bridge_timing["first_el_audio_mono"]) * 1000.0
+                                extra = f" el_audio_recv_to_tatatele_send_ms={el_to_wire_ms:.1f}"
+                            if ENABLE_BRIDGE_TIMING:
+                                logger.info(
+                                    f"[{self.call_id}] [bridge_timing] first_chunk_to_tatatele (flush) "
+                                    f"elapsed_ms={bridge_timing['first_tt_out_ms']:.1f}{extra}"
+                                )
                     except Exception as e:
                         logger.error(f"[{self.call_id}] Failed to flush buffered audio: %s", e)
 
@@ -274,7 +402,19 @@ class CallSession:
                         "streamSid": self.stream_sid,
                         "media": {"payload": converted_audio}
                     }
+                    t_send = monotonic()
                     await wb.send(_dumps(msg_out))
+                    if bridge_timing is not None and bridge_timing["first_tt_out_ms"] is None:
+                        bridge_timing["first_tt_out_ms"] = _elapsed_ms(bridge_timing["t0"])
+                        extra = ""
+                        if bridge_timing.get("first_el_audio_mono") is not None:
+                            el_to_wire_ms = (t_send - bridge_timing["first_el_audio_mono"]) * 1000.0
+                            extra = f" el_audio_recv_to_tatatele_send_ms={el_to_wire_ms:.1f}"
+                        if ENABLE_BRIDGE_TIMING:
+                            logger.info(
+                                f"[{self.call_id}] [bridge_timing] first_chunk_to_tatatele "
+                                f"elapsed_ms={bridge_timing['first_tt_out_ms']:.1f}{extra}"
+                            )
                     chunks_sent_to_tatatele[0] += 1
                     if chunks_sent_to_tatatele[0] % 50 == 0:  # Log every 50 chunks
                         logger.info(f"[{self.call_id}] Sent {chunks_sent_to_tatatele[0]} audio chunks to TataTele")
@@ -318,6 +458,25 @@ class CallSession:
                 audio_events_received[0] += 1
                 audio_event = msg_data.get("audio_event", {})
                 audio_b64 = audio_event.get("audio_base_64")
+
+                if bridge_timing is not None and audio_b64 and bridge_timing["first_el_audio_ms"] is None:
+                    now_m = monotonic()
+                    bridge_timing["first_el_audio_ms"] = _elapsed_ms(bridge_timing["t0"])
+                    bridge_timing["first_el_audio_mono"] = now_m
+                    since_user = None
+                    if bridge_timing.get("last_user_chunk_mono") is not None:
+                        since_user = (now_m - bridge_timing["last_user_chunk_mono"]) * 1000.0
+                        bridge_timing["first_el_audio_since_user_ms"] = since_user
+                    if ENABLE_BRIDGE_TIMING:
+                        logger.info(
+                            f"[{self.call_id}] [bridge_timing] first_agent_audio_from_elevenlabs "
+                            f"elapsed_ms={bridge_timing['first_el_audio_ms']:.1f}"
+                            + (
+                                f" since_last_user_chunk_sent_ms={since_user:.1f}"
+                                if since_user is not None
+                                else " since_last_user_chunk_sent_ms=n/a"
+                            )
+                        )
 
                 # Log first few audio events to debug format
                 if audio_events_received[0] <= 3:
@@ -428,10 +587,29 @@ class CallSession:
             else:
                 logger.info(f"[{self.call_id}] Unknown ElevenLabs event: {msg_type} - {msg_data}")
 
+        bridge_error = None
         try:
             # CONNECT TO ELEVENLABS IMMEDIATELY
+            t_http = monotonic()
             signed_url = await self.get_signed_url()
+            if bridge_timing is not None:
+                bridge_timing["signed_url_ms"] = _elapsed_ms(bridge_timing["t0"])
+                bridge_timing["signed_url_http_ms"] = _elapsed_ms(t_http)
+                if ENABLE_BRIDGE_TIMING:
+                    logger.info(
+                        f"[{self.call_id}] [bridge_timing] get_signed_url_http_ms={bridge_timing['signed_url_http_ms']:.1f} "
+                        f"cumulative_ms={bridge_timing['signed_url_ms']:.1f}"
+                    )
+            t_ws = monotonic()
             self.dave_ws = await websockets.connect(signed_url)
+            if bridge_timing is not None:
+                bridge_timing["el_ws_connect_ms"] = _elapsed_ms(bridge_timing["t0"])
+                bridge_timing["el_ws_handshake_ms"] = _elapsed_ms(t_ws)
+                if ENABLE_BRIDGE_TIMING:
+                    logger.info(
+                        f"[{self.call_id}] [bridge_timing] elevenlabs_ws_handshake_ms={bridge_timing['el_ws_handshake_ms']:.1f} "
+                        f"cumulative_ms={bridge_timing['el_ws_connect_ms']:.1f}"
+                    )
             logger.info(f"[{self.call_id}] *** CONNECTED TO ELEVENLABS IMMEDIATELY ***")
 
             #Send initial config to 11labs
@@ -474,7 +652,16 @@ class CallSession:
                 }
                 
                 
+            t_cfg = monotonic()
             await self.dave_ws.send(_dumps(config_data))
+            if bridge_timing is not None:
+                bridge_timing["config_sent_ms"] = _elapsed_ms(bridge_timing["t0"])
+                bridge_timing["conversation_init_step_ms"] = _elapsed_ms(t_cfg)
+                if ENABLE_BRIDGE_TIMING:
+                    logger.info(
+                        f"[{self.call_id}] [bridge_timing] conversation_init_send_ms={bridge_timing['conversation_init_step_ms']:.1f} "
+                        f"cumulative_ms={bridge_timing['config_sent_ms']:.1f}"
+                    )
 
             # Send buffered media immediately - not sure why jay added?.
             for chunk in self.media_buffer:
@@ -509,7 +696,19 @@ class CallSession:
                                         "streamSid": self.stream_sid,
                                         "media": {"payload": buffered}
                                     }
+                                    t_send = monotonic()
                                     await wb.send(_dumps(msg_out))
+                                    if bridge_timing is not None and bridge_timing["first_tt_out_ms"] is None:
+                                        bridge_timing["first_tt_out_ms"] = _elapsed_ms(bridge_timing["t0"])
+                                        extra = ""
+                                        if bridge_timing.get("first_el_audio_mono") is not None:
+                                            el_to_wire_ms = (t_send - bridge_timing["first_el_audio_mono"]) * 1000.0
+                                            extra = f" el_audio_recv_to_tatatele_send_ms={el_to_wire_ms:.1f}"
+                                        if ENABLE_BRIDGE_TIMING:
+                                            logger.info(
+                                                f"[{self.call_id}] [bridge_timing] first_chunk_to_tatatele (start_flush) "
+                                                f"elapsed_ms={bridge_timing['first_tt_out_ms']:.1f}{extra}"
+                                            )
                                     logger.debug(f"[{self.call_id}] -> FLUSHED buffered outgoing audio")
                                 except Exception as e:
                                     logger.error(f"[{self.call_id}] Failed to flush outgoing audio: %s", e)
@@ -562,10 +761,35 @@ class CallSession:
 
             logger.info(f"[{self.call_id}] Both readers stopped")
             logger.info(f"[{self.call_id}] STATS: Sent {chunks_sent_to_elevenlabs[0]} chunks to ElevenLabs, received {audio_events_received[0]} audio events, sent {chunks_sent_to_tatatele[0]} chunks to TataTele")
+            if bridge_timing is not None and ENABLE_BRIDGE_TIMING:
+                bt = bridge_timing
+                logger.info(
+                    f"[{self.call_id}] [bridge_timing] session_summary_ms "
+                    f"signed_url={bt.get('signed_url_ms')} "
+                    f"el_ws={bt.get('el_ws_connect_ms')} "
+                    f"config_sent={bt.get('config_sent_ms')} "
+                    f"first_tt_in={bt.get('first_tt_media_in_ms')} "
+                    f"first_to_el={bt.get('first_chunk_to_el_ms')} "
+                    f"first_el_audio={bt.get('first_el_audio_ms')} "
+                    f"first_tt_out={bt.get('first_tt_out_ms')}"
+                )
 
         except Exception as e:
+            bridge_error = repr(e)
             logger.exception(f"[{self.call_id}] Main error: %s", e)
         finally:
+            if bridge_timing is not None and BRIDGE_TIMING_LOG_PATH:
+                _append_bridge_timing_jsonl(
+                    _build_bridge_timing_record(
+                        self.call_id,
+                        self.session_data,
+                        bridge_timing,
+                        chunks_sent_to_elevenlabs[0],
+                        audio_events_received[0],
+                        chunks_sent_to_tatatele[0],
+                        bridge_error,
+                    )
+                )
             self.processed_agent_responses.clear()
             try:
                 if self.dave_ws:
