@@ -967,13 +967,18 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         # logger.info("Template Data: %s", template_data)
     elif channel in ("whatsapp_chat", "sms", "rcs"):
         if not templateID:
-            # template_data = get_template(
-            #     lead_id=lead_id,
-            #     campaign_type=campaign_type,
-            #     campaign_objective= [campaign_objective_name] or [],
-            #     lead_info={}
-            # )
-            template_data=testing_whatsapp_template()
+            template_data = get_template(
+                lead_id=lead_id,
+                campaign_type=campaign_type,
+                campaign_objective= [campaign_objective_name] or [],
+                lead_info={}
+            )
+            _d=get_communication_credential(dealership_id=lead_data.get("dealership_id"), channel=channel)
+            if _d:
+                sender_name=_d.get("sender")
+            logger.info(f"Communication Credential found for dealership_id: {lead_data.get('dealership_id')}, channel: {channel} and sender phone_number: {sender_name}")
+            
+            # template_data=testing_whatsapp_template()
             if not template_data:
                 yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
                 return
