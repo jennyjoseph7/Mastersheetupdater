@@ -746,7 +746,7 @@ class AuthManager:
         #     return {}
 
         start_time = time.time()
-
+        logger.info(f"[HEADERS] Fetching headers for channel={channel_number}, enterprise={enterprise_id}")
         channel_number = self.format_number(channel_number)
         logger.info(f"[HEADERS] Fetching headers for channel={channel_number}, enterprise={enterprise_id}")
 
