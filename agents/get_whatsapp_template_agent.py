@@ -61,6 +61,7 @@ class get_whatsapp_template_agent(BaseAgent):
         ))
         communication_credential = records[0]
         communication_credentials_id = communication_credential.get("communication_credentials_id")
+        print("communication_credentials_id", communication_credentials_id)
         return communication_credentials_id
 
     def slugify_disposition_detail(self,detail: str) -> str:
@@ -71,13 +72,13 @@ class get_whatsapp_template_agent(BaseAgent):
 
         if self.is_disposition :
             records = list(pg.list(
-                table_name="all_template",
+                table_name="template",
                 where={"campaign_type": self.campaign_type,
                        "campaign_objective_name" : self.campaign_objective[0],
                        "template_type" : "text",
                         "channel" : "whatsapp_chat",
                         "status" : "approved",
-                        # "communication_credentials_id" : communication_credentials_id,
+                        "communication_credentials_id" : communication_credentials_id,
                         "language" : self.language,
                         "disposition" : self.disposition,
                         "disposition_details" : self.slugify_disposition_detail(self.disposition_details)
@@ -91,7 +92,7 @@ class get_whatsapp_template_agent(BaseAgent):
                        "template_type" : "text",
                        "channel" : "whatsapp_chat",
                        "status" : "approved",
-                    #    "communication_credentials_id" : communication_credentials_id,
+                       "communication_credentials_id" : communication_credentials_id,
                        "language" : self.language
                 }
             ))
