@@ -350,24 +350,25 @@ def post_contact_status(*args, **data):
             logger.info(f"[post_contact_status] Billing triggered | message_id={message_id} | prev={previous_status} → incoming={incoming_status}")
             post_billing_obj(**data)
             
-        session_id=None
-        # updating template message in session data cache
-        if channel in ["whatsapp_chat"] and incoming_status in ["delivered", "reached"] and payload and payload.get("template_message"):
-            logger.info(f"[post_contact_status] Updating the template message to session_data_cache for lead_id={payload.get('lead_id')}")
-            filters = {
+        
+        filters = {
                 "user_id": payload.get("user_id"),
                 "campaign_id": payload.get("campaign_id"),
                 "channel": channel or "whatsapp_chat",
                 "session_live": True,
                 "status": "completed~"
             }
-            condition, param = apply_filters(**filters)
+        condition, param = apply_filters(**filters)
             
-            sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
-            if not sessions:
-                logger.info(f"[post_contact_status] No sessions found for lead_id={payload.get('lead_id')}")
-                return
-            session_id = sessions[0].get("session_id")
+        sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
+        if not sessions:
+            logger.info(f"[post_contact_status] No sessions found for lead_id={payload.get('lead_id')}")
+            return
+        session_id = sessions[0].get("session_id")
+        # updating template message in session data cache
+        if channel in ["whatsapp_chat"] and incoming_status in ["delivered", "reached"] and payload and payload.get("template_message"):
+            logger.info(f"[post_contact_status] Updating the template message to session_data_cache for lead_id={payload.get('lead_id')}")
+            
             p={
                 "reply_to": generate_uid(payload),
                 "customer_response": "Hi",
