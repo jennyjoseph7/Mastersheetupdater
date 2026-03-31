@@ -86,8 +86,17 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
 def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID, conversation_id = None):
     # payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
     payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
-    logger.info(f"Webhook payload: {json.dumps(payload, indent=4)}")
     language = payload.get("language", "english")
+    payload.update({
+        "channel": channel,
+        "enterprise_id": enterprise_id,
+        "ent_id":enterprise_id,
+        "conversation_id": conversation_id,
+        "whatsapp_provider": channel_provider,
+        "language": language
+    })
+    logger.info(f"Webhook payload: {json.dumps(payload, indent=4)}")
+    
     logger.info(f"Webhook received for channel={channel}, provider={channel_provider}, enterprise={enterprise_id}, conversation={conversation_id}, language={language}")
     if channel in ["whatsapp", "whatsapp_chat", "whatsapp_voice_note", "whatsapp_voice_call"]:
         arg_d=(channel, conversation_id)
