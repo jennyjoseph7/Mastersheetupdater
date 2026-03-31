@@ -187,7 +187,7 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
         "campaign_idea_identifier": <exact ID from the batch>,
         "campaign_objective": <string>,
         "campaign_explanation": <string — for media planners; must name product, target audience, insight, channels, featured specs>,
-        "audience": [<string>, ...],
+        "audience": [<string>, ...],   // If cohort information is available, Only that cohort should be included. Otherwise, use a generic audience but only one.
         "cta": [<string>, ...],        // min 2; ALL must include product name
         "hashtags": [<string>, ...],   // exactly {self.num_of_hashtags}; ≥60% product-specific (include model name)
         "campaign_post_sets": [...]    // exactly {self.num_of_campaign_post_sets} items (see below)
@@ -198,7 +198,7 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
         "post_caption": [<string>],   // product name in first 10 words
         "hooks":        [<string>],   // must reference product name/model
         "slogan":       [<string>],   // must include or directly reference product name
-        "messages":     [<string>]    // 7-8 sentences; product name in first 2; ≥2-3 specific features; subtle emojis; optional closing question
+        "messages":     [<string>]    // 2-3 sentences; product name in first 2; ≥2-3 specific features; subtle emojis; optional closing question
         }}
 
         ═══════════════════════════════
@@ -234,62 +234,63 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
                         "post_caption": ["The Citroen Aircross C3 redefines urban adventure with 210mm ground clearance and bold design"],
                         "hooks": ["Ready to conquer city streets? Meet the Aircross C3"],
                         "slogan": ["Aircross: Built for Every Journey"],
-                        "messages": ["Hi! We noticed you were exploring compact SUVs perfect for city adventures. The Citroen Aircross C3 might be exactly what you're looking for! 🚗 With an impressive 210mm ground clearance, this compact SUV handles everything from city potholes to weekend getaways effortlessly. The spacious cabin seats 5 comfortably, while the 315-liter boot space ensures you never leave anything behind. Powered by a 1.2L turbocharged engine, the Aircross C3 delivers peppy performance without compromising on fuel efficiency. The bold design with LED projector headlamps and signature dual-tone roof makes heads turn everywhere you go. Plus, the elevated driving position gives you commanding road visibility ✨ Would you like to experience the Aircross C3 firsthand with a test drive?"]
+                        "messages": ["Hi! Looks like you've been eyeing compact SUVs 👀 The Citroën C3 Aircross might be your match — built for the city, ready for the weekend. Want to take one for a spin?"]
                     }},
                     {{
                         "post_caption": ["Citroen Aircross C3: Where comfort meets capability in every drive"],
                         "hooks": ["Your daily drive deserves the Aircross C3 upgrade"],
                         "slogan": ["Aircross C3: Adventure Approved, City Ready"],
-                        "messages": ["The Citroen Aircross C3 is engineered for those who refuse to compromise! This versatile SUV brings together comfort, style, and performance in one compelling package 🌟 Inside, you'll find a thoughtfully designed cabin with class-leading shoulder room and flexible seating configurations. The 7-inch touchscreen infotainment system keeps you connected with Apple CarPlay and Android Auto. Safety isn't an afterthought—dual airbags, ABS with EBD, and rear parking sensors come standard. The Aircross C3's 180mm of approach angle means speed bumps and rough roads are no longer a concern. Available in vibrant dual-tone color combinations, it's a SUV that reflects your personality 💫 Ready to make every journey memorable?"]
+                        "messages": ["The C3 Aircross isn't just practical — it's personal. Dual-tone colors, a connected cabin, and safety built-in as standard. Every detail, done right. Ready to see it in person?"]
                     }}
                 ]
             }}
         ]
         """
 
-        system_prompt = None 
-        system_prompt = f"""
-        You are a Product-Driven Campaign & Performance Marketing AI Agent.
-        CRITICAL: Extract the EXACT product name from brochure/website first. Use it consistently everywhere — captions, hooks, slogans, CTAs, messages. Never say "our product" or "this vehicle".
+        # system_prompt = None 
 
-        Generate exactly {len(campaign_batch)} campaigns — one per ID in the batch.
-        Return a strict JSON array only. No markdown, no comments, no extra keys.
+        # system_prompt = f"""
+        # You are a Product-Driven Campaign & Performance Marketing AI Agent.
+        # CRITICAL: Extract the EXACT product name from brochure/website first. Use it consistently everywhere — captions, hooks, slogans, CTAs, messages. Never say "our product" or "this vehicle".
 
-        Each campaign schema:
-        {{
-        "campaign_idea_identifier": <exact batch ID>,
-        "campaign_objective": <string>,
-        "campaign_explanation": <string — name product, audience, insight, channels, specs>,
-        "performance_strategy": {{
-            "channels": [{{ "channel": "", "reasoning": "", "ad_formats": [] }}],
-            "budget_allocation": [{{ "channel": "", "budget_percent": 0 }}],
-            "funnel_strategy": {{ "TOF": "", "MOF": "", "BOF": "" }}
-        }},
-        "targeting": {{
-            "age_range": "", "gender": "", "locations": [], "languages": [],
-            "interests": [], "behaviors": [], "life_events": [], "job_titles": []
-        }},
-        "audience": [<string>],
-        "cta": [<string>],         // min 2; ALL must include product name
-        "hashtags": [<string>],    // exactly {self.num_of_hashtags}; ≥60% product/model-specific
-        "campaign_post_sets": [    // exactly {self.num_of_campaign_post_sets} items
-            {{
-            "post_caption": [<string>],  // product name in first 10 words
-            "hooks":        [<string>],  // must reference product name
-            "slogan":       [<string>],  // must reference product name
-            "messages":     [<string>]   // 7-8 sentences; product name in first 2; ≥3 specific features; subtle emojis
-            }}
-        ]
-        }}
+        # Generate exactly {len(campaign_batch)} campaigns — one per ID in the batch.
+        # Return a strict JSON array only. No markdown, no comments, no extra keys.
 
-        RULES:
-        - Each post set: different feature angle, different emotional trigger
-        - Features must be specific (e.g. "1.2L turbo", not "powerful engine")
-        - Targeting derived from cohort, affinity signals, and product positioning
-        - Channels: Facebook, Instagram, Snapchat, YouTube, Google Ads, TikTok
-        - Personalize using cohort traits, affinity signals, and customer interaction context
-        - "Opportunity Name" = likely customer; "Opportunity Owner" = sales rep
-        """
+        # Each campaign schema:
+        # {{
+        # "campaign_idea_identifier": <exact batch ID>,
+        # "campaign_objective": <string>,
+        # "campaign_explanation": <string — name product, audience, insight, channels, specs>,
+        # "performance_strategy": {{
+        #     "channels": [{{ "channel": "", "reasoning": "", "ad_formats": [] }}],
+        #     "budget_allocation": [{{ "channel": "", "budget_percent": 0 }}],
+        #     "funnel_strategy": {{ "TOF": "", "MOF": "", "BOF": "" }}
+        # }},
+        # "targeting": {{
+        #     "age_range": "", "gender": "", "locations": [], "languages": [],
+        #     "interests": [], "behaviors": [], "life_events": [], "job_titles": []
+        # }},
+        # "audience": [<string>],
+        # "cta": [<string>],         // min 2; ALL must include product name
+        # "hashtags": [<string>],    // exactly {self.num_of_hashtags}; ≥60% product/model-specific
+        # "campaign_post_sets": [    // exactly {self.num_of_campaign_post_sets} items. Each post set will have one post caption, one hook, one slogan, and one message
+        #     {{
+        #     "post_caption": [<string>],  // product name in first 10 words  // Only one post_caption
+        #     "hooks":        [<string>],  // must reference product name     // Only one hook
+        #     "slogan":       [<string>],  // must reference product name     // Only one slogan
+        #     "messages":     [<string>]   // 7-8 sentences; product name in first 2; ≥3 specific features; subtle emojis // Only one message
+        #     }}
+        # ]
+        # }}
+
+        # RULES:
+        # - Each post set: different feature angle, different emotional trigger
+        # - Features must be specific (e.g. "1.2L turbo", not "powerful engine")
+        # - Targeting derived from cohort, affinity signals, and product positioning
+        # - Channels: Facebook, Instagram, Snapchat, YouTube, Google Ads, TikTok
+        # - Personalize using cohort traits, affinity signals, and customer interaction context
+        # - "Opportunity Name" = likely customer; "Opportunity Owner" = sales rep
+        # """
         
         shared_user_context = self._build_shared_user_context()
         user_context_parts = [f"Campaign IDs for this batch (generate one idea per ID): {json.dumps(campaign_batch, ensure_ascii=False)}",] + shared_user_context
@@ -466,3 +467,12 @@ Design a high converting performance campaign.
     def run(self):
         messages = self.build_prompt()
         return self.exec_json_llm_with_retry(self.llm, messages=messages)
+    
+
+if __name__ == "__main__":
+
+    params = {
+        "product_website_url": "https://www.example.com"
+    }
+
+    CampaignIdeaGeneratorAgent()

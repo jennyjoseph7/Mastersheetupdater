@@ -109,7 +109,7 @@ class UtilityMixin:
                 docs = loader.load()
                 combined_content = "\n\n".join(doc.page_content for doc in docs)
                 f = {'page_content': combined_content}
-                logger.info(f"{json.dumps(f, indent=4, default=str)}")
+                # logger.info(f"{json.dumps(f, indent=4, default=str)}")
                 return f
             except Exception as e:
                 logger.error(f"Error downloading brochure PDF: {e}")
