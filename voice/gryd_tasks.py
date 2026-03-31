@@ -278,6 +278,15 @@ def trigger_voice_call(*args, **kwargs):
             if not statuses:
                 logger.info(f"No contact status object found yet for message_id: {session_data['session_id']}, waiting...")
                 continue
+            
+
+            #making this change as not able to debug why its sending status busy after status reached to state contacted - No resolution found yet
+            if len(statuses) > 2:
+                for s in statuses:
+                    if s.get("provider_status") in ["contacted"]:
+                        logger.info(f"Call ended with status 'contacted' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
+                        return
+
             latest = statuses[0]
             logger.info(f"Latest contact status for message_id: {session_data['session_id']} is: {latest}")
             if latest["provider_status"] in ["attempted"]:
@@ -287,19 +296,22 @@ def trigger_voice_call(*args, **kwargs):
                     end_session(**{
                         "session_id": session_data["session_id"],
                         "additional_dict":{
-                            "history": [],
+                            # "history": [],
                             "status": "busy"
                     }
                     })
                     return
                 logger.info(f"Call is ongoing for, still connecting: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
                 continue
-            elif latest["provider_status"] in ["contacted", "reached"]:
+            elif latest["provider_status"] in ["reached"]:
+                logger.info(f"Call reached with status '{latest['provider_status']}' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
+                continue
+            elif latest["provider_status"] in ["contacted"]:
                 logger.info(f"Call ended with status '{latest['provider_status']}' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
                 return
             
             logger.info(f"Call is ongoing for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
-            continue
+            
 
 
 
@@ -494,15 +506,34 @@ def post_lanuage_change(session_data, changed_language):
         }
     )
 
+def delete_extra_status(campaign_ids):
+    session_ids = []
+    for campaign_id in campaign_ids:
+        with get_pg_connector() as pg:
+            sessions = pg.list("session", {"campaign_id": campaign_id})
+            for session in sessions:
+                session_ids.append(session.get("session_id"))
+        logger.info(f"Session ids: {session_ids}")
+        for session_id in session_ids:
+            with get_pg_connector() as pg:
+                statuses = list(pg.list_order_by("contact_status", {"message_id": session_id}, order_by="created"))
+                logger.info(f"Statuses: {statuses} and length: {len(statuses)}")
+                if len(statuses) > 3:
+                    for s in statuses:
+                        if s.get("provider_status") in ["busy"]:
+                            logger.info(f"Deleting busy contact status for: {session_id}, contact_status_id: {s.get('contact_status_id')}")
+                            #pg.delete("contact_status", "contact_status_id", s.get("contact_status_id") )
+                            #gryd.base_model.Model("contact_status", config.AUTOCRM_APP_ENTERPRISE_ID).delete(s.get("contact_status_id"))
+
+
 if __name__ == "__main__":
 
-    #provider based on dealershiop id-
 
-    #+919920297124 -Ankita +919833885948- Arshiya
+                    
 
-    data = {'_is_testing': False,
+ data = {'_is_testing': False,
  'ctas': ['book-test-drive'],
- 'mobile_number': '918850988794',
+ 'mobile_number': '918401586512',
  'created': 1772785341.039532,
  'purpose': 'Confirm Test drive',
  'updated': 1772785440.9737067,
@@ -577,7 +608,7 @@ if __name__ == "__main__":
  'template_details': None}
 
     
-    gryd.create_async_task(
+gryd.create_async_task(
         "trigger_voice_call",
         config.AUTOCRM_VOICE_SERVICE_NAME,
         args = [],
