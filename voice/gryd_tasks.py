@@ -294,12 +294,15 @@ def trigger_voice_call(*args, **kwargs):
                     return
                 logger.info(f"Call is ongoing for, still connecting: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
                 continue
-            elif latest["provider_status"] in ["contacted", "reached"]:
+            elif latest["provider_status"] in ["reached"]:
+                logger.info(f"Call reached with status '{latest['provider_status']}' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
+                continue
+            elif latest["provider_status"] in ["contacted"]:
                 logger.info(f"Call ended with status '{latest['provider_status']}' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
                 return
             
             logger.info(f"Call is ongoing for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
-            continue
+            
 
 
 
