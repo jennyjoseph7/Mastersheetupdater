@@ -101,14 +101,16 @@ def process_forwarded_webhook(*args, **kwargs):
         This function is called by the communication server when a webhook is received.
         It processes the webhook by extracting the required information and sending it to the `process_webhook` task.
     """
+    
     channel,conversation_id=args[:2]
-    logger.info(f"Recieved forwarded webhook from communication server for channel: {channel}")
+    
+    logger.info(f"Recieved forwarded webhook from communication server for channel: {channel}, kwargs: {kwargs}")
     
     try:
         forwarded_data = {
             "channel": channel,
-            "provider": kwargs.get("whatsapp_provider"),
-            "enterprise_id": kwargs.get("enterprise_id"),
+            "provider": kwargs.get("whatsapp_provider","airtel"),
+            "enterprise_id": kwargs.get("enterprise_id" , "autobot") ,
             "conversation_id": conversation_id,
             "language": kwargs.get("language", "english"),
             "webhook_received_time": time.time(),
@@ -118,7 +120,7 @@ def process_forwarded_webhook(*args, **kwargs):
         # logger.info(f"[ForwardWebhook] Final payload: {json.dumps(forwarded_data, indent=4)}")
 
         process_webhook.apply_async(
-                *(kwargs.get("whatsapp_provider"), kwargs.get("enterprise_id"), conversation_id, kwargs.get("language", "english")),
+                *(kwargs.get("whatsapp_provider","airtel"), kwargs.get("enterprise_id","autobot"), conversation_id, kwargs.get("language", "english")),
                 **forwarded_data
             )
 

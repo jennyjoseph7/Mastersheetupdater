@@ -42,7 +42,7 @@ logger = utils.get_logger(__name__)
 # Set ENABLE_BRIDGE_TIMING=1 to log monotonic latency milestones to the logger (TataTele ↔ ElevenLabs).
 ENABLE_BRIDGE_TIMING = os.environ.get("ENABLE_BRIDGE_TIMING", "1") == "1"
 # Append one JSON object per call to this path (JSON Lines) for offline stats. Creates parent dirs on first write.
-BRIDGE_TIMING_LOG_PATH = os.environ.get("BRIDGE_TIMING_LOG_PATH", "").strip()
+BRIDGE_TIMING_LOG_PATH = os.environ.get("BRIDGE_TIMING_LOG_PATH", "voice_logs/timing/timing.json").strip()
 ENABLE_BRIDGE_TIMING_COLLECT = ENABLE_BRIDGE_TIMING or bool(BRIDGE_TIMING_LOG_PATH)
 bridge_timing_log_lock = threading.Lock()
 
@@ -61,7 +61,7 @@ def _append_bridge_timing_jsonl(record: Dict[str, Any], agent_number: str  = "da
             if _parent:
                 os.makedirs(_parent, exist_ok=True)
             
-            if not os.path.exists(BRIDGE_TIMING_LOG_PATH):
+            if not os.path.isfile(BRIDGE_TIMING_LOG_PATH):
                 BRIDGE_TIMING_LOG_PATH = os.path.join(_parent, f"voice_session_timing_{agent_number}_{customer_number}_{time()}.json")
             with open(BRIDGE_TIMING_LOG_PATH, "a", encoding="utf-8") as f:
                 f.write(line)
