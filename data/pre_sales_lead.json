@@ -1281,7 +1281,7 @@
                 "Wrong contact number",
                 "Not reachable",
                 "Didnt pickup",
-                "Didnt speak",
+                "No Response",
                 "Rejected",
                 "Language barrier",
                 "Is not decision maker",
@@ -1303,7 +1303,14 @@
                 "Enquired for Others",
                 "Comparing with another brand",
                 "Call Disconnected",
-                "Others"
+                "Others",
+                "Talk to Human",
+                "Interested in another car same dealership",
+                "Showroom Visit Planned",
+                "Follow UP Required",
+                "Audio Issue",
+                "Lost to Competition",
+                "Purchase Postponed"
             ],
             "option_others": true
         },
