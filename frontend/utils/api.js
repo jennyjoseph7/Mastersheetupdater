@@ -788,6 +788,7 @@ export async function createCreditPurchaseOrder(credits, dealershipId = getDeale
         kwargs: {
           dealership_id: dealershipId,
           credits: Number(credits),
+          currency: "INR"
         },
       }),
     });
