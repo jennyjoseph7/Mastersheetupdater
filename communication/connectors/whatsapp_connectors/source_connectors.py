@@ -613,7 +613,7 @@ class BaseWebhookConverter:
         converse_kwargs = {
             "customer_response" : message_text,
             "channel":"whatsapp_chat",
-            "temporary_data": {"channel_response_task":{"service":"autocrm-communication","task":"receive_converse_response","kwargs":temporary_data}},
+            "temporary_data": {"channel_response_task":{"service":AUTOCRM_COMMUNICATION_SERVICE_NAME,"task":"receive_converse_response","kwargs":temporary_data}},
             "response_length":"agent",
             "communication_data":{
                 "whatsapp_message_id":message_dict.get("message_id"),
@@ -631,7 +631,7 @@ class BaseWebhookConverter:
         self.converse_payload = {
             "_job": {
                 "task": CONVERS_TASK_NAME,
-                "service": CONVERS_SERVICE_NAME,
+                "service": AUTOCRM_CONVERSATION_SERVICE_NAME,
                 "kwargs": converse_kwargs,
             }
         }
@@ -679,13 +679,13 @@ class BaseWebhookConverter:
         # i will have dealership_id,campaign_id,urgency_hook,user_id, create a pre_sales lead for this.
         # update the session with this lead id ,campaign id and campaign_type
         else:
-            logger.info(f"Sending Converse with payload: {safe_orjson_dumps(converse_kwargs)} for service name : {CONVERS_SERVICE_NAME}")
+            logger.info(f"Sending Converse with payload: {safe_orjson_dumps(converse_kwargs)} for service name : {AUTOCRM_CONVERSATION_SERVICE_NAME}")
             if button_payload=="nada_autongage-yes":
                 converse_kwargs["customer_response"] ="Hi"
             logger.info(f"Sending Customer Response -- {converse_kwargs.get('customer_response')}")
             res = gryd.create_async_task(
                 CONVERS_TASK_NAME,
-                CONVERS_SERVICE_NAME,
+                AUTOCRM_CONVERSATION_SERVICE_NAME,
                 kwargs=converse_kwargs
             )
 

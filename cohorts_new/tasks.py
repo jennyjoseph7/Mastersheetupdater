@@ -25,19 +25,20 @@ logger = get_logger(__name__)
 def setup_gryd():
     gryd.SERVICE = GRYD_SERVICE_NAME
     gryd.set_queue_manager(config = GRYD_CONFIG)
-    # environment = os.getenv("ENVIRONMENT", "-local")
-    # if not environment.startswith("-"):
-    #     environment = f"-{environment}"
-    # gryd.ENVIRONMENT = environment
-
+    logger.info(f"Environment currently set to '{gryd.ENVIRONMENT}'")
+    
 setup_gryd()
-# gryd.ENVIRONMENT = "-local"
 
 @gryd.is_a_task(function_name="post_cohorts_to_model",)
 def post_cohorts_to_cohorts_registrymodel(*args, **kwargs):
     def validate_cohorts(cohorts):
         return all(isinstance(cohort, dict) for cohort in cohorts)
-    pass 
+    pass
+
+@gryd.is_a_task()
+def get_gryd_info(*args, **kwargs):
+    logger.info(f"Environment currently set to '{gryd.ENVIRONMENT}'")
+    return {"message": f"Environment currently set to '{gryd.ENVIRONMENT}'"}
 
 @gryd.is_a_task()
 def cohort_generation_agent_async(*args, **kwargs):
@@ -53,7 +54,7 @@ def cohort_generation_agent_async(*args, **kwargs):
     :return: list of dictionaries of cohorts
     """
     try:
-        from agents.cohort_generation_agent import ProductCohortGenerationAgent
+        from cohorts_new.agents.cohort_generation_agent import ProductCohortGenerationAgent
         params = {
             "brochure_url": kwargs.get("brochure_url", None),
             "product_website_url": kwargs.get("product_website_url", None),
@@ -91,7 +92,7 @@ def cohort_generation_agent(*args, **kwargs):
     """
 
     try:
-        from agents.cohort_generation_agent import ProductCohortGenerationAgent
+        from cohorts_new.agents.cohort_generation_agent import ProductCohortGenerationAgent
 
         params = {
             "brochure_url": kwargs.get("brochure_url", None),
@@ -133,7 +134,7 @@ def cohort_classification_agent(*args, **kwargs):
 
     """
     try:
-        from agents.cohort_classification_agent import CohortClassificationAgent
+        from cohorts_new.agents.cohort_classification_agent import CohortClassificationAgent
 
         params = {
             "source": kwargs.get("source", None),
@@ -173,7 +174,7 @@ def affinity_score_agent(*args, **kwargs):
 
     """
     try:
-        from agents.affinity_agent  import AffinityEngineAgent
+        from cohorts_new.agents.affinity_agent  import AffinityEngineAgent
         params_ = {
             "interaction_json": kwargs.get("interaction_json", None),
             "brochure_url": kwargs.get("brochure_url", None),
@@ -216,7 +217,7 @@ def embedding_affinity_score_agent(*args, **kwargs):
 
     """
     try:
-        from agents.affinity_agent  import EmbeddingAffinityEngine
+        from cohorts_new.agents.affinity_agent  import EmbeddingAffinityEngine
         params_ = {
             "interaction_json": kwargs.get("interaction_json", None),
             "custom_affinity_dimensions": kwargs.get("custom_affinity_dimensions", None)
@@ -239,7 +240,7 @@ def embedding_affinity_score_agent(*args, **kwargs):
 @gryd.is_a_task(function_name="campaign_idea_generation_agent", job_param='job', logger_param='logger')
 def campaign_idea_generation_agent(*args, **kwargs):
     try:
-        from agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
+        from cohorts_new.agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
         _params = {
             "source": kwargs.get("source", None),                                 # Custom Interaction Data in Dict
             "classified_cohort": kwargs.get("classified_cohort", None),           # Cohort Classification Result 
@@ -268,7 +269,7 @@ def campaign_idea_generation_agent(*args, **kwargs):
 @gryd.is_a_task(function_name="campaign_idea_generation_agent_async", job_param='job', logger_param='logger')
 def campaign_idea_generation_agent_async(*args, **kwargs):
     try:
-        from agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
+        from cohorts_new.agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
         _params = {
             "source": kwargs.get("source", None),                                 # Custom Interaction Data in Dict
             "classified_cohort": kwargs.get("classified_cohort", None),           # Cohort Classification Result 
@@ -296,61 +297,63 @@ def campaign_idea_generation_agent_async(*args, **kwargs):
         logger.error(f"Campaign Idea Generation Agent Error: {e}")
         raise e     
 
-@gryd.is_a_task(function_name="performance_marketing_campaign_agent")
-def performance_marketing_campaign_agent(*args, **kwargs):
-    _params = {
-        "brand_name" : kwargs.get("brand_name", None),
-        "product_name" : kwargs.get("product_name", None),
-        "objective" : kwargs.get("objective", None),
-        "budget" : kwargs.get("budget", None),
-        "landing_page" : kwargs.get("landing_page", None),
-        "geography" : kwargs.get("geography", None),
-        "model_identifier" : kwargs.get("model_identifier", "azure-gpt-4o")
-    }
+@gryd.is_a_task(function_name="meta_ad_campaign_generator_agent", job_param='job', logger_param='logger')
+def meta_ad_campaign_generator_agent(*args, **kwargs):
 
     try:
-        from agents.campaign_idea_generation_agent_async import PerformanceMarketingCampaignAgent
-        agent = PerformanceMarketingCampaignAgent(**_params)
-        output = agent.run()
+        from cohorts_new.agents.meta_campaign_agent import MetaAdCampaignAgent
+        result = MetaAdCampaignAgent(**kwargs).run()
         return {
-            "task": inspect.currentframe().f_code.co_name, 
-            **output
+            "task": inspect.currentframe().f_code.co_name,
+            **result
         }
     except Exception as e:
-        logger.error(f"Performance Marketing Campaign Agent Error: {e}")
-        raise e
+        logger.error(f"Meta Ad Campaign Agent Error: {e}")
+        traceback.print_exc()
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "full_error_trace": full_trace
+        }
 
-@gryd.is_a_task(function_name="csv_to_cohort_classification")
-def csv_to_cohort_classification(*args, **kwargs):
-    import uuid
-    _params = {
-        "csv_url": kwargs.get("csv_url", None),
-        "cohorts" : kwargs.get("cohorts", []),
-        "model_identifier" : kwargs.get("model_identifier", "azure-gpt-4o")
-    }
-    task_id = str(uuid.uuid4())
+@gryd.is_a_task(function_name="meta_ad_adset_generator_agent", job_param='job', logger_param='logger')
+def meta_ad_adset_generator_agent(*args, **kwargs):
+    try:
+        from cohorts_new.agents.meta_campaign_agent import MetaAdAdsetAgent
+        result = MetaAdAdsetAgent(**kwargs).run()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            **result
+        }
+    except Exception as e:
+        logger.error(f"Meta Ad Adset Agent Error: {e}")
+        traceback.print_exc()
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "full_error_trace": full_trace
+        }
 
-    f_payload = {
-        **_params,
-        "task_id": task_id
-    }
-    gryd.create_async_task()
-    pass 
-
-
-@gryd.is_a_task(function_name="cohort_classification_agent_randomizer", job_param='job', logger_param='logger')
-def cohort_classification_agent_randomizer(*args, **kwargs):
-    _params = {
-        "file_path": kwargs.get("file_path", None),
-        "cohorts" : kwargs.get("cohorts", []),
-        "random_seed" : kwargs.get("random_seed", 42)
-    }
-
-    # TODO : Create gryd task for this. Currently Dinesh will directly call API. 
-    return {
-        "task": inspect.currentframe().f_code.co_name,}
-
-
+@gryd.is_a_task(function_name="meta_ad_creative_generator_agent", job_param='job', logger_param='logger')
+def meta_ad_creative_generator_agent(*args, **kwargs):
+    try:
+        from cohorts_new.agents.meta_campaign_agent import MetaAdCreativeAgent
+        result = MetaAdCreativeAgent(**kwargs).run()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            **result
+        }
+    except Exception as e:
+        logger.error(f"Meta Ad Creative Agent Error: {e}")
+        traceback.print_exc()
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "full_error_trace": full_trace
+        }
     
 if __name__ == "__main__":
 
@@ -485,8 +488,19 @@ if __name__ == "__main__":
     #     model_identifier="gcp-gemini-2.5-flash",
     #     num_of_cohorts=5
     #     )
+
+
+    r = meta_ad_campaign_generator_agent(
+        source = None, 
+        brochure_url="https://static-cdn.cars24.com/prod/vehicles/tata/sierra/the-all-new-tata-sierra-escape-mediocre-xTDLloobrGLs2WRt.pdf",
+        product_website_url="https://cars.tatamotors.com/sierra/ice.html",
+        num_of_campaign_ideas=3,
+    )
+
+    print(f"Meta Ad Campaign Ideas: {json.dumps(r, indent=4, default=str)}")
     
     # print(f"Cohorts: {json.dumps(cohorts, indent=4, default=str)}")
+    assert False
 
     cohort_registry = {
     "task": "cohort_generation_agent",
@@ -525,7 +539,7 @@ if __name__ == "__main__":
     }
 
 
-  
+    from config import post_autocrm_model, AutocrmModel
 
     # m = post_autocrm_model(model_name="cohort_registry")
     # print(f"Cohort Registry Model: \n {json.dumps(m, indent=4, default=str)}")

@@ -149,8 +149,8 @@
       "required" :true
     },
     {
-      "name": "campaign_objective",
-      "type": "list",
+      "name": "campaign_objective_name",
+      "type": "text",
       "options": [
         "Product Launch / Reveal",
         "Event Promotion",
@@ -190,8 +190,8 @@
       "required" : true
     },
     {
-      "name": "disposition_tags",
-      "type": "string_list",
+      "name": "disposition",
+      "type": "text",
       "ui_element": "multiselect",
       "options": [
         "queued",
@@ -206,8 +206,8 @@
       "option_others": true
     },
     {
-      "name": "disposition_detail_tags",
-      "type": "string_list",
+      "name": "disposition_details",
+      "type": "text",
       "ui_element": "multiselect",
       "options": [
         "Vehicle is commercial or part of a fleet",

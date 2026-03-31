@@ -767,7 +767,7 @@ export const executeTaskWithPolling = async (
 };
 
 /* ---------------------------------------------------
-   Billing & Payments
+   Billing & Payments 
 --------------------------------------------------- */
 
 export async function createCreditPurchaseOrder(credits, dealershipId = getDealershipId()) {
@@ -788,10 +788,11 @@ export async function createCreditPurchaseOrder(credits, dealershipId = getDeale
         kwargs: {
           dealership_id: dealershipId,
           credits: Number(credits),
+          currency: "INR"
         },
       }),
     });
-
+ 
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to create order: ${errorText}`);

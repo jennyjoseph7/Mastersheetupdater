@@ -1241,18 +1241,80 @@
                 "function": "email_validator"
             }
         },
-        {
-            "name": "alt_email_4",
-            "type": "text",
-            "indexed": true,
-            "constraint": {
-                "function": "email_validator"
-            }
-        },
-        {
-            "name": "customer_score",
-            "type": "number"
-        },
+	        {
+	            "name": "alt_email_4",
+	            "type": "text",
+	            "indexed": true,
+	            "constraint": {
+	                "function": "email_validator"
+	            }
+	        },
+	        {
+	            "name": "search_term",
+	            "type": "text",
+	            "indexed": true,
+	            "force_update": [
+	                "phone_number",
+	                "email",
+	                "alt_phone_number_2",
+	                "alt_phone_number_3",
+	                "alt_phone_number_4",
+	                "alt_email_2",
+	                "alt_email_3",
+	                "alt_email_4",
+	                "dealer_name",
+	                "campaign_name",
+	                "audience_name",
+	                "workshop_name",
+	                "workshop_full_name",
+	                "vehicle_brand",
+	                "vehicle_model",
+	                "appointment_date",
+	                "appointment_time",
+	                "lead_tags",
+	                "lead_summary",
+	                "disposition",
+	                "disposition_detail"
+	            ],
+	            "auto_updater": true,
+	            "default": {
+	                "function": "name_to_id",
+	                "args": [
+	                    "phone_number",
+	                    "email",
+	                    "alt_phone_number_2",
+	                    "alt_phone_number_3",
+	                    "alt_phone_number_4",
+	                    "alt_email_2",
+	                    "alt_email_3",
+	                    "alt_email_4",
+	                    "dealer_name",
+	                    "campaign_name",
+	                    "audience_name",
+	                    "workshop_name",
+	                    "workshop_full_name",
+	                    "vehicle_brand",
+	                    "vehicle_model",
+	                    "appointment_date",
+	                    "appointment_time",
+	                    "lead_tags",
+	                    "lead_summary",
+	                    "disposition",
+	                    "disposition_detail"
+	                ],
+	                "kwargs": {
+	                    "attribute_join": " ",
+	                    "is_unique": true,
+	                    "separator": " ",
+	                    "skip_empty": true,
+	                    "case": "lower"
+	                }
+	            }
+	        },
+	        {
+	            "name": "customer_score",
+	            "type": "number"
+	        },
         {
             "name": "workshop_id",
             "type": "uid",

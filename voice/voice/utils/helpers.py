@@ -245,6 +245,20 @@ def decompress_string(compressed_text: str) -> str:
 def datetime_now(tz = 'UTC'):
     return datetime.now(tz=pytz.timezone(tz)).strftime("%Y-%m-%d %I:%M:%S %p %z")
 
+def save_audio_buffer_to_file(audio_data, file_path: str = None, ext: str = "mp3") -> str:
+    """Save audio buffer (bytes or base64 str) to a local file. Returns the file path."""
+    if file_path is None:
+        file_path = f"/tmp/{uuid.uuid4()}.{ext}"
+    
+    if isinstance(audio_data, str):
+        audio_data = base64.b64decode(audio_data)
+    
+    with open(file_path, "wb") as f:
+        f.write(audio_data)
+    
+    logger.info(f"Audio saved to: {file_path}")
+    return file_path
+
 def func_gryd_file_system(local_path, **kwargs):
     url = f"https://file-prod.gryd.in/media/{kwargs.get('media_type','document')}"
 
@@ -266,7 +280,7 @@ def func_gryd_file_system(local_path, **kwargs):
     logger.info(f'Gryd File System Response: {response.text}')
     if response.status_code == 200:
         resp_json = response.json()
-        return resp_json.get('file_url')
+        return resp_json.get('cdn_url')
     return None
 
 def upload_file(local_file_path, medium: str = 'func_gryd_file_system', **kwargs):

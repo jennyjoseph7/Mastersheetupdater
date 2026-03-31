@@ -81,6 +81,9 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
     "competitor_brands",
     "competitor_models",
     "interested_vehicle_competitor_vehicles",
+    "interested_vehicle_name",
+    "interested_vehicle_brand_name",
+
 
     "emotions",
     "engagement_events",

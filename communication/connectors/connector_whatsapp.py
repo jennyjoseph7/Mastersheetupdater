@@ -101,14 +101,16 @@ def process_forwarded_webhook(*args, **kwargs):
         This function is called by the communication server when a webhook is received.
         It processes the webhook by extracting the required information and sending it to the `process_webhook` task.
     """
+    
     channel,conversation_id=args[:2]
-    logger.info(f"Recieved forwarded webhook from communication server for channel: {channel}")
+    
+    logger.info(f"Recieved forwarded webhook from communication server for channel: {channel}, kwargs: {kwargs}")
     
     try:
         forwarded_data = {
             "channel": channel,
-            "provider": kwargs.get("whatsapp_provider"),
-            "enterprise_id": kwargs.get("enterprise_id"),
+            "provider": kwargs.get("whatsapp_provider","airtel"),
+            "enterprise_id": kwargs.get("enterprise_id" , "autobot") ,
             "conversation_id": conversation_id,
             "language": kwargs.get("language", "english"),
             "webhook_received_time": time.time(),
@@ -118,7 +120,7 @@ def process_forwarded_webhook(*args, **kwargs):
         # logger.info(f"[ForwardWebhook] Final payload: {json.dumps(forwarded_data, indent=4)}")
 
         process_webhook.apply_async(
-                *(kwargs.get("whatsapp_provider"), kwargs.get("enterprise_id"), conversation_id, kwargs.get("language", "english")),
+                *(kwargs.get("whatsapp_provider","airtel"), kwargs.get("enterprise_id","autobot"), conversation_id, kwargs.get("language", "english")),
                 **forwarded_data
             )
 
@@ -175,7 +177,7 @@ def process_webhook(*args, **kwargs):
     calls the converse task to get the response back.
     gryd.create_async_task(
             CONVERS_TASK_NAME,
-            CONVERS_SERVICE_NAME,
+            AUTOCRM_CONVERSATION_SERVICE_NAME,
             kwargs=converse_kwargs
         )
 
@@ -428,7 +430,6 @@ def update_lead_disposition(pg, incoming_status, user_id=None, **data):
     campaign_type = data.get("campaign_type")
     campaign_id = data.get("campaign_id")
     channel = data.get("channel")
-    
     session_id = data.get("session_id") or None
     
     lead_table = (
@@ -451,22 +452,11 @@ def update_lead_disposition(pg, incoming_status, user_id=None, **data):
 
     lead = lead_d[0]
 
+    field_name, field_value = get_channel_field(channel,data)
+
     if campaign_type == "post-sales" and user_id and channel:
         persons = lead.get("persons_involved") or []
 
-        channel_field_map = {
-            "whatsapp_chat": (
-                "last_contacted_whatsapp_number",
-                data.get("mobile_number") or data.get("phone_number"),
-            ),
-            "email": ("last_contacted_email", data.get("email")),
-            "voice_phone": (
-                "last_contacted_phone_number",
-                data.get("phone_number"),
-            ),
-        }
-
-        field_name, field_value = channel_field_map.get(channel, (None, None))
 
         if field_name and field_value:
             update_payload["persons_involved"] = [
@@ -511,11 +501,30 @@ def update_lead_disposition(pg, incoming_status, user_id=None, **data):
             update_payload,
         )
     
+    logger.info(f"Field value for {channel} is {field_value}")
     # call determine_campaign_next_action task
     if incoming_status not in [ "queued" ]: #call even for status queued.
         logger.info(f"[post_contact_status] Calling determine_campaign_next_action for lead_id={lead_id} and incoming_status={incoming_status}-----")
-        # call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,data.get("mobile_number"),incoming_status,pg=pg)
+        _number=data.get("phone_number") or data.get("mobile_number")
+        # call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,_number,incoming_status,pg=pg)
     return update_payload
+
+def get_channel_field(channel, data):
+    channel_field_map = {
+        "whatsapp_chat": (
+            "last_contacted_whatsapp_number",
+            data.get("mobile_number") or data.get("phone_number"),
+        ),
+        "email": (
+            "last_contacted_email",
+            data.get("email")
+        ),
+        "voice_phone": (
+            "last_contacted_phone_number",
+            data.get("phone_number"),
+        ),
+    }
+    return channel_field_map.get(channel, (None, None))
 
 def post_billing_obj(**message_dict):
     wa_status=message_dict.get("message_status")

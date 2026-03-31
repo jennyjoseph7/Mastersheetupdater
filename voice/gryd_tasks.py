@@ -13,7 +13,7 @@ import time
 
 from conversation import converse
 from communication.connectors.communication_helpers import end_session as end_voice_session, generate_uid,get_communication_credential
-#from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
+from communication.connectors.connector_whatsapp import post_contact_status
 
 from autocrm_db_helper import get_pg_connector
 
@@ -251,7 +251,7 @@ def trigger_voice_call(*args, **kwargs):
 
     from voice import providers
     response = providers.make_call(provider, session_data, *args, **kwargs)
-
+    logger.info(f"Response from provider {provider}: {response}")
     yield {
         "success": response.get("success"),
         "call_sid": response.get("call_sid"),
@@ -263,6 +263,9 @@ def trigger_voice_call(*args, **kwargs):
 
     post_contact_status_voice(user_data, message_id=session_data["session_id"])
 
+    if provider.lower() in ["twilio", "elevanlab"]:
+        #as we are making direct call from provider.
+        return response
 
     timeout = time.time() + float(user_data.get("call_timeout", 600))  # 10 minutes
 
@@ -275,6 +278,15 @@ def trigger_voice_call(*args, **kwargs):
             if not statuses:
                 logger.info(f"No contact status object found yet for message_id: {session_data['session_id']}, waiting...")
                 continue
+            
+
+            #making this change as not able to debug why its sending status busy after status reached to state contacted - No resolution found yet
+            if len(statuses) > 2:
+                for s in statuses:
+                    if s.get("provider_status") in ["contacted"]:
+                        logger.info(f"Call ended with status 'contacted' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
+                        return
+
             latest = statuses[0]
             logger.info(f"Latest contact status for message_id: {session_data['session_id']} is: {latest}")
             if latest["provider_status"] in ["attempted"]:
@@ -284,19 +296,22 @@ def trigger_voice_call(*args, **kwargs):
                     end_session(**{
                         "session_id": session_data["session_id"],
                         "additional_dict":{
-                            "history": [],
+                            # "history": [],
                             "status": "busy"
                     }
                     })
                     return
                 logger.info(f"Call is ongoing for, still connecting: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
                 continue
-            elif latest["provider_status"] in ["contacted", "reached"]:
+            elif latest["provider_status"] in ["reached"]:
+                logger.info(f"Call reached with status '{latest['provider_status']}' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
+                continue
+            elif latest["provider_status"] in ["contacted"]:
                 logger.info(f"Call ended with status '{latest['provider_status']}' for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}")
                 return
             
             logger.info(f"Call is ongoing for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
-            continue
+            
 
 
 
@@ -445,6 +460,12 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
     payload["message_id"] = message_id or generate_uid(session_data)
+    post_contact_status(
+            message_id,
+            **payload
+        )
+    
+    return 
     if payload.get("provider_status") == "attempted":
         gryd.create_async_task(
             "post_contact_status", 
@@ -464,13 +485,57 @@ def end_session(*args, **kwargs):
     logger.info(f"Ending session with args: {args}, kwargs: {kwargs}")
     return end_voice_session(*args, **kwargs)
 
+@gryd.is_a_task(function_name="post_lanuage_change_func")
+def post_lanuage_change_func(*args, **kwargs):    
+    language = kwargs.get("changed_language")
+    session_data = kwargs.get("session_data", {})
+    lead_model_name = session_data.get("lead_model")
+    lead_id = session_data.get("lead_id")
+    with get_pg_connector() as pg:
+        x = pg.update(
+            lead_model_name,
+            f"{lead_model_name}_id",
+            lead_id,
+            {"follow_up_language": language}
+        )
+        logger.info(f"Updated lead with new language preference: {x}")
+
+def post_lanuage_change(session_data, changed_language):
+    # logger.info(f"Calling task post_lanuage_change_func with session_data: {session_data}, changed_language: {changed_language}")
+    gryd.create_async_task(
+        "post_lanuage_change_func",
+       config.AUTOCRM_VOICE_SERVICE_NAME,
+        args = [],
+        kwargs = {
+            "changed_language": changed_language,
+            "session_data": session_data
+        }
+    )
+
+def delete_extra_status(campaign_ids):
+    session_ids = []
+    for campaign_id in campaign_ids:
+        with get_pg_connector() as pg:
+            sessions = pg.list("session", {"campaign_id": campaign_id})
+            for session in sessions:
+                session_ids.append(session.get("session_id"))
+        logger.info(f"Session ids: {session_ids}")
+        for session_id in session_ids:
+            with get_pg_connector() as pg:
+                statuses = list(pg.list_order_by("contact_status", {"message_id": session_id}, order_by="created"))
+                logger.info(f"Statuses: {statuses} and length: {len(statuses)}")
+                if len(statuses) > 3:
+                    for s in statuses:
+                        if s.get("provider_status") in ["busy"]:
+                            logger.info(f"Deleting busy contact status for: {session_id}, contact_status_id: {s.get('contact_status_id')}")
+                            #pg.delete("contact_status", "contact_status_id", s.get("contact_status_id") )
+                            #gryd.base_model.Model("contact_status", config.AUTOCRM_APP_ENTERPRISE_ID).delete(s.get("contact_status_id"))
 
 
 if __name__ == "__main__":
 
-    #provider based on dealershiop id-
 
-    #+919920297124 -Ankita +919833885948- Arshiya
+                    
 
     data = {'_is_testing': False,
  'ctas': ['book-test-drive'],
@@ -489,7 +554,7 @@ if __name__ == "__main__":
  'campaign_name': 'Basalt Test Drive Confirmation Event',
  'campaign_type': 'pre-sales',
  'cost_per_lead': 0.0,
- 'dealership_id': 'us-dealership-united-states',
+ 'dealership_id': 'stellantis--jeep-india',
  'purpose_steps': ['- Ask if user is interedted in booking test drive',
   '\\n - if customer says yes',
   "get the pincode of customer from 'Who is the customer section' and cofirm if the customer is in this pincode",
@@ -550,13 +615,13 @@ if __name__ == "__main__":
 
     
     gryd.create_async_task(
-        "trigger_voice_call",
-        config.AUTOCRM_VOICE_SERVICE_NAME,
-        args = [],
-        kwargs = {
-            "user_data": data
-        }
-    )
+            "trigger_voice_call",
+            config.AUTOCRM_VOICE_SERVICE_NAME,
+            args = [],
+            kwargs = {
+                "user_data": data
+            }
+        )
 
 
 

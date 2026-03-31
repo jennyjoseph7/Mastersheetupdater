@@ -44,18 +44,18 @@ AUTOCRM_CHEAPEST_CHANNELS = [
     "whatsapp_voice_note",
     "whatsapp_voice_call",
 ]
-AUTOCRM_CALL_CONNECTED_PRICE = os.environ.get("AUTOCRM_CALL_CONNECTED_PRICE", 2)
+AUTOCRM_CALL_CONNECTED_PRICE = float(os.environ.get("AUTOCRM_CALL_CONNECTED_PRICE", 2))
 AUTOCRM_CALL_CONNECTED_ITEM = "call_connected"
 AUTOCRM_CALL_CONNECTED_UNITS = "count"
-AUTOCRM_CALL_COMPLETED_PRICE = os.environ.get("AUTOCRM_CALL_COMPLETED_PRICE", 0.167)
+AUTOCRM_CALL_COMPLETED_PRICE = float(os.environ.get("AUTOCRM_CALL_COMPLETED_PRICE", 0.167))
 AUTOCRM_CALL_COMPLETED_UNITS = "seconds"
 AUTOCRM_CALL_COMPLETED_ITEM = "call_completed"
 AUTOCRM_CURRENCY = os.environ.get("AUTOCRM_CURRENCY", "INR")
 AUTOCRM_WEBSOCKET_BASE_URL = os.environ.get("AUTOCRM_WEBSOCKET_BASE_URL", "wss://autobot-messenger.gryd.in/ws")
-AUTOCRM_MESSAGE_DELIVERED_PRICE = os.environ.get("AUTOCRM_MESSAGE_DELIVERED_PRICE", 0.90)
+AUTOCRM_MESSAGE_DELIVERED_PRICE = float(os.environ.get("AUTOCRM_MESSAGE_DELIVERED_PRICE", 0.90))
 AUTOCRM_MESSAGE_DELIVERED_UNITS = "count"
 AUTOCRM_MESSAGE_DELIVERED_ITEM = "message_delivered"
-AUTOCRM_RESPONSE_PROVIDED_PRICE = os.environ.get("AUTOCRM_RESPONSE_PROVIDED_PRICE", 0.93)
+AUTOCRM_RESPONSE_PROVIDED_PRICE = float(os.environ.get("AUTOCRM_RESPONSE_PROVIDED_PRICE", 0.93))
 AUTOCRM_RESPONSE_PROVIDED_UNITS = "500_characters"
 AUTOCRM_RESPONSE_PROVIDED_ITEM = "response_to_query"
 WHATSAPP_PROVIDER_NAME="airtel"
@@ -69,7 +69,7 @@ EMAIL_PROVIDER_REGION = "ap-south-1"
 EMAIL_PROVIDER_NAME = "AwsSender"
 EMAIL_SENDER_NAME = "info@iamdave.ai"
 VOICE_PROVIDER_NAME ="tata-tele"
-MAX_AUDIENCE_ERRORS = os.environ.get("MAX_AUDIENCE_ERRORS", 10)
+MAX_AUDIENCE_ERRORS = int(os.environ.get("MAX_AUDIENCE_ERRORS", 10))
 DEFAULT_OTP = os.environ.get("DEFAULT_OTP", "560102")
 ALLOWED_COUNTRY_CODES = list(map(str.strip, os.environ.get("ALLOWED_COUNTRY_CODES", "+971,+966,+62,+63,+91,+1").split(",")))
 OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe")
@@ -117,6 +117,14 @@ except ValueError as e:
 #brochure pipeline
 AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME', 'brochure-pipeline')
 AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME', 'document-processor')
+
+#AI Models
+# Add tuples in the below list in the format ---> ("<model_identifier>", "<model_type>")
+AI_MODELS_REQUIRED = [
+    ('azure-gpt-4o-mini','llm'),
+    ('azure-gpt-4o','llm'),
+    ('gcp-gemini-2.5-flash','llm'),
+]
 
 # Common function
 BASE_PATH = hp.dirname(hp.abspath(__file__))
