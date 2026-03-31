@@ -120,7 +120,7 @@ def process_forwarded_webhook(*args, **kwargs):
         # logger.info(f"[ForwardWebhook] Final payload: {json.dumps(forwarded_data, indent=4)}")
 
         process_webhook.apply_async(
-                *(kwargs.get("whatsapp_provider"), kwargs.get("enterprise_id"), conversation_id, kwargs.get("language", "english")),
+                *(kwargs.get("whatsapp_provider","airtel"), kwargs.get("enterprise_id","autobot"), conversation_id, kwargs.get("language", "english")),
                 **forwarded_data
             )
 
