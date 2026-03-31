@@ -312,7 +312,12 @@ def meta_ad_campaign_generator_agent(*args, **kwargs):
 
     try:
         from cohorts_new.cohorts_agents.meta_campaign_agent import MetaAdCampaignAgent
+        logger.info(f"Meta Ad Campaign Agent Params: {json.dumps(kwargs, indent=4, default=str)}")
+        gryd_job_parms = kwargs.pop("job", None)
+        gryd_logger = kwargs.pop("logger", None)
+
         result = MetaAdCampaignAgent(**kwargs).run()
+
         return {
             "task": inspect.currentframe().f_code.co_name,
             **result
@@ -331,6 +336,9 @@ def meta_ad_campaign_generator_agent(*args, **kwargs):
 def meta_ad_adset_generator_agent(*args, **kwargs):
     try:
         from cohorts_new.cohorts_agents.meta_campaign_agent import MetaAdAdsetAgent
+        logger.info(f"Meta Ad Adset Agent Params: {json.dumps(kwargs, indent=4, default=str)}")
+        gryd_job_parms = kwargs.pop("job", None)
+        gryd_logger = kwargs.pop("logger", None)
         result = MetaAdAdsetAgent(**kwargs).run()
         return {
             "task": inspect.currentframe().f_code.co_name,
@@ -350,6 +358,9 @@ def meta_ad_adset_generator_agent(*args, **kwargs):
 def meta_ad_creative_generator_agent(*args, **kwargs):
     try:
         from cohorts_new.cohorts_agents.meta_campaign_agent import MetaAdCreativeAgent
+        logger.info(f"Meta Ad Creative Agent Params: {json.dumps(kwargs, indent=4, default=str)}")
+        gryd_job_parms = kwargs.pop("job", None)
+        gryd_logger = kwargs.pop("logger", None)
         result = MetaAdCreativeAgent(**kwargs).run()
         return {
             "task": inspect.currentframe().f_code.co_name,
