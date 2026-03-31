@@ -13,7 +13,7 @@ import time
 
 from conversation import converse
 from communication.connectors.communication_helpers import end_session as end_voice_session, generate_uid,get_communication_credential
-#from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
+from communication.connectors.connector_whatsapp import post_contact_status
 
 from autocrm_db_helper import get_pg_connector
 
@@ -279,7 +279,6 @@ def trigger_voice_call(*args, **kwargs):
                 logger.info(f"No contact status object found yet for message_id: {session_data['session_id']}, waiting...")
                 continue
             
-            status_map = list(map(lambda x: x.get('provider_status'), statuses))
 
             #making this change as not able to debug why its sending status busy after status reached to state contacted - No resolution found yet
             if len(statuses) > 2:
@@ -290,7 +289,7 @@ def trigger_voice_call(*args, **kwargs):
 
             latest = statuses[0]
             logger.info(f"Latest contact status for message_id: {session_data['session_id']} is: {latest}")
-            if "reached" not in status_map:
+            if latest["provider_status"] in ["attempted"]:
                 if time.time() > attempted_timeout:
                     logger.info(f"Call seems to be not connecting for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}. Ending session.")
                     post_contact_status_voice(session_id = session_data["session_id"], message_id=session_data["session_id"], **{"status": "busy"})
@@ -461,6 +460,12 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
     payload["message_id"] = message_id or generate_uid(session_data)
+    post_contact_status(
+            message_id,
+            **payload
+        )
+    
+    return 
     if payload.get("provider_status") == "attempted":
         gryd.create_async_task(
             "post_contact_status", 
@@ -532,7 +537,7 @@ if __name__ == "__main__":
 
                     
 
-    data = {'_is_testing': False,
+ data = {'_is_testing': False,
  'ctas': ['book-test-drive'],
  'mobile_number': '918401586512',
  'created': 1772785341.039532,
@@ -609,14 +614,14 @@ if __name__ == "__main__":
  'template_details': None}
 
     
-    gryd.create_async_task(
-            "trigger_voice_call",
-            config.AUTOCRM_VOICE_SERVICE_NAME,
-            args = [],
-            kwargs = {
-                "user_data": data
-            }
-        )
+gryd.create_async_task(
+        "trigger_voice_call",
+        config.AUTOCRM_VOICE_SERVICE_NAME,
+        args = [],
+        kwargs = {
+            "user_data": data
+        }
+    )
 
 
 
