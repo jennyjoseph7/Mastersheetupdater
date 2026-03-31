@@ -279,6 +279,7 @@ def trigger_voice_call(*args, **kwargs):
                 logger.info(f"No contact status object found yet for message_id: {session_data['session_id']}, waiting...")
                 continue
             
+            status_map = list(map(lambda x: x.get('provider_status'), statuses))
 
             #making this change as not able to debug why its sending status busy after status reached to state contacted - No resolution found yet
             if len(statuses) > 2:
@@ -289,7 +290,7 @@ def trigger_voice_call(*args, **kwargs):
 
             latest = statuses[0]
             logger.info(f"Latest contact status for message_id: {session_data['session_id']} is: {latest}")
-            if latest["provider_status"] in ["attempted"]:
+            if "reached" not in status_map:
                 if time.time() > attempted_timeout:
                     logger.info(f"Call seems to be not connecting for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}. Ending session.")
                     post_contact_status_voice(session_id = session_data["session_id"], message_id=session_data["session_id"], **{"status": "busy"})
@@ -531,7 +532,7 @@ if __name__ == "__main__":
 
                     
 
- data = {'_is_testing': False,
+    data = {'_is_testing': False,
  'ctas': ['book-test-drive'],
  'mobile_number': '918401586512',
  'created': 1772785341.039532,
@@ -608,14 +609,14 @@ if __name__ == "__main__":
  'template_details': None}
 
     
-gryd.create_async_task(
-        "trigger_voice_call",
-        config.AUTOCRM_VOICE_SERVICE_NAME,
-        args = [],
-        kwargs = {
-            "user_data": data
-        }
-    )
+    gryd.create_async_task(
+            "trigger_voice_call",
+            config.AUTOCRM_VOICE_SERVICE_NAME,
+            args = [],
+            kwargs = {
+                "user_data": data
+            }
+        )
 
 
 
