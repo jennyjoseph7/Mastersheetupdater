@@ -537,7 +537,7 @@ if __name__ == "__main__":
 
                     
 
- data = {'_is_testing': False,
+    data = {'_is_testing': False,
  'ctas': ['book-test-drive'],
  'mobile_number': '918401586512',
  'created': 1772785341.039532,
@@ -614,14 +614,14 @@ if __name__ == "__main__":
  'template_details': None}
 
     
-gryd.create_async_task(
-        "trigger_voice_call",
-        config.AUTOCRM_VOICE_SERVICE_NAME,
-        args = [],
-        kwargs = {
-            "user_data": data
-        }
-    )
+    gryd.create_async_task(
+            "trigger_voice_call",
+            config.AUTOCRM_VOICE_SERVICE_NAME,
+            args = [],
+            kwargs = {
+                "user_data": data
+            }
+        )
 
 
 
