@@ -228,6 +228,31 @@ def campaign_ideas_stream():
 
     return Response(stream_with_context(generate()),mimetype="text/event-stream")
 
+@cohort_bp.route("/meta_campaign_ideas", methods=["POST"])
+def meta_campaign_ideas():
+    from ..agents.meta_campaign_agent import MetaAdAgent
+    data = request.get_json(force=True) or {}
+    _params = {
+        "source": data.get("source", None),
+        "classified_cohort": data.get("classified_cohort", None),
+        "affinity_score": data.get("affinity_score", None),
+        "brochure_url": data.get("brochure_url", None),
+        "product_website_url": data.get("product_website_url", None),
+        "num_of_campaign_ideas": data.get("num_of_campaign_ideas", 1),
+        "num_of_adsets": data.get("num_of_adsets", 1),
+        "num_of_ad_creatives": data.get("num_of_ad_creatives", 1),
+        "batch_size": data.get("batch_size", 1),
+        "model_identifier": data.get("model_identifier", "azure-gpt-4o")
+    }
+    
+    agent = MetaAdAgent(**_params)
+    output = agent.run()
+    return output
+    
+
+# ------------------------------------------------------------------------------------------------------------------------
+# | Gryd Orchestration APIs |
+# ------------------------------------------------------------------------------------------------------------------------
 @gryd_orchestration_bp.route("/stream", methods=["POST"])
 def gryd_stream_cohorts():
     data = request.get_json(force=True) or {}
