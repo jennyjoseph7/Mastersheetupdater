@@ -936,6 +936,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
             lead_id=lead_id,
             campaign_type=campaign_type,
             campaign_objective= [campaign_objective_name] or [],
+            dealership_id=lead_data.get("dealership_id"),
             lead_info={}
         )
         if not template_data:
@@ -971,6 +972,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 lead_id=lead_id,
                 campaign_type=campaign_type,
                 campaign_objective= [campaign_objective_name] or [],
+                dealership_id=lead_data.get("dealership_id"),
                 lead_info={}
             )
             _d=get_communication_credential(dealership_id=lead_data.get("dealership_id"), channel=channel)
