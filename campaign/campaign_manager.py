@@ -962,12 +962,14 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         # logger.info("Template Data: %s", template_data)
     elif channel in ("whatsapp_chat", "sms", "rcs"):
         if not templateID:
-            template_data = get_template(
-                lead_id=lead_id,
-                campaign_type=campaign_type,
-                campaign_objective= [campaign_objective_name] or [],
-                lead_info={}
-            )
+            # template_data = get_template(
+            #     lead_id=lead_id,
+            #     campaign_type=campaign_type,
+            #     campaign_objective= [campaign_objective_name] or [],
+            #     dealership_id=lead_data.get("dealership_id"),
+            #     lead_info={}
+            # )
+            template_data=testing_whatsapp_template()
             if not template_data:
                 yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
                 return
@@ -1177,37 +1179,44 @@ def format_email_payload(campaign_data,campaign_user,mobile_number):
 def testing_whatsapp_template():
     
     return [{
-            "sender": "917795030574",
+            "sender": "919187210945",
             "status": "approved",
             "buttons": [
                 {
-                    "text": "Call",
+                    "text": "Book Test Drive",
                     "type": "QUICK_REPLY"
                 },
                 {
-                    "text": "Chat",
+                    "text": "Explore Basalt",
+                    "type": "QUICK_REPLY"
+                },
+                {
+                    "text": "Request a Call Back",
                     "type": "QUICK_REPLY"
                 }
             ],
             "channel": "whatsapp_chat",
-            "created": 1769683785.335568,
-            "updated": 1769683785.3367856,
+            "created": 1774954387.795891,
+            "updated": 1774954387.7971282,
             "language": "english",
-            "dealer_name": "DaveAI",
-            "region_name": "South India",
-            "search_term": "nada_autongage_demo1 text english pre-sales  ",
-            "template_id": "01kg4ntf1ztsa783ss81nq8gqs",
+            "dealer_name": "Dave AI",
+            "region_name": "India",
+            "search_term": "confirm_test_drives_through_tech_appeal_whatsapp text english pre-sales hi person_name exploring cars with advanced connectivity immersive screens and smart driving tech the citroën basalt combines intelligent infotainment modern interfaces and everyday driving comfort in one refined package. how would you like to explore it further",
+            "template_id": "01kn14kkf6sb2712gcb00ggbaw",
             "campaign_type": "pre-sales",
-            "dealership_id": "daveai",
+            "dealership_id": "dave-ai-india",
             "provider_name": "Airtel",
-            "template_name": "nada_autoNgage_demo1",
+            "template_name": "Confirm_Test_Drives_Through_Tech_Appeal_whatsapp",
             "template_type": "text",
-            "template_message": "",
-            "campaign_objective": [],
-            "template_variables": [],
-            "template_button_payloads": [
-                "nada_autongage-call",
-                "nada_autongage-chat"
+            "template_message": "Hi {{person_name}},\nExploring cars with advanced connectivity, immersive screens, and smart driving tech?\nThe Citroën Basalt combines intelligent infotainment, modern interfaces, and everyday driving comfort in one refined package.\nHow would you like to explore it further?\n",
+            "template_variables": [
+                "person_name"
             ],
-            "communication_credentials_id": "airtel-917795030574"
-        }    ]
+            "campaign_objective_name": "Confirm Test Drives Through Tech Appeal - WhatsApp",
+            "template_button_payloads": [
+                "confirm_test_drives_through_tech_appeal_whatsapp-book_test_drive",
+                "confirm_test_drives_through_tech_appeal_whatsapp-explore_basalt",
+                "confirm_test_drives_through_tech_appeal_whatsapp-request_a_call_back"
+            ],
+            "communication_credentials_id": "airtel-whatsapp_chat-919187210945"
+        }  ]
