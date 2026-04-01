@@ -519,31 +519,40 @@ def post_lanuage_change(session_data, changed_language):
     )
 
 def delete_extra_status(campaign_ids):
-    for campaign_id in campaign_ids:
-        
-        session_model = gryd.base_model.Model("session", config.AUTOCRM_APP_ENTERPRISE_ID)
-        sessions = session_model.list(**{"campaign_id": campaign_id, "status": "busy", "_as_option": True, "_filter_attributes": ["session_id", "call_recording", "status"]})
-        logger.info(f"Sessions for campaign_id {campaign_id}: {sessions}")
-        session_ids = [s.get("session_id") for s in sessions if s.get("call_recording") and s.get("status") == "busy"]
-        logger.info(f"Session ids: {session_ids}")
-        for session_id in session_ids:
-            time.sleep(5)
-            with get_pg_connector() as pg:
-                statuses = list(pg.list_order_by("contact_status", {"message_id": session_id}, order_by="created"))
-                logger.info(f"Statuses: {statuses} and length: {len(statuses)}")
-                if len(statuses) > 3:
-                    for s in statuses:
-                        if s.get("provider_status") in ["busy"]:
-                            logger.info(f"Deleting busy contact status for: {session_id}, contact_status_id: {s.get('contact_status_id')}")
-                            gryd.base_model.Model("contact_status", config.AUTOCRM_APP_ENTERPRISE_ID).delete(s.get("contact_status_id"))
+    i = 0
 
-                            end_session(**{
-                            "session_id": session_id,
-                            "additional_dict":{
-                                "status": "completed"
-                            }})
+    if i > len(campaign_ids):
+        logger.info("Completed one full cycle of checking all campaign ids")
+        return
+    try:
+        for campaign_id in campaign_ids:
+            
+            session_model = gryd.base_model.Model("session", config.AUTOCRM_APP_ENTERPRISE_ID)
+            sessions = session_model.list(**{"campaign_id": campaign_id, "status": "busy", "_as_option": True, "_filter_attributes": ["session_id", "call_recording", "status"]})
+            logger.info(f"Sessions for campaign_id {campaign_id}: {sessions}")
+            session_ids = [s.get("session_id") for s in sessions if s.get("call_recording") and s.get("status") == "busy"]
+            logger.info(f"Session ids: {session_ids}")
+            for session_id in session_ids:
+                time.sleep(5)
+                with get_pg_connector() as pg:
+                    statuses = list(pg.list_order_by("contact_status", {"message_id": session_id}, order_by="created"))
+                    logger.info(f"Statuses: {statuses} and length: {len(statuses)}")
+                    if len(statuses) > 3:
+                        for s in statuses:
+                            if s.get("provider_status") in ["busy"]:
+                                logger.info(f"Deleting busy contact status for: {session_id}, contact_status_id: {s.get('contact_status_id')}")
+                                gryd.base_model.Model("contact_status", config.AUTOCRM_APP_ENTERPRISE_ID).delete(s.get("contact_status_id"))
 
-
+                                end_session(**{
+                                "session_id": session_id,
+                                "additional_dict":{
+                                    "status": "completed"
+                                }})
+            i += 1
+    except Exception as e:
+        logger.error(f"Error in delete_extra_status: {e}")
+        delete_extra_status(campaign_ids)
+    return
 
 
 if __name__ == "__main__":
