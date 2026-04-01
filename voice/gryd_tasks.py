@@ -515,12 +515,10 @@ def post_lanuage_change(session_data, changed_language):
     )
 
 def delete_extra_status(campaign_ids):
-    session_ids = []
     for campaign_id in campaign_ids:
         with get_pg_connector() as pg:
             sessions = pg.list("session", {"campaign_id": campaign_id})
-            for session in sessions:
-                session_ids.append(session.get("session_id"))
+            session_ids = list(map(lambda x: x.get("session_id"), sessions))
         logger.info(f"Session ids: {session_ids}")
         for session_id in session_ids:
             with get_pg_connector() as pg:
@@ -530,8 +528,15 @@ def delete_extra_status(campaign_ids):
                     for s in statuses:
                         if s.get("provider_status") in ["busy"]:
                             logger.info(f"Deleting busy contact status for: {session_id}, contact_status_id: {s.get('contact_status_id')}")
-                            #pg.delete("contact_status", "contact_status_id", s.get("contact_status_id") )
-                            #gryd.base_model.Model("contact_status", config.AUTOCRM_APP_ENTERPRISE_ID).delete(s.get("contact_status_id"))
+                            # gryd.base_model.Model("contact_status", config.AUTOCRM_APP_ENTERPRISE_ID).delete(s.get("contact_status_id"))
+
+                            # end_session(**{
+                            # "session_id": session_id,
+                            # "additional_dict":{
+                            #     "status": "completed"
+                            # }})
+
+
 
 
 if __name__ == "__main__":
