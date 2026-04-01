@@ -632,7 +632,7 @@ export default function CampaignDashboard() {
 
   const handleEdit = (campaign: Campaign) => {
     const campaignId = campaign.campaign_id ?? campaign.id;
-    router.push(`/campaign/create?edit=${campaignId}`);
+    router.push(`/campaign/resume?id=${campaignId}&type=presales`);
   };
 
   const handleDuplicate = async (campaign: Campaign) => {
