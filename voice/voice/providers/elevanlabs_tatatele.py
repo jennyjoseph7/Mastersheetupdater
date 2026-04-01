@@ -1128,8 +1128,8 @@ def tatatele_status_map(payload: bytes) -> Dict[str, Any]:
         raise ValueError("JSON must be a dict")
 
     raw_status = data.get("call_status") or data.get("status")
-    if raw_status is None:
-        raise KeyError("Missing 'call_status' field")
+    # if raw_status is None:
+    #     raise KeyError("Missing 'call_status' field")
 
     mapped_status = TATA_TELE_STATUS_MAP.get(raw_status, raw_status)
     data["status"] = raw_status  # Preserve original
@@ -1176,6 +1176,7 @@ def outbound_call(*args, **kwargs):
 @app.route("/smartflo/webhook", methods=["POST"])
 def smartflo_webhook():
     raw = request.get_data()
+    logger.info(f"Received SmartFlo webhook: {raw}")
     payload = tatatele_status_map(raw)
 
     call_id = payload.get("call_id")
