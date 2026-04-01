@@ -126,7 +126,7 @@ function stop_logio_server() {
 
 
 function setup_logio_agent() {
-    python3 /root/generate_log_conf.py
+    python3 /root/generate_logio_conf.py
     status=$?
 	if [ $status != 0 ];then
 		echo "Generating log config failed. Exitting."
