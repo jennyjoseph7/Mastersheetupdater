@@ -330,7 +330,7 @@ def post_contact_status(*args, **data):
         payload = existing
         contact_status_id = generate_uid(payload)
 
-        if incoming_status not in {"initiated", "queued"}:
+        if incoming_status not in {"initiated", "queued", "attempted"}:
             pg.update(
                 "contact_status",
                 "contact_status_id",
