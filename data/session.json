@@ -370,6 +370,14 @@
         "type": "text"
       },
       {
+        "name": "emotion_analysis",
+        "type": "text"
+      },
+      {
+        "name": "sentiment_classification",
+        "type": "text"
+      },
+      {
         "name": "person_name",
         "type": "text",
         "default": {

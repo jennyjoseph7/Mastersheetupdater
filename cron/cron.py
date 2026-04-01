@@ -127,7 +127,7 @@ def performance_summary():
                 SELECT COUNT(*) AS total
                 FROM pre_sales_campaign c
                 LEFT JOIN campaign_performance_summary s
-                  ON s.campaign_performance_summary_id =
+                ON s.campaign_performance_summary_id =
                      c.dict->>'campaign_id'
                 WHERE
                     s.campaign_performance_summary_id IS NULL
@@ -138,7 +138,7 @@ def performance_summary():
                 SELECT COUNT(*) AS total
                 FROM post_sales_campaign c
                 LEFT JOIN campaign_performance_summary s
-                  ON s.campaign_performance_summary_id =
+                ON s.campaign_performance_summary_id =
                      c.dict->>'campaign_id'
                 WHERE
                     s.campaign_performance_summary_id IS NULL
@@ -159,6 +159,61 @@ def performance_summary():
         mlogger.info(f"[CRON] Campaign performance update completed. Updated rows: {update_count}")
 
         return update_count
+
+# @gryd.is_a_task(function_name="campaign_objective_performance_summary")
+# def campaign_objective_performance_summary():
+    
+#     """
+#     This task checks for campaigns which require an update to their performance summary.
+#     It does this by checking for campaigns which have a newer updated timestamp than the
+#     latest updated timestamp in the campaign_performance_summary table.
+
+#     It then executes a stored procedure to update the campaign_performance_summary table
+#     with the latest data from the campaigns.
+
+#     :return: The number of campaigns which required an update to their performance summary.
+#     :rtype: int
+#     """
+#     with get_pg_connector() as pg:
+#         mlogger.info("[CRON] Checking campaigns needing performance update...")
+
+#         counts = list(pg.yield_results("""
+#             SELECT SUM(total) FROM (
+#                 SELECT COUNT(*) AS total
+#                 FROM pre_sales_campaign c
+#                 LEFT JOIN campaign_performance_summary s
+#                 ON s.dict->>'campaign_objective_id' =
+#                      c.dict->>'campaign_objective_id'
+#                 WHERE
+#                     s.campaign_performance_summary_id IS NULL
+#                     OR c.updated > TO_TIMESTAMP((s.dict->>'updated')::BIGINT / 1000)
+
+#                 UNION ALL
+
+#                 SELECT COUNT(*) AS total
+#                 FROM post_sales_campaign c
+#                 LEFT JOIN campaign_performance_summary s
+#                 ON s.dict->>'campaign_objective_id' =
+#                      c.dict->>'campaign_id'
+#                 WHERE
+#                     s.campaign_performance_summary_id IS NULL
+#                     OR c.updated > TO_TIMESTAMP((s.dict->>'updated')::BIGINT / 1000)
+#             ) t;
+#         """))
+
+#         update_count = int(counts[0][0]) if counts and counts[0][0] is not None else 0
+
+#         if update_count == 0:
+#             mlogger.info("[CRON] No campaign objective updates detected. Skipping execution.")
+#             return 0
+
+#         mlogger.info(f"[CRON] {update_count} campaigns require update. Running procedure...")
+
+#         pg.execute_write("CALL run_campaign_objective_performance_summary();", _fetch=False)
+
+#         mlogger.info(f"[CRON] Campaign objective performance update completed. Updated rows: {update_count}")
+
+#         return update_count
 
 
 @gryd.is_a_task(function_name="manage_active_sessions")
@@ -187,8 +242,8 @@ def manage_active_sessions(*args, **kwargs):
     only_for_channels = kwargs_dict.get("only_for_channels") or []
     _post_process_interval_seconds = kwargs_dict.get("post_process_interval_seconds",10)
     inactivity_timeout_seconds = kwargs_dict.get("inactivity_timeout_seconds", 10)
-    POST_PROCESS_INTERVAL_SECONDS = _post_process_interval_seconds * 60  # by defautl 10 mins..
-    INACTIVITY_TIMEOUT_SECONDS= inactivity_timeout_seconds * 60  # by defautl 10 mins..
+    POST_PROCESS_INTERVAL_SECONDS = _post_process_interval_seconds * 60  # by default 10 mins..
+    INACTIVITY_TIMEOUT_SECONDS= inactivity_timeout_seconds * 60  # by default 10 mins..
 
     mlogger.info("------------ Managing active sessions ------------")
 
@@ -207,7 +262,7 @@ def manage_active_sessions(*args, **kwargs):
             return
 
         now_epoch = int(time.time())
-
+        inactive_cutoff_epoch = None
         for session in session_list:
             session_id = session.get("session_id")
             channel = session.get("channel")
@@ -245,10 +300,11 @@ def manage_active_sessions(*args, **kwargs):
                     # pg.list_order_by("message", {"session_id": session_id},order_by="created",order="ASC")
                     pg.list("message", {"session_id": session_id})
                 )
-
+                mlogger.info(f"history_rows: {json.dumps(history_rows,indent=4)}")
                 new_records = []
                 for row in history_rows:
                     ts = row.get("created") or row.get("updated")
+                    mlogger.info(f"ts: {ts}-->{session_id}")
                     if ts:
                         ts = int(ts)
                         if last_history_epoch is None or ts > last_history_epoch:
@@ -289,7 +345,7 @@ def manage_active_sessions(*args, **kwargs):
 
             # we are calling post_process only when there is a new response (new data to process) or if it's been more than POST_PROCESS_INTERVAL_SECONDS seconds since last post_process_time.
             can_call_post_process = (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS)
-            mlogger.info("can_call_post_process : {}".format(can_call_post_process))
+            mlogger.info("can_call_post_process : {} for session_id: {}".format(can_call_post_process, session_id))
             if can_call_post_process:
                 handle_session_post_process_or_end(
                     session_id=session_id,
@@ -301,7 +357,7 @@ def manage_active_sessions(*args, **kwargs):
 
         mlogger.info("************************************************")
         return
-     
+
 def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None,):
     conditions = [] 
     params = ()
@@ -336,6 +392,70 @@ def apply_filters(session_id=None, user_id=None, channel=None, session_live=None
     return condition, params
 
 
+@gryd.is_a_task(function_name="schedule_campaign_trigger")
+def schedule_campaign_trigger(*args, **kwargs):
+    """
+    Schedules campaigns which have a start_date earlier than the current epoch time.
+    
+    This function is used by the cron service to periodically trigger campaigns which are planned.
+    It checks both pre-sales and post-sales campaigns and sets the campaign_status to "Active".
+    
+    :return: None
+    """
+    epoch_time = int(time.time())
+
+    where_clause = f"""
+    (dict->>'campaign_status') = 'Planned'
+    AND (dict->>'start_date')::bigint <= {epoch_time}
+    """
+
+    tables = ["pre_sales_campaign", "post_sales_campaign"]
+    
+    with get_pg_connector() as pg:
+
+        for table in tables:
+            campaigns = list(pg.list(table, where_clause))
+
+            mlogger.info(f"Found {len(campaigns)} campaigns to trigger in {table}")
+
+            for campaign in campaigns:
+                pg.update(
+                    table,
+                    "campaign_id",
+                    campaign.get("campaign_id"),
+                    {"campaign_status": "Active"},
+                )
+                # call ananth's task
+
+@gryd.is_a_task(function_name="end_campaigns")
+def end_campaigns():
+    """
+    Ends campaigns which have end_date earlier than the current epoch time.
+
+    This function is used by the cron service to periodically end campaigns which have expired.
+    It checks both pre-sales and post-sales campaigns and sets the campaign_status to "Completed".
+
+    :return: None
+    :rtype: NoneType
+    """
+    epoch_time = int(time.time())
+    where_clause = f"(dict->>'end_date')::bigint < {epoch_time}"
+
+    tables = ["pre_sales_campaign", "post_sales_campaign"]
+
+    with get_pg_connector() as pg:
+        for table in tables:
+            campaigns = list(pg.list(table, where_clause))
+            mlogger.info(f"Found {len(campaigns)} campaigns to end in {table}")
+
+            for campaign in campaigns:
+                pg.update(
+                    table,
+                    "campaign_id",
+                    campaign.get("campaign_id"),
+                    {"campaign_status": "Completed"},
+                )
+                        
 @gryd.is_a_task(logger_param='logger', job_param='job')
 def create_campaign_ideas_for_dealerships(
         campaign_types:Union[List[str], None]=None, 

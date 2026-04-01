@@ -11,6 +11,7 @@ json = hp.json
 from conversation.yield_response import yield_result,yield_error, yield_status
 from conversation.prompt import run_prompt_sync
 from datetime import datetime
+from agents.sentiment_agent import SentimentAnalysisAgent
 
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 gryd.set_queue_manager()
@@ -98,18 +99,21 @@ def post_session_process(*args, **kwargs):
     sentiment_score = -1
     emotion_analysis = {}
     if messages:
-        from agents import sentiment_agent
-        sentiment_agent = sentiment_agent.SentimentAnalysisAgent(source = messages, model_identifier="gcp-gemini-2.5-flash-lite")
+        sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="gcp-gemini-2.5-flash-lite")
         aa = sentiment_agent.run()
         sentiment_score = aa.get("conversation_analytics",{}).get("overall_sentiment_score",-1)
         emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
         mlogger.info(f"sentiment data gave me score = {sentiment_score} and ananlusis = {emotion_analysis}")
     
-    updated_lead_data = get_disposition(session_id,session_data,session_mdl_obj) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
+    sentiment_classification = get_disposition_classification(query = "", session_id = session_id, session_data_cache = session_data, session_mdl_obj= session_mdl_obj) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
+   
+    mlogger.info(f"\n\n sentiment_classified_for_query is ==> {sentiment_classification}\n\n")
+    
+    updated_lead_data = get_disposition(session_id,session_data,session_mdl_obj, sentiment_classification) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
+    
     mlogger.info("got disposition as == {}".format(updated_lead_data))
     
-    
-    session_update_data = {"disposition":updated_lead_data.get("disposition"),"disposition_detail":updated_lead_data.get("disposition_detail")}
+    session_update_data = {"disposition": updated_lead_data.get("disposition"), "disposition_detail":updated_lead_data.get("disposition_detail")}
     if updated_lead_data.get("disposition_detail") == "Requested Callback":
         follow_up = get_callback_date_time(session_id,session_data)
         if isinstance(follow_up,dict):
@@ -126,13 +130,14 @@ def post_session_process(*args, **kwargs):
             if "follow_up_language" in follow_up:
                 updated_lead_data["follow_up_language"] = follow_up.get("follow_up_language")
 
-    mlogger.info("lead data =={}".format(updated_lead_data))
-    # yield {"lead_data":updated_lead_data,"session_id":session_id,"session_summary":session_mdl_obj.get("summary",""),"session_transcript":session_mdl_obj.get("history",[])}
+    # yield {"lead_data":updated_lead_data,"session_id":session_id,"session_summary":session_mdl_obj.get("summary",""),"session_transcript":session_mdl_obj.get("history",[]), 'sentiment_analyse': sentiment_classification}
     # return
     if sentiment_score != -1:
         session_update_data["sentiment_score"] = sentiment_score
     if emotion_analysis:
         session_update_data["emotion_analysis"] = emotion_analysis
+    if sentiment_classification:
+        session_update_data["sentiment_classification"] = sentiment_classification
     appt_date_time_purpose = {}
     if updated_lead_data.get("disposition") == "converted":
         appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
@@ -724,7 +729,8 @@ def get_lead_variables(campaign_type):
         ]
     else:
         return ["vehicle_name","vehicle_model","vehicle_type"]
-def get_disposition(session_id, session_data_cache,session_mdl_obj):
+    
+def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     lead_data = session_data_cache.get("user_data")
     campaign_data = session_data_cache.get("campaign_data")
     campaign_objective = campaign_data.get("campaign_objective")
@@ -744,7 +750,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj):
                 has_user_message = True
             message_history.append({"role" : "customer", "message":message.get("message","")})
     if not has_user_message:
-        return {"disposition":"contacted","disposition_detail":"Didnt speak","prioritization_score":10,"prioritization_category":"INACTIVE"}
+        return {"disposition":"contacted","disposition_detail":"No Response","prioritization_score":10,"prioritization_category":"INACTIVE"}
     mlogger.info("message_history in get_disposition -  {}".format(message_history))
     session_summary = session_mdl_obj.get("summary")
     campaign_type = campaign_data.get("campaign_type")
@@ -755,84 +761,97 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj):
         "prioritization_category" : "COMPLETE or HOT or WARM or COOL or COLD or INACTIVE"
     }"""
     disp_details_options = {
-                "Voicemail":"The customer response might be along the lines of '...leave a message...' this would imply the call was placed and picked up by a voicemail service.",
-                "Rejected":"If the customer has rejected the offer or to even speak with the agent.",
-                "Language barrier":"If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
-                "Is not decision maker":"the customer said they are not the right person to speak to about this in their family.",
-                "Will decide later, will purchase within 15 days":"The customer said they would decide to buy the vehicle within 15 days.",
-                "Will decide later, will purchase within 1 to 3 months":"The customer said they would decide to buy the vehicle within 1 to 3 months.",
-                "Will decide later, exploring options":"The customer said they will decide on the purchase of the vehicle at a later time and are only exploring all their options now.",
-                "No buying intent":"the customer said they Do not want to purchase a car. Neither are the interested in the car.",
-                "Just Exploring":"the customer Only want to know about the vehicle but do not show intent to buy. This will only happen if the customer has actually asked about the car or related features but shows no interest in the purpose of the call.",
-                "Will call showroom themselves":"the customer will contact the dealership or showroom themselves.",
-                "Requested Callback":"the customer Asked to call back at a later date and or time.",
-                "Purchased elsewhere":"the customer Already purchased a vehicle elsewhere.",
-                "Enquired for Pricing":"the customer by themselves asked for the price of the vehicle.",
-                "Enquired for Specifications":"the customer by themselves asked for the specifications of the vehicle.",
-                "Enquired for Test Drive":"the customer by themselves asked for a test drive of the vehicle.",
-                "Enquired for Showroom Visit":"the customer by themselves asked for a showroom visit of the vehicle.",
-                "Enquired for Brochure":"the customer by themselves asked for a brochure of the vehicle.",
-                "Enquired for Dealership Details":"the customer by themselves asked for dealership details.",
-                "Enquired for Others":"the customer by themselves asked for other details not listed above.",
-                "Comparing with another brand":"The customer by themselves is comparing the vehicle with another brand.",
-                "Call Disconnected":"Conversation was incomplete. Customer did not respond or the the agents requests or statements were unanswered.",
-                "Others":"All other disposition details not listed above.",
-                "General Inquiry":"the customer is Asking generic questions not specific to the purpose of the campaign or the vehicle.",
-                "Not Interested":"the customer Specifically said they are not interested in the vehicle.",
-                "Follow Up Required":"the customer Needs a follow up to convince them to complete the campaign objective.",
-                "No Response":"the customer did not say anything at all.",
-                "Lost to Competition":"the customer Bought a competitor brands vehicle.",
-                "Test Drive Completed":"the customer Already completed a test drive.",
-                "Invalid Lead":"the customer Not a valid lead.",
-                "Purchase Postponed":"the customer indicates that the Purchase has been postponed",
-                "Audio Issue":"There was issues with hearing the customer or the agent for either party.",
-                "Showroom Visit Planned":"the customer Already booked a showroom visit.",
-                "Converted":"The customer completes the purpose of the campaign and provides the necessary information."
-    }
-
+                        "CONVERTED": {
+                            "CONVERTED": "The customer completes the purpose of the campaign and provides the necessary information."
+                        },
+                        "POSITIVE": {
+                            "ENQUIRED FOR TEST DRIVE": "the customer by themselves asked for a test drive of the vehicle.",
+                            "SHOWROOM VISIT PLANNED": "the customer Already booked a showroom visit.",
+                            "WILL DECIDE LATER, WILL PURCHASE WITHIN 15 DAYS": "the customer said they would decide to buy the vehicle within 15 days.",
+                            "WILL DECIDE LATER, WILL PURCHASE WITHIN 1 TO 3 MONTHS": "the customer said they would decide to buy the vehicle within 1 to 3 months.",
+                            "ENQUIRED FOR PRICING": "the customer by themselves asked for the price of the vehicle.",
+                            "ENQUIRED FOR SPECIFICATIONS": "the customer by themselves asked for the specifications of the vehicle.",
+                            "ENQUIRED FOR SHOWROOM VISIT": "the customer by themselves asked for a showroom visit of the vehicle.",
+                            "ENQUIRED FOR BROCHURE": "the customer by themselves asked for a brochure of the vehicle.",
+                            "ENQUIRED FOR DEALERSHIP DETAILS": "the customer by themselves asked for dealership details.",
+                            "INTERESTED IN ANOTHER CAR SAME DEALERSHIP": "If user mentions for a different car but from the same dealer",
+                            "FOLLOW UP REQUIRED": "the customer Needs a follow up to convince them to complete the campaign objective.",
+                            "REQUESTED CALLBACK": "the customer Asked to call back at a later date and or time."
+                        },
+                        "NEUTRAL": {
+                            "WILL DECIDE LATER, EXPLORING OPTIONS": "the customer said they will decide on the purchase of the vehicle at a later time and are only exploring all their options now.",
+                            "JUST EXPLORING": "This will only happen if the customer has actually asked about the car or related features but shows no interest in the purpose of the call.",
+                            "WILL CALL SHOWROOM/WORKSHOP THEMSELVES": "The customer will contact the dealership, showroom or workshop themselves.",
+                            "GENERAL INQUIRY": "the customer is Asking generic questions not specific to the purpose of the campaign or the vehicle.",
+                            "COMPARING WITH ANOTHER BRAND": "The customer by themselves is comparing the vehicle with another brand.",
+                            "LANGUAGE BARRIER": "If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
+                            "AUDIO ISSUE": "There was issues with hearing the customer or the agent for either party.",
+                            "TEST DRIVE COMPLETED": "the customer Already completed a test drive.",
+                            "ENQUIRED FOR OTHERS": "the customer by themselves asked for other details not listed above.",
+                            "OTHERS": "All other disposition details not listed above."
+                        },
+                        "NEGATIVE": {
+                            "NO RESPONSE": "This category applies only if the user role is completely empty with no text at all from the start to the end of the call. If there is any text or any automated prompt in the user messages then it cannot be marked as No Response.",
+                            "CALL DISCONNECTED": "This category applies if a human conversation was established such as the user saying hello or yes or oh yeah but the user then stopped responding or the line went silent after an agent query. It must not be used if an automated recording prompt was detected.",
+                            "VOICEMAIL": "This must be selected if any user message contains automated system text such as record your message or beeping. The presence of any automated phrasing in the user role overrides all other categories.",
+                            "NOT INTERESTED": "the customer Specifically said they are not interested in the vehicle.",
+                            "NO BUYING INTENT": "the customer said they Do not want to purchase a car. Neither are the interested in the car.",
+                            "PURCHASED ELSEWHERE": "the customer Already purchased a vehicle elsewhere.",
+                            "LOST TO COMPETITION": "the customer Bought a competitor brands vehicle.",
+                            "PURCHASE POSTPONED": "the customer indicates that the Purchase has been postponed",
+                            "INVALID LEAD": "the customer Not a valid lead.",
+                            "TALK TO HUMAN": "The customer request for talking with human."
+                        }
+                    }
     if campaign_type == "post-sales":
         disp_details_options = {
-                "Voicemail":"If the customer has asked to leave a message or voicemail.",
-                "Rejected":"If the customer has rejected the offer or to even speak with the agent. repeated rejection.",
-                "Language barrier":"If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
-                "Vehicle is commercial or part of a fleet":"The vehicle is a commercial vehicle and not applicable for the campaign purpose.",
-                "Vehicle is not being run":"Vehicle is unused and not being run.",
-                "Requires special spare parts":"The vehicle requires special spare parts for repair.",
-                "Others":"All other disposition details not listed above.",
-                "Wrong contact number":"Customer tells the agent they have the wrong person or number that was contacted",
-                "Voicemail":"The customer asks to leave a voicemail or message.",
-                "Has sold/given away the car":"The customer has sold or given away the vehicle.",
-                "Has moved to another location":"The customer has moved to another location.",
-                "Cannot make decision on servicing":"The customer the agent has called is not the right person to make the decision.",
-                "Will call workshop themselves":"The customer will contact the workshop themselves.",
-                "Requested Callback":"The customer asked the agent to call back at a later date and or time.",
-                "Looking for a discount":"The customer is looking for a discount on the campaign purpose.",
-                "Language barrier":"The customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
-                "Has serviced car in another dealership":"The customer has serviced the vehicle in another dealership.",
-                "Will decide tomorrow":"The customer said they would decide to service the vehicle tomorrow.",
-                "Will decide within 1 to 3 days":"The customer said they would decide to service the vehicle within 1 to 3 days.",
-                "Will decide within 4 to 7 days":"The customer said they would decide to service the vehicle within 4 to 7 days.",
-                "Will decide within 8 to 14 days":"The customer said they would decide to service the vehicle within 8 to 14 days.",
-                "Will decide within 15 to 30 days":"The customer said they would decide to service the vehicle within 15 to 30 days.",
-                "Will decide within 31 to 60 days":"The customer said they would decide to service the vehicle within 31 to 60 days.",
-                "Will decide within 61 to 90 days":"The customer said they would decide to service the vehicle within 61 to 90 days.",
-                "Will decide after 90 days":"The customer said they would decide to service the vehicle after 90 days.",
-                "Unsubscribed":"The customer asked to unsubscribed from the campaign.",
-                "Call Disconnected":"The call ended abruptly without completing the campaign objective.",
-                "Audio Issue":"There was issues with hearing the customer or the agent for either party.",
-                "Call Quality Issue":"There was issues with the quality of the call.",
-                "Connection Issue":"There was issues with the connection between the customer and the agent.",
-                "Customer Busy":"The customer was busy.",
-                "No Response":"The customer did not say anything at all.",
-                "Price Inquiry":"The customer is interested in the price of the service.",
-                "Lost to Competition":"the customer already did the campaign objective from a competitors workshop",
-                "Invalid Lead":"Not a valid lead.",
-                "Purchase Postponed":"They decided or implied they will postpone the service.",
-                "Showroom Visit Planned":"Already booked a showroom visit.",
-                "Existing Dealer Contact":"The customer already did the campaign objective from an existing dealership.",
-                "Contact Fatigue":"customer implied they were being contacted too many times by the agent.",
-                "Converted":"The customer completes the purpose of the campaign and provides the necessary information."
-        }
+                "CONVERTED": {
+                    "CONVERTED": "The customer completes the purpose of the campaign and provides the necessary information."
+                },
+                "POSITIVE": {
+                    "WILL DECIDE TOMORROW": "The customer said they would decide to service the vehicle tomorrow.",
+                    "WILL DECIDE WITHIN 1 TO 3 DAYS": "The customer said they would decide to service the vehicle within 1 to 3 days.",
+                    "WILL DECIDE WITHIN 4 TO 7 DAYS": "The customer said they would decide to service the vehicle within 4 to 7 days.",
+                    "WILL DECIDE WITHIN 8 TO 14 DAYS": "The customer said they would decide to service the vehicle within 8 to 14 days.",
+                    "WILL DECIDE WITHIN 15 TO 30 DAYS": "The customer said they would decide to service the vehicle within 15 to 30 days.",
+                    "WILL DECIDE WITHIN 31 TO 60 DAYS": "The customer said they would decide to service the vehicle within 31 to 60 days.",
+                    "WILL DECIDE WITHIN 61 TO 90 DAYS": "The customer said they would decide to service the vehicle within 61 to 90 days.",
+                    "WILL DECIDE AFTER 90 DAYS": "The customer said they would decide to service the vehicle after 90 days.",
+                    "PRICE INQUIRY": "The customer is interested in the price of the service.",
+                    "LOOKING FOR A DISCOUNT": "The customer is looking for a discount on the campaign purpose.",
+                    "REQUESTED CALLBACK": "The customer asked the agent to call back at a later date and or time."
+                },
+                "NEUTRAL": {
+                    "CUSTOMER BUSY": "The customer was busy.",
+                    "WILL CALL WORKSHOP THEMSELVES": "The customer will contact the workshop themselves.",
+                    "LANGUAGE BARRIER": "The customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
+                    "AUDIO ISSUE": "There was issues with hearing the customer or the agent for either party.",
+                    "CALL QUALITY ISSUE": "There was issues with the quality of the call.",
+                    "CONNECTION ISSUE": "There was issues with the connection between the customer and the agent.",
+                    "REQUIRES SPECIAL SPARE PARTS": "The vehicle requires special spare parts for repair.",
+                    "OTHERS": "All other disposition details not listed above.",
+                    "CANNOT MAKE DECISION ON SERVICING": "The customer the agent has called is not the right person to make the decision."
+                },
+                "NEGATIVE": {
+                    "VEHICLE IS COMMERCIAL OR PART OF A FLEET": "The vehicle is a commercial vehicle and not applicable for the campaign purpose.",
+                    "HAS SOLD OR GIVEN AWAY THE CAR": "The customer has sold or given away the vehicle.",
+                    "VEHICLE IS NOT BEING RUN": "Vehicle is unused and not being run.",
+                    "HAS MOVED TO ANOTHER LOCATION": "The customer has moved to another location.",
+                    "WRONG CONTACT NUMBER": "Customer tells the agent they have the wrong person or number that was contacted",
+                    "NO RESPONSE": "This category applies only if the user role is completely empty with no text at all from the start to the end of the call.",
+                    "CALL DISCONNECTED": "Human conversation was established but the user stopped responding or the line went silent. Not for automated prompts.",
+                    "VOICEMAIL": "Selected if any user message contains automated system text (recording prompts, beeps). Overrides all other categories.",
+                    "UNSUBSCRIBED": "The customer asked to unsubscribed from the campaign.",
+                    "CONTACT FATIGUE": "customer implied they were being contacted too many times by the agent.",
+                    "NOT INTERESTED": "The customer specifically said they are not interested (Inferred from general context).",
+                    "PURCHASE POSTPONED": "They decided or implied they will postpone the service.",
+                    "HAS SERVICED CAR IN ANOTHER DEALERSHIP": "The customer has serviced the vehicle in another dealership.",
+                    "EXISTING DEALER CONTACT": "The customer already did the campaign objective from an existing dealership.",
+                    "LOST TO COMPETITION": "the customer already did the campaign objective from a competitors workshop",
+                    "TALK TO HUMAN": "The customer requested for talking with human.",
+                    "INVALID LEAD": "Not a valid lead."
+                }
+            }
 
     prompt = f"""
     # You are a analyst bot that has the single purpose of looking at the conversation summary provided below about my customer and my agent and check if they completed the objective of my campaign. 
@@ -854,7 +873,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj):
     In all other cases it should be engaged.
     If the disposition is converted the prioritization score should be 100 and prioritization category should be COMPLETE. Other wise determine the interest the have shown during the call and put a score and pick from the categories for prioritization.
     # Possible values and description to qualify for disposition_detail are:
-    \n{disp_details_options}\n
+    \n{disp_details_options[sentiment.upper()]}\n
     Only pick ONE value from this above list for disposition details.
     The disposition detail is a description of the status of the customer based on the conversation summary provided above. Not what the agent said. Only consider the customer's interaction to conclude on the final disposition detail value.,
 
@@ -862,11 +881,9 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj):
     # Special Cases:-
     - if the user has asked for a callback or requested to speak with a human or a phone call in any way without completing the objective of the campaign then the Disposition Detail would be = 'Requested Callback'.
     - if the user has not completed the objective of the campaign and has suggested they do not understand the language i am speaking or asked me to switch to a different language, the Disposition Detail would be = 'Language barrier'.
-    - if the user has disconnected the call without completing the conversation, the Disposition Detail would be = 'Call Disconnected'.
     # Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
     # Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
     # Do NOT prepend labels (like "json"). Output only valid JSON.
-    # Incase you detect that the messages from the user are from a Voice Mail then disposition should be "engaged" and disposition detail should be "Voicemail".
     # Your response should be in the following JSON format:
     {example_disposition_response}
     """
@@ -875,6 +892,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj):
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
     mlogger.info("disposition prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
+
 def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data):
     mlogger.info("get_visit_data called with session_data_cache == {}".format(json.dumps(session_data_cache)))
     session_data = session_data_cache
@@ -1311,3 +1329,74 @@ def post_session_processes(*args, **kwargs):
                     mlogger.info("running post_lead_process for session_id == {} with status == {}".format(session_data.get("session_id"),session_data.get("status")))
                     yield from post_session_process(session_id=session_data.get("session_id"))
         return
+
+
+def get_disposition_classification(query = None, session_id = None, session_data_cache = None, session_mdl_obj = None):
+    classify_list = ["negative", "neutral", "positive", "converted"]
+    lead_data = session_data_cache.get("user_data")
+    campaign_data = session_data_cache.get("campaign_data")
+    campaign_objective = campaign_data.get("campaign_objective")
+    campaign_purpose = campaign_data.get("purpose")
+    campaign_description = campaign_data.get("campaign_description",campaign_data.get("campaign_objective_description"))
+    messages = session_data_cache.get("messages")
+    session_summary = session_mdl_obj.get("summary")
+    message_history = []
+    has_user_message = False
+    for message in messages:
+        mlogger.info("message in get_disposition -  {}".format(message))
+        if "intent" in message and message.get("intent") == "llm_response":
+            message_history.append({"role" : "my agent", "message":message.get("message","")})
+        else:
+            if not has_user_message and message.get("message") and len(message.get("message")) > 0:
+                has_user_message = True
+            message_history.append({"role" : "customer", "message":message.get("message","")})
+    if not has_user_message:
+        return "neutral"
+
+    p_steps = campaign_data.get("purpose_steps",[])
+    purpose_steps = f"These are the mandatory steps that need to be completed for the campaign purpose to be achieved: {', '.join(p_steps)}" if p_steps else ""
+
+    prompt = f"""
+    # ROLE
+    You are a highly precise analyst bot. Your single purpose is to evaluate a conversation summary and history to determine if a customer met the specific objective of a campaign.
+
+    # CAMPAIGN DETAILS
+    - Objective: {campaign_purpose if campaign_purpose else campaign_objective}
+    - Description: {campaign_description}
+    {purpose_steps}
+
+    # EVALUATION CRITERIA
+    1. Look only at the CUSTOMER'S interaction and intent.
+    2. Ignore agent actions except to provide context for the customer's response.
+    3. Match the customer's status against the following classification list:
+    {classify_list}
+
+    # EXAMPLES FOR CLASSIFICATION REFERENCE
+    POSITIVE (Customer is interested but hasn't committed/converted yet)
+     - Reasoning: The user rejects the current timing or specific detail but maintains a conversational bridge. This indicates high intent with a logistical friction point rather than a lack of interest.
+    - Example: [{{'role': 'user', 'message': 'Not at this time'}}, {{'role': 'agent', 'message': 'When would be a better time?'}}] -> Customer is open to future contact.
+    
+    NEGATIVE (Customer explicitly declines the objective)
+     - Reasoning: The user provides a definitive 'No' or a contextual rejection that closes the loop on the specific goal. No alternative or future opening is provided.
+     - Example: [{{'role': 'agent', 'message': 'Would you be interested in booking a test drive?'}}, {{'role': 'user', 'message': "No, I'm at a state by state"}}] -> Objective rejected.
+    
+    NEUTRAL (Inconclusive, language barrier, or no clear progress)
+     - Reasoning: The input is semantically "noise" relative to the objective. It contains no discernible intent (positive or negative) or suggests a communication barrier that prevents state progression.
+     - Example: [{{'role': 'user', 'message': 'Hindi'}}, {{'role': 'user', 'message': '[background noise]'}}] -> No decision made.
+
+    CONVERTED (Customer successfully completed the primary objective)
+     - Reasoning: The user has explicitly accepted the core call-to-action (CTA) or provided the specific data required to close the task (e.g., confirming a time or providing a phone number).
+     - Example: [{{'role': 'agent', 'message': 'Are you interested?'}}, {{'role': 'user', 'message': 'Yes, sign me up for the 10 AM slot'}}] -> Objective achieved.
+    
+    # INPUT DATA
+    Conversation Summary:
+    {session_summary}
+
+    Message History:
+    {message_history}
+
+    # FINAL INSTRUCTION
+    Based on the data above, pick exactly ONE value from the classification list provided. Return ONLY that word/phrase and nothing else. No explanation, no punctuation, just the value.
+    """
+    result = run_prompt_sync(user_query = " ",  system_prompt= prompt, history=[], **{"session_id": session_id, "model_identifier":"gcp-gemini-2.5-flash-lite"})
+    return result
