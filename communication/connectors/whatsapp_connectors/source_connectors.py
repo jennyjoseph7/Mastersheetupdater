@@ -21,7 +21,8 @@ logger = gryd.logger
 
 # Path to parent folder
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-sys.path.append(PARENT_DIR)
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
 
 from autocrm_db_helper import get_pg_connector
 

@@ -5,7 +5,9 @@ import json
 from gryd_worker import gryd, gryd_helpers as hp
 import sys, os
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 # from campaign.campaign_workflow import determine_campaign_next_action
 
 from typing import Union

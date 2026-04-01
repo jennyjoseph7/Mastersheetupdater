@@ -121,7 +121,7 @@ BASE_PATH = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_PATH, "data")
 SERVICE = os.environ.get("SERVICE", "autocrm-app")
 if BASE_PATH not in sys.path:
-    sys.path.append(BASE_PATH)
+    sys.path.insert(0, BASE_PATH)
 
 clogger = hp.get_logger(__name__)
 

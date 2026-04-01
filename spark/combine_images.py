@@ -2,6 +2,7 @@ import argparse
 import io
 import os, sys
 from PIL import Image
+import bs4
 try:
     import cairosvg
 except (ImportError, OSError) as e:
@@ -10,7 +11,7 @@ from gryd_worker import gryd, gryd_helpers as hp
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(abspath(__file__))
 if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
+    sys.path.insert(0, BASE_DIR)
 mlogger = hp.get_logger(__name__)
 
 DEFAULT_SCALE = 1.0
@@ -96,7 +97,7 @@ def merge_layers(base_png: str, png_layers: list[tuple[str, float, int, int]] = 
             scale, x, y = DEFAULT_SCALE, DEFAULT_X, DEFAULT_Y
         else:
             raise ValueError(f"Invalid layer definition: {layer}")
-        return path, scale, x, y
+        return path, scale, int(x), int(y)
 
     for png_layer in png_layers:
         path, scale, x, y = manage_layer(png_layer)
@@ -176,12 +177,17 @@ def main():
         output_path=args.output
     )
 
+# Below are the default PNG elements that are used to merge the PNG layers into the base PNG image.
 DEFAULT_PNG_ELEMENTS = ["brand_logo", "dealership_logo", "qr_code"]
+# Below are the default SVG elements that are used to merge the SVG layers into the base PNG image.
+# URL, refers to the attribute in the template model that contains the URL of the SVG file.
+# IDs, refers to the attribute in the template model that contains the IDs of the elements to be replaced in the SVG file.
+# The values of the IDs are the attributes in the rooftop model that are used to replace the IDs in the SVG file.
 DEFAULT_SVG_ELEMENTS = {
     "dealership_details": {
         "url": "dealership_details_url",
         "ids": {
-            "dealership_details_id": "address",
+            "dealership_address_id": "address",
             "dealership_phone_number_id": "contact_number",
             "dealership_email_id": "email"
         }
@@ -206,12 +212,30 @@ DEFAULT_SVG_ELEMENTS = {
         }
     }
 }
-import bs4
+DEFAULT_OFFER = {
+    "offer_currency": "₹",  
+    "offer_amount": "10.55",
+    "offer_units": "Lakh",
+    "offer_terms": "*Valid for limited time only"
+}
+DEFAULT_CAMPAIGN_DETAILS = {
+    "title": "Limited Time Offer",
+    "hook": "Save Big on Your Next Purchase",
+    "message": "Don't miss out on this limited time offer. Act now to get the best price on your next purchase.",
+    "hashtags": "#LimitedTimeOffer #SaveBig #ActNow",
+    "caption": "Limited Time Offer: Save Big on Your Next Purchase"
+}
+DEFAULT_TEMPLATE_ID = "default"
 def replace_svg_text_by_id(svg_path: str, text_to_ids: dict, logger: hp.logging.Logger = None):
     logger = logger or mlogger
     with open(svg_path, 'r') as f:
         soup = bs4.BeautifulSoup(f, 'xml')
     for id_, text_to_replace in text_to_ids.items():
+        try:
+            text_to_replace = str(text_to_replace)
+        except Exception as e:
+            logger.error(f"Error converting text to string: {e} for input: {text_to_replace} in id: {id_} in SVG file {svg_path}")
+            text_to_replace = ""
         if isinstance(text_to_replace, str):
             text_to_replace = text_to_replace.strip()
         else:

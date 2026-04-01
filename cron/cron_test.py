@@ -11,7 +11,9 @@ gryd.SERVICE = 'autocrm-agent'
 gryd.set_queue_manager()
 
 # Ensure root folder is added to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 
 from cron.cron import create_campaign_templates, update_template_status
 

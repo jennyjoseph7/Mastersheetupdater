@@ -1,7 +1,9 @@
 
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+_voice_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if _voice_root not in sys.path:
+    sys.path.insert(0, _voice_root)
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as dbhp
 from gryd_worker.gryd_routes import payload_decorator
 #from models import model as base_model
@@ -460,24 +462,30 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
     payload["message_id"] = message_id or generate_uid(session_data)
-    post_contact_status(
+    
+    logger.info(f"Constructed payload for contact status: {payload.get('provider_status')}, message_id: {payload.get('message_id')}")
+    if payload.get("provider_status") == "attempted":
+        for x in post_contact_status(
+            **payload
+        ):
+            return 
+
+        # gryd.create_async_task(
+        #     "post_contact_status", 
+        #     config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+        #     kwargs=payload)
+    else: 
+        for x in post_contact_status(
             message_id,
             **payload
-        )
-    
-    return 
-    if payload.get("provider_status") == "attempted":
-        gryd.create_async_task(
-            "post_contact_status", 
-            config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-            kwargs=payload)
-    else: 
-        gryd.create_async_task(
-            "post_contact_status", 
-            config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-            args = (message_id,),
-            kwargs=payload)
-    #make this normal function
+        ):
+            return 
+
+        # gryd.create_async_task(
+        #     "post_contact_status", 
+        #     config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+        #     args = (message_id,),
+        #     kwargs=payload)
 
 
 @gryd.is_a_task(function_name="end_voice_session")
@@ -513,116 +521,77 @@ def post_lanuage_change(session_data, changed_language):
     )
 
 def delete_extra_status(campaign_ids):
-    session_ids = []
-    for campaign_id in campaign_ids:
-        with get_pg_connector() as pg:
-            sessions = pg.list("session", {"campaign_id": campaign_id})
-            for session in sessions:
-                session_ids.append(session.get("session_id"))
-        logger.info(f"Session ids: {session_ids}")
-        for session_id in session_ids:
-            with get_pg_connector() as pg:
-                statuses = list(pg.list_order_by("contact_status", {"message_id": session_id}, order_by="created"))
-                logger.info(f"Statuses: {statuses} and length: {len(statuses)}")
-                if len(statuses) > 3:
-                    for s in statuses:
-                        if s.get("provider_status") in ["busy"]:
-                            logger.info(f"Deleting busy contact status for: {session_id}, contact_status_id: {s.get('contact_status_id')}")
-                            #pg.delete("contact_status", "contact_status_id", s.get("contact_status_id") )
-                            #gryd.base_model.Model("contact_status", config.AUTOCRM_APP_ENTERPRISE_ID).delete(s.get("contact_status_id"))
+    i = 0
+
+    if i > len(campaign_ids):
+        logger.info("Completed one full cycle of checking all campaign ids")
+        return
+    try:
+        for campaign_id in campaign_ids:
+            logger.info(f"Checking campaign_id: {campaign_id} for extra busy status: Attempt {i+1}")
+            session_model = gryd.base_model.Model("session", config.AUTOCRM_APP_ENTERPRISE_ID)
+            sessions = session_model.list(**{"campaign_id": campaign_id, "status": "busy", "_as_option": True, "_filter_attributes": ["session_id", "call_recording", "status"]})
+            logger.info(f"Sessions for campaign_id {campaign_id}: {sessions}")
+            session_ids = [s.get("session_id") for s in sessions if s.get("call_recording") and s.get("status") == "busy"]
+            logger.info(f"Session ids: {session_ids}")
+            for session_id in session_ids:
+                time.sleep(5)
+                with get_pg_connector() as pg:
+                    statuses = list(pg.list_order_by("contact_status", {"message_id": session_id}, order_by="created"))
+                    logger.info(f"Statuses: {statuses} and length: {len(statuses)}")
+                    if len(statuses) > 3:
+                        for s in statuses:
+                            if s.get("provider_status") in ["busy"]:
+                                logger.info(f"Deleting busy contact status for: {session_id}, contact_status_id: {s.get('contact_status_id')}")
+                                gryd.base_model.Model("contact_status", config.AUTOCRM_APP_ENTERPRISE_ID).delete(s.get("contact_status_id"))
+
+                                end_session(**{
+                                "session_id": session_id,
+                                "additional_dict":{
+                                    "status": "completed"
+                                }})
+            i += 1
+    except Exception as e:
+        logger.error(f"Error in delete_extra_status: {e}")
+        delete_extra_status(campaign_ids)
+    return
 
 
 if __name__ == "__main__":
+    camp_ids = [
+    "e51baea6-a0bd-3e59-b75b-bd84a96fe106",
+    "dae11630-31da-3752-aedb-3bc960feb2ba",
+    "22ad712c-8e03-3782-8f76-07d774820ba2",
 
+    "23862f5b-2f06-3783-92a1-2897f34f1fea",
+    "6e89ba73-2de0-3acf-8612-2ecf920f5db6",
+    "78ea20d0-f92e-34df-946e-095ab13c8698",
+    "86dff80c-e662-3923-8d0d-82574feace90",
+    "91f6f859-fab3-3d2d-83e7-65037aee02a7",
+    "c4be92a9-600e-3fc3-896d-edf78ed444b7",
 
-                    
+    "86341144-3e01-33d9-9051-6ec6defc1d01",
+    "142f6c3c-2b1e-3c7f-b72a-3661dd9ca376",
+    "c2c5f0d0-0899-33cd-a6cf-df98fbf35484",
+    "866a1c8e-45be-3542-8234-3b4118f7d3e8",
+    "c6e14903-905e-3c4a-b9af-c0f390b487a1",
+    "63f59c4f-ec14-3987-adf0-0e0188673f1a",
+    "0f893613-f22d-3134-9703-d0414c07697a",
+    "4b2aeaf0-d143-3057-81ba-d01b5956760a",
+    "3c4473e6-4d51-34c8-aa2b-00fae7bea2c3",
+    "f416d464-a6f0-37bc-8e4e-b7c5bb3b677d",
 
-    data = {'_is_testing': False,
- 'ctas': ['book-test-drive'],
- 'mobile_number': '918401586512',
- 'created': 1772785341.039532,
- 'purpose': 'Confirm Test drive',
- 'updated': 1772785440.9737067,
- 'channels': ['voice_phone'],
- 'end_date': 1773360000,
- 'languages': ['english'],
- 'region_id': 'united-states',
- 'start_date': 1772755200,
- 'campaign_id': '2abffd92-e5d7-3a1b-8fa5-78d4e6590fd8',
- 'region_name': 'United States',
- 'urgency_hook': 'Slots for the Basalt test drive are filling up fast—confirm yours now!',
- 'campaign_name': 'Basalt Test Drive Confirmation Event',
- 'campaign_type': 'pre-sales',
- 'cost_per_lead': 0.0,
- 'dealership_id': 'stellantis--jeep-india',
- 'purpose_steps': ['- Ask if user is interedted in booking test drive',
-  '\\n - if customer says yes',
-  "get the pincode of customer from 'Who is the customer section' and cofirm if the customer is in this pincode",
-  '\\n - Once they confirm the pincode',
-  "you should say 'Thank you. We'll arrange a test drive at your nearest dealership. You'll hear from our team shortly to coordinate the details'"],
- 'campaign_offer': "Ready to experience the all-new Basalt? Don't just read about its features, get behind the wheel! Secure your personalized test drive slot now to truly understand what makes the Basalt stand out from the competition.",
- 'campaign_status': 'Active',
- 'dealership_name': 'US Dealership',
- 'number_targeted': 1,
- 'budget_allocated': 8.56,
- 'supported_brands': ['ford-united-states',
-  'toyota-usa-united-states',
-  'chevrolet-united-states',
-  'general-motors-truck-company-united-states',
-  'hyundai-motor-america-united-states'],
- 'vehicle_category': 'Passenger Vehicle',
- 'campaign_sub_type': 'other',
- 'conversation_tone': 'Always use simple sentence construction with easy to understand grammar.\nBe on-point, warm, confident, polite, conversational, and very crisp - like a friendly local representative. Avoid being pushy or overly sales oriented. Incorporate natural conversational elements like brief affirmations to maintain engagement. End every conversation politely, with warmth and gratitude. use a medium pace, easy to follow, with positive, empathetic, and reassuring emotion (not robotic).',
- 'campaign_description': "Ready to experience the all-new Basalt? Don't just read about its features, get behind the wheel! Secure your personalized test drive slot now to truly understand what makes the Basalt stand out from the competition.",
- 'campaign_user_source': {'source_type': 'default',
-  'campaign_users': [{'lead_id': 'vandana-8401586512-us-dealership-united-states-2abffd92-e5d7-3a1b-8fa5-78d4e6590fd8',
-    'mobile_number': '8401586512',
-    'customer_name': 'Vandana',
-    'email': None,
-    'contact_channel': 'voice_phone',
-    'template_id': None,
-    'template_details': None}],
-  'field_mapping': {'lead_id': 'lead_id',
-   'mobile_number': 'mobile_number',
-   'customer_name': 'customer_name',
-   'template_id': 'template_id',
-   'template_details': 'template_details',
-   'contact_channel': 'contact_channel',
-   'reg_num': 'reg_num'},
-  'config': {'batch_size': 100, '_skip_sent_message': True}},
- 'voice_start_language': 'en',
- 'campaign_objective_id': 'pre-sales-confirm-test-drive',
- 'campaign_objective_name': 'Confirm Test Drive',
- 'conversion_rate_percent': 0.0,
- 'region_level_guardrails': '- Maintain professional communication standards. Ensure clear communication. Respect regional languages. Provide local language support. Be mindful of potential network issues or poor call quality \n -Trigger calls between 10am to 7pm',
- 'region_level_guidelines': 'Avoid slang, sarcasm, or culturally sensitive humor. Use polite, respectful, and neutral tone. Prefer simple sentences suitable for Tier-2/Tier-3 customers',
- 'why_user_should_avail_this': "Give  5-7 word short description from the interested_vehicle_feature_summary from the 'Who is the customer ' section that make a strong case for buying this car.If They Mention a Specific Aspect: Talk 1-2 highlights about the aspect and push for test drive. Don't be salesy",
- 'supported_brands_guidelines': {},
- 'reasons_for_non_applicability': "- If the customer has already purchased a vehicle from another brand, you should say, 'Oh okay, congratulations on your new car! Just out of curiosity, what made you go with that brand? Your feedback helps us improve. And if you ever consider another vehicle in the future, feel free to reach out.' \\n - If the customer has already purchased from your brand, you should say, 'That's great to hear! Congratulations on your purchase. Hope you're enjoying the ride. If you ever need any support or have questions about service, feel free to connect with us anytime.' \\n - If the customer says they are no longer interested in buying a car, you should say, 'No problem at all. Can I ask what changed? Just trying to understand so we can serve you better if your plans change in the future. And if you know anyone looking for a vehicle, we'd love to help them out.' \\n - If the customer's contact number is wrong or belongs to someone else, you should say, 'Oh, I see. Sorry for the confusion. Could you help me with the correct contact number for [customer name], or let me know if they're no longer interested so we can update our records?' \\n - If the customer has relocated to a different city or country, you should say, 'Understood. If your new location has our dealership, I can connect you with the team there. Otherwise, I'll update our records. Safe travels, and feel free to reach out if you're ever back in the area.'",
- 'campaign_guardrails_guidelines': "You should try get the customer to confirm that they would like to book a test drive and then confirm the pincode available in 'Who is the customer' section",
- 'campaign_objective_description': "Your goal is to have natural, human-like conversations with customers who have shown interest in the vehicle and guide them smoothly towards confirming test drive and also get the pincode of customer from 'Who is the customer section' and cofirm if the customer is in this pincode. You are also knowledgeable about the vehicle so focus on giving the customer a smooth and pleasant experience.",
- 'reasons_users_may_not_be_interested': "- If the customer says they are busy or asks for a callback later, you should say, 'Sure, I completely understand. When would be a good time to call you back? I just wanted to make sure you don't miss out on the current offers and available test drive slots before they fill up.' \\n - If the customer says they are just browsing or not ready to buy yet, you should say, 'No worries at all! Most of our customers take their time. How about I book a test drive for you? There's no commitment, and it helps you get a real feel of the vehicle. Would this weekend work for you?' \\n - If the customer says the price is too high or out of budget, you should say, 'I understand budget is important. We have some flexible financing options and exchange offers that might work better for you. Can I share those details? It might bring the monthly payment to something more comfortable.' \\n - If the customer is comparing with other brands, you should say, 'That's smart to compare. Many of our customers also looked at competitor. What I can do is share a quick features highlight of vehicle and after-sales benefits, so you have all the info to make the right choice. Would that help?' \\n - If the customer says they want to wait for the next model or year, you should say, 'I get that. Just so you know, the current model has some launch offers and immediate delivery options that the next one might not have. Plus, waiting could mean 6-8 months. But happy to keep you updated on both. What matters most to you - features or timing?' \\n - If the customer mentions they are getting a better deal elsewhere, you should say, 'I appreciate you being upfront. Let me check what we can do to match or improve that offer. Can you share what package they offered? I'd like to see if we can work something out for you.' \\n -If the customer had a bad experience with the brand before, you should say, 'I'm really sorry to hear that. Things have improved a lot, especially in service and support. I'd love the chance to change that impression. How about a test drive and a chat with our service team so you can see the difference yourself?' \\n - If the customer says they need to discuss with family first, you should say, 'Absolutely, that makes sense. Would it help if I sent you a detailed brochure and financing options you can review together? Or would you prefer to bring your family for a test drive so everyone can experience it?' \\n - If the customer is worried about maintenance costs, you should say, 'That's a valid concern. Our vehicles come with a warranty and service packages that keep costs predictable. I can share the exact maintenance schedule and costs upfront, so there are no surprises later.' \\n - If the customer prefers to buy during festival season or year-end, you should say, 'That's a common choice. Just a heads up - current stock and offers might not be available then, and prices could change. But I can note your interest and reach out closer to that time with the best deals. Does that work?' \\n - If the customer recently test drive and didn't like something, you should say, 'Thanks for sharing that feedback. Can you tell me what specifically didn't feel right? Sometimes it's about the variant or settings. I'd like to address that or maybe suggest a different variant that might suit you better.' \\n - If the customer is unsure about which variant to choose, you should say, 'No problem, that's very common. Let me ask you a few quick questions about how you'll use the car - city driving, highway, family size - and I can recommend the variant that fits your needs and budget best.' \\n - If the customer wants to think about it, you should say, 'Of course, take your time. Just so you have all the information, let me send you the brochure, a video walkthrough, and current offers. And I'm here anytime if questions come up. Should I follow up in a couple of days or would you prefer to reach out when ready? \\n - If the customer asks about exchange value for their old vehicle, you should say, 'Sure, I can arrange for our exchange team to evaluate your current vehicle. Can you share the make, model, year, and approximate kms driven? We'll give you the best possible value.",
- 'channel': 'voice_phone',
- 'sender': None,
- 'provider_name': 'tata-tele',
- 'template_message': None,
- 'lead_id': 'vandana-8401586512-us-dealership-united-states-2abffd92-e5d7-3a1b-8fa5-78d4e6590fd8',
- 'customer_name': 'Vandana',
- 'email': None,
- 'contact_channel': 'voice_phone',
- 'template_id': None,
- 'template_details': None}
-
-    
-    gryd.create_async_task(
-            "trigger_voice_call",
-            config.AUTOCRM_VOICE_SERVICE_NAME,
-            args = [],
-            kwargs = {
-                "user_data": data
-            }
-        )
-
-
-
-
+    "b9316dbd-2679-3f10-9ce3-43861acf1072",
+    "729a1cd5-400d-326a-8d22-bdb157cb3158",
+    "698d8a75-2aff-34a1-961d-31d0af3c7315",
+    "caa345b3-c7bf-3a85-a04a-5ae00786814a",
+    "ba82db18-4c3e-3be6-a991-08a9b1fb8755",
+    "6901f044-9cdc-3b83-b770-d1b3126b040d",
+    "fd75bfd9-a12f-30aa-b2cc-35cb3a8710b0",
+    "3915151f-ad9c-33df-8588-01665c7b7fad",
+    "d520a7fb-9689-34fd-818c-8c05ff4f29a8",
+    "092589aa-faf8-3187-86a8-1fa84597bc4d",
+    "7e9934d3-5d0a-3483-a1e3-1dacceec5426",
+    "6fd67964-e1a1-3c7e-a56d-182c1611819a"
+]
+    delete_extra_status(camp_ids)

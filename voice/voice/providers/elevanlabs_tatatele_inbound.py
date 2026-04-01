@@ -3,7 +3,9 @@ import os
 import sys
 from typing import Any, Dict
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 
 from flask import Blueprint, request, jsonify
 

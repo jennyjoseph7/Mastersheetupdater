@@ -1,7 +1,9 @@
-import sys 
+import sys
 import os
 # sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+_parent = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+if _parent not in sys.path:
+    sys.path.insert(0, _parent)
 from gryd_worker import gryd
 from typing import *
 from cohorts_new.utils.utility import *

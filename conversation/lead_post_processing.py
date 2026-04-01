@@ -3,7 +3,7 @@ import sys
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
+    sys.path.insert(0, BASE_DIR)
 from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AutocrmModel
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
@@ -1300,7 +1300,7 @@ def post_session_processes(*args, **kwargs):
     :return: The result of the task
     '''
     mlogger.info("post_session_processes called with kwargs == {}".format(kwargs))
-    if not kwargs.get("session_ids") and not kwargs.get("campaign_id") and not kwargs.get("dealership_id"):
+    if not kwargs.get("session_ids") and not kwargs.get("campaign_id") and not kwargs.get("campaign_ids") and not kwargs.get("dealership_id"):
         yield from yield_error("error","session_id not found",*args, **kwargs)
         return
     if "session_ids" in kwargs and len(kwargs.get("session_ids",[])) == 0:
@@ -1311,6 +1311,19 @@ def post_session_processes(*args, **kwargs):
         for session_id in session_ids:
             yield from post_session_process(session_id=session_id)
         return
+    if "campaign_ids" in kwargs and len(kwargs.get("campaign_ids",[])) > 0:
+        campaign_ids = kwargs.get("campaign_ids")
+        mlogger.info("running post_lead_process for campaign_ids == {}".format(campaign_ids))
+        for campaign_id in campaign_ids:
+            with get_pg_connector() as pg:
+                session_ids = list(pg.list("session",{"campaign_id":campaign_id}))
+                mlogger.info("running post_lead_process for session_ids == {}".format(session_ids))
+                for session_data in session_ids:
+                    # mlogger.info("running post_lead_process for session_id == {} for campaign_id == {}".format(session_data.get("session_id"),session_data.get("campaign_id")))
+                    if session_data.get("status") not in ["busy"]:
+                        mlogger.info("running post_lead_process for session_id == {} with status == {}".format(session_data.get("session_id"),session_data.get("status")))
+                        yield from post_session_process(session_id=session_data.get("session_id"))
+            
     if "campaign_id" in kwargs:
         with get_pg_connector() as pg:
             session_ids = list(pg.list("session",{"campaign_id":kwargs.get("campaign_id")}))

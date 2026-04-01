@@ -131,7 +131,7 @@ BASE_PATH = hp.dirname(hp.abspath(__file__))
 DATA_DIR = hp.joinpath(BASE_PATH, "data")
 SERVICE = os.environ.get("SERVICE", "autocrm-app")
 if BASE_PATH not in sys.path:
-    sys.path.append(BASE_PATH)
+    sys.path.insert(0, BASE_PATH)
 
 clogger = hp.get_logger(__name__)
 
@@ -366,7 +366,7 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, log
     bool_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('bool',),  m.attributes.items()))))
     logger.info(f"Posting data: {data_name} from filename: {filename_csv}")
     try:
-        with open(filename_csv, encoding="utf-8") as f:
+        with open(filename_csv, encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             headers = reader.fieldnames
             logger.info(f"Headers for {data_name}: {headers}")

@@ -221,7 +221,9 @@
         },
         {
             "read_access": true,
-            "role": "data_admin"
+            "role": "data_admin",
+            "write_access": true,
+            "delete_access": true
         }
     ],
     "vehicle_model": [
@@ -231,8 +233,9 @@
         },
         {
             "read_access": true,
-            "role": "human_agent",
-            "write_access": true
+            "role": "data_admin",
+            "write_access": true,
+            "delete_access": true
         }
     ],
     "model_year": [
@@ -242,8 +245,21 @@
         },
         {
             "read_access": true,
-            "role": "human_agent",
-            "write_access": true
+            "role": "data_admin",
+            "write_access": true,
+            "delete_access": true
+        }
+    ],
+    "model_year_image": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "data_admin",
+            "write_access": true,
+            "delete_access": true
         }
     ],
     "variant": [
@@ -253,8 +269,9 @@
         },
         {
             "read_access": true,
-            "role": "human_agent",
-            "write_access": true
+            "role": "data_admin",
+            "write_access": true,
+            "delete_access": true
         }
     ],
     "variant_feature": [
@@ -264,8 +281,9 @@
         },
         {
             "read_access": true,
-            "role": "human_agent",
-            "write_access": true
+            "role": "data_admin",
+            "write_access": true,
+            "delete_access": true
         }
     ],
     "feature": [
@@ -275,7 +293,7 @@
         },
         {
             "read_access": true,
-            "role": "human_agent"
+            "role": "data_admin"
         }
     ]
 }

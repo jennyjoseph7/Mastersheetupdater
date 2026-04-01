@@ -2,7 +2,7 @@ import os, re, sys
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(dirname(dirname(abspath(__file__)))))
 if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
+    sys.path.insert(0, BASE_DIR)
 from communication.connectors.mail_connectors.source_connector import *
 from config import EMAIL_PROVIDER_REGION
 class AwsSender(Mailsender):
