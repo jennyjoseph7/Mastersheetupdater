@@ -527,7 +527,7 @@ def delete_extra_status(campaign_ids):
         session_ids = [s.get("session_id") for s in sessions if s.get("call_recording") and s.get("status") == "busy"]
         logger.info(f"Session ids: {session_ids}")
         for session_id in session_ids:
-            time.sleep(2)
+            time.sleep(5)
             with get_pg_connector() as pg:
                 statuses = list(pg.list_order_by("contact_status", {"message_id": session_id}, order_by="created"))
                 logger.info(f"Statuses: {statuses} and length: {len(statuses)}")
