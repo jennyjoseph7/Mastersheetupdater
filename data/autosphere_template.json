@@ -154,6 +154,11 @@
             "type": "number"
         },
         {
+            "name": "dealership_address_id",
+            "type": "text",
+            "default": "dealership_location"
+        },
+        {
             "name": "dealership_address_limit",
             "type": "number",
             "default": 200

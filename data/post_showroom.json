@@ -156,6 +156,16 @@
             "refers": "parents.showroom.days_open"
         },
         {
+            "name": "dealership_id",
+            "refers": "parents.showroom.dealership_id",
+            "indexed": true
+        },
+        {
+            "name": "dealer_name",
+            "refers": "parents.showroom.dealer_name",
+            "indexed": true
+        },
+        {
             "name": "post_showroom_id",
             "type": "uid",
             "id": true,
@@ -181,7 +191,7 @@
             "refers": "parents.post_idea.image_url"
         },
         {
-            "name": "video_url",
+            "name": "idea_video_url",
             "refers": "parents.post_idea.video_url"
         },
         {
@@ -203,6 +213,27 @@
         {
             "name": "hashtags",
             "refers": "parents.post_idea.hashtags"
+        },
+        {
+            "name": "showroom_hashtags",
+            "refers": "parents.showroom.hashtags"
+        },
+        {
+            "name": "dealership_hashtags",
+            "type": "string_list",
+            "list_type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "hashtags"
+                ]
+            }
+        },
+        {
+            "name": "brand_hashtags",
+            "refers": "parents.post_idea.brand_hashtags"
         },
         {
             "name": "autosphere_template_id",
@@ -248,6 +279,26 @@
             "refers": "parents.post_idea.vehicle_model_name"
         },
         {
+            "name": "image_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            }
+        },
+        {
+            "name": "video_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            }
+        },
+        {
             "name": "is_trending",
             "refers": "parents.post_idea.is_trending",
             "indexed": true
@@ -276,7 +327,6 @@
     ],
     "parents": [
         "post_idea",
-        "dealership",
         "campaign_objective",
         "showroom"
     ]
