@@ -526,7 +526,7 @@ def delete_extra_status(campaign_ids):
         return
     try:
         for campaign_id in campaign_ids:
-            
+            logger.info(f"Checking campaign_id: {campaign_id} for extra busy status: Attempt {i+1}")
             session_model = gryd.base_model.Model("session", config.AUTOCRM_APP_ENTERPRISE_ID)
             sessions = session_model.list(**{"campaign_id": campaign_id, "status": "busy", "_as_option": True, "_filter_attributes": ["session_id", "call_recording", "status"]})
             logger.info(f"Sessions for campaign_id {campaign_id}: {sessions}")
