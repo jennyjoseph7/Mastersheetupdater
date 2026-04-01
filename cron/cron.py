@@ -207,7 +207,7 @@ def manage_active_sessions(*args, **kwargs):
             return
 
         now_epoch = int(time.time())
-
+        inactive_cutoff_epoch = None
         for session in session_list:
             session_id = session.get("session_id")
             channel = session.get("channel")
