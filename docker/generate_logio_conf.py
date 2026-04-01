@@ -25,7 +25,7 @@ if __name__ == '__main__':
     SERVICE_NAME=os.environ.get("SERVICE_NAME", "UNKNOWN_SERVICE")
     HOST=os.environ.get("LOGIO_SERVER_TCP_URL", None)
     PORT=os.environ.get("LOGIO_SERVER_TCP_PORT", 6689)
-    APP_DIR=os.environ.get("APP_DIR", "/roo/app/")
-    with open("logio_conf.json","w") as fp:
+    APP_DIR=os.environ.get("APP_DIR", "/root/app/")
+    with open(f"{APP_DIR}/logio_conf.json","w") as fp:
         print("Writing log config.")
         fp.write(json.dumps(generate_conf(HOST, PORT, APP_DIR, SERVICE_NAME), indent=4))  

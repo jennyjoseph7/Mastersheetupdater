@@ -27,6 +27,7 @@ export PRIMARY=${PRIMARY:-0}
 export WAITRESS_PATH=waitress-serve
 export CRON_SCHEDULER_PATH=execute-cron-continuous
 export CRON_WORKER_PATH=cron_worker
+export APP_DIR=${APP_DIR:-"/root/app/"}
 
 
 function stop_workers() {
@@ -127,6 +128,7 @@ function stop_logio_server() {
 
 function setup_logio_agent() {
     python3 /root/generate_logio_conf.py
+    export LOGIO_FILE_INPUT_CONFIG_PATH=$APP_DIR/logio_conf.json
     status=$?
 	if [ $status != 0 ];then
 		echo "Generating log config failed. Exitting."
