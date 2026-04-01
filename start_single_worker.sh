@@ -112,6 +112,7 @@ function start_workers() {
 
     echo $worker_pid > ./worker.pid
     if [ $SETUP_LOGIO_AGENT == "True" ];then
+        sleep 60
         setup_logio_agent
     fi
     while [[ -n `jobs -rl | grep $worker_pid` ]]; do sleep 1; echo `jobs -rl`; done
@@ -162,6 +163,7 @@ function main() {
 	    app_pid=$!
 		echo $app_pid > app.pid
         if [ $SETUP_LOGIO_AGENT == "True" ];then
+            sleep 60
             setup_logio_agent
         fi
         while [[ -n `jobs -rl | grep $app_pid` ]]; do sleep 300; echo `jobs -rl`; done
@@ -186,6 +188,7 @@ function main() {
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
             if [ $SETUP_LOGIO_AGENT == "True" ];then
+                sleep 60
                 setup_logio_agent
             fi
             while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
@@ -221,8 +224,8 @@ function main() {
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
-            sleep 60
             if [ $SETUP_LOGIO_AGENT == "True" ];then
+                sleep 60
                 setup_logio_agent
             fi
             while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
