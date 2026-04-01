@@ -23,7 +23,7 @@ from agents.postProcessing import process_batch_extraction, finalize_results_jso
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
 if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
+    sys.path.insert(0, BASE_DIR)
 
 from config import AutocrmModel
 

@@ -142,7 +142,8 @@
         {
             "name": "discount_percentage",
             "type": "number",
-            "required": true
+            "required": true,
+            "default": 0
         },
         {
             "name": "item_final_price",

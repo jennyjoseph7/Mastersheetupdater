@@ -14,7 +14,9 @@ to keep token usage predictable.
 import json
 from typing import Optional
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+_parent = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+if _parent not in sys.path:
+    sys.path.insert(0, _parent)
 import json
 from pydantic import BaseModel
 import plotly.graph_objects as go

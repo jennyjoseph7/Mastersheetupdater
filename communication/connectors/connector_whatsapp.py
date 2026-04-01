@@ -25,7 +25,9 @@ from autocrm_db_helper import get_pg_connector
 from conversation.converse import post_messages_data
 #  this from connectors.base_connector_communication import *
 
-sys.path.insert(0, dirname(dirname(abspath(__file__))))
+_root = dirname(dirname(abspath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.set_queue_manager()

@@ -1,6 +1,8 @@
 from elevenlabs import ElevenLabs
 import os, sys, json
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 import utils
 from flask import Flask, app, request, jsonify, Blueprint
 from ..utils import helpers as voice_helpers

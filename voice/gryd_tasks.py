@@ -1,7 +1,9 @@
 
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+_voice_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if _voice_root not in sys.path:
+    sys.path.insert(0, _voice_root)
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as dbhp
 from gryd_worker.gryd_routes import payload_decorator
 #from models import model as base_model

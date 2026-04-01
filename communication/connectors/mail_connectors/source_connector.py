@@ -4,7 +4,9 @@ import os,json
 from os.path import exists as ispath, dirname, basename, join as joinpath, abspath, split as pathsplit, splitext, sep as dirsep, isfile
 import sys
 from urllib.parse import urlparse
-sys.path.insert(0, dirname(dirname(abspath(__file__))))
+_root = dirname(dirname(abspath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 from communication_helpers import *
 from config import AUTOCRM_COMMUNICATION_SERVICE_NAME
 logger=hp.get_logger(__name__)

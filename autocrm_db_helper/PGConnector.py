@@ -1,5 +1,7 @@
 import os,sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+_root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 import json
 from gryd_worker import gryd_db_helper as db
 

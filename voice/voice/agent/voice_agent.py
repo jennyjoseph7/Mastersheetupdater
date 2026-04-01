@@ -3,7 +3,9 @@ Voice Agent
 AI-driven conversational engine for real-time understanding and response generation
 """
 import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+_voice_pkg = os.path.dirname(os.path.dirname(__file__))
+if _voice_pkg not in sys.path:
+    sys.path.insert(0, _voice_pkg)
 import asyncio
 import typing
 from gryd_worker import gryd_helpers as hp
@@ -186,7 +188,9 @@ if __name__ == '__main__':
 # AI-driven conversational engine for real-time understanding and response generation
 # """
 # import sys, os
-# sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+# _voice_pkg = os.path.dirname(os.path.dirname(__file__))
+# if _voice_pkg not in sys.path:
+#     sys.path.insert(0, _voice_pkg)
 # import asyncio
 # import random
 # from typing import Optional, List, Dict, Any

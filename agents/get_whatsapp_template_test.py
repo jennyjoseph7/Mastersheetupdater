@@ -2,7 +2,8 @@ from gryd_worker import gryd
 import sys, os
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, PROJECT_ROOT)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from agents.get_whatsapp_template_agent import get_whatsapp_template
 

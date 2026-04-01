@@ -4,7 +4,7 @@ import os, re
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
+    sys.path.insert(0, BASE_DIR)
 from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CORE_SERVICE_NAME, \
     gryd, gryd_routes, hp, \
     GRYD_FILE_USER_ID, \
@@ -33,7 +33,7 @@ CHANNEL_LOADED = {}
 import autocrm_validator
 THIS_DIR = dirname(abspath(__file__))
 if THIS_DIR not in sys.path:
-    sys.path.append(THIS_DIR)
+    sys.path.insert(1, THIS_DIR)
 from razorpay_service import create_credit_purchase, confirm_payment_success, mark_payment_failed, mark_payment_cancelled
 
 gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME

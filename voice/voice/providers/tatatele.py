@@ -6,7 +6,9 @@ import json
 from typing import Dict, Any
 import asyncio
 import os, sys, json
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 import config
 
 TATATELE_BASE_URL = os.environ.get("TATATELE_BASE_URL", "https://api-smartflo.tatateleservices.com/v1")

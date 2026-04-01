@@ -282,6 +282,10 @@
             "ui_element": "select"
         },
         {
+            "name": "feature_summary",
+            "type": "text"
+        },
+        {
             "auto_updater": true,
             "default": {
                 "args": [

@@ -2,7 +2,9 @@ from time import time, monotonic
 import os, sys
 
 import pytz
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 
 from .tatatele import CloudPhoneAPI, TATATELE_API_TOKEN, TATATELE_BASE_URL
 import config

@@ -9,12 +9,12 @@ from ai_service import ai_service
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
+    sys.path.insert(0, BASE_DIR)
 from gryd_worker import gryd, gryd_helpers as hp
 json = hp.json
 APP_DIR = dirname(abspath(__file__))
 if APP_DIR not in sys.path:
-    sys.path.append(APP_DIR)
+    sys.path.insert(1, APP_DIR)
 from config import AUTOCRM_APP_ENTERPRISE_ID, OPENAI_API_KEY, \
     OPENAI_IMAGE_MODEL, \
     OPENAI_IMAGE_SIZE, \
@@ -71,9 +71,9 @@ def get_logo(brand, template, files_to_delete, logo_type: str = 'Brand', logger:
         logger.warning(f"{logo_type.title()} not found: {brand}")
         return None
     if template.get('theme_type') == 'light':
-        return do_download(brand.get('light_logo_url') or brand.get('logo_url'), files_to_delete)
+        return do_download(brand.get('light_theme_logo_url') or brand.get('logo_url'), files_to_delete)
     elif template.get('theme_type') == 'dark':
-        return do_download(brand.get('dark_logo_url') or brand.get('logo_url'), files_to_delete)
+        return do_download(brand.get('dark_theme_logo_url') or brand.get('logo_url'), files_to_delete)
     else:
         return do_download(brand.get('logo_url'), files_to_delete)
 
@@ -128,6 +128,58 @@ def manage_hashtags(campaign_hashtags: typing.Union[list[str], str], previous_ha
 
 @gryd.is_a_task(function_name="create_campaign_image", job_param='job', logger_param='logger')
 def create_campaign_image(rooftop_type: str, template_id: str, base_png: str, campaign_title: str, campaign_hook: str, campaign_message: str, campaign_hashtags: typing.Union[list[str], str], campaign_caption: str, offer: dict = None, debug: bool = False, job: dict = None, logger: hp.logging.Logger = None):
+    """
+    # Generate a JSON payload template for the `create_campaign_image` task, including the args, kwargs, and help text.
+    # This can be used to drive API docs, CLIs, or visual tools.
+
+    create_campaign_image_payload = {
+        "args": [
+            "rooftop_type",
+            "template_id",
+            "base_png",
+            "campaign_title",
+            "campaign_hook",
+            "campaign_message",
+            "campaign_hashtags",
+            "campaign_caption"
+        ],
+        "kwargs": {
+            "offer": "Optional[dict] (default: None) - Offer details dictionary for the campaign.",
+            "debug": "Optional[bool] (default: False) - Enable debug mode.",
+            "job": "Optional[dict] (default: None) - Job dictionary (internal use).",
+            "logger": "Optional[hp.logging.Logger] (default: None) - Logger for internal use."
+        },
+    }
+    Create a campaign image for a dealership rooftop.
+
+    Required Arguments:
+    - rooftop_type (str): Type of rooftop, e.g., 'showroom', 'workshop', or 'buyback_center'.
+    - template_id (str): The ID of the template to use for image generation.
+    - base_png (str): URL or path to the base PNG image.
+    - campaign_title (str): Title of the campaign.
+    - campaign_hook (str): Campaign hook or tagline.
+    - campaign_message (str): Campaign message content.
+    - campaign_hashtags (str or list[str]): Hashtags to use for the campaign, as comma/pipe/space/semicolon separated string or list.
+    - campaign_caption (str): Caption to appear with the campaign image.
+
+    Optional Keyword Arguments:
+    - offer (dict): (Optional) Offer information for the campaign.
+    - debug (bool): (Optional) If True, files are not deleted and more verbose logging is used.
+    - job (dict): (Optional) Internal job dictionary.
+    - logger (hp.logging.Logger): (Optional) Logger instance.
+
+    Returns:
+    - cdn_url (str): CDN URL of the merged campaign image.
+
+    Example usage:
+    {
+        "args": ["showroom", "india-default-theme", "https://cdn.example.com/base.png", "Limited Time Offer!", "Save Big Now", "Available for a short time", "LimitedTimeOffer|SaveBig", "Act fast and save!"],
+        "kwargs": {
+            "offer": {"discount": "15%", "valid_till": "2024-06-30"},
+            "debug": false
+        }
+    }
+    """
     logger = logger or mlogger
     template_model = AutocrmModel('autosphere_template')
     template = template_model.get(template_id)
@@ -200,10 +252,101 @@ def get_template_by_supported_brands(supported_brands: list[str], logger: hp.log
 
 
 @gryd.is_a_task(function_name="create_rooftop_image", job_param='job', logger_param='logger')
-def create_rooftop_image(rooftop_type: str, rooftop_id: str, offer: dict = None, debug: bool = False, job: dict = None, logger: hp.logging.Logger = None):
+def create_rooftop_image(
+    rooftop_type: str, 
+    brand_id: str = None, # The ID of the brand to use for image generation, not required if rooftop_id is provided.
+    rooftop_address: str = None, # Address of the rooftop, not required if rooftop_id is provided.
+    rooftop_phone_number: str = None, # Phone number of the rooftop, not required if rooftop_id is provided.
+    logo_url: str = None, # Logo URL of the rooftop, not required if rooftop_id is provided.
+    rooftop_email: str = None, # Email of the rooftop, not required if rooftop_id is provided.
+    theme_type: str = 'default', # Type of theme, e.g., 'light', 'dark', or 'default'.
+    rooftop_id = None, # The ID of the rooftop to use for image generation, if provided, will override the other arguments.
+    offer: dict = None, # Offer information for the campaign.
+    campaign_details: dict = None, # Campaign details dictionary for the campaign.
+    debug: bool = False, 
+    job: dict = None, 
+    logger: hp.logging.Logger = None
+    ):
+    """
+    # Generate a JSON payload template for the `create_rooftop_image` task, including the args, kwargs, and help text.
+    # This can be used to drive API docs, CLIs, or visual tools.
+    create_rooftop_image_payload = {
+        "args": [
+            "rooftop_type", # Type of rooftop, e.g., 'showroom', 'workshop', or 'buyback_center'.
+            "brand_id", # The ID of the brand to use for image generation.
+            "theme_type", # Type of theme, e.g., 'light', 'dark', or 'default'.
+            "rooftop_address": "str - Address of the rooftop.",
+            "rooftop_phone_number": "str - Phone number of the rooftop.",
+        ],
+        "kwargs": {
+            "rooftop_email": "Optional[str] (default: None) - Email of the rooftop.",
+            "logo_url": "Optional[str] (default: None) - Logo URL of the rooftop.",
+            "rooftop_id": "Optional[str] (default: None) - The ID of the rooftop to use for image generation.",
+            "offer": "Optional[dict] (default: None) - Offer details dictionary for the campaign.",
+        }
+    }
+    Create a rooftop image for a dealership rooftop.
+
+    Required Arguments:
+    - rooftop_type (str): Type of rooftop, e.g., 'showroom', 'workshop', or 'buyback_center'.
+    Optional Argument Set:
+    - brand_id (str) : The ID of the brand to use for image generation.
+    - rooftop_address (str): Address of the rooftop.
+    - rooftop_phone_number (str): Phone number of the rooftop.
+    - logo_url (str): Logo URL of the rooftop.
+    - rooftop_email (str): Email of the rooftop.
+    - theme_type (str): Type of theme, e.g., 'light', 'dark', or 'default'.
+    OR
+    - rooftop_id (str): The ID of the rooftop to use for image generation.
+
+    Optional Keyword Arguments:
+    - offer (dict): (Optional) Offer information for the campaign.
+    - campaign_details (dict): Campaign details dictionary for the campaign.
+    - debug (bool): (Optional) If True, files are not deleted and more verbose logging is used.
+    - job (dict): (Optional) Internal job dictionary.
+    - logger (hp.logging.Logger): (Optional) Logger instance.
+
+    Returns:
+    - cdn_url (str): CDN URL of the merged rooftop image.
+
+    Example usage:
+    {
+        "args": ["showroom", "jeep-jeep-india", "123 Main St", "123-456-7890", "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp", "light"],
+        "kwargs": {
+            "rooftop_email": "info@jeep.com",
+            "offer": {"offer_currency": "₹", "offer_amount": "10.55", "offer_units": "Lakh", "offer_terms": "*Valid for limited time only"},
+            "campaign_details": {
+                "title": "Limited Time Offer",
+                "hook": "Save Big on Your Next Purchase",
+                "message": "Don't miss out on this limited time offer. Act now to get the best price on your next purchase.",
+                "hashtags": "#LimitedTimeOffer #SaveBig #ActNow",
+                "caption": "Limited Time Offer: Save Big on Your Next Purchase"
+            }
+        }
+    }
+    """
     logger = logger or mlogger
-    rooftop, dealership, rooftop_model, dealership_model = get_rooftop(rooftop_type, rooftop_id, logger=logger)
-    campaign_details = campaign_details or DEFAULT_CAMPAIGN_DETAILS
+    if rooftop_id:
+        rooftop, dealership, rooftop_model, dealership_model = get_rooftop(rooftop_type, rooftop_id, logger=logger)
+    else:
+        if not all([rooftop_address, rooftop_phone_number, logo_url, brand_id]):
+            raise ValueError(f"Missing required arguments: rooftop_address, rooftop_phone_number, rooftop_email, logo_url, brand_id")
+        rooftop = {
+            "address": rooftop_address,
+            "phone_number": rooftop_phone_number,
+            "email": rooftop_email,
+            "supported_brands": [brand_id],
+        }
+        dealership = {}
+        if theme_type == 'light':
+            rooftop['light_theme_logo_url'] = logo_url
+            dealership['light_theme_logo_url'] = logo_url
+        elif theme_type == 'dark':
+            rooftop['dark_theme_logo_url'] = logo_url
+            dealership['dark_theme_logo_url'] = logo_url
+        elif theme_type == 'default':
+            rooftop['logo_url'] = logo_url
+            dealership['logo_url'] = logo_url
     offer = offer or DEFAULT_OFFER
     brand_model = AutocrmModel('brand')
     post_idea_model = AutocrmModel('post_idea')
@@ -216,11 +359,28 @@ def create_rooftop_image(rooftop_type: str, rooftop_id: str, offer: dict = None,
     brand_id = post_idea.get('brand_id')
     brand = brand_model.get(brand_id)
     logger.info(f"Brand: {brand}")
+    campaign_details = {
+        "title": post_idea.get('slogan'),
+        "hook": post_idea.get('hook'),
+        "message": post_idea.get('message'),
+        "hashtags": manage_hashtags(post_idea.get('hashtags', []) + post_idea.get('brand_hashtags', []) + post_idea.get('dealership_hashtags', [])),
+        "caption": post_idea.get('caption')
+    }
     template_id = post_idea.get('autosphere_template_id')
     template = template_model.get(template_id)
     logger.info(f"Template: {template}")
     base_png = post_idea.get('image_url')
-    return do_the_merge(rooftop_type, base_png, template, brand, rooftop=None, dealership=None, offer = offer, debug=debug, logger=logger)
+    return do_the_merge(
+        rooftop_type, 
+        base_png, 
+        template, 
+        brand = None, 
+        rooftop=rooftop, 
+        dealership=None, 
+        offer = offer, 
+        debug=debug, 
+        logger=logger
+    )
 
 @gryd.is_a_task(function_name="create_rooftop_images_batch", job_param='job', logger_param='logger')
 def create_rooftop_images_batch(post_idea_id: str, debug: bool = False, job: dict = None, logger: hp.logging.Logger = None):
@@ -1327,7 +1487,12 @@ if __name__ == "__main__":
     
     
     python spark.py --function create_rooftop_image --kwargs "rooftop_type=showroom,\
-    rooftop_id=stellantis - kht-agencies-private-limited - bengaluru"
+    brand_id=jeep-jeep-india,\
+    rooftop_address=Rajiv Gandhi Nagar Sector 1 New Delhi Delhi 110016,\
+    rooftop_phone_number=+91 9876543210,\
+    logo_url=https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp,\
+    rooftop_email=info@jeep.com,\
+    theme_type=dark"
 
     python spark.py --function create_campaign_image --kwargs "rooftop_type=showroom,\
     template_id=india-default-jeep-theme-jeep-jeep-india-meridian-jeep-jeep-default-1080x1350,\

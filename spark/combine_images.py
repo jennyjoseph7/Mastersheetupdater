@@ -2,6 +2,7 @@ import argparse
 import io
 import os, sys
 from PIL import Image
+import bs4
 try:
     import cairosvg
 except (ImportError, OSError) as e:
@@ -10,7 +11,7 @@ from gryd_worker import gryd, gryd_helpers as hp
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(abspath(__file__))
 if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
+    sys.path.insert(0, BASE_DIR)
 mlogger = hp.get_logger(__name__)
 
 DEFAULT_SCALE = 1.0
@@ -224,7 +225,7 @@ DEFAULT_CAMPAIGN_DETAILS = {
     "hashtags": "#LimitedTimeOffer #SaveBig #ActNow",
     "caption": "Limited Time Offer: Save Big on Your Next Purchase"
 }
-import bs4
+DEFAULT_TEMPLATE_ID = "default"
 def replace_svg_text_by_id(svg_path: str, text_to_ids: dict, logger: hp.logging.Logger = None):
     logger = logger or mlogger
     with open(svg_path, 'r') as f:
