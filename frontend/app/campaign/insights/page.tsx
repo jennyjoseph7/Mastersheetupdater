@@ -299,8 +299,11 @@ const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Added fallbacks here so the header works even if the fetch hasn't completed
   const campaignName = performanceData?.campaign_name || campaignnamecsv || "Campaign";
-  const campaignType = performanceData?.campaign_type || "";
+  // const campaignType = performanceData?.campaign_type || "";
+const campaignTypeFromURL = searchParams?.get("campaign_type");
 
+// Then update your variable logic:
+const campaignType = performanceData?.campaign_type || campaignTypeFromURL || "";
   // 2. Prepare Data for Charts
   const failureData = useMemo(() => processFailureStats(performanceData?.failure_stats_by_channel || []), [performanceData]);
   const intentData = useMemo(() => processIntentStats(performanceData?.intent_distribution_by_channel || []), [performanceData]);

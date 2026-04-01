@@ -686,9 +686,9 @@ export default function CampaignDashboard() {
     }
   };
 
-  const handleInsights = (campaign: Campaign) => {
+  const handleInsights = (campaign: Campaign , campaignType: string) => {
     const campaignId = campaign.campaign_id ?? campaign.id;
-    router.push(`/campaign/insights?campaign_id=${campaignId}`);
+    router.push(`/campaign/insights?campaign_id=${campaignId}&campaign_type=${campaignType}`);
   };
 
   const handleDeleteClick = (campaign: Campaign) => {
@@ -1120,7 +1120,7 @@ export default function CampaignDashboard() {
                               variant="ghost"
                               size="sm"
                               className="h-8 gap-1.5 px-2 text-xs"
-                              onClick={() => handleInsights(campaign)}
+                              onClick={() => handleInsights(campaign, campaignType || "")}
                             >
                               <Eye className="h-3.5 w-3.5" />
                               View Analytics
