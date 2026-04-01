@@ -778,18 +778,6 @@ class CallSession:
             bridge_error = repr(e)
             logger.exception(f"[{self.call_id}] Main error: %s", e)
         finally:
-            if bridge_timing is not None and BRIDGE_TIMING_LOG_PATH:
-                _append_bridge_timing_jsonl(
-                    _build_bridge_timing_record(
-                        self.call_id,
-                        self.session_data,
-                        bridge_timing,
-                        chunks_sent_to_elevenlabs[0],
-                        audio_events_received[0],
-                        chunks_sent_to_tatatele[0],
-                        bridge_error,
-                    )
-                )
             self.processed_agent_responses.clear()
             try:
                 if self.dave_ws:
@@ -803,6 +791,19 @@ class CallSession:
             await self.hangup_tatatele_call()
 
             logger.info(f"[{self.call_id}] Bridge closed")
+            
+            if bridge_timing is not None and BRIDGE_TIMING_LOG_PATH:
+                _append_bridge_timing_jsonl(
+                    _build_bridge_timing_record(
+                        self.call_id,
+                        self.session_data,
+                        bridge_timing,
+                        chunks_sent_to_elevenlabs[0],
+                        audio_events_received[0],
+                        chunks_sent_to_tatatele[0],
+                        bridge_error,
+                    )
+                )
 
             # Cleanup session
             terminate_session(self.call_id)
