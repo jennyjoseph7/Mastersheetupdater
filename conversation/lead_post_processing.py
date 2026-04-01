@@ -99,7 +99,7 @@ def post_session_process(*args, **kwargs):
     sentiment_score = -1
     emotion_analysis = {}
     if messages:
-        sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="gcp-gemini-2.5-flash-lite")
+        sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="gcp-gemini-3.1-flash-lite-preview")
         aa = sentiment_agent.run()
         sentiment_score = aa.get("conversation_analytics",{}).get("overall_sentiment_score",-1)
         emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
@@ -205,7 +205,7 @@ def get_summary(session_id,session_data):
             Current session history - {messages}
             Provide the Summary.
         """
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("get_summary prompt response ======= {}".format(resp))
     return resp
 def get_lead_variables(campaign_type):
@@ -889,7 +889,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     """
 
     mlogger.info("prompt == {}".format(prompt))
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("disposition prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
@@ -981,7 +981,7 @@ def get_appt_date_time_purpose(session_id,session_data_cache):
     Your response should be in the following JSON format:
     {response_example}
     """
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("get_appt_date_time_purpose prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
@@ -1024,7 +1024,7 @@ def get_preffered_language(session_id,session_data_cache):
     Your response should be in the following JSON format:
     {json.dumps(response_example)}
     """
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("callback_date_time prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
         
@@ -1073,7 +1073,7 @@ def get_callback_date_time(session_id,session_data_cache):
     Your response should be in the following JSON format:
     {json.dumps(response_example)}
     """
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("callback_date_time prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
@@ -1131,7 +1131,7 @@ def get_extra_data(session_id,session_data_cache):
     do NOT prepend labels (like "json"). Output only valid JSON.
     Always make sure the exact response you give as string should be a valid JSON string that can be used for python api json.loads(<your response string>)
     """
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("got extra data response as ===== {} --{}".format(resp,type(resp)))
     if resp and isinstance(resp,str):
         updated_dict = hp.json.loads(resp)
@@ -1156,7 +1156,7 @@ def get_extra_data(session_id,session_data_cache):
             Provide the updated summary.
             """
         mlogger.info("vehicle summary prompt == {}".format(prompt))
-        resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+        resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
         mlogger.info("got vehicle summary response as ===== {}".format(resp))
         updated_dict["vehicle_persona_summary"] = resp
 
@@ -1398,5 +1398,5 @@ def get_disposition_classification(query = None, session_id = None, session_data
     # FINAL INSTRUCTION
     Based on the data above, pick exactly ONE value from the classification list provided. Return ONLY that word/phrase and nothing else. No explanation, no punctuation, just the value.
     """
-    result = run_prompt_sync(user_query = " ",  system_prompt= prompt, history=[], **{"session_id": session_id, "model_identifier":"gcp-gemini-2.5-flash-lite"})
+    result = run_prompt_sync(user_query = " ",  system_prompt= prompt, history=[], **{"session_id": session_id, "model_identifier":"gcp-gemini-3.1-flash-lite-preview"})
     return result
