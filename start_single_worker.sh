@@ -116,6 +116,29 @@ function start_workers() {
     exit
 }
 
+function stop_logio_server() {
+	kill -9 $(ps -eaf | grep log.io- | head -n -1 | awk '{print $2}')
+}
+
+
+function setup_logio_agent() {
+    python3 /root/generate_log_conf.py
+    status=$?
+	if [ $status != 0 ];then
+		echo "Generating log config failed. Exitting."
+		exit
+	fi	
+	
+	stop_logio_server
+
+	if [ $status == 0 ];then
+		echo "Start input server"
+		nohup log.io-file-input &
+	else
+		echo "Starting logger failed."
+	fi
+}
+
 function main() {
     if [ $PYTHON_VENV != 0 ];then
     	export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
@@ -189,6 +212,10 @@ function main() {
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
+            sleep 60
+            if [ $SETUP_LOGIO_AGENT == "True" ];then
+                setup_logio_agent
+            fi
             while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
             echo "Exitting..."
             exit
