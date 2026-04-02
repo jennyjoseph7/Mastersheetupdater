@@ -2,6 +2,7 @@ import sys, os
 import requests
 import json
 import re
+from datetime import datetime
 import time                 
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
@@ -160,6 +161,16 @@ def performance_summary():
 
         return update_count
 
+def normalize_ts(ts):
+    if not ts:
+        return None
+    if isinstance(ts, str):
+        return int(datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp())
+    if isinstance(ts, float):
+        return int(ts)
+    if isinstance(ts, int):
+        return ts
+    return None
 
 @gryd.is_a_task(function_name="manage_active_sessions")
 def manage_active_sessions(*args, **kwargs):
@@ -248,19 +259,15 @@ def manage_active_sessions(*args, **kwargs):
 
                 new_records = []
                 for row in history_rows:
-                    ts = row.get("created") or row.get("updated")
-                    if ts:
-                        ts = int(ts)
-                        if last_history_epoch is None or ts > last_history_epoch:
-                            new_records.append(row)
+                    ts = normalize_ts(row.get("created") or row.get("updated"))
+                    if ts and (last_history_epoch is None or ts > last_history_epoch):
+                        new_records.append((row, ts))
 
                 if new_records:
                     appended_history = []
 
-                    for record in new_records:
-                        ts = record.get("created") or record.get("updated")
-                        if ts:
-                            last_ts = int(ts)
+                    for record,ts in new_records:
+                        last_ts = ts
 
                         appended_history.append(
                             {
@@ -274,12 +281,11 @@ def manage_active_sessions(*args, **kwargs):
                                 "message": record.get("message"),
                             }
                         )
-                    start_time = session.get("start_time")
-                    session_start = int(float(start_time)) if start_time else None
-                    session_duration = None
-                    if session_start and last_ts:
-                        session_duration = last_ts - session_start
-
+                    start_time = normalize_ts(session.get("start_time"))
+                    session_duration = (
+                        last_ts - start_time if start_time and last_ts else None
+                    )
+                    
                     update_payload = {
                         "history": existing_history + appended_history,
                         "history_updated_time": last_ts,
