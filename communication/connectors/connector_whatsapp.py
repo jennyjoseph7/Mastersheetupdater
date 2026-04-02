@@ -416,7 +416,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         "error",
         "failed",
         "reached",
-        "contacted"
+        "contacted",
+        "engaged",
+        "converted"
     ]
     
     def can_update_disposition(current, incoming):
