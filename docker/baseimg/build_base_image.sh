@@ -3,13 +3,13 @@
 function update_repo() {
 	sha=$1
 	git reset --hard HEAD^
-	git pull origin scaling-up-twenty-threads
+	git pull origin production
 	git checkout $1
 
 }
 
 function main() {
-	update_repo "scaling-up-twenty-threads"
+	update_repo "production"
 	cp ../../requirements.txt ./
       	cp ../../spark/requirements.txt ./spark_requirements.txt
 	docker build -t autobot_prod_baseimage:latest .	
@@ -18,4 +18,3 @@ function main() {
 }
 
 main
-

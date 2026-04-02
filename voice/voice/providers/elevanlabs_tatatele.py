@@ -1,4 +1,4 @@
-from time import time
+import time
 import os, sys
 
 import pytz
@@ -575,7 +575,7 @@ class CallSession:
 
     async def connect_external_websocket(self, url: str):
         """Connect to external websocket for this call session."""
-        t = time()
+        t = time.time()
         ws = None
         try:
             logger.info(f"[{self.call_id}] connecting to {url}")
@@ -1012,7 +1012,7 @@ def process():
     xx = gryd_tasks.post_billing_object("completed", session_id, duration)  # call it in async
 
     logger.info(f"Billing record created: {xx}")
-    session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time()))
+    session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time.time()))
     transcript_summary= data.get("analysis",{}).get("transcript_summary")
     logger.info(f"Transcript summary: {transcript_summary}")
     logger.info(f"Triggering post history and actions for session_id: {session_id}")
