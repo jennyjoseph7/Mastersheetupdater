@@ -33,6 +33,8 @@ def setup_gryd():
 setup_gryd()
 # gryd.ENVIRONMENT = "-local"
 
+agents_var = "cohorts_agents"
+
 @gryd.is_a_task(function_name="post_cohorts_to_model",)
 def post_cohorts_to_cohorts_registrymodel(*args, **kwargs):
     def validate_cohorts(cohorts):
@@ -53,7 +55,7 @@ def cohort_generation_agent_async(*args, **kwargs):
     :return: list of dictionaries of cohorts
     """
     try:
-        from agents.cohort_generation_agent import ProductCohortGenerationAgent
+        from cohorts_agents.cohort_generation_agent import ProductCohortGenerationAgent
         params = {
             "brochure_url": kwargs.get("brochure_url", None),
             "product_website_url": kwargs.get("product_website_url", None),
@@ -91,7 +93,7 @@ def cohort_generation_agent(*args, **kwargs):
     """
 
     try:
-        from agents.cohort_generation_agent import ProductCohortGenerationAgent
+        from cohorts_agents.cohort_generation_agent import ProductCohortGenerationAgent
 
         params = {
             "brochure_url": kwargs.get("brochure_url", None),
@@ -133,7 +135,7 @@ def cohort_classification_agent(*args, **kwargs):
 
     """
     try:
-        from agents.cohort_classification_agent import CohortClassificationAgent
+        from cohorts_agents.cohort_classification_agent import CohortClassificationAgent
 
         params = {
             "source": kwargs.get("source", None),
@@ -173,7 +175,7 @@ def affinity_score_agent(*args, **kwargs):
 
     """
     try:
-        from agents.affinity_agent  import AffinityEngineAgent
+        from cohorts_agents.affinity_agent  import AffinityEngineAgent
         params_ = {
             "interaction_json": kwargs.get("interaction_json", None),
             "brochure_url": kwargs.get("brochure_url", None),
@@ -216,7 +218,7 @@ def embedding_affinity_score_agent(*args, **kwargs):
 
     """
     try:
-        from agents.affinity_agent  import EmbeddingAffinityEngine
+        from cohorts_agents.affinity_agent  import EmbeddingAffinityEngine
         params_ = {
             "interaction_json": kwargs.get("interaction_json", None),
             "custom_affinity_dimensions": kwargs.get("custom_affinity_dimensions", None)
@@ -239,7 +241,7 @@ def embedding_affinity_score_agent(*args, **kwargs):
 @gryd.is_a_task(function_name="campaign_idea_generation_agent", job_param='job', logger_param='logger')
 def campaign_idea_generation_agent(*args, **kwargs):
     try:
-        from agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
+        from cohorts_agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
         _params = {
             "source": kwargs.get("source", None),                                 # Custom Interaction Data in Dict
             "classified_cohort": kwargs.get("classified_cohort", None),           # Cohort Classification Result 
@@ -268,7 +270,7 @@ def campaign_idea_generation_agent(*args, **kwargs):
 @gryd.is_a_task(function_name="campaign_idea_generation_agent_async", job_param='job', logger_param='logger')
 def campaign_idea_generation_agent_async(*args, **kwargs):
     try:
-        from agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
+        from cohorts_agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
         _params = {
             "source": kwargs.get("source", None),                                 # Custom Interaction Data in Dict
             "classified_cohort": kwargs.get("classified_cohort", None),           # Cohort Classification Result 
@@ -295,60 +297,6 @@ def campaign_idea_generation_agent_async(*args, **kwargs):
     except Exception as e:
         logger.error(f"Campaign Idea Generation Agent Error: {e}")
         raise e     
-
-@gryd.is_a_task(function_name="performance_marketing_campaign_agent")
-def performance_marketing_campaign_agent(*args, **kwargs):
-    _params = {
-        "brand_name" : kwargs.get("brand_name", None),
-        "product_name" : kwargs.get("product_name", None),
-        "objective" : kwargs.get("objective", None),
-        "budget" : kwargs.get("budget", None),
-        "landing_page" : kwargs.get("landing_page", None),
-        "geography" : kwargs.get("geography", None),
-        "model_identifier" : kwargs.get("model_identifier", "azure-gpt-4o")
-    }
-
-    try:
-        from agents.campaign_idea_generation_agent_async import PerformanceMarketingCampaignAgent
-        agent = PerformanceMarketingCampaignAgent(**_params)
-        output = agent.run()
-        return {
-            "task": inspect.currentframe().f_code.co_name, 
-            **output
-        }
-    except Exception as e:
-        logger.error(f"Performance Marketing Campaign Agent Error: {e}")
-        raise e
-
-@gryd.is_a_task(function_name="csv_to_cohort_classification")
-def csv_to_cohort_classification(*args, **kwargs):
-    import uuid
-    _params = {
-        "csv_url": kwargs.get("csv_url", None),
-        "cohorts" : kwargs.get("cohorts", []),
-        "model_identifier" : kwargs.get("model_identifier", "azure-gpt-4o")
-    }
-    task_id = str(uuid.uuid4())
-
-    f_payload = {
-        **_params,
-        "task_id": task_id
-    }
-    gryd.create_async_task()
-    pass 
-
-
-@gryd.is_a_task(function_name="cohort_classification_agent_randomizer", job_param='job', logger_param='logger')
-def cohort_classification_agent_randomizer(*args, **kwargs):
-    _params = {
-        "file_path": kwargs.get("file_path", None),
-        "cohorts" : kwargs.get("cohorts", []),
-        "random_seed" : kwargs.get("random_seed", 42)
-    }
-
-    # TODO : Create gryd task for this. Currently Dinesh will directly call API. 
-    return {
-        "task": inspect.currentframe().f_code.co_name,}
 
 
     
