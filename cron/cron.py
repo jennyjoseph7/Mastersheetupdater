@@ -274,15 +274,25 @@ def manage_active_sessions(*args, **kwargs):
                                 "message": record.get("message"),
                             }
                         )
+                    start_time = session.get("start_time")
+                    session_start = int(float(start_time)) if start_time else None
+                    session_duration = None
+                    if session_start and last_ts:
+                        session_duration = last_ts - session_start
 
+                    update_payload = {
+                        "history": existing_history + appended_history,
+                        "history_updated_time": last_ts,
+                    }
+
+                    if session_duration is not None:
+                        update_payload["duration"] = session_duration
+                        
                     pg.update(
                         "session",
                         "session_id",
                         session_id,
-                        {
-                            "history": existing_history + appended_history,
-                            "history_updated_time": last_ts,
-                        },
+                        update_payload
                     )
 
                     history_updated = True

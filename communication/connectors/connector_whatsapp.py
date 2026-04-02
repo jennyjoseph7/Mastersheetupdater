@@ -23,6 +23,8 @@ from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerCo
 import json
 import functools
 from autocrm_db_helper import get_pg_connector
+from conversation.converse import post_messages_data
+
 #  this from connectors.base_connector_communication import *
 
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
@@ -365,7 +367,7 @@ def post_contact_status(*args, **data):
             "update_lead_disposition_and_post_billing",
             AUTOCRM_COMMUNICATION_SERVICE_NAME,
             args=[incoming_status],
-            kwargs={ "should_bill":should_bill,**payload} 
+            kwargs={ "should_bill":should_bill,"post_template_message":True,**payload} 
         )
         # update_lead_disposition(pg,incoming_status,**payload)
 
@@ -402,10 +404,11 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
     # logger.info(f"[update_lead_disposition] Called with incoming_status={incoming_status} for lead_id={data.get('lead_id')} and DATA= {json.dumps(data,indent=4)}")
     # logger.info(f"[update_lead_disposition] Attempting to update lead disposition with incoming_status={incoming_status}, user_id={user_id}, data={data}")
     
+    post_template_message=data.get("post_template_message")
     if should_bill:
         logger.info(f"[post_contact_status] Billing triggered for incoming_status ={incoming_status}")
         post_billing_obj(**data)
-        
+    
     DISPOSITION_SEQUENCE = [
         "queued",
         "attempted",
@@ -516,7 +519,26 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
             return
         s_d=s_d[0]
         pg.update("session","session_id",s_d.get("session_id"),{"disposition":incoming_status,"status":incoming_status})
-        
+        if channel in ["whatsapp_chat"] and incoming_status in ["delivered", "reached"] and data and data.get("template_message"):
+            logger.info(f"Updating template_message in history for lead_id: {lead_id}")
+            p={
+                "reply_to": generate_uid(data),
+                "customer_response": "Hi",
+                "request_data": {
+                    "customer_response": "Hi"
+                },
+                "session_id": s_d.get("session_id"),
+                "user_id": data.get("user_id"),
+                "responses": [
+                    {
+                        "intent": "greeting",
+                        "placeholder": data.get("template_message"),
+                        "index": 1
+                    }
+                ]
+            }
+            post_messages_data(**p)
+            
         return update_payload
 
 def post_billing_obj(**message_dict):

@@ -281,7 +281,8 @@ class BaseCampaignCreater:
                     "message_id": (response.get("message_id", None) if channel == "whatsapp_chat" else getattr(response.get("response"), "sid", None)),
                     "provider_status":msg_status,
                     "channel_provider":provider_name,
-                    "channel":patch_user_data.get("channel") or channel
+                    "channel":patch_user_data.get("channel") or channel,
+                    "template_message":campaign_details.get("template_message")
                 }
             
             logger.info(f"Calling post_contact_status with data from campaign: {data}")
@@ -932,6 +933,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
             lead_id=lead_id,
             campaign_type=campaign_type,
             campaign_objective= [campaign_objective_name] or [],
+            dealership_id=lead_data.get("dealership_id"),
             lead_info={}
         )
         if not template_data:
@@ -963,14 +965,15 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         # logger.info("Template Data: %s", template_data)
     elif channel in ("whatsapp_chat", "sms", "rcs"):
         if not templateID:
-            # template_data = get_template(
-            #     lead_id=lead_id,
-            #     campaign_type=campaign_type,
-            #     campaign_objective= [campaign_objective_name] or [],
-            #     dealership_id=lead_data.get("dealership_id"),
-            #     lead_info={}
-            # )
-            template_data=testing_whatsapp_template()
+            template_data = get_template(
+                lead_id=lead_id,
+                campaign_type=campaign_type,
+                campaign_objective= [campaign_objective_name] or [],
+                dealership_id=lead_data.get("dealership_id"),
+                lead_info={}
+            )
+            
+            # template_data=testing_whatsapp_template()
             if not template_data:
                 yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
                 return
@@ -1006,12 +1009,15 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     if template_data and channel in ("whatsapp_chat", "sms"):
         buttons = template_data.pop("buttons", None)
         template_vars = template_data.get("template_variables", [])
-        render_data = {v: template_data.get(v, "") for v in template_vars}
-        template_message = template_data.get("template_message", "").format(**render_data)
+        render_data = {v: variable_mapping.get(v, "") for v in template_vars}
+        logger.info(f"Render Data: {render_data}")
+        template_str = template_data.get("template_message", "")
+        template_str = template_str.replace("{{", "{").replace("}}", "}")
+        template_message = template_str.format(**render_data)
 
     if template_data and channel == "rcs":
         template_vars = template_data.get("template_variables", [])
-        render_data = {v: template_data.get(v, "") for v in template_vars}
+        render_data = {v: variable_mapping.get(v, "") for v in template_vars}
         template_message = template_data.get("init_message", "").format(**render_data)
     logger.info(f"Template Message: {template_message}")
     if channel == "web_chat":
