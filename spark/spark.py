@@ -1429,9 +1429,9 @@ Car model: {car_model}
 - does not contain any content about shadows, reflections or silhouettes, words containing
     mannequin, dummy, ghost, skeleton, corpse
 - does not contain any content related to other objects to be in contact with the car
-If the prompt is valid, you will return json valid: true. 
-If the prompt is invalid, you will return json valid: false, reason: reason why it is invalid.
-Strictly follow the json format.
+If the prompt is valid, you will return json {{"valid": true}}. 
+If the prompt is invalid, you will return json {{"valid": false, "reason": <reason why it is invalid>}}.
+Strictly follow the json format and only json in the response, without the json block.
 
 Now validate the prompt:
 """, model_identifier=validate_prompt_model, service = SERVICE, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID)
