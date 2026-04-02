@@ -10,11 +10,11 @@ result = response = gryd.await_result(
     task="get_whatsapp_template",
     service="autocrm-agent",
     kwargs={
-        "lead_id": "dl9cay4010-sree-saradhambal-automobiles-pvt-ltd-ambal-auto---service-center-keep-your-ride-smooth---service-reminder",
-        "campaign_type": "post-sales",
-        "campaign_objective" : ["Free Service Due Reminder"],
+        "lead_id": "test-8277676778-dave-ai-india-1e8288f2-2cdc-31f9-8f53-fa09d6e8801f",
+        "campaign_type": "pre-sales",
+        "campaign_objective" : ["Confirm Test Drives Through Tech Appeal - WhatsApp"],
         #"lead_info": {},
-        #"dealership_id": "daveai"
+        "dealership_id": "dave-ai-india"
     }
 )
 
