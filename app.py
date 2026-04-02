@@ -100,7 +100,7 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
     logger.info(f"Webhook received for channel={channel}, provider={channel_provider}, enterprise={enterprise_id}, conversation={conversation_id}, language={language}")
     if channel in ["whatsapp", "whatsapp_chat", "whatsapp_voice_note", "whatsapp_voice_call"]:
         arg_d=(channel, conversation_id)
-        gryd.create_async_task("process_forwarded_webhook", AUTOCRM_COMMUNICATION_SERVICE_NAME,args=arg_d , kwargs=payload)
+        gryd.create_async_task("process_forwarded_webhook",AUTOCRM_COMMUNICATION_SERVICE_NAME,args=arg_d , kwargs=payload)
     elif channel == "email":
         #.... do the stuff .... 
         pass
