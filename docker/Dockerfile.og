@@ -1,7 +1,5 @@
 FROM asia-south1-docker.pkg.dev/dave-70c8e/autobot-base-image/base_image:latest
 
-RUN apt install nodejs npm -yy
-RUN npm install -g log.io-file-input
 WORKDIR /root/
 COPY <zipname>.zip /root/
 COPY generate_logio_conf.py /root/

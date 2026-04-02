@@ -9,10 +9,6 @@ RUN apt-get update && apt-get install -y \
 RUN apt install nodejs npm -yy
 RUN npm install -g log.io-file-input
 
-#ADD https://astral.sh/uv/install.sh /uv-installer.sh
-#RUN sh /uv-installer.sh && rm /uv-installer.sh
-#ENV PATH="/root/.local/bin/:$PATH"
-
 WORKDIR /root/
 RUN python3 -m venv pyenv
 ENV PYENV_PATH=pyenv
