@@ -365,7 +365,7 @@ def post_contact_status(*args, **data):
             "update_lead_disposition_and_post_billing",
             AUTOCRM_COMMUNICATION_SERVICE_NAME,
             args=[incoming_status],
-            kwargs={ "should_bill":should_bill,**data} 
+            kwargs={ "should_bill":should_bill,**payload} 
         )
         # update_lead_disposition(pg,incoming_status,**payload)
 
@@ -508,7 +508,15 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 lead_key,
                 update_payload,
             )
-            
+        
+        # also updating session dispositon--
+        s_d=list(pg.list("session",{"lead_id":lead_id}))
+        if not s_d:
+            logger.info(f"No session found for lead_id: {lead_id}")
+            return
+        s_d=s_d[0]
+        pg.update("session","session_id",s_d.get("session_id"),{"disposition":incoming_status,"status":incoming_status})
+        
         return update_payload
 
 def post_billing_obj(**message_dict):

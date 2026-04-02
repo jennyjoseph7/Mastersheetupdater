@@ -282,7 +282,7 @@ def get_or_create_session(data,channel=None,engaged=False):
                         logger.info(f"Calling determine_campaign_next_action for the session_id: {session_id}--> diposition is set to engaged.")
                         # call_next_campaign_workflow_task(sessions[0].get("campaign_id"),sessions[0].get("campaign_type"),sessions[0].get("lead_id"),sessions[0].get("channel"),channel_identifier,"engaged",pg=pg)
 
-                    pg.update("session","session_id",session_id,{"disposition":"engaged"})
+                    pg.update("session","session_id",session_id,{"disposition":"engaged","status":"interacted"})
                     
                     # updating disposition in lead
                     if data.get("campaign_type") == "pre-sales":
