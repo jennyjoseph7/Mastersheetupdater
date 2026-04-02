@@ -5,8 +5,8 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
+from gryd_worker import gryd, gryd_routes, gryd_helpers as hp
 from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CORE_SERVICE_NAME, \
-    gryd, gryd_routes, hp, \
     GRYD_FILE_USER_ID, \
     GRYD_FILE_API_KEY, \
     GRYD_FILE_SERVER_URL, \
@@ -36,9 +36,10 @@ if THIS_DIR not in sys.path:
     sys.path.insert(1, THIS_DIR)
 from razorpay_service import create_credit_purchase, confirm_payment_success, mark_payment_failed, mark_payment_cancelled
 
+SERVICE = AUTOCRM_CORE_SERVICE_NAME
 gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME
 gryd.set_queue_manager()
-mlogger = gryd.hp.get_logger(gryd.SERVICE)
+mlogger = gryd.hp.get_logger(SERVICE)
 logger = mlogger
 MIME_TYPES = {
     'aac': 'audio/aac',
