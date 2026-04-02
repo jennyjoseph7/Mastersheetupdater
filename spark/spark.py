@@ -735,10 +735,13 @@ def validate_prompt(prompt: str, car_manufacturer: str = None, car_model: str = 
     car_manufacturer = car_manufacturer or "Unknown"
     car_model = car_model or "Unknown model"
     validate_prompt_model = validate_prompt_model or VALIDATE_PROMPT_MODEL
-    lprompt = set(prompt.lower().split())
+    prompt = prompt.lower().strip()
+    car_manufacturer = car_manufacturer.lower().strip()
+    car_model = car_model.lower().strip()
+    lprompt = set(prompt.split())
     blw = set()
-    cmf = set(car_manufacturer.lower().split())
-    cmm = set(car_model.lower().split())
+    cmf = set(car_manufacturer.split())
+    cmm = set(car_model.split())
     for word in lprompt:
         if word in cmf or word in cmm:
             continue
