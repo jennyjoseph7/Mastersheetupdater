@@ -31,6 +31,8 @@ def setup_gryd():
     
 setup_gryd()
 
+agents_var = "cohorts_agents"
+
 @gryd.is_a_task(function_name="post_cohorts_to_model",)
 def post_cohorts_to_cohorts_registrymodel(*args, **kwargs):
     def validate_cohorts(cohorts):
@@ -56,7 +58,7 @@ def cohort_generation_agent_async(*args, **kwargs):
     :return: list of dictionaries of cohorts
     """
     try:
-        from cohorts_new.agents.cohort_generation_agent import ProductCohortGenerationAgent
+        from cohorts_agents.cohort_generation_agent import ProductCohortGenerationAgent
         params = {
             "brochure_url": kwargs.get("brochure_url", None),
             "product_website_url": kwargs.get("product_website_url", None),
@@ -94,7 +96,7 @@ def cohort_generation_agent(*args, **kwargs):
     """
 
     try:
-        from cohorts_new.agents.cohort_generation_agent import ProductCohortGenerationAgent
+        from cohorts_agents.cohort_generation_agent import ProductCohortGenerationAgent
 
         params = {
             "brochure_url": kwargs.get("brochure_url", None),
@@ -136,7 +138,7 @@ def cohort_classification_agent(*args, **kwargs):
 
     """
     try:
-        from cohorts_new.agents.cohort_classification_agent import CohortClassificationAgent
+        from cohorts_agents.cohort_classification_agent import CohortClassificationAgent
 
         params = {
             "source": kwargs.get("source", None),
@@ -176,7 +178,7 @@ def affinity_score_agent(*args, **kwargs):
 
     """
     try:
-        from cohorts_new.agents.affinity_agent  import AffinityEngineAgent
+        from cohorts_agents.affinity_agent  import AffinityEngineAgent
         params_ = {
             "interaction_json": kwargs.get("interaction_json", None),
             "brochure_url": kwargs.get("brochure_url", None),
@@ -219,7 +221,7 @@ def embedding_affinity_score_agent(*args, **kwargs):
 
     """
     try:
-        from cohorts_new.agents.affinity_agent  import EmbeddingAffinityEngine
+        from cohorts_agents.affinity_agent  import EmbeddingAffinityEngine
         params_ = {
             "interaction_json": kwargs.get("interaction_json", None),
             "custom_affinity_dimensions": kwargs.get("custom_affinity_dimensions", None)
@@ -242,7 +244,7 @@ def embedding_affinity_score_agent(*args, **kwargs):
 @gryd.is_a_task(function_name="campaign_idea_generation_agent", job_param='job', logger_param='logger')
 def campaign_idea_generation_agent(*args, **kwargs):
     try:
-        from cohorts_new.agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
+        from cohorts_agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
         _params = {
             "source": kwargs.get("source", None),                                 # Custom Interaction Data in Dict
             "classified_cohort": kwargs.get("classified_cohort", None),           # Cohort Classification Result 
@@ -271,7 +273,7 @@ def campaign_idea_generation_agent(*args, **kwargs):
 @gryd.is_a_task(function_name="campaign_idea_generation_agent_async", job_param='job', logger_param='logger')
 def campaign_idea_generation_agent_async(*args, **kwargs):
     try:
-        from cohorts_new.agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
+        from cohorts_agents.campaign_idea_generation_agent_async import CampaignIdeaGeneratorAgent
         _params = {
             "source": kwargs.get("source", None),                                 # Custom Interaction Data in Dict
             "classified_cohort": kwargs.get("classified_cohort", None),           # Cohort Classification Result 

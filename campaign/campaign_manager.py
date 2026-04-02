@@ -383,6 +383,7 @@ class BaseCustomCampaignManager:
                 logger.info("Checking and creating a session for channel: {channel} and user: {mobile_number}")
                 campaign_d={**campaign_data,**user}
                 session_data=handle_session_logic(mobile_number,channel.lower(),False,campaign_d)
+                logger.info(f"Session logic result in campaign : {session_data}")
                 if not session_data:
                     logger.error(f"Failed to create session for channel: {channel} and user: {mobile_number}")
                     continue
@@ -1018,12 +1019,15 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     if template_data and channel in ("whatsapp_chat", "sms"):
         buttons = template_data.pop("buttons", None)
         template_vars = template_data.get("template_variables", [])
-        render_data = {v: template_data.get(v, "") for v in template_vars}
-        template_message = template_data.get("template_message", "").format(**render_data)
+        render_data = {v: variable_mapping.get(v, "") for v in template_vars}
+        logger.info(f"Render Data: {render_data}")
+        template_str = template_data.get("template_message", "")
+        template_str = template_str.replace("{{", "{").replace("}}", "}")
+        template_message = template_str.format(**render_data)
 
     if template_data and channel == "rcs":
         template_vars = template_data.get("template_variables", [])
-        render_data = {v: template_data.get(v, "") for v in template_vars}
+        render_data = {v: variable_mapping.get(v, "") for v in template_vars}
         template_message = template_data.get("init_message", "").format(**render_data)
     logger.info(f"Template Message: {template_message}")
     if channel == "web_chat":
@@ -1192,37 +1196,50 @@ def format_email_payload(campaign_data,campaign_user,mobile_number):
 def testing_whatsapp_template():
     
     return [{
-            "sender": "917795030574",
+            "sender": "919187210945",
             "status": "approved",
             "buttons": [
                 {
-                    "text": "Call",
+                    "text": "Book Test Drive",
                     "type": "QUICK_REPLY"
                 },
                 {
-                    "text": "Chat",
+                    "text": "Explore Basalt",
+                    "type": "QUICK_REPLY"
+                },
+                {
+                    "text": "Request a Call Back",
                     "type": "QUICK_REPLY"
                 }
             ],
             "channel": "whatsapp_chat",
-            "created": 1769683785.335568,
-            "updated": 1769683785.3367856,
+            "created": 1774954387.795891,
+            "updated": 1774954387.7971282,
             "language": "english",
-            "dealer_name": "DaveAI",
-            "region_name": "South India",
-            "search_term": "nada_autongage_demo1 text english pre-sales  ",
-            "template_id": "01kg4ntf1ztsa783ss81nq8gqs",
+            "dealer_name": "Dave AI",
+            "region_name": "India",
+            "search_term": "confirm_test_drives_through_tech_appeal_whatsapp text english pre-sales hi person_name exploring cars with advanced connectivity immersive screens and smart driving tech the citroën basalt combines intelligent infotainment modern interfaces and everyday driving comfort in one refined package. how would you like to explore it further",
+            "template_id": "01kn14kkf6sb2712gcb00ggbaw",
             "campaign_type": "pre-sales",
-            "dealership_id": "daveai",
+            "dealership_id": "dave-ai-india",
             "provider_name": "Airtel",
-            "template_name": "nada_autoNgage_demo1",
+            "template_name": "Confirm_Test_Drives_Through_Tech_Appeal_whatsapp",
             "template_type": "text",
-            "template_message": "Hi Welcome this is Test Message",
-            "campaign_objective": [],
-            "template_variables": [],
-            "template_button_payloads": [
-                "nada_autongage-call",
-                "nada_autongage-chat"
+            #"template_message": "Hi Welcome this is Test Message",
+            #"campaign_objective": [],
+            #"template_variables": [],
+            #"template_button_payloads": [
+            #    "nada_autongage-call",
+            #    "nada_autongage-chat"
+            "template_message": "Hi {{person_name}},\nExploring cars with advanced connectivity, immersive screens, and smart driving tech?\nThe Citroën Basalt combines intelligent infotainment, modern interfaces, and everyday driving comfort in one refined package.\nHow would you like to explore it further?\n",
+            "template_variables": [
+                "person_name"
             ],
-            "communication_credentials_id": "airtel-917795030574"
-        }    ]
+            "campaign_objective_name": "Confirm Test Drives Through Tech Appeal - WhatsApp",
+            "template_button_payloads": [
+                "confirm_test_drives_through_tech_appeal_whatsapp-book_test_drive",
+                "confirm_test_drives_through_tech_appeal_whatsapp-explore_basalt",
+                "confirm_test_drives_through_tech_appeal_whatsapp-request_a_call_back"
+            ],
+            "communication_credentials_id": "airtel-whatsapp_chat-919187210945"
+        }  ]

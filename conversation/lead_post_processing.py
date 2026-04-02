@@ -99,7 +99,7 @@ def post_session_process(*args, **kwargs):
     sentiment_score = -1
     emotion_analysis = {}
     if messages:
-        sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="gcp-gemini-2.5-flash-lite")
+        sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="gcp-gemini-3.1-flash-lite-preview")
         aa = sentiment_agent.run()
         sentiment_score = aa.get("conversation_analytics",{}).get("overall_sentiment_score",-1)
         emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
@@ -114,7 +114,7 @@ def post_session_process(*args, **kwargs):
     mlogger.info("got disposition as == {}".format(updated_lead_data))
     
     session_update_data = {"disposition": updated_lead_data.get("disposition"), "disposition_detail":updated_lead_data.get("disposition_detail")}
-    if updated_lead_data.get("disposition_detail") == "Requested Callback":
+    if updated_lead_data.get("disposition_detail").lower() == "requested callback":
         follow_up = get_callback_date_time(session_id,session_data)
         if isinstance(follow_up,dict):
             if "follow_up_date" in follow_up:
@@ -124,7 +124,7 @@ def post_session_process(*args, **kwargs):
                     updated_lead_data["follow_up_date"] = timestamp_object.timestamp()
                 except KeyError as e:
                     mlogger.info("KeyError == {}".format(e))
-    if updated_lead_data.get("disposition_detail") =="Language barrier":
+    if updated_lead_data.get("disposition_detail").lower() =="language barrier":
         follow_up = get_preffered_language(session_id,session_data)
         if isinstance(follow_up,dict):
             if "follow_up_language" in follow_up:
@@ -151,7 +151,8 @@ def post_session_process(*args, **kwargs):
     mlogger.info("summary_update == {}".format(summary_updated))
 
     updated_lead_data["lead_summary"] = summary_updated
-    
+    if session_mdl_obj.get("channel") in ["whatsapp_chat"]:
+        session_update_data["summary"] = summary_updated
     if campaign_type == "post_sales":
         if user_or_vehicle_data.get("vehicle_persona_summary"):
             updated_lead_data["vehicle_persona_summary"] = user_or_vehicle_data.get("vehicle_persona_summary")
@@ -205,7 +206,7 @@ def get_summary(session_id,session_data):
             Current session history - {messages}
             Provide the Summary.
         """
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("get_summary prompt response ======= {}".format(resp))
     return resp
 def get_lead_variables(campaign_type):
@@ -889,7 +890,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     """
 
     mlogger.info("prompt == {}".format(prompt))
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("disposition prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
@@ -981,7 +982,7 @@ def get_appt_date_time_purpose(session_id,session_data_cache):
     Your response should be in the following JSON format:
     {response_example}
     """
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("get_appt_date_time_purpose prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
@@ -1002,7 +1003,13 @@ def get_preffered_language(session_id,session_data_cache):
         A dictionary containing the preffered language.
     """
     campaign_data = session_data_cache.get("campaign_data")
-    message_history = session_data_cache.get("messages")
+    messages = session_data_cache.get("messages")
+    message_history = []
+    for message in messages:
+        if "intent" in message and message.get("intent") == "llm_response":
+            message_history.append({"role" : "my agent", "message":message.get("message","")})
+        else:
+            message_history.append({"role" : "customer", "message":message.get("message","")})
     response_example = {
         "follow_up_language": "en"
     }
@@ -1016,15 +1023,16 @@ def get_preffered_language(session_id,session_data_cache):
     For example:
     If the customer says anything 'talk in hindi' you should return the value of follow_up_language as 'hi' which is the google language code for hindi.
     If the customer just speaks in a different language for example only speaks in tamil. You should return the value of follow_up_language as 'ta' which is the google language code for tamil.
-
+    If the customer seems to be speaking in a language different from the language the agent is speaking in the follow_up_language should be the google language code for the language the customer is speaking in.
+    
     Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
     Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
     do NOT prepend labels (like "json"). Output only valid JSON.
 
-    Your response should be in the following JSON format:
+    Your response should be in the following JSON format with the language code as the value for the follow_up_language key based on the language that the customer is comfortable in:
     {json.dumps(response_example)}
     """
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("callback_date_time prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
         
@@ -1073,7 +1081,7 @@ def get_callback_date_time(session_id,session_data_cache):
     Your response should be in the following JSON format:
     {json.dumps(response_example)}
     """
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("callback_date_time prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
@@ -1131,7 +1139,7 @@ def get_extra_data(session_id,session_data_cache):
     do NOT prepend labels (like "json"). Output only valid JSON.
     Always make sure the exact response you give as string should be a valid JSON string that can be used for python api json.loads(<your response string>)
     """
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("got extra data response as ===== {} --{}".format(resp,type(resp)))
     if resp and isinstance(resp,str):
         updated_dict = hp.json.loads(resp)
@@ -1156,7 +1164,7 @@ def get_extra_data(session_id,session_data_cache):
             Provide the updated summary.
             """
         mlogger.info("vehicle summary prompt == {}".format(prompt))
-        resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-2.5-flash-lite","session_id":session_id})
+        resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
         mlogger.info("got vehicle summary response as ===== {}".format(resp))
         updated_dict["vehicle_persona_summary"] = resp
 
@@ -1415,5 +1423,5 @@ def get_disposition_classification(query = None, session_id = None, session_data
     # FINAL INSTRUCTION
     Based on the data above, pick exactly ONE value from the classification list provided. Return ONLY that word/phrase and nothing else. No explanation, no punctuation, just the value.
     """
-    result = run_prompt_sync(user_query = " ",  system_prompt= prompt, history=[], **{"session_id": session_id, "model_identifier":"gcp-gemini-2.5-flash-lite"})
+    result = run_prompt_sync(user_query = " ",  system_prompt= prompt, history=[], **{"session_id": session_id, "model_identifier":"gcp-gemini-3.1-flash-lite-preview"})
     return result

@@ -32,9 +32,9 @@ def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], **kw
     request_data = kwargs.get("request_data",{})
     resp = ""
     if messages:
-        resp = ai_service_app.get_llm_response(messages=messages,audit_params={"session_id":request_data.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{ }).get("model_identifier","gcp-gemini-2.5-flash-lite")})
+        resp = ai_service_app.get_llm_response(messages=messages,audit_params={"session_id":request_data.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{ }).get("model_identifier","gcp-gemini-3.1-flash-lite-preview")})
     else:
-        resp = ai_service_app.get_llm_response(user_query=user_query,system_prompt=system_prompt,history=history,audit_params={"session_id":kwargs.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{}).get("model_identifier","gcp-gemini-2.5-flash-lite")})
+        resp = ai_service_app.get_llm_response(user_query=user_query,system_prompt=system_prompt,history=history,audit_params={"session_id":kwargs.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{}).get("model_identifier","gcp-gemini-3.1-flash-lite-preview")})
     
     ###TODO write valid json detector and retry if not valid
     return resp
@@ -88,7 +88,7 @@ def get_purpose_and_steps(*args, **kwargs):
     
     flow = "service" if campaign_type == "post-sales" else "either test drive at the showroom or at home"
     urgency_hooks = campaign_data.get("urgency_hook",[])
-    date_now = hp.datetime.now().strftime("%A, %B %d, %Y")
+    date_now = hp.datetime.now().strftime("%A, %B %d, %Y") ## TODO - add timezone. add referenced date and time for tom day after etc.
     offer = campaign_data.get("campaign_offer","No Offer")
     date_time_ref = f"\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
 

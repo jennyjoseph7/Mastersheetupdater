@@ -287,7 +287,7 @@ def get_or_create_session(data,channel=None,engaged=False):
                         logger.info(f"Calling determine_campaign_next_action for the session_id: {session_id}--> diposition is set to engaged.")
                         # call_next_campaign_workflow_task(sessions[0].get("campaign_id"),sessions[0].get("campaign_type"),sessions[0].get("lead_id"),sessions[0].get("channel"),channel_identifier,"engaged",pg=pg)
 
-                    pg.update("session","session_id",session_id,{"disposition":"engaged"})
+                    pg.update("session","session_id",session_id,{"disposition":"engaged","status":"interacted"})
                     
                     # updating disposition in lead
                     if data.get("campaign_type") == "pre-sales":
@@ -413,7 +413,7 @@ def create_new_session(data,channel=None,engaged=False):
             **data,
             "session_live": True,
             "channel": channel or "whatsapp_chat",
-            "status": "interacted",
+            "status": "interacted" if engaged else "queued",
             "disposition": "engaged" if engaged else "queued",
             "campaign_type": data.get("campaign_type","inbound"),
             "campaign_id": data.get("campaign_id",'inbound'),
@@ -437,6 +437,7 @@ def create_new_session(data,channel=None,engaged=False):
             pg.update("pre_sales_lead","pre_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel,"user_id":data.get("user_id")})
         elif data.get("campaign_type") == "post-sales":
             pg.update("post_sales_lead","post_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel})
+        # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
         return s 
 
 
