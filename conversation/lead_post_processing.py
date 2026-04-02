@@ -151,7 +151,8 @@ def post_session_process(*args, **kwargs):
     mlogger.info("summary_update == {}".format(summary_updated))
 
     updated_lead_data["lead_summary"] = summary_updated
-    
+    if session_mdl_obj.get("channel") in ["whatsapp_chat"]:
+        session_update_data["summary"] = summary_updated
     if campaign_type == "post_sales":
         if user_or_vehicle_data.get("vehicle_persona_summary"):
             updated_lead_data["vehicle_persona_summary"] = user_or_vehicle_data.get("vehicle_persona_summary")
