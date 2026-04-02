@@ -518,26 +518,29 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
             logger.info(f"No session found for lead_id: {lead_id}")
             return
         s_d=s_d[0]
-        pg.update("session","session_id",s_d.get("session_id"),{"disposition":incoming_status,"status":incoming_status})
-        if channel in ["whatsapp_chat"] and incoming_status in ["delivered", "reached"] and data and data.get("template_message"):
-            logger.info(f"Updating template_message in history for lead_id: {lead_id}")
-            p={
-                "reply_to": generate_uid(data),
-                "customer_response": "Hi",
-                "request_data": {
-                    "customer_response": "Hi"
-                },
-                "session_id": s_d.get("session_id"),
-                "user_id": data.get("user_id"),
-                "responses": [
-                    {
-                        "intent": "greeting",
-                        "placeholder": data.get("template_message"),
-                        "index": 1
-                    }
-                ]
-            }
-            post_messages_data(**p)
+        session_id = s_d.get("session_id")
+        template_message = data.get("template_message") if data else None
+        if channel in ["whatsapp_chat"]:
+            pg.update("session","session_id",session_id,{"disposition":incoming_status,"status":incoming_status})
+            if post_template_message and template_message and incoming_status in ["delivered", "reached"]:
+                logger.info(f"Updating template_message in history for lead_id: {lead_id}")
+                p={
+                    "reply_to": generate_uid(data),
+                    "customer_response": "Hi",
+                    "request_data": {
+                        "customer_response": "Hi"
+                    },
+                    "session_id": session_id,
+                    "user_id": data.get("user_id"),
+                    "responses": [
+                        {
+                            "intent": "greeting",
+                            "placeholder": template_message,
+                            "index": 1
+                        }
+                    ]
+                }
+                post_messages_data(**p)
             
         return update_payload
 
