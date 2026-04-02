@@ -640,7 +640,7 @@ class BaseWebhookConverter:
         logger.info("Calling session logic...")
         
         # call session logic here...
-        d=handle_session_logic(mobile_number,"whatsapp_chat")
+        d=handle_session_logic(mobile_number,"whatsapp_chat",True)
         logger.info(f"Session logic result: {d}")
         user_d=temporary_data.get("whatsapp_user_details")
         converse_kwargs.update({
