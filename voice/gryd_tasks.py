@@ -317,7 +317,6 @@ def trigger_voice_call(*args, **kwargs):
 
 
 
-
 @gryd.is_a_task(function_name="post_billing_object")
 def post_billing_object(status, session_id, duration = 1, *args, **kwargs):
 

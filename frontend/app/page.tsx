@@ -630,11 +630,24 @@ export default function CampaignDashboard() {
       </Badge>
     ));
 
-  const handleEdit = (campaign: Campaign) => {
-    const campaignId = campaign.campaign_id ?? campaign.id;
-    router.push(`/campaign/create?edit=${campaignId}`);
-  };
+  // const handleEdit = (campaign: Campaign) => {
+  //   const campaignId = campaign.campaign_id ?? campaign.id;
+  //   router.push(`/campaign/resume?id=${campaignId}&type=presales`);
+  // };
+const handleEdit = (campaign: Campaign) => {
+  const campaignId = campaign.campaign_id ?? campaign.id;
 
+  // 1. Extract the raw type (handles both array and string cases)
+  const rawType = Array.isArray(campaign.campaign_type)
+    ? campaign.campaign_type[0]
+    : campaign.campaign_type;
+
+  // 2. Normalize the type for the URL (e.g., "pre-sales" or "pre_sales" -> "presales")
+  // This removes hyphens and underscores to match your "presales" hardcoded style
+  const dynamicType = rawType?.toLowerCase().replace(/[-_]/g, "") || "presales";
+
+  router.push(`/campaign/resume?id=${campaignId}&type=${dynamicType}`);
+};
   const handleDuplicate = async (campaign: Campaign) => {
     try {
       const campaignId = campaign.campaign_id ?? campaign.id;
@@ -686,9 +699,9 @@ export default function CampaignDashboard() {
     }
   };
 
-  const handleInsights = (campaign: Campaign) => {
+  const handleInsights = (campaign: Campaign , campaignType: string) => {
     const campaignId = campaign.campaign_id ?? campaign.id;
-    router.push(`/campaign/insights?campaign_id=${campaignId}`);
+    router.push(`/campaign/insights?campaign_id=${campaignId}&campaign_type=${campaignType}`);
   };
 
   const handleDeleteClick = (campaign: Campaign) => {
@@ -1120,7 +1133,7 @@ export default function CampaignDashboard() {
                               variant="ghost"
                               size="sm"
                               className="h-8 gap-1.5 px-2 text-xs"
-                              onClick={() => handleInsights(campaign)}
+                              onClick={() => handleInsights(campaign, campaignType || "")}
                             >
                               <Eye className="h-3.5 w-3.5" />
                               View Analytics
