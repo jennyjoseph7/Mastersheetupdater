@@ -151,7 +151,8 @@ def post_session_process(*args, **kwargs):
     mlogger.info("summary_update == {}".format(summary_updated))
 
     updated_lead_data["lead_summary"] = summary_updated
-    
+    if session_mdl_obj.get("channel") in ["whatsapp_chat"]:
+        session_update_data["summary"] = summary_updated
     if campaign_type == "post_sales":
         if user_or_vehicle_data.get("vehicle_persona_summary"):
             updated_lead_data["vehicle_persona_summary"] = user_or_vehicle_data.get("vehicle_persona_summary")
@@ -1002,7 +1003,13 @@ def get_preffered_language(session_id,session_data_cache):
         A dictionary containing the preffered language.
     """
     campaign_data = session_data_cache.get("campaign_data")
-    message_history = session_data_cache.get("messages")
+    messages = session_data_cache.get("messages")
+    message_history = []
+    for message in messages:
+        if "intent" in message and message.get("intent") == "llm_response":
+            message_history.append({"role" : "my agent", "message":message.get("message","")})
+        else:
+            message_history.append({"role" : "customer", "message":message.get("message","")})
     response_example = {
         "follow_up_language": "en"
     }
@@ -1016,12 +1023,13 @@ def get_preffered_language(session_id,session_data_cache):
     For example:
     If the customer says anything 'talk in hindi' you should return the value of follow_up_language as 'hi' which is the google language code for hindi.
     If the customer just speaks in a different language for example only speaks in tamil. You should return the value of follow_up_language as 'ta' which is the google language code for tamil.
-
+    If the customer seems to be speaking in a language different from the language the agent is speaking in the follow_up_language should be the google language code for the language the customer is speaking in.
+    
     Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
     Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
     do NOT prepend labels (like "json"). Output only valid JSON.
 
-    Your response should be in the following JSON format:
+    Your response should be in the following JSON format with the language code as the value for the follow_up_language key based on the language that the customer is comfortable in:
     {json.dumps(response_example)}
     """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
