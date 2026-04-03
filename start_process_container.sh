@@ -21,7 +21,7 @@ function gen_aws_creds_file() {
 
 function main() {
 
-	if [ $ENVIRONMENT == "production" ];then
+	if [ $ENVIRONMENT == "autongage-production" ];then
         gen_aws_creds_file
 		source ./start_single_worker.sh
 		main
