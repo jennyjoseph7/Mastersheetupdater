@@ -374,10 +374,14 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
     end_date_str = campaign.get("end_date")
     now_epoch = int(time.time())
     end_date_epoch = int(end_date_str) if end_date_str else None
-
+    logger.info(f"Inactive cutoff epoch: {inactive_cutoff_epoch}")
+    is_inactive = (
+        inactive_cutoff_epoch is not None and
+        now_epoch > inactive_cutoff_epoch
+    )
     # end_session if end_date reached and no history to be updated..
     if end_date_epoch and now_epoch >= end_date_epoch:
-        if not history_updated and now_epoch > inactive_cutoff_epoch:
+        if not history_updated and is_inactive:
             logger.info(f"End date reached for session {session_id} and no new history and also its been inactive for more than {inactive_cutoff_epoch} seconds. So ending the session.")
             end_session(**{"session_id":session_id,"call_post_process":False}, pg=pg)
             return

@@ -246,51 +246,6 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
             }}
         ]
         """
-
-        # system_prompt = None 
-
-        # system_prompt = f"""
-        # You are a Product-Driven Campaign & Performance Marketing AI Agent.
-        # CRITICAL: Extract the EXACT product name from brochure/website first. Use it consistently everywhere — captions, hooks, slogans, CTAs, messages. Never say "our product" or "this vehicle".
-
-        # Generate exactly {len(campaign_batch)} campaigns — one per ID in the batch.
-        # Return a strict JSON array only. No markdown, no comments, no extra keys.
-
-        # Each campaign schema:
-        # {{
-        # "campaign_idea_identifier": <exact batch ID>,
-        # "campaign_objective": <string>,
-        # "campaign_explanation": <string — name product, audience, insight, channels, specs>,
-        # "performance_strategy": {{
-        #     "channels": [{{ "channel": "", "reasoning": "", "ad_formats": [] }}],
-        #     "budget_allocation": [{{ "channel": "", "budget_percent": 0 }}],
-        #     "funnel_strategy": {{ "TOF": "", "MOF": "", "BOF": "" }}
-        # }},
-        # "targeting": {{
-        #     "age_range": "", "gender": "", "locations": [], "languages": [],
-        #     "interests": [], "behaviors": [], "life_events": [], "job_titles": []
-        # }},
-        # "audience": [<string>],
-        # "cta": [<string>],         // min 2; ALL must include product name
-        # "hashtags": [<string>],    // exactly {self.num_of_hashtags}; ≥60% product/model-specific
-        # "campaign_post_sets": [    // exactly {self.num_of_campaign_post_sets} items. Each post set will have one post caption, one hook, one slogan, and one message
-        #     {{
-        #     "post_caption": [<string>],  // product name in first 10 words  // Only one post_caption
-        #     "hooks":        [<string>],  // must reference product name     // Only one hook
-        #     "slogan":       [<string>],  // must reference product name     // Only one slogan
-        #     "messages":     [<string>]   // 7-8 sentences; product name in first 2; ≥3 specific features; subtle emojis // Only one message
-        #     }}
-        # ]
-        # }}
-
-        # RULES:
-        # - Each post set: different feature angle, different emotional trigger
-        # - Features must be specific (e.g. "1.2L turbo", not "powerful engine")
-        # - Targeting derived from cohort, affinity signals, and product positioning
-        # - Channels: Facebook, Instagram, Snapchat, YouTube, Google Ads, TikTok
-        # - Personalize using cohort traits, affinity signals, and customer interaction context
-        # - "Opportunity Name" = likely customer; "Opportunity Owner" = sales rep
-        # """
         
         shared_user_context = self._build_shared_user_context()
         user_context_parts = [f"Campaign IDs for this batch (generate one idea per ID): {json.dumps(campaign_batch, ensure_ascii=False)}",] + shared_user_context
