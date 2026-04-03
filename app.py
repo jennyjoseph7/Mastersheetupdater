@@ -16,6 +16,7 @@ import autocrm_validator
 import json
 import hmac
 import hashlib
+import requests
 from core.razorpay_service import razorpay_webhook_handler
 from core.core import generate_otp, dealership_signup, reset_password
 
@@ -87,6 +88,26 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
     # payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
     payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
     language = payload.get("language", "english")
+    src = payload.get("sourceAddress", "") or payload.get("from", "")
+    dst = payload.get("recipientAddress", "") or payload.get("to", "")
+    logger.info(f"Source Mobile Number = {src} and Recipient Number = {dst} for provider {channel_provider}")
+    if src in FORWARD_NUMBERS and dst not in FORWARD_NUMBERS:
+        _number = dst
+    elif dst in FORWARD_NUMBERS and src not in FORWARD_NUMBERS:
+        _number = src
+    else:
+        _number = src or dst
+    
+    logger.info(f"Mobile Number = {_number} and {FORWARD_WEBHOOK_URL} for provider {channel_provider}")
+    if (src in FORWARD_NUMBERS or dst in FORWARD_NUMBERS) and FORWARD_WEBHOOK_URL:
+        logger.info(f"Forwarding webhook called to staging server..")
+        try:
+            forward_response=requests.post(FORWARD_WEBHOOK_URL, json=payload)
+            logger.info(f"Forwarded webhook to {FORWARD_WEBHOOK_URL}, "f"status={forward_response.status_code}")
+            return
+        except Exception as e:
+            logger.error(f"Failed to forward webhook to {FORWARD_WEBHOOK_URL}, "f"error={e}")
+
     payload.update({
         "channel": channel,
         "enterprise_id": enterprise_id,
