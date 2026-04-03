@@ -27,6 +27,7 @@ export PRIMARY=${PRIMARY:-0}
 export WAITRESS_PATH=waitress-serve
 export CRON_SCHEDULER_PATH=execute-cron-continuous
 export CRON_WORKER_PATH=cron_worker
+export APP_DIR=${APP_DIR:-"/root/app/"}
 
 
 function stop_workers() {
@@ -111,9 +112,37 @@ function start_workers() {
 	fi
 
     echo $worker_pid > ./worker.pid
+    if [ $SETUP_LOGIO_AGENT == "True" ];then
+        sleep 60
+        setup_logio_agent
+    fi
     while [[ -n `jobs -rl | grep $worker_pid` ]]; do sleep 1; echo `jobs -rl`; done
     echo "Exitting.."
     exit
+}
+
+function stop_logio_server() {
+	kill -9 $(ps -eaf | grep log.io- | head -n -1 | awk '{print $2}')
+}
+
+
+function setup_logio_agent() {
+    python3 /root/generate_logio_conf.py
+    export LOGIO_FILE_INPUT_CONFIG_PATH=$APP_DIR/logio_conf.json
+    status=$?
+	if [ $status != 0 ];then
+		echo "Generating log config failed. Exitting."
+		exit
+	fi	
+	
+	stop_logio_server
+
+	if [ $status == 0 ];then
+		echo "Start input server"
+		nohup log.io-file-input &
+	else
+		echo "Starting logger failed."
+	fi
 }
 
 function main() {
@@ -135,6 +164,10 @@ function main() {
 
 	    app_pid=$!
 		echo $app_pid > app.pid
+        if [ $SETUP_LOGIO_AGENT == "True" ];then
+            sleep 60
+            setup_logio_agent
+        fi
         while [[ -n `jobs -rl | grep $app_pid` ]]; do sleep 300; echo `jobs -rl`; done
         echo "Exitting..."
         exit
@@ -156,6 +189,10 @@ function main() {
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
+            if [ $SETUP_LOGIO_AGENT == "True" ];then
+                sleep 60
+                setup_logio_agent
+            fi
             while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
             echo "Exitting..."
             exit
@@ -189,6 +226,10 @@ function main() {
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
+            if [ $SETUP_LOGIO_AGENT == "True" ];then
+                sleep 60
+                setup_logio_agent
+            fi
             while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
             echo "Exitting..."
             exit

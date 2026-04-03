@@ -10,11 +10,11 @@ result = response = gryd.await_result(
     task="get_whatsapp_template",
     service="autocrm-agent",
     kwargs={
-        "lead_id": "test-user-8248913170-stellantis-india-52975526-a76b-3fd5-956d-1c1db2c4a318",
+        "lead_id": "test-8277676778-dave-ai-india-1e8288f2-2cdc-31f9-8f53-fa09d6e8801f",
         "campaign_type": "pre-sales",
-        "campaign_objective" : ["Test Drive Booking"],
+        "campaign_objective" : ["Confirm Test Drives Through Tech Appeal - WhatsApp"],
         #"lead_info": {},
-        "dealership_id": "daveai"
+        "dealership_id": "dave-ai-india"
     }
 )
 

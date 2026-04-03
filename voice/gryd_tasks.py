@@ -312,10 +312,6 @@ def trigger_voice_call(*args, **kwargs):
             
             logger.info(f"Call is ongoing for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
             
-
-
-
-
 @gryd.is_a_task(function_name="post_billing_object")
 def post_billing_object(status, session_id, duration = 1, *args, **kwargs):
 
@@ -460,24 +456,32 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
     payload["message_id"] = message_id or generate_uid(session_data)
-    post_contact_status(
+    
+    logger.info(f"Constructed payload for contact status: {payload.get('provider_status')}, message_id: {payload.get('message_id')}")
+    if payload.get("provider_status") == "attempted":
+        for x in post_contact_status(
+            **payload
+        ):
+            return 
+
+        # gryd.create_async_task(
+        #     "post_contact_status", 
+        #     config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+        #     kwargs=payload)
+    else: 
+        for x in post_contact_status(
             message_id,
             **payload
-        )
-    
-    return 
-    if payload.get("provider_status") == "attempted":
-        gryd.create_async_task(
-            "post_contact_status", 
-            config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-            kwargs=payload)
-    else: 
-        gryd.create_async_task(
-            "post_contact_status", 
-            config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-            args = (message_id,),
-            kwargs=payload)
-    #make this normal function
+        ):
+            return 
+
+        # gryd.create_async_task(
+        #     "post_contact_status", 
+        #     config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+        #     args = (message_id,),
+        #     kwargs=payload)
+
+
 
 
 @gryd.is_a_task(function_name="end_voice_session")
