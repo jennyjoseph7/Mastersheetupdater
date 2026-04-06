@@ -342,9 +342,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 mlogger.info(f"Updating template_message in history for lead_id: {lead_id}")
                 p={
                     "reply_to": generate_uid(data),
-                    "customer_response": "Hi",
+                    "customer_response": "",
                     "request_data": {
-                        "customer_response": "Hi"
+                        "customer_response": ""
                     },
                     "session_id": session_id,
                     "user_id": data.get("user_id"),

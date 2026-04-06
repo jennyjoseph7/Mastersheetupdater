@@ -714,11 +714,10 @@ def nada_pre_sales(*args,**kwargs):
     user_id=None
     with get_pg_connector() as pg:
         # getting the user_id from session_id
-        session_data=list(pg.list("session",{"session_id":session_id}))
+        session_data=pg.get("session","session_id",session_id)
         if not session_data:
             logger.error(f"No session found for session_id={session_id}")
             return
-        session_data=session_data[0]
         logger.info(f"TEST SESSION DATA--{session_data}")
         user_id=session_data.get("user_id")
         phone_number=session_data.get("phone_number")
@@ -889,13 +888,13 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         lead_id_field = "post_sales_lead_id"
 
     with get_pg_connector() as pg:
-        campaign_details = list(pg.list(campaign_table, {"campaign_id": campaign_id}))
-
+        # campaign_details = list(pg.list(campaign_table, {"campaign_id": campaign_id}))
+        campaign_details=pg.get(campaign_table,"campaign_id",campaign_id)
     if not campaign_details:
         yield {"status": "Error", "error_description": f"No campaign found for campaign_id={campaign_id}"}
         return
 
-    campaign_details = campaign_details[0]
+    # campaign_details = campaign_details[0]
     campaign_objective_name=campaign_details.get("campaign_objective_name") 
     if not campaign_objective_name:
         yield {"status": "Error", "error_description": f"No campaign objective name found for campaign_id={campaign_id}"}
@@ -907,11 +906,12 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     else:
         lead_id = lead
         with get_pg_connector() as pg:
-            result = list(pg.list(lead_table, {lead_id_field: lead_id}))
+            # result = list(pg.list(lead_table, {lead_id_field: lead_id}))
+            result=pg.get(lead_table,lead_id_field,lead_id)
         if not result:
             yield {"status": "Error", "error_description": f"No lead found for {lead_id_field}={lead_id}"}
             return
-        lead_data = result[0]
+        lead_data = result
 
     if not lead_id:
         yield {"status": "Error", "error_description": "Lead ID missing"}
@@ -1051,7 +1051,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
             }
         }
     }
-    run_async = campaign_details.get("run_async", True)
+    run_async = campaign_details.get("run_async", False)
     is_testing = campaign_details.get("_is_testing", False)
 
     if not run_async:
@@ -1069,7 +1069,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         AUTOCRM_CAMPAIGN_SERVICE_NAME,
         args=[],
         kwargs={"_is_testing": is_testing, **final_payload},
-        enterprise_id=campaign_details.get("enterprise_id", "autobotcrm")
+        enterprise_id=campaign_details.get("enterprise_id", "autocrm")
     )
 
     yield {"task_response": async_task, "campaign_response": final_payload}

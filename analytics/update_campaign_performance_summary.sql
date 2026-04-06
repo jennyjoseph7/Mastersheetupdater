@@ -140,7 +140,7 @@ BEGIN
             COUNT(*) FILTER (
                 WHERE status IN (
                     'attempted','engaged','converted',
-                    'reached','contacted','failed','error'
+                    'reached','contacted','failed','error','busy'
                 )
             ) AS sent_called,
 
@@ -161,7 +161,7 @@ BEGIN
                     'engaged','converted'
                 )
             ) AS interacted,
-
+    
             COUNT(*) FILTER (WHERE status = 'converted') AS converted,
             COUNT(*) AS total
 
@@ -257,7 +257,8 @@ $sql$, p_lead_model);
             'failure_stats_by_channel', COALESCE(v_failure_reasons, '[]'::jsonb),
             'intent_distribution_by_channel', COALESCE(v_intent_distribution, '[]'::jsonb),
             'created', (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
-            'updated', (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+            'updated', (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+            'last_processed_at', (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
         ),
         NOW(),
         NOW()

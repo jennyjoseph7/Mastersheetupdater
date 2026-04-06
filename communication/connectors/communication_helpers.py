@@ -112,10 +112,10 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
             campaign_model= "post_sales_campaign" if campaign_type == "post-sales" else "pre_sales_campaign"
             lead_model = "post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
             if lead_id and lead_model:
-                l=list(pg.list(lead_model,{f"{lead_model}_id": lead_id}))
+                l=pg.get(lead_model,{f"{lead_model}_id": lead_id})
                 if not l:
                     logger.info(f"No lead found for lead_id: {lead_id} in model: {lead_model}")
-                l=l[0] if l else {}
+                # l=l[0] if l else {}
                 l_person_name = l.get("person_name",None)
                 l_campaign_obj_name = l.get("campaign_objective_name",None)
                 l_campaign_name = l.get("campaign_name",None)
@@ -157,13 +157,12 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
 
         if campaign_id: 
             model_name = "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
-            campaign_data = list(pg.list(model_name, {"campaign_id": campaign_id}))
-
+            # campaign_data = pg.get(model_name, {"campaign_id": campaign_id})
+            campaign_data= pg.get(model_name,"campaign_id",campaign_id)
             if campaign_data:
-                c_data = campaign_data[0]
-                dealership_id = c_data.get("dealership_id")
-                payload["campaign_objective_name"] = c_data.get("campaign_objective_name")
-                payload["campaign_name"] = c_data.get("campaign_name")
+                dealership_id = campaign_data.get("dealership_id")
+                payload["campaign_objective_name"] = campaign_data.get("campaign_objective_name")
+                payload["campaign_name"] = campaign_data.get("campaign_name")
                 payload["dealership_id"] = dealership_id
 
                 # get credentials for dealership (skip if "dave")
@@ -358,7 +357,7 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
     Returns:
         None
     """
-    logger.info(f"In Handling session post process or end function. For session_id: {session_id}")
+    logger.info(f"In Handling session post process or end function. For session_id: {session_id} and history_updated: {history_updated} and can_call_post_process: {can_call_post_process}")
     session = pg.get("session", "session_id",session_id)
     if not session:
         logger.warning(f"Session {session_id} not found")
@@ -387,7 +386,7 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
         logger.info(f"End date reached for session {session_id} but history updated .Since it has been inactive for less than {inactive_cutoff_epoch} seconds. So not ending the session.")
 
     # call post_session_process only if there is new history 
-    if history_updated or can_call_post_process:
+    if history_updated and can_call_post_process:
         logger.info(f"Triggering post_session_process for session {session_id} as history updated.And not ending session.")
 
         gryd.create_async_task(
@@ -402,8 +401,12 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
             "session",
             "session_id",
             session_id,
-            {"last_post_process_time": now_epoch},
+            {"last_post_process_time": now_epoch,
+             "has_unprocessed_history": False
+             }
         )
+        logger.info(f"after triggering post_session_process for session {session_id}.Also updating the last_post_process_time in session_model.")
+        return
         
 def create_new_session(data,channel=None,engaged=False):
     logger.info(f"Creating new session for user_id: {data.get('user_id')} and data: {json.dumps(data,indent=4)}")
@@ -444,10 +447,9 @@ def update_session_data_in_lead(session_id,status,pg=None):
     if not pg:
         logger.error("Postgres connection is required to update session data in lead.")
         return
-    session_data = list(pg.list("session", {"session_id": session_id}))
+    session_data = pg.get("session", "session_id",session_id)
     if not session_data:
         logger.info(f"Could not find session with session_id: {session_id}")
-    session_data = session_data[0]
     lead_id = session_data.get("lead_id")
     campaign_type = session_data.get("campaign_type")
     last_interaction_time = session_data.get("last_response_time",None)
