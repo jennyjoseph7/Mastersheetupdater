@@ -1,5 +1,9 @@
 import sys
 import os, re, tempfile
+import mimetypes
+import time
+import urllib.parse
+from datetime import datetime, timedelta, timezone
 import requests
 import tempfile
 import os
@@ -22,6 +26,15 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, OPENAI_API_KEY, \
     OPENAI_OUTPUT_TEXT_TOKEN_PRICE, \
     OPENAI_INPUT_IMAGE_TOKEN_PRICE, \
     OPENAI_OUTPUT_IMAGE_TOKEN_PRICE, \
+    FIREFLY_SERVICES_CLIENT_ID, \
+    FIREFLY_SERVICES_CLIENT_SECRET, \
+    FIREFLY_CONTENT_CLASS, \
+    FIREFLY_STRUCTURE_STRENGTH, \
+    FIREFLY_CREDITS_PER_IMAGE, \
+    FIREFLY_USD_PER_CREDIT, \
+    ADOBE_ANALYTICS_GLOBAL_COMPANY_ID, \
+    ADOBE_ANALYTICS_CLIENT_ID, \
+    ADOBE_ANALYTICS_ACCESS_TOKEN, \
     VALIDATE_PROMPT_MODEL, \
     AutocrmModel
 from combine_images import merge_layers, DEFAULT_PNG_ELEMENTS, DEFAULT_SVG_ELEMENTS, replace_svg_text_by_id, DEFAULT_OFFER, DEFAULT_CAMPAIGN_DETAILS
@@ -32,6 +45,14 @@ from spark_helpers import func_gryd_file_system, download_file
 SERVICE = 'spark'
 gryd.SERVICE = SERVICE
 gryd.set_queue_manager()
+FIREFLY_API_BASE = "https://firefly-api.adobe.io"
+FIREFLY_IMS_TOKEN_URL = "https://ims-na1.adobelogin.com/ims/token/v3"
+FIREFLY_IMS_SCOPE = os.environ.get(
+    "FIREFLY_IMS_SCOPE",
+    "openid,AdobeID,read_organizations,firefly_enterprise,firefly_api,ff_apis",
+)
+FIREFLY_JOB_POLL_INTERVAL_SEC = float(os.environ.get("FIREFLY_JOB_POLL_INTERVAL_SEC", "1"))
+FIREFLY_JOB_MAX_WAIT_SEC = float(os.environ.get("FIREFLY_JOB_MAX_WAIT_SEC", "600"))
 DEFAULT_OUTPUT_PATH = joinpath(APP_DIR, "output")
 hp.mkdir_p(DEFAULT_OUTPUT_PATH)
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
@@ -61,7 +82,7 @@ def manage_svg(element: str, rooftop: dict, template: dict, files_to_delete: lis
     text_to_ids = DEFAULT_SVG_ELEMENTS[element]['ids']
     element_svg_path = do_download(element_svg_path, files_to_delete, suffix='.svg')
     replace_svg_text_by_id(element_svg_path, {
-        template.get(k): rooftop.get(v, "") for k, v in text_to_ids.items() if rooftop.get(v)
+        template.get(k): rooftop.get(v, "") for k, v in text_to_ids.items()
     }, logger=logger)
     return element_svg_path
 
@@ -193,6 +214,7 @@ def create_campaign_image(rooftop_type: str, template_id: str, base_png: str, ca
     rooftop_model = get_rooftop_model(rooftop_type, logger=logger)
     logger.info(f"Brand ID: {brand_id}")
     rooftop = hp.make_single(rooftop_model.list(_page_size=1, _as_option=True, supported_brands=[brand_id], **{'logo_url~': None}), force=True)
+    logger.info(f"Rooftop: {rooftop}")
     dealership_id = rooftop.get('dealership_id')
     dealership = dealership_model.get(dealership_id)
     logger.info(f"Dealership: {dealership}")
@@ -669,6 +691,328 @@ def openai_image_generation(
         prompt=prompt
     )
 
+
+def _firefly_get_access_token(client_id: str, client_secret: str, logger: hp.logging.Logger):
+    if not client_id or not client_secret:
+        raise RuntimeError("FIREFLY_SERVICES_CLIENT_ID / FIREFLY_SERVICES_CLIENT_SECRET not set.")
+    resp = requests.post(
+        FIREFLY_IMS_TOKEN_URL,
+        data={
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "scope": FIREFLY_IMS_SCOPE,
+        },
+        timeout=60,
+    )
+    if resp.status_code != 200:
+        logger.error(f"Adobe IMS token error: {resp.status_code} {resp.text}")
+        raise RuntimeError(f"Adobe IMS token error: {resp.text}")
+    data = resp.json()
+    token = data.get("access_token")
+    if not token:
+        raise RuntimeError(f"Adobe IMS response missing access_token: {data}")
+    return token
+
+
+def _firefly_upload_image(local_path: str, client_id: str, token: str, logger: hp.logging.Logger) -> str:
+    mime = mimetypes.guess_type(local_path)[0] or "application/octet-stream"
+    with open(local_path, "rb") as f:
+        image_bytes = f.read()
+    url = f"{FIREFLY_API_BASE}/v2/storage/image"
+    logger.info(f"Uploading image to Firefly storage: {url} ({mime}, {len(image_bytes)} bytes)")
+    resp = requests.post(
+        url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "x-api-key": client_id,
+            "Content-Type": mime,
+            "Content-Length": str(len(image_bytes)),
+        },
+        data=image_bytes,
+        timeout=120,
+    )
+    if resp.status_code not in (200, 201):
+        logger.error(f"Firefly storage upload error: {resp.status_code} {resp.text}")
+        raise RuntimeError(f"Firefly storage upload error: {resp.text}")
+    body = resp.json()
+    images = body.get("images") or []
+    if not images or not images[0].get("id"):
+        raise RuntimeError(f"Firefly storage upload unexpected response: {body}")
+    return images[0]["id"]
+
+
+def _firefly_poll_job(status_url: str, client_id: str, token: str, logger: hp.logging.Logger):
+    deadline = time.time() + FIREFLY_JOB_MAX_WAIT_SEC
+    while time.time() < deadline:
+        r = requests.get(
+            status_url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "x-api-key": client_id,
+            },
+            timeout=60,
+        )
+        if r.status_code != 200:
+            logger.error(f"Firefly status error: {r.status_code} {r.text}")
+            raise RuntimeError(f"Firefly status error: {r.text}")
+        data = r.json()
+        status = data.get("status")
+        logger.info(f"Firefly job status: {status}")
+        if status == "succeeded":
+            return data
+        if status == "failed":
+            logger.error(f"Firefly job failed: {data}")
+            raise RuntimeError(f"Firefly job failed: {data}")
+        time.sleep(FIREFLY_JOB_POLL_INTERVAL_SEC)
+    raise RuntimeError("Firefly job timed out waiting for completion.")
+
+
+def _adobe_analytics_usage_audit_logs_get(
+    global_company_id: str,
+    client_id: str,
+    access_token: str,
+    start_date: str,
+    end_date: str,
+    logger: hp.logging.Logger,
+    *,
+    event_type: typing.Optional[str] = None,
+    limit: int = 100,
+    page: int = 0,
+):
+    """
+    GET https://analytics.adobe.io/api/{GLOBAL_COMPANY_ID}/auditlogs/usage
+    Adobe Analytics Usage API (usage / access audit logs; max 3-month window per request).
+    See https://developer.adobe.com/analytics-apis/docs/2.0/guides/endpoints/usage/
+    eventType 61 = Api Method (lookup table in that doc).
+    """
+    path_id = urllib.parse.quote(global_company_id, safe="")
+    base = f"https://analytics.adobe.io/api/{path_id}/auditlogs/usage"
+    params = {
+        "startDate": start_date,
+        "endDate": end_date,
+        "limit": min(max(limit, 1), 1000),
+        "page": max(page, 0),
+    }
+    if event_type is not None:
+        params["eventType"] = str(event_type)
+    url = f"{base}?{urllib.parse.urlencode(params)}"
+    r = requests.get(
+        url,
+        headers={
+            "x-api-key": client_id,
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json",
+        },
+        timeout=60,
+    )
+    if r.status_code != 200:
+        logger.warning(
+            "Adobe Analytics Usage API request failed: %s %s",
+            r.status_code,
+            (r.text or "")[:800],
+        )
+        return None
+    return r.json()
+
+
+@gryd.is_a_task(function_name="firefly_image_generation", job_param='job', logger_param='logger')
+def firefly_image_generation(
+    input_image_url,
+    prompt,
+    number_of_images=1,
+    job=None,
+    logger=None,
+    **kwargs
+):
+    logger = logger or mlogger
+    start_time = hp.time()
+
+    logger.info("===== Adobe Firefly Image Generation Task Started =====")
+    logger.info(f"Prompt: {prompt}")
+    logger.info(f"Input Image URL: {input_image_url}")
+    logger.info(f"Job ID: {getattr(job, 'id', None)}")
+    logger.info(f"Requested number_of_images: {number_of_images}")
+
+    def replace_background_with_firefly(input_image_url, prompt):
+
+        client_id = FIREFLY_SERVICES_CLIENT_ID
+        client_secret = FIREFLY_SERVICES_CLIENT_SECRET
+        token = _firefly_get_access_token(client_id, client_secret, logger)
+
+        fixed_number_of_images = 1
+        logger.info(f"Forced number of images: {fixed_number_of_images}")
+
+        input_file = f"firefly_input_{uuid.uuid4().hex}.png"
+        local_img_path = os.path.join(tempfile.gettempdir(), input_file)
+
+        logger.info(f"Downloading input image to: {local_img_path}")
+        download_file(input_image_url, local_img_path)
+
+        if not os.path.exists(local_img_path):
+            raise RuntimeError("Downloaded image file not found.")
+
+        logger.info("Input image downloaded successfully")
+        logger.info(f"Input image size: {os.path.getsize(local_img_path)} bytes")
+
+        edit_prompt = f"{prompt.strip()} (Preserve details and features of the car.)"
+        logger.info(f"Edit prompt: {edit_prompt}")
+
+        upload_id = _firefly_upload_image(local_img_path, client_id, token, logger)
+
+        try:
+            os.remove(local_img_path)
+            logger.info("Input temp file deleted")
+        except Exception as e:
+            logger.warning(f"Failed to delete input temp file: {e}")
+
+        generate_url = f"{FIREFLY_API_BASE}/v3/images/generate-async"
+        body = {
+            "numVariations": fixed_number_of_images,
+            "prompt": edit_prompt,
+            "contentClass": FIREFLY_CONTENT_CLASS,
+            "structure": {
+                "strength": FIREFLY_STRUCTURE_STRENGTH,
+                "imageReference": {
+                    "source": {
+                        "uploadId": upload_id,
+                    }
+                },
+            },
+        }
+
+        logger.info(f"Calling Firefly generate-async: {generate_url}")
+        logger.info(f"contentClass: {FIREFLY_CONTENT_CLASS}, structure strength: {FIREFLY_STRUCTURE_STRENGTH}")
+
+        resp = requests.post(
+            generate_url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "x-api-key": client_id,
+                "Content-Type": "application/json",
+            },
+            json=body,
+            timeout=120,
+        )
+
+        logger.info(f"Firefly generate-async response status: {resp.status_code}")
+
+        if resp.status_code != 200:
+            logger.error(f"Firefly API error response: {resp.text}")
+            raise RuntimeError(f"Firefly generate-async error: {resp.text}")
+
+        submit = resp.json()
+        status_url = submit.get("statusUrl")
+        if not status_url:
+            raise RuntimeError(f"Firefly generate-async missing statusUrl: {submit}")
+
+        job_data = _firefly_poll_job(status_url, client_id, token, logger)
+        result = job_data.get("result") or {}
+        outputs = result.get("outputs") or []
+
+        if not outputs:
+            raise RuntimeError("No images returned from Firefly.")
+
+        ourls = []
+        for idx, out in enumerate(outputs):
+            logger.info(f"Processing image {idx + 1}")
+            img = (out or {}).get("image") or {}
+            out_url = img.get("url")
+            if not out_url:
+                logger.warning(f"Output {idx} missing image url: {out}")
+                continue
+            logger.info(f"Downloading Firefly result: {out_url[:80]}...")
+            tmp_name = f"firefly_{uuid.uuid4().hex}.png"
+            tmp_out_path = os.path.join(tempfile.gettempdir(), tmp_name)
+            dl = requests.get(out_url, timeout=120)
+            if dl.status_code != 200:
+                raise RuntimeError(f"Failed to download Firefly result image: {dl.status_code}")
+            with open(tmp_out_path, "wb") as f:
+                f.write(dl.content)
+            file_url = func_gryd_file_system(tmp_out_path, media_type='image')
+            logger.info(f"Uploaded image URL: {file_url}")
+            try:
+                os.remove(tmp_out_path)
+                logger.info("Output temp file deleted")
+            except Exception as e:
+                logger.warning(f"Failed to delete output temp file: {e}")
+            if file_url:
+                ourls.append(file_url)
+
+        if not ourls:
+            raise RuntimeError("Invalid response from Firefly.")
+
+        logger.info(f"Final image URL list: {ourls}")
+
+        credit_units = len(ourls) * FIREFLY_CREDITS_PER_IMAGE
+        logger.info(
+            f"Adobe credit units (FIREFLY_CREDITS_PER_IMAGE × output images): {credit_units}"
+        )
+
+        output_cost = credit_units * FIREFLY_USD_PER_CREDIT
+
+        total_time = hp.time() - start_time
+        total_cost = output_cost + total_time * gryd.EXECUTION_COST
+
+        logger.info(f"Output cost (credit-based): {output_cost}")
+        logger.info(f"Total cost: {total_cost}")
+        logger.info(f"Total time: {total_time:.2f} sec")
+
+        analytics_usage_audit_summary = None
+        if (
+            ADOBE_ANALYTICS_GLOBAL_COMPANY_ID
+            and ADOBE_ANALYTICS_CLIENT_ID
+            and ADOBE_ANALYTICS_ACCESS_TOKEN
+        ):
+            end_dt = datetime.now(timezone.utc)
+            start_dt = end_dt - timedelta(hours=1)
+            start_s = start_dt.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            end_s = end_dt.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            audit = _adobe_analytics_usage_audit_logs_get(
+                ADOBE_ANALYTICS_GLOBAL_COMPANY_ID,
+                ADOBE_ANALYTICS_CLIENT_ID,
+                ADOBE_ANALYTICS_ACCESS_TOKEN,
+                start_s,
+                end_s,
+                logger,
+                event_type="61",
+                limit=100,
+                page=0,
+            )
+            if isinstance(audit, dict):
+                analytics_usage_audit_summary = {
+                    "totalElements": audit.get("totalElements"),
+                    "numberOfElements": audit.get("numberOfElements"),
+                    "eventType_filter": "61",
+                    "window_hours": 1,
+                    "startDate": start_s,
+                    "endDate": end_s,
+                }
+                logger.info(
+                    "Adobe Analytics Usage API (audit, eventType=61 Api Method): totalElements=%s",
+                    analytics_usage_audit_summary.get("totalElements"),
+                )
+
+        final_result = {
+            "image_urls": ourls,
+            "credit_units": credit_units,
+            "output_cost": output_cost,
+            "total_cost": total_cost,
+            "total_time": total_time,
+            "currency": "USD",
+            "analytics_usage_audit_summary": analytics_usage_audit_summary,
+        }
+
+        logger.info(f"Returning final result: {final_result}")
+        logger.info("===== Adobe Firefly Task Completed Successfully =====")
+
+        return final_result
+
+    return replace_background_with_firefly(
+        input_image_url=input_image_url,
+        prompt=prompt
+    )
+
 word_blacklist = {
     "person", "people", "human", "man", "woman", "boy", "girl", "child", "children", "baby", "infant"
     "toddler", "teen", "teenager", "adult", "elderly", "senior", "pedestrian", "driver", "passenger", "bystander", "crowd"
@@ -899,6 +1243,7 @@ if __name__ == "__main__":
     --function <function_name> --kwargs <kwargs>
     Example:
     python spark.py --function openai_image_generation --kwargs input_image_url=https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp,prompt=Change the background to scenic view from the suburbs of Mumbai
+    python spark.py --function firefly_image_generation --kwargs input_image_url=https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp,prompt=Change the background to scenic view from the suburbs of Mumbai
     python spark.py --function comfy_image_generation --kwargs input_image_url=https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp,prompt=Change the background to scenic view from the suburbs of Mumbai
     python spark.py --function gemini_image_generation --kwargs input_image_url=https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp,prompt=Change the background to scenic view from the suburbs of Mumbai
     python spark.py --function compare_images --kwargs original_image_url=https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp,generated_image_url=https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp
@@ -944,6 +1289,8 @@ if __name__ == "__main__":
     print(f"kwargs: {kwargs}")
     if args.function == "openai_image_generation":
         print(openai_image_generation(**kwargs))
+    elif args.function == "firefly_image_generation":
+        print(firefly_image_generation(**kwargs))
     elif args.function == "comfy_image_generation":
         print(comfy_image_generation(**kwargs))
     elif args.function == "gemini_image_generation":

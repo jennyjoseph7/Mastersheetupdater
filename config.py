@@ -119,6 +119,16 @@ FIREFLY_SERVICES_CLIENT_ID = os.environ.get("FIREFLY_SERVICES_CLIENT_ID")
 FIREFLY_SERVICES_CLIENT_SECRET = os.environ.get("FIREFLY_SERVICES_CLIENT_SECRET")
 FIREFLY_CONTENT_CLASS = os.environ.get("FIREFLY_CONTENT_CLASS", "photo")
 FIREFLY_STRUCTURE_STRENGTH = int(os.environ.get("FIREFLY_STRUCTURE_STRENGTH", "85"))
+try:
+    FIREFLY_CREDITS_PER_IMAGE = float(os.environ.get("FIREFLY_CREDITS_PER_IMAGE", "1"))
+    FIREFLY_USD_PER_CREDIT = float(os.environ.get("FIREFLY_USD_PER_CREDIT", "0"))
+except ValueError as e:
+    raise ValueError(f"Error parsing FIREFLY_CREDITS_PER_IMAGE / FIREFLY_USD_PER_CREDIT: {e}")
+
+# Adobe Analytics 2.0 Usage API (audit logs — optional; see spark.firefly_image_generation)
+ADOBE_ANALYTICS_GLOBAL_COMPANY_ID = os.environ.get("ADOBE_ANALYTICS_GLOBAL_COMPANY_ID")
+ADOBE_ANALYTICS_CLIENT_ID = os.environ.get("ADOBE_ANALYTICS_CLIENT_ID")
+ADOBE_ANALYTICS_ACCESS_TOKEN = os.environ.get("ADOBE_ANALYTICS_ACCESS_TOKEN")
 
 #brochure pipeline
 AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME', 'brochure-pipeline')
