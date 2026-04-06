@@ -1,4 +1,5 @@
 import os, sys
+from tracemalloc import start
 try:
     from .base_agent import BaseAgent, gryd
 except ImportError:
@@ -7,13 +8,15 @@ except ImportError:
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
+import time
+
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
 class data_attribute_retriever(BaseAgent):
     """This agent collects the data of the campaign uploaded by the dealership for the particular campaign based on campaign id from pre and post sales lead model and will give all the distinct types of attribute list"""
-
+    start = time.perf_counter()
     def __init__(self, source, **kwargs):
         super().__init__(**kwargs)
         
@@ -32,40 +35,50 @@ class data_attribute_retriever(BaseAgent):
 
         records = []  # ensure variable always exists
 
+       
 
         if self.id is not None and self.campaign_type in ["pre-sale","pre-sales", "pre_sale", "pre_sales"]:
             try:
-                records = list(pg.list(
+                records = list(pg.get(
                     table_name="pre_sales_lead",
                     where={"pre_sales_lead_id": self.id}
                 ))
+                mid1 = time.perf_counter()
+                print(f"Time taken in Getting record from lead model: {mid1 - start:.4f} sec")
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the pre sales lead model: {e}")
             
+            
         elif self.campaign_objective_id is not None and self.campaign_type in ["pre-sale","pre-sales", "pre_sale", "pre_sales"]:
             try:
-                records = list(pg.list(
+                records = list(pg.get(
                     table_name="pre_sales_lead",
                     where={"campaign_objective_id": self.campaign_objective_id}
                 ))
+                mid1 = time.perf_counter()
+                print(f"Time taken in Getting record from lead model: {mid1 - start:.4f} sec")
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the pre sales lead model: {e}")
 
         elif self.id is not None and self.campaign_type in ["post-sales", "post_sale", "post_sales"]:
             try:
-                records = list(pg.list(
+                records = list(pg.get(
                     table_name="post_sales_lead",
                     where={"post_sales_lead_id": self.id}
                 ))
+                mid1 = time.perf_counter()
+                print(f"Time taken in Getting record from lead model: {mid1 - start:.4f} sec")
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the post sales lead model: {e}")
             
         elif self.campaign_objective_id is not None and self.campaign_type in ["post-sales", "post_sale", "post_sales"]:
             try:
-                records = list(pg.list(
+                records = list(pg.get(
                     table_name="post_sales_lead",
                     where={"campaign_objective_id": self.campaign_objective_id}
                 ))
+                mid1 = time.perf_counter()
+                print(f"Time taken in Getting record from lead model: {mid1 - start:.4f} sec")
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the post sales lead model: {e}")
 
@@ -101,6 +114,8 @@ class data_attribute_retriever(BaseAgent):
             if attrs_tuple not in seen:
                 seen.add(attrs_tuple)
                 distinct_sets.append(list(attrs_tuple))
+        mid2 = time.perf_counter()
+        print(f"Time taken in converting person_involved to person_name: {mid2 - start:.4f} sec")
 
         return distinct_sets
 
@@ -257,6 +272,8 @@ class data_attribute_retriever(BaseAgent):
                     continue
                 new_attr_list.append(attr)
             cleaned_sets.append(new_attr_list)
+        mid1 = time.perf_counter()
+        print(f"Time taken in removing unwanted attributes: {mid1 - start:.4f} sec")
         return cleaned_sets
         
 
