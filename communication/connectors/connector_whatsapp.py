@@ -363,60 +363,6 @@ def post_contact_status(*args, **data):
         )
 
         logger.info(f"[post_contact_status] should_bill={should_bill} | message_id={message_id} | prev={previous_status} → incoming={incoming_status}")
-<<<<<<< HEAD
-        if should_bill:
-            logger.info(f"[post_contact_status] Billing triggered | message_id={message_id} | prev={previous_status} → incoming={incoming_status}")
-            post_billing_obj(**data)
-            
-        session_id=None
-        # updating template message in session data cache
-        if channel in ["whatsapp_chat"] and incoming_status in ["delivered", "reached"] and payload and payload.get("template_message"):
-            logger.info(f"[post_contact_status] Updating the template message to session_data_cache for lead_id={payload.get('lead_id')}")
-            filters = {
-                "user_id": payload.get("user_id"),
-                "campaign_id": payload.get("campaign_id"),
-                "channel": channel or "whatsapp_chat",
-                "session_live": True,
-                "status": "completed~"
-            }
-            condition, param = apply_filters(**filters)
-            
-            sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
-            if not sessions:
-                logger.info(f"[post_contact_status] No sessions found for lead_id={payload.get('lead_id')}")
-                return
-            session_id = sessions[0].get("session_id")
-            p={
-                "reply_to": generate_uid(payload),
-                "customer_response": "Hi",
-                "request_data": {
-                    "customer_response": "Hi"
-                },
-                "session_id": session_id,
-                "user_id": payload.get("user_id"),
-                "responses": [
-                    {
-                        "intent": "greeting",
-                        "placeholder": payload.get("template_message"),
-                        "index": 1
-                    }
-                ]
-            }
-            post_messages_data(**p)
-        
-        if session_id:
-            payload["session_id"] = session_id
-            
-        # logger.info(f"Checking data for lead_disposition- Payload--{json.dumps(payload,indent=4)}")
-        # updating lead disposition
-        update_lead_disposition(pg,incoming_status,**payload) 
-            
-
-    yield contact_status_id
-
-
-def update_lead_disposition(pg, incoming_status, user_id=None, **data):
-=======
         
         # logger.info(f"Checking data for lead_disposition- Payload--{json.dumps(payload,indent=4)}")
         # updating lead disposition
@@ -458,7 +404,6 @@ def update_channel_identifier(user_id,**data):
 
 @gryd.is_a_task(function_name="update_lead_disposition_and_post_billing")
 def update_lead_disposition_and_post_billing(incoming_status, user_id=None, should_bill=None, **data):    
->>>>>>> scaling-up-twenty-threads
     # logger.info(f"[update_lead_disposition] Called with incoming_status={incoming_status} for lead_id={data.get('lead_id')} and DATA= {json.dumps(data,indent=4)}")
     # logger.info(f"[update_lead_disposition] Attempting to update lead disposition with incoming_status={incoming_status}, user_id={user_id}, data={data}")
     
@@ -518,13 +463,6 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
 
         lead = lead_d[0]
 
-<<<<<<< HEAD
-    field_name, field_value = get_channel_field(channel,data)
-
-    if campaign_type == "post-sales" and user_id and channel:
-        persons = lead.get("persons_involved") or []
-
-=======
         if campaign_type == "post-sales" and user_id and channel:
             persons = lead.get("persons_involved") or []
 
@@ -541,7 +479,6 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
             }
 
             field_name, field_value = channel_field_map.get(channel, (None, None))
->>>>>>> scaling-up-twenty-threads
 
             if field_name and field_value:
                 update_payload["persons_involved"] = [
@@ -553,66 +490,6 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                     for p in persons
                 ]
 
-<<<<<<< HEAD
-    if can_update_disposition(lead.get("disposition"), incoming_status):
-        logger.info(
-            f"[post_contact_status] Updating disposition for lead_id={lead_id} "
-            f"(current={lead.get('disposition')}, incoming={incoming_status})"
-        )
-        update_payload["disposition"] = incoming_status
-        #only updating the previous_contact_channel when the disposition is updated and it is higher in sequence than the current diposition
-        update_payload["previous_contact_channel"] = channel 
-        
-        # updating previous_contact_channel for person as well only when the disposition is updated and it is higher in sequence than the current diposition
-        person_payload = {"previous_contact_channel": channel}
-        pg.update("person", "user_id", user_id, person_payload)
-        
-        if session_id:
-            logger.info(f"[post_contact_status] Updating disposition {incoming_status} for session_id={session_id}")
-            pg.update("session","session_id",session_id,{"disposition":incoming_status})
-    else:
-        logger.info(
-            "[post_contact_status] Disposition skipped "
-            f"(current={lead.get('disposition')}, incoming={incoming_status})"
-        )
-
-    update_payload.pop("lead_id", None)
-    update_payload.pop("dealership_id", None)
-    logger.info(f"[post_contact_status] update_payload for lead_id={lead_id}: {update_payload}")
-    if update_payload :
-        pg.update(
-            lead_table,
-            lead_pk,
-            lead_key,
-            update_payload,
-        )
-    
-    logger.info(f"Field value for {channel} is {field_value}")
-    # call determine_campaign_next_action task
-    if incoming_status not in [ "queued" ]: #call even for status queued.
-        logger.info(f"[post_contact_status] Calling determine_campaign_next_action for lead_id={lead_id} and incoming_status={incoming_status}-----")
-        _number=data.get("phone_number") or data.get("mobile_number")
-        # call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,_number,incoming_status,pg=pg)
-    return update_payload
-
-def get_channel_field(channel, data):
-    channel_field_map = {
-        "whatsapp_chat": (
-            "last_contacted_whatsapp_number",
-            data.get("mobile_number") or data.get("phone_number"),
-        ),
-        "email": (
-            "last_contacted_email",
-            data.get("email")
-        ),
-        "voice_phone": (
-            "last_contacted_phone_number",
-            data.get("phone_number"),
-        ),
-    }
-    return channel_field_map.get(channel, (None, None))
-
-=======
         # elif channel:
         #     update_payload["previous_contact_channel"] = channel
 
@@ -677,7 +554,6 @@ def get_channel_field(channel, data):
             
         return update_payload
 
->>>>>>> scaling-up-twenty-threads
 def post_billing_obj(**message_dict):
     wa_status=message_dict.get("message_status")
     logger.info(f"Post billing obj for message_id: {message_dict.get('message_id')} and status: {wa_status}---")
