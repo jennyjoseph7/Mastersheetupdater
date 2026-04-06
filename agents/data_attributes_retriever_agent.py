@@ -16,7 +16,6 @@ mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
 class data_attribute_retriever(BaseAgent):
     """This agent collects the data of the campaign uploaded by the dealership for the particular campaign based on campaign id from pre and post sales lead model and will give all the distinct types of attribute list"""
-    start = time.perf_counter()
     def __init__(self, source, **kwargs):
         super().__init__(**kwargs)
         
@@ -43,8 +42,6 @@ class data_attribute_retriever(BaseAgent):
                     table_name="pre_sales_lead",
                     where={"pre_sales_lead_id": self.id}
                 ))
-                mid1 = time.perf_counter()
-                print(f"Time taken in Getting record from lead model: {mid1 - start:.4f} sec")
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the pre sales lead model: {e}")
             
@@ -55,8 +52,7 @@ class data_attribute_retriever(BaseAgent):
                     table_name="pre_sales_lead",
                     where={"campaign_objective_id": self.campaign_objective_id}
                 ))
-                mid1 = time.perf_counter()
-                print(f"Time taken in Getting record from lead model: {mid1 - start:.4f} sec")
+                
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the pre sales lead model: {e}")
 
@@ -66,8 +62,6 @@ class data_attribute_retriever(BaseAgent):
                     table_name="post_sales_lead",
                     where={"post_sales_lead_id": self.id}
                 ))
-                mid1 = time.perf_counter()
-                print(f"Time taken in Getting record from lead model: {mid1 - start:.4f} sec")
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the post sales lead model: {e}")
             
@@ -77,8 +71,7 @@ class data_attribute_retriever(BaseAgent):
                     table_name="post_sales_lead",
                     where={"campaign_objective_id": self.campaign_objective_id}
                 ))
-                mid1 = time.perf_counter()
-                print(f"Time taken in Getting record from lead model: {mid1 - start:.4f} sec")
+               
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the post sales lead model: {e}")
 
@@ -114,8 +107,6 @@ class data_attribute_retriever(BaseAgent):
             if attrs_tuple not in seen:
                 seen.add(attrs_tuple)
                 distinct_sets.append(list(attrs_tuple))
-        mid2 = time.perf_counter()
-        print(f"Time taken in converting person_involved to person_name: {mid2 - start:.4f} sec")
 
         return distinct_sets
 
@@ -272,16 +263,21 @@ class data_attribute_retriever(BaseAgent):
                     continue
                 new_attr_list.append(attr)
             cleaned_sets.append(new_attr_list)
-        mid1 = time.perf_counter()
-        print(f"Time taken in removing unwanted attributes: {mid1 - start:.4f} sec")
-        return cleaned_sets
+    
+   
         
 
     def run(self):
-
+        start = time.perf_counter()
         records = self.get_data_from_model()
+        mid1 = time.perf_counter()
+        print(f"Time taken in getting record from lead id : {start - mid1:.4f} sec")
         distinct_sets = self.get_data_attributes(records)
+        mid2 = time.perf_counter()
+        print(f"Time taken in getting distinct attribute sets and converting person_involved to person_name: {mid2 - mid1:.4f} sec")
         distinct_sets = self.remove_unwanted_attributes(distinct_sets)
+        mid3 = time.perf_counter()
+        print(f"Time taken in removing unwanted attributes: {mid3 - mid2:.4f} sec")
 
         return distinct_sets
 
