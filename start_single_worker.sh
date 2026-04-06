@@ -161,6 +161,7 @@ function transfer_logfiles() {
 }
 
 function main() {
+    trap 'transfer_logfiles' SIGTERM
     if [ $PYTHON_VENV != 0 ];then
     	export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
     	export WORKER_PATH=$PYTHON_VENV/bin/worker
