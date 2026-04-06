@@ -11,7 +11,7 @@ if [ ! -d $LOGDIR ];then
 fi
 
 export LOG_RETENTION_DIR=${LOG_RETENTION_DIR:-./log_retention}
-if [ ! -d $LOG_RETENTION_DIR];then
+if [ ! -d $LOG_RETENTION_DIR ];then
 	mkdir -p $LOG_RETENTION_DIR
 fi
 
