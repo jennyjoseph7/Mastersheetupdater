@@ -36,40 +36,44 @@ class data_attribute_retriever(BaseAgent):
 
        
 
-        if self.id is not None and self.campaign_type in ["pre-sale","pre-sales", "pre_sale", "pre_sales"]:
+        if self.id is not None and self.campaign_type == "pre-sales":
             try:
                 records = list(pg.get(
                     table_name="pre_sales_lead",
-                    where={"pre_sales_lead_id": self.id}
+                    id_attr="pre_sales_lead_id",
+                    id =self.id
                 ))
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the pre sales lead model: {e}")
             
             
-        elif self.campaign_objective_id is not None and self.campaign_type in ["pre-sale","pre-sales", "pre_sale", "pre_sales"]:
+        elif self.campaign_objective_id is not None and self.campaign_type == "pre-sales":
             try:
                 records = list(pg.get(
                     table_name="pre_sales_lead",
-                    where={"campaign_objective_id": self.campaign_objective_id}
+                    id_attr="pre_sales_lead_id",
+                    id =self.id
                 ))
                 
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the pre sales lead model: {e}")
 
-        elif self.id is not None and self.campaign_type in ["post-sales", "post_sale", "post_sales"]:
+        elif self.id is not None and self.campaign_type == "post-sales":
             try:
                 records = list(pg.get(
                     table_name="post_sales_lead",
-                    where={"post_sales_lead_id": self.id}
+                    id_attr="post_sales_lead_id",
+                    id =self.id
                 ))
             except Exception as e:
                 raise ValueError(f"Could not retrieve data from the post sales lead model: {e}")
             
-        elif self.campaign_objective_id is not None and self.campaign_type in ["post-sales", "post_sale", "post_sales"]:
+        elif self.campaign_objective_id is not None and self.campaign_type == "post-sales":
             try:
                 records = list(pg.get(
                     table_name="post_sales_lead",
-                    where={"campaign_objective_id": self.campaign_objective_id}
+                    id_attr="campaign_objective_id",
+                    id =self.campaign_objective_id
                 ))
                
             except Exception as e:
@@ -81,40 +85,19 @@ class data_attribute_retriever(BaseAgent):
         if not records:
             raise logger.info("No records found for given ID and campaign type.")
 
+        if self.campaign_type == "post-sales":
+            if "persons_involved" in records and "person_name" not in records:
+                records.append("person_name")
+
         return records
 
     
     
-    def get_data_attributes(self, records:list):
-        seen = set()
-        distinct_sets = []
-
-        for record in records:
-            # Start with top-level keys
-            attrs = set(record.keys())
-
-            #Add person_name if inside persons_involved
-            persons = record.get("persons_involved", [])
-            if isinstance(persons, list):
-                for person in persons:
-                    if isinstance(person, dict) and "person_name" in person:
-                        attrs.add("person_name")
-                        break
-
-            # Convert to sorted tuple for uniqueness
-            attrs_tuple = tuple(sorted(attrs))
-
-            if attrs_tuple not in seen:
-                seen.add(attrs_tuple)
-                distinct_sets.append(list(attrs_tuple))
-
-        return distinct_sets
-
     
-    def remove_unwanted_attributes(self, distinct_sets):
+    def remove_unwanted_attributes(self, attributes):
         """
         Removes attributes that:
-        - contain 'id' (case insensitive), e.g., 'vehicle_id', 'UserId', 'lead_id'
+        - contain '_id' (case insensitive), e.g., 'vehicle_id', 'UserId', 'lead_id'
         - OR appear in CUSTOM_REMOVABLE_ATTRIBUTES list
         """
         if self.campaign_type in ["pre-sales", "pre_sale", "pre_sales"]:
@@ -181,7 +164,6 @@ class data_attribute_retriever(BaseAgent):
                 'updated',
                 'campaign_name',
                 'vin_number',
-                
             ]
 
         elif self.campaign_type in ["post-sales", "post_sale", "post_sales"]:
@@ -251,35 +233,25 @@ class data_attribute_retriever(BaseAgent):
                 'vin_number',
             ]
 
-        cleaned_sets = []
-        for attrs in distinct_sets:
-            new_attr_list = []
-            for attr in attrs:
-                # Remove fields containing 'id'
-                if "_id" in attr.lower():
-                    continue
-                # Remove custom unwanted fields
-                if attr in CUSTOM_REMOVABLE_ATTRIBUTES:
-                    continue
-                new_attr_list.append(attr)
-            cleaned_sets.append(new_attr_list)
+        return [
+            attr for attr in attributes
+            if "_id" not in attr.lower() and attr not in CUSTOM_REMOVABLE_ATTRIBUTES
+        ]
     
    
         
 
     def run(self):
         start = time.perf_counter()
-        records = self.get_data_from_model()
+        attributes = self.get_data_from_model()
         mid1 = time.perf_counter()
-        print(f"Time taken in getting record from lead id : {start - mid1:.4f} sec")
-        distinct_sets = self.get_data_attributes(records)
-        mid2 = time.perf_counter()
-        print(f"Time taken in getting distinct attribute sets and converting person_involved to person_name: {mid2 - mid1:.4f} sec")
-        distinct_sets = self.remove_unwanted_attributes(distinct_sets)
-        mid3 = time.perf_counter()
-        print(f"Time taken in removing unwanted attributes: {mid3 - mid2:.4f} sec")
+        print(f"Time taken in getting record from lead id : {mid1 - start:.4f} sec")
 
-        return distinct_sets
+        cleaned_attributes = self.remove_unwanted_attributes(attributes)
+        mid2 = time.perf_counter()
+        print(f"Time taken in removing unwanted attributes: {mid2 - mid1:.4f} sec")
+
+        return cleaned_attributes
 
 
 @gryd.is_a_task('get_customer_data', logger_param='logger', job_param='job')
