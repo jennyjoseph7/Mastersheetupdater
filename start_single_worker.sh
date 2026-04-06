@@ -10,6 +10,11 @@ if [ ! -d $LOGDIR ];then
 	mkdir -p $LOGDIR
 fi
 
+export LOG_RETENTION_DIR=${LOG_RETENTION_DIR:-./log_retention}
+if [ ! -d $LOG_RETENTION_DIR];then
+	mkdir -p $LOG_RETENTION_DIR
+fi
+
 export SETUP_WEBAPP=${SETUP_WEBAPP:-False}
 export START_WORKERS=${START_WORKERS:-False}
 export SETUP_CRON_SCHEDULER=${SETUP_CRON_SCHEDULER:-False}
@@ -117,6 +122,7 @@ function start_workers() {
         setup_logio_agent
     fi
     while [[ -n `jobs -rl | grep $worker_pid` ]]; do sleep 1; echo `jobs -rl`; done
+    transfer_logfiles
     echo "Exitting.."
     exit
 }
@@ -145,6 +151,14 @@ function setup_logio_agent() {
 	fi
 }
 
+function transfer_logfiles() {
+    echo "Moving logs to retention dir."
+    subdir=$(date +"%Y/%m/%d/")
+    mkdir -vp $LOG_RETENTION_DIR/$subdir
+    mv -v $LOGDIR/* $LOG_RETENTION_DIR/$subdir
+    echo "Moving logs to retention dir complete."
+}
+
 function main() {
     if [ $PYTHON_VENV != 0 ];then
     	export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
@@ -169,6 +183,7 @@ function main() {
             setup_logio_agent
         fi
         while [[ -n `jobs -rl | grep $app_pid` ]]; do sleep 300; echo `jobs -rl`; done
+        transfer_logfiles
         echo "Exitting..."
         exit
     elif [ $SETUP_CRON_SCHEDULER == "True" ];then
@@ -194,6 +209,7 @@ function main() {
                 setup_logio_agent
             fi
             while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
+            transfer_logfiles
             echo "Exitting..."
             exit
 		else
@@ -231,6 +247,7 @@ function main() {
                 setup_logio_agent
             fi
             while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
+            transfer_logfiles
             echo "Exitting..."
             exit
 		else
