@@ -137,7 +137,6 @@ def fetch_campaigns(pg, run_started_at_ms, batch_size=50, from_time_ms=None):
 def performance_summary(from_time_ms=None):
     mlogger.info("[CRON] Starting campaign performance summary job...")
 
-    # ✅ use epoch ms
     run_started_at_ms = int(time.time() * 1000)
 
     mlogger.info(f"run_started_at_ms: {run_started_at_ms}")

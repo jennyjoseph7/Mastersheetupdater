@@ -112,7 +112,7 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
             campaign_model= "post_sales_campaign" if campaign_type == "post-sales" else "pre_sales_campaign"
             lead_model = "post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
             if lead_id and lead_model:
-                l=pg.get(lead_model,{f"{lead_model}_id": lead_id})
+                l=pg.get(lead_model,{f"{lead_model}_id"}, lead_id)
                 if not l:
                     logger.info(f"No lead found for lead_id: {lead_id} in model: {lead_model}")
                 # l=l[0] if l else {}
