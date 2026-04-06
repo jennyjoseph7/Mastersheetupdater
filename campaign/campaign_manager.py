@@ -687,8 +687,8 @@ def trigger_campaign(*args, **kwargs):
     logger.info(f"Valid leads to process: {len(valid_leads)}")
 
     for lead in valid_leads:
-        # logger.info(f"Queueing task for lead_id={lead.get('lead_id')}")
-        process_single_lead(None, lead, campaign_type, campaign_id)
+        logger.info(f"Queueing task for lead_id={lead.get('lead_id')}")
+        list(process_single_lead(None, lead, campaign_type, campaign_id))
         # gryd.create_async_task(
         #     "process_single_lead",
         #     AUTOCRM_CAMPAIGN_SERVICE_NAME,
