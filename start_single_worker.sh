@@ -34,6 +34,7 @@ export CRON_SCHEDULER_PATH=execute-cron-continuous
 export CRON_WORKER_PATH=cron_worker
 export APP_DIR=${APP_DIR:-"/root/app/"}
 
+export log_append_text="$HOSTNAME"_$(date +%s) 
 
 function stop_workers() {
 
@@ -109,10 +110,10 @@ function start_workers() {
 	echo FG > ./worker.pid
 	WORKER_FNAME=${WORKER_ENTRYPOINT%.*}
     if [ $PRIMARY == 0 ];then
-    	nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_FNAME}_stdout.log 2>> ${LOGDIR}/${WORKER_FNAME}_stderr.log &
+    	nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_FNAME}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${WORKER_FNAME}_stderr_${log_append_text}.log &
         worker_pid=$!
 	else
-	    nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${WORKER_FNAME}_stdout.log 2>> ${LOGDIR}/${WORKER_FNAME}_stderr.log &
+	    nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${WORKER_FNAME}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${WORKER_FNAME}_stderr_${log_append_text}.log &
         worker_pid=$!
 	fi
 
@@ -174,7 +175,7 @@ function main() {
 		WEBAPP_API_THREADS=$PARALLEL_THREADS
 		WEBAPP_APP_NAME=${APP_NAME:-app}
 	
-		nohup $WAITRESS_PATH --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log &
+		nohup $WAITRESS_PATH --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout_${log_append_text}.log 2>> ${LOGDIR}/webapp_stderr_${log_append_text}.log &
 
 	    app_pid=$!
 		echo $app_pid > app.pid
@@ -199,8 +200,8 @@ function main() {
 
 		if [ $stat != 0 ];then
 			echo "Process exited or not started. Starting."
-			echo "Starting Cron Continuous in BG. Logs are written to ${LOGDIR}/${a}_stderr.log and ${LOGDIR}/${a}_stdout.log"
-			nohup $CRON_SCHEDULER_PATH 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+			echo "Starting Cron Continuous in BG. Logs are written to ${LOGDIR}/${a}_stderr_${log_append_text}.log and ${LOGDIR}/${a}_stdout_${log_append_text}.log"
+			nohup $CRON_SCHEDULER_PATH 1>> ${LOGDIR}/${a}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${a}_stderr_${log_append_text}.log &
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
@@ -233,11 +234,11 @@ function main() {
 
 		if [ $stat != 0 ];then
 			echo "Process exited or not started. Starting."
-			echo "Starting Cron Worker in BG. Logs are written to ${LOGDIR}/${a}_stderr.log and ${LOGDIR}/${a}_stdout.log"
+			echo "Starting Cron Worker in BG. Logs are written to ${LOGDIR}/${a}_stderr_${log_append_text}.log and ${LOGDIR}/${a}_stdout_${log_append_text}.log"
 			if [ $PRIMARY == 0 ];then
-				nohup $CRON_WORKER_PATH -n $PARALLEL_THREADS 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+				nohup $CRON_WORKER_PATH -n $PARALLEL_THREADS 1>> ${LOGDIR}/${a}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${a}_stderr_${log_append_text}.log &
 			else
-				nohup $CRON_WORKER_PATH -n $PARALLEL_THREADS --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+				nohup $CRON_WORKER_PATH -n $PARALLEL_THREADS --primary 1>> ${LOGDIR}/${a}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${a}_stderr_${log_append_text}.log &
 			fi
 			w_pid=$!
 			echo "PID is $w_pid"
