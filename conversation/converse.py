@@ -3,7 +3,7 @@ import sys
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
-    sys.path.insert(0,BASE_DIR)
+    sys.path.insert(0, BASE_DIR)
 from config import AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, AUTOCRM_RESPONSE_PROVIDED_ITEM,AUTOCRM_CORE_SERVICE_NAME, AUTOCRM_CAMPAIGN_SERVICE_NAME
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
@@ -100,7 +100,7 @@ def converse(*args, **kargs):
     pass_kwargs["channel"] = channel
     pass_kwargs["session_data_cache"] = setup_session_data_cache(*args, **pass_kwargs)
     pass_kwargs["responses"] = []
-    pass_kwargs["first_message_timestamp"] = hp.time()
+    pass_kwargs["first_message_time"] = hp.time()
     dealership_id = pass_kwargs.get("session_data_cache",{}).get("data").get("campaign_data",{}).get("dealership_id")
     # if not dealership_id:
     #     yield from yield_error("error","dealer_id not set in campaign data",*args, **pass_kwargs)
@@ -261,7 +261,7 @@ def post_messages_data(*args, **pass_kwargs):
             "updated" : pass_kwargs.get("first_message_time") or hp.time(),
             "index" : 0
             }
-        
+        # mlogger.info("incoming_message {}".format(incoming_message))
         first_message = pg.update("message","message_id",pass_kwargs.get("reply_to"),incoming_message)
         new_messages.append(first_message)
         mlogger.info("first_message {}".format(first_message))
@@ -274,9 +274,10 @@ def post_messages_data(*args, **pass_kwargs):
                     "session_id":pass_kwargs.get("session_id"),
                     "intent" : message.get("intent","unknown_intent"),
                     "index" : message.get("index",0),
-                    "created" : message.get("created",hp.now()),
-                    "updated" : message.get("updated",hp.now())
+                    "created" : message.get("created",hp.time()),
+                    "updated" : message.get("updated",hp.time())
                 }
+            # mlogger.info(f"out_message --{out_message}")
             respper = pg.update("message","message_id",message_id,out_message)
             new_messages.append(respper)
         mlogger.info("session_id in post_messages_data {}".format(pass_kwargs.get("session_id")))

@@ -1,4 +1,4 @@
-from time import time
+import time
 import os, sys
 
 import pytz
@@ -575,6 +575,7 @@ class CallSession:
 
     async def connect_external_websocket(self, url: str):
         """Connect to external websocket for this call session."""
+        t = time.time()
         ws = None
         try:
             logger.info(f"[{self.call_id}] connecting to {url}")
@@ -583,6 +584,7 @@ class CallSession:
                 self.external_ws = ws
                 logger.info(f"[{self.call_id}] connected to {url}")
                 self.bridge_started = True
+                logger.info(f"[{self.call_id}] Time taken to connect to external WebSocket: {time.time() - t:.2f} seconds")
             except Exception as conn_error:
                 logger.error(f"[{self.call_id}] Failed to establish WebSocket connection to {url}: {conn_error}")
                 raise
@@ -912,6 +914,7 @@ def root():
 
 @app.route('/tatatele/create-stream-url', methods=['POST'])
 def create_stream_url(*args, **kwargs):
+    t = time.time()
     data = request.get_json()
     base_ws_url = config.AUTOCRM_WEBSOCKET_BASE_URL
 
@@ -919,7 +922,7 @@ def create_stream_url(*args, **kwargs):
     to_number = data.get("to_number")[1:]
     wss_url = f"{base_ws_url}/tatatele/{from_number}_{to_number}/{to_number}"
 
-    logger.info(f"Generated wss_url: {wss_url}")
+    logger.info(f"[webhook-/tatatele/create-stream-url] Generated wss_url took {time.time() - t:.2f} seconds: {wss_url}")
     return jsonify({
         "sucess": True,
         "wss_url": wss_url
@@ -941,6 +944,7 @@ def outbound_call(*args, **kwargs):
 
 @app.route("/smartflo/webhook", methods=["POST"])
 def smartflo_webhook():
+    t  = time.time()
     raw = request.get_data()
     payload = tatatele_status_map(raw)
 
@@ -955,16 +959,19 @@ def smartflo_webhook():
     logger.info(f"[{call_id}] Incoming payload: {json.dumps(payload, indent=4)}")
     import gryd_tasks
     if  status in ["contacted"]: #after call ended
+
         session_model = config.AutocrmModel(config.SESSION_MODEL_NAME, logger = logger )
         session_model.update(session_id, 
                              {
                                 "call_recording": payload.get("recording_url"), 
                                 "duration": float(payload.get("duration", 0.0))
                             }) #add more attributes when needed
+        logger.info(f"[webhook-/smartflo/webhook] Time taken to update session with recording URL and duration: {time.time() - t:.2f} seconds")
         gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = session_id,  **{"status": status})
     elif status in ["reached"]: # as soon as call is answered 
         gryd_tasks.post_billing_object(status, session_id)
         gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = session_id,  **{"status": status})
+        logger.info(f"[webhook-/smartflo/webhook] Time taken to post billing object and contact status for reached: {time.time() - t:.2f} seconds")
     elif status in ['failed', 'canceled', 'missed', 'busy', 'completed']:
         logger.info(f"[{call_id}] Call ended or failed - cleaning up session")
 
@@ -979,6 +986,7 @@ def smartflo_webhook():
 
 @app.route("/tatatele-conversation", methods=["POST"])
 def process():
+    t = time.time()
     payload = request.get_json()
 
     logger.info(f"Processing payload: {json.dumps(payload, indent=4)}")
@@ -1004,7 +1012,7 @@ def process():
     xx = gryd_tasks.post_billing_object("completed", session_id, duration)  # call it in async
 
     logger.info(f"Billing record created: {xx}")
-    session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time()))
+    session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time.time()))
     transcript_summary= data.get("analysis",{}).get("transcript_summary")
     logger.info(f"Transcript summary: {transcript_summary}")
     logger.info(f"Triggering post history and actions for session_id: {session_id}")
@@ -1019,6 +1027,7 @@ def process():
             "summary": transcript_summary
         }
     })
+    logger.info(f"[webhook-tatatele-conversation] Time taken to post history and end session: {time.time() - t:.2f} seconds")
     
     # gryd_tasks.post_actions(session_id) #calling in end_session
 

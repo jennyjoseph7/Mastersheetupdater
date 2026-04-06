@@ -4,7 +4,7 @@ export BASE_PATH=${BASE_PATH:-$(dirname `pwd`)}
 export APP_NAME=${APP_NAME:-$(basename `pwd`)}
 export ENVIRONMENT=${ENVIRONMENT:-production}
 export POSTGRES_URL=${POSTGRES_URL}
-export PYTHON_VENV=${PYTHON_VENV:-"./pyenv"}
+export PYTHON_VENV=${PYTHON_VENV:-0}
 export PARALLEL_THREADS=${PARALLEL_THREADS:-10}
 export SHUTDOWN_TIME=${SHUTDOWN_TIME:-55}
 export PROCESS_SEARCH_STRING=${PROCESS_SEARCH_STRING:-$WORKER_ENTRYPOINT}
@@ -24,12 +24,22 @@ export START_WORKERS=${START_WORKERS:-0}
 export DEFAULT_WORKERS=${DEFAULT_WORKERS:-0}
 export SERVER_PORT=${SERVER_PORT:-0}
 export PRIMARY=${PRIMARY:-0}
+export WORKER_PATH=worker
+export WAITRESS_PATH=waitress-serve
+export CRON_SCHEDULER_PATH=execute-cron-continuous
+export CRON_WORKER_PATH=cron_worker
 
 process_config=`cat start_worker_config.json`
 
 echo "APP Config"
 echo $process_config
 
+if [ $PYTHON_VENV != 0 ];then
+	export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
+	export WORKER_PATH=$PYTHON_VENV/bin/worker
+	export CRON_SCHEDULER_PATH=$PYTHON_VENV/bin/execute-cron-continuous
+	export CRON_WORKER_PATH=$PYTHON_VENV/bin/cron_worker
+fi
 
 function stop_workers() {
 
@@ -50,7 +60,7 @@ function stop_workers() {
             exit
         fi
 
-        ssw_pid=`ps -eaf | grep $PROCESS_SEARCH_STRING | head -1 | awk '{print $2}'`
+        ssw_pid=`ps -eaf | grep $PROCESS_SEARCH_STRING | grep -v grep | grep -v "ps -eaf" | awk '{print $2}'`
         echo "Got PIDs - $ssw_pid"
     fi
 
@@ -59,7 +69,7 @@ function stop_workers() {
         return
     fi
 
-    #   kill $ssw_pid  # Send SIGTERM to the process
+    # kill -9 $ssw_pid  # Send SIGTERM to the process
 
     # Wait for the process to terminate, with a timeout of 20 seconds
     for i in {1..20}; do
@@ -94,14 +104,14 @@ function start_default_workers() {
 
 		if [ "$a" == "cron-scheduler" ];then
 			if [ $w_pid != 0 ];then
-				ps -eaf | grep $w_pid | grep execute-cron-continuous
+				ps -eaf | grep $w_pid | grep execute-cron-continuous | grep -v grep | grep -v "ps -eaf"
 				stat=$?
 			fi
 
 			if [ $stat != 0 ];then
 				echo "Process exited or not started. Starting."
 				echo "Starting Cron Continuous in BG. Logs are written to ${LOGDIR}/${a}_stderr.log and ${LOGDIR}/${a}_stdout.log"
-				nohup execute-cron-continuous 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+				nohup $CRON_SCHEDULER_PATH 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 				w_pid=$!
 				echo "PID is $w_pid"
 				echo $w_pid > $a.pid
@@ -114,7 +124,7 @@ function start_default_workers() {
 
 		if [ "$a" == "cron_worker" ];then
 			if [ $w_pid != 0 ];then
-				ps -eaf | grep $w_pid | grep cron_worker
+				ps -eaf | grep $w_pid | grep cron_worker | grep -v grep | grep -v "ps -eaf"
 				stat=$?
 			fi
 
@@ -122,9 +132,9 @@ function start_default_workers() {
 				echo "Process exited or not started. Starting."
 				echo "Starting Cron Worker in BG. Logs are written to ${LOGDIR}/${a}_stderr.log and ${LOGDIR}/${a}_stdout.log"
 				if [ $PRIMARY == 0 ];then
-					nohup cron_worker 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+					nohup $CRON_WORKER_PATH 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 				else
-					nohup cron_worker --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
+					nohup $CRON_WORKER_PATH --primary 1>> ${LOGDIR}/${a}_stdout.log 2>> ${LOGDIR}/${a}_stderr.log &
 				fi
 				w_pid=$!
 				echo "PID is $w_pid"
@@ -138,7 +148,7 @@ function start_default_workers() {
 }
 
 function start_worker_in_bg() {
-	worker_path=worker
+	worker_path=$WORKER_PATH
 	
 	echo "Agents to start : $START_AGENTS, Workers to start : $START_WORKERS"
 	if [ $START_AGENTS != 0 ];then
@@ -159,7 +169,7 @@ function start_worker_in_bg() {
 					stat=100
 	
 					if [ $w_pid != 0 ];then
-						ps -eaf | grep $w_pid | grep $WORKER_ENTRYPOINT
+						ps -eaf | grep $w_pid | grep $WORKER_ENTRYPOINT | grep -v grep | grep -v "ps -eaf"
 						stat=$?
 					fi
 	
@@ -200,7 +210,7 @@ function start_worker_in_bg() {
 					stat=100
 	
 					if [ $w_pid != 0 ];then
-						ps -eaf | grep $w_pid | grep $WORKER_ENTRYPOINT
+						ps -eaf | grep $w_pid | grep $WORKER_ENTRYPOINT | grep -v grep | grep -v "ps -eaf"
 						stat=$?
 					fi
 	
@@ -248,7 +258,7 @@ function start_daemon_process() {
 					w_pid=$(cat $pid_filename || echo 0)
 					stat=100
 			
-					x_pid=$(ps -eaf | grep $w_pid | grep $WORKER_FNAME | head -1 | awk '{print $2}')
+					x_pid=$(ps -eaf | grep $w_pid | grep $WORKER_FNAME | grep -v grep | grep -v "ps -eaf" | awk '{print $2}')
 					echo "PID for $WORKER_NAME is $w_pid"
 					if [ -n $x_pid ];then
 						echo "Service $WORKER_NAME is running."
@@ -276,7 +286,7 @@ function start_daemon_process() {
 					w_pid=$(cat $pid_filename || echo 0)
 					stat=100
 					
-					x_pid=$(ps -eaf | grep $w_pid | grep $WORKER_FNAME | head -1 | awk '{print $2}')
+					x_pid=$(ps -eaf | grep $w_pid | grep $WORKER_FNAME | grep -v grep | grep -v "ps -eaf" | awk '{print $2}')
 
 					if [ -n $x_pid ];then
 						echo "Agent $WORKER_NAME is running."
@@ -313,12 +323,16 @@ function start_workers() {
 			if [ $SERVER_PORT != 0 ];then
 				WEBAPP_PORT=$SERVER_PORT
 			fi
-
-			nohup waitress-serve --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log &
+			for i in $(seq 1 $WEBAPP_API_THREADS); do
+                echo "Thread No: $i"
+				WP=$(($WEBAPP_PORT + $i - 1))
+				nohup $WAITRESS_PATH --ident="" --port=${WP} --url-scheme=${WEBAPP_URL_SCHEME} --threads=2 ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout_${i}.log 2>> ${LOGDIR}/webapp_stderr_${i}.log &
+	    	    app_pid=$!
+				echo $app_pid >> app.pid
+				echo $app_pid > app_${WP}.pid
+			done
 
 			#export RDS_SECRET=${RDS_SECRET} && nohup python app.py 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log & 
-	    	app_pid=$!
-			echo $app_pid > app.pid
 		fi
 
 		if [ "$SETUP_WORKERS" == "True" ];then
@@ -343,6 +357,8 @@ function start_workers() {
 		fi
 	fi
 }
+
+
 
 function main() {
 	start_default_workers
