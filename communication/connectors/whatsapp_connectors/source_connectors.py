@@ -14,7 +14,6 @@ from conversation.lead_post_processing import post_session_process
 # from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NUMBER,AUTOCRM_CORE_SERVICE_NAME
 from config import *
 from connectors.communication_helpers import * 
-
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 logger = gryd.logger
 
@@ -509,12 +508,12 @@ class BaseWebhookConverter:
             message_dict["message_status"]=wa_status
             logger.info(f"Calling post_contact_status with Message dict : {message_dict}")
             logger.info(f"Calling post_contact_status and checking the disposition : {wa_status}")    
-            # gryd.create_async_task(
-            #     'post_contact_status',
-            #     AUTOCRM_COMMUNICATION_SERVICE_NAME,
-            #     args = (message_dict.get('message_id'),),
-            #     kwargs=message_dict)
-            # self.post_contact_status(message_dict.get('message_id'),**message_dict)
+            gryd.create_async_task(
+                'post_contact_status',
+                AUTOCRM_COMMUNICATION_SERVICE_NAME,
+                args = (message_dict.get('message_id'),),
+                kwargs=message_dict)
+            # post_contact_status(message_dict.get('message_id'),**message_dict)
             
         #Still any othere status hook there we will return  
         if msg_status: return {"info":f"Received {msg_status}--->{wa_status} status webhook"}
