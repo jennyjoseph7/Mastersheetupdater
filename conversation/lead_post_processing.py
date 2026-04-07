@@ -400,7 +400,8 @@ def post_billing_obj(**message_dict):
             mlogger.info(f"We have lead_id: {lead_id} in contact_status_data")
             lead_model_id="post_sales_lead_id" if lead_model == "post_sales_lead" else "pre_sales_lead_id"
             # mlogger.info(f"We have lead_model: {lead_model} and lead_model_id: {lead_model_id} in contact_status_data")
-            lead_data=list(pg.list(lead_model,{lead_model_id:lead_id}))[0]
+            # lead_data=list(pg.list(lead_model,{lead_model_id:lead_id}))[0]
+            lead_data=pg.get(lead_model,lead_model_id,lead_id)
             # mlogger.info(f"We have lead_data: {lead_data}")
             if lead_data:
                 item_description =f"{lead_data.get('campaign_type', 'unknown')} - {lead_data.get('campaign_objective_name', 'campaign_objective_id')} - {lead_data.get('campaign_name', 'unknown')} - {lead_data.get('channel', 'unknown')} - {c.get('provider_name', 'unknown')} - {message_dict.get('mobile_number')}"
