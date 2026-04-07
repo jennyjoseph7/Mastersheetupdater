@@ -309,7 +309,7 @@ class CallSession:
 
             if bridge_timing is not None and bridge_timing["first_tt_media_in_ms"] is None:
                 bridge_timing["first_tt_media_in_ms"] = _elapsed_ms(bridge_timing["t0"])
-                if ENABLE_BRIDGE_TIMING:
+                if ENABLE_BRIDGE_TIMING_COLLECT:
                     logger.info(
                         f"[{self.call_id}] [bridge_timing] first_tatatele_media_in "
                         f"elapsed_ms={bridge_timing['first_tt_media_in_ms']:.1f}"
@@ -333,7 +333,7 @@ class CallSession:
                         bridge_timing["last_user_chunk_mono"] = monotonic()
                         if bridge_timing["first_chunk_to_el_ms"] is None:
                             bridge_timing["first_chunk_to_el_ms"] = _elapsed_ms(bridge_timing["t0"])
-                            if ENABLE_BRIDGE_TIMING:
+                            if ENABLE_BRIDGE_TIMING_COLLECT:
                                 logger.info(
                                     f"[{self.call_id}] [bridge_timing] first_user_chunk_to_elevenlabs "
                                     f"elapsed_ms={bridge_timing['first_chunk_to_el_ms']:.1f}"
@@ -383,7 +383,7 @@ class CallSession:
                             if bridge_timing.get("first_el_audio_mono") is not None:
                                 el_to_wire_ms = (t_send - bridge_timing["first_el_audio_mono"]) * 1000.0
                                 extra = f" el_audio_recv_to_tatatele_send_ms={el_to_wire_ms:.1f}"
-                            if ENABLE_BRIDGE_TIMING:
+                            if ENABLE_BRIDGE_TIMING_COLLECT:
                                 logger.info(
                                     f"[{self.call_id}] [bridge_timing] first_chunk_to_tatatele (flush) "
                                     f"elapsed_ms={bridge_timing['first_tt_out_ms']:.1f}{extra}"
@@ -406,7 +406,7 @@ class CallSession:
                         if bridge_timing.get("first_el_audio_mono") is not None:
                             el_to_wire_ms = (t_send - bridge_timing["first_el_audio_mono"]) * 1000.0
                             extra = f" el_audio_recv_to_tatatele_send_ms={el_to_wire_ms:.1f}"
-                        if ENABLE_BRIDGE_TIMING:
+                        if ENABLE_BRIDGE_TIMING_COLLECT:
                             logger.info(
                                 f"[{self.call_id}] [bridge_timing] first_chunk_to_tatatele "
                                 f"elapsed_ms={bridge_timing['first_tt_out_ms']:.1f}{extra}"
@@ -463,7 +463,7 @@ class CallSession:
                     if bridge_timing.get("last_user_chunk_mono") is not None:
                         since_user = (now_m - bridge_timing["last_user_chunk_mono"]) * 1000.0
                         bridge_timing["first_el_audio_since_user_ms"] = since_user
-                    if ENABLE_BRIDGE_TIMING:
+                    if ENABLE_BRIDGE_TIMING_COLLECT:
                         logger.info(
                             f"[{self.call_id}] [bridge_timing] first_agent_audio_from_elevenlabs "
                             f"elapsed_ms={bridge_timing['first_el_audio_ms']:.1f}"
@@ -591,7 +591,7 @@ class CallSession:
             if bridge_timing is not None:
                 bridge_timing["signed_url_ms"] = _elapsed_ms(bridge_timing["t0"])
                 bridge_timing["signed_url_http_ms"] = _elapsed_ms(t_http)
-                if ENABLE_BRIDGE_TIMING:
+                if ENABLE_BRIDGE_TIMING_COLLECT:
                     logger.info(
                         f"[{self.call_id}] [bridge_timing] get_signed_url_http_ms={bridge_timing['signed_url_http_ms']:.1f} "
                         f"cumulative_ms={bridge_timing['signed_url_ms']:.1f}"
@@ -601,7 +601,7 @@ class CallSession:
             if bridge_timing is not None:
                 bridge_timing["el_ws_connect_ms"] = _elapsed_ms(bridge_timing["t0"])
                 bridge_timing["el_ws_handshake_ms"] = _elapsed_ms(t_ws)
-                if ENABLE_BRIDGE_TIMING:
+                if ENABLE_BRIDGE_TIMING_COLLECT:
                     logger.info(
                         f"[{self.call_id}] [bridge_timing] elevenlabs_ws_handshake_ms={bridge_timing['el_ws_handshake_ms']:.1f} "
                         f"cumulative_ms={bridge_timing['el_ws_connect_ms']:.1f}"
@@ -653,7 +653,7 @@ class CallSession:
             if bridge_timing is not None:
                 bridge_timing["config_sent_ms"] = _elapsed_ms(bridge_timing["t0"])
                 bridge_timing["conversation_init_step_ms"] = _elapsed_ms(t_cfg)
-                if ENABLE_BRIDGE_TIMING:
+                if ENABLE_BRIDGE_TIMING_COLLECT:
                     logger.info(
                         f"[{self.call_id}] [bridge_timing] conversation_init_send_ms={bridge_timing['conversation_init_step_ms']:.1f} "
                         f"cumulative_ms={bridge_timing['config_sent_ms']:.1f}"
@@ -700,7 +700,7 @@ class CallSession:
                                         if bridge_timing.get("first_el_audio_mono") is not None:
                                             el_to_wire_ms = (t_send - bridge_timing["first_el_audio_mono"]) * 1000.0
                                             extra = f" el_audio_recv_to_tatatele_send_ms={el_to_wire_ms:.1f}"
-                                        if ENABLE_BRIDGE_TIMING:
+                                        if ENABLE_BRIDGE_TIMING_COLLECT:
                                             logger.info(
                                                 f"[{self.call_id}] [bridge_timing] first_chunk_to_tatatele (start_flush) "
                                                 f"elapsed_ms={bridge_timing['first_tt_out_ms']:.1f}{extra}"
@@ -757,7 +757,7 @@ class CallSession:
 
             logger.info(f"[{self.call_id}] Both readers stopped")
             logger.info(f"[{self.call_id}] STATS: Sent {chunks_sent_to_elevenlabs[0]} chunks to ElevenLabs, received {audio_events_received[0]} audio events, sent {chunks_sent_to_tatatele[0]} chunks to TataTele")
-            if bridge_timing is not None and ENABLE_BRIDGE_TIMING:
+            if bridge_timing is not None:
                 bt = bridge_timing
                 logger.info(
                     f"[{self.call_id}] [bridge_timing] session_summary_ms "
@@ -796,7 +796,7 @@ class CallSession:
                         bridge_timing,
                         chunks_sent_to_elevenlabs[0],
                         audio_events_received[0],
-                        chunks_sent_to_tatatele[0],
+                        chunks_sent_to_tatatele[0], 
                         bridge_error,
                     ),
                     agent_number=self.session_data.get("agent_number"),
