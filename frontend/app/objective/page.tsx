@@ -209,7 +209,7 @@ export default function App() {
     return {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'X-GRYD-APPLICATION-ID': 'gryd',
+      'X-GRYD-APPLICATION-ID': 'autocrm',
       'X-GRYD-ENTERPRISE-ID': 'autocrm',
       'X-GRYD-ROLE': auth.role || 'agent',
       'X-GRYD-SESSION-ID': auth.session_id,
