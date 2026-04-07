@@ -260,6 +260,12 @@
         "required": false
       },
       {
+        "name":"has_unprocessed_history",
+        "type": "bool",
+        "required": false,
+        "default": false
+      },
+      {
         "name": "disposition",
         "type": "text",
         "options": [

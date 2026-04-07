@@ -20,6 +20,10 @@
         }
       },
       {
+        "name":"last_processed_at",
+        "type":"number"
+      },
+      {
         "name": "campaign_id",
         "type": "text"
       },

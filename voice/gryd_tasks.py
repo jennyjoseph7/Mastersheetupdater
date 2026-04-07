@@ -459,22 +459,13 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     
     logger.info(f"Constructed payload for contact status: {payload.get('provider_status')}, message_id: {payload.get('message_id')}")
     if payload.get("provider_status") == "attempted":
-        for x in post_contact_status(
-            **payload
-        ):
-            return 
-
+        post_contact_status(**payload)
         # gryd.create_async_task(
         #     "post_contact_status", 
         #     config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
         #     kwargs=payload)
     else: 
-        for x in post_contact_status(
-            message_id,
-            **payload
-        ):
-            return 
-
+        post_contact_status(message_id, **payload)
         # gryd.create_async_task(
         #     "post_contact_status", 
         #     config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
