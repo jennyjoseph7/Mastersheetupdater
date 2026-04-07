@@ -228,7 +228,12 @@ export default function App() {
           'X-GRYD-ENTERPRISE-ID': 'autocrm',
           'X-GRYD-SIGNUP-TOKEN': process.env.NEXT_PUBLIC_SIGNUP_API_KEY || 'tokengoeshere' // Replace with actual token or use env variable
         },
-        body: JSON.stringify(credentials)
+         body: JSON.stringify({
+          ...credentials,
+          role: "data_admin",
+          attribute: "email",
+          application_id: "autocrm"
+        })
       });
       
       const data = await response.json();
