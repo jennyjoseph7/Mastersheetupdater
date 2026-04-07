@@ -4,15 +4,15 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AutocrmModel
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_MESSAGE_DELIVERED_ITEM,AUTOCRM_MESSAGE_DELIVERED_PRICE,AUTOCRM_MESSAGE_DELIVERED_UNITS,AutocrmModel
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
 json = hp.json
 from conversation.yield_response import yield_result,yield_error, yield_status
 from conversation.prompt import run_prompt_sync
+from communication.connectors.communication_helpers import get_communication_credential,generate_uid
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
-
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
@@ -187,6 +187,253 @@ def post_session_process(*args, **kwargs):
             posted = m.post(visit_data)
             mlogger.info("visit posted == {}".format(posted))
     
+@gryd.is_a_task(function_name="update_channel_identifier")
+def update_channel_identifier(user_id,**data):
+    """
+    Updates the last contacted channel identifier for a user.
+    
+    Args:
+        *args: Additional positional arguments.
+        **data: Additional keyword arguments containing the data to be updated.
+            channel (str): The channel identifier to be updated.
+            phone_number (str): The phone number associated with the channel.
+            email (str): The email address associated with the channel.
+            user_id (str): The user id for which to update the channel identifier.
+    """
+    person_payload = {}
+    channel=data.get("channel")
+    if channel == "whatsapp_chat":
+        person_payload["last_contacted_whatsapp_number"] = data.get("phone_number")
+    elif channel == "email":
+        person_payload["last_contacted_email"] = data.get("email")
+    elif channel in ["voice_phone" ,"rcs"]:
+        person_payload["last_contacted_phone_number"] = data.get("phone_number")
+    with get_pg_connector() as pg:
+        pg.update("person", "user_id", user_id, person_payload)
+        mlogger.info(f"[update_channel_identifier] Updated channel identifier for user_id={user_id} with payload={person_payload}")
+    return 
+
+@gryd.is_a_task(function_name="update_lead_disposition_and_post_billing")
+def update_lead_disposition_and_post_billing(incoming_status, user_id=None, should_bill=None, **data):    
+    # mlogger.info(f"[update_lead_disposition] Called with incoming_status={incoming_status} for lead_id={data.get('lead_id')} and DATA= {json.dumps(data,indent=4)}")
+    mlogger.info(f"[update_lead_disposition] Attempting to update lead disposition with incoming_status={incoming_status}, user_id={user_id}, data={data}")
+    
+    post_template_message=data.get("post_template_message")
+    if should_bill:
+        mlogger.info(f"[post_contact_status] Billing triggered for incoming_status ={incoming_status}")
+        post_billing_obj(**data)
+    
+    DISPOSITION_SEQUENCE = [
+        "queued",
+        "attempted",
+        "busy",
+        "error",
+        "failed",
+        "reached",
+        "contacted",
+        "engaged",
+        "converted"
+    ]
+    
+    def can_update_disposition(current, incoming):
+        if not incoming or incoming not in DISPOSITION_SEQUENCE:
+            return False
+        if not current or current not in DISPOSITION_SEQUENCE:
+            return True
+        return DISPOSITION_SEQUENCE.index(incoming) > DISPOSITION_SEQUENCE.index(current)
+    
+    update_payload = {}
+    lead_id = data.get("lead_id")
+    user_id = user_id or data.get("user_id")
+    campaign_type = data.get("campaign_type")
+    channel = data.get("channel")
+    
+    lead_table = (
+        "post_sales_lead"
+        if campaign_type == "post-sales"
+        else "pre_sales_lead"
+    )
+    lead_pk = (
+        "post_sales_lead_id"
+        if campaign_type == "post-sales"
+        else "pre_sales_lead_id"
+    )
+
+    lead_key = lead_id
+    with get_pg_connector() as pg:
+        # lead_d = list(pg.list(lead_table, {lead_pk: lead_key}))
+        mlogger.info(f"Lead table--{lead_table} | lead_pk--{lead_pk} | lead_key--{lead_key}")
+        lead=pg.get(lead_table,lead_pk,lead_key)
+        # mlogger.info(f"[post_contact_status] lead data={lead}")
+        if not lead:
+            mlogger.warning(f"[post_contact_status] No lead found for {lead_key}")
+            return
+
+        if campaign_type == "post-sales" and user_id and channel:
+            mlogger.info(f"[post_contact_status] Updating lead for post-sales with user_id={user_id} and channel={channel}")
+            persons = lead.get("persons_involved") or []
+
+            channel_field_map = {
+                "whatsapp_chat": (
+                    "last_contacted_whatsapp_number",
+                    data.get("mobile_number") or data.get("phone_number"),
+                ),
+                "email": ("last_contacted_email", data.get("email")),
+                "voice_phone": (
+                    "last_contacted_phone_number",
+                    data.get("phone_number"),
+                ),
+            }
+
+            field_name, field_value = channel_field_map.get(channel, (None, None))
+
+            if field_name and field_value:
+                update_payload["persons_involved"] = [
+                    (
+                        {**p, field_name: field_value}
+                        if p.get("user_id") == user_id
+                        else p
+                    )
+                    for p in persons
+                ]
+
+        
+        if can_update_disposition(lead.get("disposition"), incoming_status):
+            mlogger.info(
+                f"[post_contact_status] Updating disposition for lead_id={lead_id} "
+                f"(current={lead.get('disposition')}, incoming={incoming_status})"
+            )
+            update_payload["disposition"] = incoming_status
+            #only updating the previous_contact_channel when the diposition is updated and it is higher in sequence than the current diposition
+            update_payload["previous_contact_channel"] = channel 
+            
+            # updating previous_contact_channel for person as well only when the disposition is updated and it is higher in sequence than the current diposition
+            person_payload = {"previous_contact_channel": channel}
+            pg.update("person", "user_id", user_id, person_payload)
+        else:
+            mlogger.info(
+                "[post_contact_status] Disposition skipped "
+                f"(current={lead.get('disposition')}, incoming={incoming_status})"
+            )
+
+        update_payload.pop("lead_id", None)
+        update_payload.pop("dealership_id", None)
+        # mlogger.info(f"[post_contact_status] update_payload for lead_id={lead_id}: {update_payload}")
+        if update_payload:
+            pg.update(
+                lead_table,
+                lead_pk,
+                lead_key,
+                update_payload,
+            )
+        
+        # also updating session dispositon--
+        template_message = data.get("template_message") if data else None
+        if channel in ["whatsapp_chat"]:
+            s_d=list(pg.list("session",{"lead_id":lead_id}))
+            if not s_d:
+                mlogger.info(f"No session found for lead_id: {lead_id}")
+                return
+            s_d=s_d[0]
+            session_id = s_d.get("session_id")
+            mlogger.info(f"Updating session disposition for lead_id: {lead_id}")
+            pg.update("session","session_id",session_id,{"disposition":incoming_status,"status":incoming_status})
+            if post_template_message and template_message and incoming_status in ["delivered", "reached"]:
+                mlogger.info(f"Updating template_message in history for lead_id: {lead_id}")
+                p={
+                    "reply_to": generate_uid(data),
+                    "customer_response": "",
+                    "request_data": {
+                        "customer_response": ""
+                    },
+                    "session_id": session_id,
+                    "user_id": data.get("user_id"),
+                    "responses": [
+                        {
+                            "intent": "greeting",
+                            "placeholder": template_message,
+                            "index": 1
+                        }
+                    ]
+                }
+                # post_messages_data(**p)
+                gryd.create_async_task(
+                    "post_messages_data",
+                    AUTOCRM_CONVERSATION_SERVICE_NAME,
+                    args=[],
+                    kwargs=p
+                )
+            
+        return 
+
+def post_billing_obj(**message_dict):
+    wa_status=message_dict.get("message_status")
+    mlogger.info(f"Post billing obj for message_id: {message_dict.get('message_id')} and status: {wa_status}---")
+    
+    dealership_id=None
+    item_description=None
+    lead_id=None
+    lead_model=None
+    mob_num=message_dict.get('mobile_number')
+    # posting billing model
+    with get_pg_connector() as pg:
+        contact_status_data=list(pg.list("contact_status",{"message_id":message_dict.get("message_id")}))
+        contact_status_data=contact_status_data[0] if contact_status_data else {}
+        
+        if contact_status_data:
+            dealership_id = contact_status_data.get("dealership_id")
+            lead_id = contact_status_data.get("lead_id",None)
+            lead_model= 'post_sales_lead' if contact_status_data.get('campaign_type') == 'post-sales' else 'pre_sales_lead'
+        else:
+            mlogger.info(f"Contact Status Data not found for message_id since it is a inbound message and not through campaign: {message_dict.get('message_id')}")
+            session_data=list(pg.list("session",{"phone_number":mob_num}))[0]
+            if not session_data: return
+            dealership_id=session_data.get("dealership_id",None)
+            lead_id=session_data.get('lead_id',None)
+            lead_model= 'post_sales_lead' if session_data.get('campaign_type') == 'post-sales' else 'pre_sales_lead'
+            
+        mlogger.info(f"We have dealership_id: {dealership_id} in contact_status_data")
+        c=get_communication_credential(dealership_id=dealership_id, channel="whatsapp_chat")
+        if c:
+            mlogger.info(f"Communication Credential found for dealership_id: {dealership_id} and channel whatsapp_chat")
+        if lead_id:
+            mlogger.info(f"We have lead_id: {lead_id} in contact_status_data")
+            lead_model_id="post_sales_lead_id" if lead_model == "post_sales_lead" else "pre_sales_lead_id"
+            # mlogger.info(f"We have lead_model: {lead_model} and lead_model_id: {lead_model_id} in contact_status_data")
+            lead_data=list(pg.list(lead_model,{lead_model_id:lead_id}))[0]
+            # mlogger.info(f"We have lead_data: {lead_data}")
+            if lead_data:
+                item_description =f"{lead_data.get('campaign_type', 'unknown')} - {lead_data.get('campaign_objective_name', 'campaign_objective_id')} - {lead_data.get('campaign_name', 'unknown')} - {lead_data.get('channel', 'unknown')} - {c.get('provider_name', 'unknown')} - {message_dict.get('mobile_number')}"
+                campaign_id=lead_data.get('campaign_id')
+            else:
+                mlogger.info(f"Lead data not found for lead_id: {lead_id}")
+                return      
+        else:
+            mlogger.info(f"Lead data not found for lead_id: {lead_id}")
+            return   
+    if lead_id and campaign_id and item_description:
+        mlogger.info(f"Posting Billing for lead_id: {lead_id} and campaign_id: {campaign_id} with item_description: {item_description}")
+        
+        gryd.create_async_task(
+            'post_billing',
+            AUTOCRM_CORE_SERVICE_NAME,
+            args=[
+                dealership_id,
+                "debit",
+                AUTOCRM_MESSAGE_DELIVERED_ITEM,
+                item_description,
+                hp.now(as_datetime=False),
+                1,
+                AUTOCRM_MESSAGE_DELIVERED_PRICE,
+                AUTOCRM_MESSAGE_DELIVERED_UNITS,
+                "credits",
+                campaign_id,
+                "whatsapp_chat"
+            ]
+        )
+        mlogger.info(f"Posted Billing for lead_id: {lead_id} and campaign_id: {campaign_id} with item_description: {item_description}")    
+
+
 def get_summary(session_id,session_data):
     messages = session_data.get("messages")
 
