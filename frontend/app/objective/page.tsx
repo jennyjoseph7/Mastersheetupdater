@@ -6,8 +6,7 @@ import {
   Tag, PlusCircle, MinusCircle
 } from 'lucide-react';
 
-const API_BASE_URL = 'https://autobot-webapp-dev-unstable.gryd.in:60133/gryd';
-
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'UNDEFINED'  
 // --- Types & Interfaces ---
 
 export interface Auth {
