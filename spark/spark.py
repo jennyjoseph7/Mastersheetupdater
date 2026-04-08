@@ -215,6 +215,8 @@ def create_campaign_image(rooftop_type: str, template_id: str, base_png: str, ca
     logger.info(f"Brand ID: {brand_id}")
     rooftop = hp.make_single(rooftop_model.list(_page_size=1, _as_option=True, supported_brands=[brand_id], **{'logo_url~': None}), force=True)
     logger.info(f"Rooftop: {rooftop}")
+    if not rooftop:
+        raise ValueError(f"No {rooftop_type} found for brand: {brand_id} with a logo")
     dealership_id = rooftop.get('dealership_id')
     dealership = dealership_model.get(dealership_id)
     logger.info(f"Dealership: {dealership}")

@@ -178,7 +178,9 @@
                 "kwargs": {
                     "attribute_join": " ",
                     "is_unique": true,
-                    "separator": " - "
+                    "separator": " - ",
+                    "skip_empty": true,
+                    "case": "retain"
                 }
             }
         },
@@ -188,8 +190,19 @@
             "converter": {
                 "function": "ensure_in_list",
                 "args": [
-                    "variant_name",
-                    "variant_full_name"
+                    [
+                        "variant_name",
+                        "variant_full_name"
+                    ]
+                ]
+            },
+            "default": {
+                "function": "ensure_in_list",
+                "args": [
+                    [
+                        "variant_name",
+                        "variant_full_name"
+                    ]
                 ]
             }
         },
@@ -289,7 +302,7 @@
             "auto_updater": true,
             "default": {
                 "args": [
-                    "vehicle_model_name",
+                    "vehicle_model_id",
                     "variant_name",
                     "engine_type",
                     "transmission_type",
