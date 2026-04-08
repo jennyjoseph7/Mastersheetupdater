@@ -220,7 +220,7 @@ export default function App() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
+      const response = await fetch(`${API_BASE_URL}/gryd/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -256,7 +256,7 @@ export default function App() {
   const fetchObjectives = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/db/objects/campaign_objective`, {
+      const response = await fetch(`${API_BASE_URL}/gryd/db/objects/campaign_objective`, {
         method: 'GET',
         headers: getHeaders()
       });
@@ -275,8 +275,8 @@ export default function App() {
     setLoading(true);
     try {
       const endpoint = id 
-        ? `${API_BASE_URL}/db/object/campaign_objective/${id}` 
-        : `${API_BASE_URL}/db/object/campaign_objective`;
+        ? `${API_BASE_URL}/gryd/db/object/campaign_objective/${id}` 
+        : `${API_BASE_URL}/gryd/db/object/campaign_objective`;
       
       const response = await fetch(endpoint, {
         method: id ? 'PATCH' : 'POST',
