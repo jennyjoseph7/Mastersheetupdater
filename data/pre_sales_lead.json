@@ -10,7 +10,8 @@
         {
             "name": "dealership_id",
             "refers": "parents.dealership.dealership_id",
-            "required": true
+            "required": true,
+            "indexed": true
         },
         {
             "name": "region_id",
@@ -21,7 +22,8 @@
                     "dealership_id",
                     "region_id"
                 ]
-            }
+            },
+            "indexed": true
         },
         {
             "name": "region_name",
@@ -1414,7 +1416,8 @@
             "type": "number",
             "default": {
                 "function": "now_ctime"
-            }
+            },
+            "indexed": true
         },
         {
             "auto_updater": true,
@@ -1422,7 +1425,8 @@
             "type": "number",
             "default": {
                 "function": "now_ctime"
-            }
+            },
+            "indexed": true
         }
     ]
 }

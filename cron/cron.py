@@ -106,60 +106,82 @@ def template_summary():
         print(f"[CRON] update_template_summary row count = {rows}")
         return rows
 
+
+def fetch_campaigns(pg, run_started_at_ms, batch_size=50, from_time_ms=None):
+    return list(pg.yield_results("""
+        WITH last_run AS (
+            SELECT
+                COALESCE(
+                    %s::BIGINT,
+                    MAX((dict->>'last_processed_at')::BIGINT),
+                    0
+                ) AS last_processed_at
+            FROM campaign_performance_summary
+        )
+
+        SELECT DISTINCT
+            cs.dict->>'campaign_id' AS campaign_id,
+            cs.dict->>'campaign_type' AS campaign_type
+        FROM contact_status cs, last_run lr
+        WHERE
+            cs.created > TO_TIMESTAMP(lr.last_processed_at / 1000)
+            AND cs.created <= TO_TIMESTAMP(%s / 1000)
+        LIMIT %s;
+    """, (
+        from_time_ms,
+        run_started_at_ms,   
+        batch_size
+    ))) 
+
 @gryd.is_a_task(function_name="performance_summary")
-def performance_summary():
-    
-    """
-    This task checks for campaigns which require an update to their performance summary.
-    It does this by checking for campaigns which have a newer updated timestamp than the
-    latest updated timestamp in the campaign_performance_summary table.
+def performance_summary(from_time_ms=None):
+    mlogger.info("[CRON] Starting campaign performance summary job...")
 
-    It then executes a stored procedure to update the campaign_performance_summary table
-    with the latest data from the campaigns.
+    # ✅ use epoch ms
+    run_started_at_ms = int(time.time() * 1000)
 
-    :return: The number of campaigns which required an update to their performance summary.
-    :rtype: int
-    """
+    mlogger.info(f"run_started_at_ms: {run_started_at_ms}")
+    if from_time_ms:
+        mlogger.info(f"[CRON] Override from_time_ms: {from_time_ms}")
+
+    total_processed = 0
+
     with get_pg_connector() as pg:
-        mlogger.info("[CRON] Checking campaigns needing performance update...")
+        campaigns = fetch_campaigns(pg,run_started_at_ms,from_time_ms=from_time_ms
+)
 
-        counts = list(pg.yield_results("""
-            SELECT SUM(total) FROM (
-                SELECT COUNT(*) AS total
-                FROM pre_sales_campaign c
-                LEFT JOIN campaign_performance_summary s
-                ON s.campaign_performance_summary_id =
-                     c.dict->>'campaign_id'
-                WHERE
-                    s.campaign_performance_summary_id IS NULL
-                    OR c.updated > TO_TIMESTAMP((s.dict->>'updated')::BIGINT / 1000)
+        if not campaigns:
+            mlogger.info("[CRON] No campaigns to process")
+            return
 
-                UNION ALL
+        mlogger.info(f"[CRON] Processing batch of {len(campaigns)} campaigns")
 
-                SELECT COUNT(*) AS total
-                FROM post_sales_campaign c
-                LEFT JOIN campaign_performance_summary s
-                ON s.campaign_performance_summary_id =
-                     c.dict->>'campaign_id'
-                WHERE
-                    s.campaign_performance_summary_id IS NULL
-                    OR c.updated > TO_TIMESTAMP((s.dict->>'updated')::BIGINT / 1000)
-            ) t;
-        """))
+        for campaign_id, campaign_type in campaigns:
+            mlogger.info(f"campaign_id: {campaign_id}, campaign_type: {campaign_type}")
 
-        update_count = int(counts[0][0]) if counts and counts[0][0] is not None else 0
+            lead_model = (
+                "pre_sales_lead" if campaign_type == "pre-sales"
+                else "post_sales_lead"
+            )
 
-        if update_count == 0:
-            mlogger.info("[CRON] No campaign updates detected. Skipping execution.")
-            return 0
+            try:
+                with get_pg_connector() as pg:
+                    mlogger.info(f"Executing update_campaign_performance_summary for campaign_id: {campaign_id}")
 
-        mlogger.info(f"[CRON] {update_count} campaigns require update. Running procedure...")
+                    pg.execute_write("""
+                        CALL update_campaign_performance_summary(%s, %s, %s);
+                    """, (campaign_id, campaign_type, lead_model), _fetch=False)
 
-        pg.execute_write("CALL run_campaign_performance_summary();", _fetch=False)
+                total_processed += 1
 
-        mlogger.info(f"[CRON] Campaign performance update completed. Updated rows: {update_count}")
+                mlogger.info(f"[CRON] Processed {campaign_id} ({campaign_type})")
 
-        return update_count
+            except Exception as e:
+                mlogger.error(f"[CRON] Failed {campaign_id} ({campaign_type}): {str(e)}")
+
+    mlogger.info(f"[CRON] Completed. Total processed: {total_processed}")
+
+    return total_processed
 
 # @gryd.is_a_task(function_name="campaign_objective_performance_summary")
 # def campaign_objective_performance_summary():
@@ -277,7 +299,7 @@ def manage_active_sessions(*args, **kwargs):
         for session in session_list:
             session_id = session.get("session_id")
             channel = session.get("channel")
-
+            mlogger.info(f"Processing session {session_id} for channel {channel}")
             if only_for_channels and channel not in only_for_channels:
                 mlogger.info(f"Skipping session {session_id} for channel {channel} as it's not in the specified channels list.")
                 continue
@@ -298,12 +320,12 @@ def manage_active_sessions(*args, **kwargs):
                 else None
             )
 
+            has_unprocessed_history= session.get("has_unprocessed_history") if session.get("has_unprocessed_history") else False
             if last_response_epoch:
                 inactive_cutoff_epoch = last_response_epoch + INACTIVITY_TIMEOUT_SECONDS 
-            history_updated = False
+            
             last_ts = None
             existing_history = session.get("history", []) or []
-
             # checking and updating history only when the last_response_time is newer than the last updated history_time...
             if (last_response_epoch and ( last_history_epoch is None or last_response_epoch > last_history_epoch)):
                 mlogger.info(f"Just updating history for session {session_id}")
@@ -345,6 +367,7 @@ def manage_active_sessions(*args, **kwargs):
                     update_payload = {
                         "history": existing_history + appended_history,
                         "history_updated_time": last_ts,
+                        "has_unprocessed_history": True
                     }
 
                     if session_duration is not None:
@@ -357,16 +380,14 @@ def manage_active_sessions(*args, **kwargs):
                         update_payload
                     )
 
-                    history_updated = True
-
             # we are calling post_process only when there is a new response (new data to process) or if it's been more than POST_PROCESS_INTERVAL_SECONDS seconds since last post_process_time.
             can_call_post_process = (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS)
-            mlogger.info("can_call_post_process : {} for session_id: {}".format(can_call_post_process, session_id))
-            if can_call_post_process:
+            mlogger.info("can_call_post_process : {} and has history_updated : {}".format(can_call_post_process, has_unprocessed_history))
+            if can_call_post_process and has_unprocessed_history:
                 handle_session_post_process_or_end(
                     session_id=session_id,
                     pg=pg,
-                    history_updated=history_updated,
+                    history_updated=has_unprocessed_history,
                     can_call_post_process=can_call_post_process,
                     inactive_cutoff_epoch=inactive_cutoff_epoch
                 )

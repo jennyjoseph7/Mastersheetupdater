@@ -213,9 +213,9 @@ DEFAULT_SVG_ELEMENTS = {
     }
 }
 DEFAULT_OFFER = {
-    "offer_currency": "₹",  
+    "offer_currency": "₹            ",  
     "offer_amount": "10.55",
-    "offer_units": "Lakh",
+    "offer_units": "           Lakh",
     "offer_terms": "*Valid for limited time only"
 }
 DEFAULT_CAMPAIGN_DETAILS = {
@@ -231,6 +231,7 @@ def replace_svg_text_by_id(svg_path: str, text_to_ids: dict, logger: hp.logging.
     with open(svg_path, 'r') as f:
         soup = bs4.BeautifulSoup(f, 'xml')
     for id_, text_to_replace in text_to_ids.items():
+        logger.debug(f"Replacing text {text_to_replace} with id {id_} in SVG file {svg_path}")
         try:
             text_to_replace = str(text_to_replace)
         except Exception as e:

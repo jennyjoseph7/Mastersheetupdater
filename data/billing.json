@@ -148,8 +148,7 @@
         },
         {
             "name": "item_final_price",
-            "type": "number",
-            "required": true
+            "type": "number"
         },
         {
             "name": "item_total",
@@ -164,13 +163,11 @@
         },
         {
             "name": "discount_amount",
-            "type": "number",
-            "required": true
+            "type": "number"
         },
         {
             "name": "item_final_total",
-            "type": "number",
-            "required": true
+            "type": "number"
         },
         {
             "name": "currency",

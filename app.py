@@ -54,18 +54,18 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
         load_stored_procedures()
     if (not skip_cron) or new_environment:
         # cron_worker.add_cron_job(AUTOCRM_APP_ENTERPRISE_ID, "clear_otp_cache", "cron", "*/15 * * * *", logger = logger)
-        cron_worker.add_cron_job(
-            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
-              task="overall_campaign_summary",
-              service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/10 * * * *",
-              add_schedule_to_queue=False
-            )
+        # cron_worker.add_cron_job(
+        #     enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+        #       task="overall_campaign_summary",
+        #       service=AUTOCRM_CRON_SERVICE_NAME,
+        #       schedule = "*/10 * * * *",
+        #       add_schedule_to_queue=False
+        #     )
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="manage_active_sessions",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/5 * * * *",
+              schedule = "*/10 * * * *",
               kwargs={"inactivity_timeout_seconds": 10, "only_for_channels":["whatsapp_chat"],"post_process_interval_seconds":10},
               add_schedule_to_queue=False
         )
@@ -81,7 +81,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="performance_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/10 * * * *",
+              schedule = "*/30 * * * *",
               add_schedule_to_queue=False
         )
         
