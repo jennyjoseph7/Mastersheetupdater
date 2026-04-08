@@ -71,7 +71,8 @@ class AirtelCampaignManager:
     def _resolve_variables_and_payload(self, message_data, params_data):
         variables = [params_data.get(p, '') for p in message_data.get("template_variables", [])]
         variables = [] if all(v in ("", None) for v in variables) else variables
-        payload = message_data.get("template_buttons_payload", [])
+        payload = message_data.get("template_button_payloads", [])
+        logger.info(f"Variables: {variables}, Payload: {payload}")
         return variables, payload
 
 
