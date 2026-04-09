@@ -10,6 +10,7 @@ if [ ! -d $LOGDIR ];then
 	mkdir -p $LOGDIR
 fi
 
+
 export LOG_RETENTION_DIR=${LOG_RETENTION_DIR:-./log_retention}
 if [ ! -d $LOG_RETENTION_DIR ];then
 	mkdir -p $LOG_RETENTION_DIR
@@ -109,6 +110,8 @@ function start_workers() {
 	echo "Creating pid file."
 	echo FG > ./worker.pid
 	WORKER_FNAME=${WORKER_ENTRYPOINT%.*}
+    export LOG_FILE=${LOGDIR}/${WORKER_FNAME}_${log_append_text}.log
+
     if [ $PRIMARY == 0 ];then
     	nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_FNAME}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${WORKER_FNAME}_stderr_${log_append_text}.log &
         worker_pid=$!
@@ -173,7 +176,10 @@ function main() {
 		WEBAPP_URL_SCHEME=${URL_SCHEME:-https}
 		WEBAPP_API_THREADS=$PARALLEL_THREADS
 		WEBAPP_APP_NAME=${APP_NAME:-app}
-	
+
+        export LOG_FILE=${LOGDIR}/${WEBAPP_APP_NAME}_${log_append_text}.log
+
+
 		nohup $WAITRESS_PATH --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout_${log_append_text}.log 2>> ${LOGDIR}/webapp_stderr_${log_append_text}.log &
 
 	    app_pid=$!
@@ -199,6 +205,8 @@ function main() {
 		if [ $stat != 0 ];then
 			echo "Process exited or not started. Starting."
 			echo "Starting Cron Continuous in BG. Logs are written to ${LOGDIR}/${a}_stderr_${log_append_text}.log and ${LOGDIR}/${a}_stdout_${log_append_text}.log"
+            export LOG_FILE=${LOGDIR}/${a}_${log_append_text}.log
+
 			nohup $CRON_SCHEDULER_PATH 1>> ${LOGDIR}/${a}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${a}_stderr_${log_append_text}.log &
 			w_pid=$!
 			echo "PID is $w_pid"
@@ -232,6 +240,8 @@ function main() {
 		if [ $stat != 0 ];then
 			echo "Process exited or not started. Starting."
 			echo "Starting Cron Worker in BG. Logs are written to ${LOGDIR}/${a}_stderr_${log_append_text}.log and ${LOGDIR}/${a}_stdout_${log_append_text}.log"
+            export LOG_FILE=${LOGDIR}/${a}_${log_append_text}.log
+
 			if [ $PRIMARY == 0 ];then
 				nohup $CRON_WORKER_PATH -n $PARALLEL_THREADS 1>> ${LOGDIR}/${a}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${a}_stderr_${log_append_text}.log &
 			else
