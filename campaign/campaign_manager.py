@@ -6,10 +6,12 @@ import time
 from os.path import exists as ispath, dirname, basename, join as joinpath, abspath, split as pathsplit, splitext, sep as dirsep, isfile
 import sys
 import json
+
 _root = dirname(dirname(abspath(__file__)))
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
+ 
 # ---
 # from communication.connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappCampaignTemplate
 # from communication.connectors.user_source_connectors.source_connector import CampaignSourceFactory
@@ -28,7 +30,7 @@ from agents.get_email_template_agent import get_email_template
 from agents.get_rcs_template_agent import get_rcs_template
 from communication.connectors.email_communication import communication_sender
 from communication.connectors.connector_rcs import gryd_send_rcs
-from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
+from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME, SERVICE,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
@@ -70,6 +72,36 @@ class BaseCampaignCreater:
         if len(number) == 10:
             number = country_code + number
         return number
+    @staticmethod
+    def load_models(campaign_type, logger = None):
+    
+        model_info = {
+            'pre-sales': {
+                'lead_model': 'pre_sales_lead',
+                'person_model': 'person',
+                'campaign_model': 'pre_sales_campaign',
+                'rooftop_model': 'showroom',
+            },
+            'post-sales': {
+                'lead_model': 'post_sales_lead',
+                'vehicle_model': 'vehicle',
+                'person_model': 'person',
+                'person_vehicle_model': 'person_vehicle',
+                'campaign_model': 'post_sales_campaign',
+                'rooftop_model': 'workshop',
+            },
+            'dealership': {
+                'lead_model': 'dealership_lead',
+                'campaign_model': 'dealership_campaign',
+                'rooftop_model': 'dealership',
+            }
+        }
+        if campaign_type not in model_info:
+            raise ValueError(f"Invalid campaign type: {campaign_type}")
+        models = {}
+        for k, v in model_info[campaign_type].items():
+            models[k] = gryd.base_model.Model(v, AUTOCRM_APP_ENTERPRISE_ID)
+        return models
 
     def __init__(self,*args,**kwargs):
         pass
@@ -338,7 +370,7 @@ class BaseCustomCampaignManager:
             List of processed campaign user IDs.
         """
         channel= campaign_data.get("channel").upper()
-        logger.info(f"Starting processing {len(campaign_users)} users for campaign_id={campaign_id}, channel={channel}")
+        logger.info(f"Starting processing {len(campaign_users)} users for campaign_id={campaign_id}, channel={channel} , campaign_data={json.dumps(campaign_data,indent=4)}")
         #  use contact status model ---
         
         # --- Load credentials ---
@@ -760,8 +792,102 @@ def nada_pre_sales(*args,**kwargs):
         )
         
         logger.info(f"Pre-sales lead processed for lead_id={lead_id}")
-        
+
+
+@gryd.is_a_task(function_name="manual_register_pre_sales", job_param='job', auth_param='auth', logger_param='logger')
+def manual_register_pre_sales(name, phone_number, email, *args, **kwargs):
+    """
+    Manually register a pre-sales lead using process_pre_sales_lead_row logic
+    and trigger the campaign immediately.
+    """
+   
+
+    # 1. Hardcoded Campaign/Dealership Details
+    campaign_id = "d9a2cd16-8877-3802-bbf0-0e3c14a6b69c"
+    dealership_id = "stellantis-india"
+    campaign_type = "pre-sales"
+    campaign_objective_id = "pre-sales-test-drive-booking"
     
+    # 2. Load Models
+    models = BaseCampaignCreater.load_models(campaign_type)
+    lead_model = models.get('lead_model')
+
+    # 3. Construct Data Dictionary (Following process_pre_sales_lead_row pattern)
+    # We initialize the row with the mandatory fields and campaign context
+    row = {
+        "person_name": name,
+        "phone_number": phone_number,
+        "email": email,
+        "campaign_id": campaign_id,
+        "dealership_id": dealership_id,
+       
+        "campaign_objective_id": campaign_objective_id
+    }
+
+    # Data container for the final post
+    data = {}
+
+    # Logic from process_pre_sales_lead_row: Simple string fields
+    for k in [
+        "phone_number", "email", "person_name", "campaign_id", "dealership_id", 
+        "last_contacted_whatsapp_number", "last_contacted_email", "last_contacted_phone_number"
+    ]:
+        # Using a direct get check to mirror is_valid_value logic
+        data[k] = row.get(k) if row.get(k) else None
+
+    # Logic from process_pre_sales_lead_row: List/Preference fields
+    for k in [
+        "brand_preference", "model_preference", "variant_preference", "color_preference",
+        "engine_type_preference", "transmission_preference", "range_preference",
+        "feature_preferences", "segment_preference", "competitor_brands",
+        "competitor_models", "emotions", "engagement_events",
+        "previous_interaction_ids", "lead_tags", "interested_vehicle_competitor_vehicles"
+    ]:
+        val = row.get(k)
+        if val and isinstance(val, str):
+            data[k] = val.split(',')
+        else:
+            data[k] = None
+
+    try:
+ 
+        # 1. Post the lead to the model
+        lead = lead_model.post(data)
+        
+        if not lead:
+            raise ValueError("Lead model post returned empty result.")
+
+        # 2. KEY MAPPING: Map the specific model key to the generic 'lead_id'
+        # This ensures 'lead_id' exists for the next task and the final result
+        if not lead.get('lead_id'):
+            lead['lead_id'] = lead.get('pre_sales_lead_id') or lead.get('id')
+
+        # 3. Final ID check for logging
+        actual_id = lead.get('lead_id')
+        logger.info(f"Triggering campaign for lead_id: {actual_id} , person_name: {name}, phone_number: {phone_number} , lead_model response: {lead}")
+
+        # 4. Trigger Campaign
+        # We pass the modified 'lead' object which now contains 'lead_id'
+        gryd.create_async_task(
+            "process_single_lead",
+            AUTOCRM_CAMPAIGN_SERVICE_NAME,
+            args=["voice_phone", lead, "pre-sales", campaign_id],
+            kwargs={}
+        )
+
+        yield {"_result": {
+            "status": "success",
+            "lead_id": actual_id,
+            "message": f"Lead created for {name} and campaign triggered."
+        }}
+
+    except Exception as e:
+        logger.error(f"Manual registration/trigger failed: {str(e)}")
+        yield {"_error": f"Failed to process manual entry: {str(e)}"}
+        raise
+
+
+
 def check_and_create_lead_object(**kwargs):
     dealership_id=kwargs.get("dealership_id")
     campaign_id=kwargs.get("campaign_id")
@@ -1063,7 +1189,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     }
     run_async = campaign_details.get("run_async", False)
     is_testing = campaign_details.get("_is_testing", False)
-
+    logger.info(f"Final payload prepared for campaign_id={campaign_id} and lead_id={lead_id}: {json.dumps(final_payload, indent=4)}")
     if not run_async:
         logger.info("Running campaign in SYNC mode")
         BaseCustomCampaignManager().run_custom_campaign(
