@@ -1,13 +1,13 @@
 import json, os, glob
 
-def generate_conf(host, port, app_dir, service_name):
+def generate_conf(host, port, app_dir, logdir, service_name):
     logio_conf = {}
     logio_conf["messageServer"] = {}
     logio_conf["messageServer"] = {"host": host, "port": port}
 
     finputs = []
 
-    for logf in glob.glob(f"{app_dir}/logs/{service_name}*log"):
+    for logf in glob.glob(f"{logdir}/{service_name}*log"):
         spl = os.path.basename(logf).split(".")
         j = {}
         j["source"] = service_name
@@ -25,7 +25,8 @@ if __name__ == '__main__':
     SERVICE_NAME=os.environ.get("SERVICE_NAME", "UNKNOWN_SERVICE")
     HOST=os.environ.get("LOGIO_SERVER_TCP_URL", None)
     PORT=os.environ.get("LOGIO_SERVER_TCP_PORT", 6689)
-    APP_DIR=os.environ.get("APP_DIR", "/root/app/")
+    APP_DIR=os.environ.get("APP_DIR", "/root/app")
+    LOGDIR=os.environ.get("LOGDIR", "/root/app/logs/app_logs")
     with open(f"{APP_DIR}/logio_conf.json","w") as fp:
         print("Writing log config.")
-        fp.write(json.dumps(generate_conf(HOST, PORT, APP_DIR, SERVICE_NAME), indent=4))  
+        fp.write(json.dumps(generate_conf(HOST, PORT, APP_DIR, LOGDIR, SERVICE_NAME), indent=4))  
