@@ -7,7 +7,7 @@ def generate_conf(host, port, app_dir, service_name):
 
     finputs = []
 
-    for logf in glob.glob(f"{app_dir}/logs/*log"):
+    for logf in glob.glob(f"{app_dir}/logs/{service_name}*log"):
         spl = os.path.basename(logf).split(".")
         j = {}
         j["source"] = service_name
