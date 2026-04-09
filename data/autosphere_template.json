@@ -86,6 +86,17 @@
             "indexed": true
         },
         {
+            "name": "base_image",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "image"
+        },
+        {
             "name": "image_url",
             "type": "text",
             "constraint": {
@@ -488,23 +499,6 @@
                 "premium"
             ],
             "type": "text"
-        },
-        {
-            "name": "base_konva_json",
-            "type": "nested_object"
-        },
-        {
-            "name": "locked_layers",
-            "type": "string_list",
-            "list_type": "text"
-        },
-        {
-            "name": "snap_to_grid",
-            "type": "bool"
-        },
-        {
-            "name": "grid_size",
-            "type": "number"
         },
         {
             "name": "similar_templates",
