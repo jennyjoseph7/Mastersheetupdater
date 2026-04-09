@@ -9,7 +9,7 @@ import re
 # --
 
 
-from conversation.lead_post_processing import post_session_process
+# from conversation.lead_post_processing import post_session_process
 
 # from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NUMBER,AUTOCRM_CORE_SERVICE_NAME
 from config import *

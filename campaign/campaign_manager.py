@@ -43,6 +43,37 @@ def clean_phone_number(phone_number: str) -> str:
     return re.sub(r"\D", "", str(phone_number))
 
 
+
+def update_session_failed(error_msg,session_id=None,lead_id=None):
+    logger.info(f"Error occurred. Error message -{error_msg}")
+    return
+
+def handle_session_errors(func):
+    def wrapper(*args, **kwargs):
+        session_id = kwargs.get("session_id") or (args[0] if args else None)
+        lead_id = kwargs.get("lead_id") or (args[1] if args else None)
+        try:
+            result = func(*args, **kwargs)
+
+            if hasattr(result, "__iter__") and not isinstance(result, dict):
+                for item in result:
+                    if isinstance(item, dict) and item.get("status") == "Error":
+                        update_session_failed(item.get("error_description"),session_id=None,lead_id=None)
+                    yield item
+
+            else:
+                if isinstance(result, dict) and result.get("status") == "Error":
+                    update_session_failed(result.get("error_description"),session_id=None,lead_id=None)
+                    
+                return result
+
+        except Exception as e:
+            update_session_failed(str(e),session_id=None,lead_id=None)
+            
+            return {"status": "Error", "error_description": str(e)}
+
+    return wrapper
+
 class BaseCampaignCreater:
     def create_text_template(self):
         '''
@@ -74,6 +105,7 @@ class BaseCampaignCreater:
     def __init__(self,*args,**kwargs):
         pass
 
+    # @handle_session_errors
     def create_campaign_payload(self, campaign_details: dict, campaign_user_data: dict, enterprise_id: str) -> dict:
         """
         Create the payload required for sending a campaign message.
@@ -146,7 +178,7 @@ class BaseCampaignCreater:
             logger.exception(f"Unexpected error while creating campaign payload: {e}")
             return {}
 
-    
+    # @handle_session_errors
     def send_campaign_message(
             self,
             mobile_number: str,
@@ -846,6 +878,8 @@ def generate_uid(data):
     uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
 
     return uid.hex[:16]
+ 
+# @handle_session_errors
 @gryd.is_a_task(function_name="process_single_lead")
 def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=None, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None):
     
