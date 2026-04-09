@@ -15,17 +15,11 @@ import inspect
 from config import AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
 from config import post_autocrm_model, AutocrmModel
 
-GRYD_SERVICE_NAME = AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
-GRYD_CONFIG = {
-    "broker_type" : "sqs", 
-    "timeout" : 10,
-    "wait_time_to_shutdown" : 43200
-}
-
+GRYD_CONFIG = {"broker_type" : "sqs", "timeout" : 10, "wait_time_to_shutdown" : 43200}
 logger = get_logger(__name__)
 
 def setup_gryd():
-    gryd.SERVICE = GRYD_SERVICE_NAME
+    gryd.SERVICE = AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
     gryd.set_queue_manager(config = GRYD_CONFIG)
     logger.info(f"Environment currently set to '{gryd.ENVIRONMENT}'")
     
@@ -305,7 +299,7 @@ def campaign_idea_generation_agent_async(*args, **kwargs):
 def meta_ad_campaign_generator_agent(*args, **kwargs):
 
     try:
-        from cohorts_new.agents.meta_campaign_agent import MetaAdCampaignAgent
+        from cohorts_new.cohorts_agents.meta_campaign_agent import MetaAdCampaignAgent
         result = MetaAdCampaignAgent(**kwargs).run()
         return {
             "task": inspect.currentframe().f_code.co_name,
@@ -324,7 +318,7 @@ def meta_ad_campaign_generator_agent(*args, **kwargs):
 @gryd.is_a_task(function_name="meta_ad_adset_generator_agent", job_param='job', logger_param='logger')
 def meta_ad_adset_generator_agent(*args, **kwargs):
     try:
-        from cohorts_new.agents.meta_campaign_agent import MetaAdAdsetAgent
+        from cohorts_new.cohorts_agents.meta_campaign_agent import MetaAdAdsetAgent
         result = MetaAdAdsetAgent(**kwargs).run()
         return {
             "task": inspect.currentframe().f_code.co_name,
@@ -343,7 +337,7 @@ def meta_ad_adset_generator_agent(*args, **kwargs):
 @gryd.is_a_task(function_name="meta_ad_creative_generator_agent", job_param='job', logger_param='logger')
 def meta_ad_creative_generator_agent(*args, **kwargs):
     try:
-        from cohorts_new.agents.meta_campaign_agent import MetaAdCreativeAgent
+        from cohorts_new.cohorts_agents.meta_campaign_agent import MetaAdCreativeAgent
         result = MetaAdCreativeAgent(**kwargs).run()
         return {
             "task": inspect.currentframe().f_code.co_name,
@@ -358,6 +352,16 @@ def meta_ad_creative_generator_agent(*args, **kwargs):
             "error": str(e).strip(),
             "full_error_trace": full_trace
         }
+    
+
+@gryd.is_a_task()
+def meta_ad_manager_functions(*args, **kwargs):
+    supported_functions = ["get_campaign_list", "get_adset_list", "get_creative_list", "set_image_creative", "set_adset", "set_campaign"]
+    function_name = kwargs.get("function_name", "get_adset_list")
+    if function_name not in supported_functions:
+        raise ValueError(f"Invalid function name: {function_name}. Supported functions: {supported_functions}")
+    
+
     
 if __name__ == "__main__":
 

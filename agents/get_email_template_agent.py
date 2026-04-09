@@ -74,7 +74,6 @@ class get_email_template_agent(BaseAgent):
                 table_name="template",
                 where={"campaign_type": self.campaign_type,
                        "campaign_objective_name" : self.campaign_objective[0],
-                       "template_type" : "text",
                         "channel" : "email",
                         "status" : "approved",
                         "communication_credentials_id" : communication_credentials_id,
@@ -88,7 +87,6 @@ class get_email_template_agent(BaseAgent):
                 table_name="template",
                 where={"campaign_type": self.campaign_type,
                        "campaign_objective_name" : self.campaign_objective[0],
-                       "template_type" : "text",
                        "channel" : "email",
                        "status" : "approved",
                        "communication_credentials_id" : communication_credentials_id,
@@ -130,6 +128,11 @@ class get_email_template_agent(BaseAgent):
         print("data_attrs_list", data_attrs_list)
 
         if not isinstance(data_attrs_list, list):
+            data_attrs_list = [data_attrs_list]
+
+        # If it's a flat list of strings (single attribute set), wrap it so
+        # the loop below treats it as one set instead of N single-element sets.
+        if data_attrs_list and all(isinstance(item, str) for item in data_attrs_list):
             data_attrs_list = [data_attrs_list]
 
         all_results = []
