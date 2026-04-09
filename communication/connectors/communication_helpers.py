@@ -304,46 +304,7 @@ def get_or_create_session(data,channel=None,engaged=False):
         
         return s
 
-
-def end_session(*args, **kwargs):
-    """
-    Ends a session and triggers a post session process task.
-
-    Args:
-        session_id (str): The session id to end.
-
-    Returns:
-        None
-    """
-    session_id=kwargs.get("session_id")
-    additional_dict=kwargs.get("additional_dict",{})
-    pg=kwargs.get("pg",None)
-    _call_post_process=kwargs.get("call_post_process",True)
-    additional_dict["session_live"] = additional_dict.get("session_live", False)
-    additional_dict["status"] = additional_dict.get("status", "completed")
-    additional_dict["end_time"] = additional_dict.get("end_time", time.time())
-
-    logger.info(f"Ending session with session_id: {session_id}")
-    def _do_db_work(pg_conn):
-        # if additional_dict has history we will update it in the session model
-        pg_conn.update("session", "session_id", session_id, additional_dict)
-        update_session_data_in_lead(
-            session_id,
-            "completed",
-            pg=pg_conn  
-        )
-
-    if pg:
-        _do_db_work(pg)
-    else:
-        with get_pg_connector() as pg_conn:
-            _do_db_work(pg_conn)
-    logger.info(f"Calling post session process task for session_id: {session_id}")
-    # post_session_process(**{"session_id":session_id})
-    if _call_post_process:
-        gryd.create_async_task("post_session_process",AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,args=[],kwargs={"session_id":session_id})
-    logger.info(f"Session with session_id: {session_id}. Has been ended.")
-
+#end_session#
 def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_post_process,inactive_cutoff_epoch):
     """
     Handles post session process or end session based on session end date and history update.
@@ -448,21 +409,8 @@ def create_new_session(data,channel=None,engaged=False):
         return s 
 
 
-def update_session_data_in_lead(session_id,status,pg=None):
-    if not pg:
-        logger.error("Postgres connection is required to update session data in lead.")
-        return
-    session_data = pg.get("session", "session_id",session_id)
-    if not session_data:
-        logger.info(f"Could not find session with session_id: {session_id}")
-    lead_id = session_data.get("lead_id")
-    campaign_type = session_data.get("campaign_type")
-    last_interaction_time = session_data.get("last_response_time",None)
-    if lead_id:
-        lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
-        lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
-        pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
-        logger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
+#update_session_data_in_lead
+
 
 def get_or_create_person(phone_number):
     """Return person object; create if not exists."""

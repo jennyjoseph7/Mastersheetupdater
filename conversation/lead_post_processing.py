@@ -5,6 +5,7 @@ BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_MESSAGE_DELIVERED_ITEM,AUTOCRM_MESSAGE_DELIVERED_PRICE,AUTOCRM_MESSAGE_DELIVERED_UNITS,AutocrmModel
+import config
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
 json = hp.json
@@ -13,6 +14,8 @@ from conversation.prompt import run_prompt_sync
 from communication.connectors.communication_helpers import get_communication_credential,generate_uid
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
+from conversation import converse
+import time
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
@@ -27,6 +30,112 @@ def WARM_UP():
     with get_pg_connector() as pg:
         pass    
     return
+
+def update_session_data_in_lead(session_id,status,pg=None):
+    if not pg:
+        mlogger.error("Postgres connection is required to update session data in lead.")
+        return
+    session_data = pg.get("session", "session_id",session_id)
+    if not session_data:
+        mlogger.info(f"Could not find session with session_id: {session_id}")
+    lead_id = session_data.get("lead_id")
+    campaign_type = session_data.get("campaign_type")
+    last_interaction_time = session_data.get("last_response_time",None)
+    if lead_id:
+        lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
+        lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
+        pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
+        mlogger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
+
+@gryd.is_a_task(function_name="end_session_and_post_process")
+def end_session_and_post_process(*args, **kwargs):
+    """
+    Ends a session and triggers a post session process task.
+
+    Args:
+        session_id (str): The session id to end.
+
+    Returns:
+        None
+    """
+    session_id=kwargs.get("session_id")
+    additional_dict=kwargs.get("additional_dict",{})
+    pg=kwargs.get("pg",None)
+    _call_post_process=kwargs.get("call_post_process",True)
+    additional_dict["session_live"] = additional_dict.get("session_live", False)
+    additional_dict["status"] = additional_dict.get("status", "completed")
+    additional_dict["end_time"] = additional_dict.get("end_time", time.time())
+
+    mlogger.info(f"Ending session with session_id: {session_id}")
+    def _do_db_work(pg_conn):
+        # if additional_dict has history we will update it in the session model
+        pg_conn.update("session", "session_id", session_id, additional_dict)
+        update_session_data_in_lead(
+            session_id,
+            "completed",
+            pg=pg_conn  
+        )
+
+    if pg:
+        _do_db_work(pg)
+    else:
+        with get_pg_connector() as pg_conn:
+            _do_db_work(pg_conn)
+
+    if any( _ == "voice" for _ in kwargs.get("channel", "").split("_")):
+        post_messages_for_voice_session(session_id, kwargs.get("session_history", []))
+        
+    mlogger.info(f"Calling post session process task for session_id: {session_id}")
+    post_session_process(**{"session_id":session_id})
+    # if _call_post_process:
+    #     gryd.create_async_task("post_session_process",AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,args=[],kwargs={"session_id":session_id})
+    mlogger.info(f"Session with session_id: {session_id}. Has been ended.")
+
+
+
+def post_messages_for_voice_session(session_id, session_history):
+    session_model = gryd.base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
+    session_data = session_model.get(session_id)
+
+    agent_msgs = [d for d in session_history if d.get("role") == "agent"]
+    user_msgs = [d for d in session_history if d.get("role") == "user"]
+
+    #in zero'th index add empty user message for better indexing
+    user_msgs.insert(0, {"role": "user", "content": "__init__"})
+
+    if len(agent_msgs) != len(user_msgs):
+        mlogger.error(
+            f"post_history: agent ({len(agent_msgs)}) and user ({len(user_msgs)}) message counts do not match"
+        )
+
+    max_len = max(len(user_msgs), len(agent_msgs))
+    history = []
+    for i in range(max_len):
+        u = user_msgs[i] if i < len(user_msgs) else {}
+        a = agent_msgs[i] if i < len(agent_msgs) else {}
+        tme = hp.time()
+        history.append({
+            "reply_to": generate_uid(u) if u else gryd.hp.make_uuid3(str(time.time())),
+            "customer_response": u.get("message", ""),
+            "request_data": {
+                "customer_response": u.get("message", "")
+            },
+            "session_id": session_data.get("session_id"),
+            "user_id": session_data.get("user_id"),
+            "responses": [
+                {
+                    "intent": "llm_response",
+                    "placeholder": a.get("message", ""),
+                    "index": i + 1,
+                    "created": tme,
+                    "updated": tme
+                }
+            ]
+        })
+
+    mlogger.info(f"Calling task post_all_messages_for_session with history: {history}")
+    converse.post_all_messages_for_session(history=history)
+
 
 @gryd.is_a_task()
 def post_session_process(*args, **kwargs):
