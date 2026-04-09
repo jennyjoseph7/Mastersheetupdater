@@ -73,7 +73,17 @@
         {
             "name": "region_subdivision_id",
             "refers": "parents.region_subdivision.subdivision_id",
-            "options": "/options/region_subdivision/subdivision_name?region_id={region_id}"
+            "required": false,
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "region_subdivision",
+                    "subdivision_id"
+                ],
+                "kwargs": {
+                    "subdivision_name": "{subdivision_name}"
+                }
+            }
         },
         {
             "name": "subdivision_name",
