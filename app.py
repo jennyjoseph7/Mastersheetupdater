@@ -84,6 +84,13 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
               schedule = "*/30 * * * *",
               add_schedule_to_queue=False
         )
+        # cron_worker.add_cron_job(
+        #     enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+        #       task="set_worker_count",
+        #       service=AUTOCRM_CRON_SERVICE_NAME,
+        #       schedule = "0 21 * * *",
+        #       add_schedule_to_queue=False
+        # )
         
         
 @app.route("/webhook/<channel>/<channel_provider>", methods = ["GET","POST"])

@@ -226,9 +226,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
     DISPOSITION_SEQUENCE = [
         "queued",
         "attempted",
-        "busy",
         "error",
         "failed",
+        "busy",
         "reached",
         "contacted",
         "engaged",
@@ -304,6 +304,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 f"(current={lead.get('disposition')}, incoming={incoming_status})"
             )
             update_payload["disposition"] = incoming_status
+            
+            if incoming_status == "failed":
+                update_payload["disposition_detail"] = data.get("failure_reason")
             #only updating the previous_contact_channel when the diposition is updated and it is higher in sequence than the current diposition
             update_payload["previous_contact_channel"] = channel 
             
@@ -337,7 +340,16 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
             s_d=s_d[0]
             session_id = s_d.get("session_id")
             mlogger.info(f"Updating session disposition for lead_id: {lead_id}")
-            pg.update("session","session_id",session_id,{"disposition":incoming_status,"status":incoming_status})
+            _p = {
+                    "disposition": incoming_status,
+                    "status": incoming_status,
+                    **(
+                        {"disposition_detail": data.get("failure_reason")}
+                        if incoming_status == "failed" and data.get("failure_reason")
+                        else {}
+                    )
+                }
+            pg.update("session","session_id",session_id,_p)
             if post_template_message and template_message and incoming_status in ["delivered", "reached"]:
                 mlogger.info(f"Updating template_message in history for lead_id: {lead_id}")
                 p={
