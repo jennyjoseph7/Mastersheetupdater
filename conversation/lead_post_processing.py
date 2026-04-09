@@ -86,7 +86,8 @@ def end_session_and_post_process(*args, **kwargs):
         post_messages_for_voice_session(session_id, additional_dict.get("history",[]))
         
     mlogger.info(f"Calling post session process task for session_id: {session_id}")
-    list(post_session_process(**{"session_id":session_id})) 
+    if _call_post_process:
+        list(post_session_process(**{"session_id":session_id}))
     
     return {"message": f"Session with session_id: {session_id} ended and post session process task triggered."}
 
