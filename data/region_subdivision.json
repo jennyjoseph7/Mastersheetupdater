@@ -25,7 +25,17 @@
         {
             "name": "region_id",
             "refers": "parents.region.region_id",
-            "indexed": true
+            "indexed": true,
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "region",
+                    "region_id"
+                ],
+                "kwargs": {
+                    "region_name": "{region_name}"
+                }
+            }
         },
         {
             "name": "region_name",
@@ -37,67 +47,67 @@
         },
         {
             "name": "subdivision_parent_id",
-           "type": "text"
+            "type": "text"
         },
         {
-          "name": "languages",
-          "type": "list",
-          "list_type": "text",
-          "option_others": true,
-          "ui_element": "tags",
-          "options": [
-            "english",
-            "hindi",
-            "kannada",
-            "telugu",
-            "tamil",
-            "malayalam",
-            "odia",
-            "bengali",
-            "marathi",
-            "gujarati",
-            "bengali",
-            "assamese",
-            "punjabi",
-            "spanish",
-            "arabic",
-            "french",
-            "bahasa_indonesia",
-            "tagalog",
-            "portuguese"
-          ],
-          "default": {
-            "function": "get_from_model",
-            "args": [
-              "region",
-              "region_id",
-              "languages"
-            ]
-          }
+            "name": "languages",
+            "type": "list",
+            "list_type": "text",
+            "option_others": true,
+            "ui_element": "tags",
+            "options": [
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujarati",
+                "bengali",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic",
+                "french",
+                "bahasa_indonesia",
+                "tagalog",
+                "portuguese"
+            ],
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "region",
+                    "region_id",
+                    "languages"
+                ]
+            }
         },
         {
-          "name": "subdivision_level_guidelines",
-          "type": "text",
-          "default": {
-            "function": "get_from_model",
-            "args": [
-              "region",
-              "region_id",
-              "region_level_guidelines"
-            ]
-          }
+            "name": "subdivision_level_guidelines",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "region",
+                    "region_id",
+                    "region_level_guidelines"
+                ]
+            }
         },
         {
-          "name": "subdivision_level_guardrails",
-          "type": "text",
-          "default": {
-            "function": "get_from_model",
-            "args": [
-              "region",
-              "region_id",
-              "region_level_guardrails"
-            ]
-          }
+            "name": "subdivision_level_guardrails",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "region",
+                    "region_id",
+                    "region_level_guardrails"
+                ]
+            }
         },
         {
             "name": "subdivision_category",
@@ -129,8 +139,8 @@
             ]
         },
         {
-          "name": "timezone",
-          "type": "text"
+            "name": "timezone",
+            "type": "text"
         },
         {
             "name": "subdivision_name",
@@ -158,60 +168,60 @@
                 }
             }
         },
-    {
-      "name" : "voice_agent_id",
-      "type" : "text",
-      "required":false
-    },
-    {
-      "name" : "voice_id",
-      "type" : "text",
-      "required":false
-    },
-    {
-      "name" : "voice_start_language",
-      "type" : "text",
-      "default":"English",
-      "options" : [
-          "Arabic",
-          "Bulgarian",
-          "Chinese",
-          "Croatian",
-          "Czech",
-          "Danish",
-          "Dutch",
-          "English",
-          "Filipino",
-          "Finnish",
-          "French",
-          "German",
-          "Greek",
-          "Hindi",
-          "Hungarian",
-          "Indonesian",
-          "Italian",
-          "Japanese",
-          "Korean",
-          "Malay",
-          "Norwegian",
-          "Polish",
-          "Portuguese (Brazil)",
-          "Portuguese",
-          "Romanian",
-          "Russian",
-          "Slovak",
-          "Spanish",
-          "Swedish",
-          "Tamil",
-          "Turkish",
-          "Ukrainian",
-          "Vietnamese"
-      ]
-    },
-    {
-      "name" : "voice_first_message",
-      "type" : "text",
-      "required":false
-    }
+        {
+            "name": "voice_agent_id",
+            "type": "text",
+            "required": false
+        },
+        {
+            "name": "voice_id",
+            "type": "text",
+            "required": false
+        },
+        {
+            "name": "voice_start_language",
+            "type": "text",
+            "default": "English",
+            "options": [
+                "Arabic",
+                "Bulgarian",
+                "Chinese",
+                "Croatian",
+                "Czech",
+                "Danish",
+                "Dutch",
+                "English",
+                "Filipino",
+                "Finnish",
+                "French",
+                "German",
+                "Greek",
+                "Hindi",
+                "Hungarian",
+                "Indonesian",
+                "Italian",
+                "Japanese",
+                "Korean",
+                "Malay",
+                "Norwegian",
+                "Polish",
+                "Portuguese (Brazil)",
+                "Portuguese",
+                "Romanian",
+                "Russian",
+                "Slovak",
+                "Spanish",
+                "Swedish",
+                "Tamil",
+                "Turkish",
+                "Ukrainian",
+                "Vietnamese"
+            ]
+        },
+        {
+            "name": "voice_first_message",
+            "type": "text",
+            "required": false
+        }
     ]
 }

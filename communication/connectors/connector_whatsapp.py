@@ -343,7 +343,7 @@ def post_contact_status(*args, **data):
         existing["updated"] = time.time()
 
         if incoming_status == "failed":
-            existing["failure_reason"] = "Message not delivered"
+            existing["failure_reason"] = data.get("error").get("message") if data.get("error").get("message") else "Message delivery failed"
 
         payload = existing
         contact_status_id = generate_uid(payload)

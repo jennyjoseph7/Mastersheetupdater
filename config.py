@@ -182,12 +182,14 @@ class AutocrmModel:
         return self.model.get(id)
 
     def update(self, id, data):
-        self.model.update(id, data)
+        u = self.model.update(id, data)
         self.logger.info(f"Data updated successfully: {self.model_name}")
+        return u
 
     def delete(self, id):
-        self.model.delete(id)
+        d = self.model.delete(id)
         self.logger.info(f"Data deleted successfully: {self.model_name}")
+        return d
 
     def filter(self, **kwargs):
         return self.model.yield_list(**kwargs)
@@ -199,20 +201,24 @@ class AutocrmModel:
         return self.model.count(**kwargs)
 
     def delete_many(self, filters, **kwargs):
-        self.model.delete_many(filters, **kwargs)
+        dm = self.model.delete_many(filters, **kwargs)
         self.logger.info(f"Data deleted successfully: {self.model_name}")
+        return dm
     
     def update_many(self, instance, filters = None,  **kwargs):
-        self.model.update_many(instance, filters, **kwargs)
+        um = self.model.update_many(instance, filters, **kwargs)
         self.logger.info(f"Data updated successfully: {self.model_name}")
+        return um
 
     def iadd(self, id, attribute, value):
-        self.model.iadd(id, attribute, value)
+        ia = self.model.iadd(id, attribute, value)
         self.logger.info(f"Data added successfully: {self.model_name}")
+        return ia
 
     def iupdate(self, id, instance):
-        self.model.iupdate(id, instance)
+        iu = self.model.iupdate(id, instance)
         self.logger.info(f"Data updated successfully: {self.model_name}")
+        return iu
 
 def load_autocrm_models(logger = None):
     logger = logger or clogger

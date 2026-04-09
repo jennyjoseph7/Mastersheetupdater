@@ -13,7 +13,7 @@ from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
-from gryd_worker import gryd_db_helper as db
+from gryd_worker import gryd_db_helper as db, beats as cron_worker,gryd_audit_helper
 from communication.connectors.communication_helpers import handle_session_post_process_or_end
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
@@ -165,12 +165,11 @@ def performance_summary(from_time_ms=None):
             )
 
             try:
-                with get_pg_connector() as pg:
-                    mlogger.info(f"Executing update_campaign_performance_summary for campaign_id: {campaign_id}")
+                mlogger.info(f"Executing update_campaign_performance_summary for campaign_id: {campaign_id}")
 
-                    pg.execute_write("""
-                        CALL update_campaign_performance_summary(%s, %s, %s);
-                    """, (campaign_id, campaign_type, lead_model), _fetch=False)
+                pg.execute_write("""
+                    CALL update_campaign_performance_summary(%s, %s, %s);
+                """, (campaign_id, campaign_type, lead_model), _fetch=False)
 
                 total_processed += 1
 
@@ -183,6 +182,30 @@ def performance_summary(from_time_ms=None):
 
     return total_processed
 
+
+def set_min_worker_count(services, environment, min_worker_count, max_worker_count):
+    """
+    Set worker configuration for a list of services.
+
+    :param services: List of service names
+    :param environment: Environment name (e.g., 'praveen-local')
+    :param min_worker_count: Minimum worker count
+    :param max_worker_count: Maximum worker count
+    """
+    for service in services:
+        try:
+            cron_worker.set_worker_config(
+                service,
+                environment=environment,
+                minimum_worker_count=min_worker_count,
+                maximum_worker_count=max_worker_count
+            )
+            print(f"Config set for {service}")
+        except Exception as e:
+            print(f"Failed for {service}: {str(e)}")
+            
+        # TODO: use a scale_down function to scale down the environment - gryd_worker:0.5.1
+        
 # @gryd.is_a_task(function_name="campaign_objective_performance_summary")
 # def campaign_objective_performance_summary():
     
