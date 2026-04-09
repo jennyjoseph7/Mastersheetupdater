@@ -602,6 +602,228 @@ def extract_csv_headers(csv_file_link, job = None, logger = None):
         return headers
 
 
+@gryd.is_a_task(function_name="clone_leads_between_campaigns", job_param='job', auth_param='auth', logger_param='logger')
+def gryd_task_clone_leads_between_campaigns(
+    lead_type: str,
+    old_campaign_id: str,
+    new_campaign_id: str,
+    dealership_id: str = None,
+    job=None,
+    auth=None,
+    logger=None,
+    **kwargs
+):
+    """
+    Unified gryd task to clone leads from an existing campaign to a new one.
+    Args:
+        lead_type: One of 'pre-sales', 'post-sales'
+        old_campaign_id: The source campaign ID to fetch leads from
+        new_campaign_id: The target campaign ID to post leads into
+        dealership_id: ID of the dealership (optional context)
+        kwargs:
+            - enterprise_id
+            - lead_tags: any extra tags to add to cloned leads
+    Yields:
+        - {"_error": ...} for individual row failures
+        - {"_status": ...} status updates for every 10 records
+        - {"_result": summary} final stats
+    """
+    logger = logger or mlogger
+    lead_type = (lead_type or '').lower().strip().replace('_','-').replace(' ','-')
+    enterprise_id = kwargs.get("enterprise_id") or AUTOCRM_APP_ENTERPRISE_ID
+    extra_tags = kwargs.get("lead_tags", [])
+    
+    # Determine database table and load models
+    lead_table = "pre_sales_lead" if lead_type == "pre-sales" else "post_sales_lead"
+    models = load_models(lead_type)
+    lead_model = models.get('lead_model')
+
+    if not lead_model:
+        raise ValueError(f"Invalid lead_type: {lead_type}. Could not load lead model.")
+
+    logger.info(f"------ Cloning Leads: {lead_type} ------")
+    logger.info(f"From: {old_campaign_id} -> To: {new_campaign_id} | Table: {lead_table}")
+
+    # Fetch source leads from db
+    query = {"campaign_id": old_campaign_id}
+    if dealership_id:
+        query["dealership_id"] = dealership_id
+
+    try:
+        with get_pg_connector() as pg:
+            leads = list(pg.list(lead_table, query))
+        
+        total = len(leads)
+        logger.info(f"Total leads fetched from source: {total}")
+
+        if total == 0:
+            yield {"_result": {"total": 0, "processed": 0, "skipped": 0, "status": "Source campaign was empty"}}
+            return
+
+        processed = 0
+        skipped = 0
+        error = 0
+
+        for i, lead in enumerate(leads, 1):
+            try:
+                # --- Validation Logic (Mirroring trigger_campaign) ---
+                if lead_type == "post-sales":
+                    persons = lead.get("persons_involved") or []
+                    if not persons:
+                        logger.info(f"Skipping post-sales lead (no persons involved): {lead.get('lead_id')}")
+                        skipped += 1
+                        continue
+                else:  # pre-sales
+                    if not lead.get("phone_number"):
+                        logger.info(f"Skipping pre-sales lead (no phone number): {lead.get('lead_id')}")
+                        skipped += 1
+                        continue
+
+                # --- Data Preparation for Re-Posting ---
+                # Create a fresh dictionary and strip unique database identifiers
+                new_lead_data = dict(lead)
+                
+                # Pop standard IDs so the system generates NEW ones for the new campaign
+                new_lead_data.pop('_id', None)
+                new_lead_data.pop('id', None)
+                new_lead_data.pop('lead_id', None) 
+                
+                # Update context to the new campaign
+                new_lead_data['campaign_id'] = new_campaign_id
+                
+                # Merge existing tags with any new tags provided in kwargs
+                existing_tags = new_lead_data.get('lead_tags') or []
+                if isinstance(existing_tags, str):
+                    existing_tags = [existing_tags]
+                
+                # Combine and ensure 'cloned' tag is present for tracking
+                unique_tags = list(set(existing_tags + extra_tags + ['cloned']))
+                new_lead_data['lead_tags'] = unique_tags
+
+                # --- Post the lead ---
+                logger.info(f"Cloning lead from {old_campaign_id} to {new_campaign_id}: {lead.get('phone_number') or lead.get('lead_id')}")
+                lead_model.post(new_lead_data)
+                processed += 1
+
+            except Exception as e:
+                error += 1
+                logger.error(f"Failed to clone lead at index {i}: {str(e)}")
+                yield {"_error": {"index": i, "error": str(e), "lead_id": lead.get('lead_id')}}
+
+            # --- Status Updates ---
+            if i % 10 == 0 or i == total:
+                percent = int(100.0 * i / total)
+                yield {"_status": f"{percent}% completed ({processed} cloned, {skipped} skipped, {error} errors)"}
+
+        # --- Final Summary ---
+        yield {"_result": {
+            "total_found": total,
+            "processed": processed,
+            "skipped": skipped,
+            "error": error,
+            "source_campaign": old_campaign_id,
+            "target_campaign": new_campaign_id
+        }}
+
+    except Exception as e:
+        logger.error(f"Critical failure in cloning task: {str(e)}")
+        raise ValueError(f"Clone task failed: {str(e)}") from e
+
+@gryd.is_a_task(function_name="assign_audience_to_campaign", job_param='job', auth_param='auth', logger_param='logger')
+def gryd_task_assign_audience_to_campaign(
+    lead_type: str,
+    campaign_id: str,
+    campaign_objective_id: str,
+    dealership_id: str,
+    job=None,
+    auth=None,
+    logger=None,
+    **kwargs
+):
+    """
+    Bulk assigns an audience (leads) to a target campaign and updates associated metadata.
+
+    This task identifies leads in the database based on a specific campaign_objective_id 
+    and dealership_id, then updates their campaign_id and any other fields provided 
+    via keyword arguments.
+
+    Args:
+        lead_type (str): The type of lead to process ('pre-sales' or 'post-sales').
+            Determines which database table/model is used.
+        campaign_id (str): The unique identifier of the target campaign to assign the leads to.
+        campaign_objective_id (str): The identifier for the audience segment (objective) 
+            to be filtered and updated.
+        dealership_id (str): The identifier for the dealership to ensure updates are 
+            scoped to the correct rooftop.
+        job (Any, optional): The Gryd job instance for tracking. Defaults to None.
+        auth (Any, optional): Authentication context for the task. Defaults to None.
+        logger (logging.Logger, optional): Logger instance. Defaults to mlogger.
+        **kwargs: Arbitrary metadata fields to update on the leads (e.g., audience_name, 
+            campaign_offer, source_name, lead_status).
+
+    Yields:
+        dict: A status update during processing (e.g., {"_status": "..."}) 
+            or the final execution summary (e.g., {"_result": {...}}).
+        dict: An error context if the update operation fails (e.g., {"_error": "..."}).
+
+    Raises:
+        ValueError: If the lead_type is invalid or the lead_model fails to load.
+    """
+    logger = logger or mlogger
+    lead_type = (lead_type or '').lower().strip().replace('_','-').replace(' ','-')
+    
+    logger.info(f"------ Task: Assign Audience to Campaign (Dynamic) ------")
+    
+    # 1. Load the model
+    models = load_models(lead_type)
+    lead_model = models.get('lead_model')
+
+    if not lead_model:
+        logger.error(f"Failed to load model for type: {lead_type}")
+        raise ValueError(f"Invalid lead_type: {lead_type}")
+
+    # 2. Set up Dynamic Update Parameters
+    # instance = The "SET" clause. We include campaign_id + everything in kwargs.
+    instance = {
+        "campaign_id": campaign_id,
+        **kwargs  # Unpacks everything else like audience_name, campaign_offer, etc.
+    }
+
+    # filters = The "WHERE" clause.
+    filters = {
+        "campaign_objective_id": campaign_objective_id,
+        "dealership_id": dealership_id
+    }
+
+    logger.info(f"Filtering leads by: {filters}")
+    logger.info(f"Applying updates to fields: {list(instance.keys())}")
+
+    try:
+        # 3. Call update_many
+        # This now updates campaign_id AND any custom fields passed in kwargs
+        result = lead_model.update_many(instance, filters=filters)
+        
+        logger.info(f"Successfully updated audience metadata for {lead_type}")
+
+        # 4. Final summary
+        yield {"_result": {
+            "status": "success",
+            "lead_type": lead_type,
+            "dealership_id": dealership_id,
+            "updated_fields": instance,
+            "count_info": str(result)
+        }}
+
+    except Exception as e:
+        logger.error(f"Failed to assign audience: {str(e)}")
+        yield {"_error": {"message": str(e), "objective_id": campaign_objective_id}}
+        raise ValueError(f"Bulk assignment failed: {str(e)}") from e
+
+    logger.info("------ Task Finished ------")
+
+
+
+
 @gryd.is_a_task(function_name="reset_password", job_param='job', logger_param='logger', auth_param='auth')
 def reset_password(phone_number_or_email:str, channel:str, new_password:str, confirm_password:str, token:str, otp:str, logger = None, job = None, auth = None):
     logger = logger or mlogger
