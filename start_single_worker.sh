@@ -123,7 +123,6 @@ function start_workers() {
         setup_logio_agent
     fi
     while [[ -n `jobs -rl | grep $worker_pid` ]]; do sleep 1; echo `jobs -rl`; done
-    transfer_logfiles
     echo "Exitting.."
     exit
 }
@@ -161,7 +160,6 @@ function transfer_logfiles() {
 }
 
 function main() {
-    trap 'transfer_logfiles' SIGTERM
     if [ $PYTHON_VENV != 0 ];then
     	export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
     	export WORKER_PATH=$PYTHON_VENV/bin/worker
@@ -185,7 +183,6 @@ function main() {
             setup_logio_agent
         fi
         while [[ -n `jobs -rl | grep $app_pid` ]]; do sleep 300; echo `jobs -rl`; done
-        transfer_logfiles
         echo "Exitting..."
         exit
     elif [ $SETUP_CRON_SCHEDULER == "True" ];then
@@ -211,7 +208,6 @@ function main() {
                 setup_logio_agent
             fi
             while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
-            transfer_logfiles
             echo "Exitting..."
             exit
 		else
@@ -249,7 +245,6 @@ function main() {
                 setup_logio_agent
             fi
             while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
-            transfer_logfiles
             echo "Exitting..."
             exit
 		else
