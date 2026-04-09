@@ -83,13 +83,12 @@ def end_session_and_post_process(*args, **kwargs):
             _do_db_work(pg_conn)
 
     if any( _ == "voice" for _ in kwargs.get("channel", "").split("_")):
-        post_messages_for_voice_session(session_id, kwargs.get("session_history", []))
+        post_messages_for_voice_session(session_id, additional_dict.get("history",[]))
         
     mlogger.info(f"Calling post session process task for session_id: {session_id}")
     post_session_process(**{"session_id":session_id})
-    # if _call_post_process:
-    #     gryd.create_async_task("post_session_process",AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,args=[],kwargs={"session_id":session_id})
-    mlogger.info(f"Session with session_id: {session_id}. Has been ended.")
+    
+    return {"message": f"Session with session_id: {session_id} ended and post session process task triggered."}
 
 
 

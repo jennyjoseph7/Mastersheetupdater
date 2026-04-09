@@ -14,7 +14,7 @@ import pytz
 import time
 
 from conversation import converse
-from communication.connectors.communication_helpers import end_session as end_voice_session, generate_uid,get_communication_credential
+from communication.connectors.communication_helpers import  generate_uid, get_communication_credential
 from communication.connectors.connector_whatsapp import post_contact_status
 
 from autocrm_db_helper import get_pg_connector
@@ -295,13 +295,17 @@ def trigger_voice_call(*args, **kwargs):
                 if time.time() > attempted_timeout:
                     logger.info(f"Call seems to be not connecting for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}. Ending session.")
                     post_contact_status_voice(session_id = session_data["session_id"], message_id=session_data["session_id"], **{"status": "busy"})
-                    end_session(**{
-                        "session_id": session_data["session_id"],
-                        "additional_dict":{
-                            # "history": [],
-                            "status": "busy"
-                    }
-                    })
+                    gryd.create_async_task(
+                        "end_session_and_post_process",
+                        config.AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
+                        args  = [],
+                        kwargs={
+                            "session_id": session_data["session_id"],
+                            "additional_dict":{
+                                "status": "busy"
+                            }
+                        }
+                    )
                     return
                 logger.info(f"Call is ongoing for, still connecting: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
                 continue
@@ -383,71 +387,7 @@ def post_billing_object(status, session_id, duration = 1, *args, **kwargs):
     )
     # m = gryd.gryd.base_model.Model(config.BILLING_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
     # return m.post(obj)
-
-
-def post_history(session_id, session_history):
-    import time
-    session_model = gryd.base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
-    session_data = session_model.get(session_id)
-
-    agent_msgs = [d for d in session_history if d.get("role") == "agent"]
-    user_msgs = [d for d in session_history if d.get("role") == "user"]
-
-    #in zero'th index add empty user message for better indexing
-    user_msgs.insert(0, {"role": "user", "content": "__init__"})
-
-    if len(agent_msgs) != len(user_msgs):
-        logger.error(
-            f"post_history: agent ({len(agent_msgs)}) and user ({len(user_msgs)}) message counts do not match"
-        )
-
-    max_len = max(len(user_msgs), len(agent_msgs))
-    history = []
-    for i in range(max_len):
-        u = user_msgs[i] if i < len(user_msgs) else {}
-        a = agent_msgs[i] if i < len(agent_msgs) else {}
-        tme = hp.time()
-        history.append({
-            "reply_to": generate_uid(u) if u else gryd.hp.make_uuid3(str(time.time())),
-            "customer_response": u.get("message", ""),
-            "request_data": {
-                "customer_response": u.get("message", "")
-            },
-            "session_id": session_data.get("session_id"),
-            "user_id": session_data.get("user_id"),
-            "responses": [
-                {
-                    "intent": "llm_response",
-                    "placeholder": a.get("message", ""),
-                    "index": i + 1,
-                    "created": tme,
-                    "updated": tme
-                }
-            ]
-        })
-
-    logger.info(f"Calling task post_all_messages_for_session with history: {history}")
-    gryd.create_async_task(
-        "post_all_messages_for_session",
-        config.AUTOCRM_CONVERSATION_SERVICE_NAME,
-        args=[],
-        kwargs={
-            "history": history
-        }
-    )
-    #await_results
-
-def post_actions(session_id):
-   logger.info(f'Calling post session process task for session_id: {session_id}')
-   gryd.create_async_task(
-       "post_session_process",
-       config.AUTOCRM_CONVERSATION_SERVICE_NAME, 
-       args = [],
-       kwargs = {
-           "session_id" : session_id
-       }
-   )
-
+   
 def post_contact_status_voice(session_data = None, session_id = None, message_id=None, **additiona_params):
     if not session_data and session_id:
         session_model = gryd.base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
@@ -465,23 +405,9 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     logger.info(f"Constructed payload for contact status: {payload.get('provider_status')}, message_id: {payload.get('message_id')}")
     if payload.get("provider_status") == "attempted":
         post_contact_status(**payload)
-        # gryd.create_async_task(
-        #     "post_contact_status", 
-        #     config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-        #     kwargs=payload)
     else: 
         post_contact_status(message_id, **payload)
-        # gryd.create_async_task(
-        #     "post_contact_status", 
-        #     config.AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-        #     args = (message_id,),
-        #     kwargs=payload)
 
-
-@gryd.is_a_task(function_name="end_voice_session")
-def end_session(*args, **kwargs):
-    logger.info(f"Ending session with args: {args}, kwargs: {kwargs}")
-    return end_voice_session(*args, **kwargs)
 
 @gryd.is_a_task(function_name="post_lanuage_change_func")
 def post_lanuage_change_func(*args, **kwargs):    
@@ -535,11 +461,11 @@ def delete_extra_status(campaign_ids):
                                 logger.info(f"Deleting busy contact status for: {session_id}, contact_status_id: {s.get('contact_status_id')}")
                                 gryd.base_model.Model("contact_status", config.AUTOCRM_APP_ENTERPRISE_ID).delete(s.get("contact_status_id"))
 
-                                end_session(**{
-                                "session_id": session_id,
-                                "additional_dict":{
-                                    "status": "completed"
-                                }})
+                                # end_session(**{
+                                # "session_id": session_id,
+                                # "additional_dict":{
+                                #     "status": "completed"
+                                # }})
             i += 1
     except Exception as e:
         logger.error(f"Error in delete_extra_status: {e}")

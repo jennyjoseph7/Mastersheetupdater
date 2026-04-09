@@ -1249,18 +1249,26 @@ def process():
     session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time()))
     transcript_summary= data.get("analysis",{}).get("transcript_summary")
     logger.info(f"Transcript summary: {transcript_summary}")
-    logger.info(f"Triggering post history and actions for session_id: {session_id}")
+    logger.info(f"Triggering post session process for session_id: {session_id}")
 
-    gryd_tasks.post_history(session_id, session_history)
-    
-    gryd_tasks.end_session(**{
-        "session_id": session_id,
-        "additional_dict":{
-            "history": session_history,
-            "status": "completed",
-            "summary": transcript_summary
+
+    gryd_tasks.gryd.create_async_task(
+        "end_session_and_post_process",
+        config.AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
+        args  = [],
+        kwargs={
+            "session_id": session_id,
+            "additional_dict":{
+                "history": session_history,
+                "status": "completed",
+                "summary": transcript_summary
+            },
+            "channel": "voice_phone"
         }
-    })
+    )
+
+
+
     logger.info(f"[webhook-tatatele-conversation] Time taken to post history and end session: {time() - t:.2f} seconds")
     
     # gryd_tasks.post_actions(session_id) #calling in end_session
