@@ -39,7 +39,6 @@ from os.path import (
 
 from validate_email import validate_email
 from campaign.campaign_workflow import determine_campaign_next_action
-from conversation.lead_post_processing import end_session_and_post_process
 # --- Set import path for internal modules ---
 _communication_dir = dirname(dirname(abspath(__file__)))
 if _communication_dir not in sys.path:
@@ -259,7 +258,13 @@ def get_or_create_session(data,channel=None,engaged=False):
                 logger.info("There is a new triggered campaign for this user. Since there is an existing session, we are ending the existing(old) session and creating a new session..")
                 logger.info(f"OLD SESSIONID--{sessions[0].get('session_id')}")
                 # end the old session also check if session end_time
-                end_session_and_post_process(**{"session_id":sessions[0].get("session_id"),"pg":pg})
+                gryd.create_async_task(
+                    "end_session_and_post_process",
+                    AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
+                    args=[],
+                    kwargs={"session_id":sessions[0].get("session_id")}
+                )
+                # end_session_and_post_process(**{"session_id":sessions[0].get("session_id"),"pg":pg})
                 # create new session
                 s=create_new_session(data,channel,engaged)
                 return s
@@ -347,7 +352,13 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
     if end_date_epoch and now_epoch >= end_date_epoch:
         if not history_updated and is_inactive:
             logger.info(f"End date reached for session {session_id} and no new history and also its been inactive for more than {inactive_cutoff_epoch} seconds. So ending the session.")
-            end_session_and_post_process(**{"session_id":session_id,"call_post_process":False}, pg=pg)
+            gryd.create_async_task(
+                    "end_session_and_post_process",
+                    AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
+                    args=[],
+                    kwargs={"session_id":session_id,"call_post_process":False,pg:pg},
+                )
+            # end_session_and_post_process(**{"session_id":session_id,"call_post_process":False}, pg=pg)
             return
 
         logger.info(f"End date reached for session {session_id} but history updated .Since it has been inactive for less than {inactive_cutoff_epoch} seconds. So not ending the session.")
