@@ -41,4 +41,4 @@ if __name__ == '__main__':
     print(f"Given log files - {log_files}.")
     with open(f"{APP_DIR}/logio_conf.json","w") as fp:
         print("Writing log config.")
-        fp.write(json.dumps(generate_conf(HOST, PORT, APP_DIR, log_files, SERVICE_NAME), indent=4))  
+        fp.write(json.dumps(generate_conf(HOST, PORT, log_files, SERVICE_NAME), indent=4))  
