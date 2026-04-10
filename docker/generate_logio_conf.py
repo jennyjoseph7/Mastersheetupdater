@@ -1,13 +1,18 @@
-import json, os, glob
+import json, os, glob, sys
 
-def generate_conf(host, port, app_dir, logdir, service_name):
+def generate_conf(host, port, log_files, service_name):
     logio_conf = {}
     logio_conf["messageServer"] = {}
     logio_conf["messageServer"] = {"host": host, "port": port}
 
     finputs = []
 
-    for logf in glob.glob(f"{logdir}/{service_name}*log"):
+    for logf in log_files:
+
+        if not os.path.isfile(logf):
+            print("Not valid log file.")
+            continue
+
         spl = os.path.basename(logf).split(".")
         j = {}
         j["source"] = service_name
@@ -26,7 +31,14 @@ if __name__ == '__main__':
     HOST=os.environ.get("LOGIO_SERVER_TCP_URL", None)
     PORT=os.environ.get("LOGIO_SERVER_TCP_PORT", 6689)
     APP_DIR=os.environ.get("APP_DIR", "/root/app")
-    LOGDIR=os.environ.get("LOGDIR", "/root/app/logs/app_logs")
+    log_files_csv= sys.argv[1]
+
+    if not log_files_csv:
+        print("No log files given")
+        sys.exit()
+    
+    log_files = log_files_csv.split(",")
+    print(f"Given log files - {log_files}.")
     with open(f"{APP_DIR}/logio_conf.json","w") as fp:
         print("Writing log config.")
-        fp.write(json.dumps(generate_conf(HOST, PORT, APP_DIR, LOGDIR, SERVICE_NAME), indent=4))  
+        fp.write(json.dumps(generate_conf(HOST, PORT, APP_DIR, log_files, SERVICE_NAME), indent=4))  

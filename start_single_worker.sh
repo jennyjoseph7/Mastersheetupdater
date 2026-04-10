@@ -37,6 +37,33 @@ export APP_DIR=${APP_DIR:-"/root/app/"}
 
 export log_append_text="$HOSTNAME"_$(date +%s) 
 
+export LOG_FILE=${LOGDIR}/${SERVICE_NAME}_${log_append_text}.log
+export STDOUT_LOG_FILE=${LOGDIR}/${SERVICE_NAME}_stdout_${log_append_text}.log
+export STDERR_LOG_FILE=${LOGDIR}/${SERVICE_NAME}_stderr_${log_append_text}.log 
+
+function stop_logio_agent() {
+	kill -9 $(ps -eaf | grep log.io- | head -n -1 | awk '{print $2}')
+}
+
+function setup_logio_agent() {
+    python3 /root/generate_logio_conf.py $LOG_FILE,$STDOUT_LOG_FILE,$STDERR_LOG_FILE
+    export LOGIO_FILE_INPUT_CONFIG_PATH=$APP_DIR/logio_conf.json
+    status=$?
+	if [ $status != 0 ];then
+		echo "Generating log config failed. Exitting."
+		exit
+	fi	
+	
+	stop_logio_agent
+
+	if [ $status == 0 ];then
+		echo "Start input server"
+		nohup log.io-file-input &
+	else
+		echo "Starting logger failed."
+	fi
+}
+
 function stop_workers() {
 
     pid_file_path=$BASE_PATH/$APP_NAME/worker.pid
@@ -110,13 +137,12 @@ function start_workers() {
 	echo "Creating pid file."
 	echo FG > ./worker.pid
 	WORKER_FNAME=${WORKER_ENTRYPOINT%.*}
-    export LOG_FILE=${LOGDIR}/${WORKER_FNAME}_${log_append_text}.log
 
     if [ $PRIMARY == 0 ];then
-    	nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> ${LOGDIR}/${WORKER_FNAME}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${WORKER_FNAME}_stderr_${log_append_text}.log &
+    	nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> $STDOUT_LOG_FILE 2>> $STDERR_LOG_FILE &
         worker_pid=$!
 	else
-	    nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME --primary 1>> ${LOGDIR}/${WORKER_FNAME}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${WORKER_FNAME}_stderr_${log_append_text}.log &
+	    nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME --primary 1>> $STDOUT_LOG_FILE 2>> $STDERR_LOG_FILE &
         worker_pid=$!
 	fi
 
@@ -130,39 +156,8 @@ function start_workers() {
     exit
 }
 
-function stop_logio_server() {
-	kill -9 $(ps -eaf | grep log.io- | head -n -1 | awk '{print $2}')
-}
-
-
-function setup_logio_agent() {
-    python3 /root/generate_logio_conf.py
-    export LOGIO_FILE_INPUT_CONFIG_PATH=$APP_DIR/logio_conf.json
-    status=$?
-	if [ $status != 0 ];then
-		echo "Generating log config failed. Exitting."
-		exit
-	fi	
-	
-	stop_logio_server
-
-	if [ $status == 0 ];then
-		echo "Start input server"
-		nohup log.io-file-input &
-	else
-		echo "Starting logger failed."
-	fi
-}
-
-function transfer_logfiles() {
-    echo "Moving logs to retention dir."
-    subdir=$(date +"%Y/%m/%d/")
-    mkdir -vp $LOG_RETENTION_DIR/$subdir
-    mv -v $LOGDIR/* $LOG_RETENTION_DIR/$subdir
-    echo "Moving logs to retention dir complete."
-}
-
 function main() {
+	echo "Starting ${SERVICE_NAME} in BG. Logs are written to stdout > $STDOUT_LOG_FILE err > $STDERR_LOG_FILE app > $LOG_FILE"
     if [ $PYTHON_VENV != 0 ];then
     	export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
     	export WORKER_PATH=$PYTHON_VENV/bin/worker
@@ -177,10 +172,7 @@ function main() {
 		WEBAPP_API_THREADS=$PARALLEL_THREADS
 		WEBAPP_APP_NAME=${APP_NAME:-app}
 
-        export LOG_FILE=${LOGDIR}/${WEBAPP_APP_NAME}_${log_append_text}.log
-
-
-		nohup $WAITRESS_PATH --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout_${log_append_text}.log 2>> ${LOGDIR}/webapp_stderr_${log_append_text}.log &
+		nohup $WAITRESS_PATH --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> $STDOUT_LOG_FILE 2>> $STDERR_LOG_FILE &
 
 	    app_pid=$!
 		echo $app_pid > app.pid
@@ -204,10 +196,8 @@ function main() {
 
 		if [ $stat != 0 ];then
 			echo "Process exited or not started. Starting."
-			echo "Starting Cron Continuous in BG. Logs are written to ${LOGDIR}/${a}_stderr_${log_append_text}.log and ${LOGDIR}/${a}_stdout_${log_append_text}.log"
-            export LOG_FILE=${LOGDIR}/${a}_${log_append_text}.log
 
-			nohup $CRON_SCHEDULER_PATH 1>> ${LOGDIR}/${a}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${a}_stderr_${log_append_text}.log &
+			nohup $CRON_SCHEDULER_PATH 1>> $STDOUT_LOG_FILE 2>> $STDERR_LOG_FILE &
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
@@ -239,7 +229,6 @@ function main() {
 
 		if [ $stat != 0 ];then
 			echo "Process exited or not started. Starting."
-			echo "Starting Cron Worker in BG. Logs are written to ${LOGDIR}/${a}_stderr_${log_append_text}.log and ${LOGDIR}/${a}_stdout_${log_append_text}.log"
             export LOG_FILE=${LOGDIR}/${a}_${log_append_text}.log
 
 			if [ $PRIMARY == 0 ];then
