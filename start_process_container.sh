@@ -23,20 +23,19 @@ function main() {
 
 	if [ $ENVIRONMENT == "production" ];then
         gen_aws_creds_file
-		if [ -n $ENTRYPOINT_PREFIX -a -n $WORKER_ENTRYPOINT ];then
-			START_WORKERS=$( "$ENTRYPOINT_PREFIX:$WORKER_ENTRYPOINT" )
-		fi
+		source ./start_single_worker.sh
+		main
+		exit
 	fi
 
 	if [ "$DEV_CONTAINER" == "True" ];then
 		if [ "$AWS_ACCESS_KEYS_REQUIRED" == "True" ];then
-            gen_aws_creds_file
+                	gen_aws_creds_file
 		fi
 	fi
 	source ./start_worker.sh
-	main
-	trap "stop_all_workers" SIGTERM SIGINT
-	wait_for_all_processes
+    start_default_workers
+	start_workers
 }
 
 main
