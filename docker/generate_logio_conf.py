@@ -27,7 +27,7 @@ def generate_conf(host, port, log_files, service_name):
 
 
 if __name__ == '__main__':
-    SERVICE_NAME=os.environ.get("SERVICE", "UNKNOWN_SERVICE")
+    SERVICE_NAME=os.environ.get("SERVICE_NAME", "UNKNOWN_SERVICE")
     HOST=os.environ.get("LOGIO_SERVER_TCP_URL", None)
     PORT=os.environ.get("LOGIO_SERVER_TCP_PORT", 6689)
     APP_DIR=os.environ.get("APP_DIR", "/root/app")
