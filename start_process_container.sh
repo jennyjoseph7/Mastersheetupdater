@@ -24,7 +24,7 @@ function main() {
 	if [ $ENVIRONMENT == "production" ];then
         gen_aws_creds_file
 		if [ -n $ENTRYPOINT_PREFIX -a -n $WORKER_ENTRYPOINT ];then
-			START_WORKERS=$( "$ENTRYPOINT_PREFIX:$WORKER_ENTRYPOINT" ))
+			START_WORKERS=$( "$ENTRYPOINT_PREFIX:$WORKER_ENTRYPOINT" )
 		fi
 	fi
 
