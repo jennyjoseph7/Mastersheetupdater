@@ -1,12 +1,10 @@
 {
-    "webapps": [
-        {
+    "webapp": {
             "port": 5000,
             "url_scheme": "http",
             "api_threads": 8,
             "name": "app"
-        }
-    ],
+        },
     "agents": [],
     "workers": [
         {
