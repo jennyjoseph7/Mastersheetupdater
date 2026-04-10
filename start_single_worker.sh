@@ -46,7 +46,15 @@ function stop_logio_agent() {
 }
 
 function setup_logio_agent() {
-    python3 /root/generate_logio_conf.py $LOG_FILE,$STDOUT_LOG_FILE,$STDERR_LOG_FILE
+    track_files=""
+    if [ -f ./logio_track_files.logfile ];then
+        track_files=$(cat ./logio_track_files.logfile)
+    else
+        echo "$LOG_FILE,$STDOUT_LOG_FILE,$STDERR_LOG_FILE" > ./logio_track_files.logfile
+        track_files=$(cat ./logio_track_files.logfile)
+
+    fi
+    python3 /root/generate_logio_conf.py $track_files
     export LOGIO_FILE_INPUT_CONFIG_PATH=$APP_DIR/logio_conf.json
     status=$?
 	if [ $status != 0 ];then
