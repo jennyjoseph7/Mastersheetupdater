@@ -458,14 +458,19 @@ def get_or_create_person(phone_number):
 
 def generate_uid(data):
     if isinstance(data, (dict, list)):
-        data_str = json.dumps(data, sort_keys=True)
+        data_str = json.dumps(data, sort_keys=True, ensure_ascii=True)
     else:
-        data_str = str(data)
+        try:
+            data_str = str(data)
+        except Exception:
+            data_str = repr(data)
+
+    # Sanitize surrogates/invalid Unicode that would cause uuid3 to fail on encode
+    data_str = data_str.encode('utf-8', errors='replace').decode('utf-8')
 
     uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
-    uid=str(uid)
     # logger.info(f"Generated UID: {uid} and type of uid: {type(uid)} for data: {data_str}")
-    return uid
+    return str(uid)
 
 def get_communication_credential(dealership_id="daveai", channel=None):
     logger.info(f"Getting communication credential for dealership - {dealership_id}")
