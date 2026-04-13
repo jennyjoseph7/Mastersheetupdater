@@ -421,6 +421,23 @@ class MetaAdsManager:
         self.page_id = page_id
         logger.info(f"Page ID set to {self.page_id}")
         return self.page_id
+    
+
+    def check_valid_values(self, _check_value_for : str) -> Union[list[str], Dict[str, list[str]]]:
+        value_map = {
+            "campaign_objectives": valid_campaign_objectives,
+            "call_to_actions": valid_call_to_action_values,
+            "optimization_goals": valid_optimization_goals,
+            "preview_formats": valid_preview_formats,
+        }
+        if _check_value_for == "all":
+            return value_map
+        
+        if _check_value_for not in value_map:
+            raise ValueError(f"Invalid value for: {_check_value_for}")
+        _valid_values = value_map.get(_check_value_for)
+        return _valid_values
+        
 
     def list_all_campaigns(self):
         # all_fields = list(Campaign.Field.__dict__.values())
@@ -633,8 +650,34 @@ class MetaAdsManager:
         daily_budget : int
             Budget in cents (5000 = $50)
         """
-        import pytz
 
+        logger.info(f"Ensuring ad set exists : {name}")
+        existing_adsets = self.ad_account.get_ad_sets(
+            fields=[
+                AdSet.Field.name,
+                AdSet.Field.campaign_id
+            ],
+            params={
+                "filtering": [
+                    {
+                        "field": "name",
+                        "operator": "EQUAL",
+                        "value": name
+                    },
+                    {
+                        "field": "campaign.id",
+                        "operator": "EQUAL",
+                        "value": campaign_id
+                    }
+                ]
+            }
+        )
+
+        for adset in existing_adsets:
+            logger.info(f"Found existing ad set: {name}. Returning : {adset[AdSet.Field.id]}")
+            return AdSet(adset[AdSet.Field.id])
+
+        import pytz
         ist = pytz.timezone('Asia/Kolkata')
         logger.info(f"Creating ad set: {name}")
         start_time = (datetime.now(ist) + timedelta(minutes=10)).isoformat()
@@ -729,30 +772,12 @@ class MetaAdsManager:
         return ad
     
     def preview_creative(self, creative_id: str, ad_format: str = "DESKTOP_FEED_STANDARD"):
-        """
-        Get rendered HTML preview of an ad creative for a specific placement.
-        Same preview as shown in Meta Ads Manager.
-        """
-        AD_FORMATS = [
-            "DESKTOP_FEED_STANDARD",
-            "MOBILE_FEED_STANDARD",
-            "INSTAGRAM_STANDARD",
-            "INSTAGRAM_STORY",
-            "MOBILE_STORY",
-            "DESKTOP_RIGHT_COLUMN_STANDARD",
-            "AUDIENCE_NETWORK_INSTREAM_VIDEO",
-            "FACEBOOK_REELS",
-            "INSTAGRAM_REELS"
-        ]
+        """Get rendered HTML preview of an ad creative for a specific placement. Same preview as shown in Meta Ads Manager."""
 
-        if ad_format not in AD_FORMATS:
-            raise ValueError(f"Invalid ad format: {ad_format}. Supported formats: {AD_FORMATS}")
-
+        if ad_format not in valid_preview_formats:
+            raise ValueError(f"Invalid ad format: {ad_format}. Supported formats: {valid_preview_formats}")
         creative = AdCreative(creative_id)
-
-        previews = creative.get_previews(params={
-            "ad_format": ad_format
-        })
+        previews = creative.get_previews(params={"ad_format": ad_format})
 
         results = []
         for p in previews:
@@ -820,7 +845,6 @@ if __name__ == "__main__":
 
 
 
-
     manager = MetaAdsManager(
         app_id=app_id,
         app_secret=app_secret,
@@ -857,35 +881,51 @@ if __name__ == "__main__":
         }
     }
 
-    # adset = manager.create_ad_set(
-    #     campaign_id=tata_sierra_campaign_id,
-    #     name="Tata Sierra - India Audience Targeting Test",
-    #     daily_budget=10000,
-    #     targeting=targeting,
-    #     # destination_url="https://cars.tatamotors.com/sierra/ice.html",
-    #     optimization_goal="LANDING_PAGE_VIEWS",
-    #     billing_event="IMPRESSIONS"
-    # )
+    adset = manager.create_ad_set(
+        campaign_id=tata_sierra_campaign_id,
+        name="Tata Sierra - India Audience Targeting Test",
+        daily_budget=10000,
+        targeting=targeting,
+        # destination_url="https://cars.tatamotors.com/sierra/ice.html",
+        optimization_goal="LANDING_PAGE_VIEWS",
+        billing_event="IMPRESSIONS"
+    )
 
-    # logger.info(f"Adset created: {adset}")
+    logger.info(f"Adset created: {adset}")
+
+    assert False
 
 
     adset_for_tata_sierra = "120245325100150664"
 
-    creative = manager.create_image_ad_creative(
-        name="Tata Sierra Creative",
-        image_hash=image_hash,
-        title="The Icon Returns 🚙",
-        body="Experience the all-new Tata Sierra. Built for adventure.",
-        link_url="https://cars.tatamotors.com/sierra/ice.html",
-        call_to_action = "LEARN_MORE",
-        description="Explore design, features & book your drive"
+    # creative = manager.create_image_ad_creative(
+    #     name="Tata Sierra Creative",
+    #     image_hash=image_hash,
+    #     title="The Icon Returns 🚙",
+    #     body="Experience the all-new Tata Sierra. Built for adventure.",
+    #     link_url="https://cars.tatamotors.com/sierra/ice.html",
+    #     call_to_action = "LEARN_MORE",
+    #     description="Explore design, features & book your drive"
+    # )
+
+    # logger.info(f"Creative created: {creative}")
+
+    creative_id = "1466079638253637"
+
+    ad= manager.create_ad(
+        ad_set_id=adset_for_tata_sierra,
+        creative_id=creative_id,
+        name="Tata Sierra Ad",
+        status="PAUSED"
     )
 
-    logger.info(f"Creative created: {creative}")
+    logger.info(f"Ad created: {ad}")
 
-    
+    ad_id = "120245955023010664"
 
+    preview = manager.preview_creative(creative_id="120245456058310664", ad_format="FACEBOOK_PROFILE_FEED_DESKTOP")
+
+    logger.info(f"Preview: {preview}")
 
 
     # logger.info(f"Campaign created: {tata_sierra_campaign}")

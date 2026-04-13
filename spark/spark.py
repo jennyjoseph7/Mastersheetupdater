@@ -63,7 +63,8 @@ def distortion_report(image_path: str, model: str = None, min_dim: int = 1024, m
     logger = logger or mlogger
     return analyze_image(image_path, model=model, min_dim=min_dim, max_aspect_ratio=max_aspect_ratio, verbose = True, logger=logger)
 
-def do_download(url, files_to_delete, suffix='.png'):
+def do_download(url, files_to_delete = None, suffix='.png'):
+    files_to_delete = files_to_delete or []
     if not url:
         return None
     if hp.ispath(url):
@@ -231,6 +232,7 @@ def create_campaign_image(rooftop_type: str, template_id: str, base_png: str, ca
         "caption": campaign_caption
     }
     return do_the_merge(template_id, base_png, template, brand, rooftop=rooftop, dealership=dealership, campaign_details=campaign_details, offer=offer, debug=debug, logger=logger)
+
 
 def get_rooftop_model(rooftop_type: str, logger: hp.logging.Logger = None):
     logger = logger or mlogger
@@ -744,8 +746,8 @@ def _firefly_upload_image(local_path: str, client_id: str, token: str, logger: h
     return images[0]["id"]
 
 
-def _firefly_poll_job(status_url: str, client_id: str, token: str, logger: hp.logging.Logger):
-    deadline = time.time() + FIREFLY_JOB_MAX_WAIT_SEC
+def _firefly_poll_job(status_url: str, client_id: str, token: str, timeout: int = None, logger: hp.logging.Logger = None):
+    deadline = time.time() + (timeout or FIREFLY_JOB_MAX_WAIT_SEC)
     while time.time() < deadline:
         r = requests.get(
             status_url,
@@ -823,6 +825,7 @@ def firefly_image_generation(
     input_image_url,
     prompt,
     number_of_images=1,
+    structure_strength: float = FIREFLY_STRUCTURE_STRENGTH,
     job=None,
     logger=None,
     **kwargs
@@ -840,173 +843,163 @@ def firefly_image_generation(
 
         client_id = FIREFLY_SERVICES_CLIENT_ID
         client_secret = FIREFLY_SERVICES_CLIENT_SECRET
-        token = _firefly_get_access_token(client_id, client_secret, logger)
-
-        fixed_number_of_images = 1
-        logger.info(f"Forced number of images: {fixed_number_of_images}")
-
-        input_file = f"firefly_input_{uuid.uuid4().hex}.png"
-        local_img_path = os.path.join(tempfile.gettempdir(), input_file)
-
-        logger.info(f"Downloading input image to: {local_img_path}")
-        download_file(input_image_url, local_img_path)
-
-        if not os.path.exists(local_img_path):
-            raise RuntimeError("Downloaded image file not found.")
-
-        logger.info("Input image downloaded successfully")
-        logger.info(f"Input image size: {os.path.getsize(local_img_path)} bytes")
-
-        edit_prompt = f"{prompt.strip()} (Preserve details and features of the car.)"
-        logger.info(f"Edit prompt: {edit_prompt}")
-
-        upload_id = _firefly_upload_image(local_img_path, client_id, token, logger)
-
+        files_to_delete = []
         try:
-            os.remove(local_img_path)
-            logger.info("Input temp file deleted")
-        except Exception as e:
-            logger.warning(f"Failed to delete input temp file: {e}")
+            token = _firefly_get_access_token(client_id, client_secret, logger)
 
-        generate_url = f"{FIREFLY_API_BASE}/v3/images/generate-async"
-        body = {
-            "numVariations": fixed_number_of_images,
-            "prompt": edit_prompt,
-            "contentClass": FIREFLY_CONTENT_CLASS,
-            "structure": {
-                "strength": FIREFLY_STRUCTURE_STRENGTH,
-                "imageReference": {
-                    "source": {
-                        "uploadId": upload_id,
-                    }
+            fixed_number_of_images = 1
+            logger.info(f"Forced number of images: {fixed_number_of_images}")
+
+            input_file = f"firefly_input_{uuid.uuid4().hex}.png"
+            local_img_path = do_download(input_image_url, files_to_delete = files_to_delete)
+
+            local_img_path = pad_and_resize_image(local_img_path, output_dimensions = [2688, 1536])
+            logger.info(f"Input image size: {os.path.getsize(local_img_path)} bytes")
+
+            edit_prompt = f"{prompt.strip()} <important> Preserve details and features of the car, logo, and branding.</important>"
+            logger.info(f"Edit prompt: {edit_prompt}")
+
+            upload_id = _firefly_upload_image(local_img_path, client_id, token, logger)
+
+            generate_url = f"{FIREFLY_API_BASE}/v3/images/generate-async"
+            body = {
+                "numVariations": fixed_number_of_images,
+                "prompt": edit_prompt,
+                "contentClass": FIREFLY_CONTENT_CLASS,
+                "size": { "width": 2688, "height": 1536 },
+                "structure": {
+                    "strength": structure_strength,
+                    "imageReference": {
+                        "source": {
+                            "uploadId": upload_id,
+                        }
+                    },
                 },
-            },
-        }
+            }
 
-        logger.info(f"Calling Firefly generate-async: {generate_url}")
-        logger.info(f"contentClass: {FIREFLY_CONTENT_CLASS}, structure strength: {FIREFLY_STRUCTURE_STRENGTH}")
-
-        resp = requests.post(
-            generate_url,
-            headers={
+            logger.info(f"Calling Firefly generate-async: {generate_url}")
+            logger.info(f"contentClass: {FIREFLY_CONTENT_CLASS}, structure strength: {FIREFLY_STRUCTURE_STRENGTH}")
+            headers = {
                 "Authorization": f"Bearer {token}",
                 "x-api-key": client_id,
                 "Content-Type": "application/json",
-            },
-            json=body,
-            timeout=120,
-        )
-
-        logger.info(f"Firefly generate-async response status: {resp.status_code}")
-
-        if resp.status_code != 200:
-            logger.error(f"Firefly API error response: {resp.text}")
-            raise RuntimeError(f"Firefly generate-async error: {resp.text}")
-
-        submit = resp.json()
-        status_url = submit.get("statusUrl")
-        if not status_url:
-            raise RuntimeError(f"Firefly generate-async missing statusUrl: {submit}")
-
-        job_data = _firefly_poll_job(status_url, client_id, token, logger)
-        result = job_data.get("result") or {}
-        outputs = result.get("outputs") or []
-
-        if not outputs:
-            raise RuntimeError("No images returned from Firefly.")
-
-        ourls = []
-        for idx, out in enumerate(outputs):
-            logger.info(f"Processing image {idx + 1}")
-            img = (out or {}).get("image") or {}
-            out_url = img.get("url")
-            if not out_url:
-                logger.warning(f"Output {idx} missing image url: {out}")
-                continue
-            logger.info(f"Downloading Firefly result: {out_url[:80]}...")
-            tmp_name = f"firefly_{uuid.uuid4().hex}.png"
-            tmp_out_path = os.path.join(tempfile.gettempdir(), tmp_name)
-            dl = requests.get(out_url, timeout=120)
-            if dl.status_code != 200:
-                raise RuntimeError(f"Failed to download Firefly result image: {dl.status_code}")
-            with open(tmp_out_path, "wb") as f:
-                f.write(dl.content)
-            file_url = func_gryd_file_system(tmp_out_path, media_type='image')
-            logger.info(f"Uploaded image URL: {file_url}")
-            try:
-                os.remove(tmp_out_path)
-                logger.info("Output temp file deleted")
-            except Exception as e:
-                logger.warning(f"Failed to delete output temp file: {e}")
-            if file_url:
-                ourls.append(file_url)
-
-        if not ourls:
-            raise RuntimeError("Invalid response from Firefly.")
-
-        logger.info(f"Final image URL list: {ourls}")
-
-        credit_units = len(ourls) * FIREFLY_CREDITS_PER_IMAGE
-        logger.info(
-            f"Adobe credit units (FIREFLY_CREDITS_PER_IMAGE × output images): {credit_units}"
-        )
-
-        output_cost = credit_units * FIREFLY_USD_PER_CREDIT
-
-        total_time = hp.time() - start_time
-        total_cost = output_cost + total_time * gryd.EXECUTION_COST
-
-        logger.info(f"Output cost (credit-based): {output_cost}")
-        logger.info(f"Total cost: {total_cost}")
-        logger.info(f"Total time: {total_time:.2f} sec")
-
-        analytics_usage_audit_summary = None
-        if (
-            ADOBE_ANALYTICS_GLOBAL_COMPANY_ID
-            and ADOBE_ANALYTICS_CLIENT_ID
-            and ADOBE_ANALYTICS_ACCESS_TOKEN
-        ):
-            end_dt = datetime.now(timezone.utc)
-            start_dt = end_dt - timedelta(hours=1)
-            start_s = start_dt.strftime("%Y-%m-%dT%H:%M:%S+00:00")
-            end_s = end_dt.strftime("%Y-%m-%dT%H:%M:%S+00:00")
-            audit = _adobe_analytics_usage_audit_logs_get(
-                ADOBE_ANALYTICS_GLOBAL_COMPANY_ID,
-                ADOBE_ANALYTICS_CLIENT_ID,
-                ADOBE_ANALYTICS_ACCESS_TOKEN,
-                start_s,
-                end_s,
-                logger,
-                event_type="61",
-                limit=100,
-                page=0,
+            }
+            logger.debug(f"Firefly request headers: {headers}")
+            logger.info(f"Firefly request body: {body}")
+            resp = requests.post(
+                generate_url,
+                headers=headers,
+                json=body,
+                timeout=120,
             )
-            if isinstance(audit, dict):
-                analytics_usage_audit_summary = {
-                    "totalElements": audit.get("totalElements"),
-                    "numberOfElements": audit.get("numberOfElements"),
-                    "eventType_filter": "61",
-                    "window_hours": 1,
-                    "startDate": start_s,
-                    "endDate": end_s,
-                }
-                logger.info(
-                    "Adobe Analytics Usage API (audit, eventType=61 Api Method): totalElements=%s",
-                    analytics_usage_audit_summary.get("totalElements"),
+            logger.info(f"Firefly generate-async response status: {resp.status_code}")
+
+            if resp.status_code >= 400:
+                logger.error(f"Firefly API error response: {resp.text}")
+                raise RuntimeError(f"Firefly generate-async error: {resp.text}")
+
+            submit = resp.json()
+            status_url = submit.get("statusUrl")
+            if not status_url:
+                raise RuntimeError(f"Firefly generate-async missing statusUrl: {submit}")
+
+            job_data = _firefly_poll_job(status_url, client_id, token, logger = logger)
+            result = job_data.get("result") or {}
+            outputs = result.get("outputs") or []
+
+            if not outputs:
+                raise RuntimeError("No images returned from Firefly.")
+
+            ourls = []
+            for idx, out in enumerate(outputs):
+                logger.info(f"Processing image {idx + 1}")
+                img = (out or {}).get("image") or {}
+                out_url = img.get("url")
+                if not out_url:
+                    logger.warning(f"Output {idx} missing image url: {out}")
+                    continue
+                logger.info(f"Downloading Firefly result: {out_url[:80]}...")
+                tmp_out_path = do_download(out_url, files_to_delete = files_to_delete)
+                file_url = func_gryd_file_system(tmp_out_path, media_type='image')
+                logger.info(f"Uploaded image URL: {file_url}")
+                files_to_delete.append(tmp_out_path)
+                if file_url:
+                    ourls.append(file_url)
+
+            if not ourls:
+                raise RuntimeError("Invalid response from Firefly.")
+
+            logger.info(f"Final image URL list: {ourls}")
+
+            credit_units = len(ourls) * FIREFLY_CREDITS_PER_IMAGE
+            logger.info(
+                f"Adobe credit units (FIREFLY_CREDITS_PER_IMAGE × output images): {credit_units}"
+            )
+
+            output_cost = credit_units * FIREFLY_USD_PER_CREDIT
+
+            total_time = hp.time() - start_time
+            total_cost = output_cost + total_time * gryd.EXECUTION_COST
+
+            logger.info(f"Output cost (credit-based): {output_cost}")
+            logger.info(f"Total cost: {total_cost}")
+            logger.info(f"Total time: {total_time:.2f} sec")
+
+            analytics_usage_audit_summary = None
+            if (
+                ADOBE_ANALYTICS_GLOBAL_COMPANY_ID
+                and ADOBE_ANALYTICS_CLIENT_ID
+            ):
+                end_dt = datetime.now(timezone.utc)
+                start_dt = end_dt - timedelta(hours=1)
+                start_s = start_dt.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+                end_s = end_dt.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+                audit = _adobe_analytics_usage_audit_logs_get(
+                    ADOBE_ANALYTICS_GLOBAL_COMPANY_ID,
+                    ADOBE_ANALYTICS_CLIENT_ID,
+                    token,
+                    start_s,
+                    end_s,
+                    logger,
+                    event_type="61",
+                    limit=100,
+                    page=0,
                 )
+                if isinstance(audit, dict):
+                    analytics_usage_audit_summary = {
+                        "totalElements": audit.get("totalElements"),
+                        "numberOfElements": audit.get("numberOfElements"),
+                        "eventType_filter": "61",
+                        "window_hours": 1,
+                        "startDate": start_s,
+                        "endDate": end_s,
+                    }
+                    logger.info(
+                        "Adobe Analytics Usage API (audit, eventType=61 Api Method): totalElements=%s",
+                        analytics_usage_audit_summary.get("totalElements"),
+                    )
 
-        final_result = {
-            "image_urls": ourls,
-            "credit_units": credit_units,
-            "output_cost": output_cost,
-            "total_cost": total_cost,
-            "total_time": total_time,
-            "currency": "USD",
-            "analytics_usage_audit_summary": analytics_usage_audit_summary,
-        }
+            final_result = {
+                "image_urls": ourls,
+                "credit_units": credit_units,
+                "output_cost": output_cost,
+                "total_cost": total_cost,
+                "total_time": total_time,
+                "currency": "USD",
+                "analytics_usage_audit_summary": analytics_usage_audit_summary,
+            }
 
-        logger.info(f"Returning final result: {final_result}")
-        logger.info("===== Adobe Firefly Task Completed Successfully =====")
+            logger.info(f"Returning final result: {final_result}")
+            logger.info("===== Adobe Firefly Task Completed Successfully =====")
+
+        finally:
+            if not kwargs.get("debug", False):
+                for file in files_to_delete:
+                    try:
+                        os.remove(file)
+                        logger.info(f"Deleted file: {file}")
+                    except Exception as e:
+                        logger.warning(f"Failed to delete file: {file}: {e}")
 
         return final_result
 

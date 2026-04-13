@@ -122,14 +122,14 @@ FIREFLY_CONTENT_CLASS = os.environ.get("FIREFLY_CONTENT_CLASS", "photo")
 FIREFLY_STRUCTURE_STRENGTH = int(os.environ.get("FIREFLY_STRUCTURE_STRENGTH", "85"))
 try:
     FIREFLY_CREDITS_PER_IMAGE = float(os.environ.get("FIREFLY_CREDITS_PER_IMAGE", "1"))
-    FIREFLY_USD_PER_CREDIT = float(os.environ.get("FIREFLY_USD_PER_CREDIT", "0"))
+    FIREFLY_USD_PER_CREDIT = float(os.environ.get("FIREFLY_USD_PER_CREDIT", 0.025))
 except ValueError as e:
     raise ValueError(f"Error parsing FIREFLY_CREDITS_PER_IMAGE / FIREFLY_USD_PER_CREDIT: {e}")
 
 # Adobe Analytics 2.0 Usage API (audit logs — optional; see spark.firefly_image_generation)
 ADOBE_ANALYTICS_GLOBAL_COMPANY_ID = os.environ.get("ADOBE_ANALYTICS_GLOBAL_COMPANY_ID")
-ADOBE_ANALYTICS_CLIENT_ID = os.environ.get("ADOBE_ANALYTICS_CLIENT_ID")
-ADOBE_ANALYTICS_ACCESS_TOKEN = os.environ.get("ADOBE_ANALYTICS_ACCESS_TOKEN")
+ADOBE_ANALYTICS_CLIENT_ID = os.environ.get("ADOBE_ANALYTICS_CLIENT_ID") or FIREFLY_SERVICES_CLIENT_ID
+ADOBE_ANALYTICS_ACCESS_TOKEN = os.environ.get("ADOBE_ANALYTICS_ACCESS_TOKEN") or FIREFLY_SERVICES_CLIENT_SECRET
 
 #brochure pipeline
 AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME', 'brochure-pipeline')
@@ -202,7 +202,8 @@ class AutocrmModel:
     def count(self, **kwargs):
         return self.model.count(**kwargs)
 
-    def delete_many(self, filters, **kwargs):
+    def delete_many(self, filters = None, **kwargs):
+        filters = filters or {}
         dm = self.model.delete_many(filters, **kwargs)
         self.logger.info(f"Data deleted successfully: {self.model_name}")
         return dm
@@ -390,7 +391,7 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, log
     bool_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('bool',),  m.attributes.items()))))
     logger.info(f"Posting data: {data_name} from filename: {filename_csv}")
     try:
-        with open(filename_csv, encoding="utf-8-sig") as f:
+        with open(filename_csv, encoding="utf-8-sig", errors = "ignore") as f:
             reader = csv.DictReader(f)
             headers = reader.fieldnames
             logger.info(f"Headers for {data_name}: {headers}")
@@ -406,11 +407,11 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, log
                 row = {k:v for k, v in row.items() if v not in (None, '')}
                 logger.info(f"Row: {hp.json.dumps(row, option=hp.json.OPT_INDENT_2).decode('utf-8')}")
                 m.post(row)
-                logger.info(f"Data posted successfully: {data_name}, linenum {linenum}")
+                logger.info(f"Data posted successfully: {data_name}, linenum {linenum + 1}")
                 if limit and linenum + 1 > limit + start_from:
                     break
     except Exception as e:
-        logger.error(f"{e}\nError posting data for: {data_name} for linenum {linenum} in {filename_csv}")
+        logger.error(f"{e}\nError posting data for: {data_name} for linenum {linenum + 1} in {filename_csv}")
         raise
 
 def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, limit = None, **separators):
