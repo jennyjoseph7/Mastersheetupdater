@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams ,usePathname} from "next/navigation";
 
 // Imports
 import { fetchAudienceTasks ,getDealershipId,executeTaskWithPolling} from "@/utils/api";
@@ -73,6 +73,7 @@ import {
   CreditCard,
   CalendarClock,
   ArrowLeft,
+  Search,
   Download,
   MessageSquareText,
   ChevronLeft,
@@ -239,6 +240,18 @@ function CampaignCreateContent() {
   // Voice Configuration States
   const [voiceStartLanguage, setVoiceStartLanguage] = useState("en");
   const [voiceAgentId, setVoiceAgentId] = useState("");
+  const pathname = usePathname();
+const [totalNumber, setTotalNumber] = useState(0);
+const [isLastPage, setIsLastPage] = useState(false);
+ 
+const [activeTab, setActiveTab] = useState("generic"); // Default to Generic
+const [genericObjectives, setGenericObjectives] = useState<any[]>([]);
+const [customObjectives, setCustomObjectives] = useState<any[]>([]);
+const [previousObjectives, setPreviousObjectives] = useState<any[]>([]);
+
+// Pagination & Search
+const currentPage = Number(searchParams.get("page")) || 1;
+const searchQuery = searchParams.get("q") || "";
 // Auto-fill voice agent ID for stellantis-india
  
   // Redirect if dealership setup is not complete
@@ -336,7 +349,7 @@ function CampaignCreateContent() {
   const [launchDate, setLaunchDate] = useState("");
 
   // UI States
-  const [activeTab, setActiveTab] = useState("setup");
+  // const [activeTab, setActiveTab] = useState("setup");
   const [isLoadingObjectives, setIsLoadingObjectives] = useState(false);
   const [isObjectiveDetailsOpen, setIsObjectiveDetailsOpen] = useState(false);
   const [isLaunchSuccessOpen, setIsLaunchSuccessOpen] = useState(false);
@@ -426,65 +439,73 @@ function CampaignCreateContent() {
   }, [creationStep, page]);
 
   // Fetch Objectives
+const [displayObjectives, setDisplayObjectives] = useState<any[]>([]);
+
 useEffect(() => {
   const fetchObjectives = async () => {
+    if (!campaignType) return;
+    
+    // Clear the list immediately to stop the "piling up" glitch
     setIsLoadingObjectives(true);
+    setDisplayObjectives([]); 
+    
     try {
       const dealershipId = getDealershipId();
       const typeParam = campaignType === "presales" ? "pre-sales" : "post-sales";
+      // Ensure page_size is strictly 9 to keep the grid consistent
+      const apiParams = `&page_number=${currentPage}&page_size=9&sort_by=created&sort_reverse=true&search_term=~${searchQuery}`;
+      
+      let endpoint = "";
+      if (activeTab === "generic") {
+        endpoint = `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}&dealership_id=null${apiParams}`;
+      } else if (activeTab === "custom") {
+        endpoint = `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}&dealership_id=${dealershipId}${apiParams}`;
+      } else if (activeTab === "previous") {
+        const model = campaignType === "presales" ? "pre_sales_campaign" : "post_sales_campaign";
+        endpoint = `/gryd/db/objects/${model}?dealership_id=${dealershipId}${apiParams}`;
+      }
 
-      // 1. Define both requests
-      const globalUrl = `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}&dealership_id=null`;
-      const specificUrl = `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}&dealership_id=${dealershipId}`;
+      const res: any = await api(endpoint, "GET");
+      const rawData = res.data || [];
+      
+      setTotalNumber(res.total_number || 0);
+      setIsLastPage(res.is_last);
 
-      // 2. Fire both in parallel
-      const [globalRes, specificRes] = await Promise.all([
-        api(globalUrl, "GET"),
-        api(specificUrl, "GET")
-      ]);
-
-      // 3. Extract data from both (handling different potential response shapes)
-      const globalData = Array.isArray(globalRes) ? globalRes : globalRes.data || [];
-      const specificData = Array.isArray(specificRes) ? specificRes : specificRes.data || [];
-
-      // 4. Merge them into one array
-      const combinedData = [...globalData, ...specificData];
-
-      // 5. Map the merged results
-      const mapped = combinedData.map((obj: any, idx: number) => {
-        const id = obj.campaign_objective_id || obj.id || `obj-${idx}`;
-        const title = obj.campaign_objective_name || obj.title || obj.name || "Objective";
+      const mapped = rawData.map((obj: any) => {
+        // IMPORTANT: For Previous Used, use the actual campaign ID as the unique identifier
+        // Campaigns have their own 'id' or 'campaign_id', objectives have 'campaign_objective_id'
+        const uniqueId = obj.id || obj.campaign_id || obj.campaign_objective_id;
+        const title = obj.campaign_name || obj.campaign_objective_name || obj.title || "Untitled";
+        
         return {
-          id: id,
+          id: uniqueId, 
           title: title,
           campaignSubType: obj.campaign_sub_type || "other",
-          icon: getObjectiveIcon(id, title),
+          icon: getObjectiveIcon(obj.campaign_objective_id || uniqueId, title),
           fullData: obj,
         };
       });
 
-      // 6. Add the Custom option at the end
-      mapped.push({
-        id: "custom",
-        title: "Custom Objective",
-        campaignSubType: "Flexible",
-        icon: <Edit3 className="h-6 w-6" />,
-        fullData: null,
-      });
+      if (activeTab === "custom" && currentPage === 1 && !searchQuery) {
+        mapped.unshift({
+          id: "custom",
+          title: "Create New Objective",
+          campaignSubType: "Flexible",
+          icon: <Edit3 className="h-6 w-6" />,
+          fullData: null,
+        });
+      }
 
-      if (campaignType === "presales") setPreSalesObjectives(mapped);
-      else setFetchedPostSalesObjectives(mapped);
-
+      setDisplayObjectives(mapped);
     } catch (e) {
-      console.error("Error fetching objectives:", e);
+      console.error("Fetch failed", e);
     } finally {
       setIsLoadingObjectives(false);
     }
   };
 
-  if (campaignType) fetchObjectives();
-}, [campaignType]);
-
+  fetchObjectives();
+}, [campaignType, activeTab, currentPage, searchQuery]);
   // --- Logic ---
 
 const handleGenerateCampaign = async () => {
@@ -493,12 +514,26 @@ const handleGenerateCampaign = async () => {
 
     try {
       // Setup payload variables
-      const objectivesList = campaignType === "presales" ? preSalesObjectives : fetchedPostSalesObjectives;
-      const objectiveText = selectedObjective === "custom" 
-        ? customObjective 
-        : objectivesList.find((o) => o.id === selectedObjective)?.title || "";
+      // const objectivesList = campaignType === "presales" ? preSalesObjectives : fetchedPostSalesObjectives;
+      // const objectiveText = selectedObjective === "custom" 
+      //   ? customObjective 
+      //   : objectivesList.find((o) => o.id === selectedObjective)?.title || "";
 
-      let enhancedText = objectiveText;
+      // let enhancedText = objectiveText;
+      const objectiveItem = displayObjectives.find((o) => o.id === selectedObjective);
+    
+    // Determine the text to send to the AI
+    const objectiveText = selectedObjective === "custom" 
+      ? customObjective 
+      : objectiveItem?.title || "";
+
+    if (!objectiveText) {
+      alert("Please select an objective or enter a custom one.");
+      setIsGenerating(false);
+      return;
+    }
+
+    let enhancedText = objectiveText;
       if (carModel && selectedObjective.includes("launch")) enhancedText += ` for ${carModel}`;
 
       const customObjects: Record<string, any> = {};
@@ -1126,83 +1161,144 @@ const handleProceed = async () => {
               {/* PROGRESSIVE SECTIONS */}
               {campaignType && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                  {/* OBJECTIVES */}
-                  <div className="space-y-4">
-                    <h2 className="text-2xl font-bold flex items-center gap-2">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                        2
-                      </span>
-                      Select Objective
-                    </h2>
-                    <Card className="shadow-xl border-2 border-l-4 border-l-primary">
-                      <CardContent className="pt-6">
-                        <Tabs value={activeTab} onValueChange={setActiveTab}>
-                          <TabsList className="mb-4 w-full justify-start h-auto p-1">
-                            <TabsTrigger value="setup" className="px-6 py-2">
-                              Objectives
-                            </TabsTrigger>
-                            <TabsTrigger value="previous" className="px-6 py-2">
-                              Previously Used
-                            </TabsTrigger>
-                          </TabsList>
-                          <TabsContent value="setup" className="space-y-4">
-                            {isLoadingObjectives ? (
-                              <div className="flex items-center justify-center py-12">
-                                <RefreshCw className="h-8 w-8 animate-spin text-primary mr-2" />
-                                <span className="text-muted-foreground text-lg">
-                                  Loading objectives...
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                                {objectives.map((obj) => (
-                                  <ObjectiveCard
-                                    key={obj.id}
-                                    {...obj}
-                                    selected={selectedObjective === obj.id}
-                                    onSelect={() => {
-                                      setSelectedObjective(obj.id);
-                                      setSelectedObjectiveData(
-                                        obj.fullData || null
-                                      );
-                                      setCampaignData(null);
-                                      setCreatedCampaignId(null);
-                                      if (obj.id !== "custom")
-                                        setIsObjectiveDetailsOpen(true);
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                            {selectedObjective === "custom" && (
-                              <div className="mt-4 flex gap-2">
-                                <Input
-                                  placeholder="Describe your custom objective..."
-                                  value={customObjective}
-                                  onChange={(e) =>
-                                    setCustomObjective(e.target.value)
-                                  }
-                                  className="h-12"
-                                />
-                                <Button
-                                  onClick={handleGenerateCampaign}
-                                  className="h-12 px-6"
-                                >
-                                  Generate
-                                </Button>
-                              </div>
-                            )}
-                          </TabsContent>
-                          <TabsContent value="previous">
-                            <PreviouslyUsedCampaigns
-                              campaignType={campaignType}
-                              onReuseCampaign={() => {}}
-                            />
-                          </TabsContent>
-                        </Tabs>
-                      </CardContent>
-                    </Card>
-                  </div>
+                {/* OBJECTIVES */}
+<div className="space-y-4">
+  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <h2 className="text-2xl font-bold flex items-center gap-2">
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+        2
+      </span>
+      Select Objective
+    </h2>
+
+    {/* SERVER-SIDE SEARCH */}
+    <div className="relative w-full md:w-80">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        placeholder="Search objectives..."
+        className="pl-9 bg-background"
+        defaultValue={searchQuery}
+        onChange={(e) => {
+          const params = new URLSearchParams(searchParams);
+          params.set("q", e.target.value);
+          params.set("page", "1"); // Reset to page 1 on new search
+          router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        }}
+      />
+    </div>
+  </div>
+
+ <Card className="shadow-xl border-2 border-l-4 border-l-primary">
+  <CardContent className="pt-6">
+    <Tabs value={activeTab} onValueChange={(val) => {
+      setActiveTab(val);
+      // Reset page to 1 when switching tabs
+      const params = new URLSearchParams(searchParams);
+      params.set("page", "1");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }}>
+      <TabsList className="mb-6 w-full justify-start h-auto p-1 bg-muted/50">
+        <TabsTrigger value="generic" className="px-6 py-2">Generic</TabsTrigger>
+        <TabsTrigger value="custom" className="px-6 py-2">Custom</TabsTrigger>
+        <TabsTrigger value="previous" className="px-6 py-2">Previously Used</TabsTrigger>
+      </TabsList>
+
+      <div className="space-y-6">
+        {isLoadingObjectives ? (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={`loader-${i}`} className="h-40 rounded-xl bg-muted animate-pulse border" />
+      ))}
+    </div>
+  ) : (
+          <>
+         <div 
+      key={`grid-container-${activeTab}`} 
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+    >
+      {displayObjectives.length > 0 ? (
+        displayObjectives.map((obj) => (
+          <ObjectiveCard
+            key={`${activeTab}-${obj.id}`} 
+            {...obj}
+            selected={selectedObjective === obj.id}
+            onSelect={() => {
+              setSelectedObjective(obj.id);
+              setSelectedObjectiveData(obj.fullData || null);
+              setCampaignData(null);
+              setCreatedCampaignId(null);
+              // if (obj.id !== "custom-trigger") setIsObjectiveDetailsOpen(true);
+              if (obj.id !== "custom") {
+          setIsObjectiveDetailsOpen(true);
+        }
+            }}
+          />
+        ))
+      ) : (
+        <div className="col-span-full py-20 text-center border-2 border-dashed rounded-xl text-muted-foreground">
+          No objectives found in this category.
+        </div>
+      )}
+    </div>
+{selectedObjective === "custom" && activeTab === "custom" && (
+  <div className="mt-6 p-6 border-2 border-dashed rounded-xl bg-primary/5 animate-in fade-in slide-in-from-top-4">
+    <Label className="mb-2 block font-bold">What is your campaign idea?</Label>
+    <div className="flex gap-2">
+      <Input
+        placeholder="e.g. Special weekend service camp for monsoon..."
+        value={customObjective}
+        onChange={(e) => setCustomObjective(e.target.value)}
+        className="h-12 bg-background"
+      />
+      <Button 
+        onClick={handleGenerateCampaign} 
+        disabled={!customObjective || isGenerating}
+        className="h-12 px-8"
+      >
+        {isGenerating ? <RefreshCw className="animate-spin h-4 w-4" /> : "Generate"}
+      </Button>
+    </div>
+  </div>
+)}
+            {/* SHARED PAGINATION FOOTER */}
+            <div className="flex items-center justify-between pt-6 border-t border-dashed">
+              <p className="text-xs text-muted-foreground font-medium">
+                Page <span className="text-foreground">{currentPage}</span> — {totalNumber} Total Available
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => {
+                    const params = new URLSearchParams(searchParams);
+                    params.set("page", (currentPage - 1).toString());
+                    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isLastPage}
+                  onClick={() => {
+                    const params = new URLSearchParams(searchParams);
+                    params.set("page", (currentPage + 1).toString());
+                    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+                  }}
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </Tabs>
+  </CardContent>
+</Card>
+</div>
 
                  {isGenerating && (
     <Card className="py-12">
