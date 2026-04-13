@@ -232,6 +232,86 @@ valid_call_to_action_values = [
 ]
 
 
+valid_preview_formats = [
+    "AUDIENCE_NETWORK_INSTREAM_VIDEO",
+    "AUDIENCE_NETWORK_INSTREAM_VIDEO_MOBILE",
+    "AUDIENCE_NETWORK_OUTSTREAM_VIDEO",
+    "AUDIENCE_NETWORK_REWARDED_VIDEO",
+    "BIZ_DISCO_FEED_MOBILE",
+    "DESKTOP_FEED_STANDARD",
+    "FACEBOOK_IFU_REELS_MOBILE",
+    "FACEBOOK_PROFILE_FEED_DESKTOP",
+    "FACEBOOK_PROFILE_FEED_MOBILE",
+    "FACEBOOK_PROFILE_REELS_MOBILE",
+    "FACEBOOK_REELS_BANNER",
+    "FACEBOOK_REELS_BANNER_DESKTOP",
+    "FACEBOOK_REELS_BANNER_FEED_ANDROID",
+    "FACEBOOK_REELS_BANNER_FEED_ANDROID_LARGE",
+    "FACEBOOK_REELS_BANNER_FULLSCREEN_IOS",
+    "FACEBOOK_REELS_BANNER_FULLSCREEN_MOBILE",
+    "FACEBOOK_REELS_MOBILE",
+    "FACEBOOK_REELS_POSTLOOP",
+    "FACEBOOK_REELS_POSTLOOP_FEED",
+    "FACEBOOK_REELS_SIMILAR_PRODUCTS_MOBILE",
+    "FACEBOOK_REELS_STICKER",
+    "FACEBOOK_STORY_MOBILE",
+    "FACEBOOK_STORY_STICKER_MOBILE",
+    "INSTAGRAM_EXPLORE_CONTEXTUAL",
+    "INSTAGRAM_EXPLORE_GRID_HOME",
+    "INSTAGRAM_EXPLORE_IMMERSIVE",
+    "INSTAGRAM_FEED_WEB",
+    "INSTAGRAM_FEED_WEB_M_SITE",
+    "INSTAGRAM_LEAD_GEN_MULTI_SUBMIT_ADS",
+    "INSTAGRAM_PROFILE_FEED",
+    "INSTAGRAM_PROFILE_REELS",
+    "INSTAGRAM_REELS",
+    "INSTAGRAM_REELS_OVERLAY",
+    "INSTAGRAM_REELS_WEB",
+    "INSTAGRAM_REELS_WEB_M_SITE",
+    "INSTAGRAM_SEARCH_CHAIN",
+    "INSTAGRAM_SEARCH_GRID",
+    "INSTAGRAM_STANDARD",
+    "INSTAGRAM_STORY",
+    "INSTAGRAM_STORY_EFFECT_TRAY",
+    "INSTAGRAM_STORY_WEB",
+    "INSTAGRAM_STORY_WEB_M_SITE",
+    "INSTANT_ARTICLE_RECIRCULATION_AD",
+    "INSTANT_ARTICLE_STANDARD",
+    "INSTREAM_BANNER_DESKTOP",
+    "INSTREAM_BANNER_FEED_IOS",
+    "INSTREAM_BANNER_FULLSCREEN_IOS",
+    "INSTREAM_BANNER_FULLSCREEN_MOBILE",
+    "INSTREAM_BANNER_IMMERSIVE_MOBILE",
+    "INSTREAM_BANNER_MOBILE",
+    "INSTREAM_VIDEO_DESKTOP",
+    "INSTREAM_VIDEO_FULLSCREEN_IOS",
+    "INSTREAM_VIDEO_FULLSCREEN_MOBILE",
+    "INSTREAM_VIDEO_IMAGE",
+    "INSTREAM_VIDEO_IMMERSIVE_MOBILE",
+    "INSTREAM_VIDEO_MOBILE",
+    "JOB_BROWSER_DESKTOP",
+    "JOB_BROWSER_MOBILE",
+    "MARKETPLACE_MOBILE",
+    "MESSENGER_MOBILE_INBOX_MEDIA",
+    "MESSENGER_MOBILE_STORY_MEDIA",
+    "MOBILE_BANNER",
+    "MOBILE_FEED_BASIC",
+    "MOBILE_FEED_STANDARD",
+    "MOBILE_FULLWIDTH",
+    "MOBILE_INTERSTITIAL",
+    "MOBILE_MEDIUM_RECTANGLE",
+    "MOBILE_NATIVE",
+    "RIGHT_COLUMN_STANDARD",
+    "SUGGESTED_VIDEO_DESKTOP",
+    "SUGGESTED_VIDEO_FULLSCREEN_MOBILE",
+    "SUGGESTED_VIDEO_IMMERSIVE_MOBILE",
+    "SUGGESTED_VIDEO_MOBILE",
+    "WATCH_FEED_HOME",
+    "WATCH_FEED_MOBILE",
+    "WHATSAPP_STATUS_MEDIA",
+
+]
+
 class MetaAdsManager:
     """
     * Meta Ads Manager
@@ -451,6 +531,21 @@ class MetaAdsManager:
         logger.info("Pages available to token: \n")
         for page in pages:
             logger.info(page)
+
+    def check_valid_values(self, _check_value_for : str) -> Union[list[str], Dict[str, list[str]]]:
+        value_map = {
+            "campaign_objectives": valid_campaign_objectives,
+            "call_to_actions": valid_call_to_action_values,
+            "optimization_goals": valid_optimization_goals,
+            "preview_formats": valid_preview_formats,
+        }
+        if _check_value_for == "all":
+            return value_map
+        
+        if _check_value_for not in value_map:
+            raise ValueError(f"Invalid value for: {_check_value_for}")
+        _valid_values = value_map.get(_check_value_for)
+        return _valid_values
 
     def upload_image(
         self,
