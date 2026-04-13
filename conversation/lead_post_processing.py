@@ -442,7 +442,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         # also updating session dispositon--
         template_message = data.get("template_message") if data else None
         if channel in ["whatsapp_chat"]:
-            s_d=list(pg.list("session",{"lead_id":lead_id}))
+            s_d=list(pg.list("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table}))
             if not s_d:
                 mlogger.info(f"No session found for lead_id: {lead_id}")
                 return
@@ -1794,3 +1794,23 @@ def get_disposition_classification(query = None, session_id = None, session_data
     """
     result = run_prompt_sync(user_query = " ",  system_prompt= prompt, history=[], **{"session_id": session_id, "model_identifier":"gcp-gemini-3.1-flash-lite-preview"})
     return result
+
+
+def update_error_in_lead_and_session(error_msg,source,**kwargs):
+    
+    mlogger.info(f"[Error Occured] - {error_msg} -- Source - {source}. So updating in the lead and session.")
+    
+    lead_id=kwargs.get("lead_id")
+    lead_model=kwargs.get("lead_model")
+    channel=kwargs.get("channel")
+    session_id=kwargs.get("session_id") or None
+    lead_model_id="pre_sales_lead_id" if lead_model == "pre_sales_lead" else "post_sales_lead_id"
+    with get_pg_connector() as pg:
+        if lead_id and lead_model:
+            pg.update(lead_model,lead_model_id,lead_id,{"disposition":"error","disposition_detail":error_msg})
+        if not session_id:
+            s_d=list(pg.list("session",{"lead_id":lead_id,"lead_model":lead_model,"channel":channel}))
+            session_id=s_d[0].get("session_id") if s_d else None
+        pg.update("session","session_id",session_id,{"disposition":"error","disposition_detail":error_msg})
+        mlogger.info(f"Updated ERROR in lead and session for lead_id={lead_id} and lead_model={lead_model} and channel={channel} and session_id={session_id}")
+    return

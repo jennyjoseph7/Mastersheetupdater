@@ -30,6 +30,7 @@ from agents.get_email_template_agent import get_email_template
 from agents.get_rcs_template_agent import get_rcs_template
 from communication.connectors.email_communication import communication_sender
 from communication.connectors.connector_rcs import gryd_send_rcs
+from conversation.lead_post_processing import update_error_in_lead_and_session
 from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME, SERVICE,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
@@ -46,35 +47,31 @@ def clean_phone_number(phone_number: str) -> str:
 
 
 
-def update_session_failed(error_msg,session_id=None,lead_id=None):
-    logger.info(f"Error occurred. Error message -{error_msg}")
-    return
+# def handle_session_errors(func):
+#     def wrapper(*args, **kwargs):
+#         session_id = kwargs.get("session_id") or (args[0] if args else None)
+#         lead_id = kwargs.get("lead_id") or (args[1] if args else None)
+#         try:
+#             result = func(*args, **kwargs)
 
-def handle_session_errors(func):
-    def wrapper(*args, **kwargs):
-        session_id = kwargs.get("session_id") or (args[0] if args else None)
-        lead_id = kwargs.get("lead_id") or (args[1] if args else None)
-        try:
-            result = func(*args, **kwargs)
+#             if hasattr(result, "__iter__") and not isinstance(result, dict):
+#                 for item in result:
+#                     if isinstance(item, dict) and item.get("status") == "Error":
+#                         update_error_in_lead_and_session(item.get("error_description"),session_id=None,lead_id=None)
+#                     yield item
 
-            if hasattr(result, "__iter__") and not isinstance(result, dict):
-                for item in result:
-                    if isinstance(item, dict) and item.get("status") == "Error":
-                        update_session_failed(item.get("error_description"),session_id=None,lead_id=None)
-                    yield item
-
-            else:
-                if isinstance(result, dict) and result.get("status") == "Error":
-                    update_session_failed(result.get("error_description"),session_id=None,lead_id=None)
+#             else:
+#                 if isinstance(result, dict) and result.get("status") == "Error":
+#                     update_error_in_lead_and_session(result.get("error_description"),session_id=None,lead_id=None)
                     
-                return result
+#                 return result
 
-        except Exception as e:
-            update_session_failed(str(e),session_id=None,lead_id=None)
+#         except Exception as e:
+#             update_error_in_lead_and_session(str(e),session_id=None,lead_id=None)
             
-            return {"status": "Error", "error_description": str(e)}
+#             return {"status": "Error", "error_description": str(e)}
 
-    return wrapper
+#     return wrapper
 
 class BaseCampaignCreater:
     def create_text_template(self):
@@ -601,6 +598,7 @@ class BaseCustomCampaignManager:
         try:
             # logger.info(f"Campaign details: {json.dumps(kwargs, indent=4, default=str)}")
             logger.info(f"kwargs--{kwargs.get('campaign_id')}")
+            # logger.info(f"Campaign iser--{campaign_users}")
             # Resolve IDs
             enterprise_id = kwargs.get("enterprise_id") or enterprise_id or "test1"
             campaign_id = kwargs.get("campaign_id") or campaign_id
@@ -729,9 +727,10 @@ def trigger_campaign(*args, **kwargs):
     campaign_id=kwargs.get("campaign_id")
     campaign_type=kwargs.get("campaign_type")
     lead_table = "pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
-
+    filters = {k: v for k, v in kwargs.items() if v is not None}
+    
     with get_pg_connector() as pg:
-        leads = list(pg.list(lead_table, {"campaign_id": campaign_id}))
+        leads = list(pg.list(lead_table, filters))
 
     logger.info(f"Total leads fetched: {len(leads)}")
 
@@ -1095,16 +1094,29 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     elif channel == "email":
         sender_name=EMAIL_SENDER_NAME
         provider_name = EMAIL_PROVIDER_NAME
-        template_data= get_template(
-            lead_id=lead_id,
-            campaign_type=campaign_type,
-            campaign_objective= [campaign_objective_name] or [],
-            dealership_id=lead_data.get("dealership_id"),
-            lead_info={}
-        )
-        if not template_data:
-            yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
+        try:
+            template_data= get_template(
+                lead_id=lead_id,
+                campaign_type=campaign_type,
+                campaign_objective= [campaign_objective_name] or [],
+                dealership_id=lead_data.get("dealership_id"),
+                lead_info={}
+            )
+            if not template_data:
+                yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
+                return
+            template_data = template_data[0]
+        except Exception as e:
+            update_error_in_lead_and_session(str(e),"process_single_lead",**{
+                "lead_id":lead_id,
+                "campaign_type":campaign_type,
+                "lead_model":lead_table,
+                "dealership_id":lead_data.get("dealership_id"),
+                "channel":channel
+            })
+            logger.error(f"Error getting email template for lead_id={lead_id}: {e}")
             return
+        
         template_data = template_data[0]
         logger.info(f"Template ID for email={lead_data.get('email')}: {template_data.get('template_id')}")
         
@@ -1131,23 +1143,45 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         # logger.info("Template Data: %s", template_data)
     elif channel in ("whatsapp_chat", "sms", "rcs"):
         if not templateID:
-            template_data = get_template(
-                lead_id=lead_id,
-                campaign_type=campaign_type,
-                campaign_objective= [campaign_objective_name] or [],
-                dealership_id=lead_data.get("dealership_id"),
-                lead_info={}
-            )
+            try:
+                template_data = get_template(
+                    lead_id=lead_id,
+                    campaign_type=campaign_type,
+                    campaign_objective= [campaign_objective_name] or [],
+                    dealership_id=lead_data.get("dealership_id"),
+                    lead_info={}
+                )
+                # template_data= testing_whatsapp_template()
+                logger.info(f"Template Data: {template_data} and type: {type(template_data)}")
+                if not template_data or isinstance(template_data, str):
+                    update_error_in_lead_and_session(f"No Template Found for lead_id-{lead_id}","process_single_lead",**{
+                        "lead_id":lead_id,
+                        "campaign_type":campaign_type,
+                        "lead_model":lead_table,
+                        "dealership_id":lead_data.get("dealership_id"),
+                        "channel":channel
+                    })
+                    yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
+                    return
+                template_data = template_data[0]
+                
+            except Exception as e:
+                update_error_in_lead_and_session(str(e),"process_single_lead",**{
+                    "lead_id":lead_id,
+                    "campaign_type":campaign_type,
+                    "lead_model":lead_table,
+                    "dealership_id":lead_data.get("dealership_id"),
+                    "channel":channel
+                })
+                logger.error(f"Error getting whatsapp template for lead_id={lead_id}: {e}")
+                return
+            sender_name=None
             _d=get_communication_credential(dealership_id=lead_data.get("dealership_id"), channel=channel)
             if _d:
                 sender_name=_d.get("sender")
             logger.info(f"Communication Credential found for dealership_id: {lead_data.get('dealership_id')}, channel: {channel} and sender phone_number: {sender_name}")
             
-            # template_data=testing_whatsapp_template()
-            if not template_data:
-                yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
-                return
-            template_data = template_data[0]
+            
         else:
             with get_pg_connector() as pg:
                 template_details=pg.get("template","template_id",templateID)
@@ -1170,6 +1204,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         "mobile_number": mobile,
         "customer_name": customer_name,
         "email": lead_data.get("email",None),
+        "lead_model": lead_table,
         "contact_channel": channel,
         "template_id": template_data.get("template_id") if template_data else None,
         "template_details": template_data.get("template_details") if template_data else None,
@@ -1212,6 +1247,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 "customer_name": "customer_name",
                 "template_id": "template_id",
                 "template_details": "template_details",
+                "lead_model": "lead_model",
                 "contact_channel": "contact_channel",
                 "reg_num":"reg_num"
             },
@@ -1355,7 +1391,7 @@ def format_email_payload(campaign_data,campaign_user,mobile_number):
 
 def testing_whatsapp_template():
     
-    return [{
+    return [        {
             "sender": "919187210945",
             "status": "approved",
             "buttons": [
@@ -1364,7 +1400,7 @@ def testing_whatsapp_template():
                     "type": "QUICK_REPLY"
                 },
                 {
-                    "text": "Explore Basalt",
+                    "text": "Explore Aircross",
                     "type": "QUICK_REPLY"
                 },
                 {
@@ -1373,33 +1409,34 @@ def testing_whatsapp_template():
                 }
             ],
             "channel": "whatsapp_chat",
-            "created": 1774954387.795891,
-            "updated": 1774954387.7971282,
+            "created": 1775569405.7440195,
+            "updated": 1775651902.2331889,
             "language": "english",
+            # "media_id": "1504520517915714",
+            "media_type": "document",
             "dealer_name": "Dave AI",
             "region_name": "India",
-            "search_term": "confirm_test_drives_through_tech_appeal_whatsapp text english pre-sales hi person_name exploring cars with advanced connectivity immersive screens and smart driving tech the citroën basalt combines intelligent infotainment modern interfaces and everyday driving comfort in one refined package. how would you like to explore it further",
-            "template_id": "01kn14kkf6sb2712gcb00ggbaw",
+            "search_term": "aircross_confirm_test_drive_for_value_advantage text english pre-sales thank you for showing interest in the citroën aircross 🙏 we have a special offer for you ✅ running cost from just ₹0.40 km ✅ additional benefits worth ₹1.15 lakh ⏳ limited stock valid till 30th april only 🚗 book a test drive and experience the basalt for yourself — nothing beats a real drive for any questions feel free to reach out. i m happy to help 😊",
+            "template_id": "01knm1xzec4k24dd83ya2z8ddc",
             "campaign_type": "pre-sales",
             "dealership_id": "dave-ai-india",
             "provider_name": "Airtel",
-            "template_name": "Confirm_Test_Drives_Through_Tech_Appeal_whatsapp",
-            "template_type": "text",
-            #"template_message": "Hi Welcome this is Test Message",
-            #"campaign_objective": [],
-            #"template_variables": [],
-            #"template_button_payloads": [
-            #    "nada_autongage-call",
-            #    "nada_autongage-chat"
-            "template_message": "Hi {{person_name}},\nExploring cars with advanced connectivity, immersive screens, and smart driving tech?\nThe Citroën Basalt combines intelligent infotainment, modern interfaces, and everyday driving comfort in one refined package.\nHow would you like to explore it further?\n",
-            "template_variables": [
-                "person_name"
+            "template_name": "Aircross_Confirm_Test_Drive_For_Value_Advantage",
+            "template_type": "media",
+            "template_message": "Thank you for showing interest in the Citroën Aircross! 🙏\n\nWe have a special offer for you:\n\n✅ Running cost from just ₹0.40/km*\n✅ Additional benefits worth ₹1.15 Lakh\n\n⏳ Limited stock | Valid till 30th April only\n\n🚗 Book a test drive and experience the Aircross for yourself — nothing beats a real drive!\n\nFor any questions, feel free to reach out. I'm happy to help 😊",
+            "template_variables": [],
+            "campaign_objective_name": "Aircross- Confirm Test Drive for Value Advantage- WhatsApp",
+            "template_button_payload": [
+                "confirm_test_drives_through_tech_appeal_whatsapp-book_test_drive",
+                "confirm_test_drives_through_tech_appeal_whatsapp-explore_aircross",
+                "confirm_test_drives_through_tech_appeal_whatsapp-request_a_call_back"
             ],
-            "campaign_objective_name": "Confirm Test Drives Through Tech Appeal - WhatsApp",
             "template_button_payloads": [
                 "confirm_test_drives_through_tech_appeal_whatsapp-book_test_drive",
-                "confirm_test_drives_through_tech_appeal_whatsapp-explore_basalt",
+                "confirm_test_drives_through_tech_appeal_whatsapp-explore_aircross",
                 "confirm_test_drives_through_tech_appeal_whatsapp-request_a_call_back"
             ],
             "communication_credentials_id": "airtel-whatsapp_chat-919187210945"
-        }  ]
+        }]
+    
+    # return "No Template Found"
