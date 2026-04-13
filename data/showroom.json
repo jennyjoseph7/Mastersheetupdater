@@ -126,7 +126,10 @@
                 "function": "name_to_id",
                 "args": [
                     "dealer_name",
-                    "showroom_name"
+                    "showroom_name",
+                    "city",
+                    "locality",
+                    "pincode"
                 ],
                 "kwargs": {
                     "attribute_join": " ",
@@ -193,6 +196,11 @@
         {
             "name": "email",
             "type": "text"
+        },
+        {
+            "name": "locality",
+            "type": "text",
+            "indexed": true
         },
         {
             "name": "address",
@@ -394,13 +402,17 @@
                 "args": [
                     "dealer_name",
                     "showroom_name",
-                    "city"
+                    "city",
+                    "locality",
+                    "pincode"
                 ],
                 "function": "name_to_id",
                 "kwargs": {
                     "attribute_join": "-",
                     "is_unique": true,
-                    "separator": " - "
+                    "separator": "-",
+                    "skip_empty": true,
+                    "case": "lower"
                 }
             },
             "name": "showroom_id",

@@ -118,7 +118,10 @@
                 "function": "name_to_id",
                 "args": [
                     "dealer_name",
-                    "buyback_center_name"
+                    "buyback_center_name",
+                    "city",
+                    "locality",
+                    "pincode"
                 ],
                 "kwargs": {
                     "attribute_join": " ",
@@ -155,6 +158,11 @@
         {
             "name": "email",
             "type": "text"
+        },
+        {
+            "name": "locality",
+            "type": "text",
+            "indexed": true
         },
         {
             "name": "address",
@@ -396,8 +404,9 @@
             "default": {
                 "args": [
                     "dealer_name",
-                    "workshop_name",
-                    "city"
+                    "buyback_center_name",
+                    "city",
+                    "pincode"
                 ],
                 "function": "name_to_id",
                 "kwargs": {
