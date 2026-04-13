@@ -442,7 +442,8 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         # also updating session dispositon--
         template_message = data.get("template_message") if data else None
         if channel in ["whatsapp_chat"]:
-            s_d=list(pg.list("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table}))
+            # s_d=list(pg.list("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table}))
+            s_d=list(pg.list_order_by("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table},order="DESC"))
             if not s_d:
                 mlogger.info(f"No session found for lead_id: {lead_id}")
                 return
