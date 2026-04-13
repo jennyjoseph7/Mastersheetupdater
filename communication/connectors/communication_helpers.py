@@ -230,15 +230,17 @@ def get_or_create_session(data,channel=None,engaged=False):
         # "channel": channel or "whatsapp_chat" if data.get("campaign_type")=="post-sales" else None, 
         "channel": channel or "whatsapp_chat",
         "session_live": True,
-        "status": "completed~"
+        "status~": "completed"
     }
-    
+        
     filters = {k: v for k, v in filters.items() if v is not None}
-    condition, param = apply_filters(**filters)
+    # condition, param = apply_filters(**filters)
     
     logger.info(f"TEST filters for sessions--{filters}")
     with get_pg_connector() as pg:
-        sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
+        # sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
+        sessions=list(pg.list_order_by("session", filters,order="DESC"))
+        
         # logger.info(f'TEST sessions found for {sessions}')
         if sessions:
             new_campaign_id = str(data.get("campaign_id")).strip() if data.get("campaign_id") else None

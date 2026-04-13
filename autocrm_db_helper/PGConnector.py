@@ -27,9 +27,26 @@ class AutoCRMPGConnector(db.GrydPGConnector):
             where_clause = f"WHERE {where}"
 
         return super().list(table_name, where_clause)
+    # def list_order_by(self, table_name, where, order_by="created", order="DESC"):
+    #     where_clause = "WHERE dict @> '{}'".format(json.dumps(where))
+    #     order_clause = f"ORDER BY (dict->>'{order_by}') {order}"
+    #     return super().list(table_name, f"{where_clause} {order_clause}")
+    
     def list_order_by(self, table_name, where, order_by="created", order="DESC"):
-        where_clause = "WHERE dict @> '{}'".format(json.dumps(where))
+        conditions = []
+
+        for key, value in where.items():
+            value = str(value).lower() if isinstance(value, bool) else value
+
+            if key.endswith("~"):
+                actual_key = key[:-1]
+                conditions.append(f"(dict->>'{actual_key}') != '{value}'")
+            else:
+                conditions.append(f"(dict->>'{key}') = '{value}'")
+
+        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         order_clause = f"ORDER BY (dict->>'{order_by}') {order}"
+
         return super().list(table_name, f"{where_clause} {order_clause}")
     
     def delete(self, table_name, id_attr, id):
