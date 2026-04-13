@@ -173,7 +173,7 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
                     _ = list(pg.list("communication_credential", {"dealership_id": dealership_id}))
 
             logger.info(f"TEST BEFORE SESSION FINAL PAYLOAD: {payload}")
-            session = get_or_create_session(payload,channel)
+            session = get_or_create_session(payload,channel,engaged)
             return {**session, "dealership_id": dealership_id}
 
         # 5. NON-CAMPAIGN FLOW
@@ -182,7 +182,7 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
             dealership_id = creds[0].get("dealership_id")
             payload["dealership_id"] = dealership_id
 
-        session = get_or_create_session(payload,channel)
+        session = get_or_create_session(payload,channel,engaged)
         return {**session, "dealership_id": dealership_id}
 
 def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None,campaign_id=None):
