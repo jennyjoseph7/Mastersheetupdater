@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useState, useEffect, Suspense, useMemo, useRef } from "react";
 import { useRouter, useSearchParams ,usePathname} from "next/navigation";
 
 // Imports
@@ -248,6 +248,71 @@ const [activeTab, setActiveTab] = useState("generic"); // Default to Generic
 const [genericObjectives, setGenericObjectives] = useState<any[]>([]);
 const [customObjectives, setCustomObjectives] = useState<any[]>([]);
 const [previousObjectives, setPreviousObjectives] = useState<any[]>([]);
+const prefillFromExistingCampaign = (data: any) => {
+  // 1. Format today's date (DD-MM-YYYY)
+  const today = new Date();
+  const dateSuffix = today.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).replace(/\//g, '-');
+
+  // 2. Basic Details - Appending the date
+  const baseName = data.campaign_name || "PreviousUsed";
+  const basetitle = data.campaign_tagline || data.campaign_title || "Previous Campaign";
+  setCampaignName(`${baseName} - ${dateSuffix}`);
+  
+  setCampaignDescription(data.campaign_description || "");
+  setCampaignTitle(data.campaign_tagline || data.campaign_title || `${basetitle} - ${dateSuffix}`);
+  setTone(data.campaign_tone || "");
+  setUrgencyHook(data.urgency_hook || "");
+  
+  // 3. CTAs and Languages
+  if (data.ctas && data.ctas.length > 0) setCallToAction(data.ctas[0]);
+  
+  if (data.languages && data.languages.length > 0) {
+    const langLabel = data.languages[0].toLowerCase();
+    const langEntry = languageOptions.find(l => l.label.toLowerCase() === langLabel);
+    setLanguage(langEntry ? langEntry.value : "en");
+  }
+
+  // 4. Channels Mapping
+  if (data.channels) {
+    const channelMap: Record<string, string> = {
+      whatsapp_chat: "whatsapp",
+      email: "email",
+      voice_phone: "voice",
+      rcs_message: "rcs",
+      sms_message: "sms",
+    };
+    setSelectedChannels(data.channels.map((c: string) => channelMap[c] || c));
+  }
+
+  // 5. Voice Config
+  if (data.voice_start_language) setVoiceStartLanguage(data.voice_start_language);
+  if (data.voice_agent_id) setVoiceAgentId(data.voice_agent_id);
+
+  // 6. Reset Dates to "Starting Today"
+  const nextWeek = new Date(today);
+  nextWeek.setDate(today.getDate() + 7);
+  const formatDate = (d: Date) => {
+    const offset = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - offset * 60 * 1000);
+    return local.toISOString().split("T")[0];
+  };
+
+  setDuration({ 
+    start: formatDate(today), 
+    end: formatDate(nextWeek) 
+  });
+
+  // Trigger Section Visibility
+  setCampaignData({ 
+    isExisting: true,
+    campaignOffer: data.campaign_offer || data.campaign_description 
+  });
+};
+
 
 // Pagination & Search
 const currentPage = Number(searchParams.get("page")) || 1;
@@ -312,7 +377,7 @@ const searchQuery = searchParams.get("q") || "";
     any[]
   >([]);
 
-  
+  const detailsRef = useRef<HTMLDivElement | null>(null);
 
 // Campaign Details
   const [isGenerating, setIsGenerating] = useState(false);
@@ -475,10 +540,12 @@ useEffect(() => {
         // IMPORTANT: For Previous Used, use the actual campaign ID as the unique identifier
         // Campaigns have their own 'id' or 'campaign_id', objectives have 'campaign_objective_id'
         const uniqueId = obj.id || obj.campaign_id || obj.campaign_objective_id;
+        const objectiveId = obj.campaign_objective_id || uniqueId;
         const title = obj.campaign_name || obj.campaign_objective_name || obj.title || "Untitled";
         
         return {
           id: uniqueId, 
+          objectiveId: objectiveId,
           title: title,
           campaignSubType: obj.campaign_sub_type || "other",
           icon: getObjectiveIcon(obj.campaign_objective_id || uniqueId, title),
@@ -489,6 +556,7 @@ useEffect(() => {
       if (activeTab === "custom" && currentPage === 1 && !searchQuery) {
         mapped.unshift({
           id: "custom",
+          objectiveId: "custom",
           title: "Create New Objective",
           campaignSubType: "Flexible",
           icon: <Edit3 className="h-6 w-6" />,
@@ -509,10 +577,18 @@ useEffect(() => {
   // --- Logic ---
 
 const handleGenerateCampaign = async () => {
-    setIsGenerating(true);
+  setTimeout(() => {
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: "smooth"
+    });
+  }, 100);
+  setIsGenerating(true);
+    
     setGenerationStatusMsg("Initializing...");
 
     try {
+      
       // Setup payload variables
       // const objectivesList = campaignType === "presales" ? preSalesObjectives : fetchedPostSalesObjectives;
       // const objectiveText = selectedObjective === "custom" 
@@ -695,10 +771,12 @@ const handleProceed = async () => {
       ctas: [callToAction],
       number_targeted: 0,
       budget_allocated: 0,
-      campaign_objective_id:
-        selectedObjective === "custom"
-          ? customObjective
-          : selectedObjectiveData?.title || selectedObjective,
+      // campaign_objective_id:
+      //   selectedObjective === "custom"? customObjective
+      //     : selectedObjectiveData?.title || selectedObjective,
+      campaign_objective_id: selectedObjective === "custom" 
+      ? customObjective 
+      : selectedObjective,
       campaign_sub_type: selectedObjectiveData?.campaignSubType || "other",
       campaign_user_source: "file",
     };
@@ -984,7 +1062,7 @@ const handleProceed = async () => {
               )}
            {/* --- Replace the "Required Attributes" div with this conditional block --- */}
 
-{((selectedObjective === "new-car-launch" || selectedObjective.includes("launch")) || 
+{((selectedObjective === "new-car-launch" ) || 
   (selectedObjectiveData?.custom_campaign_attributes && selectedObjectiveData.custom_campaign_attributes.length > 0)) && (
   <div className="space-y-4">
     <div className="flex items-center gap-2 pb-2 border-b">
@@ -1223,14 +1301,30 @@ const handleProceed = async () => {
             {...obj}
             selected={selectedObjective === obj.id}
             onSelect={() => {
-              setSelectedObjective(obj.id);
+              setSelectedObjective(obj.objectiveId);
               setSelectedObjectiveData(obj.fullData || null);
               setCampaignData(null);
               setCreatedCampaignId(null);
               // if (obj.id !== "custom-trigger") setIsObjectiveDetailsOpen(true);
-              if (obj.id !== "custom") {
+             
+             if (activeTab === "previous") {
+          // CASE 1: Previously Used - No AI, just pre-fill
+          prefillFromExistingCampaign(obj.fullData);
+          // Scroll down to the configuration section
+          // window.scrollTo({ top: 400, behavior: "smooth" });
+         setTimeout(() => {
+  detailsRef.current?.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+}, 100);
+        } else if (obj.id !== "custom") {
+          // CASE 2: Generic/Custom Templates - Open AI generation modal
           setIsObjectiveDetailsOpen(true);
         }
+        //       if (obj.id !== "custom") {
+        //   setIsObjectiveDetailsOpen(true);
+        // }
             }}
           />
         ))
@@ -1312,9 +1406,10 @@ const handleProceed = async () => {
       </div>
     </Card>
   )}
+  
                   {/* DETAILS */}
                   {!isGenerating && campaignData && (
-                    <div className="space-y-8 animate-in fade-in duration-500">
+                    <div  ref={detailsRef} className="space-y-8 animate-in fade-in duration-500">
                       <div className="space-y-4">
                         <h2 className="text-2xl font-bold flex items-center gap-2">
                           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
