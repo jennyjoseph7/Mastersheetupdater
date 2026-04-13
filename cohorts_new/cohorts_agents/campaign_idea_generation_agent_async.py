@@ -1,8 +1,6 @@
 # import sys, os
 # # sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-# _parent = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-# if _parent not in sys.path:
-#     sys.path.insert(0, _parent)
+# sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 # import json
 # import re
 # from ai_service import ai_service_app
@@ -189,7 +187,7 @@
 #         "campaign_idea_identifier": <exact ID from the batch>,
 #         "campaign_objective": <string>,
 #         "campaign_explanation": <string — for media planners; must name product, target audience, insight, channels, featured specs>,
-#         "audience": [<string>, ...],   // If cohort information is available, Only that cohort should be included. Otherwise, use a generic audience but only one.
+#         "audience": [<string>, ...],
 #         "cta": [<string>, ...],        // min 2; ALL must include product name
 #         "hashtags": [<string>, ...],   // exactly {self.num_of_hashtags}; ≥60% product-specific (include model name)
 #         "campaign_post_sets": [...]    // exactly {self.num_of_campaign_post_sets} items (see below)
@@ -200,7 +198,7 @@
 #         "post_caption": [<string>],   // product name in first 10 words
 #         "hooks":        [<string>],   // must reference product name/model
 #         "slogan":       [<string>],   // must include or directly reference product name
-#         "messages":     [<string>]    // 2-3 sentences; product name in first 2; ≥2-3 specific features; subtle emojis; optional closing question
+#         "messages":     [<string>]    // 7-8 sentences; product name in first 2; ≥2-3 specific features; subtle emojis; optional closing question
 #         }}
 
 #         ═══════════════════════════════
@@ -236,63 +234,18 @@
 #                         "post_caption": ["The Citroen Aircross C3 redefines urban adventure with 210mm ground clearance and bold design"],
 #                         "hooks": ["Ready to conquer city streets? Meet the Aircross C3"],
 #                         "slogan": ["Aircross: Built for Every Journey"],
-#                         "messages": ["Hi! Looks like you've been eyeing compact SUVs 👀 The Citroën C3 Aircross might be your match — built for the city, ready for the weekend. Want to take one for a spin?"]
+#                         "messages": ["Hi! We noticed you were exploring compact SUVs perfect for city adventures. The Citroen Aircross C3 might be exactly what you're looking for! 🚗 With an impressive 210mm ground clearance, this compact SUV handles everything from city potholes to weekend getaways effortlessly. The spacious cabin seats 5 comfortably, while the 315-liter boot space ensures you never leave anything behind. Powered by a 1.2L turbocharged engine, the Aircross C3 delivers peppy performance without compromising on fuel efficiency. The bold design with LED projector headlamps and signature dual-tone roof makes heads turn everywhere you go. Plus, the elevated driving position gives you commanding road visibility ✨ Would you like to experience the Aircross C3 firsthand with a test drive?"]
 #                     }},
 #                     {{
 #                         "post_caption": ["Citroen Aircross C3: Where comfort meets capability in every drive"],
 #                         "hooks": ["Your daily drive deserves the Aircross C3 upgrade"],
 #                         "slogan": ["Aircross C3: Adventure Approved, City Ready"],
-#                         "messages": ["The C3 Aircross isn't just practical — it's personal. Dual-tone colors, a connected cabin, and safety built-in as standard. Every detail, done right. Ready to see it in person?"]
+#                         "messages": ["The Citroen Aircross C3 is engineered for those who refuse to compromise! This versatile SUV brings together comfort, style, and performance in one compelling package 🌟 Inside, you'll find a thoughtfully designed cabin with class-leading shoulder room and flexible seating configurations. The 7-inch touchscreen infotainment system keeps you connected with Apple CarPlay and Android Auto. Safety isn't an afterthought—dual airbags, ABS with EBD, and rear parking sensors come standard. The Aircross C3's 180mm of approach angle means speed bumps and rough roads are no longer a concern. Available in vibrant dual-tone color combinations, it's a SUV that reflects your personality 💫 Ready to make every journey memorable?"]
 #                     }}
 #                 ]
 #             }}
 #         ]
 #         """
-
-#         # system_prompt = None 
-
-#         # system_prompt = f"""
-#         # You are a Product-Driven Campaign & Performance Marketing AI Agent.
-#         # CRITICAL: Extract the EXACT product name from brochure/website first. Use it consistently everywhere — captions, hooks, slogans, CTAs, messages. Never say "our product" or "this vehicle".
-
-#         # Generate exactly {len(campaign_batch)} campaigns — one per ID in the batch.
-#         # Return a strict JSON array only. No markdown, no comments, no extra keys.
-
-#         # Each campaign schema:
-#         # {{
-#         # "campaign_idea_identifier": <exact batch ID>,
-#         # "campaign_objective": <string>,
-#         # "campaign_explanation": <string — name product, audience, insight, channels, specs>,
-#         # "performance_strategy": {{
-#         #     "channels": [{{ "channel": "", "reasoning": "", "ad_formats": [] }}],
-#         #     "budget_allocation": [{{ "channel": "", "budget_percent": 0 }}],
-#         #     "funnel_strategy": {{ "TOF": "", "MOF": "", "BOF": "" }}
-#         # }},
-#         # "targeting": {{
-#         #     "age_range": "", "gender": "", "locations": [], "languages": [],
-#         #     "interests": [], "behaviors": [], "life_events": [], "job_titles": []
-#         # }},
-#         # "audience": [<string>],
-#         # "cta": [<string>],         // min 2; ALL must include product name
-#         # "hashtags": [<string>],    // exactly {self.num_of_hashtags}; ≥60% product/model-specific
-#         # "campaign_post_sets": [    // exactly {self.num_of_campaign_post_sets} items. Each post set will have one post caption, one hook, one slogan, and one message
-#         #     {{
-#         #     "post_caption": [<string>],  // product name in first 10 words  // Only one post_caption
-#         #     "hooks":        [<string>],  // must reference product name     // Only one hook
-#         #     "slogan":       [<string>],  // must reference product name     // Only one slogan
-#         #     "messages":     [<string>]   // 7-8 sentences; product name in first 2; ≥3 specific features; subtle emojis // Only one message
-#         #     }}
-#         # ]
-#         # }}
-
-#         # RULES:
-#         # - Each post set: different feature angle, different emotional trigger
-#         # - Features must be specific (e.g. "1.2L turbo", not "powerful engine")
-#         # - Targeting derived from cohort, affinity signals, and product positioning
-#         # - Channels: Facebook, Instagram, Snapchat, YouTube, Google Ads, TikTok
-#         # - Personalize using cohort traits, affinity signals, and customer interaction context
-#         # - "Opportunity Name" = likely customer; "Opportunity Owner" = sales rep
-#         # """
         
 #         shared_user_context = self._build_shared_user_context()
 #         user_context_parts = [f"Campaign IDs for this batch (generate one idea per ID): {json.dumps(campaign_batch, ensure_ascii=False)}",] + shared_user_context
@@ -470,6 +423,8 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
 
         self.model_identifier = model_identifier
 
+        self.model_identifier = model_identifier
+
         self.llm=lambda messages:ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
         self.brochure_content:dict[str]=self.fetch_brochure_content(brochure_url = self.brochure_url) # Only page_content is there and needed
         self.product_website_content:dict[str]=self.fetch_product_details_from_website(website_url = self.product_website_url) # Only page_content is there and needed
@@ -501,6 +456,40 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
                 return "no fixed limit"
             return f"max {max_len} words" 
         
+        schema = f"""
+        OUTPUT SCHEMA (per campaign idea) — strict JSON, no markdown, no extra keys:
+
+        {{
+            "campaign_idea_identifier": <string — exact ID from the batch; {_len_note(self.title_max_length, 'title')}>,
+            "campaign_objective": <string>,
+            "campaign_explanation": <string — for media planners; must name product, target audience, insight, channels, featured specs>,
+            "audience": [<string>, ...],
+            "cta": [
+                <string — {_len_note(self.cta_max_length, 'cta')}>,
+                ...
+            ],
+            "hashtags": [<string>, ...],   // exactly {self.num_of_hashtags}; ≥60% product-specific (include model name)
+            "campaign_post_sets": [        // exactly {self.num_of_campaign_post_sets} items
+                {{
+                    "post_caption": [<string — {_len_note(self.caption_max_length, 'caption')}>],
+                    "hooks":        [<string — {_len_note(self.hook_max_length, 'hook')}>],
+                    "slogan":       [<string — {_len_note(self.slogan_max_length, 'slogan')}>],
+                    "messages":     [<string — {_len_note(self.message_max_length, 'message')}; 7-8 sentences; product name in first 2; ≥2-3 specific features; subtle emojis; optional closing question>]
+                }},
+                ...
+            ]
+        }}
+        """
+        return schema.strip()
+
+    @property
+    def _output_schema(self) -> str:
+        """Returns the expected JSON output schema for campaign ideas, with field-level length constraints injected dynamically."""
+        def _len_note(max_len: int | None, label: str) -> str:
+            if max_len is None:
+                return "no fixed limit"
+            return f"max {max_len} characters" 
+
         schema = f"""
         OUTPUT SCHEMA (per campaign idea) — strict JSON, no markdown, no extra keys:
 
@@ -709,122 +698,3 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
             "campaign_idea_ids": campaign_idea_ids,
             "campaign_ideas": all_campaign_ideas,
         }
-
-
-
-class PerformanceMarketingCampaignAgent(UtilityMixin):
-    def __init__(
-            self,
-            product_name: str,
-            brand_name: str,
-            objective: str,
-            budget: Union[int, float],
-            landing_page: str,
-            geography: List[str] = ['India', 'UAE', 'USA'],
-            model_identifier: str = 'azure-gpt-4o',
-        ):
-
-        self.product_name = product_name
-        self.brand_name = brand_name
-        self.objective = objective
-        self.budget = budget
-        self.landing_page = landing_page
-        self.geography = geography
-
-        self.model_identifier = model_identifier
-        self.llm = lambda messages: ai_service_app.get_llm_response(
-            messages=messages,
-            model_identifier=self.model_identifier
-        )
-
-    def get_output_schema(self):
-        return {
-            "campaign_name": "",
-            "objective": "",
-            "target_audience": {
-                "age_range": "",
-                "gender": "",
-                "interests": [],
-                "persona_description": ""
-            },
-            "platform_strategy": [
-                {
-                    "platform": "",
-                    "reasoning": ""
-                }
-            ],
-            "budget_allocation": [
-                {
-                    "platform": "",
-                    "budget": 0
-                }
-            ],
-            "ad_creatives": [
-                {
-                    "headline": "",
-                    "primary_text": "",
-                    "cta": "",
-                    "creative_idea": ""
-                }
-            ],
-            "funnel_strategy": {
-                "TOF": "",
-                "MOF": "",
-                "BOF": ""
-            },
-            "retargeting_strategy": "",
-            "kpis": []
-        }
-
-
-    def build_prompt(self):
-
-        schema = json.dumps(self.get_output_schema(), indent=2)
-
-        system_prompt = f"""
-You are an expert performance marketing strategist.
-
-Generate a complete performance marketing campaign.
-
-IMPORTANT RULES:
-
-1. Return ONLY valid JSON
-2. Follow the exact JSON structure below
-3. Do not add extra keys
-4. Fill all fields
-
-JSON STRUCTURE:
-
-{schema}
-"""
-
-        user_prompt = f"""
-Create a campaign with the following details:
-
-Brand: {self.brand_name}
-Product: {self.product_name}
-Objective: {self.objective}
-Total Budget: {self.budget}
-Landing Page: {self.landing_page}
-Target Geography: {self.geography}
-
-Design a high converting performance campaign.
-"""
-
-        return [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-
-    def run(self):
-        messages = self.build_prompt()
-        return self.exec_json_llm_with_retry(self.llm, messages=messages)
-    
-
-if __name__ == "__main__":
-
-    params = {
-        "product_website_url": "https://www.example.com"
-    }
-
-    CampaignIdeaGeneratorAgent()

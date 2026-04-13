@@ -728,7 +728,7 @@ def trigger_campaign(*args, **kwargs):
     campaign_type=kwargs.get("campaign_type")
     lead_table = "pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
     filters = {k: v for k, v in kwargs.items() if v is not None}
-    
+    logger.info(f"Filters: {filters}")
     with get_pg_connector() as pg:
         leads = list(pg.list(lead_table, filters))
 
@@ -755,7 +755,7 @@ def trigger_campaign(*args, **kwargs):
     logger.info(f"Valid leads to process: {len(valid_leads)}")
 
     for lead in valid_leads:
-        logger.info(f"Queueing task for lead_id={lead.get('lead_id')}")
+        # logger.info(f"Queueing task for lead_id={lead.get('lead_id')}")
         list(process_single_lead(None, lead, campaign_type, campaign_id))
         # gryd.create_async_task(
         #     "process_single_lead",
