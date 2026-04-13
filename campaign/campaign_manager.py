@@ -663,9 +663,10 @@ def trigger_campaign(*args, **kwargs):
     campaign_id=kwargs.get("campaign_id")
     campaign_type=kwargs.get("campaign_type")
     lead_table = "pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
-
+    filters = {k: v for k, v in kwargs.items() if v is not None}
+    logger.info(f"Filters: {filters}")
     with get_pg_connector() as pg:
-        leads = list(pg.list(lead_table, {"campaign_id": campaign_id}))
+        leads = list(pg.list(lead_table, filters))
 
     logger.info(f"Total leads fetched: {len(leads)}")
 

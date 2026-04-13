@@ -257,7 +257,13 @@ def campaign_idea_generation_agent(*args, **kwargs):
             "num_of_campaign_ideas": kwargs.get("num_of_campaign_ideas", 3), 
             "num_of_campaign_post_sets": kwargs.get("num_of_campaign_post_sets", 3), 
             "num_of_hashtags": kwargs.get("num_of_hashtags", 20),
-            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o")
+            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o"),
+            "tition_max_length" : kwargs.get("title_max_length", None),
+            "hook_max_length" : kwargs.get("hook_max_length", None),
+            "slogan_max_length" : kwargs.get("slogan_max_length", None),
+            "caption_max_length" : kwargs.get("caption_max_length", None),
+            "message_max_length" : kwargs.get("message_max_length", None),
+            "cta_max_length" : kwargs.get("cta_max_length", None),
         }
         agent = CampaignIdeaGeneratorAgent(**_params)
         output = agent.run(batch_size=kwargs.get("batch_size", 2))
@@ -286,7 +292,13 @@ def campaign_idea_generation_agent_async(*args, **kwargs):
             "num_of_campaign_ideas": kwargs.get("num_of_campaign_ideas", 3), 
             "num_of_campaign_post_sets": kwargs.get("num_of_campaign_post_sets", 3), 
             "num_of_hashtags": kwargs.get("num_of_hashtags", 20),
-            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o")
+            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o"),
+            "tition_max_length" : kwargs.get("title_max_length", None),
+            "hook_max_length" : kwargs.get("hook_max_length", None),
+            "slogan_max_length" : kwargs.get("slogan_max_length", None),
+            "caption_max_length" : kwargs.get("caption_max_length", None),
+            "message_max_length" : kwargs.get("message_max_length", None),
+            "cta_max_length" : kwargs.get("cta_max_length", None),
         }
         agent = CampaignIdeaGeneratorAgent(**_params)
         output = agent.run_with_events(batch_size=kwargs.get("batch_size", 2))
