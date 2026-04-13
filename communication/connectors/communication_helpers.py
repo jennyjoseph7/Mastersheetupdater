@@ -261,6 +261,7 @@ def get_or_create_session(data,channel=None,engaged=False):
                 logger.info("There is a new triggered campaign for this user. Since there is an existing session, we are ending the existing(old) session and creating a new session..")
                 logger.info(f"OLD SESSIONID--{sessions[0].get('session_id')}")
                 # end the old session also check if session end_time
+                update_history_in_session(sessions[0])
                 gryd.create_async_task(
                     "end_session_and_post_process",
                     AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
@@ -313,7 +314,77 @@ def get_or_create_session(data,channel=None,engaged=False):
         s=create_new_session(data,channel,engaged)
         
         return s
+    
+def normalize_ts(ts):
+    if not ts:
+        return None
+    if isinstance(ts, str):
+        return int(datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp())
+    if isinstance(ts, float):
+        return int(ts)
+    if isinstance(ts, int):
+        return ts
+    return None
 
+def update_history_in_session(session_data):
+    logger.info(f"update_history_in_session for session_id: {session_data.get('session_id')}")
+    with get_pg_connector() as pg:
+        last_ts = None
+        existing_history = session_data.get("history", []) or []
+        history_rows = list(
+                        # pg.list_order_by("message", {"session_id": session_id},order_by="created",order="ASC")
+                        pg.list("message", {"session_id": session_data.get("session_id")})
+                    )
+        logger.info(f"history_rows: {json.dumps(history_rows,indent=4)}")
+        last_history_epoch = (
+                int(session_data.get("history_updated_time"))
+                if session_data.get("history_updated_time")
+                else None
+            )
+        new_records = []
+        for row in history_rows:
+            ts = normalize_ts(row.get("created") or row.get("updated"))
+            if ts and (last_history_epoch is None or ts > last_history_epoch):
+                new_records.append((row, ts))
+
+        if new_records:
+            appended_history = []
+
+            for record,ts in new_records:
+                last_ts = ts
+
+                appended_history.append(
+                    {
+                        "index": record.get("index"),
+                        "role": (
+                            "user"
+                            if record.get("reply_to") == ""
+                            else "agent"
+                        ),
+                        "timestamp": ts,
+                        "message": record.get("message"),
+                    }
+                )
+            start_time = normalize_ts(session_data.get("start_time"))
+            session_duration = (
+                last_ts - start_time if start_time and last_ts else None
+            )
+            
+            update_payload = {
+                "history": existing_history + appended_history,
+                "history_updated_time": last_ts,
+                "has_unprocessed_history": True
+            }
+
+            if session_duration is not None:
+                update_payload["duration"] = session_duration
+                
+            pg.update(
+                "session",
+                "session_id",
+                session_data.get("session_id"),
+                update_payload
+            )
 def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_post_process,inactive_cutoff_epoch):
     """
     Handles post session process or end session based on session end date and history update.
