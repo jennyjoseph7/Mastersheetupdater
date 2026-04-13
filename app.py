@@ -31,7 +31,7 @@ logger = gryd.hp.get_logger(AUTOCRM_APP_ENTERPRISE_ID)
 app_dict = gryd_routes.make_app(__name__, current_module = __name__)                                                                 
 app = app_dict['app']
 
-def SETUP(skip_models = False, skip_data = False, start_models_from = None, start_data_from = None, skip_cron = False, skip_sp = False, new_db = False, new_environment = False):
+def SETUP(skip_models = False, skip_data = False, start_models_from = None, start_data_from = None, skip_cron = False, skip_sp = False, new_db = False, new_environment = False, reseed = False):
     gryd.setup_gryd_enterprise(AUTOCRM_APP_ENTERPRISE_ID, email = AUTOCRM_ADMIN_ID, phone_number = AUTOCRM_ADMIN_PHONE_NUMBER, password = AUTOCRM_ADMIN_PASSWORD)
     enterprise = base_model.Enterprise(AUTOCRM_APP_ENTERPRISE_ID)
     if (not skip_models) or new_db:
@@ -49,18 +49,18 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
                     logger.info(f"Skipping data: {data_name}, starting from: {start_data_from}")
                     continue
                 start_data_from = None
-                post_autocrm_data(data_name)
-    if not skip_sp:
+                post_autocrm_data(data_name, reseed = reseed or new_db)
+    if not skip_sp or new_db:
         load_stored_procedures()
     if (not skip_cron) or new_environment:
-        # cron_worker.add_cron_job(AUTOCRM_APP_ENTERPRISE_ID, "clear_otp_cache", "cron", "*/15 * * * *", logger = logger)
-        # cron_worker.add_cron_job(
-        #     enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
-        #       task="overall_campaign_summary",
-        #       service=AUTOCRM_CRON_SERVICE_NAME,
-        #       schedule = "*/10 * * * *",
-        #       add_schedule_to_queue=False
-        #     )
+        cron_worker.add_cron_job(AUTOCRM_APP_ENTERPRISE_ID, "clear_otp_cache", "cron", "*/15 * * * *", logger = logger)
+        cron_worker.add_cron_job(
+             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+               task="overall_campaign_summary",
+               service=AUTOCRM_CRON_SERVICE_NAME,
+               schedule = "*/10 * * * *",
+               add_schedule_to_queue=False
+        )
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="manage_active_sessions",
@@ -240,6 +240,23 @@ def razorpay_webhook():
 
 
 if __name__ == "__main__":
-
-    app.run(debug=True, host=app_dict['host'], port=app_dict['port'])
+    import argparse
+    parser = argparse.ArgumentParser(description='Run the app/setup')
+    parser.add_argument('--port', type=int, help='Port', default=app_dict['port'])
+    parser.add_argument('--host', type=str, help='Host', default=app_dict['host'])
+    parser.add_argument('--debug', type=bool, help='Debug', default=True)
+    parser.add_argument('--setup', action='store_true', help='Setup', default=False)
+    parser.add_argument('--skip-models', action='store_true', help='Skip models', default=False)
+    parser.add_argument('--skip-data', action='store_true', help='Skip data', default=False)
+    parser.add_argument('--skip-cron', action='store_true', help='Skip cron', default=False)
+    parser.add_argument('--skip-sp', action='store_true', help='Skip sp', default=False)
+    parser.add_argument('--reseed', action='store_true', help='Reseed', default=False)
+    parser.add_argument('--start-models-from', type=str, help='Start models from', default=None)
+    parser.add_argument('--start-data-from', type=str, help='Start data from', default=None)
+    parser.add_argument('--new-db', action='store_true', help='New db', default=False)
+    parser.add_argument('--new-environment', action='store_true', help='New environment', default=False)
+    args = parser.parse_args()
+    if args.setup:
+        SETUP(skip_models = args.skip_models, skip_data = args.skip_data, skip_cron = args.skip_cron, reseed = args.reseed, start_models_from = args.start_models_from, start_data_from = args.start_data_from, skip_sp = args.skip_sp, new_db = args.new_db, new_environment = args.new_environment)
+    app.run(debug=args.debug, host=args.host, port=args.port)
 

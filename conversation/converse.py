@@ -279,6 +279,9 @@ def post_messages_data(*args, **pass_kwargs):
                 }
             # mlogger.info(f"out_message --{out_message}")
             respper = pg.update("message","message_id",message_id,out_message)
+            if not respper:
+                mlogger.info("message not saved for message_id {}".format(message_id))
+                continue
             new_messages.append(respper)
         mlogger.info("session_id in post_messages_data {}".format(pass_kwargs.get("session_id")))
         session_data_cache = setup_session_data_cache(session_id=pass_kwargs.get("session_id"))

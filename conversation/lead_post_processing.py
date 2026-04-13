@@ -83,6 +83,7 @@ def end_session_and_post_process(*args, **kwargs):
             _do_db_work(pg_conn)
 
     if any( _ == "voice" for _ in kwargs.get("channel", "").split("_")):
+        mlogger.info(f"Session with session_id: {session_id} is a voice session, posting messages for voice session.")
         post_messages_for_voice_session(session_id, additional_dict.get("history",[]))
         
     mlogger.info(f"Calling post session process task for session_id: {session_id}")
@@ -102,7 +103,6 @@ def post_messages_for_voice_session(session_id, session_history):
 
     #in zero'th index add empty user message for better indexing
     user_msgs.insert(0, {"role": "user", "content": "__init__"})
-
     if len(agent_msgs) != len(user_msgs):
         mlogger.error(
             f"post_history: agent ({len(agent_msgs)}) and user ({len(user_msgs)}) message counts do not match"
@@ -115,7 +115,7 @@ def post_messages_for_voice_session(session_id, session_history):
         a = agent_msgs[i] if i < len(agent_msgs) else {}
         tme = hp.time()
         history.append({
-            "reply_to": generate_uid(u) if u else gryd.hp.make_uuid3(str(time.time())),
+            "reply_to": str(generate_uid(u) if u else gryd.hp.make_uuid3(str(time.time()))),
             "customer_response": u.get("message", ""),
             "request_data": {
                 "customer_response": u.get("message", "")
@@ -1113,6 +1113,8 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     has_user_message = False
     for message in messages:
         mlogger.info("message in get_disposition -  {}".format(message))
+        if not message:
+            continue
         if "intent" in message and message.get("intent") == "llm_response":
             message_history.append({"role" : "my agent", "message":message.get("message","")})
         else:
@@ -1375,6 +1377,8 @@ def get_preffered_language(session_id,session_data_cache):
     messages = session_data_cache.get("messages")
     message_history = []
     for message in messages:
+        if not message:
+            continue
         if "intent" in message and message.get("intent") == "llm_response":
             message_history.append({"role" : "my agent", "message":message.get("message","")})
         else:
@@ -1734,6 +1738,8 @@ def get_disposition_classification(query = None, session_id = None, session_data
     has_user_message = False
     for message in messages:
         mlogger.info("message in get_disposition -  {}".format(message))
+        if not message:
+            continue
         if "intent" in message and message.get("intent") == "llm_response":
             message_history.append({"role" : "my agent", "message":message.get("message","")})
         else:
