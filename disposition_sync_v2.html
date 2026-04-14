@@ -1585,7 +1585,9 @@
         const d = (r.disposition || '').toLowerCase();
         const s = (r.summary || '').toLowerCase();
         const ss = (r.session_summary || '').toLowerCase();
-        return d.includes('call back') || d.includes('callback') || d.includes('call later') || s.includes('requested call back') || s.includes('callback requested') || ss.includes('requested call back') || ss.includes('callback requested');
+        return d.includes('call back') || d.includes('callback') || d.includes('call later') || 
+               s.includes('requested call back') || s.includes('callback requested') || s.includes('requested callback') || 
+               ss.includes('requested call back') || ss.includes('callback requested') || ss.includes('requested callback');
       }).length;
       const testDriveCompleted = data.filter(r => {
         const s = (r.summary || '').toLowerCase();
