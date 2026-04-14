@@ -1582,8 +1582,9 @@
         return s.includes('follow up');
       }).length;
       const requestedCallbacks = data.filter(r => {
-        const s = (r.summary || '').toLowerCase();
-        return s.includes('call back') || s.includes('callback') || s.includes('call later') || s.includes('requested call back') || s.includes('callback requested');
+        const d = (r.disposition || '').toLowerCase();
+        const s = (r.session_summary || '').toLowerCase();
+        return d.includes('call back') || d.includes('callback') || d.includes('call later') || s.includes('requested call back') || s.includes('callback requested');
       }).length;
       const testDriveCompleted = data.filter(r => {
         const s = (r.summary || '').toLowerCase();
