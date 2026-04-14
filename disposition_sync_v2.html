@@ -1471,7 +1471,7 @@
 
     async function copyConvertedData() {
       if (!convertedData.length) return;
-      const lines = [['PHONE_NUMBER', 'VEHICLE_MODEL', 'DISPOSITION_DETAILS', 'CALL_DATE', 'AnantCars CRE Remarks'].join('\t')];
+      const lines = [];
       
       for (const r of convertedData) {
         const cols = [
@@ -1591,40 +1591,6 @@
     async function exportToExcel() {
       if (!processedData.length) return;
 
-      // ── COMPUTE SUMMARY STATS ────────────────────────────────────────────────
-      const total = processedData.length;
-      const connected = processedData.filter(r => r.outcome === 'Connected').length;
-      const bookings = processedData.filter(r => {
-        const s = (r.summary || '').toLowerCase();
-        return s.includes('converted') || s.includes('booking') || s.includes('booked');
-      }).length;
-      const callbacks = processedData.filter(r => {
-        const s = (r.summary || '').toLowerCase();
-        return s.includes('call back') || s.includes('callback') || s.includes('call later') || s.includes('follow up');
-      }).length;
-      const testDriveCompleted = processedData.filter(r => {
-        const s = (r.summary || '').toLowerCase();
-        return s.includes('already purchased') || s.includes('purchased elsewhere') || s.includes('test drive done') || s.includes('test drive completed') || s.includes('bought another');
-      }).length;
-      const notConnectedCalls = processedData.filter(r => r.outcome === 'Not Connected').length;
-
-      // ── DATE LABEL (e.g. "14 April 2026") ───────────────────────────────────
-      const now = new Date();
-      const dateLabel = `${now.getDate()} ${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`;
-
-      // ── SUMMARY ROWS ─────────────────────────────────────────────────────────
-      const summaryRows = [
-        [`${dateLabel} - Call Analysis Summary`],
-        [],
-        ['Total Calls triggered', '-', total],
-        ['Connected calls', '-', connected],
-        ['Bookings', '-', bookings],
-        ['Requested call back', '-', callbacks],
-        ['Test drive completed', '-', testDriveCompleted],
-        ['Not connected calls', '-', notConnectedCalls],
-        [],  // blank separator row
-      ];
-
       // ── DATA ROWS ────────────────────────────────────────────────────────────
       const dataRows = [HEADERS_TSV];
       for (const r of processedData) {
@@ -1636,7 +1602,7 @@
         ].map(v => typeof v === 'string' ? v.trim() : v));
       }
 
-      const ws = XLSX.utils.aoa_to_sheet([...summaryRows, ...dataRows]);
+      const ws = XLSX.utils.aoa_to_sheet(dataRows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Processed Leads");
       XLSX.writeFile(wb, "JEJO_Disposition_Sync.xlsx");
