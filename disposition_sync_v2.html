@@ -946,6 +946,28 @@
         </table>
       </div>
     </div>
+
+    <!-- Test Drive Completed Preview -->
+    <div class="table-wrapper" id="testDriveTableWrapper" style="display:none; margin-top: 2rem;">
+      <div class="table-header">
+        <div class="table-title">Test Drive Completed Preview</div>
+        <button class="btn btn-success" id="btnCopyTestDrive" onclick="copyTestDriveData()" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; height: auto;">📋 Copy Test Drive</button>
+      </div>
+      <div class="table-scroll">
+        <table id="testDriveTable">
+          <thead>
+            <tr>
+              <th>PHONE_NUMBER</th>
+              <th>VEHICLE_MODEL</th>
+              <th>CALL_DATE</th>
+              <th>DISPOSITION_DETAILS</th>
+              <th>ANANTCARS CRE REMARKS</th>
+            </tr>
+          </thead>
+          <tbody id="testDriveBody"></tbody>
+        </table>
+      </div>
+    </div>
   </main>
 
   <!-- Footer -->
@@ -1377,6 +1399,7 @@
 
         renderTable(output);
         renderConvertedTable(output);
+        renderTestDriveTable(output);
         renderStats(output);
         renderSummary(output);
         hideOverlay();
@@ -1517,6 +1540,60 @@
         setTimeout(() => { btn.textContent = '📋 Copy Converted'; }, 2000);
       } catch (e) {
         console.error('Failed to copy converted table:', e);
+      }
+    }
+
+    // ─── RENDER TEST DRIVE TABLE ──────────────────────────────────────────────────
+    let testDriveData = [];
+
+    function renderTestDriveTable(data) {
+      testDriveData = data.filter(r => {
+        const s = (r.summary || '').toLowerCase();
+        return s.includes('purchased elsewhere') || s.includes('already purchased');
+      });
+
+      if (testDriveData.length === 0) {
+        document.getElementById('testDriveTableWrapper').style.display = 'none';
+        return;
+      }
+      
+      const tbody = document.getElementById('testDriveBody');
+      tbody.innerHTML = '';
+      
+      for (const r of testDriveData) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="cell-phone">${esc(r.phone)}</td>
+          <td>${esc(r.model)}</td>
+          <td>${esc(r.call_date)}</td>
+          <td>${esc(r.summary)}</td>
+          <td></td>
+        `;
+        tbody.appendChild(tr);
+      }
+      document.getElementById('testDriveTableWrapper').style.display = 'block';
+      document.getElementById('testDriveTableWrapper').classList.add('fade-in');
+    }
+
+    async function copyTestDriveData() {
+      if (!testDriveData.length) return;
+      const lines = [];
+      
+      for (const r of testDriveData) {
+        const cols = [
+          r.phone, r.model, r.call_date, r.summary, ''
+        ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '));
+        lines.push(cols.join('\t'));
+      }
+      const tsv = lines.join('\n');
+      
+      try {
+        await navigator.clipboard.writeText(tsv);
+        const btn = document.getElementById('btnCopyTestDrive');
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = '📋 Copy Test Drive'; }, 2000);
+      } catch (e) {
+        console.error('Failed to copy test drive table:', e);
       }
     }
 
@@ -1705,8 +1782,10 @@
       });
       document.getElementById('outputBody').innerHTML = '';
       document.getElementById('convertedBody').innerHTML = '';
+      document.getElementById('testDriveBody').innerHTML = '';
       document.getElementById('tableWrapper').style.display = 'none';
       document.getElementById('convertedTableWrapper').style.display = 'none';
+      document.getElementById('testDriveTableWrapper').style.display = 'none';
       document.getElementById('statsBar').style.display = 'none';
       document.getElementById('summaryCard').style.display = 'none';
       document.getElementById('btnCopy').style.display = 'none';
