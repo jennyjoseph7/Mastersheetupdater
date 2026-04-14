@@ -1330,7 +1330,7 @@
             outcome,
             disposition: disp,
             summary,
-            conversion: '',
+            conversion: summary.toLowerCase().includes('converted') ? 'Yes' : '',
             call_date: callDate,
             num_attempts: `=COUNTIF(C:C;C${formulaRow})`,
             sentiment: sess.sentiment || '',
@@ -1443,10 +1443,13 @@
 
       const total = data.length;
       const connected = data.filter(r => r.outcome === 'Connected').length;
-      const bookings = data.filter(r => r.disposition.toLowerCase() === 'test drive booked').length;
-      const callbacks = data.filter(r => ['callback requested', 'call back'].includes(r.disposition.toLowerCase())).length;
-      const serviceCompleted = data.filter(r => r.disposition.toLowerCase() === 'converted').length;
-      const invalid = data.filter(r => ['wrong number', 'dnd', 'not interested'].includes(r.disposition.toLowerCase())).length;
+      const bookings = data.filter(r => (r.summary || '').toLowerCase().includes('converted')).length;
+      const callbacks = data.filter(r => {
+        const s = (r.summary || '').toLowerCase();
+        return s.includes('call back') || s.includes('callback');
+      }).length;
+      const testDriveCompleted = data.filter(r => (r.summary || '').toLowerCase().includes('already purchased')).length;
+      const notConnectedCalls = data.filter(r => r.outcome === 'Not Connected').length;
 
       document.getElementById('summaryTitle').textContent = `${dateLabel} — Call Analysis Summary`;
 
@@ -1455,8 +1458,8 @@
         { label: 'Connected Calls', val: connected, cls: 'green' },
         { label: 'Bookings', val: bookings, cls: 'green' },
         { label: 'Requested Call Back', val: callbacks, cls: 'amber' },
-        { label: 'Service Completed', val: serviceCompleted, cls: 'blue' },
-        { label: 'Invalid', val: invalid, cls: 'purple' },
+        { label: 'Test Drive Completed', val: testDriveCompleted, cls: 'blue' },
+        { label: 'Not Connected Calls', val: notConnectedCalls, cls: 'purple' },
       ];
 
       const grid = document.getElementById('summaryGrid');
@@ -1484,14 +1487,13 @@
       // ── COMPUTE SUMMARY STATS ────────────────────────────────────────────────
       const total = processedData.length;
       const connected = processedData.filter(r => r.outcome === 'Connected').length;
-      const bookings = processedData.filter(r =>
-        ['test drive booked'].includes(r.disposition.toLowerCase())).length;
-      const callbacks = processedData.filter(r =>
-        ['callback requested', 'call back'].includes(r.disposition.toLowerCase())).length;
-      const serviceCompleted = processedData.filter(r =>
-        ['converted'].includes(r.disposition.toLowerCase())).length;
-      const invalid = processedData.filter(r =>
-        ['wrong number', 'dnd', 'not interested'].includes(r.disposition.toLowerCase())).length;
+      const bookings = processedData.filter(r => (r.summary || '').toLowerCase().includes('converted')).length;
+      const callbacks = processedData.filter(r => {
+        const s = (r.summary || '').toLowerCase();
+        return s.includes('call back') || s.includes('callback');
+      }).length;
+      const testDriveCompleted = processedData.filter(r => (r.summary || '').toLowerCase().includes('already purchased')).length;
+      const notConnectedCalls = processedData.filter(r => r.outcome === 'Not Connected').length;
 
       // ── DATE LABEL (e.g. "14 April 2026") ───────────────────────────────────
       const now = new Date();
@@ -1505,8 +1507,8 @@
         ['Connected calls', '-', connected],
         ['Bookings', '-', bookings],
         ['Requested call back', '-', callbacks],
-        ['Service completed', '-', serviceCompleted],
-        ['Invalid', '-', invalid],
+        ['Test drive completed', '-', testDriveCompleted],
+        ['Not connected calls', '-', notConnectedCalls],
         [],  // blank separator row
       ];
 
