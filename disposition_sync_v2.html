@@ -1575,15 +1575,20 @@
       const connected = data.filter(r => r.outcome === 'Connected').length;
       const bookings = data.filter(r => {
         const d = (r.disposition || '').toLowerCase();
-        return d.includes('converted') || d.includes('booking') || d.includes('booked');
+        return d.includes('converted');
       }).length;
-      const callbacks = data.filter(r => {
+      const followUps = data.filter(r => {
         const d = (r.disposition || '').toLowerCase();
-        return d.includes('call back') || d.includes('callback') || d.includes('call later') || d.includes('follow up');
+        return d.includes('follow up');
+      }).length;
+      const requestedCallbacks = data.filter(r => {
+        const d = (r.disposition || '').toLowerCase();
+        const s = (r.summary || '').toLowerCase();
+        return d.includes('call back') || d.includes('callback') || d.includes('call later') || s.includes('requested call back') || s.includes('callback requested');
       }).length;
       const testDriveCompleted = data.filter(r => {
         const d = (r.disposition || '').toLowerCase();
-        return d.includes('already purchased') || d.includes('purchased elsewhere') || d.includes('test drive done') || d.includes('test drive completed') || d.includes('bought another');
+        return d.includes('purchased elsewhere') || d.includes('already purchased');
       }).length;
       const notConnectedCalls = data.filter(r => r.outcome === 'Not Connected').length;
 
@@ -1593,7 +1598,8 @@
         { label: 'Total Calls Triggered', val: total, cls: 'blue' },
         { label: 'Connected Calls', val: connected, cls: 'green' },
         { label: 'Bookings', val: bookings, cls: 'green' },
-        { label: 'Follow Up Required', val: callbacks, cls: 'amber' },
+        { label: 'Follow Up Required', val: followUps, cls: 'amber' },
+        { label: 'Requested Call Back', val: requestedCallbacks, cls: 'amber' },
         { label: 'Test Drive Completed', val: testDriveCompleted, cls: 'blue' },
         { label: 'Not Connected Calls', val: notConnectedCalls, cls: 'purple' },
       ];
