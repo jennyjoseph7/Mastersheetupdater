@@ -706,11 +706,19 @@
     /* ── CALL ANALYSIS SUMMARY CARD ──────────────────────────────────── */
     .summary-card {
       max-width: 1400px;
-      margin: 1.25rem auto 0;
+      margin: 1.25rem auto 2.5rem;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 1.5rem 2rem;
+    }
+    .summary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
     }
     .summary-title {
       font-family: var(--sans);
@@ -718,9 +726,6 @@
       font-weight: 700;
       color: var(--accent);
       letter-spacing: 0.02em;
-      margin-bottom: 1rem;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid var(--border);
     }
     .summary-grid {
       display: flex;
@@ -874,7 +879,10 @@
 
     <!-- Call Analysis Summary -->
     <div class="summary-card" id="summaryCard" style="display:none">
-      <div class="summary-title" id="summaryTitle"></div>
+      <div class="summary-header">
+        <div class="summary-title" id="summaryTitle"></div>
+        <button class="btn btn-secondary" onclick="copySummaryText()" id="btnCopySummary" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; height: auto;">📋 Copy</button>
+      </div>
       <div class="summary-grid" id="summaryGrid"></div>
     </div>
 
@@ -1437,18 +1445,44 @@
     }
 
     // ─── RENDER CALL ANALYSIS SUMMARY ────────────────────────────────────────────
+    function copySummaryText() {
+      const title = document.getElementById('summaryTitle').textContent;
+      const grid = document.getElementById('summaryGrid');
+      const items = Array.from(grid.querySelectorAll('.summary-item')).map(item => {
+        const label = item.querySelector('.summary-label').textContent;
+        const val = item.querySelector('.summary-val').textContent;
+        return `${label} - ${val}`;
+      });
+      const text = `${title}\n\n${items.join('\n')}`;
+      
+      try {
+        navigator.clipboard.writeText(text);
+        const btn = document.getElementById('btnCopySummary');
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
+      } catch (e) {
+        console.error('Failed to copy summary:', e);
+      }
+    }
+
     function renderSummary(data) {
       const now = new Date();
       const dateLabel = `${now.getDate()} ${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`;
 
       const total = data.length;
       const connected = data.filter(r => r.outcome === 'Connected').length;
-      const bookings = data.filter(r => (r.summary || '').toLowerCase().includes('converted')).length;
+      const bookings = data.filter(r => {
+        const s = (r.summary || '').toLowerCase();
+        return s.includes('converted') || s.includes('booking') || s.includes('booked');
+      }).length;
       const callbacks = data.filter(r => {
         const s = (r.summary || '').toLowerCase();
-        return s.includes('call back') || s.includes('callback');
+        return s.includes('call back') || s.includes('callback') || s.includes('call later') || s.includes('follow up');
       }).length;
-      const testDriveCompleted = data.filter(r => (r.summary || '').toLowerCase().includes('already purchased')).length;
+      const testDriveCompleted = data.filter(r => {
+        const s = (r.summary || '').toLowerCase();
+        return s.includes('already purchased') || s.includes('purchased elsewhere') || s.includes('test drive done') || s.includes('test drive completed') || s.includes('bought another');
+      }).length;
       const notConnectedCalls = data.filter(r => r.outcome === 'Not Connected').length;
 
       document.getElementById('summaryTitle').textContent = `${dateLabel} — Call Analysis Summary`;
@@ -1487,12 +1521,18 @@
       // ── COMPUTE SUMMARY STATS ────────────────────────────────────────────────
       const total = processedData.length;
       const connected = processedData.filter(r => r.outcome === 'Connected').length;
-      const bookings = processedData.filter(r => (r.summary || '').toLowerCase().includes('converted')).length;
+      const bookings = processedData.filter(r => {
+        const s = (r.summary || '').toLowerCase();
+        return s.includes('converted') || s.includes('booking') || s.includes('booked');
+      }).length;
       const callbacks = processedData.filter(r => {
         const s = (r.summary || '').toLowerCase();
-        return s.includes('call back') || s.includes('callback');
+        return s.includes('call back') || s.includes('callback') || s.includes('call later') || s.includes('follow up');
       }).length;
-      const testDriveCompleted = processedData.filter(r => (r.summary || '').toLowerCase().includes('already purchased')).length;
+      const testDriveCompleted = processedData.filter(r => {
+        const s = (r.summary || '').toLowerCase();
+        return s.includes('already purchased') || s.includes('purchased elsewhere') || s.includes('test drive done') || s.includes('test drive completed') || s.includes('bought another');
+      }).length;
       const notConnectedCalls = processedData.filter(r => r.outcome === 'Not Connected').length;
 
       // ── DATE LABEL (e.g. "14 April 2026") ───────────────────────────────────
