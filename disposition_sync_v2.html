@@ -703,6 +703,52 @@
         padding-right: 1rem;
       }
     }
+    /* ── CALL ANALYSIS SUMMARY CARD ──────────────────────────────────── */
+    .summary-card {
+      max-width: 1400px;
+      margin: 1.25rem auto 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem 2rem;
+    }
+    .summary-title {
+      font-family: var(--sans);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .summary-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 2.5rem;
+    }
+    .summary-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+    .summary-label {
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+    .summary-dash {
+      color: var(--text-muted);
+    }
+    .summary-val {
+      font-family: var(--mono);
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .summary-val.blue  { color: #60a5fa; }
+    .summary-val.green { color: var(--success); }
+    .summary-val.amber { color: var(--accent); }
+    .summary-val.purple { color: #c084fc; }
   </style>
 </head>
 
@@ -824,6 +870,12 @@
         <div class="stat-label">With Recording</div>
         <div class="stat-val blue" id="sRecording">0</div>
       </div>
+    </div>
+
+    <!-- Call Analysis Summary -->
+    <div class="summary-card" id="summaryCard" style="display:none">
+      <div class="summary-title" id="summaryTitle"></div>
+      <div class="summary-grid" id="summaryGrid"></div>
     </div>
 
     <!-- Table -->
@@ -1293,6 +1345,7 @@
 
         renderTable(output);
         renderStats(output);
+        renderSummary(output);
         hideOverlay();
 
         setStatus('globalStatus', `✅ ${output.length} leads processed — ready to copy or export.`, 'ok');
@@ -1381,6 +1434,43 @@
 
       document.getElementById('statsBar').style.display = 'flex';
       document.getElementById('statsBar').classList.add('fade-in');
+    }
+
+    // ─── RENDER CALL ANALYSIS SUMMARY ────────────────────────────────────────────
+    function renderSummary(data) {
+      const now = new Date();
+      const dateLabel = `${now.getDate()} ${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`;
+
+      const total = data.length;
+      const connected = data.filter(r => r.outcome === 'Connected').length;
+      const bookings = data.filter(r => r.disposition.toLowerCase() === 'test drive booked').length;
+      const callbacks = data.filter(r => ['callback requested', 'call back'].includes(r.disposition.toLowerCase())).length;
+      const serviceCompleted = data.filter(r => r.disposition.toLowerCase() === 'converted').length;
+      const invalid = data.filter(r => ['wrong number', 'dnd', 'not interested'].includes(r.disposition.toLowerCase())).length;
+
+      document.getElementById('summaryTitle').textContent = `${dateLabel} — Call Analysis Summary`;
+
+      const items = [
+        { label: 'Total Calls Triggered', val: total, cls: 'blue' },
+        { label: 'Connected Calls', val: connected, cls: 'green' },
+        { label: 'Bookings', val: bookings, cls: 'green' },
+        { label: 'Requested Call Back', val: callbacks, cls: 'amber' },
+        { label: 'Service Completed', val: serviceCompleted, cls: 'blue' },
+        { label: 'Invalid', val: invalid, cls: 'purple' },
+      ];
+
+      const grid = document.getElementById('summaryGrid');
+      grid.innerHTML = items.map(i =>
+        `<div class="summary-item">
+          <span class="summary-label">${i.label}</span>
+          <span class="summary-dash">—</span>
+          <span class="summary-val ${i.cls}">${i.val}</span>
+        </div>`
+      ).join('');
+
+      const card = document.getElementById('summaryCard');
+      card.style.display = 'block';
+      card.classList.add('fade-in');
     }
 
     // ─── EXPORT TO EXCEL ──────────────────────────────────────────────────────────
@@ -1497,6 +1587,7 @@
       document.getElementById('outputBody').innerHTML = '';
       document.getElementById('tableWrapper').style.display = 'none';
       document.getElementById('statsBar').style.display = 'none';
+      document.getElementById('summaryCard').style.display = 'none';
       document.getElementById('btnCopy').style.display = 'none';
       document.getElementById('btnExport').style.display = 'none';
       document.getElementById('btnReset').style.display = 'none';
