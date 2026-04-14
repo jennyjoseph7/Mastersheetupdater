@@ -1254,7 +1254,7 @@
           const callDateObj = parseAutoEngageDate(callDateRaw);
           const callDate = formatCallDate(callDateObj);
 
-          const model = (row['model_preference', 'interested_vehicle_name'] || '').replace(/[\[\]"']/g, '').trim();
+          const model = (row['model_preference'] || row['interested_vehicle_name'] || '').replace(/[\[\]"']/g, '').trim();
           const seatingRaw = row['seating_capacity_preference'] || '';
           const seating = deriveSeating(seatingRaw, model);
 
