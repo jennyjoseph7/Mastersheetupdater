@@ -1574,21 +1574,20 @@
       const total = data.length;
       const connected = data.filter(r => r.outcome === 'Connected').length;
       const bookings = data.filter(r => {
-        const d = (r.disposition || '').toLowerCase();
-        return d.includes('converted');
+        const s = (r.summary || '').toLowerCase();
+        return s.includes('converted') || s.includes('booking') || s.includes('booked');
       }).length;
       const followUps = data.filter(r => {
-        const d = (r.disposition || '').toLowerCase();
-        return d.includes('follow up');
+        const s = (r.summary || '').toLowerCase();
+        return s.includes('follow up');
       }).length;
       const requestedCallbacks = data.filter(r => {
-        const d = (r.disposition || '').toLowerCase();
         const s = (r.summary || '').toLowerCase();
-        return d.includes('call back') || d.includes('callback') || d.includes('call later') || s.includes('requested call back') || s.includes('callback requested');
+        return s.includes('call back') || s.includes('callback') || s.includes('call later') || s.includes('requested call back') || s.includes('callback requested');
       }).length;
       const testDriveCompleted = data.filter(r => {
-        const d = (r.disposition || '').toLowerCase();
-        return d.includes('purchased elsewhere') || d.includes('already purchased');
+        const s = (r.summary || '').toLowerCase();
+        return s.includes('purchased elsewhere') || s.includes('already purchased');
       }).length;
       const notConnectedCalls = data.filter(r => r.outcome === 'Not Connected').length;
 
