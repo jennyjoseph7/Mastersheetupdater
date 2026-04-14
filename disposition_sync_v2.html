@@ -937,8 +937,9 @@
               <th>PHONE_NUMBER</th>
               <th>VEHICLE_MODEL</th>
               <th>DISPOSITION_DETAILS</th>
+              <th>LOCATION</th>
               <th>CALL_DATE</th>
-              <th>AnantCars CRE Remarks</th>
+              <th>ANANTCARS CRE REMARKS</th>
             </tr>
           </thead>
           <tbody id="convertedBody"></tbody>
@@ -1368,6 +1369,7 @@
             model,
             seating,
             exclusion_flag: exclusion,
+            session_summary: sess.summary || ''
           });
         }
 
@@ -1455,13 +1457,27 @@
       tbody.innerHTML = '';
       
       for (const r of convertedData) {
+        let loc = '';
+        const lowerSumm = String(r.session_summary || '').toLowerCase();
+        if (lowerSumm.includes('bannerghatta road') || lowerSumm.includes('bannerghatta')) loc = 'Bannerghatta Road';
+        else if (lowerSumm.includes('mysore rd') || lowerSumm.includes('mysore road')) loc = 'Mysore Rd';
+        else if (lowerSumm.includes('ramanagara')) loc = 'Ramanagara';
+        else if (lowerSumm.includes('marathahalli')) loc = 'Marathahalli';
+        else if (lowerSumm.includes('kr puram') || lowerSumm.includes('k r puram')) loc = 'KR Puram';
+        
+        let disp = r.disposition || '';
+        if (disp.toLowerCase().includes('converted')) {
+          disp = 'Test Drive Booked';
+        }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="cell-phone">${esc(r.phone)}</td>
           <td>${esc(r.model)}</td>
-          <td>${esc(r.disposition)}</td>
+          <td>${esc(disp)}</td>
+          <td>${esc(loc)}</td>
           <td>${esc(r.call_date)}</td>
-          <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${esc(r.summary)}</td>
+          <td></td>
         `;
         tbody.appendChild(tr);
       }
@@ -1474,8 +1490,21 @@
       const lines = [];
       
       for (const r of convertedData) {
+        let loc = '';
+        const lowerSumm = String(r.session_summary || '').toLowerCase();
+        if (lowerSumm.includes('bannerghatta road') || lowerSumm.includes('bannerghatta')) loc = 'Bannerghatta Road';
+        else if (lowerSumm.includes('mysore rd') || lowerSumm.includes('mysore road')) loc = 'Mysore Rd';
+        else if (lowerSumm.includes('ramanagara')) loc = 'Ramanagara';
+        else if (lowerSumm.includes('marathahalli')) loc = 'Marathahalli';
+        else if (lowerSumm.includes('kr puram') || lowerSumm.includes('k r puram')) loc = 'KR Puram';
+
+        let disp = r.disposition || '';
+        if (disp.toLowerCase().includes('converted')) {
+          disp = 'Test Drive Booked';
+        }
+
         const cols = [
-          r.phone, r.model, r.disposition, r.call_date, r.summary
+          r.phone, r.model, disp, loc, r.call_date, ''
         ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '));
         lines.push(cols.join('\t'));
       }
