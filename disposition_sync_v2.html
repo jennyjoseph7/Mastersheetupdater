@@ -1390,16 +1390,48 @@
 
     async function exportToExcel() {
       if (!processedData.length) return;
-      const rows = [HEADERS_TSV];
+
+      // ── COMPUTE SUMMARY STATS ────────────────────────────────────────────────
+      const total = processedData.length;
+      const connected = processedData.filter(r => r.outcome === 'Connected').length;
+      const bookings = processedData.filter(r =>
+        ['test drive booked'].includes(r.disposition.toLowerCase())).length;
+      const callbacks = processedData.filter(r =>
+        ['callback requested', 'call back'].includes(r.disposition.toLowerCase())).length;
+      const serviceCompleted = processedData.filter(r =>
+        ['converted'].includes(r.disposition.toLowerCase())).length;
+      const invalid = processedData.filter(r =>
+        ['wrong number', 'dnd', 'not interested'].includes(r.disposition.toLowerCase())).length;
+
+      // ── DATE LABEL (e.g. "14 April 2026") ───────────────────────────────────
+      const now = new Date();
+      const dateLabel = `${now.getDate()} ${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`;
+
+      // ── SUMMARY ROWS ─────────────────────────────────────────────────────────
+      const summaryRows = [
+        [`${dateLabel} - Call Analysis Summary`],
+        [],
+        ['Total Calls triggered', '-', total],
+        ['Connected calls', '-', connected],
+        ['Bookings', '-', bookings],
+        ['Requested call back', '-', callbacks],
+        ['Service completed', '-', serviceCompleted],
+        ['Invalid', '-', invalid],
+        [],  // blank separator row
+      ];
+
+      // ── DATA ROWS ────────────────────────────────────────────────────────────
+      const dataRows = [HEADERS_TSV];
       for (const r of processedData) {
-        rows.push([
+        dataRows.push([
           r.lead_id, r.full_name, r.phone, r.city, r.pincode, r.language,
           r.lead_source, r.cohort, r.campaign_id, r.call_triggered,
           r.outcome, r.disposition, r.summary, r.conversion, r.call_date,
           r.num_attempts, r.sentiment, r.recordings, r.model, r.seating, r.exclusion_flag,
         ].map(v => typeof v === 'string' ? v.trim() : v));
       }
-      const ws = XLSX.utils.aoa_to_sheet(rows);
+
+      const ws = XLSX.utils.aoa_to_sheet([...summaryRows, ...dataRows]);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Processed Leads");
       XLSX.writeFile(wb, "JEJO_Disposition_Sync.xlsx");
