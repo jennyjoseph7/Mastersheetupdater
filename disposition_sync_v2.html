@@ -1229,7 +1229,8 @@
 
         // ── ASSEMBLE OUTPUT ROWS ───────────────────────────────────────────────
         const output = [];
-        let rowIndex = 2;
+        const startId = parseInt(document.getElementById('leadIdStart').value) || 0;
+        const selectedLanguage = document.getElementById('langSelect').value;
         for (const { row, phone } of allLeads) {
           const disp = (row['disposition'] || '').trim();
           const dispLower = disp.toLowerCase();
@@ -1260,9 +1261,8 @@
 
           const sess = sessionMap[phone] || {};
 
-          const selectedLanguage = document.getElementById('langSelect').value;
-          const startId = parseInt(document.getElementById('leadIdStart').value) || 0;
           const leadId = startId > 0 ? `L-${startId + output.length}` : '';
+          const formulaRow = startId > 0 ? startId + output.length : 2 + output.length;
 
           output.push({
             lead_id: leadId,
@@ -1280,14 +1280,13 @@
             summary,
             conversion: '',
             call_date: callDate,
-            num_attempts: `=COUNTIF(C:C;C${rowIndex})`,
+            num_attempts: `=COUNTIF(C:C;C${formulaRow})`,
             sentiment: sess.sentiment || '',
             recordings: sess.recording || '',
             model,
             seating,
             exclusion_flag: exclusion,
           });
-          rowIndex++;
         }
 
         processedData = output;
