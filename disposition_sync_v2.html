@@ -923,6 +923,28 @@
         </table>
       </div>
     </div>
+
+    <!-- Converted Preview -->
+    <div class="table-wrapper" id="convertedTableWrapper" style="display:none; margin-top: 2rem;">
+      <div class="table-header">
+        <div class="table-title">Converted Leads Preview</div>
+        <button class="btn btn-success" id="btnCopyConverted" onclick="copyConvertedData()" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; height: auto;">📋 Copy Converted</button>
+      </div>
+      <div class="table-scroll">
+        <table id="convertedTable">
+          <thead>
+            <tr>
+              <th>PHONE_NUMBER</th>
+              <th>VEHICLE_MODEL</th>
+              <th>DISPOSITION_DETAILS</th>
+              <th>CALL_DATE</th>
+              <th>AnantCars CRE Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="convertedBody"></tbody>
+        </table>
+      </div>
+    </div>
   </main>
 
   <!-- Footer -->
@@ -1352,6 +1374,7 @@
         processedData = output;
 
         renderTable(output);
+        renderConvertedTable(output);
         renderStats(output);
         renderSummary(output);
         hideOverlay();
@@ -1416,6 +1439,56 @@
       document.getElementById('tableCaption').textContent = cap;
       document.getElementById('tableWrapper').style.display = 'block';
       document.getElementById('tableWrapper').classList.add('fade-in');
+    }
+
+    // ─── RENDER CONVERTED TABLE ──────────────────────────────────────────────────
+    let convertedData = [];
+
+    function renderConvertedTable(data) {
+      convertedData = data.filter(r => r.conversion === 'Yes');
+      if (convertedData.length === 0) {
+        document.getElementById('convertedTableWrapper').style.display = 'none';
+        return;
+      }
+      
+      const tbody = document.getElementById('convertedBody');
+      tbody.innerHTML = '';
+      
+      for (const r of convertedData) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="cell-phone">${esc(r.phone)}</td>
+          <td>${esc(r.model)}</td>
+          <td>${esc(r.disposition)}</td>
+          <td>${esc(r.call_date)}</td>
+          <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${esc(r.summary)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+      document.getElementById('convertedTableWrapper').style.display = 'block';
+      document.getElementById('convertedTableWrapper').classList.add('fade-in');
+    }
+
+    async function copyConvertedData() {
+      if (!convertedData.length) return;
+      const lines = [['PHONE_NUMBER', 'VEHICLE_MODEL', 'DISPOSITION_DETAILS', 'CALL_DATE', 'AnantCars CRE Remarks'].join('\t')];
+      
+      for (const r of convertedData) {
+        const cols = [
+          r.phone, r.model, r.disposition, r.call_date, r.summary
+        ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '));
+        lines.push(cols.join('\t'));
+      }
+      const tsv = lines.join('\n');
+      
+      try {
+        await navigator.clipboard.writeText(tsv);
+        const btn = document.getElementById('btnCopyConverted');
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.textContent = '📋 Copy Converted'; }, 2000);
+      } catch (e) {
+        console.error('Failed to copy converted table:', e);
+      }
     }
 
     function getPrioClass(disp) {
@@ -1627,7 +1700,9 @@
         el.textContent = '📁 Drag & drop or click to browse';
       });
       document.getElementById('outputBody').innerHTML = '';
+      document.getElementById('convertedBody').innerHTML = '';
       document.getElementById('tableWrapper').style.display = 'none';
+      document.getElementById('convertedTableWrapper').style.display = 'none';
       document.getElementById('statsBar').style.display = 'none';
       document.getElementById('summaryCard').style.display = 'none';
       document.getElementById('btnCopy').style.display = 'none';
