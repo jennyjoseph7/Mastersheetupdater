@@ -918,13 +918,7 @@ def firefly_image_generation(
                 if not out_url:
                     logger.warning(f"Output {idx} missing image url: {out}")
                     continue
-                logger.info(f"Downloading Firefly result: {out_url[:80]}...")
-                tmp_out_path = do_download(out_url, files_to_delete = files_to_delete)
-                file_url = func_gryd_file_system(tmp_out_path, media_type='image')
-                logger.info(f"Uploaded image URL: {file_url}")
-                files_to_delete.append(tmp_out_path)
-                if file_url:
-                    ourls.append(file_url)
+                ourls.append(out_url)
 
             if not ourls:
                 raise RuntimeError("Invalid response from Firefly.")
