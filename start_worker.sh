@@ -33,6 +33,9 @@ export CRON_SCHEDULER_PATH=execute-cron-continuous
 export CRON_WORKER_PATH=cron_worker
 DEFAULT_WORKER_EXECUTABLES=""
 if [ $DEFAULT_WORKERS -ne 0 ];then
+	if [ $DEFAULT_WORKERS -eq 1 ];then
+		DEFAULT_WORKERS="cron-scheduler,cron-worker"
+	fi
 	for default_worker in ${DEFAULT_WORKERS//,/ }; do
 		if [ "$default_worker" == "cron-scheduler" ];then
 			DEFAULT_WORKER_EXECUTABLES+="${CRON_SCHEDULER_PATH},"
@@ -63,12 +66,12 @@ function get_process_pids() {
 	# Get the first pid of the process matching the search string
 	# e.g. get_pid "python.*app.py" will return the pid of the first process matching the regex "python.*app.py"
 	echo "Getting process pids for $@" 1>&2
-    ssw_pid=`ps -eaf | grep $@ | grep -v grep | grep -v "ps -eaf" | awk '{print $2}' | sort`
+    ssw_pid=`ps -eaf | grep "$@" | grep -v grep | grep -v "ps -eaf" | awk '{print $2}' | sort`
     if [[ -n $ssw_pid ]];then
         echo $ssw_pid
 		return 0
     else
-        echo "No pid found for $@" 1>&2
+        echo "No active process found for search string $@." 1>&2
         return 1
     fi
 }
@@ -80,15 +83,17 @@ function get_worker_pids() {
 	worker_fname=${2%.*}
 	# Get the pid of the process matching the search string
 	echo "Getting worker pids for $worker_name $worker_fname" 1>&2
-	pid_filename=`ls -1 $BASE_DIR/${worker_name}_{worker_fname}*.pid 2>/dev/null | sort`
+	pid_filename=`ls -1 $BASE_DIR/${worker_name}_${worker_fname}*.pid 2>/dev/null | sort`
+	echo "PID filename: $pid_filename" 1>&2
 	for pid_file in $pid_filename; do
 		pid=$(cat $pid_file)
 		if [[ -n $pid ]];then
 			echo $pid
+			return 0
 		fi
 	done
-	echo "No pid found for $worker_name" 1>&2
-	exit 1
+	echo "No pid found for ${worker_name}_${worker_fname}" 1>&2
+	return 1
 }
 
 function remove_pid_file() {
@@ -135,7 +140,7 @@ function get_webapp_pids() {
 		fi
 	done
 	echo "No pid found for $webapp_name" 1>&2
-	exit 1
+	return 1
 }
 
 
@@ -186,7 +191,7 @@ function kill_process() {
 		return 0
 	fi
 	echo "Failed to terminate process $ssw_pid."
-	exit 1
+	return 1
 }
 
 function stop_worker() {
@@ -196,33 +201,36 @@ function stop_worker() {
 	shutdown_time=${2:-110}
 	worker_type=${3:-workers}
 	echo "Stopping $worker_type $worker_name with a timeout of $shutdown_time seconds" 1>&2
-	names=`jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.name'`
-	entry_points=`jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.entry_point'`
+	names=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.name'` )
+	entry_points=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.entry_point'` )
+	echo "Names: $names" 1>&2
+	echo "Entry points: $entry_points" 1>&2
 	is_success=0
 	for i in $(seq 0 $((${#names[@]} - 1))); do
 		name=${names[$i]}
 		entry_point=${entry_points[$i]}
 		worker_fname=${entry_point%.*}
-		echo "Getting worker pids for ${name}_${entry_point}" 1>&2
-	    for ssw_pid in `get_worker_pids $worker_name $entry_point`; do
+		echo "Stopping worker $i $name $entry_point" 1>&2
+	    for ssw_pid in `get_worker_pids ${name} ${entry_point}`; do
 	    	kill_process $ssw_pid $shutdown_time
 	    	if [ $? -ne 0 ];then
+				echo "Failed to kill process $ssw_pid within $shutdown_time seconds" 1>&2
 	    		is_success=1
 	    	fi
 	    done
-	    ssw_pid=`get_process_pids "$worker_name.*$entry_point"`
-	    for ssw_pid in $ssw_pid; do
+	    ssw_pids=`get_process_pids "${name}.*${entry_point}"`
+	    echo "SSW PIDs for ${name}/${entry_point}: $ssw_pids" 1>&2
+	    for ssw_pid in $ssw_pids; do
+	    	echo "Killing process $ssw_pid with a timeout of $shutdown_time seconds" 1>&2
 	    	kill_process $ssw_pid $shutdown_time
 	    	if [ $? -ne 0 ];then
+				echo "Failed to kill process $ssw_pid within $shutdown_time seconds" 1>&2
 	    		is_success=1
 	    	fi
 	    done
-	    if [[ -n $ssw_pid ]];then
-	    	kill_process $ssw_pid $shutdown_time
-	    	if [ $? != 0 ];then
-	    		is_success=1
-	    	fi
-	    fi
+		if [ $is_success -eq 0 ];then
+			remove_worker_pid_file $name $entry_point
+		fi
 	done
 	return $is_success
 }
@@ -250,7 +258,7 @@ function stop_webapp() {
 			is_success=1
 		fi
 	done
-	for ssw_pid in `get_process_pids "python.*$webapp_name"`; do
+	for ssw_pid in `get_process_pids "waitress-serve.*$webapp_name"`; do
 		kill_process $ssw_pid $shutdown_time
 		if [ $? -ne 0 ];then
 			is_success=1
@@ -587,10 +595,7 @@ function start_all() {
 		echo "Not setting up workers. Since SETUP_WORKERS is not True." 1>&2
 		return
 	fi
-	if [ $DEFAULT_WORKERS -eq 1 ];then
-		echo "Setting up default workers. Since DEFAULT_WORKERS is 1" 1>&2
-		DEFAULT_WORKER_EXECUTABLES="execute_cron_continuous,cron_worker"
-	elif [[ $DEFAULT_WORKERS -eq 0 || -z $DEFAULT_WORKERS ]] ;then
+	if [[ $DEFAULT_WORKERS -eq 0 || -z $DEFAULT_WORKERS ]] ;then
 		echo "Not setting up default workers. Since DEFAULT_WORKERS is 0 or not set." 1>&2
 		return
 	fi
