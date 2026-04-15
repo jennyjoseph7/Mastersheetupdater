@@ -38,7 +38,9 @@ from os.path import (
 )
 
 from validate_email import validate_email
-from campaign.campaign_workflow import determine_campaign_next_action
+from common_utils import get_communication_credential, generate_uid
+# from communication.connectors.connector_whatsapp import post_lead_disposition
+from conversation.lead_post_processing import update_lead_disposition_and_post_billing
 # --- Set import path for internal modules ---
 _communication_dir = dirname(dirname(abspath(__file__)))
 if _communication_dir not in sys.path:
@@ -289,21 +291,22 @@ def get_or_create_session(data,channel=None,engaged=False):
                 elif previous_disposition == "converted":
                     logger.info(f"Session {session_id} already converted. Handling converted session logic.")
                     logger.info(f"Calling determine_campaign_next_action for disposition {previous_disposition} and the session_id: {session_id}")
-                    # call_next_campaign_workflow_task(sessions[0].get("campaign_id"),sessions[0].get("campaign_type"),sessions[0].get("lead_id"),sessions[0].get("channel"),channel_identifier,data.get("disposition"),pg=pg)
                 # Case 3: anything else → update the disposition to engaged
                 else:
                     if engaged:
                         logger.info(f"Since the user has interacted . Updating the disposition from {previous_disposition} to engaged for session {session_id}.")
                         logger.info(f"Calling determine_campaign_next_action for the session_id: {session_id}--> diposition is set to engaged.")
-                        # call_next_campaign_workflow_task(sessions[0].get("campaign_id"),sessions[0].get("campaign_type"),sessions[0].get("lead_id"),sessions[0].get("channel"),channel_identifier,"engaged",pg=pg)
 
                     pg.update("session","session_id",session_id,{"disposition":"engaged","status":"interacted"})
                     
+                    
                     # updating disposition in lead
-                    if data.get("campaign_type") == "pre-sales":
-                        pg.update("pre_sales_lead","pre_sales_lead_id",data.get("lead_id"),{"disposition":"engaged"})
-                    elif data.get("campaign_type") == "post-sales":
-                        pg.update("post_sales_lead","post_sales_lead_id",data.get("lead_id"),{"disposition":"engaged"})
+                    update_lead_disposition_and_post_billing("engaged",**data)
+                    
+                    # if data.get("campaign_type") == "pre-sales":
+                    #     pg.update("pre_sales_lead","pre_sales_lead_id",data.get("lead_id"),{"disposition":"engaged"})
+                    # elif data.get("campaign_type") == "post-sales":
+                    #     pg.update("post_sales_lead","post_sales_lead_id",data.get("lead_id"),{"disposition":"engaged"})
                     # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
                     sessions[0]["disposition"] = "engaged"
                 return sessions[0]
@@ -528,82 +531,7 @@ def get_or_create_person(phone_number):
             "updated":time.time()
             })
         logger.info(f"Person with phone_number: {phone_number}. Doesnt exist. Created a new one. data: {d}")
-        return d
-
-def generate_uid(data):
-    if isinstance(data, (dict, list)):
-        data_str = json.dumps(data, sort_keys=True, ensure_ascii=True)
-    else:
-        try:
-            data_str = str(data)
-        except Exception:
-            data_str = repr(data)
-
-    # Sanitize surrogates/invalid Unicode that would cause uuid3 to fail on encode
-    data_str = data_str.encode('utf-8', errors='replace').decode('utf-8')
-
-    uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
-    # logger.info(f"Generated UID: {uid} and type of uid: {type(uid)} for data: {data_str}")
-    return str(uid)
-
-def get_communication_credential(dealership_id="daveai", channel=None):
-    logger.info(f"Getting communication credential for dealership - {dealership_id}")
-
-    if not channel:
-        logger.info(
-            f"Channel not provided for dealership - {dealership_id}. Returning None."
-        )
-        return None
-
-    with get_pg_connector() as pg:
-        creds = list(pg.list("communication_credential",{"dealership_id": dealership_id, "channel": channel}))
-        if creds:
-            return creds[0]
-
-        # Fallback to default dealership "daveai" if no creds found for the dealership and channel
-        if dealership_id != "daveai":
-            logger.info(
-                f"No credential found for dealership - {dealership_id}. "
-                f"Falling back to default dealership - daveai for channel - {channel}"
-            )
-            creds = list(
-                pg.list(
-                    "communication_credential",
-                    {"dealership_id": "daveai", "channel": channel}
-                )
-            )
-            if creds:
-                return creds[0]
-
-    return None
-
-def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,channel_identifier,disposition,pg=None):
-    logger.info(f"In the campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
-    if not campaign_id:
-        logger.error(f"campaign_id is required for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
-        return
-    campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
-    def _do_db_work(pg_conn):
-        a=list(pg_conn.list(campaign_model, {"campaign_status": "Active"}))
-        # if not a:
-        #     logger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
-        #     return
-        # TODO:before calling ananth task check the campaign status and then call.. 
-        logger.info(f"Calling next campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
-        gryd.create_async_task(
-            "determine_campaign_next_action",
-            AUTOCRM_CAMPAIGN_SERVICE_NAME,
-            args=[campaign_type,lead_id,channel,channel_identifier,disposition],
-            kwargs={"enterprise_id": AUTOCRM_APP_ENTERPRISE_ID},
-        )
-        # determine_campaign_next_action(campaign_type,lead_id,channel,channel_identifier,disposition,pg_conn)
-
-    if pg:
-        _do_db_work(pg)
-    else:
-        with get_pg_connector() as pg_conn:
-            _do_db_work(pg_conn)
-            
+        return d    
         
 def reload_model_ref(model_name,enteprise_id):
         logger.info(f"Getting Model Connection for model_name: {model_name} and enteprise_id : {enteprise_id}")

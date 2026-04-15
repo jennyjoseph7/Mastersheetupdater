@@ -11,7 +11,10 @@ from autocrm_db_helper import get_pg_connector
 json = hp.json
 from conversation.yield_response import yield_result,yield_error, yield_status
 from conversation.prompt import run_prompt_sync
-from communication.connectors.communication_helpers import get_communication_credential,generate_uid
+# from campaign.campaign_manager import generate_uid
+# # from communication.connectors.communication_helpers import get_communication_credential,generate_uid
+# ----
+from communication.common_utils import get_communication_credential,generate_uid
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
@@ -1821,3 +1824,5 @@ def update_error_in_lead_and_session(error_msg,source,**kwargs):
         pg.update("session","session_id",session_id,{"disposition":"error","disposition_detail":error_msg})
         mlogger.info(f"Updated ERROR in lead and session for lead_id={lead_id} and lead_model={lead_model} and channel={channel} and session_id={session_id}")
     return
+
+

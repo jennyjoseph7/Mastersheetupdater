@@ -3,9 +3,8 @@ _root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 if _root not in sys.path:
     sys.path.insert(0, _root)
 import json
-from gryd_worker import gryd_db_helper as db
 
-
+from gryd_worker import gryd_db_helper as db, gryd_helpers as hp
 class AutoCRMPGConnector(db.GrydPGConnector):
     def __init__(self, enterprise_id, *args, **kwargs):
         super().__init__(enterprise_id, *args, **kwargs)
@@ -55,3 +54,24 @@ class AutoCRMPGConnector(db.GrydPGConnector):
     
     def iadd(self, table_name, id_attr, id, attr, value):
         return super().iadd(table_name, id, attr, value, id_attr)
+    
+    def fetch_all(self, command, params=None, retries=2):
+        if not self.is_connected:
+            self.connect()
+
+        with db.function_yielder(self, 'connection.cursor', retries) as cur:
+            res = self._execute(cur, command, params, retries)
+
+            if isinstance(res, int) and res:
+                return self.fetch_all(command, params, res - 1)
+
+            try:
+                rows = cur.fetchall()
+                return [hp.make_single(row) for row in rows]
+            except Exception as e:
+                print(f"Fetch all failed: {e}")
+                return []
+            finally:
+                if db.AUTO_DISCONNECT:
+                    self.close(do_sleep=False)
+         
