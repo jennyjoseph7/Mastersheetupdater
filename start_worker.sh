@@ -474,6 +474,13 @@ function copy_ai_models() {
     popd > /dev/null
 }
 
+function add_origin() {
+    pushd $BASE_DIR > /dev/null
+    python -c "import app; from gryd_worker import gryd_routes as rts; ca = rts.get_auth_connect(); ca.add_origin(app.AUTOCRM_APP_ENTERPRISE_ID, '$1'); ca.close()"
+    popd > /dev/null
+}
+
+
 function setup() {
 	# To setup the environment, this is required in the beginning, first time only.
 	# e.g.
