@@ -11,14 +11,14 @@
             "name": "agents",
             "entry_point": "agent_worker.py",
             "gryd_service": "AUTOCRM_AGENT_SERVICE_NAME",
-            "parallel_threads": 1,
+            "parallel_threads": 2,
             "shutdown_time": 0
         },
         {
             "name": "agents",
             "entry_point": "short_run_agent_worker.py",
             "gryd_service": "AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME",
-            "parallel_threads": 1,
+            "parallel_threads": 2,
             "shutdown_time": 0
         },
         {
@@ -46,7 +46,7 @@
             "name": "campaign",
             "entry_point": "campaign_worker.py",
             "gryd_service": "AUTOCRM_CAMPAIGN_SERVICE_NAME",
-            "parallel_threads": 1,
+            "parallel_threads": 2,
             "shutdown_time": 0
         },
         {
@@ -60,13 +60,13 @@
             "name": "conversation",
             "entry_point": "lead_post_processing.py",
             "gryd_service": "AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME",
-            "parallel_threads": 1,
+            "parallel_threads": 3,
             "shutdown_time": 0
         },
         {
             "name": "voice",
             "entry_point": "gryd_tasks.py",
-            "parallel_threads": 5,
+            "parallel_threads": 8,
             "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME",
             "shutdown_time": 0
         },
@@ -87,14 +87,14 @@
         {
             "name": "document_processor",
             "entry_point": "document_tasks.py",
-            "gryd_service":"AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME",
+            "gryd_service": "AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME",
             "parallel_threads": 1,
             "shutdown_time": 0
         },
         {
             "name": "cohorts_new",
             "entry_point": "tasks.py",
-            "gryd_service":"AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME",
+            "gryd_service": "AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME",
             "parallel_threads": 1,
             "shutdown_time": 0
         }

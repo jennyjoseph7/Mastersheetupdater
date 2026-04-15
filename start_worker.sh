@@ -17,9 +17,13 @@ if [ ! -d $LOGDIR ];then
 fi
 export SETUP_WEBAPP=${SETUP_WEBAPP:-True}
 export SETUP_WORKERS=${SETUP_WORKERS:-True}
+# Start webapps is a comma-separated list of <app-name>,<app-name1>
 export START_WEBAPP=${START_WEBAPP:-1}
+# Start agents is a comma-separated list of <agent_name>/<entrypoint>.py,<agent_name1>/<entrypoint1.py>
 export START_AGENTS=${START_AGENTS:-1}
+# Start workers is a comma-separated list of <name>/<entrypoint>.py,<name1>/<entrypoint1.py>
 export START_WORKERS=${START_WORKERS:-1}
+# DEFAULT_WORKERS can be a comma-separated list of default workers, currently including "cron_worker,cron-scheduler"
 export DEFAULT_WORKERS=${DEFAULT_WORKERS:-1}
 export SERVER_PORT=${SERVER_PORT:-5000}
 export PRIMARY=${PRIMARY:-1}
@@ -32,7 +36,11 @@ if [ $DEFAULT_WORKERS -ne 0 ];then
 	for default_worker in ${DEFAULT_WORKERS//,/ }; do
 		if [ "$default_worker" == "cron-scheduler" ];then
 			DEFAULT_WORKER_EXECUTABLES+="${CRON_SCHEDULER_PATH},"
+		elif [ "$default_worker" == "cron_scheduler" ];then
+			DEFAULT_WORKER_EXECUTABLES+="${CRON_SCHEDULER_PATH},"
 		elif [ "$default_worker" == "cron_worker" ];then
+			DEFAULT_WORKER_EXECUTABLES+="${CRON_WORKER_PATH},"
+		elif [ "$default_worker" == "cron-worker" ];then
 			DEFAULT_WORKER_EXECUTABLES+="${CRON_WORKER_PATH},"
 		fi
 	done
