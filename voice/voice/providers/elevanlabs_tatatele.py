@@ -279,6 +279,25 @@ class CallSession:
         """Main media bridging logic for this call session."""
         logger.info(f"[{self.call_id}] Tatatele websocket accepted")
 
+        bridge_timing = None
+        if ENABLE_BRIDGE_TIMING_COLLECT:
+            bridge_timing = {
+                "t0": monotonic(),
+                "signed_url_ms": None,
+                "signed_url_http_ms": None,
+                "el_ws_connect_ms": None,
+                "el_ws_handshake_ms": None,
+                "config_sent_ms": None,
+                "conversation_init_step_ms": None,
+                "first_tt_media_in_ms": None,
+                "first_chunk_to_el_ms": None,
+                "first_el_audio_ms": None,
+                "first_el_audio_mono": None,
+                "first_el_audio_since_user_ms": None,
+                "first_tt_out_ms": None,
+                "last_user_chunk_mono": None,
+            }
+
         # Counter for audio chunks sent to ElevenLabs
         chunks_sent_to_elevenlabs = [0]
 
@@ -355,6 +374,7 @@ class CallSession:
                             "streamSid": self.stream_sid,
                             "media": {"payload": buffered}
                         }
+                        t_send = monotonic()
                         await wb.send(_dumps(msg_out))
                         if bridge_timing is not None and bridge_timing["first_tt_out_ms"] is None:
                             bridge_timing["first_tt_out_ms"] = _elapsed_ms(bridge_timing["t0"])
@@ -377,6 +397,7 @@ class CallSession:
                         "streamSid": self.stream_sid,
                         "media": {"payload": converted_audio}
                     }
+                    t_send = monotonic()
                     await wb.send(_dumps(msg_out))
                     if bridge_timing is not None and bridge_timing["first_tt_out_ms"] is None:
                         bridge_timing["first_tt_out_ms"] = _elapsed_ms(bridge_timing["t0"])
@@ -511,14 +532,25 @@ class CallSession:
                     logger.error(f"[{self.call_id}] Failed to send pong: %s", e)
 
             #  CLIENT TOOL CALL 
+            elif msg_type == "agent_tool_request":
+                tool_request_event = msg_data.get("agent_tool_request", {})
+                logger.info(f"too_request_event {msg_data}")
+
             elif msg_type == "agent_tool_response":
+                #user agent monitoring for context update
                 tool_event = msg_data.get("agent_tool_response", {})
                 tool_name = tool_event.get("tool_name", "unknown")
                 logger.info(f"[{self.call_id}] Tool call requested: {tool_name}")
                 # Handle end-call tool calls from ElevenLabs agent
                 if tool_name in ("end_call", "hang_up", "hangup", "end_conversation", "disconnect"):
                     logger.info(f"[{self.call_id}] Agent requested call end via tool: {tool_name} - triggering hangup")
-                    self.stop_event.set()
+                    self.stop_event.set() 
+
+                if tool_name in ["language_detection"]:
+                    gryd_tasks.post_lanuage_change(
+                        self.session_data, 
+                        "language_changed"
+                    )    
 
             #  VAD (Voice Activity Detection) 
             elif msg_type == "vad_score":
@@ -550,8 +582,10 @@ class CallSession:
             else:
                 logger.info(f"[{self.call_id}] Unknown ElevenLabs event: {msg_type} - {msg_data}")
 
+        bridge_error = None
         try:
             # CONNECT TO ELEVENLABS IMMEDIATELY
+            t_http = monotonic()
             signed_url = await self.get_signed_url()
             if bridge_timing is not None:
                 bridge_timing["signed_url_ms"] = _elapsed_ms(bridge_timing["t0"])
@@ -613,6 +647,7 @@ class CallSession:
                 }
                 
                 
+            t_cfg = monotonic()
             await self.dave_ws.send(_dumps(config_data))
             if bridge_timing is not None:
                 bridge_timing["config_sent_ms"] = _elapsed_ms(bridge_timing["t0"])
@@ -656,6 +691,7 @@ class CallSession:
                                         "streamSid": self.stream_sid,
                                         "media": {"payload": buffered}
                                     }
+                                    t_send = monotonic()
                                     await wb.send(_dumps(msg_out))
                                     if bridge_timing is not None and bridge_timing["first_tt_out_ms"] is None:
                                         bridge_timing["first_tt_out_ms"] = _elapsed_ms(bridge_timing["t0"])
@@ -734,6 +770,7 @@ class CallSession:
                 )
 
         except Exception as e:
+            bridge_error = repr(e)
             logger.exception(f"[{self.call_id}] Main error: %s", e)
         finally:
             self.processed_agent_responses.clear()
@@ -1091,8 +1128,8 @@ def tatatele_status_map(payload: bytes) -> Dict[str, Any]:
         raise ValueError("JSON must be a dict")
 
     raw_status = data.get("call_status") or data.get("status")
-    if raw_status is None:
-        raise KeyError("Missing 'call_status' field")
+    # if raw_status is None:
+    #     raise KeyError("Missing 'call_status' field")
 
     mapped_status = TATA_TELE_STATUS_MAP.get(raw_status, raw_status)
     data["status"] = raw_status  # Preserve original
@@ -1141,6 +1178,7 @@ def outbound_call(*args, **kwargs):
 def smartflo_webhook():
     t  = time()
     raw = request.get_data()
+    logger.info(f"Received SmartFlo webhook: {raw}")
     payload = tatatele_status_map(raw)
 
     call_id = payload.get("call_id")
