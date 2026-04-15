@@ -317,7 +317,9 @@
 
 import sys, os
 # sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+_parent = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+if _parent not in sys.path:
+    sys.path.insert(0, _parent)
 import json
 import re
 from ai_service import ai_service_app
@@ -421,10 +423,7 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
 
         self.model_identifier = model_identifier
 
-        def get_llm_response(messages:List[dict], model_identifier:str="azure-gpt-4o"):
-            return ai_service_app.get_llm_response(messages=messages, model_identifier=model_identifier)
-        
-        self.llm = get_llm_response
+        self.model_identifier = model_identifier
 
         self.llm=lambda messages:ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
         self.brochure_content:dict[str]=self.fetch_brochure_content(brochure_url = self.brochure_url) # Only page_content is there and needed
@@ -441,13 +440,47 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
     @property
     def _additional_product_context(self) -> str:
         return """
-    Analyze the brochure and website to extract core value propositions,
-    emotional triggers, differentiators, and target persona signals.
-    Use these insights to create strategically distinct campaign directions.
-    Each campaign idea must reflect real product strengths and represent
-    a different strategic angle (e.g., performance, lifestyle, safety, tech, aspiration).
-    Avoid generic or repetitive themes.
-    """
+            Analyze the brochure and website to extract core value propositions,
+            emotional triggers, differentiators, and target persona signals.
+            Use these insights to create strategically distinct campaign directions.
+            Each campaign idea must reflect real product strengths and represent
+            a different strategic angle (e.g., performance, lifestyle, safety, tech, aspiration).
+            Avoid generic or repetitive themes.
+        """
+
+    @property
+    def _output_schema(self) -> str:
+        """Returns the expected JSON output schema for campaign ideas, with field-level length constraints injected dynamically."""
+        def _len_note(max_len: int | None, label: str) -> str:
+            if max_len is None:
+                return "no fixed limit"
+            return f"max {max_len} words" 
+        
+        schema = f"""
+        OUTPUT SCHEMA (per campaign idea) — strict JSON, no markdown, no extra keys:
+
+        {{
+            "campaign_idea_identifier": <string — exact ID from the batch; {_len_note(self.title_max_length, 'title')}>,
+            "campaign_objective": <string>,
+            "campaign_explanation": <string — for media planners; must name product, target audience, insight, channels, featured specs>,
+            "audience": [<string>, ...],
+            "cta": [
+                <string — {_len_note(self.cta_max_length, 'cta')}>,
+                ...
+            ],
+            "hashtags": [<string>, ...],   // exactly {self.num_of_hashtags}; ≥60% product-specific (include model name)
+            "campaign_post_sets": [        // exactly {self.num_of_campaign_post_sets} items
+                {{
+                    "post_caption": [<string — {_len_note(self.caption_max_length, 'caption')}>],
+                    "hooks":        [<string — {_len_note(self.hook_max_length, 'hook')}>],
+                    "slogan":       [<string — {_len_note(self.slogan_max_length, 'slogan')}>],
+                    "messages":     [<string — {_len_note(self.message_max_length, 'message')}; 7-8 sentences; product name in first 2; ≥2-3 specific features; subtle emojis; optional closing question>]
+                }},
+                ...
+            ]
+        }}
+        """
+        return schema.strip()
 
     @property
     def _output_schema(self) -> str:
@@ -511,19 +544,19 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
     def _generate_campaign_ids(self) -> list[str]:
         """Generates distinct, high-level campaign idea IDs."""
         system_prompt = """
-    You are a senior automotive brand strategist.
-    Generate ONLY a JSON list of high-level campaign idea IDs — no descriptions, no explanations.
-    Each ID must:
-    - Represent a unique, strategically distinct creative direction
-    - Be 3-6 words, strictly snake_case, no numbers, no special characters
-    - Be emotionally expressive or strategically meaningful
-    - Cover fundamentally different angles (e.g. performance, lifestyle, safety, tech, aspiration, sustainability)
-    FORBIDDEN: Generic IDs like "brand_awareness_campaign". No repeated themes.
-    Return format (strict JSON only):
-    {
-        "campaign_idea_ids": ["idea_one", "idea_two"]
-    }
-    """
+        You are a senior automotive brand strategist.
+        Generate ONLY a JSON list of high-level campaign idea IDs — no descriptions, no explanations.
+        Each ID must:
+        - Represent a unique, strategically distinct creative direction
+        - Be 3-6 words, strictly snake_case, no numbers, no special characters
+        - Be emotionally expressive or strategically meaningful
+        - Cover fundamentally different angles (e.g. performance, lifestyle, safety, tech, aspiration, sustainability)
+        FORBIDDEN: Generic IDs like "brand_awareness_campaign". No repeated themes.
+        Return format (strict JSON only):
+        {
+            "campaign_idea_ids": ["idea_one", "idea_two"]
+        }
+        """
         user_context_parts = self._build_shared_user_context()
         user_prompt = "\n\n".join(user_context_parts)
         user_prompt += f"\n\nGenerate exactly {self.num_of_campaign_ideas} distinct campaign idea IDs."

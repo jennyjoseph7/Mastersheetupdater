@@ -10,7 +10,9 @@ import flask as Flask
 from gryd_worker import gryd,gryd_routes, gryd_helpers as hp
 import sys, os
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 from autocrm_db_helper import get_pg_connector
 # from agents.get_whatsapp_template_agent import get_whatsapp_template
 # from campaign.campaign_manager import BaseCustomCampaignManager

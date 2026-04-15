@@ -9,7 +9,7 @@ import re
 # --
 
 
-from conversation.lead_post_processing import post_session_process
+# from conversation.lead_post_processing import post_session_process
 
 # from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NUMBER,AUTOCRM_CORE_SERVICE_NAME
 from config import *
@@ -20,7 +20,8 @@ logger = gryd.logger
 
 # Path to parent folder
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-sys.path.append(PARENT_DIR)
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
 
 from autocrm_db_helper import get_pg_connector
 
@@ -690,9 +691,9 @@ class BaseWebhookConverter:
 
             logger.info(f"Created Async task result: {res}")
     
-    @gryd.is_a_task(function_name="check_or_create_session")
-    def check_or_create_session(phone_number, campaign_details, from_web_chat): 
-        return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
+    # @gryd.is_a_task(function_name="check_or_create_session")
+    # def check_or_create_session(phone_number, campaign_details, from_web_chat): 
+    #     return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
 
     
     def send_otp_template(*args, **kwargs):

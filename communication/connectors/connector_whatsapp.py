@@ -26,7 +26,9 @@ from autocrm_db_helper import get_pg_connector
 from conversation.converse import post_messages_data
 #  this from connectors.base_connector_communication import *
 
-sys.path.insert(0, dirname(dirname(abspath(__file__))))
+_root = dirname(dirname(abspath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.set_queue_manager()
@@ -122,8 +124,8 @@ def process_forwarded_webhook(*args, **kwargs):
         forwarded_data = {
             "channel": channel,
             "provider": kwargs.get("whatsapp_provider","airtel"),
-            "enterprise_id": kwargs.get("enterprise_id"),
-            "conversation_id": conversation_id ,
+            "enterprise_id": kwargs.get("enterprise_id" , AUTOCRM_APP_ENTERPRISE_ID),
+            "conversation_id": conversation_id,
             "language": kwargs.get("language", "english"),
             "webhook_received_time": time.time(),
             **kwargs
@@ -132,7 +134,7 @@ def process_forwarded_webhook(*args, **kwargs):
         # logger.info(f"[ForwardWebhook] Final payload: {json.dumps(forwarded_data, indent=4)}")
 
         process_webhook.apply_async(
-                *(kwargs.get("whatsapp_provider","airtel"), kwargs.get("enterprise_id"), conversation_id, kwargs.get("language", "english")),
+                *(kwargs.get("whatsapp_provider","airtel"), kwargs.get("enterprise_id", AUTOCRM_APP_ENTERPRISE_ID), conversation_id, kwargs.get("language", "english")),
                 **forwarded_data
             )
 
@@ -341,7 +343,7 @@ def post_contact_status(*args, **data):
         existing["updated"] = time.time()
 
         if incoming_status == "failed":
-            existing["failure_reason"] = "Message not delivered"
+            existing["failure_reason"] = data.get("error").get("message") if data.get("error").get("message") else "Message delivery failed"
 
         payload = existing
         contact_status_id = generate_uid(payload)
@@ -351,7 +353,7 @@ def post_contact_status(*args, **data):
                 "contact_status",
                 "contact_status_id",
                 contact_status_id,
-                payload,
+                payload
             )
 
         # post billing obj

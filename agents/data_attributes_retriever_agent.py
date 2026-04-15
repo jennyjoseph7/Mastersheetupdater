@@ -6,7 +6,8 @@ except ImportError:
     from base_agent import BaseAgent, gryd 
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, PROJECT_ROOT)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 import time
 

@@ -1,5 +1,8 @@
 import os 
 import sys 
+_parent = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+if _parent not in sys.path:
+    sys.path.insert(0, _parent)
 import traceback
 from typing import Union, Dict, Any
 from urllib.parse import urlparse
@@ -9,8 +12,8 @@ import validators
 import tempfile
 from cohorts_new.utils.common_utils import get_logger
 # from .common_utils import get_logger
-from file_loaders.website_loader import WebsiteLoader
-from file_loaders.pdf_loader import PDFLoader
+from cohorts_new.file_loaders.website_loader import WebsiteLoader
+from cohorts_new.file_loaders.pdf_loader import PDFLoader
 import time
 from gryd_worker import gryd
 import time

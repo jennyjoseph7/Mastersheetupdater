@@ -1,7 +1,9 @@
 import sys
 from os.path import dirname, abspath, join as joinpath
 import os
-sys.path.append(dirname(dirname(dirname(dirname(__file__)))))
+_root = dirname(dirname(dirname(dirname(__file__))))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 
 import config as env
 import asyncio

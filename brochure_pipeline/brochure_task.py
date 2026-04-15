@@ -68,8 +68,4 @@ def vector_ingestion_task(**kwargs):
     return run_vector_ingestion(job_id)
 
 
-@gryd.is_a_task()
-def process_table_task(**kwargs):
-    """Worker task for extracting tables from markdown."""
-    chunk_id = kwargs.get("chunk_id")
-    return run_table_processor(chunk_id)
+

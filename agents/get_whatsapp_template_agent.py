@@ -96,7 +96,7 @@ class get_whatsapp_template_agent(BaseAgent):
                 }
             ))
 
-        #print("records",records)
+        print("records",records)
 
         return records or []
     

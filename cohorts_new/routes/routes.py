@@ -1,6 +1,8 @@
 import sys, os
 # sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+_parent = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+if _parent not in sys.path:
+    sys.path.insert(0, _parent)
 
 from flask import Blueprint, Response, request, stream_with_context
 from flask import request, jsonify

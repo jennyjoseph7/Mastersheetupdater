@@ -4,7 +4,9 @@ import sys, os
 from typing import Any, Dict
 import typing
 # Add the autobot_agents root directory to path to find config and other modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 from .provider_base import ProviderBase
 import json
 import base64

@@ -7,13 +7,13 @@ import time
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
+    sys.path.insert(0, BASE_DIR)
 from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
-from gryd_worker import gryd_db_helper as db
+from gryd_worker import gryd_db_helper as db, beats as cron_worker,gryd_audit_helper
 from communication.connectors.communication_helpers import handle_session_post_process_or_end
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
@@ -164,12 +164,11 @@ def performance_summary(from_time_ms=None):
             )
 
             try:
-                with get_pg_connector() as pg:
-                    mlogger.info(f"Executing update_campaign_performance_summary for campaign_id: {campaign_id}")
+                mlogger.info(f"Executing update_campaign_performance_summary for campaign_id: {campaign_id}")
 
-                    pg.execute_write("""
-                        CALL update_campaign_performance_summary(%s, %s, %s);
-                    """, (campaign_id, campaign_type, lead_model), _fetch=False)
+                pg.execute_write("""
+                    CALL update_campaign_performance_summary(%s, %s, %s);
+                """, (campaign_id, campaign_type, lead_model), _fetch=False)
 
                 total_processed += 1
 
@@ -181,6 +180,85 @@ def performance_summary(from_time_ms=None):
     mlogger.info(f"[CRON] Completed. Total processed: {total_processed}")
 
     return total_processed
+
+
+def set_min_worker_count(services, environment, min_worker_count, max_worker_count):
+    """
+    Set worker configuration for a list of services.
+
+    :param services: List of service names
+    :param environment: Environment name (e.g., 'praveen-local')
+    :param min_worker_count: Minimum worker count
+    :param max_worker_count: Maximum worker count
+    """
+    for service in services:
+        try:
+            cron_worker.set_worker_config(
+                service,
+                environment=environment,
+                minimum_worker_count=min_worker_count,
+                maximum_worker_count=max_worker_count
+            )
+            print(f"Config set for {service}")
+        except Exception as e:
+            print(f"Failed for {service}: {str(e)}")
+            
+        # TODO: use a scale_down function to scale down the environment - gryd_worker:0.5.1
+        
+# @gryd.is_a_task(function_name="campaign_objective_performance_summary")
+# def campaign_objective_performance_summary():
+    
+#     """
+#     This task checks for campaigns which require an update to their performance summary.
+#     It does this by checking for campaigns which have a newer updated timestamp than the
+#     latest updated timestamp in the campaign_performance_summary table.
+
+#     It then executes a stored procedure to update the campaign_performance_summary table
+#     with the latest data from the campaigns.
+
+#     :return: The number of campaigns which required an update to their performance summary.
+#     :rtype: int
+#     """
+#     with get_pg_connector() as pg:
+#         mlogger.info("[CRON] Checking campaigns needing performance update...")
+
+#         counts = list(pg.yield_results("""
+#             SELECT SUM(total) FROM (
+#                 SELECT COUNT(*) AS total
+#                 FROM pre_sales_campaign c
+#                 LEFT JOIN campaign_performance_summary s
+#                 ON s.dict->>'campaign_objective_id' =
+#                      c.dict->>'campaign_objective_id'
+#                 WHERE
+#                     s.campaign_performance_summary_id IS NULL
+#                     OR c.updated > TO_TIMESTAMP((s.dict->>'updated')::BIGINT / 1000)
+
+#                 UNION ALL
+
+#                 SELECT COUNT(*) AS total
+#                 FROM post_sales_campaign c
+#                 LEFT JOIN campaign_performance_summary s
+#                 ON s.dict->>'campaign_objective_id' =
+#                      c.dict->>'campaign_id'
+#                 WHERE
+#                     s.campaign_performance_summary_id IS NULL
+#                     OR c.updated > TO_TIMESTAMP((s.dict->>'updated')::BIGINT / 1000)
+#             ) t;
+#         """))
+
+#         update_count = int(counts[0][0]) if counts and counts[0][0] is not None else 0
+
+#         if update_count == 0:
+#             mlogger.info("[CRON] No campaign objective updates detected. Skipping execution.")
+#             return 0
+
+#         mlogger.info(f"[CRON] {update_count} campaigns require update. Running procedure...")
+
+#         pg.execute_write("CALL run_campaign_objective_performance_summary();", _fetch=False)
+
+#         mlogger.info(f"[CRON] Campaign objective performance update completed. Updated rows: {update_count}")
+
+#         return update_count
 
 def normalize_ts(ts):
     if not ts:
@@ -281,6 +359,7 @@ def manage_active_sessions(*args, **kwargs):
                 new_records = []
                 for row in history_rows:
                     ts = normalize_ts(row.get("created") or row.get("updated"))
+                    mlogger.info(f"ts: {ts}-->{session_id}")
                     if ts and (last_history_epoch is None or ts > last_history_epoch):
                         new_records.append((row, ts))
 

@@ -2,7 +2,8 @@ from gryd_worker import gryd
 import sys, os
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, PROJECT_ROOT)
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 from agents.get_whatsapp_template_agent import get_whatsapp_template
 
@@ -10,11 +11,11 @@ result = response = gryd.await_result(
     task="get_whatsapp_template",
     service="autocrm-agent",
     kwargs={
-        "lead_id": "test-8277676778-dave-ai-india-1e8288f2-2cdc-31f9-8f53-fa09d6e8801f",
+        "lead_id": "test-user-8248913170-stellantis-india-52975526-a76b-3fd5-956d-1c1db2c4a318",
         "campaign_type": "pre-sales",
-        "campaign_objective" : ["Confirm Test Drives Through Tech Appeal - WhatsApp"],
+        "campaign_objective" : ["Test Drive Booking"],
         #"lead_info": {},
-        "dealership_id": "dave-ai-india"
+        "dealership_id": "daveai"
     }
 )
 

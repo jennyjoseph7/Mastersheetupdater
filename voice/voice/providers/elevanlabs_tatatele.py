@@ -1,8 +1,10 @@
-import time
+from time import time, monotonic
 import os, sys
 
 import pytz
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 
 from .tatatele import CloudPhoneAPI, TATATELE_API_TOKEN, TATATELE_BASE_URL
 import config
@@ -38,6 +40,80 @@ except ImportError:
 
 logger = utils.get_logger(__name__)
 
+# Set ENABLE_BRIDGE_TIMING=1 to log monotonic latency milestones to the logger (TataTele ↔ ElevenLabs).
+# Append one JSON object per call to this path (JSON Lines) for offline stats. Creates parent dirs on first write.
+BRIDGE_TIMING_LOG_DIR = os.environ.get("BRIDGE_TIMING_LOG_DIR", "voice_logs").strip()
+ENABLE_BRIDGE_TIMING_COLLECT = os.environ.get("ENABLE_BRIDGE_TIMING_COLLECT", True)
+bridge_timing_log_lock = threading.Lock()
+
+
+def _elapsed_ms(t0: float) -> float:
+    return (monotonic() - t0) * 1000.0
+
+
+def _append_bridge_timing_jsonl(record: Dict[str, Any], agent_number: str  = "dave", customer_number: str = "test") -> None:
+    try:
+        line = json.dumps(record, ensure_ascii=False) + "\n"
+        if not os.path.isdir(BRIDGE_TIMING_LOG_DIR):
+            os.makedirs(BRIDGE_TIMING_LOG_DIR, exist_ok=True)
+        with bridge_timing_log_lock:
+            BRIDGE_TIMING_LOG_DIR = os.path.join(BRIDGE_TIMING_LOG_DIR, f"voice_session_timing_{agent_number}_{customer_number}_{time()}.json")
+            with open(BRIDGE_TIMING_LOG_DIR, "a", encoding="utf-8") as f:
+                f.write(line)
+    except Exception as e:
+        logger.warning("BRIDGE_TIMING_LOG_DIR write failed: %s", e)
+
+
+def _build_bridge_timing_record(
+    call_id: str,
+    session_data: Optional[dict],
+    bt: dict,
+    chunks_to_el: int,
+    audio_events: int,
+    chunks_to_tt: int,
+    error: Optional[str],
+) -> dict:
+    session_data = session_data or {}
+
+    def _delta(a: Optional[float], b: Optional[float]) -> Optional[float]:
+        if a is None or b is None:
+            return None
+        return round(a - b, 3)
+
+    cumulative_ms = {
+        "signed_url": bt.get("signed_url_ms"),
+        "el_ws_connect": bt.get("el_ws_connect_ms"),
+        "config_sent": bt.get("config_sent_ms"),
+        "first_tt_media_in": bt.get("first_tt_media_in_ms"),
+        "first_chunk_to_el": bt.get("first_chunk_to_el_ms"),
+        "first_el_audio": bt.get("first_el_audio_ms"),
+        "first_tt_out": bt.get("first_tt_out_ms"),
+    }
+    derived_ms = {
+        "first_user_to_first_agent_ms": _delta(bt.get("first_el_audio_ms"), bt.get("first_chunk_to_el_ms")),
+        "config_to_first_tt_media_ms": _delta(bt.get("first_tt_media_in_ms"), bt.get("config_sent_ms")),
+        "first_el_audio_to_first_tt_out_ms": _delta(bt.get("first_tt_out_ms"), bt.get("first_el_audio_ms")),
+    }
+    return {
+        "schema": "bridge_timing_v1",
+        "ts_unix": time(),
+        "call_id": call_id,
+        "session_id": session_data.get("session_id"),
+        "phone_number": session_data.get("phone_number"),
+        "agent_number": session_data.get("agent_number"),
+        "signed_url_http_ms": bt.get("signed_url_http_ms"),
+        "el_ws_handshake_ms": bt.get("el_ws_handshake_ms"),
+        "conversation_init_step_ms": bt.get("conversation_init_step_ms"),
+        "cumulative_ms": cumulative_ms,
+        "first_el_audio_since_user_ms": bt.get("first_el_audio_since_user_ms"),
+        "stats": {
+            "chunks_to_elevenlabs": chunks_to_el,
+            "audio_events_from_elevenlabs": audio_events,
+            "chunks_to_tatatele": chunks_to_tt,
+        },
+        "derived_ms": derived_ms,
+        "error": error,
+    }
 
 
 # ---- Config / env ----
@@ -211,6 +287,14 @@ class CallSession:
             if not payload_b64:
                 return
 
+            if bridge_timing is not None and bridge_timing["first_tt_media_in_ms"] is None:
+                bridge_timing["first_tt_media_in_ms"] = _elapsed_ms(bridge_timing["t0"])
+                if ENABLE_BRIDGE_TIMING_COLLECT:
+                    logger.info(
+                        f"[{self.call_id}] [bridge_timing] first_tatatele_media_in "
+                        f"elapsed_ms={bridge_timing['first_tt_media_in_ms']:.1f}"
+                    )
+
             # Extract streamSid immediately from media event
             if not self.stream_sid:
                 self.stream_sid = tt_msg.get("streamSid")
@@ -225,6 +309,15 @@ class CallSession:
             # Buffer if Dave not ready, send immediately if ready
             if self.dave_ws and not self.stop_event.is_set():
                 try:
+                    if bridge_timing is not None:
+                        bridge_timing["last_user_chunk_mono"] = monotonic()
+                        if bridge_timing["first_chunk_to_el_ms"] is None:
+                            bridge_timing["first_chunk_to_el_ms"] = _elapsed_ms(bridge_timing["t0"])
+                            if ENABLE_BRIDGE_TIMING_COLLECT:
+                                logger.info(
+                                    f"[{self.call_id}] [bridge_timing] first_user_chunk_to_elevenlabs "
+                                    f"elapsed_ms={bridge_timing['first_chunk_to_el_ms']:.1f}"
+                                )
                     await self.dave_ws.send(_dumps({"user_audio_chunk": converted_audio}))
                     chunks_sent_to_elevenlabs[0] += 1
                     if chunks_sent_to_elevenlabs[0] % 50 == 0:  # Log every 50 chunks
@@ -263,6 +356,17 @@ class CallSession:
                             "media": {"payload": buffered}
                         }
                         await wb.send(_dumps(msg_out))
+                        if bridge_timing is not None and bridge_timing["first_tt_out_ms"] is None:
+                            bridge_timing["first_tt_out_ms"] = _elapsed_ms(bridge_timing["t0"])
+                            extra = ""
+                            if bridge_timing.get("first_el_audio_mono") is not None:
+                                el_to_wire_ms = (t_send - bridge_timing["first_el_audio_mono"]) * 1000.0
+                                extra = f" el_audio_recv_to_tatatele_send_ms={el_to_wire_ms:.1f}"
+                            if ENABLE_BRIDGE_TIMING_COLLECT:
+                                logger.info(
+                                    f"[{self.call_id}] [bridge_timing] first_chunk_to_tatatele (flush) "
+                                    f"elapsed_ms={bridge_timing['first_tt_out_ms']:.1f}{extra}"
+                                )
                     except Exception as e:
                         logger.error(f"[{self.call_id}] Failed to flush buffered audio: %s", e)
 
@@ -274,6 +378,17 @@ class CallSession:
                         "media": {"payload": converted_audio}
                     }
                     await wb.send(_dumps(msg_out))
+                    if bridge_timing is not None and bridge_timing["first_tt_out_ms"] is None:
+                        bridge_timing["first_tt_out_ms"] = _elapsed_ms(bridge_timing["t0"])
+                        extra = ""
+                        if bridge_timing.get("first_el_audio_mono") is not None:
+                            el_to_wire_ms = (t_send - bridge_timing["first_el_audio_mono"]) * 1000.0
+                            extra = f" el_audio_recv_to_tatatele_send_ms={el_to_wire_ms:.1f}"
+                        if ENABLE_BRIDGE_TIMING_COLLECT:
+                            logger.info(
+                                f"[{self.call_id}] [bridge_timing] first_chunk_to_tatatele "
+                                f"elapsed_ms={bridge_timing['first_tt_out_ms']:.1f}{extra}"
+                            )
                     chunks_sent_to_tatatele[0] += 1
                     if chunks_sent_to_tatatele[0] % 50 == 0:  # Log every 50 chunks
                         logger.info(f"[{self.call_id}] Sent {chunks_sent_to_tatatele[0]} audio chunks to TataTele")
@@ -317,6 +432,25 @@ class CallSession:
                 audio_events_received[0] += 1
                 audio_event = msg_data.get("audio_event", {})
                 audio_b64 = audio_event.get("audio_base_64")
+
+                if bridge_timing is not None and audio_b64 and bridge_timing["first_el_audio_ms"] is None:
+                    now_m = monotonic()
+                    bridge_timing["first_el_audio_ms"] = _elapsed_ms(bridge_timing["t0"])
+                    bridge_timing["first_el_audio_mono"] = now_m
+                    since_user = None
+                    if bridge_timing.get("last_user_chunk_mono") is not None:
+                        since_user = (now_m - bridge_timing["last_user_chunk_mono"]) * 1000.0
+                        bridge_timing["first_el_audio_since_user_ms"] = since_user
+                    if ENABLE_BRIDGE_TIMING_COLLECT:
+                        logger.info(
+                            f"[{self.call_id}] [bridge_timing] first_agent_audio_from_elevenlabs "
+                            f"elapsed_ms={bridge_timing['first_el_audio_ms']:.1f}"
+                            + (
+                                f" since_last_user_chunk_sent_ms={since_user:.1f}"
+                                if since_user is not None
+                                else " since_last_user_chunk_sent_ms=n/a"
+                            )
+                        )
 
                 # Log first few audio events to debug format
                 if audio_events_received[0] <= 3:
@@ -419,7 +553,24 @@ class CallSession:
         try:
             # CONNECT TO ELEVENLABS IMMEDIATELY
             signed_url = await self.get_signed_url()
+            if bridge_timing is not None:
+                bridge_timing["signed_url_ms"] = _elapsed_ms(bridge_timing["t0"])
+                bridge_timing["signed_url_http_ms"] = _elapsed_ms(t_http)
+                if ENABLE_BRIDGE_TIMING_COLLECT:
+                    logger.info(
+                        f"[{self.call_id}] [bridge_timing] get_signed_url_http_ms={bridge_timing['signed_url_http_ms']:.1f} "
+                        f"cumulative_ms={bridge_timing['signed_url_ms']:.1f}"
+                    )
+            t_ws = monotonic()
             self.dave_ws = await websockets.connect(signed_url)
+            if bridge_timing is not None:
+                bridge_timing["el_ws_connect_ms"] = _elapsed_ms(bridge_timing["t0"])
+                bridge_timing["el_ws_handshake_ms"] = _elapsed_ms(t_ws)
+                if ENABLE_BRIDGE_TIMING_COLLECT:
+                    logger.info(
+                        f"[{self.call_id}] [bridge_timing] elevenlabs_ws_handshake_ms={bridge_timing['el_ws_handshake_ms']:.1f} "
+                        f"cumulative_ms={bridge_timing['el_ws_connect_ms']:.1f}"
+                    )
             logger.info(f"[{self.call_id}] *** CONNECTED TO ELEVENLABS IMMEDIATELY ***")
 
             #Send initial config to 11labs
@@ -463,6 +614,14 @@ class CallSession:
                 
                 
             await self.dave_ws.send(_dumps(config_data))
+            if bridge_timing is not None:
+                bridge_timing["config_sent_ms"] = _elapsed_ms(bridge_timing["t0"])
+                bridge_timing["conversation_init_step_ms"] = _elapsed_ms(t_cfg)
+                if ENABLE_BRIDGE_TIMING_COLLECT:
+                    logger.info(
+                        f"[{self.call_id}] [bridge_timing] conversation_init_send_ms={bridge_timing['conversation_init_step_ms']:.1f} "
+                        f"cumulative_ms={bridge_timing['config_sent_ms']:.1f}"
+                    )
 
             # Send buffered media immediately - not sure why jay added?.
             for chunk in self.media_buffer:
@@ -498,6 +657,17 @@ class CallSession:
                                         "media": {"payload": buffered}
                                     }
                                     await wb.send(_dumps(msg_out))
+                                    if bridge_timing is not None and bridge_timing["first_tt_out_ms"] is None:
+                                        bridge_timing["first_tt_out_ms"] = _elapsed_ms(bridge_timing["t0"])
+                                        extra = ""
+                                        if bridge_timing.get("first_el_audio_mono") is not None:
+                                            el_to_wire_ms = (t_send - bridge_timing["first_el_audio_mono"]) * 1000.0
+                                            extra = f" el_audio_recv_to_tatatele_send_ms={el_to_wire_ms:.1f}"
+                                        if ENABLE_BRIDGE_TIMING_COLLECT:
+                                            logger.info(
+                                                f"[{self.call_id}] [bridge_timing] first_chunk_to_tatatele (start_flush) "
+                                                f"elapsed_ms={bridge_timing['first_tt_out_ms']:.1f}{extra}"
+                                            )
                                     logger.debug(f"[{self.call_id}] -> FLUSHED buffered outgoing audio")
                                 except Exception as e:
                                     logger.error(f"[{self.call_id}] Failed to flush outgoing audio: %s", e)
@@ -550,6 +720,18 @@ class CallSession:
 
             logger.info(f"[{self.call_id}] Both readers stopped")
             logger.info(f"[{self.call_id}] STATS: Sent {chunks_sent_to_elevenlabs[0]} chunks to ElevenLabs, received {audio_events_received[0]} audio events, sent {chunks_sent_to_tatatele[0]} chunks to TataTele")
+            if bridge_timing is not None:
+                bt = bridge_timing
+                logger.info(
+                    f"[{self.call_id}] [bridge_timing] session_summary_ms "
+                    f"signed_url={bt.get('signed_url_ms')} "
+                    f"el_ws={bt.get('el_ws_connect_ms')} "
+                    f"config_sent={bt.get('config_sent_ms')} "
+                    f"first_tt_in={bt.get('first_tt_media_in_ms')} "
+                    f"first_to_el={bt.get('first_chunk_to_el_ms')} "
+                    f"first_el_audio={bt.get('first_el_audio_ms')} "
+                    f"first_tt_out={bt.get('first_tt_out_ms')}"
+                )
 
         except Exception as e:
             logger.exception(f"[{self.call_id}] Main error: %s", e)
@@ -567,13 +749,28 @@ class CallSession:
             await self.hangup_tatatele_call()
 
             logger.info(f"[{self.call_id}] Bridge closed")
+            
+            if bridge_timing is not None :
+                _append_bridge_timing_jsonl(
+                    _build_bridge_timing_record(
+                        self.call_id,
+                        self.session_data,
+                        bridge_timing,
+                        chunks_sent_to_elevenlabs[0],
+                        audio_events_received[0],
+                        chunks_sent_to_tatatele[0], 
+                        bridge_error,
+                    ),
+                    agent_number=self.session_data.get("agent_number"),
+                    user_number=self.session_data.get("phone_number")
+                )
 
             # Cleanup session
             terminate_session(self.call_id)
 
     async def connect_external_websocket(self, url: str):
         """Connect to external websocket for this call session."""
-        t = time.time()
+        t = time()
         ws = None
         try:
             logger.info(f"[{self.call_id}] connecting to {url}")
@@ -582,7 +779,7 @@ class CallSession:
                 self.external_ws = ws
                 logger.info(f"[{self.call_id}] connected to {url}")
                 self.bridge_started = True
-                logger.info(f"[{self.call_id}] Time taken to connect to external WebSocket: {time.time() - t:.2f} seconds")
+                logger.info(f"[{self.call_id}] Time taken to connect to external WebSocket: {time() - t:.2f} seconds")
             except Exception as conn_error:
                 logger.error(f"[{self.call_id}] Failed to establish WebSocket connection to {url}: {conn_error}")
                 raise
@@ -912,7 +1109,7 @@ def root():
 
 @app.route('/tatatele/create-stream-url', methods=['POST'])
 def create_stream_url(*args, **kwargs):
-    t = time.time()
+    t = time()
     data = request.get_json()
     base_ws_url = config.AUTOCRM_WEBSOCKET_BASE_URL
 
@@ -920,7 +1117,7 @@ def create_stream_url(*args, **kwargs):
     to_number = data.get("to_number")[1:]
     wss_url = f"{base_ws_url}/tatatele/{from_number}_{to_number}/{to_number}"
 
-    logger.info(f"[webhook-/tatatele/create-stream-url] Generated wss_url took {time.time() - t:.2f} seconds: {wss_url}")
+    logger.info(f"[webhook-/tatatele/create-stream-url] Generated wss_url took {time() - t:.2f} seconds: {wss_url}")
     return jsonify({
         "sucess": True,
         "wss_url": wss_url
@@ -942,7 +1139,7 @@ def outbound_call(*args, **kwargs):
 
 @app.route("/smartflo/webhook", methods=["POST"])
 def smartflo_webhook():
-    t  = time.time()
+    t  = time()
     raw = request.get_data()
     payload = tatatele_status_map(raw)
 
@@ -964,12 +1161,12 @@ def smartflo_webhook():
                                 "call_recording": payload.get("recording_url"), 
                                 "duration": float(payload.get("duration", 0.0))
                             }) #add more attributes when needed
-        logger.info(f"[webhook-/smartflo/webhook] Time taken to update session with recording URL and duration: {time.time() - t:.2f} seconds")
+        logger.info(f"[webhook-/smartflo/webhook] Time taken to update session with recording URL and duration: {time() - t:.2f} seconds")
         gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = session_id,  **{"status": status})
     elif status in ["reached"]: # as soon as call is answered 
         gryd_tasks.post_billing_object(status, session_id)
         gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = session_id,  **{"status": status})
-        logger.info(f"[webhook-/smartflo/webhook] Time taken to post billing object and contact status for reached: {time.time() - t:.2f} seconds")
+        logger.info(f"[webhook-/smartflo/webhook] Time taken to post billing object and contact status for reached: {time() - t:.2f} seconds")
     elif status in ['failed', 'canceled', 'missed', 'busy', 'completed']:
         logger.info(f"[{call_id}] Call ended or failed - cleaning up session")
 
@@ -984,7 +1181,7 @@ def smartflo_webhook():
 
 @app.route("/tatatele-conversation", methods=["POST"])
 def process():
-    t = time.time()
+    t = time()
     payload = request.get_json()
 
     logger.info(f"Processing payload: {json.dumps(payload, indent=4)}")
@@ -1010,22 +1207,30 @@ def process():
     xx = gryd_tasks.post_billing_object("completed", session_id, duration)  # call it in async
 
     logger.info(f"Billing record created: {xx}")
-    session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time.time()))
+    session_history = format_transcript(data.get("transcript", []), data.get("metadata", {}).get("start_time_unix_secs", time()))
     transcript_summary= data.get("analysis",{}).get("transcript_summary")
     logger.info(f"Transcript summary: {transcript_summary}")
-    logger.info(f"Triggering post history and actions for session_id: {session_id}")
+    logger.info(f"Triggering post session process for session_id: {session_id}")
 
-    gryd_tasks.post_history(session_id, session_history)
-    
-    gryd_tasks.end_session(**{
-        "session_id": session_id,
-        "additional_dict":{
-            "history": session_history,
-            "status": "completed",
-            "summary": transcript_summary
+
+    gryd_tasks.gryd.create_async_task(
+        "end_session_and_post_process",
+        config.AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
+        args  = [],
+        kwargs={
+            "session_id": session_id,
+            "additional_dict":{
+                "history": session_history,
+                "status": "completed",
+                "summary": transcript_summary
+            },
+            "channel": "voice_phone"
         }
-    })
-    logger.info(f"[webhook-tatatele-conversation] Time taken to post history and end session: {time.time() - t:.2f} seconds")
+    )
+
+
+
+    logger.info(f"[webhook-tatatele-conversation] Time taken to post history and end session: {time() - t:.2f} seconds")
     
     # gryd_tasks.post_actions(session_id) #calling in end_session
 

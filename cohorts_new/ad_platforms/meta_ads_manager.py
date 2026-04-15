@@ -1,6 +1,8 @@
 import os
-import sys 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+import sys
+_parent = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+if _parent not in sys.path:
+    sys.path.insert(0, _parent)
 from datetime import datetime, timedelta
 from typing import * 
 
@@ -230,6 +232,86 @@ valid_call_to_action_values = [
 ]
 
 
+valid_preview_formats = [
+    "AUDIENCE_NETWORK_INSTREAM_VIDEO",
+    "AUDIENCE_NETWORK_INSTREAM_VIDEO_MOBILE",
+    "AUDIENCE_NETWORK_OUTSTREAM_VIDEO",
+    "AUDIENCE_NETWORK_REWARDED_VIDEO",
+    "BIZ_DISCO_FEED_MOBILE",
+    "DESKTOP_FEED_STANDARD",
+    "FACEBOOK_IFU_REELS_MOBILE",
+    "FACEBOOK_PROFILE_FEED_DESKTOP",
+    "FACEBOOK_PROFILE_FEED_MOBILE",
+    "FACEBOOK_PROFILE_REELS_MOBILE",
+    "FACEBOOK_REELS_BANNER",
+    "FACEBOOK_REELS_BANNER_DESKTOP",
+    "FACEBOOK_REELS_BANNER_FEED_ANDROID",
+    "FACEBOOK_REELS_BANNER_FEED_ANDROID_LARGE",
+    "FACEBOOK_REELS_BANNER_FULLSCREEN_IOS",
+    "FACEBOOK_REELS_BANNER_FULLSCREEN_MOBILE",
+    "FACEBOOK_REELS_MOBILE",
+    "FACEBOOK_REELS_POSTLOOP",
+    "FACEBOOK_REELS_POSTLOOP_FEED",
+    "FACEBOOK_REELS_SIMILAR_PRODUCTS_MOBILE",
+    "FACEBOOK_REELS_STICKER",
+    "FACEBOOK_STORY_MOBILE",
+    "FACEBOOK_STORY_STICKER_MOBILE",
+    "INSTAGRAM_EXPLORE_CONTEXTUAL",
+    "INSTAGRAM_EXPLORE_GRID_HOME",
+    "INSTAGRAM_EXPLORE_IMMERSIVE",
+    "INSTAGRAM_FEED_WEB",
+    "INSTAGRAM_FEED_WEB_M_SITE",
+    "INSTAGRAM_LEAD_GEN_MULTI_SUBMIT_ADS",
+    "INSTAGRAM_PROFILE_FEED",
+    "INSTAGRAM_PROFILE_REELS",
+    "INSTAGRAM_REELS",
+    "INSTAGRAM_REELS_OVERLAY",
+    "INSTAGRAM_REELS_WEB",
+    "INSTAGRAM_REELS_WEB_M_SITE",
+    "INSTAGRAM_SEARCH_CHAIN",
+    "INSTAGRAM_SEARCH_GRID",
+    "INSTAGRAM_STANDARD",
+    "INSTAGRAM_STORY",
+    "INSTAGRAM_STORY_EFFECT_TRAY",
+    "INSTAGRAM_STORY_WEB",
+    "INSTAGRAM_STORY_WEB_M_SITE",
+    "INSTANT_ARTICLE_RECIRCULATION_AD",
+    "INSTANT_ARTICLE_STANDARD",
+    "INSTREAM_BANNER_DESKTOP",
+    "INSTREAM_BANNER_FEED_IOS",
+    "INSTREAM_BANNER_FULLSCREEN_IOS",
+    "INSTREAM_BANNER_FULLSCREEN_MOBILE",
+    "INSTREAM_BANNER_IMMERSIVE_MOBILE",
+    "INSTREAM_BANNER_MOBILE",
+    "INSTREAM_VIDEO_DESKTOP",
+    "INSTREAM_VIDEO_FULLSCREEN_IOS",
+    "INSTREAM_VIDEO_FULLSCREEN_MOBILE",
+    "INSTREAM_VIDEO_IMAGE",
+    "INSTREAM_VIDEO_IMMERSIVE_MOBILE",
+    "INSTREAM_VIDEO_MOBILE",
+    "JOB_BROWSER_DESKTOP",
+    "JOB_BROWSER_MOBILE",
+    "MARKETPLACE_MOBILE",
+    "MESSENGER_MOBILE_INBOX_MEDIA",
+    "MESSENGER_MOBILE_STORY_MEDIA",
+    "MOBILE_BANNER",
+    "MOBILE_FEED_BASIC",
+    "MOBILE_FEED_STANDARD",
+    "MOBILE_FULLWIDTH",
+    "MOBILE_INTERSTITIAL",
+    "MOBILE_MEDIUM_RECTANGLE",
+    "MOBILE_NATIVE",
+    "RIGHT_COLUMN_STANDARD",
+    "SUGGESTED_VIDEO_DESKTOP",
+    "SUGGESTED_VIDEO_FULLSCREEN_MOBILE",
+    "SUGGESTED_VIDEO_IMMERSIVE_MOBILE",
+    "SUGGESTED_VIDEO_MOBILE",
+    "WATCH_FEED_HOME",
+    "WATCH_FEED_MOBILE",
+    "WHATSAPP_STATUS_MEDIA",
+
+]
+
 class MetaAdsManager:
     """
     * Meta Ads Manager
@@ -339,6 +421,23 @@ class MetaAdsManager:
         self.page_id = page_id
         logger.info(f"Page ID set to {self.page_id}")
         return self.page_id
+    
+
+    def check_valid_values(self, _check_value_for : str) -> Union[list[str], Dict[str, list[str]]]:
+        value_map = {
+            "campaign_objectives": valid_campaign_objectives,
+            "call_to_actions": valid_call_to_action_values,
+            "optimization_goals": valid_optimization_goals,
+            "preview_formats": valid_preview_formats,
+        }
+        if _check_value_for == "all":
+            return value_map
+        
+        if _check_value_for not in value_map:
+            raise ValueError(f"Invalid value for: {_check_value_for}")
+        _valid_values = value_map.get(_check_value_for)
+        return _valid_values
+        
 
     def list_all_campaigns(self):
         # all_fields = list(Campaign.Field.__dict__.values())
@@ -450,6 +549,21 @@ class MetaAdsManager:
         for page in pages:
             logger.info(page)
 
+    def check_valid_values(self, _check_value_for : str) -> Union[list[str], Dict[str, list[str]]]:
+        value_map = {
+            "campaign_objectives": valid_campaign_objectives,
+            "call_to_actions": valid_call_to_action_values,
+            "optimization_goals": valid_optimization_goals,
+            "preview_formats": valid_preview_formats,
+        }
+        if _check_value_for == "all":
+            return value_map
+        
+        if _check_value_for not in value_map:
+            raise ValueError(f"Invalid value for: {_check_value_for}")
+        _valid_values = value_map.get(_check_value_for)
+        return _valid_values
+
     def upload_image(
         self,
         image_path: Optional[str] = None,
@@ -536,8 +650,34 @@ class MetaAdsManager:
         daily_budget : int
             Budget in cents (5000 = $50)
         """
-        import pytz
 
+        logger.info(f"Ensuring ad set exists : {name}")
+        existing_adsets = self.ad_account.get_ad_sets(
+            fields=[
+                AdSet.Field.name,
+                AdSet.Field.campaign_id
+            ],
+            params={
+                "filtering": [
+                    {
+                        "field": "name",
+                        "operator": "EQUAL",
+                        "value": name
+                    },
+                    {
+                        "field": "campaign.id",
+                        "operator": "EQUAL",
+                        "value": campaign_id
+                    }
+                ]
+            }
+        )
+
+        for adset in existing_adsets:
+            logger.info(f"Found existing ad set: {name}. Returning : {adset[AdSet.Field.id]}")
+            return AdSet(adset[AdSet.Field.id])
+
+        import pytz
         ist = pytz.timezone('Asia/Kolkata')
         logger.info(f"Creating ad set: {name}")
         start_time = (datetime.now(ist) + timedelta(minutes=10)).isoformat()
@@ -632,30 +772,12 @@ class MetaAdsManager:
         return ad
     
     def preview_creative(self, creative_id: str, ad_format: str = "DESKTOP_FEED_STANDARD"):
-        """
-        Get rendered HTML preview of an ad creative for a specific placement.
-        Same preview as shown in Meta Ads Manager.
-        """
-        AD_FORMATS = [
-            "DESKTOP_FEED_STANDARD",
-            "MOBILE_FEED_STANDARD",
-            "INSTAGRAM_STANDARD",
-            "INSTAGRAM_STORY",
-            "MOBILE_STORY",
-            "DESKTOP_RIGHT_COLUMN_STANDARD",
-            "AUDIENCE_NETWORK_INSTREAM_VIDEO",
-            "FACEBOOK_REELS",
-            "INSTAGRAM_REELS"
-        ]
+        """Get rendered HTML preview of an ad creative for a specific placement. Same preview as shown in Meta Ads Manager."""
 
-        if ad_format not in AD_FORMATS:
-            raise ValueError(f"Invalid ad format: {ad_format}. Supported formats: {AD_FORMATS}")
-
+        if ad_format not in valid_preview_formats:
+            raise ValueError(f"Invalid ad format: {ad_format}. Supported formats: {valid_preview_formats}")
         creative = AdCreative(creative_id)
-
-        previews = creative.get_previews(params={
-            "ad_format": ad_format
-        })
+        previews = creative.get_previews(params={"ad_format": ad_format})
 
         results = []
         for p in previews:
@@ -723,7 +845,6 @@ if __name__ == "__main__":
 
 
 
-
     manager = MetaAdsManager(
         app_id=app_id,
         app_secret=app_secret,
@@ -760,35 +881,51 @@ if __name__ == "__main__":
         }
     }
 
-    # adset = manager.create_ad_set(
-    #     campaign_id=tata_sierra_campaign_id,
-    #     name="Tata Sierra - India Audience Targeting Test",
-    #     daily_budget=10000,
-    #     targeting=targeting,
-    #     # destination_url="https://cars.tatamotors.com/sierra/ice.html",
-    #     optimization_goal="LANDING_PAGE_VIEWS",
-    #     billing_event="IMPRESSIONS"
-    # )
+    adset = manager.create_ad_set(
+        campaign_id=tata_sierra_campaign_id,
+        name="Tata Sierra - India Audience Targeting Test",
+        daily_budget=10000,
+        targeting=targeting,
+        # destination_url="https://cars.tatamotors.com/sierra/ice.html",
+        optimization_goal="LANDING_PAGE_VIEWS",
+        billing_event="IMPRESSIONS"
+    )
 
-    # logger.info(f"Adset created: {adset}")
+    logger.info(f"Adset created: {adset}")
+
+    assert False
 
 
     adset_for_tata_sierra = "120245325100150664"
 
-    creative = manager.create_image_ad_creative(
-        name="Tata Sierra Creative",
-        image_hash=image_hash,
-        title="The Icon Returns 🚙",
-        body="Experience the all-new Tata Sierra. Built for adventure.",
-        link_url="https://cars.tatamotors.com/sierra/ice.html",
-        call_to_action = "LEARN_MORE",
-        description="Explore design, features & book your drive"
+    # creative = manager.create_image_ad_creative(
+    #     name="Tata Sierra Creative",
+    #     image_hash=image_hash,
+    #     title="The Icon Returns 🚙",
+    #     body="Experience the all-new Tata Sierra. Built for adventure.",
+    #     link_url="https://cars.tatamotors.com/sierra/ice.html",
+    #     call_to_action = "LEARN_MORE",
+    #     description="Explore design, features & book your drive"
+    # )
+
+    # logger.info(f"Creative created: {creative}")
+
+    creative_id = "1466079638253637"
+
+    ad= manager.create_ad(
+        ad_set_id=adset_for_tata_sierra,
+        creative_id=creative_id,
+        name="Tata Sierra Ad",
+        status="PAUSED"
     )
 
-    logger.info(f"Creative created: {creative}")
+    logger.info(f"Ad created: {ad}")
 
-    
+    ad_id = "120245955023010664"
 
+    preview = manager.preview_creative(creative_id="120245456058310664", ad_format="FACEBOOK_PROFILE_FEED_DESKTOP")
+
+    logger.info(f"Preview: {preview}")
 
 
     # logger.info(f"Campaign created: {tata_sierra_campaign}")

@@ -5,6 +5,7 @@ BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_MESSAGE_DELIVERED_ITEM,AUTOCRM_MESSAGE_DELIVERED_PRICE,AUTOCRM_MESSAGE_DELIVERED_UNITS,AutocrmModel
+import config
 from gryd_worker import gryd, gryd_helpers as hp
 from autocrm_db_helper import get_pg_connector
 json = hp.json
@@ -13,6 +14,8 @@ from conversation.prompt import run_prompt_sync
 from communication.connectors.communication_helpers import get_communication_credential,generate_uid
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
+from conversation import converse
+import time
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
@@ -27,6 +30,112 @@ def WARM_UP():
     with get_pg_connector() as pg:
         pass    
     return
+
+def update_session_data_in_lead(session_id,status,pg=None):
+    if not pg:
+        mlogger.error("Postgres connection is required to update session data in lead.")
+        return
+    session_data = pg.get("session", "session_id",session_id)
+    if not session_data:
+        mlogger.info(f"Could not find session with session_id: {session_id}")
+    lead_id = session_data.get("lead_id")
+    campaign_type = session_data.get("campaign_type")
+    last_interaction_time = session_data.get("last_response_time",None)
+    if lead_id:
+        lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
+        lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
+        pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
+        mlogger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
+
+@gryd.is_a_task(function_name="end_session_and_post_process")
+def end_session_and_post_process(*args, **kwargs):
+    """
+    Ends a session and triggers a post session process task.
+
+    Args:
+        session_id (str): The session id to end.
+
+    Returns:
+        None
+    """
+    session_id=kwargs.get("session_id")
+    additional_dict=kwargs.get("additional_dict",{})
+    pg=kwargs.get("pg",None)
+    _call_post_process=kwargs.get("call_post_process",True)
+    additional_dict["session_live"] = additional_dict.get("session_live", False)
+    additional_dict["status"] = additional_dict.get("status", "completed")
+    additional_dict["end_time"] = additional_dict.get("end_time", time.time())
+
+    mlogger.info(f"Ending session with session_id: {session_id}")
+    def _do_db_work(pg_conn):
+        # if additional_dict has history we will update it in the session model
+        pg_conn.update("session", "session_id", session_id, additional_dict)
+        update_session_data_in_lead(
+            session_id,
+            "completed",
+            pg=pg_conn  
+        )
+
+    if pg:
+        _do_db_work(pg)
+    else:
+        with get_pg_connector() as pg_conn:
+            _do_db_work(pg_conn)
+
+    if any( _ == "voice" for _ in kwargs.get("channel", "").split("_")):
+        mlogger.info(f"Session with session_id: {session_id} is a voice session, posting messages for voice session.")
+        post_messages_for_voice_session(session_id, additional_dict.get("history",[]))
+        
+    mlogger.info(f"Calling post session process task for session_id: {session_id}")
+    if _call_post_process:
+        list(post_session_process(**{"session_id":session_id}))
+    
+    return {"message": f"Session with session_id: {session_id} ended and post session process task triggered."}
+
+
+
+def post_messages_for_voice_session(session_id, session_history):
+    session_model = gryd.base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
+    session_data = session_model.get(session_id)
+
+    agent_msgs = [d for d in session_history if d.get("role") == "agent"]
+    user_msgs = [d for d in session_history if d.get("role") == "user"]
+
+    #in zero'th index add empty user message for better indexing
+    user_msgs.insert(0, {"role": "user", "content": "__init__"})
+    if len(agent_msgs) != len(user_msgs):
+        mlogger.error(
+            f"post_history: agent ({len(agent_msgs)}) and user ({len(user_msgs)}) message counts do not match"
+        )
+
+    max_len = max(len(user_msgs), len(agent_msgs))
+    history = []
+    for i in range(max_len):
+        u = user_msgs[i] if i < len(user_msgs) else {}
+        a = agent_msgs[i] if i < len(agent_msgs) else {}
+        tme = hp.time()
+        history.append({
+            "reply_to": str(generate_uid(u) if u else gryd.hp.make_uuid3(str(time.time()))),
+            "customer_response": u.get("message", ""),
+            "request_data": {
+                "customer_response": u.get("message", "")
+            },
+            "session_id": session_data.get("session_id"),
+            "user_id": session_data.get("user_id"),
+            "responses": [
+                {
+                    "intent": "llm_response",
+                    "placeholder": a.get("message", ""),
+                    "index": i + 1,
+                    "created": tme,
+                    "updated": tme
+                }
+            ]
+        })
+
+    mlogger.info(f"Calling task post_all_messages_for_session with history: {history}")
+    converse.post_all_messages_for_session(history=history)
+
 
 @gryd.is_a_task()
 def post_session_process(*args, **kwargs):
@@ -226,9 +335,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
     DISPOSITION_SEQUENCE = [
         "queued",
         "attempted",
-        "busy",
         "error",
         "failed",
+        "busy",
         "reached",
         "contacted",
         "engaged",
@@ -304,6 +413,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 f"(current={lead.get('disposition')}, incoming={incoming_status})"
             )
             update_payload["disposition"] = incoming_status
+            
+            if incoming_status == "failed":
+                update_payload["disposition_detail"] = data.get("failure_reason")
             #only updating the previous_contact_channel when the diposition is updated and it is higher in sequence than the current diposition
             update_payload["previous_contact_channel"] = channel 
             
@@ -330,14 +442,24 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         # also updating session dispositon--
         template_message = data.get("template_message") if data else None
         if channel in ["whatsapp_chat"]:
-            s_d=list(pg.list("session",{"lead_id":lead_id}))
+            # s_d=list(pg.list("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table}))
+            s_d=list(pg.list_order_by("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table},order="DESC"))
             if not s_d:
                 mlogger.info(f"No session found for lead_id: {lead_id}")
                 return
             s_d=s_d[0]
             session_id = s_d.get("session_id")
             mlogger.info(f"Updating session disposition for lead_id: {lead_id}")
-            pg.update("session","session_id",session_id,{"disposition":incoming_status,"status":incoming_status})
+            _p = {
+                    "disposition": incoming_status,
+                    "status": incoming_status,
+                    **(
+                        {"disposition_detail": data.get("failure_reason")}
+                        if incoming_status == "failed" and data.get("failure_reason")
+                        else {}
+                    )
+                }
+            pg.update("session","session_id",session_id,_p)
             if post_template_message and template_message and incoming_status in ["delivered", "reached"]:
                 mlogger.info(f"Updating template_message in history for lead_id: {lead_id}")
                 p={
@@ -992,6 +1114,8 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     has_user_message = False
     for message in messages:
         mlogger.info("message in get_disposition -  {}".format(message))
+        if not message:
+            continue
         if "intent" in message and message.get("intent") == "llm_response":
             message_history.append({"role" : "my agent", "message":message.get("message","")})
         else:
@@ -1254,6 +1378,8 @@ def get_preffered_language(session_id,session_data_cache):
     messages = session_data_cache.get("messages")
     message_history = []
     for message in messages:
+        if not message:
+            continue
         if "intent" in message and message.get("intent") == "llm_response":
             message_history.append({"role" : "my agent", "message":message.get("message","")})
         else:
@@ -1613,6 +1739,8 @@ def get_disposition_classification(query = None, session_id = None, session_data
     has_user_message = False
     for message in messages:
         mlogger.info("message in get_disposition -  {}".format(message))
+        if not message:
+            continue
         if "intent" in message and message.get("intent") == "llm_response":
             message_history.append({"role" : "my agent", "message":message.get("message","")})
         else:
@@ -1643,20 +1771,24 @@ def get_disposition_classification(query = None, session_id = None, session_data
     # EXAMPLES FOR CLASSIFICATION REFERENCE
     POSITIVE (Customer is interested but hasn't committed/converted yet)
      - Reasoning: The user rejects the current timing or specific detail but maintains a conversational bridge. This indicates high intent with a logistical friction point rather than a lack of interest.
-    - Example: [{{'role': 'user', 'message': 'Not at this time'}}, {{'role': 'agent', 'message': 'When would be a better time?'}}] -> Customer is open to future contact.
+     - Example 1: [{{'role': 'user', 'message': 'Not at this time'}}, {{'role': 'agent', 'message': 'When would be a better time?'}}] -> Customer is open to future contact.
+     - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 02:01:03 PM +0000'}}, {{'role': 'user', 'message': 'Yeah', 'timestamp': '2026-03-03 02:01:09 PM +0000'}}, {{'role': 'agent', 'message': 'Uh, thank you for considering the Citroen Aircross, A Many buyers, you know, focus on smooth ride quality, cabin calmness, and everyday driving ease Is comfort one of your top priorities?', 'timestamp': '2026-03-03 02:01:10 PM +0000'}}, {{'role': 'user', 'message': 'Yes, yes', 'timestamp': '2026-03-03 02:01:24 PM +0000'}}, {{'role': 'agent', 'message': 'Absolutely Uh, the Citroen Aircross is really designed for comfort, especially, you know, for daily driving It has this Magic Carpet ride with Frequency Selective Damping suspension that's tuned for Indian roads This really helps absorb bumps and reduces fatigue, whether you're in the city or on longer journeys', 'timestamp': '2026-03-03 02:01:26 PM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-03 02:01:46 PM +0000'}}, {{'role': 'agent', 'message': 'And, uh, it als', 'timestamp': '2026-03-03 02:01:48 PM +0000'}}, {{'role': 'user', 'message': 'So I had a question Hello?', 'timestamp': '2026-03-03 02:01:48 PM +0000'}}, {{'role': 'agent', 'message': 'Yes, A, I'm here Please go ahead with your question', 'timestamp': '2026-03-03 02:01:56 PM +0000'}}, {{'role': 'user', 'message': 'Yeah, so actually I had a 2024 vehicle from Andhra So I need to check whether that 2024 aircraft's manual top-end model is having the six airbags or not', 'timestamp': '2026-03-03 02:02:00 PM +0000'}}, {{'role': 'agent', 'message': 'Got it You're asking about the 2024 C3 Aircross manual top-end model and if it has six airbags Let me just check that for you\n', 'timestamp': '2026-03-03 02:02:15 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 02:02:17 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 02:02:24 PM +0000'}}]
     
     NEGATIVE (Customer explicitly declines the objective)
      - Reasoning: The user provides a definitive 'No' or a contextual rejection that closes the loop on the specific goal. No alternative or future opening is provided.
-     - Example: [{{'role': 'agent', 'message': 'Would you be interested in booking a test drive?'}}, {{'role': 'user', 'message': "No, I'm at a state by state"}}] -> Objective rejected.
-    
+     - Example 1: [{{'role': 'agent', 'message': 'Would you be interested in booking a test drive?'}}, {{'role': 'user', 'message': "No, I'm at a state by state"}}] -> Objective rejected.
+     - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 01:22:23 PM +0000'}}, {{'role': 'user', 'message': 'Yeah', 'timestamp': '2026-03-03 01:22:29 PM +0000'}}, {{'role': 'agent', 'message': 'Thanks for considering the Citroen Aircross, Aarun Gaur Are there any specific questions you have about service support or ownership experience in India?', 'timestamp': '2026-03-03 01:22:31 PM +0000'}}, {{'role': 'user', 'message': 'No, madam No', 'timestamp': '2026-03-03 01:22:40 PM +0000'}}, {{'role': 'agent', 'message': 'Got it So, um, Aarun Gaur, are you interested in booking a test drive for the Citroen C3 Aircross?', 'timestamp': '2026-03-03 01:22:43 PM +0000'}}, {{'role': 'user', 'message': '[car engine] <|unintellig', 'timestamp': '2026-03-03 01:22:51 PM +0000'}}, {{'role': 'agent', 'message': 'Sorry, I couldn't hear what you said Could', 'timestamp': '2026-03-03 01:22:55 PM +0000'}}, {{'role': 'user', 'message': 'Uh, already madam le-le-le-le li hai madam already trial Gaadi aayi thi aapki Toh hum dekh liya, chala ke drive kar liya', 'timestamp': '2026-03-03 01:22:58 PM +0000'}}, {{'role': 'agent', 'message': 'Ah, got it So, you've already taken a test drive of the Citroen C3 Aircross That makes sense\n\nUhm,', 'timestamp': '2026-03-03 01:23:08 PM +0000'}}, {{'role': 'user', 'message': 'Yeah Yeah', 'timestamp': '2026-03-03 01:23:14 PM +0000'}}, {{'role': 'agent', 'message': 'Okay So, um, Aarun Gaur, since you've already had a test drive, is there anything else I can help you with regarding the Citroen C3 Aircross, or perhaps any other Citroen or Jeep models?', 'timestamp': '2026-03-03 01:23:16 PM +0000'}}, {{'role': 'user', 'message': 'No, thank you', 'timestamp': '2026-03-03 01:23:29 PM +0000'}}, {{'role': 'agent', 'message': 'Alright, Aarun Gaur Thanks for your time I really appreciate it Have a great day!', 'timestamp': '2026-03-03 01:23:31 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 01:23:31 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 01:23:37 PM +0000'}}]
+     
     NEUTRAL (Inconclusive, language barrier, or no clear progress)
      - Reasoning: The input is semantically "noise" relative to the objective. It contains no discernible intent (positive or negative) or suggests a communication barrier that prevents state progression.
-     - Example: [{{'role': 'user', 'message': 'Hindi'}}, {{'role': 'user', 'message': '[background noise]'}}] -> No decision made.
+     - Example 1: [{{'role': 'user', 'message': 'Hindi'}}, {{'role': 'user', 'message': '[background noise]'}}] -> No decision made.
+     - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 02:02:09 PM +0000'}}, {{'role': 'user', 'message': '[clears throat]', 'timestamp': '2026-03-03 02:02:14 PM +0000'}}, {{'role': 'agent', 'message': 'Uh, I am sorry, K - Aamit Singh, I couldn't quite hear what you said Could you please speak a little louder?', 'timestamp': '2026-03-03 02:02:17 PM +0000'}}, {{'role': 'user', 'message': 'I can speak louder, but I can't speak in English Please speak in Hindi', 'timestamp': '2026-03-03 02:02:25 PM +0000'}}, {{'role': 'agent', 'message': 'Got it Um, I understand you'd prefer to speak in Hindi However, I'm currently only able to communicate in English Would you like me to continue in English, or would you prefer to, like, have someone else assist you in Hindi?', 'timestamp': '2026-03-03 02:02:31 PM +0000'}}, {{'role': 'user', 'message': 'Someone else?', 'timestamp': '2026-03-03 02:02:45 PM +0000'}}, {{'role': 'agent', 'message': 'Yes, uh, I can arrange for someone from our team to, you know, get in touch with you who can speak in Hindi Would that be alright, K - Aamit Singh?', 'timestamp': '2026-03-03 02:02:47 PM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-03 02:02:56 PM +0000'}}, {{'role': 'agent', 'message': 'Okay, K - Aamit Singh Someone will be with you soon to assist you in Hindi Thanks for your time!', 'timestamp': '2026-03-03 02:02:59 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 02:02:59 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 02:03:05 PM +0000'}}]
 
     CONVERTED (Customer successfully completed the primary objective)
      - Reasoning: The user has explicitly accepted the core call-to-action (CTA) or provided the specific data required to close the task (e.g., confirming a time or providing a phone number).
-     - Example: [{{'role': 'agent', 'message': 'Are you interested?'}}, {{'role': 'user', 'message': 'Yes, sign me up for the 10 AM slot'}}] -> Objective achieved.
-    
+     - Example 1: [{{'role': 'agent', 'message': 'Are you interested?'}}, {{'role': 'user', 'message': 'Yes, sign me up for the 10 AM slot'}}] -> Objective achieved.
+     - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-04 04:07:56 AM +0000'}}, {{'role': 'user', 'message': 'Mm-hmm', 'timestamp': '2026-03-04 04:08:01 AM +0000'}}, {{'role': 'agent', 'message': 'Great Muthu! Thank you for considering the Citroen Aircross When evaluating SUVs, do you compare feature-to-price balance to identify the strongest overall value?', 'timestamp': '2026-03-04 04:08:02 AM +0000'}}, {{'role': 'user', 'message': '[clears throat] Madam Tamil', 'timestamp': '2026-03-04 04:08:13 AM +0000'}}, {{'role': 'agent', 'message': 'Ah, unga peru Muthu nu therinjathu Citroen Aircross pathi pesalam Ungaluku pudicha mathiri, uh, car pathi pesanum na, uh, enna vishayam pathi pesalam nu sollunga?', 'timestamp': '2026-03-04 04:08:15 AM +0000'}}, {{'role': 'user', 'message': 'Thamizh, thamiz', 'timestamp': '2026-03-04 04:08:29 AM +0000'}}, {{'role': 'agent', 'message': 'Oh, uh, mannikkavum Naan ungaludan Thamizhilye pesuren Citroen Aircross pathi ungaluku enna therinjukittum?', 'timestamp': '2026-03-04 04:08:31 PM +0000'}}, {{'role': 'user', 'message': 'Eh', 'timestamp': '2026-03-04 04:08:41 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, sari', 'timestamp': '2026-03-04 04:08:42 AM +0000'}}, {{'role': 'user', 'message': 'Seven seater, seven seater EV', 'timestamp': '2026-03-04 04:08:42 AM +0000'}}, {{'role': 'agent', 'message': 'Got it', 'timestamp': '2026-03-04 04:08:47 AM +0000'}}, {{'role': 'user', 'message': 'Kizhile', 'timestamp': '2026-03-04 04:08:47 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, Muthu, Citroen Aircross vanthu, uh, petrol engine la mattum thaan irukku Ippo electric version illai Aana, athu five-seater mattum illama, seven-seater option layum irukku', 'timestamp': '2026-03-04 04:08:49 AM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-04 04:09:03 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, okay Muthu, ungaluku seven-seater car venum na, Citroen C3 Aircross pathi konjam sollatuma? Athu five-seater and seven-seater rendu configuration layum varum', 'timestamp': '2026-03-04 04:09:05 AM +0000'}}, {{'role': 'user', 'message': '', 'timestamp': '2026-03-04 04:09:21 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, Muthu, neenga innum', 'timestamp': '2026-03-04 04:09:22 AM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-04 04:09:24 AM +0000'}}, {{'role': 'agent', 'message': 'Okay C3', 'timestamp': '2026-03-04 04:09:26 AM +0000'}}, {{'role': 'user', 'message': 'Mm', 'timestamp': '2026-03-04 04:09:27 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, C3 Aircross vanthu, uh, family ku romba nalla option Athula, uh, romba neram payanam ponalum, aramama irukura mathiri seats irukum Adhoda, uh, third row seats thevai illana eduthu vechikkalam Appo, uh, boot space romba perusa irukum', 'timestamp': '2026-03-04 04:09:29 AM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-04 04:09:46 AM +0000'}}, {{'role': 'agent', 'message': 'Okay Uh,', 'timestamp': '2026-03-04 04:09:48 AM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-04 04:09:49 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, adhu mattum illama, uh, C3 Aircross la, uh, safety ku romba mukkiyathuvam koduthirukkom Athula, uh, six airbags irukku, adoda, uh, ESP, Hill Hold Assist mathiri features ellam irukku', 'timestamp': '2026-03-04 04:09:50 AM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-04 04:10:06 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, Muthu, indha C3 Aircross car-a, uh, neenga nerla paathu, drive panni paakanum nu ninaikireengala? Oru test drive arrange panna venduma?', 'timestamp': '2026-03-04 04:10:08 AM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-04 04:10:19 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, neenga test drive panna virumbureengala Muthu?', 'timestamp': '2026-03-04 04:10:22 AM +0000'}}, {{'role': 'user', 'message': 'Ama, okay', 'timestamp': '2026-03-04 04:10:27 AM +0000'}}, {{'role': 'agent', 'message': 'Got it Unga pincode 627811 nu irukku Idhu correct', 'timestamp': '2026-03-04 04:10:29 AM +0000'}}, {{'role': 'user', 'message': 'Ama Yes', 'timestamp': '2026-03-04 04:10:30 AM +0000'}}, {{'role': 'agent', 'message': 'Thank you We'll arrange a test drive at your nearest dealership You'll hear from our team shortly to coordinate the details Thanks for your time I really appreciate it\n', 'timestamp': '2026-03-04 04:10:33 AM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-04 04:10:34 AM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-04 04:10:43 AM +0000'}}]
+
     # INPUT DATA
     Conversation Summary:
     {session_summary}
@@ -1669,3 +1801,23 @@ def get_disposition_classification(query = None, session_id = None, session_data
     """
     result = run_prompt_sync(user_query = " ",  system_prompt= prompt, history=[], **{"session_id": session_id, "model_identifier":"gcp-gemini-3.1-flash-lite-preview"})
     return result
+
+
+def update_error_in_lead_and_session(error_msg,source,**kwargs):
+    
+    mlogger.info(f"[Error Occured] - {error_msg} -- Source - {source}. So updating in the lead and session.")
+    
+    lead_id=kwargs.get("lead_id")
+    lead_model=kwargs.get("lead_model")
+    channel=kwargs.get("channel")
+    session_id=kwargs.get("session_id") or None
+    lead_model_id="pre_sales_lead_id" if lead_model == "pre_sales_lead" else "post_sales_lead_id"
+    with get_pg_connector() as pg:
+        if lead_id and lead_model:
+            pg.update(lead_model,lead_model_id,lead_id,{"disposition":"error","disposition_detail":error_msg})
+        if not session_id:
+            s_d=list(pg.list("session",{"lead_id":lead_id,"lead_model":lead_model,"channel":channel}))
+            session_id=s_d[0].get("session_id") if s_d else None
+        pg.update("session","session_id",session_id,{"disposition":"error","disposition_detail":error_msg})
+        mlogger.info(f"Updated ERROR in lead and session for lead_id={lead_id} and lead_model={lead_model} and channel={channel} and session_id={session_id}")
+    return

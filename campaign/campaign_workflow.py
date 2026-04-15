@@ -2,7 +2,7 @@ import sys
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
+    sys.path.insert(0, BASE_DIR)
 from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CAMPAIGN_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME, gryd, hp, AutocrmModel, AUTOCRM_ALLOWED_CHANNELS, AUTOCRM_CHEAPEST_CHANNELS
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any

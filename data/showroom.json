@@ -1,405 +1,427 @@
 {
-  "timezone": "Asia/Kolkata",
-  "name": "showroom",
-  "model_type": "default",
-  "attributes": [
-    {
-      "name": "created",
-      "type": "number",
-      "auto_updater": true,
-      "default": {
-        "function": "now_ctime"
-      }
-    },
-    {
-      "name": "updated",
-      "type": "number",
-      "auto_updater": true,
-      "force_update": true,
-      "default": {
-        "function": "now_ctime"
-      }
-    },
-    {
-      "name": "dealership_id",
-      "refers": "parents.dealership.dealership_id",
-      "indexed": true,
-      "default": {
-        "function": "name_to_id",
-        "args": [
-          "dealer_name",
-          "dealer_group_name",
-          "region_name"
-        ],
-        "kwargs": {
-          "attribute_join": "-",
-          "is_unique": true,
-          "separator": "-",
-          "skip_empty": true,
-          "case": "lower"
+    "timezone": "Asia/Kolkata",
+    "name": "showroom",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id",
+            "indexed": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "dealer_name",
+                    "dealer_group_name",
+                    "region_name"
+                ],
+                "kwargs": {
+                    "attribute_join": "-",
+                    "is_unique": true,
+                    "separator": "-",
+                    "skip_empty": true,
+                    "case": "lower"
+                }
+            }
+        },
+        {
+            "name": "dealer_group_name",
+            "refers": "parents.dealership.dealer_group_name"
+        },
+        {
+            "name": "dealer_name",
+            "refers": "parents.dealership.dealer_name"
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.dealership.region_id",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "region",
+                    "region_id"
+                ],
+                "kwargs": {
+                    "region_name": "{region_name}"
+                }
+            }
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.dealership.region_name"
+        },
+        {
+            "name": "region_level_guidelines",
+            "refers": "parents.dealership.region_level_guidelines"
+        },
+        {
+            "name": "region_level_guardrails",
+            "refers": "parents.dealership.region_level_guardrails"
+        },
+        {
+            "name": "region_subdivision_id",
+            "refers": "parents.region_subdivision.subdivision_id",
+            "required": false,
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "region_subdivision",
+                    "subdivision_id"
+                ],
+                "kwargs": {
+                    "subdivision_name": "{subdivision_name}"
+                }
+            }
+        },
+        {
+            "name": "subdivision_name",
+            "refers": "parents.region_subdivision.subdivision_name"
+        },
+        {
+            "name": "timezone",
+            "refers": "parents.region_subdivision.timezone"
+        },
+        {
+            "name": "languages",
+            "refers": "parents.region_subdivision.languages"
+        },
+        {
+            "name": "subdivision_level_guidelines",
+            "refers": "parents.region_subdivision.subdivision_level_guidelines"
+        },
+        {
+            "name": "subdivision_level_guardrails",
+            "refers": "parents.region_subdivision.subdivision_level_guardrails"
+        },
+        {
+            "name": "showroom_name",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "showroom_code",
+            "type": "text"
+        },
+        {
+            "name": "showroom_full_name",
+            "type": "text",
+            "indexed": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "dealer_name",
+                    "showroom_name",
+                    "city",
+                    "locality",
+                    "pincode"
+                ],
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " ",
+                    "case": "title",
+                    "skip_empty": true
+                }
+            }
+        },
+        {
+            "name": "showroom_code",
+            "type": "text",
+            "indexed": true,
+            "default": {
+                "function": "copy_attribute",
+                "args": [
+                    "showroom_name"
+                ]
+            }
+        },
+        {
+            "name": "showroom_type",
+            "type": "text",
+            "options": [
+                "Main Showroom",
+                "City Outlet",
+                "Express Outlet",
+                "Experience Center",
+                "Mall Kiosk",
+                "Virtual Showroom"
+            ]
+        },
+        {
+            "name": "supported_brands",
+            "type": "list",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "supported_brands"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "dealership_id"
+        },
+        {
+            "name": "supported_brands_guidelines",
+            "refers": "parents.dealership.supported_brands_guidelines"
+        },
+        {
+            "name": "showroom_level_guidelines",
+            "type": "text"
+        },
+        {
+            "name": "showroom_level_guardrails",
+            "type": "text"
+        },
+        {
+            "name": "contact_number",
+            "type": "text"
+        },
+        {
+            "name": "email",
+            "type": "text"
+        },
+        {
+            "name": "locality",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "address",
+            "type": "text"
+        },
+        {
+            "name": "city",
+            "type": "text"
+        },
+        {
+            "name": "state",
+            "type": "text"
+        },
+        {
+            "name": "pincode",
+            "type": "text"
+        },
+        {
+            "name": "geolocation",
+            "type": "geolocation"
+        },
+        {
+            "name": "logo_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "image",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "logo_url"
+                ]
+            }
+        },
+        {
+            "name": "dark_theme_logo_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "image",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dark_theme_logo_url"
+                ]
+            }
+        },
+        {
+            "name": "light_theme_logo_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            },
+            "ui_element": "image",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "light_theme_logo_url"
+                ]
+            }
+        },
+        {
+            "name": "operating_hours",
+            "type": "nested_object",
+            "dict_keys": [
+                "opening_time",
+                "closing_time"
+            ]
+        },
+        {
+            "name": "days_open",
+            "type": "list",
+            "options": [
+                "Sunday",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday"
+            ]
+        },
+        {
+            "name": "manager_name",
+            "type": "text"
+        },
+        {
+            "name": "manager_contact",
+            "type": "text"
+        },
+        {
+            "name": "total_sales_executives",
+            "type": "number"
+        },
+        {
+            "name": "daily_walkin_capacity",
+            "type": "number"
+        },
+        {
+            "name": "facilities_available",
+            "ui_element": "multiselect",
+            "type": "string_list",
+            "options": [
+                "Customer Lounge",
+                "Wi-Fi",
+                "Cafe / Refreshments",
+                "Test Drive Zone",
+                "Display Vehicles",
+                "Finance Desk",
+                "Insurance Desk",
+                "Accessories Section",
+                "EV Charging Point",
+                "Children Play Area",
+                "Parking Facility",
+                "Virtual Reality Experience",
+                "Online Booking Portal",
+                "Home Test Drive",
+                "Personal Sales Consultant",
+                "Extended Working Hours",
+                "Weekend Availability",
+                "Festive Offers",
+                "Loyalty Programs"
+            ]
+        },
+        {
+            "name": "parking_capacity",
+            "type": "number"
+        },
+        {
+            "name": "display_vehicle_count",
+            "type": "number"
+        },
+        {
+            "name": "google_reviews_rating",
+            "type": "text"
+        },
+        {
+            "name": "google_reviews",
+            "type": "text"
+        },
+        {
+            "name": "google_my_business_listing",
+            "type": "text"
+        },
+        {
+            "name": "showroom_reviews",
+            "type": "text"
+        },
+        {
+            "name": "showroom_photos",
+            "type": "text"
+        },
+        {
+            "name": "showroom_rating",
+            "type": "text"
+        },
+        {
+            "name": "showroom_status",
+            "indexed": true,
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "dealership",
+                    "dealership_id",
+                    "dealer_status"
+                ]
+            },
+            "auto_updater": true,
+            "force_update": "dealership_id"
+        },
+        {
+            "name": "hashtags",
+            "type": "string_list",
+            "list_type": "text",
+            "indexed": true,
+            "ui_element": "tags"
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": [
+                    "dealer_name",
+                    "showroom_name",
+                    "city",
+                    "locality",
+                    "pincode"
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "attribute_join": "-",
+                    "is_unique": true,
+                    "separator": "-",
+                    "skip_empty": true,
+                    "case": "lower"
+                }
+            },
+            "name": "showroom_id",
+            "type": "uid",
+            "id": true
         }
-      }
-    },
-    {
-      "name": "dealer_group_name",
-      "refers": "parents.dealership.dealer_group_name"
-    },
-    {
-      "name": "dealer_name",
-      "refers": "parents.dealership.dealer_name"
-    },
-    {
-      "name": "region_id",
-      "refers": "parents.dealership.region_id",
-      "default": {
-        "function": "search_in_model",
-        "args": [
-          "region",
-          "region_id"
-        ],
-        "kwargs": {
-          "region_name": "{region_name}"
-        }
-      }
-    },
-    {
-      "name": "region_name",
-      "refers": "parents.dealership.region_name"
-    },
-    {
-      "name": "region_level_guidelines",
-      "refers": "parents.dealership.region_level_guidelines"
-    },
-    {
-      "name": "region_level_guardrails",
-      "refers": "parents.dealership.region_level_guardrails"
-    },
-    {
-      "name": "region_subdivision_id",
-      "refers": "parents.region_subdivision.subdivision_id",
-      "options": "/options/region_subdivision/subdivision_name?region_id={region_id}"
-    },
-    {
-      "name": "subdivision_name",
-      "refers": "parents.region_subdivision.subdivision_name"
-    },
-    {
-      "name": "timezone",
-      "refers": "parents.region_subdivision.timezone"
-    },
-    {
-      "name": "languages",
-      "refers": "parents.region_subdivision.languages"
-    },
-    {
-      "name": "subdivision_level_guidelines",
-      "refers": "parents.region_subdivision.subdivision_level_guidelines"
-    },
-    {
-      "name": "subdivision_level_guardrails",
-      "refers": "parents.region_subdivision.subdivision_level_guardrails"
-    },
-    {
-      "name": "showroom_name",
-      "type": "text",
-      "indexed": true
-    },
-    {
-      "name": "showroom_code",
-      "type": "text"
-    },
-    {
-      "name": "showroom_full_name",
-      "type": "text",
-      "indexed": true,
-      "default": {
-        "function": "name_to_id",
-        "args": [
-          "dealer_name",
-          "showroom_name"
-        ],
-        "kwargs": {
-          "attribute_join": " ",
-          "is_unique": true,
-          "separator": " ",
-          "case": "title",
-          "skip_empty": true
-        }
-      }
-    },
-    {
-      "name": "showroom_code",
-      "type": "text",
-      "indexed": true,
-      "default": {
-        "function": "copy_attribute",
-        "args": [
-          "showroom_name"
-        ]
-      }
-    },
-    {
-      "name": "showroom_type",
-      "type": "text",
-      "options": [
-        "Main Showroom",
-        "City Outlet",
-        "Express Outlet",
-        "Experience Center",
-        "Mall Kiosk",
-        "Virtual Showroom"
-      ]
-    },
-    {
-      "name": "supported_brands",
-      "type": "list",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "dealership",
-          "dealership_id",
-          "supported_brands"
-        ]
-      },
-      "auto_updater": true,
-      "force_update": "dealership_id"
-    },
-    {
-      "name": "supported_brands_guidelines",
-      "refers": "parents.dealership.supported_brands_guidelines"
-    },
-    {
-      "name": "showroom_level_guidelines",
-      "type": "text"
-    },
-    {
-      "name": "showroom_level_guardrails",
-      "type": "text"
-    },
-    {
-      "name": "contact_number",
-      "type": "text"
-    },
-    {
-      "name": "email",
-      "type": "text"
-    },
-    {
-      "name": "address",
-      "type": "text"
-    },
-    {
-      "name": "city",
-      "type": "text"
-    },
-    {
-      "name": "state",
-      "type": "text"
-    },
-    {
-      "name": "pincode",
-      "type": "text"
-    },
-    {
-      "name": "geolocation",
-      "type": "geolocation"
-    },
-    {
-      "name": "logo_url",
-      "type": "text",
-      "constraint": {
-        "function": "url_validator"
-      },
-      "converter": {
-        "function": "url_converter"
-      },
-      "ui_element": "image",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "dealership",
-          "dealership_id",
-          "logo_url"
-        ]
-      }
-    },
-    {
-      "name": "dark_theme_logo_url",
-      "type": "text",
-      "constraint": {
-        "function": "url_validator"
-      },
-      "converter": {
-        "function": "url_converter"
-      },
-      "ui_element": "image",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "dealership",
-          "dealership_id",
-          "dark_theme_logo_url"
-        ]
-      }
-    },
-    {
-      "name": "light_theme_logo_url",
-      "type": "text",
-      "constraint": {
-        "function": "url_validator"
-      },
-      "converter": {
-        "function": "url_converter"
-      },
-      "ui_element": "image",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "dealership",
-          "dealership_id",
-          "light_theme_logo_url"
-        ]
-      }
-    },
-    {
-      "name": "operating_hours",
-      "type": "nested_object",
-      "dict_keys": [
-        "opening_time",
-        "closing_time"
-      ]
-    },
-    {
-      "name": "days_open",
-      "type": "list",
-      "options": [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday"
-      ]
-    },
-    {
-      "name": "manager_name",
-      "type": "text"
-    },
-    {
-      "name": "manager_contact",
-      "type": "text"
-    },
-    {
-      "name": "total_sales_executives",
-      "type": "number"
-    },
-    {
-      "name": "daily_walkin_capacity",
-      "type": "number"
-    },
-    {
-      "name": "facilities_available",
-      "ui_element": "multiselect",
-      "type": "string_list",
-      "options": [
-        "Customer Lounge",
-        "Wi-Fi",
-        "Cafe / Refreshments",
-        "Test Drive Zone",
-        "Display Vehicles",
-        "Finance Desk",
-        "Insurance Desk",
-        "Accessories Section",
-        "EV Charging Point",
-        "Children Play Area",
-        "Parking Facility",
-        "Virtual Reality Experience",
-        "Online Booking Portal",
-        "Home Test Drive",
-        "Personal Sales Consultant",
-        "Extended Working Hours",
-        "Weekend Availability",
-        "Festive Offers",
-        "Loyalty Programs"
-      ]
-    },
-    {
-      "name": "parking_capacity",
-      "type": "number"
-    },
-    {
-      "name": "display_vehicle_count",
-      "type": "number"
-    },
-    {
-      "name": "google_reviews_rating",
-      "type": "text"
-    },
-    {
-      "name": "google_reviews",
-      "type": "text"
-    },
-    {
-      "name": "google_my_business_listing",
-      "type": "text"
-    },
-    {
-      "name": "showroom_reviews",
-      "type": "text"
-    },
-    {
-      "name": "showroom_photos",
-      "type": "text"
-    },
-    {
-      "name": "showroom_rating",
-      "type": "text"
-    },
-    {
-      "name": "showroom_status",
-      "indexed": true,
-      "type": "text",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "dealership",
-          "dealership_id",
-          "dealer_status"
-        ]
-      },
-      "auto_updater": true,
-      "force_update": "dealership_id"
-    },
-    {
-      "name": "hashtags",
-      "type": "string_list",
-      "list_type": "text",
-      "indexed": true,
-      "ui_element": "tags"
-    },
-    {
-      "auto_updater": true,
-      "default": {
-        "args": [
-          "dealer_name",
-          "showroom_name",
-          "city"
-        ],
-        "function": "name_to_id",
-        "kwargs": {
-          "attribute_join": "-",
-          "is_unique": true,
-          "separator": " - "
-        }
-      },
-      "name": "showroom_id",
-      "type": "uid",
-      "id": true
-    }
-  ],
-  "parents": [
-    "dealership",
-    "region_subdivision"
-  ]
+    ],
+    "parents": [
+        "dealership",
+        "region_subdivision"
+    ]
 }

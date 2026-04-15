@@ -201,6 +201,10 @@
             "options": "/options/brand/brand_name?region_id={region_id}"
         },
         {
+            "name": "brand_hashtags",
+            "refers": "parents.brand.hashtags"
+        },
+        {
             "name": "template_image_url",
             "refers": "parents.autosphere_template.image_url"
         },

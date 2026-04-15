@@ -1,6 +1,8 @@
 from elevenlabs import ElevenLabs
 import os, sys, json
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 import utils
 from flask import Flask, app, request, jsonify, Blueprint
 from ..utils import helpers as voice_helpers
@@ -150,17 +152,20 @@ def twilio_callback_events(data: dict):
         logger.info(f"SESSION_HISTOR: {session_history}")
         transcript_summary = body.get("analysis",{}).get("transcript_summary")
 
-        gryd_tasks.post_history(session_id, session_history)
-        
-        gryd_tasks.end_session(**{
+        gryd_tasks.gryd.create_async_task(
+            "end_session_and_post_process",
+            config.AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
+            args  = [],
+            kwargs={
                 "session_id": session_id,
                 "additional_dict":{
                     "history": session_history,
                     "status": "completed",
-                    "summary": transcript_summary,
-                    "duration":duration
-                }
-            }) 
+                    "summary": transcript_summary
+                },
+                "channel": "voice_phone"
+            })
+        
     elif call_status in ["queued", 'initiated', 'ringing', 'answered',"in-progress"]:
         gryd_tasks.post_contact_status_voice(session_id = session_id, message_id=session_id, **{"status": call_status})
     elif call_status in ["no-answer", "busy", "canceled", 'failed', 'error', 'unknown']:

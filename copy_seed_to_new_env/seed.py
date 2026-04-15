@@ -3,7 +3,9 @@ import sys,os
 import time
 from datetime import datetime, timedelta
 from gryd_worker import gryd,gryd_db_helper as db_helper,gryd_helpers as hp
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+_root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 from autocrm_db_helper import get_pg_connector
 
 logger = gryd.hp.get_logger(__name__)
