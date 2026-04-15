@@ -414,15 +414,15 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
         self.num_of_campaign_post_sets = num_of_campaign_post_sets
         self.num_of_hashtags = num_of_hashtags
 
+
+
         self.title_max_length = title_max_length
         self.hook_max_length = hook_max_length
         self.slogan_max_length = slogan_max_length
         self.caption_max_length = caption_max_length
         self.message_max_length = message_max_length
         self.cta_max_length = cta_max_length
-
-        self.model_identifier = model_identifier
-
+  
         self.model_identifier = model_identifier
 
         self.llm=lambda messages:ai_service_app.get_llm_response(messages=messages, model_identifier=self.model_identifier)
@@ -447,40 +447,6 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
             a different strategic angle (e.g., performance, lifestyle, safety, tech, aspiration).
             Avoid generic or repetitive themes.
         """
-
-    @property
-    def _output_schema(self) -> str:
-        """Returns the expected JSON output schema for campaign ideas, with field-level length constraints injected dynamically."""
-        def _len_note(max_len: int | None, label: str) -> str:
-            if max_len is None:
-                return "no fixed limit"
-            return f"max {max_len} words" 
-        
-        schema = f"""
-        OUTPUT SCHEMA (per campaign idea) — strict JSON, no markdown, no extra keys:
-
-        {{
-            "campaign_idea_identifier": <string — exact ID from the batch; {_len_note(self.title_max_length, 'title')}>,
-            "campaign_objective": <string>,
-            "campaign_explanation": <string — for media planners; must name product, target audience, insight, channels, featured specs>,
-            "audience": [<string>, ...],
-            "cta": [
-                <string — {_len_note(self.cta_max_length, 'cta')}>,
-                ...
-            ],
-            "hashtags": [<string>, ...],   // exactly {self.num_of_hashtags}; ≥60% product-specific (include model name)
-            "campaign_post_sets": [        // exactly {self.num_of_campaign_post_sets} items
-                {{
-                    "post_caption": [<string — {_len_note(self.caption_max_length, 'caption')}>],
-                    "hooks":        [<string — {_len_note(self.hook_max_length, 'hook')}>],
-                    "slogan":       [<string — {_len_note(self.slogan_max_length, 'slogan')}>],
-                    "messages":     [<string — {_len_note(self.message_max_length, 'message')}; 7-8 sentences; product name in first 2; ≥2-3 specific features; subtle emojis; optional closing question>]
-                }},
-                ...
-            ]
-        }}
-        """
-        return schema.strip()
 
     @property
     def _output_schema(self) -> str:
@@ -605,7 +571,7 @@ class CampaignIdeaGeneratorAgent(UtilityMixin):
 
         TONE: Premium, confident, automotive-focused. Think product spotlight, not brand awareness.
 
-        Example Output:
+        Example Output (This is just an example, Please consider all the parameters while generating campaign ideas):
         [
             {{
                 "campaign_idea_identifier": "aircross_urban_performance_push",
