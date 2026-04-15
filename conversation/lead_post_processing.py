@@ -11,7 +11,10 @@ from autocrm_db_helper import get_pg_connector
 json = hp.json
 from conversation.yield_response import yield_result,yield_error, yield_status
 from conversation.prompt import run_prompt_sync
-from communication.connectors.communication_helpers import get_communication_credential,generate_uid
+# from campaign.campaign_manager import generate_uid
+# # from communication.connectors.communication_helpers import get_communication_credential,generate_uid
+# ----
+from communication.common_utils import get_communication_credential,generate_uid
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
@@ -83,6 +86,7 @@ def end_session_and_post_process(*args, **kwargs):
             _do_db_work(pg_conn)
 
     if any( _ == "voice" for _ in kwargs.get("channel", "").split("_")):
+        mlogger.info(f"Session with session_id: {session_id} is a voice session, posting messages for voice session.")
         post_messages_for_voice_session(session_id, additional_dict.get("history",[]))
         
     mlogger.info(f"Calling post session process task for session_id: {session_id}")
@@ -102,7 +106,6 @@ def post_messages_for_voice_session(session_id, session_history):
 
     #in zero'th index add empty user message for better indexing
     user_msgs.insert(0, {"role": "user", "content": "__init__"})
-
     if len(agent_msgs) != len(user_msgs):
         mlogger.error(
             f"post_history: agent ({len(agent_msgs)}) and user ({len(user_msgs)}) message counts do not match"
@@ -115,7 +118,7 @@ def post_messages_for_voice_session(session_id, session_history):
         a = agent_msgs[i] if i < len(agent_msgs) else {}
         tme = hp.time()
         history.append({
-            "reply_to": generate_uid(u) if u else gryd.hp.make_uuid3(str(time.time())),
+            "reply_to": str(generate_uid(u) if u else gryd.hp.make_uuid3(str(time.time()))),
             "customer_response": u.get("message", ""),
             "request_data": {
                 "customer_response": u.get("message", "")
@@ -464,7 +467,8 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         # also updating session dispositon--
         template_message = data.get("template_message") if data else None
         if channel in ["whatsapp_chat"]:
-            s_d=list(pg.list("session",{"lead_id":lead_id}))
+            # s_d=list(pg.list("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table}))
+            s_d=list(pg.list_order_by("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table},order="DESC"))
             if not s_d:
                 mlogger.info(f"No session found for lead_id: {lead_id}")
                 return
@@ -1135,6 +1139,8 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     has_user_message = False
     for message in messages:
         mlogger.info("message in get_disposition -  {}".format(message))
+        if not message:
+            continue
         if "intent" in message and message.get("intent") == "llm_response":
             message_history.append({"role" : "my agent", "message":message.get("message","")})
         else:
@@ -1397,6 +1403,8 @@ def get_preffered_language(session_id,session_data_cache):
     messages = session_data_cache.get("messages")
     message_history = []
     for message in messages:
+        if not message:
+            continue
         if "intent" in message and message.get("intent") == "llm_response":
             message_history.append({"role" : "my agent", "message":message.get("message","")})
         else:
@@ -1756,6 +1764,8 @@ def get_disposition_classification(query = None, session_id = None, session_data
     has_user_message = False
     for message in messages:
         mlogger.info("message in get_disposition -  {}".format(message))
+        if not message:
+            continue
         if "intent" in message and message.get("intent") == "llm_response":
             message_history.append({"role" : "my agent", "message":message.get("message","")})
         else:
@@ -1816,3 +1826,25 @@ def get_disposition_classification(query = None, session_id = None, session_data
     """
     result = run_prompt_sync(user_query = " ",  system_prompt= prompt, history=[], **{"session_id": session_id, "model_identifier":"gcp-gemini-3.1-flash-lite-preview"})
     return result
+
+
+def update_error_in_lead_and_session(error_msg,source,**kwargs):
+    
+    mlogger.info(f"[Error Occured] - {error_msg} -- Source - {source}. So updating in the lead and session.")
+    
+    lead_id=kwargs.get("lead_id")
+    lead_model=kwargs.get("lead_model")
+    channel=kwargs.get("channel")
+    session_id=kwargs.get("session_id") or None
+    lead_model_id="pre_sales_lead_id" if lead_model == "pre_sales_lead" else "post_sales_lead_id"
+    with get_pg_connector() as pg:
+        if lead_id and lead_model:
+            pg.update(lead_model,lead_model_id,lead_id,{"disposition":"error","disposition_detail":error_msg})
+        if not session_id:
+            s_d=list(pg.list("session",{"lead_id":lead_id,"lead_model":lead_model,"channel":channel}))
+            session_id=s_d[0].get("session_id") if s_d else None
+        pg.update("session","session_id",session_id,{"disposition":"error","disposition_detail":error_msg})
+        mlogger.info(f"Updated ERROR in lead and session for lead_id={lead_id} and lead_model={lead_model} and channel={channel} and session_id={session_id}")
+    return
+
+

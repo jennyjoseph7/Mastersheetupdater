@@ -29,7 +29,6 @@ from elevenlabs import ElevenLabs
 from typing import Dict, Any, Optional
 import audioop  # Native C extension - fast audio processing
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp
-import gryd_tasks
 import utils
 
 # Use uvloop for faster event loop (Linux/macOS only)

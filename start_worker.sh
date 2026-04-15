@@ -323,8 +323,14 @@ function start_workers() {
 			if [ $SERVER_PORT != 0 ];then
 				WEBAPP_PORT=$SERVER_PORT
 			fi
-
-			nohup $WAITRESS_PATH --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log &
+			for i in $(seq 1 $WEBAPP_API_THREADS); do
+                echo "Thread No: $i"
+				WP=$(($WEBAPP_PORT + $i - 1))
+				nohup $WAITRESS_PATH --ident="" --port=${WP} --url-scheme=${WEBAPP_URL_SCHEME} --threads=2 ${WEBAPP_APP_NAME}:app 1>> ${LOGDIR}/webapp_stdout_${i}.log 2>> ${LOGDIR}/webapp_stderr_${i}.log &
+	    	    app_pid=$!
+				echo $app_pid >> app.pid
+				echo $app_pid > app_${WP}.pid
+			done
 
 			#export RDS_SECRET=${RDS_SECRET} && nohup python app.py 1>> ${LOGDIR}/webapp_stdout.log 2>> ${LOGDIR}/webapp_stderr.log & 
 		fi

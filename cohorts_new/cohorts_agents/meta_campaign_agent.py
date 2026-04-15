@@ -216,8 +216,11 @@ class MetaAdCampaignAgent(UtilityMixin):
         self.brochure_url = brochure_url
         self.product_website_url = product_website_url
 
-        self.brochure_content: dict = (self.fetch_brochure_content(brochure_url=self.brochure_url) if self.brochure_url else {})
-        self.product_website_content: dict = (self.fetch_product_details_from_website(website_url=self.product_website_url) if self.product_website_url else {})
+        self.brochure_content: dict = self.fetch_brochure_content(brochure_url = self.brochure_url) 
+        self.product_website_content: dict = self.fetch_product_details_from_website(website_url = self.product_website_url)
+
+        self.brochure_content = self.brochure_content if self.brochure_content is not None else {}
+        self.product_website_content = self.product_website_content if self.product_website_content is not None else {}
 
         self.num_of_campaign_ideas = num_of_campaign_ideas
         self.model_identifier = model_identifier
@@ -385,8 +388,13 @@ class MetaAdAdsetAgent(UtilityMixin):
         self.brochure_url = brochure_url
         self.product_website_url = product_website_url
 
-        self.brochure_content: dict = (self.fetch_brochure_content(brochure_url=self.brochure_url) if self.brochure_url else {})
-        self.product_website_content: dict = (self.fetch_product_details_from_website(website_url=self.product_website_url) if self.product_website_url else {})
+        
+        self.brochure_content: dict = self.fetch_brochure_content(brochure_url=self.brochure_url) 
+        self.product_website_content: dict = self.fetch_product_details_from_website(website_url=self.product_website_url)
+
+        self.brochure_content = self.brochure_content if self.brochure_content is not None else {}
+        self.product_website_content = self.product_website_content if self.product_website_content is not None else {}
+
 
         self.fb_campaigns = fb_campaigns
         self.num_of_adsets = num_of_adsets
@@ -424,6 +432,10 @@ class MetaAdAdsetAgent(UtilityMixin):
                                 {"key": "string", "name": "string", "region": "string"}
                             ],
                         },
+                        "interests": ["string 1", "string 2", "string n"],
+                        "behaviours": ["string 1", "string 2", "string n"],
+                        "custom_audiences": ["string 1", "string 2", "string n"],
+                        "lookalike_audiences": ["string 1", "string 2", "string n"]
                     },
                 }
             ],
@@ -586,8 +598,11 @@ class MetaAdCreativeAgent(UtilityMixin):
         self.brochure_url = brochure_url
         self.product_website_url = product_website_url
 
-        self.brochure_content: dict = (self.fetch_brochure_content(brochure_url=self.brochure_url) if self.brochure_url else {})
-        self.product_website_content: dict = (self.fetch_product_details_from_website(website_url=self.product_website_url) if self.product_website_url else {})
+        self.brochure_content: dict = self.fetch_brochure_content(brochure_url=self.brochure_url) 
+        self.product_website_content: dict = self.fetch_product_details_from_website(website_url=self.product_website_url)
+
+        self.brochure_content = self.brochure_content if self.brochure_content is not None else {}
+        self.product_website_content = self.product_website_content if self.product_website_content is not None else {}
 
         self.fb_campaigns = fb_campaigns or []
         self.fb_adsets = fb_adsets or []
@@ -621,7 +636,8 @@ class MetaAdCreativeAgent(UtilityMixin):
             ],
             indent=2,
         )
-
+    
+    # FB, Insta, Google, Website
     def _build_context(self) -> str:
         parts = ["## Audience Intelligence"]
         if self.source:
@@ -773,7 +789,6 @@ class MetaAdCreativeAgent(UtilityMixin):
             "creative_adset_map": self._creative_adset_map,
         }
 
-
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------# 
 # -------------------------------------------------------------------------------------------------------------------------------------------------------------# 
 
@@ -804,19 +819,13 @@ class MetaAdAgent(UtilityMixin):
         self.brochure_url = brochure_url
         self.product_website_url = product_website_url
  
-        self.brochure_content: dict = (
-            self.fetch_brochure_content(brochure_url=self.brochure_url)
-            if self.brochure_url
-            else {}
-        )
-        self.product_website_content: dict = (
-            self.fetch_product_details_from_website(
-                website_url=self.product_website_url
-            )
-            if self.product_website_url
-            else {}
-        )
- 
+        self.brochure_content: dict = self.fetch_brochure_content(brochure_url = self.brochure_url) 
+        self.product_website_content: dict = self.fetch_product_details_from_website(website_url = self.product_website_url)
+
+        self.brochure_content = self.brochure_content if self.brochure_content is not None else {}
+        self.product_website_content = self.product_website_content if self.product_website_content is not None else {}
+
+
         self.num_of_campaign_ideas = num_of_campaign_ideas
         self.num_of_adsets = num_of_adsets
         self.num_of_ad_creatives = num_of_ad_creatives

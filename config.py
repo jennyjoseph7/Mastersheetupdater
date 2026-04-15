@@ -1,4 +1,5 @@
-from gryd_worker import gryd, gryd_routes, gryd_helpers as hp
+from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, beats as cron_worker
+from ai_service import ai_service_app
 import os, sys, csv, re
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 AUTOCRM_ADMIN_ID = os.environ.get("AUTOCRM_ADMIN_ID", "ananth+autocrm-app@i2ce.in")
@@ -37,11 +38,11 @@ AUTOCRM_ALLOWED_CHANNELS = [
     "ms_teams"
 ]
 AUTOCRM_CHEAPEST_CHANNELS = [
-    "email",
-    "whatsapp_chat",
-    "rcs",
     "voice_phone",
+    "whatsapp_chat",
     "whatsapp_voice_note",
+    "email",
+    "rcs",
     "whatsapp_voice_call",
 ]
 AUTOCRM_CALL_CONNECTED_PRICE = float(os.environ.get("AUTOCRM_CALL_CONNECTED_PRICE", 2))
@@ -121,14 +122,14 @@ FIREFLY_CONTENT_CLASS = os.environ.get("FIREFLY_CONTENT_CLASS", "photo")
 FIREFLY_STRUCTURE_STRENGTH = int(os.environ.get("FIREFLY_STRUCTURE_STRENGTH", "85"))
 try:
     FIREFLY_CREDITS_PER_IMAGE = float(os.environ.get("FIREFLY_CREDITS_PER_IMAGE", "1"))
-    FIREFLY_USD_PER_CREDIT = float(os.environ.get("FIREFLY_USD_PER_CREDIT", "0"))
+    FIREFLY_USD_PER_CREDIT = float(os.environ.get("FIREFLY_USD_PER_CREDIT", 0.025))
 except ValueError as e:
     raise ValueError(f"Error parsing FIREFLY_CREDITS_PER_IMAGE / FIREFLY_USD_PER_CREDIT: {e}")
 
 # Adobe Analytics 2.0 Usage API (audit logs — optional; see spark.firefly_image_generation)
 ADOBE_ANALYTICS_GLOBAL_COMPANY_ID = os.environ.get("ADOBE_ANALYTICS_GLOBAL_COMPANY_ID")
-ADOBE_ANALYTICS_CLIENT_ID = os.environ.get("ADOBE_ANALYTICS_CLIENT_ID")
-ADOBE_ANALYTICS_ACCESS_TOKEN = os.environ.get("ADOBE_ANALYTICS_ACCESS_TOKEN")
+ADOBE_ANALYTICS_CLIENT_ID = os.environ.get("ADOBE_ANALYTICS_CLIENT_ID") or FIREFLY_SERVICES_CLIENT_ID
+ADOBE_ANALYTICS_ACCESS_TOKEN = os.environ.get("ADOBE_ANALYTICS_ACCESS_TOKEN") or FIREFLY_SERVICES_CLIENT_SECRET
 
 #brochure pipeline
 AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME', 'brochure-pipeline')
@@ -140,6 +141,7 @@ AI_MODELS_REQUIRED = [
     ('azure-gpt-4o-mini','llm'),
     ('azure-gpt-4o','llm'),
     ('gcp-gemini-2.5-flash','llm'),
+    ('gcp-gemini-3.1-flash-lite-preview','llm'),
 ]
 
 # Common function
@@ -200,7 +202,8 @@ class AutocrmModel:
     def count(self, **kwargs):
         return self.model.count(**kwargs)
 
-    def delete_many(self, filters, **kwargs):
+    def delete_many(self, filters = None, **kwargs):
+        filters = filters or {}
         dm = self.model.delete_many(filters, **kwargs)
         self.logger.info(f"Data deleted successfully: {self.model_name}")
         return dm
@@ -388,7 +391,7 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, log
     bool_keys = list(map(lambda x: x[0], (filter(lambda x: x[1].type in ('bool',),  m.attributes.items()))))
     logger.info(f"Posting data: {data_name} from filename: {filename_csv}")
     try:
-        with open(filename_csv, encoding="utf-8-sig") as f:
+        with open(filename_csv, encoding="utf-8-sig", errors = "ignore") as f:
             reader = csv.DictReader(f)
             headers = reader.fieldnames
             logger.info(f"Headers for {data_name}: {headers}")
@@ -404,11 +407,11 @@ def post_csv_file(filename_csv, autocrm_model, start_from = 0, limit = None, log
                 row = {k:v for k, v in row.items() if v not in (None, '')}
                 logger.info(f"Row: {hp.json.dumps(row, option=hp.json.OPT_INDENT_2).decode('utf-8')}")
                 m.post(row)
-                logger.info(f"Data posted successfully: {data_name}, linenum {linenum}")
+                logger.info(f"Data posted successfully: {data_name}, linenum {linenum + 1}")
                 if limit and linenum + 1 > limit + start_from:
                     break
     except Exception as e:
-        logger.error(f"{e}\nError posting data for: {data_name} for linenum {linenum} in {filename_csv}")
+        logger.error(f"{e}\nError posting data for: {data_name} for linenum {linenum + 1} in {filename_csv}")
         raise
 
 def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, limit = None, **separators):
@@ -425,4 +428,60 @@ def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, 
     else:
         logger.error(f"File: {filename_csv} or {filename_json} not found")
         raise FileNotFoundError(f"Seed file for : {data_name} not found")
+
+
+if __name__ == "__main__":
+    
+    import argparse
+    parser = argparse.ArgumentParser(description='Post autocrm models and setup the environment')
+    parser.add_argument('--post-models', type=str, help='Model to post, comma separated')
+    parser.add_argument('--post-data', type=str, help='Data to post, comma separated')
+    parser.add_argument('--reseed', action='store_true', help='Reseed the data', default=False)
+    parser.add_argument('--start-from', type=int, help='Start from', default=0)
+    parser.add_argument('--limit', type=int, help='Limit', default=None)
+    parser.add_argument('--startup', action='store_true', help='Startup the environment', default=False)
+    parser.add_argument('--source-ai-secret-id', type=str, help='Source ai secret id', default=None)
+    parser.add_argument('--source-ai-cloud', type=str, help='Source ai cloud', default='gcp')
+    args = parser.parse_args()
+
+    if args.startup:
+        cron_worker.scale_up(
+            [
+                AUTOCRM_CRON_SERVICE_NAME,
+                AUTOCRM_CORE_SERVICE_NAME,
+                AUTOCRM_AGENT_SERVICE_NAME,
+                AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME,
+                AUTOCRM_COMMUNICATION_SERVICE_NAME,
+                AUTOCRM_CAMPAIGN_SERVICE_NAME,
+                AUTOCRM_CONVERSATION_SERVICE_NAME,
+                AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
+                AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME,
+                AUTOCRM_VOICE_SERVICE_NAME,
+                AUTOCRM_SPARK_SERVICE_NAME,
+                AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME,
+                AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME,
+                AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
+            ],
+            1
+        )
+    if args.source_ai_secret_id:
+        conn = ai_service_app.AiServiceConnector(secret_id = args.source_ai_secret_id, cloud = args.source_ai_cloud)
+        model_details = []
+        for model, model_type in AI_MODELS_REQUIRED:
+            clogger.info(f"Listing models: {model}, {model_type}")
+            md = conn.list_models(model_identifier = model, model_type = model_type)
+            clogger.info(f"Models listed: {md}")
+            if md:
+                model_details.extend(md)
+        conn.close()
+        for model_detail in model_details:
+            model_posted = ai_service_app.add_or_update_ai_model(**model_detail)    
+            clogger.info(f"Model added or updated: {model_posted['model_identifier']}")
+    if args.post_models:
+        for model in list(map(lambda x: x.strip(), args.post_models.split(','))):
+            post_autocrm_model(model)
+    if args.post_data:
+        for data in list(map(lambda x: x.strip(), args.post_data.split(','))):
+            post_autocrm_data(data, reseed = args.reseed, start_from = args.start_from, limit = args.limit)
+
   

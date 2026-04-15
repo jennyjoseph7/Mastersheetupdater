@@ -692,9 +692,9 @@ class BaseWebhookConverter:
 
             logger.info(f"Created Async task result: {res}")
     
-    @gryd.is_a_task(function_name="check_or_create_session")
-    def check_or_create_session(phone_number, campaign_details, from_web_chat): 
-        return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
+    # @gryd.is_a_task(function_name="check_or_create_session")
+    # def check_or_create_session(phone_number, campaign_details, from_web_chat): 
+    #     return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
 
     
     def send_otp_template(*args, **kwargs):

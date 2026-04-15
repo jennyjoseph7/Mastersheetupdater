@@ -227,11 +227,12 @@ def embedding_affinity_score_agent(*args, **kwargs):
             **output
         }
     except Exception as e:
-        logger.error(f"Affinity Score Agent Error: {e}")
         traceback.print_exc()
+        full_trace = traceback.format_exc()
         return {
             "task": inspect.currentframe().f_code.co_name,
-            "error": str(e).strip()
+            "error": str(e).strip(),
+            "full_error_trace": full_trace
         }
 
 
@@ -253,7 +254,13 @@ def campaign_idea_generation_agent(*args, **kwargs):
             "num_of_campaign_ideas": kwargs.get("num_of_campaign_ideas", 3), 
             "num_of_campaign_post_sets": kwargs.get("num_of_campaign_post_sets", 3), 
             "num_of_hashtags": kwargs.get("num_of_hashtags", 20),
-            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o")
+            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o"),
+            "title_max_length" : kwargs.get("title_max_length", None),
+            "hook_max_length" : kwargs.get("hook_max_length", None),
+            "slogan_max_length" : kwargs.get("slogan_max_length", None),
+            "caption_max_length" : kwargs.get("caption_max_length", None),
+            "message_max_length" : kwargs.get("message_max_length", None),
+            "cta_max_length" : kwargs.get("cta_max_length", None),
         }
         agent = CampaignIdeaGeneratorAgent(**_params)
         output = agent.run(batch_size=kwargs.get("batch_size", 2))
@@ -262,6 +269,14 @@ def campaign_idea_generation_agent(*args, **kwargs):
             **output
         }
     except Exception as e:
+        traceback.print_exc()
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "full_error_trace": full_trace
+        }
+
         logger.error(f"Campaign Idea Generation Agent Error: {e}")
         raise e
 @gryd.is_a_task(function_name="campaign_idea_generation_agent_async", job_param='job', logger_param='logger')
@@ -282,7 +297,13 @@ def campaign_idea_generation_agent_async(*args, **kwargs):
             "num_of_campaign_ideas": kwargs.get("num_of_campaign_ideas", 3), 
             "num_of_campaign_post_sets": kwargs.get("num_of_campaign_post_sets", 3), 
             "num_of_hashtags": kwargs.get("num_of_hashtags", 20),
-            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o")
+            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o"),
+            "title_max_length" : kwargs.get("title_max_length", None),
+            "hook_max_length" : kwargs.get("hook_max_length", None),
+            "slogan_max_length" : kwargs.get("slogan_max_length", None),
+            "caption_max_length" : kwargs.get("caption_max_length", None),
+            "message_max_length" : kwargs.get("message_max_length", None),
+            "cta_max_length" : kwargs.get("cta_max_length", None),
         }
         agent = CampaignIdeaGeneratorAgent(**_params)
         output = agent.run_with_events(batch_size=kwargs.get("batch_size", 2))
@@ -292,15 +313,25 @@ def campaign_idea_generation_agent_async(*args, **kwargs):
                 **event
             }
     except Exception as e:
-        logger.error(f"Campaign Idea Generation Agent Error: {e}")
-        raise e     
+        traceback.print_exc()
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "full_error_trace": full_trace
+        }
 
 @gryd.is_a_task(function_name="meta_ad_campaign_generator_agent", job_param='job', logger_param='logger')
 def meta_ad_campaign_generator_agent(*args, **kwargs):
 
     try:
         from cohorts_new.cohorts_agents.meta_campaign_agent import MetaAdCampaignAgent
+        logger.info(f"Meta Ad Campaign Agent Params: {json.dumps(kwargs, indent=4, default=str)}")
+        gryd_job_parms = kwargs.pop("job", None)
+        gryd_logger = kwargs.pop("logger", None)
+
         result = MetaAdCampaignAgent(**kwargs).run()
+
         return {
             "task": inspect.currentframe().f_code.co_name,
             **result
@@ -319,6 +350,9 @@ def meta_ad_campaign_generator_agent(*args, **kwargs):
 def meta_ad_adset_generator_agent(*args, **kwargs):
     try:
         from cohorts_new.cohorts_agents.meta_campaign_agent import MetaAdAdsetAgent
+        logger.info(f"Meta Ad Adset Agent Params: {json.dumps(kwargs, indent=4, default=str)}")
+        gryd_job_parms = kwargs.pop("job", None)
+        gryd_logger = kwargs.pop("logger", None)
         result = MetaAdAdsetAgent(**kwargs).run()
         return {
             "task": inspect.currentframe().f_code.co_name,
@@ -338,6 +372,9 @@ def meta_ad_adset_generator_agent(*args, **kwargs):
 def meta_ad_creative_generator_agent(*args, **kwargs):
     try:
         from cohorts_new.cohorts_agents.meta_campaign_agent import MetaAdCreativeAgent
+        logger.info(f"Meta Ad Creative Agent Params: {json.dumps(kwargs, indent=4, default=str)}")
+        gryd_job_parms = kwargs.pop("job", None)
+        gryd_logger = kwargs.pop("logger", None)
         result = MetaAdCreativeAgent(**kwargs).run()
         return {
             "task": inspect.currentframe().f_code.co_name,
