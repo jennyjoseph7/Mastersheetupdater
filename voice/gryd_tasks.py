@@ -15,7 +15,7 @@ import time
 
 from conversation import converse
 # from communication.connectors.communication_helpers import  generate_uid, get_communication_credential
-from communication.common_utils import generate_uid, get_communication_credential
+from communication.common_functions import generate_uid, get_communication_credential
 from communication.connectors.connector_whatsapp import post_contact_status
 
 from autocrm_db_helper import get_pg_connector

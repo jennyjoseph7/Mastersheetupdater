@@ -14,7 +14,7 @@ from conversation.prompt import run_prompt_sync
 # from campaign.campaign_manager import generate_uid
 # # from communication.connectors.communication_helpers import get_communication_credential,generate_uid
 # ----
-from communication.common_utils import get_communication_credential,generate_uid
+from communication.common_functions import get_communication_credential,generate_uid
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
@@ -351,7 +351,6 @@ def update_channel_identifier(user_id,**data):
 def update_lead_disposition_and_post_billing(incoming_status, user_id=None, should_bill=None, **data):    
     # mlogger.info(f"[update_lead_disposition] Called with incoming_status={incoming_status} for lead_id={data.get('lead_id')} and DATA= {json.dumps(data,indent=4)}")
     mlogger.info(f"[update_lead_disposition] Attempting to update lead disposition with incoming_status={incoming_status}, user_id={user_id}, data={data}")
-    
     post_template_message=data.get("post_template_message")
     if should_bill:
         mlogger.info(f"[post_contact_status] Billing triggered for incoming_status ={incoming_status}")
@@ -457,6 +456,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         update_payload.pop("dealership_id", None)
         # mlogger.info(f"[post_contact_status] update_payload for lead_id={lead_id}: {update_payload}")
         if update_payload:
+            # mlogger.info(f"update_payload for lead_id={lead_id}: {update_payload}")
             pg.update(
                 lead_table,
                 lead_pk,

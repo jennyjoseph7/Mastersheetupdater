@@ -38,7 +38,7 @@ from os.path import (
 )
 
 from validate_email import validate_email
-from common_utils import get_communication_credential, generate_uid
+from communication.common_functions import get_communication_credential, generate_uid
 # from communication.connectors.connector_whatsapp import post_lead_disposition
 from conversation.lead_post_processing import update_lead_disposition_and_post_billing
 # --- Set import path for internal modules ---

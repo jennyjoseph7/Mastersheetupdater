@@ -18,7 +18,7 @@ import sys,os
 import time
 from connectors.communication_helpers import format_box_log,safe_orjson_dumps
 from connectors.communication_configs import DB_TIMEZONE
-from common_utils import generate_uid
+from communication.common_functions import generate_uid
 from config import *
 from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappReceiverConnector
 import json
