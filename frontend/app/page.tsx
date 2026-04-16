@@ -104,7 +104,7 @@ export default function CampaignDashboard() {
   const router = useRouter();
   const { isDealershipSetupComplete, checkDealershipSetup } = useAuth();
   const [showSetupModal, setShowSetupModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState<string>("");
+
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [campaignTypeFilter, setCampaignTypeFilter] = useState<string>("all"); // default to "all" to show both types
@@ -125,7 +125,7 @@ export default function CampaignDashboard() {
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(
-    null
+    null,
   );
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -139,7 +139,7 @@ export default function CampaignDashboard() {
       "Campaign Objective",
       "Channels Used",
       "Status",
-      "Launch Date"
+      "Launch Date",
     ];
 
     const rows = filteredCampaigns.map((campaign) => {
@@ -147,23 +147,44 @@ export default function CampaignDashboard() {
         ? campaign.campaign_type[0]
         : campaign.campaign_type;
 
-      const typeStr = (campaignType?.replace("_", " ") || "Unknown").replace(/,/g, "");
-      const nameStr = (campaign.name || campaign.campaign_name || "Unnamed").replace(/,/g, "");
-      const objStr = (campaign.campaign_objective_name || "Unnamed").replace(/,/g, "");
+      const typeStr = (campaignType?.replace("_", " ") || "Unknown").replace(
+        /,/g,
+        "",
+      );
+      const nameStr = (
+        campaign.name ||
+        campaign.campaign_name ||
+        "Unnamed"
+      ).replace(/,/g, "");
+      const objStr = (campaign.campaign_objective_name || "Unnamed").replace(
+        /,/g,
+        "",
+      );
       const channelsStr = (campaign.channels || []).join(" & ");
-      const statusStr = (campaign.campaign_status || "Unknown").replace(/,/g, "");
-      const launchStr = (campaign.launchDate || campaign.start_date)
-        ? epochToIST(campaign.launchDate || campaign.start_date).replace(/,/g, "")
-        : "-";
+      const statusStr = (campaign.campaign_status || "Unknown").replace(
+        /,/g,
+        "",
+      );
+      const launchStr =
+        campaign.launchDate || campaign.start_date
+          ? epochToIST(campaign.launchDate || campaign.start_date).replace(
+              /,/g,
+              "",
+            )
+          : "-";
 
       return `"${typeStr}","${nameStr}","${objStr}","${channelsStr}","${statusStr}","${launchStr}"`;
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+    const csvContent =
+      "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `campaigns_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `campaigns_export_${new Date().toISOString().split("T")[0]}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -178,7 +199,19 @@ export default function CampaignDashboard() {
       active: activeData ?? 0,
     };
   };
+  // Inside CampaignDashboard component
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
 
+  // Handle Debouncing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setPage(1); // Reset to page 1 on new search
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   // Fetch campaigns by type and page
   // Feature 3: Server-side filters passed to the fetch functions
   const fetchCampaigns = async (
@@ -186,96 +219,105 @@ export default function CampaignDashboard() {
     page: number,
     size: number,
     status: string,
-    channel: string
+    channel: string,
+    search: string,
   ) => {
-    console.log("[fetchCampaigns] Type:", type, "Page:", page, "Size:", size, "Status:", status, "Channel:", channel);
-
-    // 1. Handle Dealership
     if (type === "dealership") {
-      const res = await fetchDealershipCampaigns(page, size, status, channel);
-      const total = res?.total ?? 0;
-      return {
-        merged: res?.items ?? [],
-        total: total,
-        pageCount: Math.ceil(total / size), // Add this
-      };
-    }
-
-    // 2. Handle Pre-Sales
-    if (type === "pre-sales" || type === "pre_sales") {
-      const res = await fetchPreSalesCampaigns(page, size, status, channel);
-      const total = res?.total ?? 0;
-      return {
-        merged: res?.items ?? [],
-        total: total,
-        pageCount: Math.ceil(total / size), // Add this
-      };
-    }
-
-    // 3. Handle Post-Sales
-    if (type === "post-sales" || type === "post_sales") {
-      const res = await fetchPostSalesCampaigns(page, size, status, channel);
-      const total = res?.total ?? 0;
-      return {
-        merged: res?.items ?? [],
-        total: total,
-        pageCount: Math.ceil(total / size), // Add this
-      };
-    }
-
-    // 4. Handle "All"
-    if (type === "all") {
-      const [preRes, postRes] = await Promise.all([
-        fetchPreSalesCampaigns(page, size, status, channel),
-        fetchPostSalesCampaigns(page, size, status, channel),
-      ]);
-
-      const preItems = preRes?.items ?? [];
-      const postItems = postRes?.items ?? [];
-      const merged = [...preItems, ...postItems];
-
-      // Sort by creation date
-      merged.sort((a, b) => {
-        const dateA = a.created || a.start_date || 0;
-        const dateB = b.created || b.start_date || 0;
-        return dateB - dateA;
-      });
-
-      const preTotal = preRes?.total ?? 0;
-      const postTotal = postRes?.total ?? 0;
-
-      // The key fix: The number of pages is determined by the longer list
-      const maxPages = Math.max(
-        Math.ceil(preTotal / size),
-        Math.ceil(postTotal / size)
+      const res = await fetchDealershipCampaigns(
+        page,
+        size,
+        status,
+        channel,
+        search,
       );
-
       return {
-        merged: merged,
-        total: preTotal + postTotal,
-        pageCount: maxPages, // Use the greater of the two page counts
+        merged: res.items,
+        total: res.total,
+        pageCount: Math.ceil(res.total / size),
       };
     }
 
+    if (type === "pre-sales" || type === "pre_sales") {
+      const res = await fetchPreSalesCampaigns(
+        page,
+        size,
+        status,
+        channel,
+        search,
+      );
+      return {
+        merged: res.items,
+        total: res.total,
+        pageCount: Math.ceil(res.total / size),
+      };
+    }
+
+    if (type === "post-sales" || type === "post_sales") {
+      const res = await fetchPostSalesCampaigns(
+        page,
+        size,
+        status,
+        channel,
+        search,
+      );
+      return {
+        merged: res.items,
+        total: res.total,
+        pageCount: Math.ceil(res.total / size),
+      };
+    }
+
+    if (type === "all") {
+      const [pre, post] = await Promise.all([
+        fetchPreSalesCampaigns(page, size, status, channel, search),
+        fetchPostSalesCampaigns(page, size, status, channel, search),
+      ]);
+      const merged = [...pre.items, ...post.items].sort(
+        (a, b) => (b.created || 0) - (a.created || 0),
+      );
+      return {
+        merged,
+        total: pre.total + post.total,
+        pageCount: Math.max(
+          Math.ceil(pre.total / size),
+          Math.ceil(post.total / size),
+        ),
+      };
+    }
     return { merged: [], total: 0, pageCount: 0 };
   };
 
   const { data: counts, mutate: mutateCounts } = useSWR(
     "pivot-counts",
     fetchCounts,
-    swrOptions
+    swrOptions,
   );
 
   // Added pageSize, statusFilter, and channelFilter to dependencies
   const {
     data: campaignsData,
     isLoading: loading,
-    error,
     mutate: mutateCampaigns,
   } = useSWR(
-    ["campaigns", campaignTypeFilter, page, pageSize, statusFilter, channelFilter],
-    () => fetchCampaigns(campaignTypeFilter, page, pageSize, statusFilter, channelFilter),
-    swrOptions
+    [
+      "campaigns",
+      campaignTypeFilter,
+      page,
+      pageSize,
+      statusFilter,
+      channelFilter,
+      debouncedSearchQuery,
+    ],
+    () =>
+      fetchCampaigns(
+        campaignTypeFilter,
+        page,
+        pageSize,
+        statusFilter,
+        channelFilter,
+        debouncedSearchQuery,
+      ),
+    swrOptions,
   );
 
   // Safe check for localStorage
@@ -288,7 +330,7 @@ export default function CampaignDashboard() {
   const { data: campaignSummaryData, mutate: mutateCampaignSummary } = useSWR(
     dealershipId, // If null, this won't run
     fetchCampaignSummary,
-    swrOptions
+    swrOptions,
   );
 
   // Refresh setup status when dashboard loads and on route changes
@@ -336,10 +378,10 @@ export default function CampaignDashboard() {
             (c.start_date && c.end_date && Date.now() / 1000 > c.end_date
               ? "completed"
               : c.start_date && Date.now() / 1000 >= c.start_date
-              ? "live"
-              : "scheduled");
+                ? "live"
+                : "scheduled");
           return status === "live";
-        }
+        },
       ).length;
 
       setActiveCount(activeDealership);
@@ -355,11 +397,12 @@ export default function CampaignDashboard() {
       if (campaignSummaryData && Array.isArray(campaignSummaryData)) {
         const preSalesSummary = campaignSummaryData.find(
           (s: any) =>
-            s.campaign_type === "pre-sales" || s.campaign_type === "pre_sales"
+            s.campaign_type === "pre-sales" || s.campaign_type === "pre_sales",
         );
         const postSalesSummary = campaignSummaryData.find(
           (s: any) =>
-            s.campaign_type === "post-sales" || s.campaign_type === "post_sales"
+            s.campaign_type === "post-sales" ||
+            s.campaign_type === "post_sales",
         );
 
         // Sum up total and active counts from summaries
@@ -399,8 +442,8 @@ export default function CampaignDashboard() {
             (c.start_date && c.end_date && Date.now() / 1000 > c.end_date
               ? "completed"
               : c.start_date && Date.now() / 1000 >= c.start_date
-              ? "live"
-              : "scheduled");
+                ? "live"
+                : "scheduled");
           return status === "live" || status === "active";
         }).length;
 
@@ -441,8 +484,8 @@ export default function CampaignDashboard() {
       if (typeof counts.total === "object" && counts.total !== null) {
         totalForType =
           campaignTypeFilter === "pre_sales"
-            ? counts.total.pre_sales ?? 0
-            : counts.total.post_sales ?? 0;
+            ? (counts.total.pre_sales ?? 0)
+            : (counts.total.post_sales ?? 0);
       } else {
         totalForType = counts.total ?? 0;
       }
@@ -450,8 +493,8 @@ export default function CampaignDashboard() {
       if (typeof counts.active === "object" && counts.active !== null) {
         activeForType =
           campaignTypeFilter === "pre_sales"
-            ? counts.active.pre_sales ?? 0
-            : counts.active.post_sales ?? 0;
+            ? (counts.active.pre_sales ?? 0)
+            : (counts.active.post_sales ?? 0);
       } else {
         activeForType = counts.active ?? 0;
       }
@@ -468,7 +511,7 @@ export default function CampaignDashboard() {
     if (campaignsData) {
       setMergedCampaigns(campaignsData.merged ?? []);
       setTotalCount(campaignsData.total ?? 0);
-      
+
       // Update the page count from the API response
       if (campaignsData.pageCount !== undefined) {
         setPageCount(campaignsData.pageCount);
@@ -493,7 +536,7 @@ export default function CampaignDashboard() {
           (campaignTypeFilter === "pre_sales" &&
             s.campaign_type === "pre-sales") ||
           (campaignTypeFilter === "post-sales" &&
-            s.campaign_type === "post-sales")
+            s.campaign_type === "post-sales"),
       );
 
       // Update UI with specific stats
@@ -521,7 +564,7 @@ export default function CampaignDashboard() {
       setCurrentCampaignType(
         campaignTypeFilter === "pre_sales" || campaignTypeFilter === "pre-sales"
           ? "pre-sales"
-          : "post-sales"
+          : "post-sales",
       );
     }
   }, [campaignSummaryData, campaignTypeFilter]);
@@ -541,10 +584,10 @@ export default function CampaignDashboard() {
         Date.now() / 1000 > campaign.end_date
           ? "completed"
           : campaign.start_date && Date.now() / 1000 >= campaign.start_date
-          ? "live"
-          : campaign.start_date
-          ? "scheduled"
-          : "Drafted");
+            ? "live"
+            : campaign.start_date
+              ? "scheduled"
+              : "Drafted");
 
       const matchesStatus =
         statusFilter === "all" || campaignStatus === statusFilter;
@@ -579,16 +622,16 @@ export default function CampaignDashboard() {
   const displaySlice = useMemo(() => {
     // 1. For "All", since we now fetch specific pages from the server (e.g. Page 2),
     // the 'filteredCampaigns' array ONLY contains the data for that page.
-    // We must NOT slice by '(page - 1) * size' anymore, because that offset assumes 
+    // We must NOT slice by '(page - 1) * size' anymore, because that offset assumes
     // we have the whole list in memory.
     // Instead, we just take the items we received.
     if (campaignTypeFilter === "all") {
-      // Optional: Since fetching "All" gets 5 Pre + 5 Post (Total 10), 
-      // you might want to slice (0, 5) to keep the UI consistent, 
+      // Optional: Since fetching "All" gets 5 Pre + 5 Post (Total 10),
+      // you might want to slice (0, 5) to keep the UI consistent,
       // or just return 'filteredCampaigns' to show all 10.
-      
+
       // Returning all merged items for the current page:
-      return filteredCampaigns; 
+      return filteredCampaigns;
     }
 
     // 2. For specific types, the API returns exactly the page size items.
@@ -634,20 +677,21 @@ export default function CampaignDashboard() {
   //   const campaignId = campaign.campaign_id ?? campaign.id;
   //   router.push(`/campaign/resume?id=${campaignId}&type=presales`);
   // };
-const handleEdit = (campaign: Campaign) => {
-  const campaignId = campaign.campaign_id ?? campaign.id;
+  const handleEdit = (campaign: Campaign) => {
+    const campaignId = campaign.campaign_id ?? campaign.id;
 
-  // 1. Extract the raw type (handles both array and string cases)
-  const rawType = Array.isArray(campaign.campaign_type)
-    ? campaign.campaign_type[0]
-    : campaign.campaign_type;
+    // 1. Extract the raw type (handles both array and string cases)
+    const rawType = Array.isArray(campaign.campaign_type)
+      ? campaign.campaign_type[0]
+      : campaign.campaign_type;
 
-  // 2. Normalize the type for the URL (e.g., "pre-sales" or "pre_sales" -> "presales")
-  // This removes hyphens and underscores to match your "presales" hardcoded style
-  const dynamicType = rawType?.toLowerCase().replace(/[-_]/g, "") || "presales";
+    // 2. Normalize the type for the URL (e.g., "pre-sales" or "pre_sales" -> "presales")
+    // This removes hyphens and underscores to match your "presales" hardcoded style
+    const dynamicType =
+      rawType?.toLowerCase().replace(/[-_]/g, "") || "presales";
 
-  router.push(`/campaign/resume?id=${campaignId}&type=${dynamicType}`);
-};
+    router.push(`/campaign/resume?id=${campaignId}&type=${dynamicType}`);
+  };
   const handleDuplicate = async (campaign: Campaign) => {
     try {
       const campaignId = campaign.campaign_id ?? campaign.id;
@@ -662,7 +706,7 @@ const handleEdit = (campaign: Campaign) => {
 
       const response = await fetchAPIData(modelName, {});
       const campaignData = response.items.find(
-        (c: Campaign) => (c.campaign_id ?? c.id) === campaignId
+        (c: Campaign) => (c.campaign_id ?? c.id) === campaignId,
       );
 
       if (campaignData) {
@@ -674,7 +718,7 @@ const handleEdit = (campaign: Campaign) => {
 
         localStorage.setItem(
           "duplicateCampaignData",
-          JSON.stringify(duplicateData)
+          JSON.stringify(duplicateData),
         );
         router.push("/campaign/create?duplicate=true");
       }
@@ -686,12 +730,12 @@ const handleEdit = (campaign: Campaign) => {
 
   const handlePauseOrLaunch = async (
     campaign: Campaign,
-    action: "pause" | "launch"
+    action: "pause" | "launch",
   ) => {
     try {
       await mutateCampaigns();
       alert(
-        `Campaign ${action === "pause" ? "paused" : "launched"} successfully`
+        `Campaign ${action === "pause" ? "paused" : "launched"} successfully`,
       );
     } catch (error) {
       console.error(`Error ${action}ing campaign:`, error);
@@ -699,9 +743,11 @@ const handleEdit = (campaign: Campaign) => {
     }
   };
 
-  const handleInsights = (campaign: Campaign , campaignType: string) => {
+  const handleInsights = (campaign: Campaign, campaignType: string) => {
     const campaignId = campaign.campaign_id ?? campaign.id;
-    router.push(`/campaign/insights?campaign_id=${campaignId}&campaign_type=${campaignType}`);
+    router.push(
+      `/campaign/insights?campaign_id=${campaignId}&campaign_type=${campaignType}`,
+    );
   };
 
   const handleDeleteClick = (campaign: Campaign) => {
@@ -723,8 +769,8 @@ const handleEdit = (campaign: Campaign) => {
         campaignType === "pre-sales" || campaignType === "pre_sales"
           ? "pre_sales_campaign"
           : campaignType === "dealership"
-          ? "dealership_campaign"
-          : "post_sales_campaign";
+            ? "dealership_campaign"
+            : "post_sales_campaign";
 
       await deleteAPIData(modelName, campaignId);
       setDeleteDialogOpen(false);
@@ -811,11 +857,11 @@ const handleEdit = (campaign: Campaign) => {
                   {campaignTypeFilter === "all"
                     ? "All Types"
                     : campaignTypeFilter === "pre_sales" ||
-                      campaignTypeFilter === "pre-sales"
-                    ? "Pre-Sales"
-                    : campaignTypeFilter === "post-sales"
-                    ? "Post-Sales"
-                    : "Dealership"}
+                        campaignTypeFilter === "pre-sales"
+                      ? "Pre-Sales"
+                      : campaignTypeFilter === "post-sales"
+                        ? "Post-Sales"
+                        : "Dealership"}
                 </p>
               </CardContent>
             </Card>
@@ -915,19 +961,44 @@ const handleEdit = (campaign: Campaign) => {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => { setStatusFilter("all"); setPage(1); }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setStatusFilter("all");
+                          setPage(1);
+                        }}
+                      >
                         All
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setStatusFilter("drafted"); setPage(1); }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setStatusFilter("drafted");
+                          setPage(1);
+                        }}
+                      >
                         Draft
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setStatusFilter("planned"); setPage(1); }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setStatusFilter("planned");
+                          setPage(1);
+                        }}
+                      >
                         Planned
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setStatusFilter("Active"); setPage(1); }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setStatusFilter("Active");
+                          setPage(1);
+                        }}
+                      >
                         Active
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setStatusFilter("completed"); setPage(1); }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setStatusFilter("completed");
+                          setPage(1);
+                        }}
+                      >
                         Completed
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -950,16 +1021,36 @@ const handleEdit = (campaign: Campaign) => {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Filter by Channel</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => { setChannelFilter("all"); setPage(1); }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setChannelFilter("all");
+                          setPage(1);
+                        }}
+                      >
                         All
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setChannelFilter("whatsapp_chat"); setPage(1); }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setChannelFilter("whatsapp_chat");
+                          setPage(1);
+                        }}
+                      >
                         WhatsApp
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setChannelFilter("email"); setPage(1); }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setChannelFilter("email");
+                          setPage(1);
+                        }}
+                      >
                         Email
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setChannelFilter("voice_phone"); setPage(1); }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setChannelFilter("voice_phone");
+                          setPage(1);
+                        }}
+                      >
                         Voice
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -976,10 +1067,10 @@ const handleEdit = (campaign: Campaign) => {
                         {campaignTypeFilter === "all"
                           ? "All"
                           : campaignTypeFilter === "pre_sales"
-                          ? "Pre-Sales"
-                          : campaignTypeFilter === "post-sales"
-                          ? "Post-Sales"
-                          : "Dealership"}
+                            ? "Pre-Sales"
+                            : campaignTypeFilter === "post-sales"
+                              ? "Post-Sales"
+                              : "Dealership"}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -1021,11 +1112,11 @@ const handleEdit = (campaign: Campaign) => {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  
+
                   {/* Export Button */}
-                  <Button 
-                    variant="outline" 
-                    className="gap-2 bg-transparent" 
+                  <Button
+                    variant="outline"
+                    className="gap-2 bg-transparent"
                     onClick={handleExport}
                   >
                     <Download className="h-4 w-4" /> Export
@@ -1053,33 +1144,18 @@ const handleEdit = (campaign: Campaign) => {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell
-                        colSpan={8}
-                        className="text-center text-muted-foreground py-10"
-                      >
+                      <TableCell colSpan={8} className="text-center py-10">
                         Loading...
                       </TableCell>
                     </TableRow>
-                  ) : error ? (
+                  ) : mergedCampaigns.length === 0 ? (
                     <TableRow>
-                      <TableCell
-                        colSpan={8}
-                        className="text-center text-destructive py-10"
-                      >
-                        {error}
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredCampaigns.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={8}
-                        className="text-center text-muted-foreground py-10"
-                      >
+                      <TableCell colSpan={8} className="text-center py-10">
                         No campaigns found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    displaySlice.map((campaign) => {
+                    mergedCampaigns.map((campaign) => {
                       // Handle campaign_type as array or string
                       const campaignType = Array.isArray(campaign.campaign_type)
                         ? campaign.campaign_type[0]
@@ -1117,23 +1193,27 @@ const handleEdit = (campaign: Campaign) => {
                           <TableCell>
                             {getStatusBadge(campaign.campaign_status)}
                           </TableCell>
-                       <TableCell>
-                        {campaign.launchDate || campaign.start_date
-                          ? new Date(
-                              Number(campaign.launchDate || campaign.start_date) * 1000
-                            ).toLocaleDateString("en-IN", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })
-                          : "-"}
-                      </TableCell>
+                          <TableCell>
+                            {campaign.launchDate || campaign.start_date
+                              ? new Date(
+                                  Number(
+                                    campaign.launchDate || campaign.start_date,
+                                  ) * 1000,
+                                ).toLocaleDateString("en-IN", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                })
+                              : "-"}
+                          </TableCell>
                           <TableCell>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-8 gap-1.5 px-2 text-xs"
-                              onClick={() => handleInsights(campaign, campaignType || "")}
+                              onClick={() =>
+                                handleInsights(campaign, campaignType || "")
+                              }
                             >
                               <Eye className="h-3.5 w-3.5" />
                               View Analytics
@@ -1202,24 +1282,31 @@ const handleEdit = (campaign: Campaign) => {
                   )}
                 </TableBody>
               </Table>
-              
+
               {/* Pagination Controls */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-                
                 {/* Rows per page selector */}
                 <div className="flex items-center space-x-2">
-                  <p className="text-sm font-medium text-muted-foreground">Rows per page</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Rows per page
+                  </p>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-8 w-[70px] bg-transparent">
+                      <Button
+                        variant="outline"
+                        className="h-8 w-[70px] bg-transparent"
+                      >
                         {pageSize}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
                       {[5, 20, 50, 100, 200].map((size) => (
-                        <DropdownMenuItem 
-                          key={size} 
-                          onClick={() => { setPageSize(size); setPage(1); }}
+                        <DropdownMenuItem
+                          key={size}
+                          onClick={() => {
+                            setPageSize(size);
+                            setPage(1);
+                          }}
                         >
                           {size}
                         </DropdownMenuItem>
@@ -1238,7 +1325,7 @@ const handleEdit = (campaign: Campaign) => {
                     <span className="sr-only">Go to first page</span>
                     <ChevronsLeft className="h-4 w-4" />
                   </Button>
-                  
+
                   <Button
                     variant="outline"
                     className="h-8 w-8 p-0"
@@ -1248,11 +1335,11 @@ const handleEdit = (campaign: Campaign) => {
                     <span className="sr-only">Go to previous page</span>
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  
+
                   <div className="flex w-[100px] items-center justify-center text-sm font-medium">
                     Page {page} of {totalPages || 1}
                   </div>
-                  
+
                   <Button
                     variant="outline"
                     className="h-8 w-8 p-0"
@@ -1262,7 +1349,7 @@ const handleEdit = (campaign: Campaign) => {
                     <span className="sr-only">Go to next page</span>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
-                  
+
                   <Button
                     variant="outline"
                     className="h-8 w-8 p-0"
