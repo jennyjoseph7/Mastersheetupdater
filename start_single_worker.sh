@@ -50,7 +50,8 @@ function setup_logio_agent() {
     if [ -f ./logio_track_files.logfile ];then
         track_files=$(cat ./logio_track_files.logfile)
     else
-        echo "$LOG_FILE,$STDOUT_LOG_FILE,$STDERR_LOG_FILE" > ./logio_track_files.logfile
+        # echo "$LOG_FILE,$STDOUT_LOG_FILE,$STDERR_LOG_FILE" > ./logio_track_files.logfile
+        echo "$LOG_FILE" > ./logio_track_files.logfile
         track_files=$(cat ./logio_track_files.logfile)
 
     fi
