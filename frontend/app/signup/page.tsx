@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ReCAPTCHA from "react-google-recaptcha";
 import { PhoneInput } from "react-international-phone";
-import "react-international-phone/style.css";
+// import { PhoneInput } from "react-international-phone";
 import {
   Card,
   CardContent,
@@ -867,11 +867,11 @@ Check browser console and Network tab for more details.`
                       <option value="united-arab-emirates">United Arab Emirates</option>
                       <option value="saudi-arabia">Saudi Arabia</option>
 
-                        <option value="south-india">South India</option>
+                        {/* <option value="south-india">South India</option>
                         <option value="north-india">North India</option>
                         <option value="east-india">East India</option>
                         <option value="west-india">West India</option>
-                        <option value="central-india">Central India</option>
+                        <option value="central-india">Central India</option> */}
                       </select>
                     </div>
                   </div>
