@@ -361,7 +361,7 @@ function start_worker() {
 	echo "Starting $worker_type $worker_name"
 	is_success=0
 	if [ -z $entry_point ];then
-		entry_points=`jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.entry_point'`
+		entry_points=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.entry_point'` )
 	else
 		entry_points=( $entry_point )
 	fi
