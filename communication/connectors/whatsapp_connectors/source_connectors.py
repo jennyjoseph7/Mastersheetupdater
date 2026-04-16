@@ -14,7 +14,6 @@ import re
 # from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PROVIDER_NUMBER,AUTOCRM_CORE_SERVICE_NAME
 from config import *
 from connectors.communication_helpers import * 
-
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 logger = gryd.logger
 
@@ -515,7 +514,7 @@ class BaseWebhookConverter:
                 AUTOCRM_COMMUNICATION_SERVICE_NAME,
                 args = (message_dict.get('message_id'),),
                 kwargs=message_dict)
-            # self.post_contact_status(message_dict.get('message_id'),**message_dict)
+            # post_contact_status(message_dict.get('message_id'),**message_dict)
             
         #Still any othere status hook there we will return  
         if msg_status: return {"info":f"Received {msg_status}--->{wa_status} status webhook"}
