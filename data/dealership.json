@@ -20,82 +20,82 @@
                 "function": "now_ctime"
             }
         },
-	        {
-	            "name": "dealer_name",
-	            "type": "text",
-	            "indexed": true,
-	            "required": true
-	        },
-	        {
-	            "name": "search_term",
-	            "type": "text",
-	            "indexed": true,
-	            "force_update": [
-	                "dealer_name",
-	                "dealership_legal_name",
-	                "dealership_type",
-	                "supported_brands",
-	                "supported_brand_names",
-	                "languages",
-	                "channels",
-	                "dealership_description",
-	                "dealer_group_name",
-	                "region_name",
-	                "billing_address",
-	                "billing_contact_name",
-	                "billing_contact_email",
-	                "billing_contact_phone",
-	                "primary_contact_name",
-	                "primary_contact_email",
-	                "primary_contact_phone",
-	                "secondary_contact_name",
-	                "secondary_contact_email",
-	                "secondary_contact_phone",
-	                "dealer_status",
-	                "hashtags"
-	            ],
-	            "auto_updater": true,
-	            "default": {
-	                "function": "name_to_id",
-	                "args": [
-	                    "dealer_name",
-	                    "dealership_legal_name",
-	                    "dealership_type",
-	                    "supported_brands",
-	                    "supported_brand_names",
-	                    "languages",
-	                    "channels",
-	                    "dealership_description",
-	                    "dealer_group_name",
-	                    "region_name",
-	                    "billing_address",
-	                    "billing_contact_name",
-	                    "billing_contact_email",
-	                    "billing_contact_phone",
-	                    "primary_contact_name",
-	                    "primary_contact_email",
-	                    "primary_contact_phone",
-	                    "secondary_contact_name",
-	                    "secondary_contact_email",
-	                    "secondary_contact_phone",
-	                    "dealer_status",
-	                    "hashtags"
-	                ],
-	                "kwargs": {
-	                    "attribute_join": " ",
-	                    "is_unique": true,
-	                    "separator": " ",
-	                    "skip_empty": true,
-	                    "case": "lower"
-	                }
-	            }
-	        },
-	        {
-	            "name": "credits_balance",
-	            "type": "number",
-	            "units": "credits",
-	            "default": 0
-	        },
+        {
+            "name": "dealer_name",
+            "type": "text",
+            "indexed": true,
+            "required": true
+        },
+        {
+            "name": "search_term",
+            "type": "text",
+            "indexed": true,
+            "force_update": [
+                "dealer_name",
+                "dealership_legal_name",
+                "dealership_type",
+                "supported_brands",
+                "supported_brand_names",
+                "languages",
+                "channels",
+                "dealership_description",
+                "dealer_group_name",
+                "region_name",
+                "billing_address",
+                "billing_contact_name",
+                "billing_contact_email",
+                "billing_contact_phone",
+                "primary_contact_name",
+                "primary_contact_email",
+                "primary_contact_phone",
+                "secondary_contact_name",
+                "secondary_contact_email",
+                "secondary_contact_phone",
+                "dealer_status",
+                "hashtags"
+            ],
+            "auto_updater": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "dealer_name",
+                    "dealership_legal_name",
+                    "dealership_type",
+                    "supported_brands",
+                    "supported_brand_names",
+                    "languages",
+                    "channels",
+                    "dealership_description",
+                    "dealer_group_name",
+                    "region_name",
+                    "billing_address",
+                    "billing_contact_name",
+                    "billing_contact_email",
+                    "billing_contact_phone",
+                    "primary_contact_name",
+                    "primary_contact_email",
+                    "primary_contact_phone",
+                    "secondary_contact_name",
+                    "secondary_contact_email",
+                    "secondary_contact_phone",
+                    "dealer_status",
+                    "hashtags"
+                ],
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " ",
+                    "skip_empty": true,
+                    "case": "lower"
+                }
+            }
+        },
+        {
+            "name": "credits_balance",
+            "type": "number",
+            "units": "credits",
+            "default": 0
+        },
         {
             "name": "pan_number",
             "type": "text"
@@ -348,15 +348,39 @@
         },
         {
             "name": "showroom_center_count",
-            "type": "number"
+            "type": "number",
+            "default": {
+                "function": "pivot_from_child",
+                "args": [
+                    "showroom",
+                    "showroom_id",
+                    "count"
+                ]
+            }
         },
         {
             "name": "workshop_center_count",
-            "type": "number"
+            "type": "number",
+            "default": {
+                "function": "pivot_from_child",
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "count"
+                ]
+            }
         },
         {
             "name": "buyback_center_count",
-            "type": "number"
+            "type": "number",
+            "default": {
+                "function": "pivot_from_child",
+                "args": [
+                    "buyback_center",
+                    "buyback_center_id",
+                    "count"
+                ]
+            }
         },
         {
             "name": "website",
@@ -508,8 +532,7 @@
             "name": "dealer_status",
             "type": "text",
             "default": "lead",
-            "placeholder": "Once have verified otp, then change to signed_up, once the docs are verified, change to verified, once they purchase credits, change to active, if zero credits or no campaigns for 30 days, change to inactive, if balance is negative, change to suspended"
-            ,
+            "placeholder": "Once have verified otp, then change to signed_up, once the docs are verified, change to verified, once they purchase credits, change to active, if zero credits or no campaigns for 30 days, change to inactive, if balance is negative, change to suspended",
             "options": [
                 "lead",
                 "otp_verified",
@@ -584,9 +607,9 @@
             "auto_updater": true
         },
         {
-            "name" : "doc_data",
-            "type" : "text",
-            "require" : false
+            "name": "doc_data",
+            "type": "text",
+            "require": false
         }
     ],
     "parents": [

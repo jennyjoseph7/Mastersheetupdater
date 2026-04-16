@@ -19,7 +19,6 @@ if _root not in sys.path:
 # from gryd_worker import gryd,gryd_helpers as hp
 # from communication.connectors.communication_configs import DB_TIMEZONE,WA_TO_DISPOSITION
 # ---
-
 from communication.connectors.base_connector_communication import *
 
 from communication.connectors.communication_helpers import _wait_for_next_minute
@@ -31,6 +30,7 @@ from agents.get_rcs_template_agent import get_rcs_template
 from communication.connectors.email_communication import communication_sender
 from communication.connectors.connector_rcs import gryd_send_rcs
 from conversation.lead_post_processing import update_error_in_lead_and_session
+from communication.common_functions import get_communication_credential,generate_uid
 from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME, SERVICE,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
@@ -993,15 +993,6 @@ def check_and_create_lead_object(**kwargs):
             logger.info(f"Pre-sales lead data created -- {lead_d[0].get('pre_sales_lead_id')}")
             return lead_d[0].get("pre_sales_lead_id")
         
-def generate_uid(data):
-    if isinstance(data, (dict, list)):
-        data_str = json.dumps(data, sort_keys=True)
-    else:
-        data_str = str(data)
-
-    uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
-
-    return uid.hex[:16]
  
 # @handle_session_errors
 @gryd.is_a_task(function_name="process_single_lead")
