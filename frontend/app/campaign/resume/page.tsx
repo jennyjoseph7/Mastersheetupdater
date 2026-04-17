@@ -253,8 +253,18 @@ function ResumeCampaignContent() {
         campaign_status: "Active", 
         campaign_user_source_id: targetAudience[0] 
       });
-      const service = process.env.NEXT_PUBLIC_AUTOCRM_CAMPAIGN_TRIGGER_SERVICE_NAME || "autocrm-campaign";
-      await api(`/gryd/task/${service}/trigger_campaign`, "POST", { args: [], kwargs: { campaign_type: campaignType === "presales" ? "pre-sales" : "post-sales", campaign_id: createdCampaignId } });
+      const service =
+        process.env.NEXT_PUBLIC_AUTOCRM_CAMPAIGN_TRIGGER_SERVICE_NAME ||
+        "autocrm-campaign";
+      await api(`/gryd/task/${service}/trigger_campaign`, "POST", {
+        args: [],
+        kwargs: {
+          campaign_type:
+            campaignType === "presales" ? "pre-sales" : "post-sales",
+          campaign_id: createdCampaignId,
+          disposition: "queued",
+        },
+      });
       setLaunchStatus("Campaign Launched Successfully!");
     } catch (err) {
       setIsLaunchError(true);
