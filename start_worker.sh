@@ -430,10 +430,10 @@ function start_webapp() {
 		return 1
 	fi
 	echo "Starting webapp $webapp_name"
-	webapp_app_name=`jq -r '.webapps[] | select(.name == "${webapp_name}")' ${BASE_DIR}/start_worker_config.json | jq -r '.name'`
-	webapp_port=`jq -r '.webapps[] | select(.name == "${webapp_name}")' ${BASE_DIR}/start_worker_config.json | jq -r '.port'`
-	webapp_url_scheme=`jq -r '.webapps[] | select(.name == "${webapp_name}")' ${BASE_DIR}/start_worker_config.json | jq -r '.url_scheme'`
-	webapp_api_threads=`jq -r '.webapps[] | select(.name == "${webapp_name}")' ${BASE_DIR}/start_worker_config.json | jq -r '.api_threads'`
+	webapp_app_name=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.name'`
+	webapp_port=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.port'`
+	webapp_url_scheme=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.url_scheme'`
+	webapp_api_threads=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.api_threads'`
 	if [[ $webapp_app_name == null ]];then
 		webapp_app_name=`jq -r '.webapp.name' ${BASE_DIR}/start_worker_config.json`
 		webapp_port=`jq -r '.webapp.port' ${BASE_DIR}/start_worker_config.json`
@@ -442,13 +442,14 @@ function start_webapp() {
 	fi
 	webapp_port=${webapp_port:-${SERVER_PORT}}
 	webapp_url_scheme=${webapp_url_scheme:-http}
+    webapp_api_threads=${webapp_api_threads:-1}
 	if [[ $API_THREADS != 0 ]];then
 		webapp_api_threads=${API_THREADS}
 	fi
 	pids=()
 	is_success=0
 	if [[ $PRIMARY != 0 ]];then
-		for i in $(seq in $webapp_api_threads); do
+		for i in $(seq $webapp_api_threads); do
 			pid_filename=$BASE_DIR/${webapp_name}_${i}.pid
 			port=$((webapp_port + i - 1))
 			export LOG_FILE=${LOGDIR}/${webapp_name}_${i}_stderr.log
@@ -547,7 +548,7 @@ function wait_for_all_processes() {
 	done
     echo "Waiting for any one of the processes to be killed: $process_files" 1>&2
 	while true; do
-		for i in $(seq 0 ${#pids[@]}); do
+        for i in $(seq 0 $(( ${#pids[@]} - 1)) ); do
 			pid=${pids[$i]}
             fpid=${process_files[$i]}
 			if is_process_running $pid;then
