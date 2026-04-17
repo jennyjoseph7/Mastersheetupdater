@@ -26,6 +26,14 @@ function main() {
 		source ./start_single_worker.sh
 		main
 		exit
+
+	if [ $ENVIRONMENT == "production" ];then
+		if [ "$AWS_ACCESS_KEYS_REQUIRED" == "True" ];then
+            gen_aws_creds_file
+		fi
+		if [ -n $ENTRYPOINT_PREFIX -a -n $WORKER_ENTRYPOINT ];then
+			START_WORKERS=$( "$ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT" )
+		fi
 	fi
 
 	if [ "$DEV_CONTAINER" == "True" ];then
