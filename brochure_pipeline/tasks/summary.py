@@ -53,7 +53,7 @@ def fetch_brochure_text_from_api(document_id: str) -> str:
         logger.error(f"Failed to fetch brochure text from chunk_saver API for {document_id}: {e}")
         return ""
 
-def format_for_gryd_vector(vector_summaries: dict, doc_id_prefix: str, real_db_variants: list) -> list:
+def format_for_gryd_vector(llm_data: dict, doc_id_prefix: str, real_db_variants: list) -> list:
     gryd_tasks = []
     
     def create_payload(entry, level, suffix):
@@ -67,45 +67,34 @@ def format_for_gryd_vector(vector_summaries: dict, doc_id_prefix: str, real_db_v
                 "metadata": {
                     "document_id": f"{doc_id_prefix}_{suffix}",
                     "level": level,
-                    "information": entry.get('structured_info', {})
+                    "information": entry.get('toon_text', '') # Using TOON text directly
                 },
                 "i2ce_headers": {"Content-Type": "application/json"}
             }
         }
     
-    if "brand_model" in vector_summaries:
-        gryd_tasks.append(create_payload(vector_summaries["brand_model"], "Brand_Model", "general"))
+    # 1. Models & Years
+    if "vehicle_model" in llm_data:
+        gryd_tasks.append(create_payload(llm_data["vehicle_model"], "Brand_Model", "general"))
+    if "model_year" in llm_data:
+        gryd_tasks.append(create_payload(llm_data["model_year"], "Brand_Model_Year", "year_spec"))
         
-    if "brand_model_year" in vector_summaries:
-        gryd_tasks.append(create_payload(vector_summaries["brand_model_year"], "Brand_Model_Year", "year_spec"))
-        
-    # --- PROGRAMMATIC EXPANSION: VARIANTS ---
-    for i, v in enumerate(vector_summaries.get("variants", [])):
-        base_variant_name = v.get("structured_info", {}).get("Variant Name", "").strip()
-        
-        # Match with DB
+    # 2. Variants (Programmatic Expansion)
+    for i, v in enumerate(llm_data.get("variants", [])):
+        base_variant_name = v.get("variant_name", "").strip()
         matched_db_variants = [
             db_v for db_v in real_db_variants 
             if base_variant_name.lower() in str(db_v.get("variant_name", "")).lower()
         ]
         
         if not matched_db_variants:
-            # Fallback if no DB match
             v_id = base_variant_name.replace(" ", "_").lower() if base_variant_name else f"var_{i}"
             gryd_tasks.append(create_payload(v, "Variant_Detail", f"variant_{v_id}"))
         else:
-            # Expand for every DB combination
             for db_variant in matched_db_variants:
                 v_clone = copy.deepcopy(v)
                 specific_name = db_variant.get("variant_name")
                 v_id = specific_name.replace(" ", "_").lower()
-                
-                # Inject DB specific data
-                v_clone["structured_info"]["Variant Name"] = specific_name
-                v_clone["structured_info"]["Engine"] = db_variant.get("engine_type", "")
-                v_clone["structured_info"]["Transmission"] = db_variant.get("transmission_type", "")
-                v_clone["structured_info"]["Drivetrain"] = db_variant.get("drivetrain", "")
-                
                 # Update text for vector search
                 if base_variant_name in v_clone["summary_text"]:
                     v_clone["summary_text"] = v_clone["summary_text"].replace(base_variant_name, specific_name)
@@ -114,41 +103,78 @@ def format_for_gryd_vector(vector_summaries: dict, doc_id_prefix: str, real_db_v
                     
                 gryd_tasks.append(create_payload(v_clone, "Variant_Detail", f"variant_{v_id}"))
 
-    # Feature Categories (Unchanged)
-    for i, f in enumerate(vector_summaries.get("feature_categories", [])):
-        c_id = f.get("structured_info", {}).get("Category Name", f"cat_{i}").replace(" ", "_").lower()
+    # 3. Categories & Features
+    for i, f in enumerate(llm_data.get("feature_categories", [])):
+        c_id = f.get("summary_text", f"cat_{i}").replace(" ", "_").lower()
         gryd_tasks.append(create_payload(f, "Feature_Category", f"feature_category_{c_id}"))
         
-    # --- PROGRAMMATIC EXPANSION: SPECIFIC FEATURES ---
-    for i, s in enumerate(vector_summaries.get("specific_features", [])):
-        availability_str = str(s.get("structured_info", {}).get("Availability", "")).lower()
-        
-        # Parse the comma-separated bases from the LLM
-        base_variants_in_avail = [x.strip() for x in availability_str.split(",")]
-        is_standard = "all variants" in availability_str or "standard" in availability_str
-        
-        matched_db_variants = []
-        for db_v in real_db_variants:
-            db_v_name = str(db_v.get("variant_name", "")).lower()
-            if is_standard or any(base in db_v_name for base in base_variants_in_avail if base):
-                matched_db_variants.append(db_v)
-                
-        if not matched_db_variants:
-            s_id = s.get("structured_info", {}).get("Feature Name", f"spec_{i}").replace(" ", "_").lower()
-            gryd_tasks.append(create_payload(s, "Specific_Feature_DeepDive", f"feature_deep_{s_id}"))
-        else:
-            for db_variant in matched_db_variants:
-                s_clone = copy.deepcopy(s)
-                spec_var_name = db_variant.get("variant_name")
-                feature_name = s_clone.get('structured_info', {}).get('Feature Name', f'spec_{i}')
-                s_id = f"{feature_name}_{spec_var_name}".replace(" ", "_").lower()
-                
-                s_clone["summary_text"] = f"{s_clone['summary_text']} for {spec_var_name}"
-                s_clone["structured_info"]["Applicable_Variant"] = spec_var_name
-                
-                gryd_tasks.append(create_payload(s_clone, "Specific_Feature_DeepDive", f"feature_deep_{s_id}"))
+    for i, s in enumerate(llm_data.get("specific_features", [])):
+        s_id = s.get("summary_text", f"spec_{i}").replace(" ", "_").lower()
+        gryd_tasks.append(create_payload(s, "Specific_Feature_DeepDive", f"feature_deep_{s_id}"))
 
     return gryd_tasks
+
+def update_autocrm_summaries(db_updates: dict, model_year_id: str):
+    """
+    Updates the feature_summary fields in vehicle_model, model_year, and variant models.
+    Includes robust logging for tracing success and failures.
+    """
+    logger.info(f"🔄 Starting AutoCRM Database updates for Model Year ID: {model_year_id}")
+    
+    # 1. Update Model Year
+    my_toon = db_updates.get("model_year", {}).get("toon_text")
+    if my_toon and my_toon != "N/A":
+        try:
+            model_year_db = AutocrmModel('model_year')
+            # Fetch to get parent vehicle_model_id for the next step
+            current_my_record = model_year_db.get(id=model_year_id) 
+            
+            # Update the Model Year
+            model_year_db.update(id=model_year_id, data={"feature_summary": my_toon})
+            logger.info(f"✅ SUCCESSFULLY updated model_year [{model_year_id}]")
+            
+            # 2. Update Vehicle Model (Using the parent ID from Model Year)
+            vm_id = current_my_record.get("data", {}).get("vehicle_model_id")
+            vm_toon = db_updates.get("vehicle_model", {}).get("toon_text")
+            
+            if vm_id and vm_toon and vm_toon != "N/A":
+                vehicle_model_db = AutocrmModel('vehicle_model')
+                vehicle_model_db.update(id=vm_id, data={"feature_summary": vm_toon})
+                logger.info(f"✅ SUCCESSFULLY updated vehicle_model [{vm_id}]")
+            else:
+                logger.warning(f"⚠️ SKIPPED vehicle_model update. Missing ID ({vm_id}) or TOON text empty.")
+                
+        except Exception as e:
+            logger.error(f"❌ FAILED to update model_year or vehicle_model for {model_year_id}. Error: {e}")
+    else:
+        logger.warning(f"⚠️ SKIPPED model_year update. TOON text is empty for {model_year_id}")
+
+    # 3. Update Variants
+    variants_to_update = db_updates.get("variants", [])
+    success_count, fail_count = 0, 0
+    
+    if variants_to_update:
+        variant_db = AutocrmModel('variant')
+        for v in variants_to_update:
+            v_id = v.get("variant_id")
+            v_toon = v.get("toon_text")
+            v_name = v.get("variant_name", "Unknown")
+            
+            if v_id and v_toon and v_toon != "N/A":
+                try:
+                    variant_db.update(id=v_id, data={"feature_summary": v_toon})
+                    logger.info(f"✅ SUCCESSFULLY updated variant [{v_name}] (ID: {v_id})")
+                    success_count += 1
+                except Exception as e:
+                    logger.error(f"❌ FAILED to update variant [{v_name}] (ID: {v_id}). Error: {e}")
+                    fail_count += 1
+            else:
+                logger.warning(f"⚠️ SKIPPED variant [{v_name}]. Missing ID or TOON text empty.")
+                fail_count += 1
+                
+        logger.info(f"📊 Variant Update Summary: {success_count} Successful | {fail_count} Failed/Skipped")
+    else:
+        logger.info("ℹ️ No variants mapped for database update.")
 
 def run_summary_dispatcher(document_id: str, model_year_id: str):
     """
@@ -177,35 +203,58 @@ def run_summary_dispatcher(document_id: str, model_year_id: str):
     return {"status": "completed", "model_year_id": model_year_id, "results": results}
 
 def run_summary_worker(brochure_text: str, model_year_id: str):
-    """
-    Calls Gemini to summarize the text structure, then expands variants programmatically.
-    """
-    logger.info(f"🤖 [Worker] Generating summaries for Model Year ID: {model_year_id}")
+    logger.info(f"🤖 [Worker] Generating TOON summaries for Model Year ID: {model_year_id}")
     
     agent = VectorIngestionAgent()
-    vector_summaries = agent.run(brochure_text)
+    llm_response = agent.run(brochure_text)
     
-    if not vector_summaries: 
-        logger.error("❌ Vector summaries failed to generate.")
+    if not llm_response: 
+        logger.error("❌ Summaries failed to generate.")
         return {"status": "failed"}
 
-    # Fetch DB variants using the ID
-    logger.info(f"🔍 Fetching DB Variants for model_year_id: {model_year_id}...")
+    # Fetch DB variants to get their IDs
     real_db_variants = fetch_db_variants(model_year_id)
-
-    # Use the model_year_id as the prefix for all vector IDs (much cleaner!)
     doc_prefix = (model_year_id or str(uuid.uuid4())).replace(" ", "_").lower()
+
+    # --- 1. BUILD AUTOCRM DB UPDATES ---
+    db_updates = {
+        "vehicle_model": {
+            "toon_text": llm_response.get("vehicle_model", {}).get("toon_text", "")
+        },
+        "model_year": {
+            "model_year_id": model_year_id,
+            "toon_text": llm_response.get("model_year", {}).get("toon_text", "")
+        },
+        "variants": []
+    }
+
+    # Match LLM variants to DB variants to grab the variant_id
+    for v in llm_response.get("variants", []):
+        base_name = v.get("variant_name", "").strip().lower()
+        for db_v in real_db_variants:
+            if base_name in str(db_v.get("variant_name", "")).lower():
+                db_updates["variants"].append({
+                    "variant_id": db_v.get("variant_id", ""), 
+                    "variant_name": db_v.get("variant_name", ""),
+                    "toon_text": v.get("toon_text", "")
+                })
+
+    # --- 2. BUILD VECTOR TASKS ---
+    gryd_tasks = format_for_gryd_vector(llm_response, doc_prefix, real_db_variants)
     
-    # Programmatic expansion
-    gryd_tasks = format_for_gryd_vector(vector_summaries, doc_prefix, real_db_variants)
+    # --- 3. POST TO AUTOCRM DB ---
+    # -> THIS IS THE FIX: Actually call the function to run the DB updates! <-
+    logger.info("Triggering direct AutoCRM Model updates...")
+    update_autocrm_summaries(db_updates, model_year_id)
     
-    print(f"\n--- Generated Vector Tasks Payload for {model_year_id} ---")
-    print(json.dumps(gryd_tasks, indent=2, ensure_ascii=False))
-    print("---------------------------------------------------\n")
+    logger.info(f"✅ [Worker] Finished DB updates. Generated {len(gryd_tasks)} vector tasks.")
     
-    logger.info(f"✅ [Worker] Generated {len(gryd_tasks)} tasks.")
-    
-    return {"status": "success", "tasks_payload": gryd_tasks}
+    # Return ONLY the vector tasks to the frontend/terminal. 
+    # The DB updates are already done!
+    return {
+        "status": "success", 
+        "vector_tasks_payload": gryd_tasks
+    }
 
 def run_vector_ingestion(tasks_payload: list):
     """
