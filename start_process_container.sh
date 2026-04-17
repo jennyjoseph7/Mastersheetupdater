@@ -1,6 +1,7 @@
 #!/bin/bash
 
 AWS_ACCESS_KEYS_REQUIRED=${AWS_ACCESS_KEYS_REQUIRED:-True}
+WAIT_FOR_ALL=${WAIT_FOR_ALL:-1}  # Set to 1 for DEBUG.. needs to be 0 for production
 
 DEV_CONTAINER=${DEV_CONTAINER:-True}
 if [ -e config.sh ];then
@@ -35,6 +36,7 @@ function main() {
 		if [ -n $ENTRYPOINT_PREFIX -a -n $WORKER_ENTRYPOINT ];then
 			START_WORKERS=$( "$ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT" )
 		fi
+        export WAIT_FOR_ALL=0
 	fi
 
 	if [ "$DEV_CONTAINER" == "True" ];then
@@ -45,7 +47,7 @@ function main() {
 	source ./start_worker.sh
 	start_all
 	trap "echo 'Received kill signal' 1>&2; stop_all_workers" SIGTERM SIGINT SIGHUP
-	wait_for_all_processes
+    wait_for_all_processes ${WAIT_FOR_ALL}
 }
 
 main
