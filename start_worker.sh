@@ -536,21 +536,25 @@ function wait_for_all_processes() {
 	# If wait_for_all is 0, stop all workers and exit if any one process is killed. 
 	# If wait_for_all is 1, wait for all processes to terminate and exit.
 	pids=()
+    process_files=()
 	wait_for_all=${1:-0}
 	for pid_filename in `ls -1 $BASE_DIR/*.pid 2> /dev/null | sort`; do
 		pid=$(cat $pid_filename)
 		if [[ -n $pid ]];then
 			pids+=($pid)
+            process_files+=( $pid_filename )
 		fi
 	done
+    echo "Waiting for any one of the processes to be killed: $process_files" 1>&2
 	while true; do
 		for i in $(seq 0 ${#pids[@]}); do
 			pid=${pids[$i]}
+            fpid=${process_files[$i]}
 			if is_process_running $pid;then
 				echo "Process $pid is still running. Waiting..." 1>&2
 				sleep 10
 			elif [[ $wait_for_all == 0 ]];then
-				echo "Process $pid terminated." 1>&2
+		     	echo "WARNING!!!!: Process $pid in worker/app $fpid has terminated." 1>&2
 				echo "Stopping all workers." 1>&2
 				stop_all_workers
 				echo "Exiting..." 1>&2

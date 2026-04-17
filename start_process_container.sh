@@ -44,7 +44,7 @@ function main() {
 	fi
 	source ./start_worker.sh
 	start_all
-	trap "stop_all_workers" SIGTERM SIGINT
+	trap "echo 'Received kill signal' 1>&2; stop_all_workers" SIGTERM SIGINT SIGHUP
 	wait_for_all_processes
 }
 
