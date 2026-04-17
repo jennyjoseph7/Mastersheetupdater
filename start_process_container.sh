@@ -26,6 +26,7 @@ function main() {
 		source ./start_single_worker.sh
 		main
 		exit
+	fi
 
 	if [ $ENVIRONMENT == "production" ];then
 		if [ "$AWS_ACCESS_KEYS_REQUIRED" == "True" ];then
