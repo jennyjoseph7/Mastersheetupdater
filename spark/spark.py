@@ -496,6 +496,8 @@ def comfy_image_generation(
     logger = None,
     **kwargs):
     logger = logger or mlogger
+    if kwargs.get('optimise_prompt',True):
+        prompt, elapsed = _convert_prompt(prompt)
     return comfy_image_generation_task(input_image_url, prompt, number_of_images, logger = logger, **kwargs)
 
 @gryd.is_a_task(function_name = "gemini_image_generation", job_param = 'job', logger_param = 'logger')
