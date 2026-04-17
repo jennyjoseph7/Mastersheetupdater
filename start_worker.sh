@@ -31,7 +31,7 @@ export WAITRESS_PATH=waitress-serve
 export CRON_SCHEDULER_PATH=execute-cron-continuous
 export CRON_WORKER_PATH=cron_worker
 DEFAULT_WORKER_EXECUTABLES=""
-if [[ $DEFAULT_WORKERS != 0 ]]];then
+if [[ $DEFAULT_WORKERS != 0 ]];then
 	if [[ $DEFAULT_WORKERS == 1 ]];then
 		DEFAULT_WORKERS="cron-scheduler,cron-worker"
 	fi
