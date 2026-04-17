@@ -23,6 +23,7 @@ from cohorts_new.routes.routes import cohort_bp, gryd_orchestration_bp
 import os
 from flask import Flask,request,jsonify
 from config import *
+import requests
 import autocrm_validator
 
 gryd.SERVICE = f"{AUTOCRM_APP_ENTERPRISE_ID}-app"   
@@ -100,6 +101,7 @@ def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID
     # payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
     payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
     language = payload.get("language", "english")
+
     payload.update({
         "channel": channel,
         "enterprise_id": enterprise_id,

@@ -23,7 +23,17 @@
         {
             "name": "vehicle_model_id",
             "refers": "parents.vehicle_model.vehicle_model_id",
-            "indexed": true
+            "indexed": true,
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "vehicle_model",
+                    "vehicle_model_id"
+                ],
+                "kwargs": {
+                    "vehicle_model_name": "{vehicle_model_generic_name}"
+                }
+            }
         },
         {
             "name": "vehicle_model_generic_name",
