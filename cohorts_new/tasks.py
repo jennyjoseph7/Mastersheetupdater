@@ -1,7 +1,9 @@
-import sys 
+import sys
 import os
 # sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+_parent = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+if _parent not in sys.path:
+    sys.path.insert(0, _parent)
 from gryd_worker import gryd
 from typing import *
 from cohorts_new.utils.utility import *
@@ -13,17 +15,11 @@ import inspect
 from config import AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
 from config import post_autocrm_model, AutocrmModel
 
-GRYD_SERVICE_NAME = AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
-GRYD_CONFIG = {
-    "broker_type" : "sqs", 
-    "timeout" : 10,
-    "wait_time_to_shutdown" : 43200
-}
-
+GRYD_CONFIG = {"broker_type" : "sqs", "timeout" : 10, "wait_time_to_shutdown" : 43200}
 logger = get_logger(__name__)
 
 def setup_gryd():
-    gryd.SERVICE = GRYD_SERVICE_NAME
+    gryd.SERVICE = AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
     gryd.set_queue_manager(config = GRYD_CONFIG)
     logger.info(f"Environment currently set to '{gryd.ENVIRONMENT}'")
     
@@ -257,7 +253,13 @@ def campaign_idea_generation_agent(*args, **kwargs):
             "num_of_campaign_ideas": kwargs.get("num_of_campaign_ideas", 3), 
             "num_of_campaign_post_sets": kwargs.get("num_of_campaign_post_sets", 3), 
             "num_of_hashtags": kwargs.get("num_of_hashtags", 20),
-            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o")
+            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o"),
+            "tition_max_length" : kwargs.get("title_max_length", None),
+            "hook_max_length" : kwargs.get("hook_max_length", None),
+            "slogan_max_length" : kwargs.get("slogan_max_length", None),
+            "caption_max_length" : kwargs.get("caption_max_length", None),
+            "message_max_length" : kwargs.get("message_max_length", None),
+            "cta_max_length" : kwargs.get("cta_max_length", None),
         }
         agent = CampaignIdeaGeneratorAgent(**_params)
         output = agent.run(batch_size=kwargs.get("batch_size", 2))
@@ -286,7 +288,13 @@ def campaign_idea_generation_agent_async(*args, **kwargs):
             "num_of_campaign_ideas": kwargs.get("num_of_campaign_ideas", 3), 
             "num_of_campaign_post_sets": kwargs.get("num_of_campaign_post_sets", 3), 
             "num_of_hashtags": kwargs.get("num_of_hashtags", 20),
-            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o")
+            "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o"),
+            "tition_max_length" : kwargs.get("title_max_length", None),
+            "hook_max_length" : kwargs.get("hook_max_length", None),
+            "slogan_max_length" : kwargs.get("slogan_max_length", None),
+            "caption_max_length" : kwargs.get("caption_max_length", None),
+            "message_max_length" : kwargs.get("message_max_length", None),
+            "cta_max_length" : kwargs.get("cta_max_length", None),
         }
         agent = CampaignIdeaGeneratorAgent(**_params)
         output = agent.run_with_events(batch_size=kwargs.get("batch_size", 2))
@@ -299,11 +307,60 @@ def campaign_idea_generation_agent_async(*args, **kwargs):
         logger.error(f"Campaign Idea Generation Agent Error: {e}")
         raise e     
 
+@gryd.is_a_task(function_name="meta_ad_campaign_generator_agent", job_param='job', logger_param='logger')
+def meta_ad_campaign_generator_agent(*args, **kwargs):
+
+    try:
+        from cohorts_new.cohorts_agents.meta_campaign_agent import MetaAdCampaignAgent
+        logger.info(f"Meta Ad Campaign Agent Params: {json.dumps(kwargs, indent=4, default=str)}")
+        gryd_job_parms = kwargs.pop("job", None)
+        gryd_logger = kwargs.pop("logger", None)
+
+        result = MetaAdCampaignAgent(**kwargs).run()
+
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            **result
+        }
+    except Exception as e:
+        logger.error(f"Meta Ad Campaign Agent Error: {e}")
+        traceback.print_exc()
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "full_error_trace": full_trace
+        }
+
+@gryd.is_a_task(function_name="meta_ad_adset_generator_agent", job_param='job', logger_param='logger')
+def meta_ad_adset_generator_agent(*args, **kwargs):
+    try:
+        from cohorts_new.cohorts_agents.meta_campaign_agent import MetaAdAdsetAgent
+        logger.info(f"Meta Ad Adset Agent Params: {json.dumps(kwargs, indent=4, default=str)}")
+        gryd_job_parms = kwargs.pop("job", None)
+        gryd_logger = kwargs.pop("logger", None)
+        result = MetaAdAdsetAgent(**kwargs).run()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            **result
+        }
+    except Exception as e:
+        logger.error(f"Meta Ad Adset Agent Error: {e}")
+        traceback.print_exc()
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "full_error_trace": full_trace
+        }
 
 @gryd.is_a_task(function_name="meta_ad_creative_generator_agent", job_param='job', logger_param='logger')
 def meta_ad_creative_generator_agent(*args, **kwargs):
     try:
-        from cohorts_new.agents.meta_campaign_agent import MetaAdCreativeAgent
+        from cohorts_new.cohorts_agents.meta_campaign_agent import MetaAdCreativeAgent
+        logger.info(f"Meta Ad Creative Agent Params: {json.dumps(kwargs, indent=4, default=str)}")
+        gryd_job_parms = kwargs.pop("job", None)
+        gryd_logger = kwargs.pop("logger", None)
         result = MetaAdCreativeAgent(**kwargs).run()
         return {
             "task": inspect.currentframe().f_code.co_name,
@@ -318,6 +375,16 @@ def meta_ad_creative_generator_agent(*args, **kwargs):
             "error": str(e).strip(),
             "full_error_trace": full_trace
         }
+    
+
+@gryd.is_a_task()
+def meta_ad_manager_functions(*args, **kwargs):
+    supported_functions = ["get_campaign_list", "get_adset_list", "get_creative_list", "set_image_creative", "set_adset", "set_campaign"]
+    function_name = kwargs.get("function_name", "get_adset_list")
+    if function_name not in supported_functions:
+        raise ValueError(f"Invalid function name: {function_name}. Supported functions: {supported_functions}")
+    
+
     
 if __name__ == "__main__":
 

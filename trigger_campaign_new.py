@@ -3,7 +3,9 @@
 # from communication.connectors.connector_whatsapp import trigger_campaign
 import sys, os
 from gryd_worker import gryd
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 from campaign.campaign_worker import trigger_campaign,process_single_lead
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 if __name__ == "__main__":

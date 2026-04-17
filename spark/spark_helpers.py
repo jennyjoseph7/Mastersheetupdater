@@ -4,7 +4,7 @@ from os.path import dirname, abspath, join as joinpath
 import requests
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
+    sys.path.insert(0, BASE_DIR)
 from config import hp, \
     GRYD_FILE_USER_ID, \
     GRYD_FILE_API_KEY, \

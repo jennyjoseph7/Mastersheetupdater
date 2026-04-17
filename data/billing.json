@@ -37,68 +37,69 @@
             "default": "debit",
             "indexed": true
         },
-	        {
-	            "name": "item_name",
-	            "type": "text",
-	            "required": true,
-	            "indexed": true,
-	            "options": [
-	                "call_connected",
-	                "call_completed",
-	                "message_delivered",
-	                "response_to_query"
-	            ]
-	        },
-	        {
-	            "name": "search_term",
-	            "type": "text",
-	            "indexed": true,
-	            "force_update": [
-	                "transaction_date",
-	                "transaction_type",
-	                "item_name",
-	                "campaign_id",
-	                "channel",
-	                "item_description",
-	                "billing_address",
-	                "billing_contact_name",
-	                "billing_contact_email",
-	                "billing_contact_phone",
-	                "status",
-	                "invoice_url"
-	            ],
-	            "auto_updater": true,
-	            "default": {
-	                "function": "name_to_id",
-	                "args": [
-	                    "transaction_date",
-	                    "transaction_type",
-	                    "item_name",
-	                    "campaign_id",
-	                    "channel",
-	                    "item_description",
-	                    "billing_address",
-	                    "billing_contact_name",
-	                    "billing_contact_email",
-	                    "billing_contact_phone",
-	                    "status",
-	                    "invoice_url"
-	                ],
-	                "kwargs": {
-	                    "attribute_join": " ",
-	                    "is_unique": true,
-	                    "separator": " ",
-	                    "skip_empty": true,
-	                    "case": "lower"
-	                }
-	            }
-	        },
-	        {
-	            "name": "campaign_id",
-	            "type": "text",
-	            "indexed": true,
-	            "default": "inbound"
-	        },
+        {
+            "name": "item_name",
+            "type": "text",
+            "required": true,
+            "indexed": true,
+            "options": [
+                "call_connected",
+                "call_completed",
+                "message_delivered",
+                "response_to_query",
+                "credit_purchase"
+            ]
+        },
+        {
+            "name": "search_term",
+            "type": "text",
+            "indexed": true,
+            "force_update": [
+                "transaction_date",
+                "transaction_type",
+                "item_name",
+                "campaign_id",
+                "channel",
+                "item_description",
+                "billing_address",
+                "billing_contact_name",
+                "billing_contact_email",
+                "billing_contact_phone",
+                "status",
+                "invoice_url"
+            ],
+            "auto_updater": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "transaction_date",
+                    "transaction_type",
+                    "item_name",
+                    "campaign_id",
+                    "channel",
+                    "item_description",
+                    "billing_address",
+                    "billing_contact_name",
+                    "billing_contact_email",
+                    "billing_contact_phone",
+                    "status",
+                    "invoice_url"
+                ],
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " ",
+                    "skip_empty": true,
+                    "case": "lower"
+                }
+            }
+        },
+        {
+            "name": "campaign_id",
+            "type": "text",
+            "indexed": true,
+            "default": "inbound"
+        },
         {
             "name": "channel",
             "type": "text",
@@ -142,12 +143,12 @@
         {
             "name": "discount_percentage",
             "type": "number",
-            "required": true
+            "required": true,
+            "default": 0
         },
         {
             "name": "item_final_price",
-            "type": "number",
-            "required": true
+            "type": "number"
         },
         {
             "name": "item_total",
@@ -162,13 +163,11 @@
         },
         {
             "name": "discount_amount",
-            "type": "number",
-            "required": true
+            "type": "number"
         },
         {
             "name": "item_final_total",
-            "type": "number",
-            "required": true
+            "type": "number"
         },
         {
             "name": "currency",

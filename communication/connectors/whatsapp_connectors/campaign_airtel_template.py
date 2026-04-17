@@ -1,5 +1,5 @@
 from connectors.whatsapp_connectors.source_connectors import *
-
+from conversation.lead_post_processing import update_error_in_lead_and_session
 from typing import Any
 class AirtelCampaignManager:
     def __init__(self,*args,**kwargs):
@@ -71,7 +71,8 @@ class AirtelCampaignManager:
     def _resolve_variables_and_payload(self, message_data, params_data):
         variables = [params_data.get(p, '') for p in message_data.get("template_variables", [])]
         variables = [] if all(v in ("", None) for v in variables) else variables
-        payload = message_data.get("template_buttons_payload", [])
+        payload = message_data.get("template_button_payloads", [])
+        logger.info(f"Variables: {variables}, Payload: {payload}")
         return variables, payload
 
 
@@ -118,7 +119,7 @@ class AirtelCampaignManager:
         """
         Creates a media-based template payload for Airtel with IMAGE/VIDEO type and variable support.
         """
-
+        # logger.info(f"MEDIA TEMPLATE message_data ----{message_data}. params_data ----{params_data}")
         template_id = message_data.get("template_id") or message_data.get("template_name", "")
         response_type = message_data.get("type", "template")
         media_type = (message_data.get("media_type") or "").lower()
@@ -126,6 +127,11 @@ class AirtelCampaignManager:
         variables, payload = self._resolve_variables_and_payload(message_data, params_data)
 
         if not media_id:
+            update_error_in_lead_and_session(f"Media ID is required for Airtel template ID {template_id}", "_create_media_template",**{
+                "lead_id": params_data.get("lead_id"),
+                "channel":"whatsapp_chat",
+                "lead_model":params_data.get("lead_model")
+            })
             raise ValueError("Media ID is required.")
         # Build media_attachment
         media_attachment = {

@@ -1,7 +1,9 @@
 import os,json
 from os.path import exists as ispath, dirname, basename, join as joinpath, abspath, split as pathsplit, splitext, sep as dirsep, isfile
 import sys
-sys.path.insert(0, dirname(dirname(abspath(__file__))))
+_root = dirname(dirname(abspath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 from communication.connectors.communication_helpers import *
 from communication.connectors.rcs_connectors.source_connector import RCSMessengerConnector
 from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AUTOCRM_APP_ENTERPRISE_ID

@@ -10,7 +10,8 @@
         {
             "name": "dealership_id",
             "refers": "parents.dealership.dealership_id",
-            "required": true
+            "required": true,
+            "indexed": true
         },
         {
             "name": "region_id",
@@ -21,7 +22,8 @@
                     "dealership_id",
                     "region_id"
                 ]
-            }
+            },
+            "indexed": true
         },
         {
             "name": "region_name",
@@ -1326,7 +1328,7 @@
                 "Wrong contact number",
                 "Not reachable",
                 "Didnt pickup",
-                "Didnt speak",
+                "No Response",
                 "Rejected",
                 "Language barrier",
                 "Is not decision maker",
@@ -1348,7 +1350,14 @@
                 "Enquired for Others",
                 "Comparing with another brand",
                 "Call Disconnected",
-                "Others"
+                "Others",
+                "Talk to Human",
+                "Interested in another car same dealership",
+                "Showroom Visit Planned",
+                "Follow UP Required",
+                "Audio Issue",
+                "Lost to Competition",
+                "Purchase Postponed"
             ],
             "option_others": true
         },
@@ -1407,7 +1416,8 @@
             "type": "number",
             "default": {
                 "function": "now_ctime"
-            }
+            },
+            "indexed": true
         },
         {
             "auto_updater": true,
@@ -1415,7 +1425,8 @@
             "type": "number",
             "default": {
                 "function": "now_ctime"
-            }
+            },
+            "indexed": true
         }
     ]
 }

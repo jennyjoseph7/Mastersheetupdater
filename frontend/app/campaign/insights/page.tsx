@@ -23,6 +23,7 @@ import {
   PlayCircle,
   Activity,
   Clock,
+  RefreshCw,
   X 
 } from "lucide-react";
 import {
@@ -263,7 +264,7 @@ function CampaignInsightsContent() {
   } | null>(null);
 
   const [activeRecording, setActiveRecording] = useState<{ url: string; name: string } | null>(null);
-
+const [isRefreshing, setIsRefreshing] = useState(false);
   // --- Leads Table & Pagination State ---
   const [searchTerm, setSearchTerm] = useState("");
   const [dispositionFilter, setDispositionFilter] = useState("all"); 
@@ -285,6 +286,7 @@ function CampaignInsightsContent() {
     data: rawData,
     isLoading: perfLoading,
     error: perfError,
+    mutate: mutatePerf,
   } = useSWR<any>(
     campaignId ? `campaign-performance-${campaignId}` : null,
     () => fetchCampaignPerformanceSummary(campaignId || ""),
@@ -297,8 +299,11 @@ function CampaignInsightsContent() {
 
   // Added fallbacks here so the header works even if the fetch hasn't completed
   const campaignName = performanceData?.campaign_name || campaignnamecsv || "Campaign";
-  const campaignType = performanceData?.campaign_type || "";
+  // const campaignType = performanceData?.campaign_type || "";
+const campaignTypeFromURL = searchParams?.get("campaign_type");
 
+// Then update your variable logic:
+const campaignType = performanceData?.campaign_type || campaignTypeFromURL || "";
   // 2. Prepare Data for Charts
   const failureData = useMemo(() => processFailureStats(performanceData?.failure_stats_by_channel || []), [performanceData]);
   const intentData = useMemo(() => processIntentStats(performanceData?.intent_distribution_by_channel || []), [performanceData]);
@@ -313,6 +318,7 @@ function CampaignInsightsContent() {
     data: leadsDataRaw,
     isLoading: leadsLoading,
     error: leadsError,
+    mutate: mutateLeads,
   } = useSWR<{ items: CampaignLead[]; total_number: number }>(
     // Changed dependency to fetch independently of campaignType being loaded
     campaignId
@@ -340,6 +346,7 @@ function CampaignInsightsContent() {
     data: sessionsDataRaw,
     isLoading: sessionsLoading,
     error: sessionsError,
+    mutate: mutateSessions,
   } = useSWR<{ items: CampaignSession[]; total_number: number }>(
     campaignId 
       ? ['campaign-sessions', campaignId, sessionCurrentPage, sessionPageSize, sessionSortConfig.key, sessionSortConfig.direction, 'all', sessionStartDate, sessionEndDate] 
@@ -354,9 +361,20 @@ function CampaignInsightsContent() {
         start_date: startDate as string,
         end_date: endDate as string
       }),
+
+      
     SWR_OPTIONS
   );
-
+const handleRefreshAll = async () => {
+    setIsRefreshing(true);
+    // This triggers all three SWR keys to re-fetch from the API
+    await Promise.all([
+      mutatePerf(),
+      mutateLeads(),
+      mutateSessions()
+    ]);
+    setIsRefreshing(false);
+  };
   const serverSessions = sessionsDataRaw?.items || [];
   const totalSessionRecords = sessionsDataRaw?.total_number || 0;
   const totalSessionPages = Math.ceil(totalSessionRecords / sessionPageSize) || 1;
@@ -472,6 +490,18 @@ function CampaignInsightsContent() {
             <p className="text-sm text-slate-500 mt-0.5">Performance Overview</p>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+    <Button 
+      variant="outline" 
+      size="sm" 
+      onClick={handleRefreshAll}
+      disabled={isRefreshing || perfLoading || leadsLoading || sessionsLoading}
+      className="gap-2"
+    >
+      <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+      {isRefreshing ? "Refreshing..." : "Refresh Data"}
+    </Button>
+  </div>
       </div>
 
       <div className="flex-1 space-y-6 px-4 md:px-6 lg:px-8 pb-10 w-full mt-8">

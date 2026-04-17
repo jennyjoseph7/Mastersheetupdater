@@ -6,7 +6,7 @@ from agents.base_agent import BaseAgent
 
 logger = get_logger(__name__)
 
-# Reusing your existing lambda configuration
+
 llm_service = lambda x: ai_service_app.get_llm_response(
     messages=x,
     model_identifier="gcp-gemini-2.5-flash",

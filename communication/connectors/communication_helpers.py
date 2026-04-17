@@ -40,7 +40,9 @@ from os.path import (
 from validate_email import validate_email
 from campaign.campaign_workflow import determine_campaign_next_action
 # --- Set import path for internal modules ---
-sys.path.insert(0, dirname(dirname(abspath(__file__))))
+_communication_dir = dirname(dirname(abspath(__file__)))
+if _communication_dir not in sys.path:
+    sys.path.insert(0, _communication_dir)
 from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID
 from gryd_worker import gryd, gryd_helpers as hp,gryd_db_helper as db
 logger=gryd.logger
@@ -51,7 +53,8 @@ from connectors.communication_configs import *
 
 # Path to parent folder
 PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(PARENT_DIR)
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
 
 from autocrm_db_helper import get_pg_connector
 
@@ -170,7 +173,7 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
                     _ = list(pg.list("communication_credential", {"dealership_id": dealership_id}))
 
             logger.info(f"TEST BEFORE SESSION FINAL PAYLOAD: {payload}")
-            session = get_or_create_session(payload,channel)
+            session = get_or_create_session(payload,channel,engaged)
             return {**session, "dealership_id": dealership_id}
 
         # 5. NON-CAMPAIGN FLOW
@@ -179,7 +182,7 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
             dealership_id = creds[0].get("dealership_id")
             payload["dealership_id"] = dealership_id
 
-        session = get_or_create_session(payload,channel)
+        session = get_or_create_session(payload,channel,engaged)
         return {**session, "dealership_id": dealership_id}
 
 def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None,campaign_id=None):
@@ -227,15 +230,17 @@ def get_or_create_session(data,channel=None,engaged=False):
         # "channel": channel or "whatsapp_chat" if data.get("campaign_type")=="post-sales" else None, 
         "channel": channel or "whatsapp_chat",
         "session_live": True,
-        "status": "completed~"
+        "status~": "completed"
     }
-    
+        
     filters = {k: v for k, v in filters.items() if v is not None}
-    condition, param = apply_filters(**filters)
+    # condition, param = apply_filters(**filters)
     
     logger.info(f"TEST filters for sessions--{filters}")
     with get_pg_connector() as pg:
-        sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
+        # sessions = list(db.GrydPGConnector.list(pg, "session", condition, param))
+        sessions=list(pg.list_order_by("session", filters,order="DESC"))
+        
         # logger.info(f'TEST sessions found for {sessions}')
         if sessions:
             new_campaign_id = str(data.get("campaign_id")).strip() if data.get("campaign_id") else None
@@ -251,11 +256,19 @@ def get_or_create_session(data,channel=None,engaged=False):
                 is_previous_session_inbound=True
                 return sessions[0]
             logger.info(f"Is previous session inbound: {is_previous_session_inbound}")
-            if (new_campaign_id != old_campaign_id):
+            # if (new_campaign_id != old_campaign_id):
+            if not engaged and sessions[0].get("session_id"):
                 logger.info("There is a new triggered campaign for this user. Since there is an existing session, we are ending the existing(old) session and creating a new session..")
                 logger.info(f"OLD SESSIONID--{sessions[0].get('session_id')}")
                 # end the old session also check if session end_time
-                end_session(**{"session_id":sessions[0].get("session_id"),"pg":pg})
+                update_history_in_session(sessions[0])
+                gryd.create_async_task(
+                    "end_session_and_post_process",
+                    AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
+                    args=[],
+                    kwargs={"session_id":sessions[0].get("session_id")}
+                )
+                # end_session_and_post_process(**{"session_id":sessions[0].get("session_id"),"pg":pg})
                 # create new session
                 s=create_new_session(data,channel,engaged)
                 return s
@@ -301,47 +314,77 @@ def get_or_create_session(data,channel=None,engaged=False):
         s=create_new_session(data,channel,engaged)
         
         return s
+    
+def normalize_ts(ts):
+    if not ts:
+        return None
+    if isinstance(ts, str):
+        return int(datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp())
+    if isinstance(ts, float):
+        return int(ts)
+    if isinstance(ts, int):
+        return ts
+    return None
 
+def update_history_in_session(session_data):
+    logger.info(f"update_history_in_session for session_id: {session_data.get('session_id')}")
+    with get_pg_connector() as pg:
+        last_ts = None
+        existing_history = session_data.get("history", []) or []
+        history_rows = list(
+                        # pg.list_order_by("message", {"session_id": session_id},order_by="created",order="ASC")
+                        pg.list("message", {"session_id": session_data.get("session_id")})
+                    )
+        logger.info(f"history_rows: {json.dumps(history_rows,indent=4)}")
+        last_history_epoch = (
+                int(session_data.get("history_updated_time"))
+                if session_data.get("history_updated_time")
+                else None
+            )
+        new_records = []
+        for row in history_rows:
+            ts = normalize_ts(row.get("created") or row.get("updated"))
+            if ts and (last_history_epoch is None or ts > last_history_epoch):
+                new_records.append((row, ts))
 
-def end_session(*args, **kwargs):
-    """
-    Ends a session and triggers a post session process task.
+        if new_records:
+            appended_history = []
 
-    Args:
-        session_id (str): The session id to end.
+            for record,ts in new_records:
+                last_ts = ts
 
-    Returns:
-        None
-    """
-    session_id=kwargs.get("session_id")
-    additional_dict=kwargs.get("additional_dict",{})
-    pg=kwargs.get("pg",None)
-    _call_post_process=kwargs.get("call_post_process",True)
-    additional_dict["session_live"] = additional_dict.get("session_live", False)
-    additional_dict["status"] = additional_dict.get("status", "completed")
-    additional_dict["end_time"] = additional_dict.get("end_time", time.time())
+                appended_history.append(
+                    {
+                        "index": record.get("index"),
+                        "role": (
+                            "user"
+                            if record.get("reply_to") == ""
+                            else "agent"
+                        ),
+                        "timestamp": ts,
+                        "message": record.get("message"),
+                    }
+                )
+            start_time = normalize_ts(session_data.get("start_time"))
+            session_duration = (
+                last_ts - start_time if start_time and last_ts else None
+            )
+            
+            update_payload = {
+                "history": existing_history + appended_history,
+                "history_updated_time": last_ts,
+                "has_unprocessed_history": True
+            }
 
-    logger.info(f"Ending session with session_id: {session_id}")
-    def _do_db_work(pg_conn):
-        # if additional_dict has history we will update it in the session model
-        pg_conn.update("session", "session_id", session_id, additional_dict)
-        update_session_data_in_lead(
-            session_id,
-            "completed",
-            pg=pg_conn  
-        )
-
-    if pg:
-        _do_db_work(pg)
-    else:
-        with get_pg_connector() as pg_conn:
-            _do_db_work(pg_conn)
-    logger.info(f"Calling post session process task for session_id: {session_id}")
-    # post_session_process(**{"session_id":session_id})
-    if _call_post_process:
-        gryd.create_async_task("post_session_process",AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,args=[],kwargs={"session_id":session_id})
-    logger.info(f"Session with session_id: {session_id}. Has been ended.")
-
+            if session_duration is not None:
+                update_payload["duration"] = session_duration
+                
+            pg.update(
+                "session",
+                "session_id",
+                session_data.get("session_id"),
+                update_payload
+            )
 def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_post_process,inactive_cutoff_epoch):
     """
     Handles post session process or end session based on session end date and history update.
@@ -383,7 +426,13 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
     if end_date_epoch and now_epoch >= end_date_epoch:
         if not history_updated and is_inactive:
             logger.info(f"End date reached for session {session_id} and no new history and also its been inactive for more than {inactive_cutoff_epoch} seconds. So ending the session.")
-            end_session(**{"session_id":session_id,"call_post_process":False}, pg=pg)
+            gryd.create_async_task(
+                    "end_session_and_post_process",
+                    AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
+                    args=[],
+                    kwargs={"session_id":session_id,"call_post_process":False,pg:pg},
+                )
+            # end_session_and_post_process(**{"session_id":session_id,"call_post_process":False}, pg=pg)
             return
 
         logger.info(f"End date reached for session {session_id} but history updated .Since it has been inactive for less than {inactive_cutoff_epoch} seconds. So not ending the session.")
@@ -446,21 +495,7 @@ def create_new_session(data,channel=None,engaged=False):
         return s 
 
 
-def update_session_data_in_lead(session_id,status,pg=None):
-    if not pg:
-        logger.error("Postgres connection is required to update session data in lead.")
-        return
-    session_data = pg.get("session", "session_id",session_id)
-    if not session_data:
-        logger.info(f"Could not find session with session_id: {session_id}")
-    lead_id = session_data.get("lead_id")
-    campaign_type = session_data.get("campaign_type")
-    last_interaction_time = session_data.get("last_response_time",None)
-    if lead_id:
-        lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
-        lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
-        pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
-        logger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
+
 
 def get_or_create_person(phone_number):
     """Return person object; create if not exists."""
@@ -497,14 +532,19 @@ def get_or_create_person(phone_number):
 
 def generate_uid(data):
     if isinstance(data, (dict, list)):
-        data_str = json.dumps(data, sort_keys=True)
+        data_str = json.dumps(data, sort_keys=True, ensure_ascii=True)
     else:
-        data_str = str(data)
+        try:
+            data_str = str(data)
+        except Exception:
+            data_str = repr(data)
+
+    # Sanitize surrogates/invalid Unicode that would cause uuid3 to fail on encode
+    data_str = data_str.encode('utf-8', errors='replace').decode('utf-8')
 
     uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
-    uid=str(uid)
     # logger.info(f"Generated UID: {uid} and type of uid: {type(uid)} for data: {data_str}")
-    return uid
+    return str(uid)
 
 def get_communication_credential(dealership_id="daveai", channel=None):
     logger.info(f"Getting communication credential for dealership - {dealership_id}")
