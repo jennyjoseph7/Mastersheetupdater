@@ -1,5 +1,4 @@
-#   !/bin/bash -x
-
+#!/bin/bash -x
 export BASE_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 pushd $BASE_DIR > /dev/null
 export APP_NAME=${APP_NAME:-$(basename $BASE_DIR)}
