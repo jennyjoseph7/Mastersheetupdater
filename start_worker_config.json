@@ -68,28 +68,28 @@
         {
             "name": "voice",
             "entry_point": "gryd_tasks.py",
-            "parallel_threads": 8,
+            "parallel_threads": 5,
             "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME",
             "shutdown_time": 0
         },
         {
             "name": "voice",
             "entry_point": "v1.py",
-            "parallel_threads": 8,
+            "parallel_threads": 5,
             "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_V1",
             "shutdown_time": 0
         },
         {
             "name": "voice",
             "entry_point": "v2.py",
-            "parallel_threads": 8,
+            "parallel_threads": 5,
             "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_V2",
             "shutdown_time": 0
         },
         {
             "name": "voice",
             "entry_point": "v3.py",
-            "parallel_threads": 8,
+            "parallel_threads": 5,
             "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_V3",
             "shutdown_time": 0
         },
