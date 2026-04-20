@@ -214,6 +214,28 @@ Fix applied:
 
 ---
 
+## Data Quality and Reconciliation
+
+After processing, the tool shows a **Data quality** report before the preview tables.
+This report is advisory only. It does **not** change the Zoho column order, formulas,
+copy output, or Excel export.
+
+Checks currently shown:
+
+| Check | Purpose |
+|---|---|
+| Missing columns | Flags required or recommended export columns that are not present |
+| Skipped phones | Shows File 1 rows skipped by the existing phone normalization rule |
+| Duplicate phones | Highlights repeated phone numbers in Audience & Leads |
+| Matched / unmatched leads | Shows whether processed leads found a matching Sessions row |
+| Session-only phones | Shows Sessions phone numbers that were not present in File 1 |
+| Unknown dispositions | Lists dispositions that map to `Unknown` and may need rule review |
+| Session rows without phone | Flags File 2 rows where no 10-digit phone was detectable |
+
+Use **Copy Report** to share the quality summary before pasting the final data into Zoho.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
