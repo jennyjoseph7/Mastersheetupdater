@@ -1731,16 +1731,30 @@
         btn.textContent = '✓ Copied';
         setTimeout(() => { btn.innerHTML = orig; }, 2000);
       } catch (e) {
-        // Fallback
+        // Fallback using execCommand
         const ta = document.createElement('textarea');
         ta.value = tsv;
         ta.style.position = 'fixed';
         ta.style.left = '-9999px';
         document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        try { document.execCommand('copy'); } catch { }
-        document.body.removeChild(ta);
+        let fallbackSuccess = false;
+        try {
+          ta.focus();
+          ta.select();
+          fallbackSuccess = document.execCommand('copy');
+        } catch (execErr) {
+          fallbackSuccess = false;
+        } finally {
+          document.body.removeChild(ta);
+        }
+        if (fallbackSuccess) {
+          const btn = document.getElementById('btnCopyOutput');
+          const orig = btn.innerHTML;
+          btn.textContent = '✓ Copied';
+          setTimeout(() => { btn.innerHTML = orig; }, 2000);
+        } else {
+          setStatus('globalStatus', '⚠ Copy failed — please select and copy manually', 'warn');
+        }
       }
     }
 
