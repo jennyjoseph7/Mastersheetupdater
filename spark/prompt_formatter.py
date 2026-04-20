@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
@@ -83,15 +84,31 @@ _model = None
 _tokenizer = None
 
 
+def _get_device():
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 def _get_model():
     global _model, _tokenizer
     if _model is None or _tokenizer is None:
+        device = _get_device()
+        dtype = torch.float16 if device in ("cuda", "mps") else torch.float32
         _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        _model = AutoModelForCausalLM.from_pretrained(
-            MODEL_NAME,
-            torch_dtype="auto",
-            device_map="auto",
-        )
+        if device == "cuda":
+            _model = AutoModelForCausalLM.from_pretrained(
+                MODEL_NAME,
+                torch_dtype=dtype,
+                device_map="auto",
+            )
+        else:
+            _model = AutoModelForCausalLM.from_pretrained(
+                MODEL_NAME,
+                torch_dtype=dtype,
+            ).to(device)
     return _model, _tokenizer
 
 

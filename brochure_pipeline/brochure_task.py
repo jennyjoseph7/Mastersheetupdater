@@ -1,13 +1,16 @@
 import os
+import sys
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 from gryd_worker import gryd
 from bp_utils import GRYD_SERVICE, get_logger
 
 logger = get_logger(__name__)
 
-from tasks.variant_feature import process_brochure_chunk, run_brochure_orchestrator
 from tasks.summary import run_summary_dispatcher, run_summary_worker, run_vector_ingestion
-from tasks.table_updation import run_table_processor
-
+from tasks.variant_feature import process_brochure_chunk, run_brochure_orchestrator
 
 # def setup_environment(environment: str = "-local"):
 #     if environment is None:
@@ -63,9 +66,13 @@ def summary_worker_task(**kwargs):
 
 @gryd.is_a_task()
 def vector_ingestion_task(**kwargs):
-    """Task that pushes saved summaries to the vector DB."""
-    job_id = kwargs.get("job_id")
-    return run_vector_ingestion(job_id)
+    tasks_payload = kwargs.get("tasks_payload", [])
+    
+    if not tasks_payload:
+        logger.error("❌ No tasks payload provided to vector_ingestion_task.")
+        return {"status": "failed", "message": "Empty tasks_payload."}
+        
+    return run_vector_ingestion(tasks_payload)
 
 
 

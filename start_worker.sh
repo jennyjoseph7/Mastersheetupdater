@@ -1,5 +1,4 @@
-#   !/bin/bash -x
-
+#!/bin/bash -x
 export BASE_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 pushd $BASE_DIR > /dev/null
 export APP_NAME=${APP_NAME:-$(basename $BASE_DIR)}
@@ -32,8 +31,8 @@ export WAITRESS_PATH=waitress-serve
 export CRON_SCHEDULER_PATH=execute-cron-continuous
 export CRON_WORKER_PATH=cron_worker
 DEFAULT_WORKER_EXECUTABLES=""
-if [ $DEFAULT_WORKERS -ne 0 ];then
-	if [ $DEFAULT_WORKERS -eq 1 ];then
+if [[ $DEFAULT_WORKERS != 0 ]];then
+	if [[ $DEFAULT_WORKERS == 1 ]];then
 		DEFAULT_WORKERS="cron-scheduler,cron-worker"
 	fi
 	for default_worker in ${DEFAULT_WORKERS//,/ }; do
@@ -366,17 +365,17 @@ function start_worker() {
 		entry_points=( $entry_point )
 	fi
 	for entry_point in ${entry_points[@]}; do
-	    if [ $PRIMARY -eq 0 ];then
+	    if [[ $PRIMARY == 0 ]];then
 	    	primary=""
 	    else
 	    	primary="--primary "
 	    fi
-	    if [ $PARALLEL_THREADS -ne 0 ];then
+	    if [[ $PARALLEL_THREADS != 0 ]];then
 	    	parallel_threads=${PARALLEL_THREADS}
 	    else
 	    	parallel_threads=`jq -r ".${worker_type}[] | select(.name == \"${worker_name}\" and .entry_point == \"${entry_point}\")" ${BASE_DIR}/start_worker_config.json | jq '.parallel_threads'`
 	    fi
-	    if [ $SHUTDOWN_TIME -ne 0 ];then
+	    if [[ $SHUTDOWN_TIME != 0 ]];then
 	    	shutdown_time=${SHUTDOWN_TIME}
 	    else
 	    	shutdown_time=`jq -r ".${worker_type}[] | select(.name == \"${worker_name}\" and .entry_point == \"${entry_point}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.shutdown_time'`
@@ -401,7 +400,7 @@ function start_worker() {
 	    echo $w_pid > ${pid_filename}
 	    echo "$worker_type $worker_name started with PID $w_pid" 1>&2
 	    popd > /dev/null
-	    if [ $is_foreground -ne 0 ];then
+	    if [[ $is_foreground != 0 ]];then
 	    	tail -f --follow=name --retry ${LOG_FILE}
 	    	stop_worker $worker_name $shutdown_time $worker_type
 	    fi
@@ -431,10 +430,10 @@ function start_webapp() {
 		return 1
 	fi
 	echo "Starting webapp $webapp_name"
-	webapp_app_name=`jq -r '.webapps[] | select(.name == "${webapp_name}")' ${BASE_DIR}/start_worker_config.json | jq -r '.name'`
-	webapp_port=`jq -r '.webapps[] | select(.name == "${webapp_name}")' ${BASE_DIR}/start_worker_config.json | jq -r '.port'`
-	webapp_url_scheme=`jq -r '.webapps[] | select(.name == "${webapp_name}")' ${BASE_DIR}/start_worker_config.json | jq -r '.url_scheme'`
-	webapp_api_threads=`jq -r '.webapps[] | select(.name == "${webapp_name}")' ${BASE_DIR}/start_worker_config.json | jq -r '.api_threads'`
+	webapp_app_name=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.name'`
+	webapp_port=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.port'`
+	webapp_url_scheme=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.url_scheme'`
+	webapp_api_threads=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.api_threads'`
 	if [[ $webapp_app_name == null ]];then
 		webapp_app_name=`jq -r '.webapp.name' ${BASE_DIR}/start_worker_config.json`
 		webapp_port=`jq -r '.webapp.port' ${BASE_DIR}/start_worker_config.json`
@@ -443,13 +442,14 @@ function start_webapp() {
 	fi
 	webapp_port=${webapp_port:-${SERVER_PORT}}
 	webapp_url_scheme=${webapp_url_scheme:-http}
-	if [ $API_THREADS -ne 0 ];then
+    webapp_api_threads=${webapp_api_threads:-1}
+	if [[ $API_THREADS != 0 ]];then
 		webapp_api_threads=${API_THREADS}
 	fi
 	pids=()
 	is_success=0
-	if [ $PRIMARY -ne 0 ];then
-		for i in $(seq in $webapp_api_threads); do
+	if [[ $PRIMARY != 0 ]];then
+		for i in $(seq $webapp_api_threads); do
 			pid_filename=$BASE_DIR/${webapp_name}_${i}.pid
 			port=$((webapp_port + i - 1))
 			export LOG_FILE=${LOGDIR}/${webapp_name}_${i}_stderr.log
@@ -471,7 +471,7 @@ function start_webapp() {
 		echo "Webapp $webapp_name started with PID $w_pid" 1>&2
 		pids+=($w_pid)
 	fi
-	if [ $is_foreground -ne 0 ];then
+	if [[ $is_foreground != 0 ]];then
 		tail -f --follow=name --retry ${LOG_FILE}
 		stop_webapp $webapp_name $shutdown_time
 	fi
@@ -537,26 +537,30 @@ function wait_for_all_processes() {
 	# If wait_for_all is 0, stop all workers and exit if any one process is killed. 
 	# If wait_for_all is 1, wait for all processes to terminate and exit.
 	pids=()
+    process_files=()
 	wait_for_all=${1:-0}
 	for pid_filename in `ls -1 $BASE_DIR/*.pid 2> /dev/null | sort`; do
 		pid=$(cat $pid_filename)
 		if [[ -n $pid ]];then
 			pids+=($pid)
+            process_files+=( $pid_filename )
 		fi
 	done
+    echo "Waiting for any one of the processes to be killed: $process_files" 1>&2
 	while true; do
-		for i in $(seq 0 ${#pids[@]}); do
+        for i in $(seq 0 $(( ${#pids[@]} - 1)) ); do
 			pid=${pids[$i]}
+            fpid=${process_files[$i]}
 			if is_process_running $pid;then
 				echo "Process $pid is still running. Waiting..." 1>&2
 				sleep 10
-			elif [ $wait_for_all -eq 0 ];then
-				echo "Process $pid terminated." 1>&2
+			elif [[ $wait_for_all == 0 ]];then
+		     	echo "WARNING!!!!: Process $pid in worker/app $fpid has terminated." 1>&2
 				echo "Stopping all workers." 1>&2
 				stop_all_workers
 				echo "Exiting..." 1>&2
 				return 0
-			elif [ $wait_for_all -ne 0 ];then
+			elif [[ $wait_for_all != 0 ]];then
 				unset pids[$i]
 				if [ ${#pids[@]} -eq 0 ];then # If all processes are terminated, exit.
 					echo "All processes terminated." 1>&2
@@ -574,14 +578,14 @@ function start_all() {
 	echo "Starting all workers and webapps" 1>&2
 	if [[ $SETUP_WEBAPP == "True" ]];then
 		echo "Setting up webapp. Since SETUP_WEBAPP is True." 1>&2
-		if [ $START_WEBAPP -eq 1 ];then
+		if [[ $START_WEBAPP == 1 ]];then
 			echo "Getting webapp names from start_worker_config.json" 1>&2
 			START_WEBAPP=`jq -r '.webapps[].name' ${BASE_DIR}/start_worker_config.json | sort -u | tr '\n' ',' | sed 's/,$//'`
 			if [[ $START_WEBAPP == null ]];then
 				echo "Getting webapp name from start_worker_config.json" 1>&2
 				START_WEBAPP=`jq -r '.webapp.name' ${BASE_DIR}/start_worker_config.json`
 			fi
-		elif [ $START_WEBAPP -eq 0 ];then
+		elif [[ $START_WEBAPP == 0 ]];then
 			START_WEBAPP=""
 		fi
 		echo "Starting webapps $START_WEBAPP" 1>&2
@@ -595,23 +599,23 @@ function start_all() {
 		echo "Not setting up workers. Since SETUP_WORKERS is not True." 1>&2
 		return
 	fi
-	if [[ $DEFAULT_WORKERS -eq 0 || -z $DEFAULT_WORKERS ]] ;then
+	if [[ $DEFAULT_WORKERS == 0 || -z $DEFAULT_WORKERS ]] ;then
 		echo "Not setting up default workers. Since DEFAULT_WORKERS is 0 or not set." 1>&2
 		return
 	fi
 	start_default_workers
-	if [ $START_AGENTS -eq 1 ]; then
+	if [[ $START_AGENTS == 1 ]]; then
 		START_AGENTS=`jq -r '.agents[].name' ${BASE_DIR}/start_worker_config.json | sort -u | tr '\n' ',' | sed 's/,$//'`
-	elif [ $START_AGENTS -eq 0 ]; then
+	elif [[ $START_AGENTS == 0 ]]; then
 		START_AGENTS=""
 	fi
 	echo "Starting agents $START_AGENTS" 1>&2
 	for agent_name in ${START_AGENTS//,/ }; do
 		start_agent $agent_name
 	done
-	if [ $START_WORKERS -eq 1 ];then
+	if [[ $START_WORKERS == 1 ]];then
 		START_WORKERS=`jq -r '.workers[].name' ${BASE_DIR}/start_worker_config.json | sort -u | tr '\n' ',' | sed 's/,$//'`
-	elif [ $START_WORKERS -eq 0 ];then
+	elif [[ $START_WORKERS == 0 ]];then
 		START_WORKERS=""
 	fi
 	echo "Starting workers $START_WORKERS" 1>&2
