@@ -194,44 +194,44 @@ function kill_process() {
 }
 
 function stop_worker() {
-	# Stop the worker by killing the process and waiting for it to terminate
-	# e.g. stop_worker 110 will stop the worker named "workers" with a timeout of 110 seconds
-	worker_name=$1
-	shutdown_time=${2:-110}
-	worker_type=${3:-workers}
-	echo "Stopping $worker_type $worker_name with a timeout of $shutdown_time seconds" 1>&2
-	names=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.name'` )
-	entry_points=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.entry_point'` )
-	echo "Names: $names" 1>&2
-	echo "Entry points: $entry_points" 1>&2
-	is_success=0
-	for i in $(seq 0 $((${#names[@]} - 1))); do
-		name=${names[$i]}
-		entry_point=${entry_points[$i]}
-		worker_fname=${entry_point%.*}
-		echo "Stopping worker $i $name $entry_point" 1>&2
-	    for ssw_pid in `get_worker_pids ${name} ${entry_point}`; do
-	    	kill_process $ssw_pid $shutdown_time
-	    	if [ $? -ne 0 ];then
-				echo "Failed to kill process $ssw_pid within $shutdown_time seconds" 1>&2
-	    		is_success=1
-	    	fi
-	    done
-	    ssw_pids=`get_process_pids "${name}.*${entry_point}"`
-	    echo "SSW PIDs for ${name}/${entry_point}: $ssw_pids" 1>&2
-	    for ssw_pid in $ssw_pids; do
-	    	echo "Killing process $ssw_pid with a timeout of $shutdown_time seconds" 1>&2
-	    	kill_process $ssw_pid $shutdown_time
-	    	if [ $? -ne 0 ];then
-				echo "Failed to kill process $ssw_pid within $shutdown_time seconds" 1>&2
-	    		is_success=1
-	    	fi
-	    done
-		if [ $is_success -eq 0 ];then
-			remove_worker_pid_file $name $entry_point
-		fi
-	done
-	return $is_success
+        # Stop the worker by killing the process and waiting for it to terminate
+        # e.g. stop_worker 110 will stop the worker named "workers" with a timeout of 110 seconds
+        worker_name=$1
+        shutdown_time=${2:-110}
+        worker_type=${3:-workers}
+        echo "Stopping $worker_type $worker_name with a timeout of $shutdown_time seconds" 1>&2
+        names=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.name'` )
+        s_entry_points=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.entry_point'` )
+        echo "Names: $names" 1>&2
+        echo "Entry points: $s_entry_points" 1>&2
+        is_success=0
+        for i in $(seq 0 $((${#names[@]} - 1))); do
+                name=${names[$i]}
+                s_entry_point=${s_entry_points[$i]}
+                worker_fname=${s_entry_point%.*}
+                echo "Stopping worker $i $name $s_entry_point" 1>&2
+            for ssw_pid in `get_worker_pids ${name} ${s_entry_point}`; do
+                kill_process $ssw_pid $shutdown_time
+                if [ $? -ne 0 ];then
+                                echo "Failed to kill process $ssw_pid within $shutdown_time seconds" 1>&2
+                        is_success=1
+                fi
+            done
+            ssw_pids=`get_process_pids "${name}.*${s_entry_point}"`
+            echo "SSW PIDs for ${name}/${s_entry_point}: $ssw_pids" 1>&2
+            for ssw_pid in $ssw_pids; do
+                echo "Killing process $ssw_pid with a timeout of $shutdown_time seconds" 1>&2
+                kill_process $ssw_pid $shutdown_time
+                if [ $? -ne 0 ];then
+                                echo "Failed to kill process $ssw_pid within $shutdown_time seconds" 1>&2
+                        is_success=1
+                fi
+            done
+                if [ $is_success -eq 0 ];then
+                        remove_worker_pid_file $name $s_entry_point
+                fi
+        done
+        return $is_success
 }
 
 function stop_agent() {
