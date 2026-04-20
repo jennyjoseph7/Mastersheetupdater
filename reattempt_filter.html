@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Re-Attempt Filter — JEJO</title>
+  <meta name="description"
+    content="Filters truly not-connected leads across multiple days and exports in AutoEngage upload format for re-triggering calls." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    /* ── DESIGN TOKENS ─────────────────────────────────────────────────── */
+    :root {
+      --bg: #080b10;
+      --surface: #10151d;
+      --surface2: #151c27;
+      --surface3: #1c2633;
+      --border: rgba(218, 230, 242, 0.09);
+      --border-focus: rgba(86, 164, 230, 0.58);
+      --accent: #5b9cf5;
+      --accent-dim: #3d7ad4;
+      --accent-soft: rgba(91, 156, 245, 0.13);
+      --success: #63d6a3;
+      --success-soft: rgba(99, 214, 163, 0.12);
+      --warn: #f2c464;
+      --warn-soft: rgba(242, 196, 100, 0.12);
+      --danger: #f16f6f;
+      --danger-soft: rgba(241, 111, 111, 0.12);
+      --text: #f4f0e8;
+      --text-dim: #aeb8c3;
+      --text-muted: #6f7b88;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'Manrope', 'Inter', sans-serif;
+      --body: 'Inter', sans-serif;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --radius-lg: 22px;
+      --shadow-card: 0 18px 60px rgba(0, 0, 0, 0.26);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background:
+        radial-gradient(ellipse at 10% -5%, rgba(91, 156, 245, 0.15), transparent 38rem),
+        radial-gradient(ellipse at 90% 5%, rgba(99, 214, 163, 0.08), transparent 32rem),
+        radial-gradient(ellipse at 50% 80%, rgba(100, 90, 200, 0.06), transparent 50rem),
+        linear-gradient(180deg, #070a0f 0%, #0b1017 42%, #080c12 100%);
+      color: var(--text);
+      font-family: var(--body);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+      letter-spacing: -0.005em;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+      background-size: 52px 52px;
+      -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 65%);
+      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 65%);
+    }
+
+    /* ── HEADER ────────────────────────────────────────────────────────── */
+    header {
+      padding: 1.2rem 2rem;
+      background: rgba(8, 11, 16, 0.78);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(18px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .header-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    @keyframes brandPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 8px 28px rgba(91, 156, 245, 0.28), 0 0 0 0 rgba(91, 156, 245, 0);
+      }
+
+      50% {
+        box-shadow: 0 12px 36px rgba(91, 156, 245, 0.45), 0 0 0 6px rgba(91, 156, 245, 0.08);
+      }
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      color: #0a1628;
+      font-family: var(--sans);
+      font-weight: 800;
+      font-size: 1.1rem;
+      background: linear-gradient(135deg, #8bb8f8, var(--accent), #2d5faa);
+      background-size: 200% 200%;
+      animation: brandPulse 3.5s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      width: fit-content;
+      margin-bottom: 0.18rem;
+      background: rgba(255, 255, 255, 0.045);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.25rem 0.7rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    h1 {
+      font-family: var(--sans);
+      font-size: clamp(1.35rem, 1.8vw, 1.8rem);
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.045em;
+    }
+
+    .header-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-dim);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .nav-link:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .nav-link.active {
+      border-color: rgba(91, 156, 245, 0.4);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    /* ── MAIN ──────────────────────────────────────────────────────────── */
+    main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, rgba(16, 21, 29, 0.94), rgba(13, 17, 24, 0.94));
+      box-shadow: var(--shadow-card);
+      padding: 1.15rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin-bottom: 0.9rem;
+      color: var(--accent);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: flex-end;
+      margin-bottom: 1.1rem;
+    }
+
+    .section-title {
+      font-family: var(--sans);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      position: relative;
+      padding-left: 0.85rem;
+    }
+
+    .section-title::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 15%;
+      height: 70%;
+      width: 3px;
+      border-radius: 99px;
+      background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+    }
+
+    .section-note {
+      max-width: 48ch;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      text-align: right;
+      line-height: 1.5;
+    }
+
+    /* ── UPLOAD ZONE ──────────────────────────────────────────────────── */
+    .drop-zone {
+      min-height: 180px;
+      padding: 1.35rem;
+      border: 1.5px dashed rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      background:
+        linear-gradient(160deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
+        var(--surface);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 2px 12px rgba(0, 0, 0, 0.18);
+      transition: border-color 0.25s, background 0.25s, transform 0.2s, box-shadow 0.25s;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      margin-bottom: 1rem;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: rgba(91, 156, 245, 0.6);
+      border-style: solid;
+      background:
+        linear-gradient(160deg, rgba(91, 156, 245, 0.08), rgba(255, 255, 255, 0.02)),
+        var(--surface);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(91, 156, 245, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .drop-zone.has-file {
+      border-color: rgba(99, 214, 163, 0.6);
+      border-style: solid;
+      background:
+        linear-gradient(160deg, rgba(99, 214, 163, 0.1), rgba(255, 255, 255, 0.02)),
+        var(--surface);
+      box-shadow: 0 6px 24px rgba(99, 214, 163, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .dz-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      margin-bottom: 0.15rem;
+      background: var(--accent-soft);
+      border: 1px solid rgba(91, 156, 245, 0.3);
+      color: var(--accent);
+    }
+
+    .dz-label {
+      font-weight: 700;
+      font-size: 1rem;
+      font-family: var(--sans);
+      letter-spacing: -0.02em;
+    }
+
+    .dz-sublabel {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      max-width: 42ch;
+    }
+
+    .dz-cols {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      padding: 0.6rem 0.75rem;
+      background: rgba(0, 0, 0, 0.16);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      margin-top: auto;
+    }
+
+    .dz-status {
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .dz-status.ok {
+      background: var(--success-soft);
+      border-color: rgba(90, 215, 161, 0.3);
+      color: var(--success);
+    }
+
+    input[type=file] {
+      display: none;
+    }
+
+    /* ── ACTION BAR ───────────────────────────────────────────────────── */
+    .action-bar {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 0;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.6rem 1.2rem;
+      border-radius: 12px;
+      font-family: var(--body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      white-space: nowrap;
+      min-height: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.12) 50%, transparent 60%);
+      background-size: 200% 100%;
+      background-position: 200% center;
+      transition: background-position 0.55s ease;
+      pointer-events: none;
+    }
+
+    .btn:hover::after {
+      background-position: -200% center;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #0a1628;
+      box-shadow: none;
+    }
+
+    .btn-primary:not(:disabled):hover {
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+      transform: translateY(-1px);
+    }
+
+    @keyframes readyPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 4px 18px rgba(91, 156, 245, 0.3);
+      }
+
+      50% {
+        box-shadow: 0 8px 32px rgba(91, 156, 245, 0.65), 0 0 0 5px rgba(91, 156, 245, 0.12);
+      }
+    }
+
+    .btn-primary.ready {
+      animation: readyPulse 2s ease-in-out infinite;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success), #3ecf8e);
+      color: #082018;
+    }
+
+    .btn-success:not(:disabled):hover {
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn-danger-outline {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid rgba(241, 111, 111, 0.3);
+    }
+
+    .btn-danger-outline:hover {
+      background: var(--danger-soft);
+      border-color: var(--danger);
+    }
+
+    /* ── CONTROLS ──────────────────────────────────────────────────────── */
+    .control-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.55rem;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .control-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    .select-wrapper {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .custom-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 2rem 0.5rem 0.75rem;
+      font-family: var(--body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .custom-select:hover,
+    .custom-select:focus {
+      border-color: var(--accent);
+    }
+
+    .custom-select option {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .select-wrapper::after {
+      content: '';
+      position: absolute;
+      right: 0.65rem;
+      top: 50%;
+      transform: translateY(-50%);
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 4px solid var(--text-muted);
+      pointer-events: none;
+    }
+
+    .status-msg {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .status-msg.ok {
+      color: var(--success);
+    }
+
+    .status-msg.err {
+      color: var(--danger);
+    }
+
+    .status-msg.warn {
+      color: var(--warn);
+    }
+
+    /* ── CHECKBOX TOGGLE ──────────────────────────────────────────────── */
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .toggle-group label {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle-group input[type=checkbox] {
+      accent-color: var(--accent);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    /* ── STATS BAR ────────────────────────────────────────────────────── */
+    .stats-bar {
+      display: none;
+      gap: 0.9rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .stat-card {
+      flex: 1;
+      min-width: 130px;
+      border-radius: 18px;
+      background: rgba(16, 21, 29, 0.92);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      border: 1px solid var(--border);
+      padding: 1rem;
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    .stat-val {
+      font-size: 1.85rem;
+      font-weight: 700;
+      font-family: var(--mono);
+      margin-top: 0.15rem;
+      letter-spacing: -0.04em;
+    }
+
+    .stat-val.blue {
+      color: var(--accent);
+    }
+
+    .stat-val.green {
+      color: var(--success);
+    }
+
+    .stat-val.amber {
+      color: var(--warn);
+    }
+
+    .stat-val.red {
+      color: var(--danger);
+    }
+
+    .stat-val.purple {
+      color: #a78bfa;
+    }
+
+    /* ── EMPTY STATE ──────────────────────────────────────────────────── */
+    .empty-state {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 1rem;
+      align-items: center;
+      padding: 1rem 1.1rem;
+      margin-bottom: 1rem;
+      border: 1px dashed rgba(91, 156, 245, 0.32);
+      border-radius: 18px;
+      background: rgba(91, 156, 245, 0.045);
+    }
+
+    .empty-state strong {
+      display: block;
+      margin-bottom: 0.2rem;
+      font-family: var(--sans);
+      font-size: 1rem;
+    }
+
+    .empty-state p {
+      color: var(--text-muted);
+      font-size: 0.84rem;
+    }
+
+    .empty-steps {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .empty-steps span {
+      padding: 0.42rem 0.62rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-dim);
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
+    .results-panel:has(#statsBar[style*="flex"]) .empty-state {
+      display: none;
+    }
+
+    /* ── DEDUP LOG TABLE ──────────────────────────────────────────────── */
+    .dedup-summary {
+      border-radius: 18px;
+      background: rgba(16, 21, 29, 0.92);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      border: 1px solid var(--border);
+      padding: 1.15rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .dedup-title {
+      font-family: var(--sans);
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .dedup-title::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+      flex-shrink: 0;
+    }
+
+    .dedup-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.65rem;
+    }
+
+    .dedup-item {
+      padding: 0.7rem 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .dedup-item .label {
+      color: var(--text-muted);
+      font-size: 0.64rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .dedup-item .value {
+      margin-top: 0.2rem;
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .dedup-item.green .value {
+      color: var(--success);
+    }
+
+    .dedup-item.red .value {
+      color: var(--danger);
+    }
+
+    .dedup-item.blue .value {
+      color: var(--accent);
+    }
+
+    .dedup-item.amber .value {
+      color: var(--warn);
+    }
+
+    .dedup-item.purple .value {
+      color: #a78bfa;
+    }
+
+    /* ── TABLE ─────────────────────────────────────────────────────────── */
+    .table-wrapper {
+      border-radius: 18px;
+      background: rgba(16, 21, 29, 0.92);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      display: none;
+      margin-top: 1rem;
+    }
+
+    .table-header {
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .table-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      font-family: var(--sans);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .table-title::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .table-title.included::before {
+      background: var(--success);
+      box-shadow: 0 0 6px var(--success);
+    }
+
+    .table-title.excluded::before {
+      background: var(--danger);
+      box-shadow: 0 0 6px var(--danger);
+    }
+
+    .table-caption {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-family: var(--mono);
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      max-height: 50vh;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      font-family: var(--mono);
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    thead th {
+      background: #111820;
+      color: var(--text-dim);
+      font-weight: 600;
+      text-align: left;
+      padding: 0.55rem 0.7rem;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.65rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+
+    tbody tr:hover {
+      background: rgba(91, 156, 245, 0.055);
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    tbody td {
+      padding: 0.5rem 0.7rem;
+      white-space: nowrap;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+      vertical-align: middle;
+    }
+
+    .cell-phone {
+      color: #7dd3fc;
+    }
+
+    .cell-connected {
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    .cell-not-connected {
+      color: var(--danger);
+    }
+
+    .cell-terminal {
+      color: var(--warn);
+      font-weight: 600;
+    }
+
+    .cell-reason {
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    /* ── PROCESSING OVERLAY ───────────────────────────────────────────── */
+    .processing-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .processing-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2rem 2.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      box-shadow: var(--shadow-card);
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(91, 156, 245, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* ── ANIMATIONS ────────────────────────────────────────────────────── */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.3s ease forwards;
+    }
+
+    .slide-up {
+      animation: slideUp 0.35s ease forwards;
+    }
+
+    /* ── FOOTER ────────────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 1.5rem 2rem;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+
+    footer span {
+      color: var(--text-dim);
+    }
+
+    /* ── RESPONSIVE ────────────────────────────────────────────────────── */
+    @media (max-width: 980px) {
+
+      .section-head {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      .section-note {
+        text-align: left;
+      }
+
+      .empty-state {
+        grid-template-columns: 1fr;
+      }
+
+      .empty-steps {
+        justify-content: flex-start;
+      }
+
+      .dedup-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 700px) {
+      header {
+        position: static;
+      }
+
+      main {
+        padding: 1rem;
+      }
+
+      .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .control-group,
+      .toggle-group {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .dedup-grid {
+        grid-template-columns: 1fr;
+      }
+
+      header,
+      footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Processing Overlay -->
+  <div class="processing-overlay" id="processingOverlay">
+    <div class="processing-card">
+      <div class="spinner"></div>
+      <span id="processingMsg">Processing file…</span>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <div class="brand-mark">J</div>
+        <div>
+          <div class="header-badge">JEJO OPS</div>
+          <h1>Re-Attempt Filter</h1>
+          <div class="header-sub">Zoho Master Sheet → Smart Not-Connected Filter → AutoEngage Upload</div>
+        </div>
+      </div>
+      <div class="header-nav">
+        <a class="nav-link" href="disposition_sync_v2.html">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Disposition Sync
+        </a>
+        <a class="nav-link active" href="#">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Re-Attempt Filter
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Step 1</div>
+          <div class="section-title">Upload & Configure</div>
+        </div>
+        <div class="section-note">Upload your Zoho Master Sheet export with multi-day data. The tool scans every row,
+          groups by phone, and keeps only truly never-connected leads.</div>
+      </div>
+
+      <!-- Upload Zone -->
+      <div class="drop-zone" id="dz1" onclick="document.getElementById('fileInput').click()" role="button" tabindex="0"
+        aria-label="Upload Zoho Master Sheet CSV or Excel">
+        <div class="dz-icon" aria-hidden="true">
+          <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+        </div>
+        <div class="dz-label">Zoho Master Sheet Export</div>
+        <div class="dz-sublabel">Upload the filtered multi-day data from Zoho as CSV or Excel</div>
+        <div class="dz-cols">Lead_Id · Full_Name · Phone · City · Pincode · Language · Lead_Source
+          <br>Cohort · Campaign_ID · Call Triggered · Outcome · Disposition
+          <br>SUMMARY · Conversion · Call_Date · Number of attempts · Model · Seating
+        </div>
+        <div class="dz-status" id="fileStatus">Drag & drop or click to browse</div>
+        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+      </div>
+
+      <!-- Action Bar -->
+      <div class="action-bar">
+        <button class="btn btn-primary" id="btnProcess" disabled onclick="processFile()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Filter Not-Connected Leads
+        </button>
+
+        <div class="control-group">
+          <span class="control-label">Dealership</span>
+          <div class="select-wrapper">
+            <select class="custom-select" id="dealershipSelect">
+              <option value="anant_cars">Anant Cars (Mahindra)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toggle-group">
+          <input type="checkbox" id="chkExcludeTerminal" checked>
+          <label for="chkExcludeTerminal">Exclude terminal dispositions</label>
+        </div>
+
+        <button class="btn btn-success" id="btnExport" disabled onclick="exportAutoEngage()" style="display:none">
+          <svg fill="currentColor" width="14" height="14" viewBox="0 0 24 24">
+            <path
+              d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+          </svg>
+          Download AutoEngage CSV
+        </button>
+
+        <button class="btn btn-secondary" id="btnCopyOutput" disabled onclick="copyOutputData()" style="display:none">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          Copy TSV
+        </button>
+
+        <button class="btn btn-danger-outline" id="btnReset" onclick="resetAll()" style="display:none">Reset</button>
+
+        <span class="status-msg" id="globalStatus"></span>
+      </div>
+    </section>
+
+    <section class="panel results-panel">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Step 2</div>
+          <div class="section-title">Results</div>
+        </div>
+        <div class="section-note">Review the deduplication summary, then download the re-attempt list in AutoEngage
+          format.</div>
+      </div>
+
+      <div class="empty-state" id="emptyState">
+        <div>
+          <strong>Waiting for data</strong>
+          <p>Upload a Zoho Master Sheet export and click "Filter". The summary, stats, and output will appear here.</p>
+        </div>
+        <div class="empty-steps" aria-hidden="true">
+          <span>Upload</span>
+          <span>Filter</span>
+          <span>Review</span>
+          <span>Download</span>
+        </div>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="stats-bar" id="statsBar">
+        <div class="stat-card">
+          <div class="stat-label">Total Rows</div>
+          <div class="stat-val blue" id="sTotalRows">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Unique Phones</div>
+          <div class="stat-val purple" id="sUniquePhones">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Connected (Excluded)</div>
+          <div class="stat-val green" id="sConnected">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Terminal (Excluded)</div>
+          <div class="stat-val amber" id="sTerminal">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Re-Attempt List</div>
+          <div class="stat-val red" id="sReattempt">0</div>
+        </div>
+      </div>
+
+      <!-- Dedup Summary -->
+      <div class="dedup-summary" id="dedupSummary">
+        <div class="dedup-title">Deduplication Breakdown</div>
+        <div class="dedup-grid" id="dedupGrid"></div>
+      </div>
+
+      <!-- Included Table (Re-Attempt List) -->
+      <div class="table-wrapper" id="includedTableWrapper">
+        <div class="table-header">
+          <div class="table-title included">Re-Attempt List (AutoEngage Format)</div>
+          <div class="table-caption" id="includedCaption">0 leads</div>
+        </div>
+        <div class="table-scroll">
+          <table id="includedTable">
+            <thead>
+              <tr>
+                <th>showroom_code</th>
+                <th>region_name</th>
+                <th>dealership_id</th>
+                <th>person_name</th>
+                <th>phone_number</th>
+                <th>interested_vehicle_name</th>
+                <th>interested_vehicle_brand_name</th>
+                <th>seating_capacity_preference</th>
+                <th>city</th>
+                <th>pincode</th>
+                <th>subdivision_name</th>
+                <th>alt_phone_number_2</th>
+              </tr>
+            </thead>
+            <tbody id="includedBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Excluded Table -->
+      <div class="table-wrapper" id="excludedTableWrapper">
+        <div class="table-header">
+          <div class="table-title excluded">Excluded Leads (Already Connected / Terminal)</div>
+          <div class="table-caption" id="excludedCaption">0 leads</div>
+        </div>
+        <div class="table-scroll">
+          <table id="excludedTable">
+            <thead>
+              <tr>
+                <th>Phone</th>
+                <th>Full Name</th>
+                <th>Best Outcome</th>
+                <th>Best Disposition</th>
+                <th>Days Seen</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody id="excludedBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div style="display:flex;align-items:center;justify-content:center;gap:0.6rem;flex-wrap:wrap;">
+      <div
+        style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,#8bb8f8,var(--accent));color:#0a1628;font-family:var(--sans);font-weight:800;font-size:0.7rem;">
+        J</div>
+      <span style="color:var(--text-dim);font-weight:600;">JEJO Ops</span>
+      <span style="color:var(--border);">·</span>
+      <span>Re-Attempt Filter</span>
+      <span style="color:var(--border);">·</span>
+      <span>Zoho → Not-Connected → AutoEngage</span>
+      <span style="color:var(--border);">·</span>
+      <span>No backend · No install</span>
+    </div>
+  </footer>
+
+  <script>
+    // ─── STATE ───────────────────────────────────────────────────────────────────
+    let rawFile = null;
+    let includedLeads = [];     // Re-attempt list (AutoEngage format)
+    let excludedLeads = [];     // Excluded leads with reasons
+
+    // ─── DEALERSHIP CONFIGS ──────────────────────────────────────────────────────
+    const DEALERSHIPS = {
+      anant_cars: {
+        name: 'Anant Cars',
+        showroom_code: 'India',
+        region_name: 'anant cars india',
+        dealership_id: '',
+        brand: 'Mahindra',
+        subdivision_name: '',
+      },
+      // Future dealerships can be added here
+    };
+
+    // ─── DISPOSITION LOGIC ───────────────────────────────────────────────────────
+    // Terminal dispositions: the lead was definitively reached, no re-attempt needed
+    const TERMINAL_DISPOSITIONS = new Set([
+      'not interested', 'dnd', 'wrong number', 'test drive booked', 'converted',
+    ]);
+
+    // Connected outcomes: lead was successfully reached
+    const CONNECTED_OUTCOMES = new Set(['connected']);
+
+    // ─── PHONE NORMALIZATION ─────────────────────────────────────────────────────
+    function normalizePhone(raw) {
+      if (!raw) return null;
+      let s = String(raw).trim();
+      if (/^\d[\d.]*[eE][+\-]?\d+$/.test(s)) {
+        s = String(Math.round(parseFloat(s)));
+      }
+      const digits = s.replace(/\D/g, '');
+      if (!digits) return null;
+      if (digits.startsWith('91') && digits.length === 12) return digits.slice(2);
+      if (digits.startsWith('0') && digits.length === 11) return digits.slice(1);
+      if (digits.length === 10) return digits;
+      if (digits.startsWith('91') && digits.length >= 12) return digits.slice(digits.length - 10);
+      return null;
+    }
+
+    // ─── FILE READING ────────────────────────────────────────────────────────────
+    function readFileAsArrayBuffer(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function parseSheet(ab) {
+      const wb = XLSX.read(ab, { type: 'array', raw: true, cellText: false, cellDates: false });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+      if (rows.length < 2) return [];
+      const headers = rows[0].map(h => String(h).trim().toLowerCase().replace(/\s+/g, '_'));
+      const result = [];
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        const obj = {};
+        headers.forEach((h, j) => { obj[h] = cellToString(row[j]); });
+        result.push(obj);
+      }
+      return result;
+    }
+
+    function cellToString(val) {
+      if (val === undefined || val === null || val === '') return '';
+      if (typeof val === 'number') {
+        if (Number.isInteger(val)) return String(val);
+        if (val > 999999 && Math.abs(val - Math.round(val)) < 0.01) return String(Math.round(val));
+        return String(val);
+      }
+      let s = String(val).trim();
+      if (/^\d[\d.]*[eE][+\-]?\d+$/.test(s)) {
+        const n = parseFloat(s);
+        if (Number.isFinite(n) && n > 999999) return String(Math.round(n));
+      }
+      return s;
+    }
+
+    // ─── COLUMN DETECTION (flexible matching) ────────────────────────────────────
+    function findCol(row, candidates) {
+      for (const c of candidates) {
+        if (row[c] !== undefined && row[c] !== '') return row[c];
+      }
+      return '';
+    }
+
+    function detectPhone(row) {
+      return findCol(row, ['phone', 'phone_number', 'mobile', 'contact']);
+    }
+
+    function detectOutcome(row) {
+      return findCol(row, ['outcome', 'call_outcome', 'status']);
+    }
+
+    function detectDisposition(row) {
+      return findCol(row, ['disposition', 'call_disposition']);
+    }
+
+    function detectFullName(row) {
+      return findCol(row, ['full_name', 'person_name', 'name', 'customer_name']);
+    }
+
+    function detectModel(row) {
+      return findCol(row, ['model', 'model_preference', 'interested_vehicle_name', 'vehicle']);
+    }
+
+    function detectSeating(row) {
+      return findCol(row, ['seating', 'seating_capacity_preference', 'seating_preference']);
+    }
+
+    function detectCity(row) {
+      return findCol(row, ['city', 'location']);
+    }
+
+    function detectPincode(row) {
+      return findCol(row, ['pincode', 'pin_code', 'zip', 'postal_code']);
+    }
+
+    function detectCallDate(row) {
+      return findCol(row, ['call_date', 'date', 'call_triggered']);
+    }
+
+    function detectAttempts(row) {
+      const val = findCol(row, ['number_of_attempts', 'no._of_attempts', 'attempts', 'num_attempts']);
+      if (val && !val.startsWith('=')) return parseInt(val) || 1;
+      return 1;
+    }
+
+    // ─── CORE PROCESSING ─────────────────────────────────────────────────────────
+    async function processFile() {
+      if (!rawFile) return;
+
+      showOverlay('Parsing file…');
+      await tick();
+
+      try {
+        const ab = await readFileAsArrayBuffer(rawFile);
+        showOverlay('Reading data…');
+        await tick();
+
+        const rows = parseSheet(ab);
+        if (!rows.length) {
+          hideOverlay();
+          setStatus('globalStatus', 'Error: No data rows found in the file.', 'err');
+          return;
+        }
+
+        showOverlay('Grouping by phone number…');
+        await tick();
+
+        const excludeTerminal = document.getElementById('chkExcludeTerminal').checked;
+        const dealershipKey = document.getElementById('dealershipSelect').value;
+        const dealership = DEALERSHIPS[dealershipKey];
+
+        // ── GROUP ALL ROWS BY PHONE ──────────────────────────────────────────
+        const phoneGroups = new Map();   // phone → { rows: [], bestOutcome, bestDisposition, ... }
+        let skippedNoPhone = 0;
+
+        for (const row of rows) {
+          const rawPhone = detectPhone(row);
+          const phone = normalizePhone(rawPhone);
+          if (!phone) {
+            skippedNoPhone++;
+            continue;
+          }
+
+          if (!phoneGroups.has(phone)) {
+            phoneGroups.set(phone, { rows: [], outcomes: [], dispositions: [] });
+          }
+          const group = phoneGroups.get(phone);
+          group.rows.push(row);
+          group.outcomes.push(detectOutcome(row).toLowerCase().trim());
+          group.dispositions.push(detectDisposition(row).toLowerCase().trim());
+        }
+
+        showOverlay('Filtering leads…');
+        await tick();
+
+        // ── CLASSIFY EACH PHONE ──────────────────────────────────────────────
+        const included = [];      // Truly not connected — for re-attempt
+        const excluded = [];      // Connected or terminal — skip
+        let connectedCount = 0;
+        let terminalCount = 0;
+
+        for (const [phone, group] of phoneGroups) {
+          const hasConnected = group.outcomes.some(o => CONNECTED_OUTCOMES.has(o));
+          const hasTerminal = excludeTerminal && group.dispositions.some(d => TERMINAL_DISPOSITIONS.has(d));
+
+          // Pick the best (latest) row for this phone's data
+          const bestRow = group.rows[group.rows.length - 1];
+
+          if (hasConnected) {
+            connectedCount++;
+            const bestDisp = group.dispositions.find(d => TERMINAL_DISPOSITIONS.has(d)) ||
+              group.dispositions[group.dispositions.length - 1];
+            excluded.push({
+              phone,
+              full_name: detectFullName(bestRow),
+              bestOutcome: 'Connected',
+              bestDisposition: bestDisp || group.dispositions[group.dispositions.length - 1],
+              daysSeen: group.rows.length,
+              reason: 'Connected on a later day',
+            });
+          } else if (hasTerminal) {
+            terminalCount++;
+            const termDisp = group.dispositions.find(d => TERMINAL_DISPOSITIONS.has(d));
+            excluded.push({
+              phone,
+              full_name: detectFullName(bestRow),
+              bestOutcome: detectOutcome(bestRow),
+              bestDisposition: termDisp || group.dispositions[group.dispositions.length - 1],
+              daysSeen: group.rows.length,
+              reason: `Terminal: ${termDisp}`,
+            });
+          } else {
+            // Truly not connected across ALL days → include for re-attempt
+            included.push({
+              phone,
+              full_name: detectFullName(bestRow),
+              model: detectModel(bestRow),
+              seating: detectSeating(bestRow),
+              city: detectCity(bestRow),
+              pincode: detectPincode(bestRow),
+              daysSeen: group.rows.length,
+              // AutoEngage format fields
+              showroom_code: dealership.showroom_code,
+              region_name: dealership.region_name,
+              dealership_id: dealership.dealership_id,
+              brand: dealership.brand,
+              subdivision_name: dealership.subdivision_name,
+            });
+          }
+        }
+
+        // ── STORE RESULTS ────────────────────────────────────────────────────
+        includedLeads = included;
+        excludedLeads = excluded;
+
+        // ── RENDER ───────────────────────────────────────────────────────────
+        renderStats(rows.length, phoneGroups.size, connectedCount, terminalCount, included.length, skippedNoPhone);
+        renderDedupSummary(rows.length, phoneGroups.size, connectedCount, terminalCount, included.length, skippedNoPhone);
+        renderIncludedTable(included);
+        renderExcludedTable(excluded);
+
+        hideOverlay();
+        document.getElementById('emptyState').style.display = 'none';
+
+        setStatus('globalStatus',
+          `✓ ${included.length} leads ready for re-attempt. ${connectedCount + terminalCount} excluded.`, 'ok');
+
+        // Show action buttons
+        document.getElementById('btnExport').style.display = '';
+        document.getElementById('btnExport').disabled = !included.length;
+        document.getElementById('btnCopyOutput').style.display = '';
+        document.getElementById('btnCopyOutput').disabled = !included.length;
+        document.getElementById('btnReset').style.display = '';
+
+      } catch (e) {
+        hideOverlay();
+        setStatus('globalStatus', `Error: ${e.message}`, 'err');
+        console.error(e);
+      }
+    }
+
+    // ─── RENDER STATS ─────────────────────────────────────────────────────────────
+    function renderStats(totalRows, uniquePhones, connected, terminal, reattempt, skipped) {
+      document.getElementById('sTotalRows').textContent = totalRows;
+      document.getElementById('sUniquePhones').textContent = uniquePhones;
+      document.getElementById('sConnected').textContent = connected;
+      document.getElementById('sTerminal').textContent = terminal;
+      document.getElementById('sReattempt').textContent = reattempt;
+
+      const bar = document.getElementById('statsBar');
+      bar.style.display = 'flex';
+      bar.classList.add('fade-in');
+    }
+
+    // ─── RENDER DEDUP SUMMARY ─────────────────────────────────────────────────────
+    function renderDedupSummary(totalRows, uniquePhones, connected, terminal, reattempt, skipped) {
+      const grid = document.getElementById('dedupGrid');
+      const items = [
+        { label: 'Total input rows', value: totalRows, tone: 'blue' },
+        { label: 'Unique phones', value: uniquePhones, tone: 'purple' },
+        { label: 'Duplicate rows removed', value: totalRows - uniquePhones - skipped, tone: 'amber' },
+        { label: 'Connected (excluded)', value: connected, tone: 'green' },
+        { label: 'Terminal disp. (excluded)', value: terminal, tone: 'amber' },
+        { label: 'Invalid phones skipped', value: skipped, tone: 'red' },
+        { label: 'Re-attempt output', value: reattempt, tone: 'blue' },
+        { label: 'Exclusion rate', value: uniquePhones ? Math.round(((connected + terminal) / uniquePhones) * 100) + '%' : '0%', tone: 'purple' },
+      ];
+
+      grid.innerHTML = items.map(i => `
+        <div class="dedup-item ${esc(i.tone)}">
+          <div class="label">${esc(i.label)}</div>
+          <div class="value">${esc(String(i.value))}</div>
+        </div>
+      `).join('');
+
+      const summary = document.getElementById('dedupSummary');
+      summary.style.display = 'block';
+      summary.classList.add('slide-up');
+    }
+
+    // ─── RENDER INCLUDED TABLE ────────────────────────────────────────────────────
+    const PREVIEW_LIMIT = 200;
+
+    function renderIncludedTable(data) {
+      const tbody = document.getElementById('includedBody');
+      tbody.innerHTML = '';
+
+      const preview = data.slice(0, PREVIEW_LIMIT);
+      for (const r of preview) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${esc(r.showroom_code)}</td>
+          <td>${esc(r.region_name)}</td>
+          <td>${esc(r.dealership_id)}</td>
+          <td>${esc(r.full_name)}</td>
+          <td class="cell-phone">${esc(r.phone)}</td>
+          <td>${esc(r.model)}</td>
+          <td>${esc(r.brand)}</td>
+          <td>${esc(r.seating)}</td>
+          <td>${esc(r.city)}</td>
+          <td>${esc(r.pincode)}</td>
+          <td>${esc(r.subdivision_name)}</td>
+          <td></td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      const cap = data.length > PREVIEW_LIMIT
+        ? `Showing first ${PREVIEW_LIMIT} of ${data.length} leads`
+        : `${data.length} leads`;
+      document.getElementById('includedCaption').textContent = cap;
+
+      const wrapper = document.getElementById('includedTableWrapper');
+      wrapper.style.display = data.length ? 'block' : 'none';
+      wrapper.classList.add('slide-up');
+    }
+
+    // ─── RENDER EXCLUDED TABLE ────────────────────────────────────────────────────
+    function renderExcludedTable(data) {
+      const tbody = document.getElementById('excludedBody');
+      tbody.innerHTML = '';
+
+      const preview = data.slice(0, PREVIEW_LIMIT);
+      for (const r of preview) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="cell-phone">${esc(r.phone)}</td>
+          <td>${esc(r.full_name)}</td>
+          <td class="cell-connected">${esc(r.bestOutcome)}</td>
+          <td class="cell-terminal">${esc(r.bestDisposition)}</td>
+          <td>${esc(String(r.daysSeen))}</td>
+          <td class="cell-reason">${esc(r.reason)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      const cap = data.length > PREVIEW_LIMIT
+        ? `Showing first ${PREVIEW_LIMIT} of ${data.length} leads`
+        : `${data.length} leads`;
+      document.getElementById('excludedCaption').textContent = cap;
+
+      const wrapper = document.getElementById('excludedTableWrapper');
+      wrapper.style.display = data.length ? 'block' : 'none';
+      wrapper.classList.add('slide-up');
+    }
+
+    // ─── EXPORT AUTOENGAGE CSV ────────────────────────────────────────────────────
+    function exportAutoEngage() {
+      if (!includedLeads.length) return;
+
+      const headers = [
+        'showroom_code', 'region_name', 'dealership_id', 'person_name',
+        'phone_number', 'interested_vehicle_name', 'interested_vehicle_brand_name',
+        'seating_capacity_preference', 'city', 'pincode', 'subdivision_name', 'alt_phone_number_2'
+      ];
+
+      const dataRows = [headers];
+      for (const r of includedLeads) {
+        dataRows.push([
+          r.showroom_code,
+          r.region_name,
+          r.dealership_id,
+          r.full_name,
+          r.phone,
+          r.model,
+          r.brand,
+          r.seating,
+          r.city,
+          r.pincode,
+          r.subdivision_name,
+          '',   // alt_phone_number_2
+        ]);
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(dataRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Re-Attempt List');
+
+      const dealershipKey = document.getElementById('dealershipSelect').value;
+      const dealership = DEALERSHIPS[dealershipKey];
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `${dealership.name.replace(/\s+/g, '_')}_ReAttempt_${dateStr}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+
+      setStatus('globalStatus', `✓ Downloaded ${filename}`, 'ok');
+    }
+
+    // ─── COPY TSV ─────────────────────────────────────────────────────────────────
+    async function copyOutputData() {
+      if (!includedLeads.length) return;
+
+      const headers = [
+        'showroom_code', 'region_name', 'dealership_id', 'person_name',
+        'phone_number', 'interested_vehicle_name', 'interested_vehicle_brand_name',
+        'seating_capacity_preference', 'city', 'pincode', 'subdivision_name', 'alt_phone_number_2'
+      ];
+
+      const lines = [headers.join('\t')];
+      for (const r of includedLeads) {
+        const cols = [
+          r.showroom_code, r.region_name, r.dealership_id, r.full_name,
+          r.phone, r.model, r.brand, r.seating, r.city, r.pincode,
+          r.subdivision_name, '',
+        ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '));
+        lines.push(cols.join('\t'));
+      }
+      const tsv = lines.join('\n');
+
+      try {
+        await navigator.clipboard.writeText(tsv);
+        const btn = document.getElementById('btnCopyOutput');
+        const orig = btn.innerHTML;
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+      } catch (e) {
+        // Fallback
+        const ta = document.createElement('textarea');
+        ta.value = tsv;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); } catch { }
+        document.body.removeChild(ta);
+      }
+    }
+
+    // ─── RESET ────────────────────────────────────────────────────────────────────
+    function resetAll() {
+      rawFile = null;
+      includedLeads = [];
+      excludedLeads = [];
+
+      document.getElementById('fileInput').value = '';
+      document.getElementById('dz1').classList.remove('has-file');
+      const st = document.getElementById('fileStatus');
+      st.className = 'dz-status';
+      st.textContent = 'Drag & drop or click to browse';
+
+      document.getElementById('includedBody').innerHTML = '';
+      document.getElementById('excludedBody').innerHTML = '';
+      document.getElementById('dedupGrid').innerHTML = '';
+
+      document.getElementById('includedTableWrapper').style.display = 'none';
+      document.getElementById('excludedTableWrapper').style.display = 'none';
+      document.getElementById('statsBar').style.display = 'none';
+      document.getElementById('dedupSummary').style.display = 'none';
+      document.getElementById('emptyState').style.display = '';
+
+      document.getElementById('btnExport').style.display = 'none';
+      document.getElementById('btnCopyOutput').style.display = 'none';
+      document.getElementById('btnReset').style.display = 'none';
+      document.getElementById('btnProcess').disabled = true;
+      document.getElementById('btnProcess').classList.remove('ready');
+
+      setStatus('globalStatus', '', '');
+    }
+
+    // ─── UI HELPERS ───────────────────────────────────────────────────────────────
+    function esc(str) {
+      return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function setStatus(id, msg, type) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = msg;
+      el.className = 'status-msg' + (type ? ' ' + type : '');
+    }
+
+    function showOverlay(msg) {
+      document.getElementById('processingMsg').textContent = msg;
+      document.getElementById('processingOverlay').style.display = 'flex';
+    }
+
+    function hideOverlay() {
+      document.getElementById('processingOverlay').style.display = 'none';
+    }
+
+    function tick() { return new Promise(r => setTimeout(r, 20)); }
+
+    // ─── FILE INPUT HANDLING ──────────────────────────────────────────────────────
+    document.getElementById('fileInput').addEventListener('change', function () {
+      if (!this.files[0]) return;
+      rawFile = this.files[0];
+
+      const st = document.getElementById('fileStatus');
+      st.className = 'dz-status ok';
+      st.textContent = `Loaded: ${rawFile.name}`;
+      document.getElementById('dz1').classList.add('has-file');
+
+      document.getElementById('btnProcess').disabled = false;
+      document.getElementById('btnProcess').classList.add('ready');
+    });
+
+    // ─── DRAG AND DROP ────────────────────────────────────────────────────────────
+    (function () {
+      const dz = document.getElementById('dz1');
+      const fi = document.getElementById('fileInput');
+
+      dz.addEventListener('dragover', e => {
+        e.preventDefault();
+        dz.classList.add('drag-over');
+      });
+      dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+      dz.addEventListener('drop', e => {
+        e.preventDefault();
+        dz.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fi.files = dt.files;
+        fi.dispatchEvent(new Event('change'));
+      });
+
+      dz.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') fi.click();
+      });
+    })();
+  </script>
+</body>
+
+</html>
