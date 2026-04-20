@@ -30,6 +30,11 @@ def load_providers(channel=None, provider_name=None):
                 WhatsappReceiverConnector,
                 WhatsappCampaignTemplate,
             ),
+            "twilio": lambda: _load_twilio(
+                WhatsappMessangerConnector,
+                WhatsappReceiverConnector,
+                WhatsappCampaignTemplate,
+            ),
         }
 
     elif channel == "email":
@@ -70,7 +75,19 @@ def _load_airtel(
     WhatsappCampaignTemplate.register("airtel",AirtelCampaignManager)
     
     
+def _load_twilio(
+    WhatsappMessangerConnector,
+    WhatsappReceiverConnector,
+    WhatsappCampaignTemplate,
+):
+    print("Loading Twilio Connectors----")
+    from connectors.whatsapp_connectors.twilio_connector import TwilioWebhookConverter,TwilioWhatsAppMessenger
+    from connectors.whatsapp_connectors.campaign_twilio_template import TwilioCampaignManager
 
+    WhatsappMessangerConnector.register("twilio",TwilioWhatsAppMessenger)
+    WhatsappReceiverConnector.register("twilio",TwilioWebhookConverter)
+    WhatsappCampaignTemplate.register("twilio",TwilioCampaignManager)
+    
 def _load_AwsSender(MailSourceFactory):
     print("Loading Email Connectors----")
     

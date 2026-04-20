@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from communication_helpers import *
-
+from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_CONVERSATION_SERVICE_NAME
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 logger = gryd.logger
         
@@ -126,7 +126,7 @@ class RCSMessengerConnector:
         converse_kwargs = {
             "customer_response" : message_dict.get("text"),
             "channel":"whatsapp_chat",
-            "temporary_data": {"channel_response_task":{"service":"autocrm-communication","task":"receive_converse_response_rcs","kwargs":temporary_data}},
+            "temporary_data": {"channel_response_task":{"service":AUTOCRM_COMMUNICATION_SERVICE_NAME,"task":"receive_converse_response_rcs","kwargs":temporary_data}},
             "response_length":"agent",
             "communication_data":{
                 "rcs_message_id":message_data.get("message_id"),
@@ -138,7 +138,7 @@ class RCSMessengerConnector:
         self.converse_payload = {
             "_job": {
                 "task": CONVERS_TASK_NAME,
-                "service": CONVERS_SERVICE_NAME,
+                "service": AUTOCRM_CONVERSATION_SERVICE_NAME,
                 "kwargs": converse_kwargs,
             }
         }
@@ -165,7 +165,7 @@ class RCSMessengerConnector:
     
         res = gryd.create_async_task(
                 CONVERS_TASK_NAME,
-                CONVERS_SERVICE_NAME,
+                AUTOCRM_CONVERSATION_SERVICE_NAME,
                 kwargs=converse_kwargs
             )
         

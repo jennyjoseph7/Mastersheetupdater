@@ -259,7 +259,7 @@ def get_or_create_session(data,channel=None,engaged=False):
                 return sessions[0]
             logger.info(f"Is previous session inbound: {is_previous_session_inbound}")
             # if (new_campaign_id != old_campaign_id):
-            if not engaged and sessions[0].get("session_id"):
+            if not engaged and sessions[0].get("session_id"): 
                 logger.info("There is a new triggered campaign for this user. Since there is an existing session, we are ending the existing(old) session and creating a new session..")
                 logger.info(f"OLD SESSIONID--{sessions[0].get('session_id')}")
                 # end the old session also check if session end_time

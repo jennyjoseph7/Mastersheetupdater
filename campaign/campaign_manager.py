@@ -47,31 +47,11 @@ def clean_phone_number(phone_number: str) -> str:
 
 
 
-# def handle_session_errors(func):
-#     def wrapper(*args, **kwargs):
-#         session_id = kwargs.get("session_id") or (args[0] if args else None)
-#         lead_id = kwargs.get("lead_id") or (args[1] if args else None)
-#         try:
-#             result = func(*args, **kwargs)
-
-#             if hasattr(result, "__iter__") and not isinstance(result, dict):
-#                 for item in result:
-#                     if isinstance(item, dict) and item.get("status") == "Error":
-#                         update_error_in_lead_and_session(item.get("error_description"),session_id=None,lead_id=None)
-#                     yield item
-
-#             else:
-#                 if isinstance(result, dict) and result.get("status") == "Error":
-#                     update_error_in_lead_and_session(result.get("error_description"),session_id=None,lead_id=None)
-                    
-#                 return result
-
-#         except Exception as e:
-#             update_error_in_lead_and_session(str(e),session_id=None,lead_id=None)
-            
-#             return {"status": "Error", "error_description": str(e)}
-
-#     return wrapper
+def update_error_to_models(error_msg,source=None,stack_trace=None,**kwargs):
+    logger.info(f"Error occurred in source-{source} and Error message -{error_msg}")
+    update_lead_disposition_and_post_billing()
+        
+    return
 
 class BaseCampaignCreater:
     def create_text_template(self):
@@ -134,7 +114,6 @@ class BaseCampaignCreater:
     def __init__(self,*args,**kwargs):
         pass
 
-    # @handle_session_errors
     def create_campaign_payload(self, campaign_details: dict, campaign_user_data: dict, enterprise_id: str) -> dict:
         """
         Create the payload required for sending a campaign message.
@@ -207,7 +186,6 @@ class BaseCampaignCreater:
             logger.exception(f"Unexpected error while creating campaign payload: {e}")
             return {}
 
-    # @handle_session_errors
     def send_campaign_message(
             self,
             mobile_number: str,
@@ -994,7 +972,6 @@ def check_and_create_lead_object(**kwargs):
             return lead_d[0].get("pre_sales_lead_id")
         
  
-# @handle_session_errors
 @gryd.is_a_task(function_name="process_single_lead")
 def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=None, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None):
     
@@ -1052,6 +1029,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     campaign_objective_name=campaign_details.get("campaign_objective_name") 
     logger.info(f"campaign_objective_name: {campaign_objective_name}")
     if not campaign_objective_name:
+        
         yield {"status": "Error", "error_description": f"No campaign objective name found for campaign_id={campaign_id}"}
         return
     # logger.info(f"Campaign details: {json.dumps(campaign_details,indent=4)}")
@@ -1092,19 +1070,22 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 dealership_id=lead_data.get("dealership_id"),
                 lead_info={}
             )
-            if not template_data:
-                yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
-                return
-            template_data = template_data[0]
         except Exception as e:
-            update_error_in_lead_and_session(str(e),"process_single_lead",**{
-                "lead_id":lead_id,
-                "campaign_type":campaign_type,
-                "lead_model":lead_table,
-                "dealership_id":lead_data.get("dealership_id"),
-                "channel":channel
-            })
-            logger.error(f"Error getting email template for lead_id={lead_id}: {e}")
+            logger.error(f"Error in get_template for channel email: {str(e)}")
+            update_error_to_models(
+                error_msg=f"Error in get_template for channel email: {str(e)}",
+                source="process_single_lead",
+                **{
+                    "lead_id": lead_id,
+                    "campaign_id": campaign_id,
+                    "campaign_type": campaign_type,
+                    "channel": channel
+                })
+            yield {"status": "Error", "error_description": f"Error in get_template: {str(e)}"}
+            return
+        
+        if not template_data:
+            yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
             return
         
         template_data = template_data[0]
@@ -1132,40 +1113,32 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
 
         # logger.info("Template Data: %s", template_data)
     elif channel in ("whatsapp_chat", "sms", "rcs"):
+        logger.info(f"channel: {channel}")
         if not templateID:
             try:
-                template_data = get_template(
+                template_data= get_template(
                     lead_id=lead_id,
                     campaign_type=campaign_type,
-                    campaign_objective= [campaign_objective_name] or [],
+                    # campaign_objective= [campaign_objective_name] or [],
+                    campaign_objective= ["TESTTT"] or [],
                     dealership_id=lead_data.get("dealership_id"),
                     lead_info={}
                 )
-                # template_data= testing_whatsapp_template()
-                logger.info(f"Template Data: {template_data} and type: {type(template_data)}")
-                if not template_data or isinstance(template_data, str):
-                    update_error_in_lead_and_session(f"No Template Found for lead_id-{lead_id}","process_single_lead",**{
-                        "lead_id":lead_id,
-                        "campaign_type":campaign_type,
-                        "lead_model":lead_table,
-                        "dealership_id":lead_data.get("dealership_id"),
-                        "channel":channel
-                    })
-                    yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
-                    return
-                template_data = template_data[0]
-                
             except Exception as e:
-                update_error_in_lead_and_session(str(e),"process_single_lead",**{
-                    "lead_id":lead_id,
-                    "campaign_type":campaign_type,
-                    "lead_model":lead_table,
-                    "dealership_id":lead_data.get("dealership_id"),
-                    "channel":channel
-                })
-                logger.error(f"Error getting whatsapp template for lead_id={lead_id}: {e}")
+                logger.error(f"Error in get_template for channel {channel}: {str(e)}")
+                update_error_to_models(
+                    error_msg=f"Error in get_template: {str(e)}",
+                    source="get_template",
+                    **{
+                        "lead_id": lead_id,
+                        "campaign_id": campaign_id,
+                        "campaign_type": campaign_type,
+                        "channel": channel
+                    }
+                )
+                yield {"status": "Error", "error_description": f"Error in get_template: {str(e)}"}
                 return
-            sender_name=None
+            
             _d=get_communication_credential(dealership_id=lead_data.get("dealership_id"), channel=channel)
             if _d:
                 sender_name=_d.get("sender")
