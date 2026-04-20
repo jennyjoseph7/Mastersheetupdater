@@ -475,40 +475,4 @@ def delete_extra_status(campaign_ids):
 
 
 if __name__ == "__main__":
-    camp_ids = [
-    "e51baea6-a0bd-3e59-b75b-bd84a96fe106",
-    "dae11630-31da-3752-aedb-3bc960feb2ba",
-    "22ad712c-8e03-3782-8f76-07d774820ba2",
-
-    "23862f5b-2f06-3783-92a1-2897f34f1fea",
-    "6e89ba73-2de0-3acf-8612-2ecf920f5db6",
-    "78ea20d0-f92e-34df-946e-095ab13c8698",
-    "86dff80c-e662-3923-8d0d-82574feace90",
-    "91f6f859-fab3-3d2d-83e7-65037aee02a7",
-    "c4be92a9-600e-3fc3-896d-edf78ed444b7",
-
-    "86341144-3e01-33d9-9051-6ec6defc1d01",
-    "142f6c3c-2b1e-3c7f-b72a-3661dd9ca376",
-    "c2c5f0d0-0899-33cd-a6cf-df98fbf35484",
-    "866a1c8e-45be-3542-8234-3b4118f7d3e8",
-    "c6e14903-905e-3c4a-b9af-c0f390b487a1",
-    "63f59c4f-ec14-3987-adf0-0e0188673f1a",
-    "0f893613-f22d-3134-9703-d0414c07697a",
-    "4b2aeaf0-d143-3057-81ba-d01b5956760a",
-    "3c4473e6-4d51-34c8-aa2b-00fae7bea2c3",
-    "f416d464-a6f0-37bc-8e4e-b7c5bb3b677d",
-
-    "b9316dbd-2679-3f10-9ce3-43861acf1072",
-    "729a1cd5-400d-326a-8d22-bdb157cb3158",
-    "698d8a75-2aff-34a1-961d-31d0af3c7315",
-    "caa345b3-c7bf-3a85-a04a-5ae00786814a",
-    "ba82db18-4c3e-3be6-a991-08a9b1fb8755",
-    "6901f044-9cdc-3b83-b770-d1b3126b040d",
-    "fd75bfd9-a12f-30aa-b2cc-35cb3a8710b0",
-    "3915151f-ad9c-33df-8588-01665c7b7fad",
-    "d520a7fb-9689-34fd-818c-8c05ff4f29a8",
-    "092589aa-faf8-3187-86a8-1fa84597bc4d",
-    "7e9934d3-5d0a-3483-a1e3-1dacceec5426",
-    "6fd67964-e1a1-3c7e-a56d-182c1611819a"
-]
-    delete_extra_status(camp_ids)
+    pass

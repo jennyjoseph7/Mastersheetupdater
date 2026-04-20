@@ -6,7 +6,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PhoneInput } from "react-international-phone";
-import "react-international-phone/style.css";
 import {
   Card,
   CardContent,
@@ -354,11 +353,11 @@ export default function DealershipUpdateDetails() {
           "United States",
           "United Arab Emirates",
           "Saudi Arabia",
-          "south-india",
-          "north-india",
-          "east-india",
-          "west-india",
-          "central-india",
+          // "south-india",
+          // "north-india",
+          // "east-india",
+          // "west-india",
+          // "central-india",
         ];
         if (
           commonRegions.includes(potentialRegion.toLowerCase()) ||

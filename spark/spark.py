@@ -9,6 +9,7 @@ import tempfile
 import os
 import uuid
 import typing
+
 from ai_service import ai_service
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
@@ -42,6 +43,7 @@ from check_distortion import analyze_image, pad_and_resize_image, compare_images
 from spdl_comfy import comfy_image_generation_task
 from spdl_comfy import gemini_image_generation_task
 from spark_helpers import func_gryd_file_system, download_file
+from prompt_formatter import convert_prompt as _convert_prompt
 SERVICE = 'spark'
 gryd.SERVICE = SERVICE
 gryd.set_queue_manager()
@@ -494,6 +496,8 @@ def comfy_image_generation(
     logger = None,
     **kwargs):
     logger = logger or mlogger
+    if kwargs.get('optimise_prompt',True):
+        prompt, elapsed = _convert_prompt(prompt)
     return comfy_image_generation_task(input_image_url, prompt, number_of_images, logger = logger, **kwargs)
 
 @gryd.is_a_task(function_name = "gemini_image_generation", job_param = 'job', logger_param = 'logger')
@@ -1201,6 +1205,14 @@ Now validate the prompt:
         logger.error(f"Error validating prompt: {e}")
         return {"valid": False, "reason": str(e)}
 
+#Deepaks task
+@gryd.is_a_task(function_name="optimize_prompt", job_param='job', logger_param='logger')
+def optimize_prompt(user_input: str, job: dict = None, logger: hp.logging.Logger = None):
+    logger = logger or mlogger
+    logger.info(f"optimize_prompt: user_input={user_input!r}")
+    prompt, elapsed = _convert_prompt(user_input)
+    logger.info(f"optimize_prompt: result={prompt!r} ({elapsed:.2f}s)")
+    return {"prompt": prompt, "elapsed": elapsed}
 
 @gryd.is_a_task(function_name = "compare_images", job_param = 'job', logger_param = 'logger')
 def compare_images_func(original_image_url: str, generated_image_url: str, model: str = None, job = None, logger = None):
@@ -1276,7 +1288,9 @@ if __name__ == "__main__":
         k = a.strip().split('=')
         kwargs[k[0]] = k[1]
     print(f"kwargs: {kwargs}")
-    if args.function == "openai_image_generation":
+    if args.function == "testing_deepak":
+        print(optimize_prompt(**kwargs))
+    elif args.function == "openai_image_generation":
         print(openai_image_generation(**kwargs))
     elif args.function == "firefly_image_generation":
         print(firefly_image_generation(**kwargs))
