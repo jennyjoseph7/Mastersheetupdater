@@ -1279,13 +1279,15 @@
 
         if (out.includes('connect') && !out.includes('not')) {
           connected++;
-        } else if (out.includes('voicemail') || out.includes('voice') || sum.includes('voicemail') || sum.includes('voice mail')) {
-          voicemail++;
-          notConnected++;
         } else if (out.includes('not connected') || out.includes('notconnected') || out.includes('not_connected')) {
           notConnected++;
         } else {
           notConnected++;
+        }
+
+        // Voicemail: independent check on SUMMARY column (voicemail rows have Outcome="Connected")
+        if (sum === 'voicemail' || sum === 'voice mail') {
+          voicemail++;
         }
 
         if (out.includes('callback') || det.includes('callback') || det.includes('call back') || sum.includes('callback') || sum.includes('call back')) {
@@ -1293,10 +1295,10 @@
           callbackRequested++;
         }
 
-        if (out.includes('booking') || out.includes('booked') ||
-            out.includes('converted') || out.includes('interested') ||
-            sum.includes('booking') || sum.includes('booked') || sum.includes('test drive') ||
-            sum.includes('interested') || sum.includes('converted')) {
+        // Bookings: exact match on SUMMARY to avoid "not interested" matching "interested"
+        if (sum === 'converted' || sum === 'interested' ||
+            sum === 'follow up required' || sum === 'follow-up required' ||
+            sum === 'test drive booked') {
           bookings++;
         }
 
