@@ -1233,13 +1233,20 @@
     function generateDashboard() {
       if (!dashData || dashData.length === 0) return;
 
-      // ── Find column names (case-insensitive fuzzy match) ──
+      // ── Find column names (case-insensitive, exact-first then substring) ──
       const cols = Object.keys(dashData[0]);
       const find = (keywords) => {
-        const kw = keywords.map(k => k.toLowerCase());
+        const kw = keywords.map(k => k.toLowerCase().replace(/[_\s-]/g, ''));
+        // 1. Prefer exact match (after normalizing)
+        const exact = cols.find(c => {
+          const cl = c.toLowerCase().replace(/[_\s-]/g, '');
+          return kw.some(k => cl === k);
+        });
+        if (exact) return exact;
+        // 2. Fall back to substring/includes match
         return cols.find(c => {
           const cl = c.toLowerCase().replace(/[_\s-]/g, '');
-          return kw.some(k => cl.includes(k.replace(/[_\s-]/g, '')));
+          return kw.some(k => cl.includes(k));
         }) || null;
       };
 
@@ -1249,6 +1256,9 @@
       const COL_MODEL = find(['vehicle_model', 'vehiclemodel', 'model', 'model_preference', 'car_model']);
       const COL_DETAIL = find(['disposition_detail', 'dispositiondetail', 'detail', 'disposition_details']);
       const COL_SUMMARY = find(['summary', 'call_summary', 'callsummary']);
+
+      console.log('[Dashboard] Column mapping:', { COL_PHONE, COL_OUTCOME, COL_DATE, COL_MODEL, COL_DETAIL, COL_SUMMARY });
+      console.log('[Dashboard] Sample row:', dashData[0]);
 
       const rows = dashData;
       const totalLeads = rows.length;
