@@ -1279,7 +1279,7 @@
 
         if (out.includes('connect') && !out.includes('not')) {
           connected++;
-        } else if (out.includes('voicemail') || out.includes('voice') || sum.includes('voicemail')) {
+        } else if (out.includes('voicemail') || out.includes('voice') || sum.includes('voicemail') || sum.includes('voice mail')) {
           voicemail++;
           notConnected++;
         } else if (out.includes('not connected') || out.includes('notconnected') || out.includes('not_connected')) {
@@ -1295,7 +1295,8 @@
 
         if (out.includes('booking') || out.includes('booked') ||
             out.includes('converted') || out.includes('interested') ||
-            sum.includes('booking') || sum.includes('booked') || sum.includes('test drive')) {
+            sum.includes('booking') || sum.includes('booked') || sum.includes('test drive') ||
+            sum.includes('interested') || sum.includes('converted')) {
           bookings++;
         }
 
