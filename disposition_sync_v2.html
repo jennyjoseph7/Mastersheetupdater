@@ -2487,8 +2487,8 @@
         sorted = [...data];
         const dir = currentSortDir === 'asc' ? 1 : -1;
         sorted.sort((a, b) => {
-          const va = String(a[currentSortKey] || '').toLowerCase();
-          const vb = String(b[currentSortKey] || '').toLowerCase();
+          const va = String(a[currentSortKey] || '');
+          const vb = String(b[currentSortKey] || '');
           return va < vb ? -dir : va > vb ? dir : 0;
         });
       }
