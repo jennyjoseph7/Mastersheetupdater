@@ -983,6 +983,62 @@
     .stagger-7 { animation-delay: 0.35s; opacity: 0; }
     .stagger-8 { animation-delay: 0.4s; opacity: 0; }
 
+    /* Runtime-only class used while exporting PDF with html2canvas.
+       It removes effects that can create zero-sized pattern canvases. */
+    .pdf-export-mode *,
+    .pdf-export-mode *::before,
+    .pdf-export-mode *::after {
+      -webkit-mask-image: none !important;
+      mask-image: none !important;
+    }
+
+    .pdf-export-mode .chart-bar,
+    .pdf-export-mode .hbar-fill,
+    .pdf-export-mode .btn-generate,
+    .pdf-export-mode .kpi-card::before,
+    .pdf-export-mode .hbar-fill.blue,
+    .pdf-export-mode .hbar-fill.purple,
+    .pdf-export-mode .hbar-fill.green,
+    .pdf-export-mode .hbar-fill.amber,
+    .pdf-export-mode .hbar-fill.red,
+    .pdf-export-mode .hbar-fill.teal {
+      background-image: none !important;
+    }
+
+    .pdf-export-mode .hbar-fill {
+      min-width: 1px !important;
+    }
+
+    /* Restore visible solid colors during PDF export
+       (gradients are disabled for capture stability). */
+    .pdf-export-mode .chart-bar {
+      background: #5b9cf5 !important;
+    }
+
+    .pdf-export-mode .hbar-fill.blue { background: #5b9cf5 !important; }
+    .pdf-export-mode .hbar-fill.purple { background: #a78bfa !important; }
+    .pdf-export-mode .hbar-fill.green { background: #63d6a3 !important; }
+    .pdf-export-mode .hbar-fill.amber { background: #e6a456 !important; }
+    .pdf-export-mode .hbar-fill.red { background: #f16f6f !important; }
+    .pdf-export-mode .hbar-fill.teal { background: #5eead4 !important; }
+
+    .pdf-export-mode {
+      --bg: #ffffff !important;
+      --bg-gradient: none !important;
+      --surface: #ffffff !important;
+      --surface2: #ffffff !important;
+      --surface3: #ffffff !important;
+      --surface-card: #ffffff !important;
+      --surface-card-hover: #ffffff !important;
+      --text: #111827 !important;
+      --text-dim: #374151 !important;
+      --text-muted: #6b7280 !important;
+      --border: rgba(17, 24, 39, 0.14) !important;
+      --border-subtle: rgba(17, 24, 39, 0.10) !important;
+      --shadow-card: none !important;
+      --shadow-subtle: none !important;
+    }
+
     /* ═══════════════════════════════════════════════════════════════════════
        RESPONSIVE
        ═══════════════════════════════════════════════════════════════════════ */
@@ -1017,6 +1073,143 @@
       .kpi-grid { grid-template-columns: 1fr; }
       .upload-row { grid-template-columns: 1fr; }
       .header-right { width: 100%; justify-content: flex-end; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       PRINT (Save as PDF)
+       ═══════════════════════════════════════════════════════════════════════ */
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
+
+    @media print {
+      html, body {
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      :root, [data-theme="dark"], [data-theme="light"] {
+        --bg: #ffffff;
+        --bg-gradient: none;
+        --surface: #ffffff;
+        --surface2: #ffffff;
+        --surface3: #ffffff;
+        --surface-card: #ffffff;
+        --surface-card-hover: #ffffff;
+        --text: #111827;
+        --text-dim: #374151;
+        --text-muted: #6b7280;
+        --border: rgba(17, 24, 39, 0.14);
+        --border-subtle: rgba(17, 24, 39, 0.10);
+        --shadow-card: none;
+        --shadow-subtle: none;
+      }
+
+      * {
+        animation: none !important;
+        transition: none !important;
+        box-shadow: none !important;
+        filter: none !important;
+      }
+      /* Many dashboard blocks rely on animation classes that default to opacity:0. */
+      .slide-up,
+      .fade-in,
+      [class*="stagger-"] {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+
+      body::before { display: none !important; }
+      body {
+        margin: 0 !important;
+        background: #ffffff !important;
+        background-image: none !important;
+      }
+
+      header,
+      footer,
+      #uploadSection,
+      .header-nav,
+      #themeToggle,
+      #btnPrintPDF {
+        display: none !important;
+      }
+
+      main {
+        max-width: none !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        /* Dynamic print scale is computed in printPDF() before window.print(). */
+        zoom: var(--print-scale, 0.60);
+      }
+
+      #campaignBar { display: flex !important; }
+      #dashboardContent { display: block !important; }
+      #emptyState { display: none !important; }
+
+      .campaign-bar {
+        flex-wrap: nowrap !important;
+        gap: 0.55rem !important;
+        padding: 0.7rem 0.9rem !important;
+      }
+
+      .kpi-card {
+        padding: 0.75rem 0.8rem !important;
+      }
+
+      .kpi-value { font-size: 1.45rem !important; }
+      .kpi-sub { font-size: 0.68rem !important; margin-top: 0.05rem !important; }
+
+      .kpi-card,
+      .campaign-bar,
+      .upload-section {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .data-panels {
+        display: flex !important;
+        gap: 0.35rem !important;
+        align-items: stretch !important;
+      }
+
+      .data-panels .data-panel {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+      }
+
+      .kpi-grid {
+        gap: 0.4rem !important;
+        margin-bottom: 0.5rem !important;
+      }
+
+      .data-panel {
+        padding: 0.75rem !important;
+      }
+
+      .chart-bars {
+        height: 112px !important;
+      }
+
+      .hbar-list { gap: 0.45rem !important; }
+      .hbar-row { gap: 0.45rem !important; }
+      .hbar-track { height: 18px !important; }
+      .pdata-list { gap: 0.45rem !important; }
+      .pdata-item { padding: 0.45rem 0.6rem !important; }
+      .pdata-highlight { padding: 0.55rem 0.75rem !important; }
+      .alert-block { padding: 0.5rem 0.65rem !important; margin-top: 0.45rem !important; }
+      .alert-item { line-height: 1.4 !important; font-size: 0.7rem !important; }
+
+      /* Tighter vertical spacing to avoid extra pages */
+      .campaign-bar { margin-bottom: 0.45rem !important; }
+      .panel-title { margin-bottom: 0.65rem !important; font-size: 0.76rem !important; }
     }
   </style>
 </head>
@@ -1095,9 +1288,9 @@
         <div class="date-range-badge" id="dateRange">—</div>
         <div class="date-parser-note" id="dateParserNote">Source: Call_Date · Parser: —</div>
       </div>
-      <button class="btn-generate" id="btnExportPDF" style="display:none;padding:0.5rem 1rem;font-size:0.78rem;" onclick="exportPDF()">
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a2 2 0 002 2h14a2 2 0 002-2v-3"/></svg>
-        Export PDF
+      <button class="btn-generate" id="btnPrintPDF" style="display:none;padding:0.5rem 1rem;font-size:0.78rem;" onclick="printPDF()">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18h12v4H6v-4zm0-6h12a2 2 0 012 2v4H4v-4a2 2 0 012-2z"/></svg>
+        Print / Save PDF
       </button>
     </div>
 
@@ -1392,7 +1585,7 @@
       document.getElementById('emptyState').style.display = 'none';
       document.getElementById('campaignBar').style.display = 'flex';
       document.getElementById('dashboardContent').style.display = 'block';
-      document.getElementById('btnExportPDF').style.display = 'inline-flex';
+      document.getElementById('btnPrintPDF').style.display = 'inline-flex';
 
       // Date range
       if (minDate && maxDate) {
@@ -1695,163 +1888,173 @@
       return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
     }
 
-    /* ── PDF Export ──────────────────────────────────────────────────── */
-    async function exportPDF() {
-      const btn = document.getElementById('btnExportPDF');
+    function getPrintablePageHeightPx() {
+      // A4 landscape height is 210mm, minus top/bottom margins (10mm each).
+      const printableMm = 210 - 20;
+      const pxPerMm = 96 / 25.4;
+      return printableMm * pxPerMm;
+    }
+
+    function computePrintScale() {
+      const main = document.querySelector('main');
+      const campaignBar = document.getElementById('campaignBar');
+      const dashboardContent = document.getElementById('dashboardContent');
+      if (!main || !campaignBar || !dashboardContent) return 0.64;
+
+      const contentHeight = main.scrollHeight;
+      const availableHeight = getPrintablePageHeightPx();
+      if (!contentHeight || !availableHeight) return 0.64;
+
+      // Leave small safety buffer to prevent edge spill into a second page.
+      const safeRatio = (availableHeight / contentHeight) * 0.92;
+      return Math.max(0.38, Math.min(0.68, safeRatio));
+    }
+
+    function setDynamicPrintScale() {
+      const scale = computePrintScale();
+      document.documentElement.style.setProperty('--print-scale', scale.toFixed(3));
+    }
+
+    function clearDynamicPrintScale() {
+      document.documentElement.style.removeProperty('--print-scale');
+    }
+
+    async function printPDF() {
+      const mainEl = document.querySelector('main');
+      const campaignBar = document.getElementById('campaignBar');
+      const dashboardContent = document.getElementById('dashboardContent');
+      const btn = document.getElementById('btnPrintPDF');
       const uploadSection = document.getElementById('uploadSection');
-      const exportButton = document.getElementById('btnExportPDF');
-      const exportButtonDisplay = exportButton.style.display;
-      const origText = btn.innerHTML;
-      btn.innerHTML = '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Generating…';
-      btn.disabled = true;
+      if (!mainEl || !campaignBar || !dashboardContent || dashboardContent.style.display === 'none') return;
+
+      const { jsPDF } = window.jspdf || {};
+      if (!jsPDF || !window.html2canvas) {
+        alert('PDF export library failed to load. Please check internet connection and refresh the page.');
+        return;
+      }
 
       try {
-        // Hide upload/export controls for cleaner PDF
-        uploadSection.style.display = 'none';
-        exportButton.style.display = 'none';
+        if (btn) btn.disabled = true;
+        if (btn) btn.style.visibility = 'hidden';
+        if (uploadSection) uploadSection.style.display = 'none';
+        mainEl.classList.add('pdf-export-mode');
 
-        // Freeze animation/opacity states so PDF capture does not get faded/blurry frames.
-        const animatedNodes = Array.from(document.querySelectorAll('.slide-up, .fade-in, [class*="stagger-"]'));
-        const exportState = animatedNodes.map(node => ({
-          node,
-          animation: node.style.animation,
-          opacity: node.style.opacity,
-          transform: node.style.transform,
-          transition: node.style.transition,
-        }));
-        exportState.forEach(({ node }) => {
-          node.style.animation = 'none';
-          node.style.opacity = '1';
-          node.style.transform = 'none';
-          node.style.transition = 'none';
+        // Force desktop layout for capture so responsive breakpoints don't stack cards.
+        const captureWidth = 1440;
+        const prevWidth = mainEl.style.width;
+        const prevMaxWidth = mainEl.style.maxWidth;
+        const prevMargin = mainEl.style.margin;
+        mainEl.style.width = captureWidth + 'px';
+        mainEl.style.maxWidth = captureWidth + 'px';
+        mainEl.style.margin = '0 auto';
+
+        // Ensure animation-driven elements are fully visible in exported canvas.
+        const animatedElements = mainEl.querySelectorAll('.slide-up, .fade-in, [class*="stagger-"]');
+        const animationState = [];
+        animatedElements.forEach((el) => {
+          animationState.push({
+            el,
+            opacity: el.style.opacity,
+            transform: el.style.transform,
+            animation: el.style.animation,
+            transition: el.style.transition,
+          });
+          el.style.opacity = '1';
+          el.style.transform = 'none';
+          el.style.animation = 'none';
+          el.style.transition = 'none';
         });
 
-        // Wait two frames so style overrides fully apply before rasterization.
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-        const target = document.querySelector('main');
-        const rect = target.getBoundingClientRect();
-        const captureWidth = Math.max(1, Math.ceil(rect.width));
-        const captureHeight = Math.max(1, Math.ceil(target.scrollHeight || rect.height));
-        const captureScale = Math.max(3, Math.ceil(window.devicePixelRatio || 1));
-        const canvas = await html2canvas(target, {
-          scale: captureScale,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          logging: false,
-          width: captureWidth,
-          height: captureHeight,
-          windowWidth: Math.max(1, document.documentElement.clientWidth || captureWidth),
-          windowHeight: Math.max(1, document.documentElement.clientHeight || captureHeight),
-        });
-        if (!canvas || canvas.width < 1 || canvas.height < 1) {
-          throw new Error('PDF capture failed: dashboard render area is zero-sized.');
+        // Capture live dashboard area only (header/footer are outside <main>).
+        let canvas = null;
+        let lastCaptureError = null;
+        const captureScales = [1.35, 1.1, 0.9];
+        for (const scale of captureScales) {
+          try {
+            canvas = await html2canvas(mainEl, {
+              backgroundColor: '#ffffff',
+              scale,
+              useCORS: false,
+              allowTaint: true,
+              logging: false,
+              removeContainer: true,
+              imageTimeout: 0,
+              windowWidth: captureWidth,
+              windowHeight: Math.max(document.documentElement.clientHeight, mainEl.scrollHeight),
+            });
+            if (canvas && canvas.width > 0 && canvas.height > 0) break;
+          } catch (e) {
+            lastCaptureError = e;
+          }
         }
-        const { jsPDF } = window.jspdf;
+        if (!canvas || canvas.width === 0 || canvas.height === 0) {
+          throw lastCaptureError || new Error('Canvas capture failed');
+        }
+
+        // Guard against oversized canvases that can fail on toDataURL.
+        const maxPixels = 12000000; // 12MP safety cap
+        let exportCanvas = canvas;
+        const currentPixels = canvas.width * canvas.height;
+        if (currentPixels > maxPixels) {
+          const ratio = Math.sqrt(maxPixels / currentPixels);
+          const w = Math.max(1, Math.floor(canvas.width * ratio));
+          const h = Math.max(1, Math.floor(canvas.height * ratio));
+          const resized = document.createElement('canvas');
+          resized.width = w;
+          resized.height = h;
+          const ctx = resized.getContext('2d');
+          if (!ctx) throw new Error('Canvas context unavailable');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(canvas, 0, 0, w, h);
+          exportCanvas = resized;
+        }
+
+        const imgData = exportCanvas.toDataURL('image/jpeg', 0.92);
         const pdf = new jsPDF({
           orientation: 'landscape',
           unit: 'mm',
           format: 'a4',
+          compress: true,
         });
 
-        const pdfPageWidth = pdf.internal.pageSize.getWidth();
-        const pdfPageHeight = pdf.internal.pageSize.getHeight();
-        const margin = 10;
-        const maxRenderWidth = pdfPageWidth - margin * 2;
-        const fitScale = 0.94; // Slightly reduce content so the page breathes and fits better.
-        const renderWidth = maxRenderWidth * fitScale;
-        const xOffset = (pdfPageWidth - renderWidth) / 2;
-        const renderHeight = pdfPageHeight - margin * 2;
-        const pageHeightPx = Math.max(1, Math.floor(canvas.width * (renderHeight / renderWidth)));
-        const scanCtx = canvas.getContext('2d', { willReadFrequently: true });
-        let effectiveCanvasHeight = canvas.height;
-        if (scanCtx) {
-          const img = scanCtx.getImageData(0, 0, canvas.width, canvas.height).data;
-          const xStep = 8;
-          const yStep = 2;
-          const whiteThreshold = 245;
-          let lastContentRow = -1;
-          for (let y = canvas.height - 1; y >= 0; y -= yStep) {
-            let hasInk = false;
-            for (let x = 0; x < canvas.width; x += xStep) {
-              const idx = (y * canvas.width + x) * 4;
-              const r = img[idx];
-              const g = img[idx + 1];
-              const b = img[idx + 2];
-              const a = img[idx + 3];
-              if (a > 0 && (r < whiteThreshold || g < whiteThreshold || b < whiteThreshold)) {
-                hasInk = true;
-                break;
-              }
-            }
-            if (hasInk) {
-              lastContentRow = y;
-              break;
-            }
-          }
-          if (lastContentRow > 0) {
-            effectiveCanvasHeight = Math.min(canvas.height, lastContentRow + 20); // small bottom breathing room
-          }
-        }
-        let yOffsetPx = 0;
-        let isFirstPage = true;
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 5;
+        const maxW = pageWidth - margin * 2;
+        const maxH = pageHeight - margin * 2;
+        const ratio = Math.min(maxW / exportCanvas.width, maxH / exportCanvas.height);
+        const renderW = exportCanvas.width * ratio;
+        const renderH = exportCanvas.height * ratio;
+        const x = (pageWidth - renderW) / 2;
+        const y = (pageHeight - renderH) / 2;
 
-        while (yOffsetPx < effectiveCanvasHeight) {
-          const sliceHeightPx = Math.min(pageHeightPx, effectiveCanvasHeight - yOffsetPx);
-          if (sliceHeightPx <= 0) break;
-          const pageCanvas = document.createElement('canvas');
-          pageCanvas.width = canvas.width;
-          pageCanvas.height = sliceHeightPx;
-          const pageCtx = pageCanvas.getContext('2d');
-          if (!pageCtx) {
-            throw new Error('Could not render PDF page canvas.');
-          }
-          pageCtx.imageSmoothingEnabled = true;
-          pageCtx.imageSmoothingQuality = 'high';
-          pageCtx.drawImage(
-            canvas,
-            0,
-            yOffsetPx,
-            canvas.width,
-            sliceHeightPx,
-            0,
-            0,
-            canvas.width,
-            sliceHeightPx
-          );
-
-          const pageImgData = pageCanvas.toDataURL('image/png');
-          const mmHeight = (sliceHeightPx / canvas.width) * renderWidth;
-          if (!isFirstPage) pdf.addPage();
-          pdf.addImage(pageImgData, 'PNG', xOffset, margin, renderWidth, mmHeight, undefined, 'SLOW');
-          isFirstPage = false;
-          yOffsetPx += sliceHeightPx;
-        }
-
-        // Build filename from date range
-        const dateRange = document.getElementById('dateRange').textContent || 'report';
-        const safeName = 'Campaign_Dashboard_' + dateRange.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
-        pdf.save(safeName + '.pdf');
-
-        // Restore
-        uploadSection.style.display = '';
-        exportButton.style.display = exportButtonDisplay;
-        exportState.forEach(({ node, animation, opacity, transform, transition }) => {
-          node.style.animation = animation;
-          node.style.opacity = opacity;
-          node.style.transform = transform;
-          node.style.transition = transition;
-        });
+        pdf.addImage(imgData, 'JPEG', x, y, renderW, renderH, undefined, 'FAST');
+        pdf.save('campaign-dashboard.pdf');
       } catch (err) {
-        console.error('[PDF Export]', err);
-        alert('PDF export failed: ' + err.message);
+        console.error('[Dashboard] PDF export failed:', err);
+        const msg = err && err.message ? err.message : String(err);
+        alert('Could not generate PDF: ' + msg);
       } finally {
-        uploadSection.style.display = '';
-        exportButton.style.display = exportButtonDisplay;
-        btn.innerHTML = origText;
-        btn.disabled = false;
+        // Restore animated styles.
+        const animatedElements = mainEl.querySelectorAll('.slide-up, .fade-in, [class*="stagger-"]');
+        animatedElements.forEach((el) => {
+          el.style.opacity = '';
+          el.style.transform = '';
+          el.style.animation = '';
+          el.style.transition = '';
+        });
+        mainEl.style.width = prevWidth;
+        mainEl.style.maxWidth = prevMaxWidth;
+        mainEl.style.margin = prevMargin;
+        mainEl.classList.remove('pdf-export-mode');
+        if (uploadSection) uploadSection.style.display = '';
+        if (btn) btn.style.visibility = '';
+        if (btn) btn.disabled = false;
       }
     }
+
+    window.addEventListener('afterprint', clearDynamicPrintScale);
   </script>
 
 </body>
