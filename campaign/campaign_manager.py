@@ -480,7 +480,7 @@ class BaseCustomCampaignManager:
                 d={**campaign_data,**campaign_users[0]}                
                 logger.info(f"Voice call payload--{json.dumps(d,indent=4)}")
 
-                voice_service_name = campaign_data.get("voice_service_name", AUTOCRM_VOICE_SERVICE_NAME)
+                voice_service_name = campaign_data.get("voice_service_name") or AUTOCRM_VOICE_SERVICE_NAME
 
                 gryd.create_async_task('trigger_voice_call', voice_service_name, args=[],kwargs={"user_data":d})
             elif channel.upper()=="EMAIL":
