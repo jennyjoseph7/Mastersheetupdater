@@ -1730,17 +1730,23 @@
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
         const target = document.querySelector('main');
+        const rect = target.getBoundingClientRect();
+        const captureWidth = Math.max(1, Math.ceil(rect.width));
+        const captureHeight = Math.max(1, Math.ceil(target.scrollHeight || rect.height));
         const captureScale = Math.max(3, Math.ceil(window.devicePixelRatio || 1));
         const canvas = await html2canvas(target, {
           scale: captureScale,
           useCORS: true,
           backgroundColor: '#ffffff',
           logging: false,
-          width: target.scrollWidth,
-          height: target.scrollHeight,
-          windowWidth: document.documentElement.scrollWidth,
-          windowHeight: document.documentElement.scrollHeight,
+          width: captureWidth,
+          height: captureHeight,
+          windowWidth: Math.max(1, document.documentElement.clientWidth || captureWidth),
+          windowHeight: Math.max(1, document.documentElement.clientHeight || captureHeight),
         });
+        if (!canvas || canvas.width < 1 || canvas.height < 1) {
+          throw new Error('PDF capture failed: dashboard render area is zero-sized.');
+        }
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
           orientation: 'landscape',
@@ -1756,7 +1762,7 @@
         const renderWidth = maxRenderWidth * fitScale;
         const xOffset = (pdfPageWidth - renderWidth) / 2;
         const renderHeight = pdfPageHeight - margin * 2;
-        const pageHeightPx = Math.floor(canvas.width * (renderHeight / renderWidth));
+        const pageHeightPx = Math.max(1, Math.floor(canvas.width * (renderHeight / renderWidth)));
         const scanCtx = canvas.getContext('2d', { willReadFrequently: true });
         let effectiveCanvasHeight = canvas.height;
         if (scanCtx) {
@@ -1792,6 +1798,7 @@
 
         while (yOffsetPx < effectiveCanvasHeight) {
           const sliceHeightPx = Math.min(pageHeightPx, effectiveCanvasHeight - yOffsetPx);
+          if (sliceHeightPx <= 0) break;
           const pageCanvas = document.createElement('canvas');
           pageCanvas.width = canvas.width;
           pageCanvas.height = sliceHeightPx;
