@@ -401,6 +401,14 @@
       font-weight: 700;
     }
 
+    .date-parser-note {
+      font-size: 0.66rem;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      margin-top: 0.15rem;
+      text-align: right;
+    }
+
     /* ── UPLOAD SECTION ────────────────────────────────────────────────── */
     .upload-section {
       margin-bottom: 1.5rem;
@@ -1085,6 +1093,7 @@
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
         <div class="date-range-label">DATE RANGE</div>
         <div class="date-range-badge" id="dateRange">—</div>
+        <div class="date-parser-note" id="dateParserNote">Source: Call_Date · Parser: —</div>
       </div>
       <button class="btn-generate" id="btnExportPDF" style="display:none;padding:0.5rem 1rem;font-size:0.78rem;" onclick="exportPDF()">
         <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a2 2 0 002 2h14a2 2 0 002-2v-3"/></svg>
@@ -1216,7 +1225,8 @@
       const reader = new FileReader();
       reader.onload = e => {
         try {
-          const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+          // Keep original cell values (especially dates) without locale-based auto conversion.
+          const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
           const ws = wb.Sheets[wb.SheetNames[0]];
           dashData = XLSX.utils.sheet_to_json(ws, { defval: '' });
           stDash.textContent = `✓ ${file.name} (${dashData.length} rows)`;
@@ -1343,7 +1353,8 @@
       }
 
       // ── Date range ──
-      const dateParser = buildDateParser(rows, COL_DATE);
+      const dateParserInfo = buildDateParser(rows, COL_DATE);
+      const dateParser = dateParserInfo.parse;
       let dates = [];
       rows.forEach(r => {
         const d = dateParser(r[COL_DATE]);
@@ -1387,6 +1398,8 @@
       } else {
         document.getElementById('dateRange').textContent = 'All records';
       }
+      const parserLabel = dateParserInfo.order === 'MDY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY';
+      document.getElementById('dateParserNote').textContent = `Source: ${COL_DATE} · Parser: ${parserLabel}`;
 
       // KPI Row 1
       const kpiRow1 = document.getElementById('kpiRow1');
@@ -1601,7 +1614,10 @@
       }
       if (!inferredOrder) inferredOrder = 'DMY';
 
-      return (val) => parseDateStrict(val, inferredOrder);
+      return {
+        order: inferredOrder,
+        parse: (val) => parseDateStrict(val, inferredOrder),
+      };
     }
 
     function parseDateStrict(val, order) {
@@ -1623,7 +1639,9 @@
         return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
       }
 
-      const slashDate = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+      const dateToken = s.match(/(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4})/);
+      const slashSource = dateToken ? dateToken[1] : s;
+      const slashDate = slashSource.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
       if (slashDate) {
         const a = Number(slashDate[1]);
         const b = Number(slashDate[2]);
