@@ -1,322 +1,305 @@
 import sys
-import os
+import os, json
 import types
 import gc
 import threading
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as dbhp
-
+import config
 logger = hp.get_logger(__name__)
-
-# Default path to the voice task module, relative to this file
-_DEFAULT_TASKS_PATH = os.path.join(os.path.dirname(__file__), "voice", "gryd_tasks.py")
 
 
 class PluginManager:
     def __init__(self):
-        self.registry = {}
+        # registry: {service_name: [{variable_name, module_name, service_name}]} — persisted to JSON
+        # modules:  {module_name: module_object} — in-memory only
+        if os.path.exists("duplicate_services_registry.json"):
+            with open("duplicate_services_registry.json", "r") as f:
+                self.registry = json.load(f)
+        else:
+            self.registry = {}
+        self.modules = {}
 
-    def create_plugin(self, name: str, code: str):
+    def _save_registry(self):
+        with open("duplicate_services_registry.json", "w") as f:
+            json.dump(self.registry, f, indent=4)
+
+    def _find_entry(self, module_name: str):
+        """Return (service_name, entry_dict) for a given module_name, or (None, None)."""
+        for service_name, entries in self.registry.items():
+            for entry in entries:
+                if entry["module_name"] == module_name:
+                    return service_name, entry
+        return None, None
+
+    def create_plugin(self, name: str, code: str, folder: str = None):
         if name in sys.modules:
             raise ValueError(f"Plugin '{name}' already exists")
+
+        if folder:
+            os.makedirs(folder, exist_ok=True)
+            file_path = os.path.join(folder, f"{name}.py")
+            with open(file_path, "w") as f:
+                f.write(code)
 
         module = types.ModuleType(name)
         exec(code, module.__dict__)
 
         sys.modules[name] = module
-        self.registry[name] = module
+        self.modules[name] = module
 
         return module
 
-    def get_plugin(self, name: str):
-        return self.registry.get(name)
+    def get_plugin(self, module_name: str):
+        return self.modules.get(module_name)
 
-    def reload_plugin(self, name: str, new_code: str):
-        if name not in self.registry:
-            raise ValueError(f"Plugin '{name}' not found")
+    def reload_plugin(self, module_name: str, new_code: str):
+        if module_name not in self.modules:
+            raise ValueError(f"Plugin '{module_name}' not found")
 
-        module = self.registry[name]
-
+        module = self.modules[module_name]
         module.__dict__.clear()
-        module.__dict__["__name__"] = name
-
+        module.__dict__["__name__"] = module_name
         exec(new_code, module.__dict__)
 
         return module
 
-    def delete_plugin(self, name: str):
-        if name not in self.registry:
+    def delete_service(self, service_name: str):
+        """Delete all modules registered under a service name."""
+        entries = list(self.registry.get(service_name, []))
+        if not entries:
+            logger.warning(f"No plugins found for service '{service_name}'")
+            return
+        for entry in entries:
+            self.delete_plugin(entry["module_name"])
+        logger.info(f"Deleted all plugins for service '{service_name}'")
+
+    def delete_plugin(self, module_name: str):
+        service_name, entry = self._find_entry(module_name)
+        if entry is None:
+            logger.warning(f"Plugin '{module_name}' not found in registry")
             return
 
-        module = self.registry[name]
-
-        if name in sys.modules:
-            del sys.modules[name]
-
-        del self.registry[name]
-        del module
+        # remove from sys.modules and in-memory modules
+        if module_name in sys.modules:
+            del sys.modules[module_name]
+        if module_name in self.modules:
+            del self.modules[module_name]
         gc.collect()
 
+        # delete the physical module file
+        file_path = os.path.join(service_name, f"{module_name}.py")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            logger.info(f"Deleted file '{file_path}'")
+
+        # remove entry from registry and persist
+        self.registry[service_name] = [
+            e for e in self.registry[service_name] if e["module_name"] != module_name
+        ]
+        if not self.registry[service_name]:
+            del self.registry[service_name]
+        self._save_registry()
+
+        # remove worker entry from start_worker_config.json
+        if os.path.exists("start_worker_config.json"):
+            with open("start_worker_config.json", "r") as f:
+                swc = json.load(f)
+            swc["workers"] = [
+                w for w in swc["workers"] if w.get("entry_point") != module_name
+            ]
+            with open("start_worker_config.json", "w") as f:
+                json.dump(swc, f, indent=4)
+                f.write('\n')
+
+        # remove the config variable line from config.py
+        variable_name = entry["variable_name"]
+        if os.path.exists("config.py"):
+            with open("config.py", "r") as f:
+                lines = f.readlines()
+            filtered = [l for l in lines if not l.strip().startswith(f"{variable_name} =")]
+            while filtered and filtered[-1].strip() == '':
+                filtered.pop()
+            with open("config.py", "w") as f:
+                f.writelines(filtered)
+                f.write('\n')
+        if hasattr(config, variable_name):
+            delattr(config, variable_name)
+
+        logger.info(f"Deleted plugin '{module_name}' (service '{service_name}')")
+
     def list_plugins(self):
-        return list(self.registry.keys())
+        """Return a flat list of all entry dicts across all services."""
+        entries = []
+        for service_name, service_entries in self.registry.items():
+            for entry in service_entries:
+                entries.append({**entry, "service_key": service_name})
+        return entries
 
-    def create_gryd_service(self, service_name: str, gryd_tasks_path: str = None):
+    def create_gryd_service(self, service_name: str, service_module : str, main_task: str, num_threads = None):
+
+        """"
+        Dynamically create a gryd service module with the given name and main task.
+        service_name = foldder_name e.g. voice, campaign, etc.
+        service_module = python file containing service definations and main task to run.
+        main_task = is the function name (not the name provided in is_a_task deorator).
+
         """
-        Creates a dynamic module from gryd_tasks.py with gryd.SERVICE set to
-        service_name, so all @is_a_task decorators register tasks under that name.
 
-        Args:
-            service_name:    The gryd service name for this instance, e.g.
-                             "autocrm-voice-ambal-auto-india".
-            gryd_tasks_path: Path to gryd_tasks.py. Defaults to
-                             voice/gryd_tasks.py next to this file.
+        logger.info(f"Creating gryd service: service_name={service_name}, service_module={service_module}, main_task={main_task}, num_threads={num_threads}")
+        variable_name = f"AUTOCRM_{service_name.upper()}_SERVICE_NAME"
+        logger.debug(f"Constructed config variable name: {variable_name}")
+        if not hasattr(config, variable_name):
+            logger.error(f"Config variable '{variable_name}' not found for service '{service_name}'")
+            raise ValueError("service variable  name not found in config")
 
-        Returns:
-            The created (or reloaded) module.
-        """
-        module_name = f"gryd_tasks_{service_name}"
-        tasks_path = gryd_tasks_path or _DEFAULT_TASKS_PATH
+        new_variable_name = variable_name + '_' + "1"
+        iteration = 1
+        if self.registry.get(service_name):
+            a = self.registry.get(service_name)[-1]
+            iteration = int(a["variable_name"].split("_")[-1]) + 1
+            new_variable_name = "_".join(a["variable_name"].split("_")[:-1]) + "_" + str(iteration)
+            logger.info(f"Duplicate service detected for '{service_name}', iteration={iteration}, new_variable_name={new_variable_name}")
 
-        with open(tasks_path, "r") as f:
-            source = f.read()
+        new_service_name_value = f"{getattr(config, variable_name)}-{iteration}"
+        self.new_module_name = service_name + "_" + str(iteration)
 
-        # Patch the SERVICE assignment so @is_a_task registers tasks under
-        # the dealer-specific name instead of the shared autocrm-voice name.
-        source = source.replace(
-            "gryd.SERVICE = config.AUTOCRM_VOICE_SERVICE_NAME",
-            f'gryd.SERVICE = "{service_name}"',
+        new_entry = {
+            "variable_name": new_variable_name,
+            "module_name": self.new_module_name,
+            "service_name": new_service_name_value
+        }
+
+        if self.registry.get(service_name):
+            self.registry[service_name].append(new_entry)
+            logger.debug(f"Updated duplicate_services_registry.json for '{service_name}'")
+        else:
+            self.registry[service_name] = [new_entry]
+            logger.debug(f"Registered new service '{service_name}' in duplicate_services_registry.json")
+
+        with open("duplicate_services_registry.json", "w") as f:
+            json.dump(self.registry, f, indent=4)
+
+        with open("config.py", "a") as f:
+            f.write(f'\n{new_variable_name} = os.environ.get("{new_variable_name}", "{new_service_name_value}")')
+        logger.info(f"Appended '{new_variable_name}' to config.py")
+        setattr(config, new_variable_name, new_service_name_value)
+        logger.debug(f"Set config.{new_variable_name} = '{new_service_name_value}' in memory")
+
+        with open("start_worker_config.json", "r") as f:
+            start_worker_config = json.load(f)
+
+        x = {}
+        for w in start_worker_config["workers"]:
+            if w["name"] == service_name:
+                x = w
+                break
+
+        if x:
+            logger.debug(f"Found existing worker config for '{service_name}': {x}")
+        else:
+            logger.debug(f"No existing worker config found for '{service_name}', using defaults")
+
+        start_worker_config["workers"].append({
+            "name": service_name,
+            "entry_point": self.new_module_name,
+            "gryd_service": new_variable_name,
+            "parallel_threads": num_threads or x.get("parallel_threads"),
+            "shutdown_time": x.get("shutdown_time", 0)
+        })
+        with open("start_worker_config.json", "w") as f:
+            json.dump(start_worker_config, f, indent=4)
+        logger.info(f"Updated start_worker_config.json with new worker entry for '{service_name}'")
+
+
+        code = (
+            f"from {service_name} import {service_module}\n"
+            f"from {service_name}.{service_module} import *\n"
+            f"import config\n"
+            f"import os, sys, json, time\n"
+            f"from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as dbhp\n"
+            f"\n"
+            f"gryd.SERVICE = getattr(config, \"{new_variable_name}\")\n"
+            f"gryd.set_queue_manager()\n"
+            f"\n"
+            f"@gryd.is_a_task(function_name=\"{main_task}\")\n"
+            f"def {main_task}(*args, **kwargs):\n"
+            f"    list({service_module}.{main_task}(*args, **kwargs))\n"
+            f"    yield\n"
         )
+        logger.info(f"Generated dynamic module code for service '{service_name}' with task '{main_task}'")
+        logger.info(f"code: {json.dumps(code, indent=4)}")
 
-        if module_name in self.registry:
-            return self.reload_plugin(module_name, source)
-
-        return self.create_plugin(module_name, source)
+        return self.create_plugin(name=self.new_module_name, code=code, folder=service_name)
+    
 
 
-class VoiceServiceManager:
-    """
-    Manages per-dealer voice service instances for parallel campaign execution.
 
-    Problem:
-        All dealers share one queue (input-autocrm-voice) with MAX_CONCURRENCY
-        threads.  When dealer A dispatches 100 calls, dealer B's 100 calls queue
-        behind them — no two campaigns can run in parallel.
 
-    Solution:
-        Each dealer gets an isolated queue: input-autocrm-voice-{dealer_id}.
-        A dedicated thread pool consumes that queue independently.  Campaigns
-        for different dealers run fully in parallel.
+if __name__ == "__main__":
+    import argparse
 
-    Usage:
-        manager = VoiceServiceManager()
-        manager.dispatch_batch("ambal-auto-india", customer_list, max_threads=10)
-        manager.dispatch_batch("us-dealership-xyz", other_list,   max_threads=10)
-        # Both campaigns run on separate queues/thread pools simultaneously.
-        # When done:
-        manager.stop("ambal-auto-india")
-    """
+    parser = argparse.ArgumentParser(description="Manage gryd services")
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
-    _instance = None
-    _instance_lock = threading.Lock()
+    # create
+    p_create = subparsers.add_parser("create", help="Create a new gryd service")
+    p_create.add_argument("--service-name", required=True, help="Service/folder name (e.g. campaign, voice)")
+    p_create.add_argument("--service-module", required=True, help="Python module file inside the service folder")
+    p_create.add_argument("--main-task", required=True, help="Main task function name")
+    p_create.add_argument("--num-threads", type=int, default=None, help="Number of parallel threads (optional)")
+    p_create.add_argument("--num-modules", type=int, default=1, help="Number of modules to create (default: 1)")
 
-    def __new__(cls):
-        with cls._instance_lock:
-            if cls._instance is None:
-                obj = super().__new__(cls)
-                obj._initialized = False
-                cls._instance = obj
-        return cls._instance
+    # delete
+    p_delete = subparsers.add_parser("delete", help="Delete a gryd service plugin by module name or all modules for a service")
+    p_delete.add_argument("--module-name", help="Module name as registered (e.g. campaign_1)")
+    p_delete.add_argument("--service-name", help="Service name to delete all its modules (e.g. campaign)")
 
-    def __init__(self):
-        if self._initialized:
-            return
-        self._initialized = True
-        self._plugin_manager = PluginManager()
-        self._active = {}   # dealer_id -> {service_name, executor, stop_event}
-        self._lock = threading.Lock()
+    # list
+    subparsers.add_parser("list", help="List all registered gryd service plugins")
 
-    # ------------------------------------------------------------------
-    # Naming helpers
-    # ------------------------------------------------------------------
+    # reload
+    p_reload = subparsers.add_parser("reload", help="Reload a plugin with new code from a file")
+    p_reload.add_argument("--module-name", required=True, help="Module name to reload")
+    p_reload.add_argument("--code-file", required=True, help="Path to .py file containing new module code")
 
-    @staticmethod
-    def _service_name(dealer_id: str) -> str:
-        safe = dealer_id.strip().lower().replace(" ", "-").replace("_", "-")
-        return f"autocrm-voice-{safe}"
+    args = parser.parse_args()
+    manager = PluginManager()
 
-    @staticmethod
-    def _queue_name(service_name: str) -> str:
-        env = gryd.ENVIRONMENT   # "" in prod, "-dev" / "-staging" otherwise
-        return f"input-{service_name}{env}"
-
-    # ------------------------------------------------------------------
-    # Lifecycle
-    # ------------------------------------------------------------------
-
-    def start(self, dealer_id: str, max_threads: int = 10) -> str:
-        """
-        Create and start an isolated voice service for dealer_id.
-
-        Idempotent: if already running, returns the existing service name
-        without spawning duplicate workers.
-
-        Returns the service name to use with gryd.create_async_task().
-        """
-        service_name = self._service_name(dealer_id)
-
-        with self._lock:
-            if dealer_id in self._active:
-                logger.info("Dealer service '%s' already running.", service_name)
-                return service_name
-
-            # Exec gryd_tasks.py with SERVICE = service_name so every
-            # @is_a_task decorator registers under the dealer-specific name.
-            self._plugin_manager.create_gryd_service(service_name)
-            logger.info(
-                "Created gryd service '%s'. Tasks: %s",
-                service_name,
-                list(gryd.LIST_OF_TASKS.get(service_name, {}).keys()),
+    if args.command == "create":
+        for i in range(args.num_modules):
+            manager.create_gryd_service(
+                service_name=args.service_name,
+                service_module=args.service_module,
+                main_task=args.main_task,
+                num_threads=args.num_threads,
             )
+            print(f"Module {i + 1}/{args.num_modules}: Service '{args.service_name}' created successfully.")
 
-            stop_event = threading.Event()
-            executor = ThreadPoolExecutor(
-                max_workers=max_threads,
-                thread_name_prefix=f"voice-{dealer_id[:14]}",
-            )
+    elif args.command == "delete":
+        if args.service_name:
+            manager.delete_service(args.service_name)
+            print(f"All plugins for service '{args.service_name}' deleted.")
+        elif args.module_name:
+            manager.delete_plugin(args.module_name)
+            print(f"Plugin '{args.module_name}' deleted.")
+        else:
+            print("Error: provide --module-name or --service-name")
+            sys.exit(1)
 
-            for _ in range(max_threads):
-                executor.submit(self._worker_loop, service_name, stop_event)
+    elif args.command == "list":
+        plugins = manager.list_plugins()
+        if plugins:
+            print(f"{'SERVICE':<20} {'MODULE':<20} {'GRYD SERVICE NAME':<35} {'CONFIG VAR'}")
+            print("-" * 95)
+            for p in plugins:
+                print(f"{p['service_key']:<20} {p['module_name']:<20} {p['service_name']:<35} {p['variable_name']}")
+        else:
+            print("No plugins registered.")
 
-            self._active[dealer_id] = {
-                "service_name": service_name,
-                "executor": executor,
-                "stop_event": stop_event,
-            }
-
-        logger.info(
-            "Started %d workers for dealer '%s' on queue '%s'.",
-            max_threads, dealer_id, self._queue_name(service_name),
-        )
-        return service_name
-
-    def stop(self, dealer_id: str, wait: bool = True) -> None:
-        """
-        Gracefully stop a dealer's workers and clean up its task registration.
-        """
-        with self._lock:
-            state = self._active.pop(dealer_id, None)
-
-        if state is None:
-            logger.warning("No active service for dealer '%s'.", dealer_id)
-            return
-
-        state["stop_event"].set()
-        state["executor"].shutdown(wait=wait, cancel_futures=False)
-
-        gryd.LIST_OF_TASKS.pop(state["service_name"], None)
-        self._plugin_manager.delete_plugin(f"gryd_tasks_{state['service_name']}")
-
-        logger.info("Stopped voice service for dealer '%s'.", dealer_id)
-
-    def stop_all(self, wait: bool = True) -> None:
-        for dealer_id in list(self._active.keys()):
-            self.stop(dealer_id, wait=wait)
-
-    # ------------------------------------------------------------------
-    # Worker loop
-    # ------------------------------------------------------------------
-
-    def _worker_loop(self, service_name: str, stop_event: threading.Event) -> None:
-        """
-        Poll the dealer's queue and execute received jobs until stop_event fires.
-        Blocks on listen() for up to 2 s so it doesn't busy-spin on empty queues.
-        """
-        from gryd_worker.backends import get_queue_manager
-
-        queue_name = self._queue_name(service_name)
-        qm = get_queue_manager(module_name=service_name, new=True)
-
-        logger.info("Worker started — service '%s', queue '%s'.", service_name, queue_name)
-
-        while not stop_event.is_set():
-            try:
-                for job in qm.listen(queue_name, service=service_name, timeout=2):
-                    if stop_event.is_set():
-                        break
-                    try:
-                        gryd.execute_task(job)
-                    except Exception as exc:
-                        logger.error(
-                            "Task error in '%s': %s", service_name, exc, exc_info=True
-                        )
-            except Exception as exc:
-                if not stop_event.is_set():
-                    logger.error(
-                        "Queue poll error in '%s': %s", service_name, exc, exc_info=True
-                    )
-
-        logger.info("Worker stopped — service '%s'.", service_name)
-
-    # ------------------------------------------------------------------
-    # Dispatch helpers
-    # ------------------------------------------------------------------
-
-    def dispatch_call(self, dealer_id: str, user_data: dict, max_threads: int = 10) -> dict:
-        """
-        Send a single trigger_voice_call task to the dealer's isolated queue.
-        Starts the dealer service automatically on first call.
-        """
-        service_name = self.start(dealer_id, max_threads=max_threads)
-        return gryd.create_async_task(
-            "trigger_voice_call",
-            service_name,
-            args=[],
-            kwargs={"user_data": user_data},
-        )
-
-    def dispatch_batch(
-        self,
-        dealer_id: str,
-        user_data_list: list,
-        max_threads: int = 10,
-    ) -> list:
-        """
-        Send a batch of trigger_voice_call tasks for a single dealer.
-        Starts the dealer service automatically on first call.
-        Multiple dealers can call this concurrently — queues are fully isolated.
-        """
-        service_name = self.start(dealer_id, max_threads=max_threads)
-
-        results = []
-        for user_data in user_data_list:
-            result = gryd.create_async_task(
-                "trigger_voice_call",
-                service_name,
-                args=[],
-                kwargs={"user_data": user_data},
-            )
-            results.append(result)
-
-        logger.info(
-            "Dispatched %d calls for dealer '%s' → service '%s'.",
-            len(results), dealer_id, service_name,
-        )
-        return results
-
-    # ------------------------------------------------------------------
-    # Introspection
-    # ------------------------------------------------------------------
-
-    def list_active(self) -> dict:
-        """Return {dealer_id: service_name} for all running services."""
-        with self._lock:
-            return {did: s["service_name"] for did, s in self._active.items()}
-
-    def is_active(self, dealer_id: str) -> bool:
-        return dealer_id in self._active
-
-
-def get_voice_service_manager() -> VoiceServiceManager:
-    """Return the process-wide VoiceServiceManager singleton."""
-    return VoiceServiceManager()
+    elif args.command == "reload":
+        with open(args.code_file, "r") as f:
+            new_code = f.read()
+        manager.reload_plugin(args.module_name, new_code)
+        print(f"Plugin '{args.module_name}' reloaded.")
