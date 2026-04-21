@@ -2168,8 +2168,28 @@
         }
         return new Date(yyyy, mm - 1, dd, hh, min, sec);
       }
-      const d = new Date(str);
-      return isNaN(d) ? null : d;
+      const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (dmy) {
+        const dd = parseInt(dmy[1], 10);
+        const mm = parseInt(dmy[2], 10);
+        const yyyy = parseInt(dmy[3], 10);
+        if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+          return new Date(yyyy, mm - 1, dd);
+        }
+      }
+      const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+      if (iso) {
+        const yyyy = parseInt(iso[1], 10);
+        const mm = parseInt(iso[2], 10);
+        const dd = parseInt(iso[3], 10);
+        const hh = parseInt(iso[4] || '0', 10);
+        const min = parseInt(iso[5] || '0', 10);
+        const sec = parseInt(iso[6] || '0', 10);
+        if (mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+          return new Date(yyyy, mm - 1, dd, hh, min, sec);
+        }
+      }
+      return null;
     }
 
     function formatCallDate(dateObj) {

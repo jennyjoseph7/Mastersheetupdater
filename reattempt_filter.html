@@ -1402,6 +1402,13 @@
     // Connected outcomes: lead was successfully reached
     const CONNECTED_OUTCOMES = new Set(['connected']);
 
+    function isConnectedOutcome(outcome) {
+      const o = String(outcome || '').toLowerCase().trim();
+      if (!o) return false;
+      if (CONNECTED_OUTCOMES.has(o)) return true;
+      return o.includes('connected') && !o.includes('not connected');
+    }
+
     // ─── PHONE NORMALIZATION ─────────────────────────────────────────────────────
     function normalizePhone(raw) {
       if (!raw) return null;
@@ -1566,7 +1573,7 @@
         let terminalCount = 0;
 
         for (const [phone, group] of phoneGroups) {
-          const hasConnected = group.outcomes.some(o => CONNECTED_OUTCOMES.has(o));
+          const hasConnected = group.outcomes.some(o => isConnectedOutcome(o));
           const hasTerminal = excludeTerminal && group.dispositions.some(d => TERMINAL_DISPOSITIONS.has(d));
 
           // Pick the best (latest) row for this phone's data

@@ -1288,8 +1288,8 @@
       // ── Count outcomes ──
       const norm = (v) => String(v || '').trim().toLowerCase();
 
-      let connected = 0, notConnectedStrict = 0, voicemail = 0, callbacks = 0;
-      let bookings = 0, serviceCompleted = 0, callsTriggered = 0;
+      let connected = 0, notConnectedStrict = 0, voicemail = 0;
+      let bookings = 0, callsTriggered = 0;
       let incompleteCall = 0, callbackRequestedFromSummary = 0;
 
       rows.forEach(r => {
@@ -1310,9 +1310,6 @@
           voicemail++;
         }
 
-        if (out.includes('callback') || det.includes('callback') || det.includes('call back') || sum.includes('callback') || sum.includes('call back')) {
-          callbacks++;
-        }
         if (sum === 'requested callback' || sum === 'received call at wrong time') {
           callbackRequestedFromSummary++;
         }
@@ -1322,10 +1319,6 @@
             sum === 'follow up required' || sum === 'follow-up required' ||
             sum === 'test drive booked') {
           bookings++;
-        }
-
-        if (sum.includes('follow up required') || sum.includes('follow-up required') || sum.includes('followup required')) {
-          serviceCompleted++;
         }
 
         if (det.includes('incomplete') || out.includes('incomplete')) {
@@ -1424,9 +1417,9 @@
       kpiRow1.innerHTML = '';
       const kpis1 = [
         { label: 'LEADS GIVEN', value: totalLeads, sub: 'Base lead file', color: 'blue', delay: 1 },
-        { label: 'CALLS TRIGGERED', value: callsTriggered, sub: pct(callsTriggered, totalLeads) + ' of leads', color: 'purple', delay: 2 },
-        { label: 'CONNECTED', value: connected, sub: pct(connected, callsTriggered) + ' of calls', color: 'green', delay: 3 },
-        { label: 'VOICEMAIL', value: voicemail, sub: pct(voicemail, callsTriggered) + ' of calls', color: 'amber', delay: 4 },
+        { label: 'CALLS TRIGGERED', value: callsTriggered, sub: 'From uploaded records', color: 'purple', delay: 2 },
+        { label: 'CONNECTED', value: connected, sub: 'Outcome based', color: 'green', delay: 3 },
+        { label: 'VOICEMAIL', value: voicemail, sub: 'Summary based', color: 'amber', delay: 4 },
       ];
       kpis1.forEach(k => kpiRow1.appendChild(makeKPI(k)));
 
@@ -1434,10 +1427,10 @@
       const kpiRow2 = document.getElementById('kpiRow2');
       kpiRow2.innerHTML = '';
       const kpis2 = [
-        { label: 'CALLBACKS', value: callbacks, sub: pct(callbacks, connected) + ' of connected', color: 'amber', delay: 5 },
-        { label: 'BOOKINGS', value: bookings, sub: pct(bookings, connected) + ' of connected', color: 'green', delay: 6 },
-        { label: 'CALLBACK REQUESTED', value: callbackRequestedFromSummary, sub: pct(callbackRequestedFromSummary, connected) + ' of connected', color: 'teal', delay: 7 },
-        { label: 'NOT CONNECTED', value: notConnectedStrict, sub: pct(notConnectedStrict, callsTriggered) + ' of calls', color: 'red', delay: 8 },
+        { label: 'UNIQUE CALLS', value: phoneSet.size, sub: 'No duplicates', color: 'amber', delay: 5 },
+        { label: 'BOOKINGS', value: bookings, sub: 'Summary based', color: 'green', delay: 6 },
+        { label: 'CALLBACK REQUESTED', value: callbackRequestedFromSummary, sub: 'Summary based', color: 'teal', delay: 7 },
+        { label: 'NOT CONNECTED', value: notConnectedStrict, sub: 'Outcome based', color: 'red', delay: 8 },
       ];
       kpis2.forEach(k => kpiRow2.appendChild(makeKPI(k)));
 
@@ -1445,7 +1438,7 @@
       renderDailyChart(dailyCounts);
 
       // Vehicle chart
-      renderVehicleChart(modelCounts, totalLeads);
+      renderVehicleChart(modelCounts);
 
       // Pending panel
       renderPendingPanel({
@@ -1501,7 +1494,7 @@
     }
 
     /* ── Vehicle Horizontal Bar Chart ─────────────────────────────────── */
-    function renderVehicleChart(modelCounts, total) {
+    function renderVehicleChart(modelCounts) {
       const container = document.getElementById('vehicleChart');
       container.innerHTML = '';
 
@@ -1513,7 +1506,7 @@
 
       const maxVal = entries[0][1];
       const colors = ['blue', 'purple', 'green', 'amber', 'red', 'teal'];
-      const topModels = entries.slice(0, 8);
+      const totalModelTaggedCalls = entries.reduce((acc, [, count]) => acc + count, 0);
 
       const titleEl = container.closest('.data-panel').querySelector('.panel-title');
       titleEl.textContent = `Vehicles Contacted (${entries.length} Models)`;
@@ -1521,12 +1514,12 @@
       const dot = document.createElement('span');
       titleEl.prepend(dot);
 
-      topModels.forEach(([model, count], i) => {
+      entries.forEach(([model, count], i) => {
         const row = document.createElement('div');
         row.className = 'hbar-row';
         const widthPct = maxVal > 0 ? (count / maxVal * 100) : 0;
         const colorClass = colors[i % colors.length];
-        const percentage = total > 0 ? (count / total * 100).toFixed(1) : '0.0';
+        const percentage = totalModelTaggedCalls > 0 ? (count / totalModelTaggedCalls * 100).toFixed(1) : '0.0';
 
         // Build DOM elements safely (no innerHTML with user data)
         const label = document.createElement('span');
@@ -1588,9 +1581,8 @@
 
         ${data.dupeCount > 0 ? `
         <div class="alert-block green" style="margin-top:0.5rem;">
-          <div class="alert-title">Duplicates Cleaned (${data.dupeCount})</div>
-          <div class="alert-item">${numberWithCommas(data.uniquePhones + data.dupeCount)} (Total) → ${data.dupeCount} (Dupes) = ${numberWithCommas(data.uniquePhones)} (Unique)</div>
-          <div class="alert-item">${((data.dupeCount / (data.uniquePhones + data.dupeCount)) * 100).toFixed(1)}% deduplication rate</div>
+          <div class="alert-title">Retriggered Leads (${data.dupeCount})</div>
+          <div class="alert-item">${numberWithCommas(data.uniquePhones + data.dupeCount)} (Total) → ${data.dupeCount} (Retriggered) = ${numberWithCommas(data.uniquePhones)} (Unique)</div>
         </div>
         ` : ''}
       `;
@@ -1706,15 +1698,15 @@
     /* ── PDF Export ──────────────────────────────────────────────────── */
     async function exportPDF() {
       const btn = document.getElementById('btnExportPDF');
+      const uploadSection = document.getElementById('uploadSection');
+      const exportButton = document.getElementById('btnExportPDF');
+      const exportButtonDisplay = exportButton.style.display;
       const origText = btn.innerHTML;
       btn.innerHTML = '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Generating…';
       btn.disabled = true;
 
       try {
         // Hide upload/export controls for cleaner PDF
-        const uploadSection = document.getElementById('uploadSection');
-        const exportButton = document.getElementById('btnExportPDF');
-        const exportButtonDisplay = exportButton.style.display;
         uploadSection.style.display = 'none';
         exportButton.style.display = 'none';
 
@@ -1847,7 +1839,8 @@
         console.error('[PDF Export]', err);
         alert('PDF export failed: ' + err.message);
       } finally {
-        document.getElementById('uploadSection').style.display = '';
+        uploadSection.style.display = '';
+        exportButton.style.display = exportButtonDisplay;
         btn.innerHTML = origText;
         btn.disabled = false;
       }
