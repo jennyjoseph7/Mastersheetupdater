@@ -1,7 +1,13 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 
 <head>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('jejo-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Campaign Dashboard — JEJO</title>
@@ -1185,6 +1191,7 @@
       if (!ALLOWED_EXTENSIONS.includes(ext)) {
         stDash.textContent = '✗ Invalid file type. Allowed: .csv, .xlsx, .xls';
         stDash.className = 'dz-status';
+        dzDash.classList.remove('has-file');
         dashData = null;
         btnGenerate.disabled = true;
         return;
@@ -1194,6 +1201,7 @@
       if (file.size > MAX_UPLOAD_BYTES) {
         stDash.textContent = '✗ File too large (max 50 MB)';
         stDash.className = 'dz-status';
+        dzDash.classList.remove('has-file');
         dashData = null;
         btnGenerate.disabled = true;
         return;
