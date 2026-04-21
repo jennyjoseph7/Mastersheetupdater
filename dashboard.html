@@ -1288,10 +1288,9 @@
       // ── Count outcomes ──
       const norm = (v) => String(v || '').trim().toLowerCase();
 
-      let connected = 0, notConnected = 0, voicemail = 0, callbacks = 0;
-      let bookings = 0, serviceCompleted = 0, invalidLeads = 0, callsTriggered = 0;
-      let incompleteCall = 0, callbackRequested = 0;
-      let callbackRequestedFromSummary = 0;
+      let connected = 0, notConnectedStrict = 0, voicemail = 0, callbacks = 0;
+      let bookings = 0, serviceCompleted = 0, callsTriggered = 0;
+      let incompleteCall = 0, callbackRequestedFromSummary = 0;
 
       rows.forEach(r => {
         const out = norm(r[COL_OUTCOME]);
@@ -1303,9 +1302,7 @@
         if (out === 'connected') {
           connected++;
         } else if (out.includes('not connected') || out.includes('notconnected') || out.includes('not_connected')) {
-          notConnected++;
-        } else {
-          notConnected++;
+          notConnectedStrict++;
         }
 
         // Voicemail: independent check on SUMMARY column (voicemail rows have Outcome="Connected")
@@ -1315,7 +1312,6 @@
 
         if (out.includes('callback') || det.includes('callback') || det.includes('call back') || sum.includes('callback') || sum.includes('call back')) {
           callbacks++;
-          callbackRequested++;
         }
         if (sum === 'requested callback' || sum === 'received call at wrong time') {
           callbackRequestedFromSummary++;
@@ -1332,18 +1328,12 @@
           serviceCompleted++;
         }
 
-        if (out.includes('invalid') || det.includes('sold') || det.includes('ownership changed') ||
-            det.includes('inactive') || det.includes('lost to competition') ||
-            det.includes('user different') || det.includes('wrong number')) {
-          invalidLeads++;
-        }
-
         if (det.includes('incomplete') || out.includes('incomplete')) {
           incompleteCall++;
         }
       });
 
-      const pendingFollowup = incompleteCall + callbackRequested + notConnected;
+      const pendingFollowup = incompleteCall + callbackRequestedFromSummary + notConnectedStrict;
 
       // ── Unique phones for dedup ──
       const phoneSet = new Set();
@@ -1447,7 +1437,7 @@
         { label: 'CALLBACKS', value: callbacks, sub: pct(callbacks, connected) + ' of connected', color: 'amber', delay: 5 },
         { label: 'BOOKINGS', value: bookings, sub: pct(bookings, connected) + ' of connected', color: 'green', delay: 6 },
         { label: 'CALLBACK REQUESTED', value: callbackRequestedFromSummary, sub: pct(callbackRequestedFromSummary, connected) + ' of connected', color: 'teal', delay: 7 },
-        { label: 'INVALID LEADS', value: invalidLeads, sub: pct(invalidLeads, totalLeads) + ' of total leads', color: 'red', delay: 8 },
+        { label: 'NOT CONNECTED', value: notConnectedStrict, sub: pct(notConnectedStrict, callsTriggered) + ' of calls', color: 'red', delay: 8 },
       ];
       kpis2.forEach(k => kpiRow2.appendChild(makeKPI(k)));
 
@@ -1460,10 +1450,9 @@
       // Pending panel
       renderPendingPanel({
         incompleteCall,
-        callbackRequested,
-        notConnected,
+        callbackRequested: callbackRequestedFromSummary,
+        notConnected: notConnectedStrict,
         pendingFollowup,
-        invalidLeads,
         totalLeads,
         dupeCount: dupes.length,
         uniquePhones: phoneSet.size,
@@ -1581,7 +1570,7 @@
             <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.callbackRequested)}</span>
           </div>
           <div class="pdata-item">
-            <span class="pdata-label">Not Connected / Voicemail</span>
+            <span class="pdata-label">Not Connected (Outcome)</span>
             <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.notConnected)}</span>
           </div>
         </div>
@@ -1592,10 +1581,9 @@
         </div>
 
         <div class="alert-block red" style="margin-top:0.75rem;">
-          <div class="alert-title">Invalid Leads Removed (${data.invalidLeads})</div>
-          <div class="alert-item">Vehicle Sold — Ownership changed</div>
-          <div class="alert-item">User Different — Registered user inactive</div>
-          <div class="alert-item">Lost to Competition / Wrong Number</div>
+          <div class="alert-title">Not Connected Definition (${numberWithCommas(data.notConnected)})</div>
+          <div class="alert-item">Counted only when Outcome = Not Connected</div>
+          <div class="alert-item">Does not include voicemail or other non-connected outcomes</div>
         </div>
 
         ${data.dupeCount > 0 ? `
