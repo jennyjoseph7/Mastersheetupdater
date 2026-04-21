@@ -1169,6 +1169,7 @@
        FILE UPLOAD
        ═══════════════════════════════════════════════════════════════════════ */
     let dashData = null;
+    let uploadedFileExt = '';
 
     const dzDash = document.getElementById('dzDash');
     const fileDash = document.getElementById('fileDash');
@@ -1203,6 +1204,7 @@
       // Validate file extension
       const fileName = file.name || '';
       const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
+      uploadedFileExt = ext;
       if (!ALLOWED_EXTENSIONS.includes(ext)) {
         stDash.textContent = '✗ Invalid file type. Allowed: .csv, .xlsx, .xls';
         stDash.className = 'dz-status';
@@ -1226,9 +1228,9 @@
       reader.onload = e => {
         try {
           // Keep original cell values (especially dates) without locale-based auto conversion.
-          const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
+          const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false, raw: true });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          dashData = XLSX.utils.sheet_to_json(ws, { defval: '' });
+          dashData = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
           stDash.textContent = `✓ ${file.name} (${dashData.length} rows)`;
           stDash.className = 'dz-status ok';
           dzDash.classList.add('has-file');
@@ -1355,10 +1357,22 @@
       // ── Date range ──
       const dateParserInfo = buildDateParser(rows, COL_DATE);
       const dateParser = dateParserInfo.parse;
+      let validDateCount = 0;
+      let rejectedDateCount = 0;
       let dates = [];
       rows.forEach(r => {
-        const d = dateParser(r[COL_DATE]);
-        if (d) dates.push(d);
+        const dateText = extractCallDateText(r[COL_DATE]);
+        if (!dateText) {
+          rejectedDateCount++;
+          return;
+        }
+        const d = dateParser(dateText);
+        if (d) {
+          validDateCount++;
+          dates.push(d);
+        } else {
+          rejectedDateCount++;
+        }
       });
       dates.sort((a, b) => a - b);
       const minDate = dates[0];
@@ -1367,7 +1381,9 @@
       // ── Daily breakdown ──
       const dailyCounts = {};
       rows.forEach(r => {
-        const d = dateParser(r[COL_DATE]);
+        const dateText = extractCallDateText(r[COL_DATE]);
+        if (!dateText) return;
+        const d = dateParser(dateText);
         if (d) {
           const key = formatDateKey(d);
           dailyCounts[key] = (dailyCounts[key] || 0) + 1;
@@ -1399,7 +1415,15 @@
         document.getElementById('dateRange').textContent = 'All records';
       }
       const parserLabel = dateParserInfo.order === 'MDY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY';
-      document.getElementById('dateParserNote').textContent = `Source: ${COL_DATE} · Parser: ${parserLabel}`;
+      document.getElementById('dateParserNote').textContent = `Source: ${COL_DATE} · Parser: ${parserLabel} · Valid: ${validDateCount}/${rows.length} · Rejected: ${rejectedDateCount}`;
+      console.log('[Dashboard] Date parse audit:', {
+        sourceColumn: COL_DATE,
+        parser: parserLabel,
+        uploadType: uploadedFileExt || 'unknown',
+        totalRows: rows.length,
+        validDateCount,
+        rejectedDateCount,
+      });
 
       // KPI Row 1
       const kpiRow1 = document.getElementById('kpiRow1');
@@ -1597,8 +1621,8 @@
       const sampleLimit = Math.min(rows.length, 250);
       for (let i = 0; i < sampleLimit; i++) {
         const raw = rows[i] ? rows[i][columnName] : null;
-        if (!raw || raw instanceof Date || typeof raw === 'number') continue;
-        const s = String(raw).trim();
+        const s = extractCallDateText(raw);
+        if (!s) continue;
         const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
         if (!m) continue;
         const a = Number(m[1]);
@@ -1616,22 +1640,19 @@
 
       return {
         order: inferredOrder,
-        parse: (val) => parseDateStrict(val, inferredOrder),
+        parse: (val) => parseDateStrictText(val, inferredOrder),
       };
     }
 
-    function parseDateStrict(val, order) {
-      if (!val) return null;
-      if (val instanceof Date) {
-        return isNaN(val.getTime()) ? null : new Date(val.getFullYear(), val.getMonth(), val.getDate());
-      }
-      if (typeof val === 'number') {
-        const epoch = new Date(1899, 11, 30);
-        const d = new Date(epoch.getTime() + val * 86400000);
-        return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      }
+    function extractCallDateText(val) {
+      if (val === null || val === undefined) return '';
+      if (val instanceof Date) return '';
+      if (typeof val === 'number') return '';
+      return String(val).trim();
+    }
 
-      const s = String(val).trim();
+    function parseDateStrictText(val, order) {
+      const s = extractCallDateText(val);
       if (!s) return null;
 
       if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
