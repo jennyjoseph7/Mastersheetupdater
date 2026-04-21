@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
   <meta charset="UTF-8" />
@@ -15,7 +15,8 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     /* ── DESIGN TOKENS ─────────────────────────────────────────────────── */
-    :root {
+    :root,
+    [data-theme="dark"] {
       --bg: #0a0a0a;
       --surface: #111111;
       --surface2: #1a1a1a;
@@ -34,6 +35,32 @@
       --text: #f5f5f5;
       --text-dim: #adaaaa;
       --text-muted: #6b6b6b;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'Manrope', 'Inter', sans-serif;
+      --body: 'Inter', sans-serif;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 16px;
+    }
+    [data-theme="light"] {
+      --bg: #f3f5f8;
+      --surface: #ffffff;
+      --surface2: #f7f8fa;
+      --surface3: #eef0f4;
+      --border: rgba(0, 20, 50, 0.08);
+      --border-focus: rgba(200, 130, 50, 0.5);
+      --accent: #c47a1e;
+      --accent-dim: #a86510;
+      --accent-soft: rgba(196, 122, 30, 0.1);
+      --success: #1a9960;
+      --success-soft: rgba(26, 153, 96, 0.08);
+      --warn: #c89520;
+      --warn-soft: rgba(200, 149, 32, 0.08);
+      --danger: #d63636;
+      --danger-soft: rgba(214, 54, 54, 0.08);
+      --text: #1a1e26;
+      --text-dim: #4a5568;
+      --text-muted: #8896a6;
       --mono: 'IBM Plex Mono', monospace;
       --sans: 'Manrope', 'Inter', sans-serif;
       --body: 'Inter', sans-serif;
@@ -776,7 +803,7 @@
     }
 
     /* POLISH PASS: UI ONLY */
-    :root {
+    [data-theme="dark"] {
       --bg: #080b10;
       --surface: #10151d;
       --surface2: #151c27;
@@ -799,6 +826,66 @@
       --radius-sm: 10px;
       --radius-lg: 22px;
       --shadow-card: 0 18px 60px rgba(0, 0, 0, 0.26);
+    }
+
+    /* ── THEME TOGGLE BUTTON ────────────────────────────────────────── */
+    .theme-toggle {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-dim);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: all 0.25s;
+      flex-shrink: 0;
+    }
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+      transform: rotate(15deg);
+    }
+    [data-theme="light"] .theme-toggle {
+      background: rgba(0,0,0,0.04);
+    }
+    [data-theme="dark"] .icon-sun { display: none; }
+    [data-theme="light"] .icon-moon { display: none; }
+
+    /* ── NAV LINKS ────────────────────────────────────────────────────── */
+    .header-nav {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-dim);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .nav-link:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .nav-link.active {
+      border-color: rgba(230, 164, 86, 0.4);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    [data-theme="light"] .nav-link {
+      background: rgba(0,0,0,0.03);
     }
 
     body {
@@ -1494,6 +1581,163 @@
       opacity: 1;
       color: var(--accent);
     }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       LIGHT THEME — FULL-PAGE OVERRIDES
+       ═══════════════════════════════════════════════════════════════════════ */
+    [data-theme="light"] body {
+      background:
+        radial-gradient(ellipse at 10% -5%, rgba(230, 164, 86, 0.06), transparent 38rem),
+        radial-gradient(ellipse at 90% 5%, rgba(99, 214, 163, 0.04), transparent 32rem),
+        linear-gradient(180deg, #f3f5f8 0%, #eef1f5 42%, #f3f5f8 100%);
+      color: var(--text);
+    }
+
+    [data-theme="light"] body::before {
+      background:
+        linear-gradient(rgba(0, 0, 0, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.025) 1px, transparent 1px);
+    }
+
+    [data-theme="light"] header {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(18px);
+    }
+
+    [data-theme="light"] .header-badge {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    [data-theme="light"] .header-steps .step-pill {
+      background: rgba(0, 0, 0, 0.04);
+      color: var(--text-muted);
+    }
+
+    [data-theme="light"] .header-steps .step-pill.active {
+      background: var(--accent-soft);
+    }
+
+    [data-theme="light"] .workflow-panel,
+    [data-theme="light"] .panel {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 251, 253, 0.96));
+      border-color: var(--border);
+      box-shadow: 0 8px 32px rgba(0, 30, 80, 0.06);
+    }
+
+    [data-theme="light"] .file-card {
+      background:
+        linear-gradient(160deg, rgba(0, 0, 0, 0.01), rgba(0, 0, 0, 0.005)),
+        var(--surface);
+      border-color: var(--border);
+      box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.02), 0 2px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    [data-theme="light"] .file-card.amber {
+      background:
+        linear-gradient(160deg, rgba(196, 122, 30, 0.04), rgba(0, 0, 0, 0.005)),
+        var(--surface);
+    }
+
+    [data-theme="light"] .file-card.green {
+      background:
+        linear-gradient(160deg, rgba(26, 153, 96, 0.04), rgba(0, 0, 0, 0.005)),
+        var(--surface);
+    }
+
+    [data-theme="light"] .drop-zone {
+      background: var(--surface2);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .drop-zone:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    [data-theme="light"] .drop-zone-hint {
+      background: rgba(0, 0, 0, 0.03);
+      color: var(--text-muted);
+    }
+
+    [data-theme="light"] .setting-pill,
+    [data-theme="light"] .quality-card {
+      background: rgba(0, 0, 0, 0.03);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .process-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #fff;
+    }
+
+    [data-theme="light"] table {
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.03);
+    }
+
+    [data-theme="light"] thead th,
+    [data-theme="light"] thead {
+      background: #eef0f4;
+      color: var(--text-dim);
+    }
+
+    [data-theme="light"] tr:nth-child(even) {
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    [data-theme="light"] tr:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    [data-theme="light"] td,
+    [data-theme="light"] th {
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .summary-grid .metric-card,
+    [data-theme="light"] .metric-card {
+      background: rgba(0, 0, 0, 0.02);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .copy-btn,
+    [data-theme="light"] .download-btn {
+      background: rgba(0, 0, 0, 0.04);
+      color: var(--text-dim);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .copy-btn:hover,
+    [data-theme="light"] .download-btn:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    [data-theme="light"] footer {
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .empty-state {
+      background: rgba(0, 0, 0, 0.02);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .step-pill .num {
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    [data-theme="light"] select,
+    [data-theme="light"] input[type="text"],
+    [data-theme="light"] input[type="number"] {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .brand-mark {
+      box-shadow: 0 6px 20px rgba(196, 122, 30, 0.2), 0 0 0 0 rgba(196, 122, 30, 0);
+    }
   </style>
 </head>
 
@@ -1503,7 +1747,7 @@
   <div class="processing-overlay" id="processingOverlay">
     <div class="processing-card">
       <div class="spinner"></div>
-      <span id="processingMsg">Processing files…</span>
+      <span>Processing files…</span>
     </div>
   </div>
 
@@ -1519,15 +1763,25 @@
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-        <a href="reattempt_filter.html" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 0.85rem;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,0.04);color:var(--text-dim);font-size:0.78rem;font-weight:600;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-          Re-Attempt Filter
-        </a>
+        <div class="header-nav">
+          <a class="nav-link" href="reattempt_filter.html">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Re-Attempt Filter
+          </a>
+          <a class="nav-link" href="dashboard.html">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+            Dashboard
+          </a>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+          <svg class="icon-moon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+          <svg class="icon-sun" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        </button>
         <div class="header-steps" id="stepPills">
-          <div class="step-pill" id="pill1"><span class="num">1</span> Upload Audience & Leads</div>
+          <div class="step-pill" id="pill1"><span class="num">1</span> Upload Audience &amp; Leads</div>
           <div class="step-pill" id="pill2"><span class="num">2</span> Upload Sessions</div>
           <div class="step-pill" id="pill3"><span class="num">3</span> Process Both Files</div>
-          <div class="step-pill" id="pill4"><span class="num">4</span> Copy → Paste in Zoho</div>
+          <div class="step-pill" id="pill4"><span class="num">4</span> Copy &#8594; Paste in Zoho</div>
         </div>
       </div>
     </div>
@@ -2489,7 +2743,7 @@
         sorted.sort((a, b) => {
           const va = String(a[currentSortKey] || '');
           const vb = String(b[currentSortKey] || '');
-          return va < vb ? -dir : va > vb ? dir : 0;
+          return dir * va.localeCompare(vb, undefined, { sensitivity: 'base' });
         });
       }
       
@@ -3045,6 +3299,17 @@
 
     setupDragDrop('dz1', 'f1');
     setupDragDrop('dz2', 'f2');
+
+    /* ── THEME ────────────────────────────────────────────────────────── */
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('jejo-theme', t);
+    }
+    function toggleTheme() {
+      const cur = document.documentElement.getAttribute('data-theme');
+      applyTheme(cur === 'dark' ? 'light' : 'dark');
+    }
+    applyTheme(localStorage.getItem('jejo-theme') || 'dark');
   </script>
 </body>
 

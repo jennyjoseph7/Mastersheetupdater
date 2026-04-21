@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campaign Dashboard — JEJO</title>
+  <meta name="description"
+    content="Call campaign summary dashboard with KPI metrics, charts, and data insights — JEJO Ops." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════════
+       THEME TOKENS — DARK (default)
+       ═══════════════════════════════════════════════════════════════════════ */
+    :root,
+    [data-theme="dark"] {
+      --bg: #080b10;
+      --bg-gradient: radial-gradient(ellipse at 15% -5%, rgba(230, 164, 86, 0.12), transparent 38rem),
+        radial-gradient(ellipse at 85% 5%, rgba(91, 156, 245, 0.10), transparent 32rem),
+        radial-gradient(ellipse at 50% 80%, rgba(100, 90, 200, 0.06), transparent 50rem),
+        linear-gradient(180deg, #070a0f 0%, #0b1017 42%, #080c12 100%);
+      --surface: #10151d;
+      --surface2: #151c27;
+      --surface3: #1c2633;
+      --surface-card: rgba(16, 21, 29, 0.92);
+      --surface-card-hover: rgba(22, 28, 38, 0.95);
+      --border: rgba(218, 230, 242, 0.09);
+      --border-subtle: rgba(218, 230, 242, 0.05);
+      --border-focus: rgba(230, 164, 86, 0.58);
+      --accent: #e6a456;
+      --accent-dim: #c78331;
+      --accent-soft: rgba(230, 164, 86, 0.13);
+      --accent2: #5b9cf5;
+      --accent2-soft: rgba(91, 156, 245, 0.13);
+      --success: #63d6a3;
+      --success-soft: rgba(99, 214, 163, 0.12);
+      --warn: #f2c464;
+      --warn-soft: rgba(242, 196, 100, 0.12);
+      --danger: #f16f6f;
+      --danger-soft: rgba(241, 111, 111, 0.12);
+      --purple: #a78bfa;
+      --purple-soft: rgba(167, 139, 250, 0.12);
+      --teal: #5eead4;
+      --teal-soft: rgba(94, 234, 212, 0.12);
+      --text: #f4f0e8;
+      --text-dim: #aeb8c3;
+      --text-muted: #6f7b88;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'Manrope', 'Inter', sans-serif;
+      --body: 'Inter', sans-serif;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --radius-lg: 22px;
+      --shadow-card: 0 18px 60px rgba(0, 0, 0, 0.26);
+      --shadow-subtle: 0 4px 16px rgba(0, 0, 0, 0.15);
+      --grid-line: rgba(255, 255, 255, 0.022);
+      --chart-bar-bg: rgba(255, 255, 255, 0.06);
+      --kpi-dot-shadow: 0.18;
+      --header-bg: rgba(8, 11, 16, 0.78);
+      --thead-bg: #111820;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       THEME TOKENS — LIGHT
+       ═══════════════════════════════════════════════════════════════════════ */
+    [data-theme="light"] {
+      --bg: #f3f5f8;
+      --bg-gradient: radial-gradient(ellipse at 15% -5%, rgba(230, 164, 86, 0.08), transparent 38rem),
+        radial-gradient(ellipse at 85% 5%, rgba(91, 156, 245, 0.06), transparent 32rem),
+        linear-gradient(180deg, #f3f5f8 0%, #eef1f5 42%, #f3f5f8 100%);
+      --surface: #ffffff;
+      --surface2: #f7f8fa;
+      --surface3: #eef0f4;
+      --surface-card: rgba(255, 255, 255, 0.95);
+      --surface-card-hover: rgba(255, 255, 255, 1);
+      --border: rgba(0, 20, 50, 0.08);
+      --border-subtle: rgba(0, 20, 50, 0.04);
+      --border-focus: rgba(200, 130, 50, 0.5);
+      --accent: #c47a1e;
+      --accent-dim: #a86510;
+      --accent-soft: rgba(196, 122, 30, 0.1);
+      --accent2: #2d6fd6;
+      --accent2-soft: rgba(45, 111, 214, 0.08);
+      --success: #1a9960;
+      --success-soft: rgba(26, 153, 96, 0.08);
+      --warn: #c89520;
+      --warn-soft: rgba(200, 149, 32, 0.08);
+      --danger: #d63636;
+      --danger-soft: rgba(214, 54, 54, 0.08);
+      --purple: #7c3aed;
+      --purple-soft: rgba(124, 58, 237, 0.08);
+      --teal: #0d9488;
+      --teal-soft: rgba(13, 148, 136, 0.08);
+      --text: #1a1e26;
+      --text-dim: #4a5568;
+      --text-muted: #8896a6;
+      --shadow-card: 0 8px 32px rgba(0, 30, 80, 0.06);
+      --shadow-subtle: 0 2px 8px rgba(0, 30, 80, 0.04);
+      --grid-line: rgba(0, 0, 0, 0.03);
+      --chart-bar-bg: rgba(0, 0, 0, 0.04);
+      --kpi-dot-shadow: 0.12;
+      --header-bg: rgba(255, 255, 255, 0.85);
+      --thead-bg: #f0f2f6;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       RESET & BASE
+       ═══════════════════════════════════════════════════════════════════════ */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+      letter-spacing: -0.005em;
+      transition: background-color 0.35s ease, color 0.35s ease;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 52px 52px;
+      -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 65%);
+      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 65%);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       HEADER
+       ═══════════════════════════════════════════════════════════════════════ */
+    header {
+      padding: 1.2rem 2rem;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(18px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      transition: background 0.35s;
+    }
+
+    .header-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    @keyframes brandPulse {
+      0%, 100% {
+        box-shadow: 0 8px 28px rgba(230, 164, 86, 0.28), 0 0 0 0 rgba(230, 164, 86, 0);
+      }
+      50% {
+        box-shadow: 0 12px 36px rgba(230, 164, 86, 0.45), 0 0 0 6px rgba(230, 164, 86, 0.08);
+      }
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      color: #15100a;
+      font-family: var(--sans);
+      font-weight: 800;
+      font-size: 1.1rem;
+      background: linear-gradient(135deg, #f5c97a, #e6a456, #c97d22);
+      background-size: 200% 200%;
+      animation: brandPulse 3.5s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      width: fit-content;
+      margin-bottom: 0.18rem;
+      background: rgba(255, 255, 255, 0.045);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.25rem 0.7rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    [data-theme="light"] .header-badge {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    h1 {
+      font-family: var(--sans);
+      font-size: clamp(1.35rem, 1.8vw, 1.8rem);
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.045em;
+    }
+
+    .header-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-dim);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .nav-link:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .nav-link.active {
+      border-color: rgba(230, 164, 86, 0.4);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    [data-theme="light"] .nav-link {
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    /* ── THEME TOGGLE ──────────────────────────────────────────────────── */
+    .theme-toggle {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-dim);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: all 0.25s;
+      flex-shrink: 0;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+      transform: rotate(15deg);
+    }
+
+    [data-theme="light"] .theme-toggle {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .theme-toggle .icon-sun,
+    .theme-toggle .icon-moon {
+      width: 18px;
+      height: 18px;
+      transition: opacity 0.2s, transform 0.3s;
+    }
+
+    [data-theme="dark"] .theme-toggle .icon-sun {
+      display: none;
+    }
+
+    [data-theme="light"] .theme-toggle .icon-moon {
+      display: none;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       MAIN
+       ═══════════════════════════════════════════════════════════════════════ */
+    main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* ── CAMPAIGN HEADER BAR ─────────────────────────────────────────── */
+    .campaign-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding: 1.25rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface-card);
+      box-shadow: var(--shadow-card);
+      transition: background 0.35s, border-color 0.35s;
+    }
+
+    .campaign-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .campaign-name {
+      font-family: var(--sans);
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .campaign-name span {
+      color: var(--accent);
+    }
+
+    .campaign-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    .date-range-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface2);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      transition: background 0.35s;
+    }
+
+    .date-range-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 700;
+    }
+
+    /* ── UPLOAD SECTION ────────────────────────────────────────────────── */
+    .upload-section {
+      margin-bottom: 1.5rem;
+      padding: 1.25rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface-card);
+      box-shadow: var(--shadow-card);
+      transition: background 0.35s;
+    }
+
+    .upload-section .section-title {
+      font-family: var(--sans);
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .upload-section .section-title::before {
+      content: '';
+      width: 3px;
+      height: 1.1em;
+      border-radius: 99px;
+      background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+    }
+
+    .upload-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .drop-zone-dash {
+      padding: 1.2rem 1.5rem;
+      border: 2px dashed rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius);
+      background: var(--surface2);
+      cursor: pointer;
+      transition: all 0.25s;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    [data-theme="light"] .drop-zone-dash {
+      border-color: rgba(0, 0, 0, 0.12);
+    }
+
+    .drop-zone-dash:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      transform: translateY(-2px);
+    }
+
+    .drop-zone-dash.has-file {
+      border-color: var(--success);
+      border-style: solid;
+      background: var(--success-soft);
+    }
+
+    .drop-zone-dash .dz-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(230, 164, 86, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .drop-zone-dash .dz-text strong {
+      display: block;
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      margin-bottom: 0.1rem;
+    }
+
+    .drop-zone-dash .dz-text small {
+      color: var(--text-muted);
+      font-size: 0.76rem;
+    }
+
+    .drop-zone-dash .dz-status {
+      margin-left: auto;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+
+    .drop-zone-dash .dz-status.ok {
+      background: var(--success-soft);
+      border-color: rgba(99, 214, 163, 0.3);
+      color: var(--success);
+    }
+
+    input[type=file] {
+      display: none;
+    }
+
+    .btn-generate {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-family: var(--body);
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #1a0e00;
+      transition: all 0.25s;
+      white-space: nowrap;
+      min-height: 44px;
+    }
+
+    .btn-generate:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(230, 164, 86, 0.3);
+    }
+
+    .btn-generate:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       KPI CARDS
+       ═══════════════════════════════════════════════════════════════════════ */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.85rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .kpi-card {
+      padding: 1.15rem 1.25rem;
+      border-radius: var(--radius-lg);
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-subtle);
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-card);
+      background: var(--surface-card-hover);
+    }
+
+    .kpi-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 0.35rem;
+      vertical-align: middle;
+    }
+
+    .kpi-value {
+      font-family: var(--sans);
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin: 0.35rem 0 0.15rem;
+    }
+
+    .kpi-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .kpi-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 0.1rem;
+    }
+
+    /* KPI color variants */
+    .kpi-card.blue::before { background: var(--accent2); }
+    .kpi-card.blue .kpi-dot { background: var(--accent2); box-shadow: 0 0 8px rgba(91, 156, 245, var(--kpi-dot-shadow)); }
+    .kpi-card.blue .kpi-label { color: var(--accent2); }
+
+    .kpi-card.purple::before { background: var(--purple); }
+    .kpi-card.purple .kpi-dot { background: var(--purple); box-shadow: 0 0 8px rgba(167, 139, 250, var(--kpi-dot-shadow)); }
+    .kpi-card.purple .kpi-label { color: var(--purple); }
+
+    .kpi-card.green::before { background: var(--success); }
+    .kpi-card.green .kpi-dot { background: var(--success); box-shadow: 0 0 8px rgba(99, 214, 163, var(--kpi-dot-shadow)); }
+    .kpi-card.green .kpi-label { color: var(--success); }
+
+    .kpi-card.amber::before { background: var(--accent); }
+    .kpi-card.amber .kpi-dot { background: var(--accent); box-shadow: 0 0 8px rgba(230, 164, 86, var(--kpi-dot-shadow)); }
+    .kpi-card.amber .kpi-label { color: var(--accent); }
+
+    .kpi-card.red::before { background: var(--danger); }
+    .kpi-card.red .kpi-dot { background: var(--danger); box-shadow: 0 0 8px rgba(241, 111, 111, var(--kpi-dot-shadow)); }
+    .kpi-card.red .kpi-label { color: var(--danger); }
+
+    .kpi-card.teal::before { background: var(--teal); }
+    .kpi-card.teal .kpi-dot { background: var(--teal); box-shadow: 0 0 8px rgba(94, 234, 212, var(--kpi-dot-shadow)); }
+    .kpi-card.teal .kpi-label { color: var(--teal); }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       THREE-COLUMN DATA SECTION
+       ═══════════════════════════════════════════════════════════════════════ */
+    .data-panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.85rem;
+      margin-top: 0.85rem;
+    }
+
+    .data-panel {
+      padding: 1.25rem;
+      border-radius: var(--radius-lg);
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-subtle);
+      transition: background 0.35s;
+    }
+
+    .panel-title {
+      font-family: var(--sans);
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .panel-title::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+      flex-shrink: 0;
+    }
+
+    /* ── DAILY CALLS BAR CHART ───────────────────────────────────────── */
+    .chart-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      height: 200px;
+      padding-top: 10px;
+    }
+
+    .chart-bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .chart-bar {
+      width: 100%;
+      min-height: 4px;
+      border-radius: 4px 4px 2px 2px;
+      background: linear-gradient(180deg, var(--accent2), rgba(91, 156, 245, 0.6));
+      transition: height 0.5s ease, opacity 0.3s;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .chart-bar:hover {
+      opacity: 0.85;
+      filter: brightness(1.15);
+    }
+
+    .chart-bar-val {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .chart-bar-label {
+      font-size: 0.58rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .chart-axis {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.6rem;
+      padding-top: 0.45rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    /* ── HORIZONTAL BAR CHART (Vehicles) ─────────────────────────────── */
+    .hbar-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .hbar-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 55px;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .hbar-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hbar-track {
+      height: 22px;
+      border-radius: 6px;
+      background: var(--chart-bar-bg);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hbar-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.6s ease;
+      position: relative;
+    }
+
+    .hbar-fill.blue { background: linear-gradient(90deg, var(--accent2), rgba(91, 156, 245, 0.7)); }
+    .hbar-fill.purple { background: linear-gradient(90deg, var(--purple), rgba(167, 139, 250, 0.7)); }
+    .hbar-fill.green { background: linear-gradient(90deg, var(--success), rgba(99, 214, 163, 0.7)); }
+    .hbar-fill.amber { background: linear-gradient(90deg, var(--accent), rgba(230, 164, 86, 0.7)); }
+    .hbar-fill.red { background: linear-gradient(90deg, var(--danger), rgba(241, 111, 111, 0.7)); }
+    .hbar-fill.teal { background: linear-gradient(90deg, var(--teal), rgba(94, 234, 212, 0.7)); }
+
+    .hbar-value {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .hbar-pct {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin-left: 0.2rem;
+    }
+
+    /* ── PENDING / PROCESSED DATA ────────────────────────────────────── */
+    .pdata-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .pdata-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 0.85rem;
+      border-radius: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border-subtle);
+      transition: background 0.25s;
+    }
+
+    .pdata-item:hover {
+      background: var(--surface3);
+    }
+
+    .pdata-label {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    .pdata-value {
+      font-family: var(--mono);
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .pdata-highlight {
+      padding: 0.75rem 0.95rem;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0.35rem;
+    }
+
+    .pdata-highlight.amber {
+      background: var(--warn-soft);
+      border: 1px solid rgba(242, 196, 100, 0.25);
+    }
+
+    .pdata-highlight.amber .pdata-label {
+      color: var(--warn);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+    }
+
+    .pdata-highlight.amber .pdata-value {
+      color: var(--warn);
+      font-size: 1.35rem;
+      font-weight: 800;
+    }
+
+    /* Alert blocks */
+    .alert-block {
+      padding: 0.75rem 0.95rem;
+      border-radius: 12px;
+      margin-top: 0.6rem;
+    }
+
+    .alert-block.red {
+      background: var(--danger-soft);
+      border: 1px solid rgba(241, 111, 111, 0.2);
+    }
+
+    .alert-block.green {
+      background: var(--success-soft);
+      border: 1px solid rgba(99, 214, 163, 0.2);
+    }
+
+    .alert-title {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+
+    .alert-block.red .alert-title { color: var(--danger); }
+    .alert-block.green .alert-title { color: var(--success); }
+
+    .alert-item {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      padding-left: 0.75rem;
+      position: relative;
+      line-height: 1.6;
+    }
+
+    .alert-item::before {
+      content: '•';
+      position: absolute;
+      left: 0;
+      color: var(--text-muted);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       EMPTY STATE
+       ═══════════════════════════════════════════════════════════════════════ */
+    .empty-dashboard {
+      text-align: center;
+      padding: 4rem 2rem;
+      border: 1px dashed rgba(230, 164, 86, 0.3);
+      border-radius: var(--radius-lg);
+      background: rgba(230, 164, 86, 0.03);
+    }
+
+    .empty-dashboard .empty-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(230, 164, 86, 0.2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+      color: var(--accent);
+    }
+
+    .empty-dashboard h2 {
+      font-family: var(--sans);
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-dashboard p {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      max-width: 45ch;
+      margin: 0 auto;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       FOOTER
+       ═══════════════════════════════════════════════════════════════════════ */
+    footer {
+      text-align: center;
+      padding: 1.5rem 2rem;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+      transition: border-color 0.35s;
+    }
+
+    footer span {
+      color: var(--text-dim);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       ANIMATIONS
+       ═══════════════════════════════════════════════════════════════════════ */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-in { animation: fadeIn 0.3s ease forwards; }
+    .slide-up { animation: slideUp 0.35s ease forwards; }
+
+    .stagger-1 { animation-delay: 0.05s; opacity: 0; }
+    .stagger-2 { animation-delay: 0.1s; opacity: 0; }
+    .stagger-3 { animation-delay: 0.15s; opacity: 0; }
+    .stagger-4 { animation-delay: 0.2s; opacity: 0; }
+    .stagger-5 { animation-delay: 0.25s; opacity: 0; }
+    .stagger-6 { animation-delay: 0.3s; opacity: 0; }
+    .stagger-7 { animation-delay: 0.35s; opacity: 0; }
+    .stagger-8 { animation-delay: 0.4s; opacity: 0; }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       RESPONSIVE
+       ═══════════════════════════════════════════════════════════════════════ */
+    @media (max-width: 1100px) {
+      .data-panels {
+        grid-template-columns: 1fr 1fr;
+      }
+      .data-panels .data-panel:last-child {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 800px) {
+      .kpi-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .data-panels {
+        grid-template-columns: 1fr;
+      }
+      .data-panels .data-panel:last-child {
+        grid-column: auto;
+      }
+      .campaign-bar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    @media (max-width: 600px) {
+      main { padding: 1rem; }
+      header { padding: 1rem; position: static; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      .upload-row { grid-template-columns: 1fr; }
+      .header-right { width: 100%; justify-content: flex-end; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <div class="brand-mark">J</div>
+        <div>
+          <div class="header-badge">JEJO OPS</div>
+          <h1>Campaign Dashboard</h1>
+          <div class="header-sub">Call Campaign Summary · Upload Zoho export to generate insights</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="header-nav">
+          <a class="nav-link" href="disposition_sync_v2.html">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Disposition Sync
+          </a>
+          <a class="nav-link" href="reattempt_filter.html">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Re-Attempt Filter
+          </a>
+          <a class="nav-link active" href="#">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+            Dashboard
+          </a>
+        </div>
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
+          <svg class="icon-moon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+          <svg class="icon-sun" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+
+    <!-- Upload Section -->
+    <div class="upload-section slide-up" id="uploadSection">
+      <div class="section-title">Upload Zoho Master Sheet Export</div>
+      <div class="upload-row">
+        <div class="drop-zone-dash" id="dzDash" onclick="document.getElementById('fileDash').click()" role="button" tabindex="0">
+          <div class="dz-icon">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <div class="dz-text">
+            <strong>Zoho Master Sheet (.xlsx / .csv)</strong>
+            <small>Drop file here or click to browse — needs columns: PHONE_NUMBER, CALL_DATE, VEHICLE_MODEL, OUTCOME, etc.</small>
+          </div>
+          <span class="dz-status" id="stDash">No file selected</span>
+          <input type="file" id="fileDash" accept=".csv,.xlsx,.xls">
+        </div>
+        <button class="btn-generate" id="btnGenerate" disabled onclick="generateDashboard()">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Generate Dashboard
+        </button>
+      </div>
+    </div>
+
+    <!-- Campaign Bar (hidden until data loaded) -->
+    <div class="campaign-bar slide-up" id="campaignBar" style="display:none;">
+      <div class="campaign-info">
+        <div class="campaign-name" id="campaignName">Dealership <span>Call Summary</span></div>
+        <div class="campaign-subtitle" id="campaignSubtitle">Service Reminder Campaign</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
+        <div class="date-range-label">DATE RANGE</div>
+        <div class="date-range-badge" id="dateRange">—</div>
+      </div>
+    </div>
+
+    <!-- Dashboard Content (hidden until data loaded) -->
+    <div id="dashboardContent" style="display:none;">
+
+      <!-- KPI Row 1 -->
+      <div class="kpi-grid" id="kpiRow1"></div>
+
+      <!-- KPI Row 2 -->
+      <div class="kpi-grid" id="kpiRow2"></div>
+
+      <!-- Three-column data panels -->
+      <div class="data-panels">
+        <div class="data-panel slide-up stagger-5">
+          <div class="panel-title">Daily Calls Breakdown</div>
+          <div class="chart-bars" id="dailyChart"></div>
+        </div>
+
+        <div class="data-panel slide-up stagger-6">
+          <div class="panel-title">Vehicles Contacted</div>
+          <div class="hbar-list" id="vehicleChart"></div>
+        </div>
+
+        <div class="data-panel slide-up stagger-7">
+          <div class="panel-title">Pending & Processed Data</div>
+          <div id="pendingPanel"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state (shown initially) -->
+    <div class="empty-dashboard" id="emptyState">
+      <div class="empty-icon">
+        <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+        </svg>
+      </div>
+      <h2>Upload a Zoho Export to See Your Dashboard</h2>
+      <p>Drop your Zoho Master Sheet export above. The dashboard will automatically compute KPIs, call breakdowns, vehicle distribution, and pending follow-ups.</p>
+    </div>
+
+  </main>
+
+  <footer>JEJO — Campaign Dashboard · Lead Operations Automation · <span>No backend · No install</span></footer>
+
+  <script>
+    /* ═══════════════════════════════════════════════════════════════════════
+       THEME MANAGEMENT
+       ═══════════════════════════════════════════════════════════════════════ */
+    function getStoredTheme() {
+      return localStorage.getItem('jejo-theme') || 'dark';
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('jejo-theme', theme);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    }
+
+    // Apply stored theme on load
+    applyTheme(getStoredTheme());
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       FILE UPLOAD
+       ═══════════════════════════════════════════════════════════════════════ */
+    let dashData = null;
+
+    const dzDash = document.getElementById('dzDash');
+    const fileDash = document.getElementById('fileDash');
+    const stDash = document.getElementById('stDash');
+    const btnGenerate = document.getElementById('btnGenerate');
+
+    // Drag & drop
+    dzDash.addEventListener('dragover', e => { e.preventDefault(); dzDash.classList.add('drag-over'); });
+    dzDash.addEventListener('dragleave', () => dzDash.classList.remove('drag-over'));
+    dzDash.addEventListener('drop', e => {
+      e.preventDefault();
+      dzDash.classList.remove('drag-over');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    fileDash.addEventListener('change', () => {
+      if (fileDash.files.length) handleFile(fileDash.files[0]);
+    });
+
+    function handleFile(file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const wb = XLSX.read(e.target.result, { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          dashData = XLSX.utils.sheet_to_json(ws, { defval: '' });
+          stDash.textContent = `✓ ${file.name} (${dashData.length} rows)`;
+          stDash.className = 'dz-status ok';
+          dzDash.classList.add('has-file');
+          btnGenerate.disabled = false;
+        } catch (err) {
+          stDash.textContent = '✗ Error reading file';
+          stDash.className = 'dz-status';
+          dashData = null;
+          btnGenerate.disabled = true;
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       DASHBOARD GENERATION
+       ═══════════════════════════════════════════════════════════════════════ */
+    function generateDashboard() {
+      if (!dashData || dashData.length === 0) return;
+
+      // ── Find column names (case-insensitive fuzzy match) ──
+      const cols = Object.keys(dashData[0]);
+      const find = (keywords) => {
+        const kw = keywords.map(k => k.toLowerCase());
+        return cols.find(c => {
+          const cl = c.toLowerCase().replace(/[_\s-]/g, '');
+          return kw.some(k => cl.includes(k.replace(/[_\s-]/g, '')));
+        }) || null;
+      };
+
+      const COL_PHONE = find(['phone_number', 'phonenumber', 'phone', 'mobile']);
+      const COL_OUTCOME = find(['outcome', 'disposition', 'call_outcome', 'calloutcome']);
+      const COL_DATE = find(['call_date', 'calldate', 'date', 'created', 'updated']);
+      const COL_MODEL = find(['vehicle_model', 'vehiclemodel', 'model', 'model_preference', 'car_model']);
+      const COL_DETAIL = find(['disposition_detail', 'dispositiondetail', 'detail', 'disposition_details']);
+      const COL_SUMMARY = find(['summary', 'call_summary', 'callsummary']);
+
+      const rows = dashData;
+      const totalLeads = rows.length;
+
+      // ── Count outcomes ──
+      const norm = (v) => String(v || '').trim().toLowerCase();
+
+      let connected = 0, notConnected = 0, voicemail = 0, callbacks = 0;
+      let bookings = 0, serviceCompleted = 0, invalidLeads = 0, callsTriggered = 0;
+      let incompleteCall = 0, callbackRequested = 0;
+
+      rows.forEach(r => {
+        const out = norm(r[COL_OUTCOME]);
+        const det = norm(r[COL_DETAIL] || '');
+        const sum = norm(r[COL_SUMMARY] || '');
+
+        callsTriggered++;
+
+        if (out.includes('connect') && !out.includes('not')) {
+          connected++;
+        } else if (out.includes('voicemail') || out.includes('voice')) {
+          voicemail++;
+          notConnected++;
+        } else if (out.includes('not connected') || out.includes('notconnected') || out.includes('not_connected')) {
+          notConnected++;
+        } else {
+          notConnected++;
+        }
+
+        if (out.includes('callback') || det.includes('callback') || det.includes('call back') || sum.includes('callback') || sum.includes('call back')) {
+          callbacks++;
+          callbackRequested++;
+        }
+
+        if (det.includes('booking') || det.includes('booked') || sum.includes('booking') || sum.includes('booked') || det.includes('test drive')) {
+          bookings++;
+        }
+
+        if (det.includes('service completed') || det.includes('serviced') || out.includes('service completed')) {
+          serviceCompleted++;
+        }
+
+        if (out.includes('invalid') || det.includes('sold') || det.includes('ownership changed') ||
+            det.includes('inactive') || det.includes('lost to competition') ||
+            det.includes('user different') || det.includes('wrong number')) {
+          invalidLeads++;
+        }
+
+        if (det.includes('incomplete') || out.includes('incomplete')) {
+          incompleteCall++;
+        }
+      });
+
+      const pendingFollowup = incompleteCall + callbackRequested + notConnected;
+
+      // ── Unique phones for dedup ──
+      const phoneSet = new Set();
+      const dupes = [];
+      if (COL_PHONE) {
+        rows.forEach(r => {
+          const p = String(r[COL_PHONE] || '').replace(/\D/g, '');
+          if (p) {
+            if (phoneSet.has(p)) dupes.push(p);
+            else phoneSet.add(p);
+          }
+        });
+      }
+
+      // ── Date range ──
+      let dates = [];
+      if (COL_DATE) {
+        rows.forEach(r => {
+          const d = parseDate(r[COL_DATE]);
+          if (d) dates.push(d);
+        });
+      }
+      dates.sort((a, b) => a - b);
+      const minDate = dates[0];
+      const maxDate = dates[dates.length - 1];
+
+      // ── Daily breakdown ──
+      const dailyCounts = {};
+      if (COL_DATE) {
+        rows.forEach(r => {
+          const d = parseDate(r[COL_DATE]);
+          if (d) {
+            const key = formatDateShort(d);
+            dailyCounts[key] = (dailyCounts[key] || 0) + 1;
+          }
+        });
+      }
+
+      // ── Vehicle model breakdown ──
+      const modelCounts = {};
+      if (COL_MODEL) {
+        rows.forEach(r => {
+          const m = String(r[COL_MODEL] || '').trim();
+          if (m && m.toLowerCase() !== 'na' && m.toLowerCase() !== 'n/a' && m !== '') {
+            modelCounts[m] = (modelCounts[m] || 0) + 1;
+          }
+        });
+      }
+
+      // ── Render ──
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('campaignBar').style.display = 'flex';
+      document.getElementById('dashboardContent').style.display = 'block';
+
+      // Date range
+      if (minDate && maxDate) {
+        document.getElementById('dateRange').textContent =
+          formatDateFull(minDate) + ' – ' + formatDateFull(maxDate);
+      } else {
+        document.getElementById('dateRange').textContent = 'All records';
+      }
+
+      // KPI Row 1
+      const kpiRow1 = document.getElementById('kpiRow1');
+      kpiRow1.innerHTML = '';
+      const kpis1 = [
+        { label: 'LEADS GIVEN', value: totalLeads, sub: 'Base lead file', color: 'blue', delay: 1 },
+        { label: 'CALLS TRIGGERED', value: callsTriggered, sub: pct(callsTriggered, totalLeads) + ' of leads', color: 'purple', delay: 2 },
+        { label: 'CONNECTED', value: connected, sub: pct(connected, callsTriggered) + ' of calls', color: 'green', delay: 3 },
+        { label: 'VOICEMAIL', value: voicemail, sub: pct(voicemail, callsTriggered) + ' of calls', color: 'amber', delay: 4 },
+      ];
+      kpis1.forEach(k => kpiRow1.appendChild(makeKPI(k)));
+
+      // KPI Row 2
+      const kpiRow2 = document.getElementById('kpiRow2');
+      kpiRow2.innerHTML = '';
+      const kpis2 = [
+        { label: 'CALLBACKS', value: callbacks, sub: pct(callbacks, connected) + ' of connected', color: 'amber', delay: 5 },
+        { label: 'BOOKINGS', value: bookings, sub: pct(bookings, connected) + ' of connected', color: 'green', delay: 6 },
+        { label: 'SERVICE COMPLETED', value: serviceCompleted, sub: pct(serviceCompleted, connected) + ' of connected', color: 'teal', delay: 7 },
+        { label: 'INVALID LEADS', value: invalidLeads, sub: pct(invalidLeads, totalLeads) + ' of total leads', color: 'red', delay: 8 },
+      ];
+      kpis2.forEach(k => kpiRow2.appendChild(makeKPI(k)));
+
+      // Daily chart
+      renderDailyChart(dailyCounts);
+
+      // Vehicle chart
+      renderVehicleChart(modelCounts, totalLeads);
+
+      // Pending panel
+      renderPendingPanel({
+        incompleteCall,
+        callbackRequested,
+        notConnected: notConnected - voicemail,
+        pendingFollowup,
+        invalidLeads,
+        totalLeads,
+        dupeCount: dupes.length,
+        uniquePhones: phoneSet.size,
+      });
+    }
+
+    /* ── KPI Card Builder ─────────────────────────────────────────────── */
+    function makeKPI({ label, value, sub, color, delay }) {
+      const card = document.createElement('div');
+      card.className = `kpi-card ${color} slide-up stagger-${delay}`;
+      card.innerHTML = `
+        <div><span class="kpi-dot"></span></div>
+        <div class="kpi-value">${numberWithCommas(value)}</div>
+        <div class="kpi-label">${label}</div>
+        <div class="kpi-sub">${sub}</div>
+      `;
+      return card;
+    }
+
+    /* ── Daily Bar Chart ──────────────────────────────────────────────── */
+    function renderDailyChart(dailyCounts) {
+      const container = document.getElementById('dailyChart');
+      container.innerHTML = '';
+
+      const entries = Object.entries(dailyCounts).sort((a, b) => {
+        return parseSimpleDate(a[0]) - parseSimpleDate(b[0]);
+      });
+
+      if (entries.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;width:100%;padding:3rem 0;">No date data available</div>';
+        return;
+      }
+
+      const maxVal = Math.max(...entries.map(e => e[1]));
+
+      entries.forEach(([date, count]) => {
+        const col = document.createElement('div');
+        col.className = 'chart-bar-col';
+        const heightPct = maxVal > 0 ? (count / maxVal * 100) : 0;
+        col.innerHTML = `
+          <span class="chart-bar-val">${count}</span>
+          <div class="chart-bar" style="height:${Math.max(heightPct, 3)}%" title="${date}: ${count} calls"></div>
+          <span class="chart-bar-label">${date}</span>
+        `;
+        container.appendChild(col);
+      });
+    }
+
+    /* ── Vehicle Horizontal Bar Chart ─────────────────────────────────── */
+    function renderVehicleChart(modelCounts, total) {
+      const container = document.getElementById('vehicleChart');
+      container.innerHTML = '';
+
+      const entries = Object.entries(modelCounts).sort((a, b) => b[1] - a[1]);
+      if (entries.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:2rem 0;">No vehicle model data</div>';
+        return;
+      }
+
+      const maxVal = entries[0][1];
+      const colors = ['blue', 'purple', 'green', 'amber', 'red', 'teal'];
+      const topModels = entries.slice(0, 8);
+
+      const titleEl = container.closest('.data-panel').querySelector('.panel-title');
+      titleEl.textContent = `Vehicles Contacted (${entries.length} Models)`;
+      // Re-add the dot
+      const dot = document.createElement('span');
+      titleEl.prepend(dot);
+
+      topModels.forEach(([model, count], i) => {
+        const row = document.createElement('div');
+        row.className = 'hbar-row';
+        const widthPct = maxVal > 0 ? (count / maxVal * 100) : 0;
+        const colorClass = colors[i % colors.length];
+        const percentage = total > 0 ? (count / total * 100).toFixed(1) : '0.0';
+        row.innerHTML = `
+          <span class="hbar-label" title="${model}">${model}</span>
+          <div class="hbar-track">
+            <div class="hbar-fill ${colorClass}" style="width:${widthPct}%"></div>
+          </div>
+          <span class="hbar-value">${numberWithCommas(count)}<span class="hbar-pct">${percentage}%</span></span>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    /* ── Pending & Processed Panel ────────────────────────────────────── */
+    function renderPendingPanel(data) {
+      const container = document.getElementById('pendingPanel');
+      container.innerHTML = `
+        <div class="pdata-list">
+          <div class="pdata-item">
+            <span class="pdata-label">Incomplete Call</span>
+            <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.incompleteCall)}</span>
+          </div>
+          <div class="pdata-item">
+            <span class="pdata-label">Callback Requested</span>
+            <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.callbackRequested)}</span>
+          </div>
+          <div class="pdata-item">
+            <span class="pdata-label">Not Connected / Voicemail</span>
+            <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.notConnected)}</span>
+          </div>
+        </div>
+
+        <div class="pdata-highlight amber" style="margin-top:0.75rem;">
+          <span class="pdata-label">PENDING FOLLOW-UP</span>
+          <span class="pdata-value">${numberWithCommas(data.pendingFollowup)}</span>
+        </div>
+
+        <div class="alert-block red" style="margin-top:0.75rem;">
+          <div class="alert-title">Invalid Leads Removed (${data.invalidLeads})</div>
+          <div class="alert-item">Vehicle Sold — Ownership changed</div>
+          <div class="alert-item">User Different — Registered user inactive</div>
+          <div class="alert-item">Lost to Competition / Wrong Number</div>
+        </div>
+
+        ${data.dupeCount > 0 ? `
+        <div class="alert-block green" style="margin-top:0.5rem;">
+          <div class="alert-title">Duplicates Cleaned (${data.dupeCount})</div>
+          <div class="alert-item">${numberWithCommas(data.uniquePhones + data.dupeCount)} (Total) → ${data.dupeCount} (Dupes) = ${numberWithCommas(data.uniquePhones)} (Unique)</div>
+          <div class="alert-item">${((data.dupeCount / (data.uniquePhones + data.dupeCount)) * 100).toFixed(1)}% deduplication rate</div>
+        </div>
+        ` : ''}
+      `;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       HELPERS
+       ═══════════════════════════════════════════════════════════════════════ */
+    function numberWithCommas(n) {
+      return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    function pct(part, whole) {
+      if (!whole) return '0%';
+      return (part / whole * 100).toFixed(1) + '%';
+    }
+
+    function parseDate(val) {
+      if (!val) return null;
+      if (typeof val === 'number') {
+        // Excel serial date
+        const epoch = new Date(1899, 11, 30);
+        return new Date(epoch.getTime() + val * 86400000);
+      }
+      const s = String(val).trim();
+
+      // 1. Try dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy first (Indian locale)
+      const parts = s.split(/[\/\-\.]/);
+      if (parts.length === 3) {
+        const [a, b, c] = parts.map(Number);
+        if (!isNaN(a) && !isNaN(b) && !isNaN(c)) {
+          if (c > 100) return new Date(c, b - 1, a); // dd/mm/yyyy
+          if (a > 100) return new Date(a, b - 1, c); // yyyy/mm/dd
+        }
+      }
+
+      // 2. Try ISO format (yyyy-mm-ddTHH:MM:SS)
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) return d;
+      }
+
+      // 3. Try named month formats like "Apr 14, 2026" or "14 Apr 2026"
+      const namedMonth = s.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{4})/i) ||
+                         s.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{1,2}),?\s+(\d{4})/i);
+      if (namedMonth) {
+        const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+        if (namedMonth[2] && months[namedMonth[2].toLowerCase().slice(0,3)] !== undefined) {
+          // "14 Apr 2026"
+          return new Date(+namedMonth[3], months[namedMonth[2].toLowerCase().slice(0,3)], +namedMonth[1]);
+        } else if (namedMonth[1] && months[namedMonth[1].toLowerCase().slice(0,3)] !== undefined) {
+          // "Apr 14, 2026"
+          return new Date(+namedMonth[3], months[namedMonth[1].toLowerCase().slice(0,3)], +namedMonth[2]);
+        }
+      }
+
+      return null;
+    }
+
+    function formatDateShort(d) {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return d.getDate() + ' ' + months[d.getMonth()];
+    }
+
+    function formatDateFull(d) {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+    }
+
+    function parseSimpleDate(s) {
+      // "4 Apr" -> sortable timestamp
+      const parts = s.split(' ');
+      const months = { 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 };
+      return new Date(2026, months[parts[1]] || 0, parseInt(parts[0]) || 1).getTime();
+    }
+  </script>
+
+</body>
+</html>
