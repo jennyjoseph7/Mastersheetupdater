@@ -3,7 +3,7 @@
 function update_repo() {
 	sha=$1
 	git reset --hard HEAD^
-	git pull origin production
+	git pull origin master
 	git checkout $1
 
 }
