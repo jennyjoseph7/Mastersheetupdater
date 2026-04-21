@@ -1283,7 +1283,9 @@
           callbackRequested++;
         }
 
-        if (det.includes('booking') || det.includes('booked') || sum.includes('booking') || sum.includes('booked') || det.includes('test drive')) {
+        if (out.includes('booking') || out.includes('booked') || out.includes('test drive booked') ||
+            out.includes('converted') || out.includes('interested') ||
+            det.includes('booking') || det.includes('booked') || sum.includes('booking') || sum.includes('booked') || det.includes('test drive')) {
           bookings++;
         }
 
