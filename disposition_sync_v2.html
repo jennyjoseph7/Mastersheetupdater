@@ -2482,14 +2482,24 @@
     }
 
     function getSortedData(data) {
-      if (!currentSortKey || !currentSortDir) return data;
-      const sorted = [...data];
-      const dir = currentSortDir === 'asc' ? 1 : -1;
-      sorted.sort((a, b) => {
-        const va = String(a[currentSortKey] || '').toLowerCase();
-        const vb = String(b[currentSortKey] || '').toLowerCase();
-        return va < vb ? -dir : va > vb ? dir : 0;
+      let sorted = data;
+      if (currentSortKey && currentSortDir) {
+        sorted = [...data];
+        const dir = currentSortDir === 'asc' ? 1 : -1;
+        sorted.sort((a, b) => {
+          const va = String(a[currentSortKey] || '').toLowerCase();
+          const vb = String(b[currentSortKey] || '').toLowerCase();
+          return va < vb ? -dir : va > vb ? dir : 0;
+        });
+      }
+      
+      const startId = parseInt(document.getElementById('leadIdStart').value) || 0;
+      sorted.forEach((r, i) => {
+        r.lead_id = startId > 0 ? `L-${startId + i}` : '';
+        const formulaRow = startId > 0 ? startId + i : 2 + i;
+        r.num_attempts = `=COUNTIF(C:C;C${formulaRow})`;
       });
+
       return sorted;
     }
 
