@@ -1721,19 +1721,38 @@
       try {
         // Hide upload section and header for cleaner PDF
         const uploadSection = document.getElementById('uploadSection');
-        const header = document.querySelector('header');
-        const footer = document.querySelector('footer');
         uploadSection.style.display = 'none';
 
-        // Wait for animations to settle
-        await new Promise(r => setTimeout(r, 300));
+        // Freeze animation/opacity states so PDF capture does not get faded/blurry frames.
+        const animatedNodes = Array.from(document.querySelectorAll('.slide-up, .fade-in, [class*="stagger-"]'));
+        const exportState = animatedNodes.map(node => ({
+          node,
+          animation: node.style.animation,
+          opacity: node.style.opacity,
+          transform: node.style.transform,
+          transition: node.style.transition,
+        }));
+        exportState.forEach(({ node }) => {
+          node.style.animation = 'none';
+          node.style.opacity = '1';
+          node.style.transform = 'none';
+          node.style.transition = 'none';
+        });
+
+        // Wait two frames so style overrides fully apply before rasterization.
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
         const target = document.querySelector('main');
+        const captureScale = Math.max(3, Math.ceil(window.devicePixelRatio || 1));
         const canvas = await html2canvas(target, {
-          scale: 2,
+          scale: captureScale,
           useCORS: true,
           backgroundColor: '#ffffff',
           logging: false,
+          width: target.scrollWidth,
+          height: target.scrollHeight,
+          windowWidth: document.documentElement.scrollWidth,
+          windowHeight: document.documentElement.scrollHeight,
         });
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
@@ -1760,6 +1779,8 @@
           if (!pageCtx) {
             throw new Error('Could not render PDF page canvas.');
           }
+          pageCtx.imageSmoothingEnabled = true;
+          pageCtx.imageSmoothingQuality = 'high';
           pageCtx.drawImage(
             canvas,
             0,
@@ -1775,7 +1796,7 @@
           const pageImgData = pageCanvas.toDataURL('image/png');
           const mmHeight = (sliceHeightPx / canvas.width) * renderWidth;
           if (!isFirstPage) pdf.addPage();
-          pdf.addImage(pageImgData, 'PNG', margin, margin, renderWidth, mmHeight);
+          pdf.addImage(pageImgData, 'PNG', margin, margin, renderWidth, mmHeight, undefined, 'SLOW');
           isFirstPage = false;
           yOffsetPx += sliceHeightPx;
         }
@@ -1787,10 +1808,17 @@
 
         // Restore
         uploadSection.style.display = '';
+        exportState.forEach(({ node, animation, opacity, transform, transition }) => {
+          node.style.animation = animation;
+          node.style.opacity = opacity;
+          node.style.transform = transform;
+          node.style.transition = transition;
+        });
       } catch (err) {
         console.error('[PDF Export]', err);
         alert('PDF export failed: ' + err.message);
       } finally {
+        document.getElementById('uploadSection').style.display = '';
         btn.innerHTML = origText;
         btn.disabled = false;
       }
