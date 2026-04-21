@@ -1719,9 +1719,12 @@
       btn.disabled = true;
 
       try {
-        // Hide upload section and header for cleaner PDF
+        // Hide upload/export controls for cleaner PDF
         const uploadSection = document.getElementById('uploadSection');
+        const exportButton = document.getElementById('btnExportPDF');
+        const exportButtonDisplay = exportButton.style.display;
         uploadSection.style.display = 'none';
+        exportButton.style.display = 'none';
 
         // Freeze animation/opacity states so PDF capture does not get faded/blurry frames.
         const animatedNodes = Array.from(document.querySelectorAll('.slide-up, .fade-in, [class*="stagger-"]'));
@@ -1764,7 +1767,10 @@
         const pdfPageWidth = pdf.internal.pageSize.getWidth();
         const pdfPageHeight = pdf.internal.pageSize.getHeight();
         const margin = 10;
-        const renderWidth = pdfPageWidth - margin * 2;
+        const maxRenderWidth = pdfPageWidth - margin * 2;
+        const fitScale = 0.94; // Slightly reduce content so the page breathes and fits better.
+        const renderWidth = maxRenderWidth * fitScale;
+        const xOffset = (pdfPageWidth - renderWidth) / 2;
         const renderHeight = pdfPageHeight - margin * 2;
         const pageHeightPx = Math.floor(canvas.width * (renderHeight / renderWidth));
         let yOffsetPx = 0;
@@ -1796,7 +1802,7 @@
           const pageImgData = pageCanvas.toDataURL('image/png');
           const mmHeight = (sliceHeightPx / canvas.width) * renderWidth;
           if (!isFirstPage) pdf.addPage();
-          pdf.addImage(pageImgData, 'PNG', margin, margin, renderWidth, mmHeight, undefined, 'SLOW');
+          pdf.addImage(pageImgData, 'PNG', xOffset, margin, renderWidth, mmHeight, undefined, 'SLOW');
           isFirstPage = false;
           yOffsetPx += sliceHeightPx;
         }
@@ -1808,6 +1814,7 @@
 
         // Restore
         uploadSection.style.display = '';
+        exportButton.style.display = exportButtonDisplay;
         exportState.forEach(({ node, animation, opacity, transform, transition }) => {
           node.style.animation = animation;
           node.style.opacity = opacity;
