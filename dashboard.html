@@ -1279,7 +1279,7 @@
 
         if (out.includes('connect') && !out.includes('not')) {
           connected++;
-        } else if (out.includes('voicemail') || out.includes('voice')) {
+        } else if (out.includes('voicemail') || out.includes('voice') || sum.includes('voicemail')) {
           voicemail++;
           notConnected++;
         } else if (out.includes('not connected') || out.includes('notconnected') || out.includes('not_connected')) {
@@ -1293,13 +1293,13 @@
           callbackRequested++;
         }
 
-        if (out.includes('booking') || out.includes('booked') || out.includes('test drive booked') ||
+        if (out.includes('booking') || out.includes('booked') ||
             out.includes('converted') || out.includes('interested') ||
-            det.includes('booking') || det.includes('booked') || sum.includes('booking') || sum.includes('booked') || det.includes('test drive')) {
+            sum.includes('booking') || sum.includes('booked') || sum.includes('test drive')) {
           bookings++;
         }
 
-        if (det.includes('service completed') || det.includes('serviced') || out.includes('service completed')) {
+        if (sum.includes('follow up required') || sum.includes('follow-up required') || sum.includes('followup required')) {
           serviceCompleted++;
         }
 
@@ -1394,7 +1394,7 @@
       const kpis2 = [
         { label: 'CALLBACKS', value: callbacks, sub: pct(callbacks, connected) + ' of connected', color: 'amber', delay: 5 },
         { label: 'BOOKINGS', value: bookings, sub: pct(bookings, connected) + ' of connected', color: 'green', delay: 6 },
-        { label: 'SERVICE COMPLETED', value: serviceCompleted, sub: pct(serviceCompleted, connected) + ' of connected', color: 'teal', delay: 7 },
+        { label: 'FOLLOW UP REQUIRED', value: serviceCompleted, sub: pct(serviceCompleted, connected) + ' of connected', color: 'teal', delay: 7 },
         { label: 'INVALID LEADS', value: invalidLeads, sub: pct(invalidLeads, totalLeads) + ' of total leads', color: 'red', delay: 8 },
       ];
       kpis2.forEach(k => kpiRow2.appendChild(makeKPI(k)));
