@@ -19,6 +19,8 @@
     href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     /* ═══════════════════════════════════════════════════════════════════════
        THEME TOKENS — DARK (default)
@@ -1084,6 +1086,10 @@
         <div class="date-range-label">DATE RANGE</div>
         <div class="date-range-badge" id="dateRange">—</div>
       </div>
+      <button class="btn-generate" id="btnExportPDF" style="display:none;padding:0.5rem 1rem;font-size:0.78rem;" onclick="exportPDF()">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a2 2 0 002 2h14a2 2 0 002-2v-3"/></svg>
+        Export PDF
+      </button>
     </div>
 
     <!-- Dashboard Content (hidden until data loaded) -->
@@ -1210,7 +1216,7 @@
       const reader = new FileReader();
       reader.onload = e => {
         try {
-          const wb = XLSX.read(e.target.result, { type: 'array' });
+          const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
           const ws = wb.Sheets[wb.SheetNames[0]];
           dashData = XLSX.utils.sheet_to_json(ws, { defval: '' });
           stDash.textContent = `✓ ${file.name} (${dashData.length} rows)`;
@@ -1371,6 +1377,7 @@
       document.getElementById('emptyState').style.display = 'none';
       document.getElementById('campaignBar').style.display = 'flex';
       document.getElementById('dashboardContent').style.display = 'block';
+      document.getElementById('btnExportPDF').style.display = 'inline-flex';
 
       // Date range
       if (minDate && maxDate) {
@@ -1574,15 +1581,20 @@
 
     function parseDate(val) {
       if (!val) return null;
+      // Handle JS Date objects (from XLSX cellDates:true)
+      if (val instanceof Date) {
+        return isNaN(val.getTime()) ? null : val;
+      }
       if (typeof val === 'number') {
         // Excel serial date
         const epoch = new Date(1899, 11, 30);
         return new Date(epoch.getTime() + val * 86400000);
       }
       const s = String(val).trim();
+      if (!s) return null;
 
       // 1. Try dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy first (Indian locale)
-      const parts = s.split(/[\/\-\.]/);
+      const parts = s.split(/[\/\-\.]/);  
       if (parts.length === 3) {
         const [a, b, c] = parts.map(Number);
         if (!isNaN(a) && !isNaN(b) && !isNaN(c)) {
@@ -1632,6 +1644,73 @@
       const month = months[parts[1]] !== undefined ? months[parts[1]] : 0;
       const year = parts[2] ? parseInt(parts[2]) : new Date().getFullYear();
       return new Date(year, month, day).getTime();
+    }
+    /* ── PDF Export ──────────────────────────────────────────────────── */
+    async function exportPDF() {
+      const btn = document.getElementById('btnExportPDF');
+      const origText = btn.innerHTML;
+      btn.innerHTML = '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Generating…';
+      btn.disabled = true;
+
+      try {
+        // Hide upload section and header for cleaner PDF
+        const uploadSection = document.getElementById('uploadSection');
+        const header = document.querySelector('header');
+        const footer = document.querySelector('footer');
+        uploadSection.style.display = 'none';
+
+        // Wait for animations to settle
+        await new Promise(r => setTimeout(r, 300));
+
+        const target = document.querySelector('main');
+        const canvas = await html2canvas(target, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#080b10',
+          logging: false,
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdfWidth = 297; // A4 landscape width mm
+        const pdfHeight = 210; // A4 landscape height mm
+        const imgWidth = pdfWidth - 20; // 10mm margins
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        const pdf = new jsPDF({
+          orientation: imgHeight > pdfHeight ? 'portrait' : 'landscape',
+          unit: 'mm',
+          format: 'a4',
+        });
+
+        const pageHeight = pdf.internal.pageSize.getHeight() - 20;
+        let yOffset = 10;
+        let remainingHeight = imgHeight;
+
+        // Multi-page support
+        while (remainingHeight > 0) {
+          pdf.addImage(imgData, 'PNG', 10, yOffset - (imgHeight - remainingHeight), imgWidth, imgHeight);
+          remainingHeight -= pageHeight;
+          if (remainingHeight > 0) {
+            pdf.addPage();
+            yOffset = 10;
+          }
+        }
+
+        // Build filename from date range
+        const dateRange = document.getElementById('dateRange').textContent || 'report';
+        const safeName = 'Campaign_Dashboard_' + dateRange.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
+        pdf.save(safeName + '.pdf');
+
+        // Restore
+        uploadSection.style.display = '';
+      } catch (err) {
+        console.error('[PDF Export]', err);
+        alert('PDF export failed: ' + err.message);
+      } finally {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+      }
     }
   </script>
 
