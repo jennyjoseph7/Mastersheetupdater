@@ -1277,7 +1277,7 @@
 
         callsTriggered++;
 
-        if (out.includes('connect') && !out.includes('not')) {
+        if (out === 'connected') {
           connected++;
         } else if (out.includes('not connected') || out.includes('notconnected') || out.includes('not_connected')) {
           notConnected++;
@@ -1412,7 +1412,7 @@
       renderPendingPanel({
         incompleteCall,
         callbackRequested,
-        notConnected: notConnected - voicemail,
+        notConnected,
         pendingFollowup,
         invalidLeads,
         totalLeads,
