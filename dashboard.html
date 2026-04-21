@@ -1154,6 +1154,14 @@
     const stDash = document.getElementById('stDash');
     const btnGenerate = document.getElementById('btnGenerate');
 
+    // Keyboard activation (Enter / Space) for drop zone
+    dzDash.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        document.getElementById('fileDash').click();
+      }
+    });
+
     // Drag & drop
     dzDash.addEventListener('dragover', e => { e.preventDefault(); dzDash.classList.add('drag-over'); });
     dzDash.addEventListener('dragleave', () => dzDash.classList.remove('drag-over'));
@@ -1167,7 +1175,30 @@
       if (fileDash.files.length) handleFile(fileDash.files[0]);
     });
 
+    const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB limit
+    const ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls'];
+
     function handleFile(file) {
+      // Validate file extension
+      const fileName = file.name || '';
+      const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        stDash.textContent = '✗ Invalid file type. Allowed: .csv, .xlsx, .xls';
+        stDash.className = 'dz-status';
+        dashData = null;
+        btnGenerate.disabled = true;
+        return;
+      }
+
+      // Validate file size
+      if (file.size > MAX_UPLOAD_BYTES) {
+        stDash.textContent = '✗ File too large (max 50 MB)';
+        stDash.className = 'dz-status';
+        dashData = null;
+        btnGenerate.disabled = true;
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = e => {
         try {
@@ -1436,13 +1467,31 @@
         const widthPct = maxVal > 0 ? (count / maxVal * 100) : 0;
         const colorClass = colors[i % colors.length];
         const percentage = total > 0 ? (count / total * 100).toFixed(1) : '0.0';
-        row.innerHTML = `
-          <span class="hbar-label" title="${model}">${model}</span>
-          <div class="hbar-track">
-            <div class="hbar-fill ${colorClass}" style="width:${widthPct}%"></div>
-          </div>
-          <span class="hbar-value">${numberWithCommas(count)}<span class="hbar-pct">${percentage}%</span></span>
-        `;
+
+        // Build DOM elements safely (no innerHTML with user data)
+        const label = document.createElement('span');
+        label.className = 'hbar-label';
+        label.title = model;
+        label.textContent = model;
+
+        const track = document.createElement('div');
+        track.className = 'hbar-track';
+        const fill = document.createElement('div');
+        fill.className = 'hbar-fill ' + colorClass;
+        fill.style.width = widthPct + '%';
+        track.appendChild(fill);
+
+        const value = document.createElement('span');
+        value.className = 'hbar-value';
+        value.textContent = numberWithCommas(count);
+        const pctSpan = document.createElement('span');
+        pctSpan.className = 'hbar-pct';
+        pctSpan.textContent = percentage + '%';
+        value.appendChild(pctSpan);
+
+        row.appendChild(label);
+        row.appendChild(track);
+        row.appendChild(value);
         container.appendChild(row);
       });
     }
@@ -1544,7 +1593,7 @@
 
     function formatDateShort(d) {
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return d.getDate() + ' ' + months[d.getMonth()];
+      return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
     }
 
     function formatDateFull(d) {
@@ -1553,10 +1602,13 @@
     }
 
     function parseSimpleDate(s) {
-      // "4 Apr" -> sortable timestamp
+      // "4 Apr 2026" or "4 Apr" -> sortable timestamp
       const parts = s.split(' ');
       const months = { 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 };
-      return new Date(2026, months[parts[1]] || 0, parseInt(parts[0]) || 1).getTime();
+      const day = parseInt(parts[0]) || 1;
+      const month = months[parts[1]] !== undefined ? months[parts[1]] : 0;
+      const year = parts[2] ? parseInt(parts[2]) : new Date().getFullYear();
+      return new Date(year, month, day).getTime();
     }
   </script>
 
