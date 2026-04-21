@@ -1291,6 +1291,7 @@
       let connected = 0, notConnected = 0, voicemail = 0, callbacks = 0;
       let bookings = 0, serviceCompleted = 0, invalidLeads = 0, callsTriggered = 0;
       let incompleteCall = 0, callbackRequested = 0;
+      let callbackRequestedFromSummary = 0;
 
       rows.forEach(r => {
         const out = norm(r[COL_OUTCOME]);
@@ -1315,6 +1316,9 @@
         if (out.includes('callback') || det.includes('callback') || det.includes('call back') || sum.includes('callback') || sum.includes('call back')) {
           callbacks++;
           callbackRequested++;
+        }
+        if (sum === 'requested callback' || sum === 'received call at wrong time') {
+          callbackRequestedFromSummary++;
         }
 
         // Bookings: exact match on SUMMARY to avoid "not interested" matching "interested"
@@ -1442,7 +1446,7 @@
       const kpis2 = [
         { label: 'CALLBACKS', value: callbacks, sub: pct(callbacks, connected) + ' of connected', color: 'amber', delay: 5 },
         { label: 'BOOKINGS', value: bookings, sub: pct(bookings, connected) + ' of connected', color: 'green', delay: 6 },
-        { label: 'FOLLOW UP REQUIRED', value: serviceCompleted, sub: pct(serviceCompleted, connected) + ' of connected', color: 'teal', delay: 7 },
+        { label: 'CALLBACK REQUESTED', value: callbackRequestedFromSummary, sub: pct(callbackRequestedFromSummary, connected) + ' of connected', color: 'teal', delay: 7 },
         { label: 'INVALID LEADS', value: invalidLeads, sub: pct(invalidLeads, totalLeads) + ' of total leads', color: 'red', delay: 8 },
       ];
       kpis2.forEach(k => kpiRow2.appendChild(makeKPI(k)));
@@ -1773,11 +1777,41 @@
         const xOffset = (pdfPageWidth - renderWidth) / 2;
         const renderHeight = pdfPageHeight - margin * 2;
         const pageHeightPx = Math.floor(canvas.width * (renderHeight / renderWidth));
+        const scanCtx = canvas.getContext('2d', { willReadFrequently: true });
+        let effectiveCanvasHeight = canvas.height;
+        if (scanCtx) {
+          const img = scanCtx.getImageData(0, 0, canvas.width, canvas.height).data;
+          const xStep = 8;
+          const yStep = 2;
+          const whiteThreshold = 245;
+          let lastContentRow = -1;
+          for (let y = canvas.height - 1; y >= 0; y -= yStep) {
+            let hasInk = false;
+            for (let x = 0; x < canvas.width; x += xStep) {
+              const idx = (y * canvas.width + x) * 4;
+              const r = img[idx];
+              const g = img[idx + 1];
+              const b = img[idx + 2];
+              const a = img[idx + 3];
+              if (a > 0 && (r < whiteThreshold || g < whiteThreshold || b < whiteThreshold)) {
+                hasInk = true;
+                break;
+              }
+            }
+            if (hasInk) {
+              lastContentRow = y;
+              break;
+            }
+          }
+          if (lastContentRow > 0) {
+            effectiveCanvasHeight = Math.min(canvas.height, lastContentRow + 20); // small bottom breathing room
+          }
+        }
         let yOffsetPx = 0;
         let isFirstPage = true;
 
-        while (yOffsetPx < canvas.height) {
-          const sliceHeightPx = Math.min(pageHeightPx, canvas.height - yOffsetPx);
+        while (yOffsetPx < effectiveCanvasHeight) {
+          const sliceHeightPx = Math.min(pageHeightPx, effectiveCanvasHeight - yOffsetPx);
           const pageCanvas = document.createElement('canvas');
           pageCanvas.width = canvas.width;
           pageCanvas.height = sliceHeightPx;
