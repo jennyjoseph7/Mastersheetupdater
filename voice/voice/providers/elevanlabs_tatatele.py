@@ -799,7 +799,7 @@ class CallSession:
                         bridge_error,
                     ),
                     agent_number=self.session_data.get("agent_number"),
-                    user_number=self.session_data.get("phone_number")
+                    customer_number=self.session_data.get("phone_number")
                 )
 
             # Cleanup session
