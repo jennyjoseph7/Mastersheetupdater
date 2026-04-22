@@ -19,6 +19,7 @@ from os.path import exists as ispath, dirname, basename, join as joinpath, abspa
 from communication.connectors.communication_configs import *
 from config import AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
+THREADS_PER_SESSION = 0.1
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
 from communication.connectors.connector_whatsapp import *

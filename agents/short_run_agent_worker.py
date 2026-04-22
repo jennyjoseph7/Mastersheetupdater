@@ -11,4 +11,5 @@ try:
     from .base_agent import BaseAgent, gryd
 except ImportError:
     from base_agent import BaseAgent, gryd
+THREADS_PER_SESSION = 0.1
 from campaign_idea_creator import gryd

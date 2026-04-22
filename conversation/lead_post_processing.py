@@ -17,6 +17,7 @@ from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
 import time
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
+THREADS_PER_SESSION = 0.1
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 

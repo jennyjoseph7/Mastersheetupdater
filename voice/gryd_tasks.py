@@ -23,6 +23,7 @@ logger = hp.get_logger(__name__)
 
 
 gryd.SERVICE = config.AUTOCRM_VOICE_SERVICE_NAME
+THREADS_PER_SESSION = 0.5
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(__name__)
 
