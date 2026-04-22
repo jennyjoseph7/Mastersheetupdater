@@ -18,6 +18,7 @@ CHARACTER_COUNT_TO_CREDIT = 500
 PER_TOKEN_COST = 1
 TOKEN_COST_CURRENCY = "credits"
 gryd.SERVICE = AUTOCRM_CONVERSATION_SERVICE_NAME
+THREADS_PER_SESSION = 0.25
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 

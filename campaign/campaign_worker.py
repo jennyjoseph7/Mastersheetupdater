@@ -19,6 +19,7 @@ from autocrm_db_helper import get_pg_connector
 from config import AUTOCRM_CAMPAIGN_SERVICE_NAME,VOICE_PROVIDER_NAME
 
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
+THREADS_PER_SESSION = 0.1
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
 logger.info(f"GRYD SERVICE---{gryd.SERVICE}")

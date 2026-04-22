@@ -38,6 +38,7 @@ from razorpay_service import create_credit_purchase, confirm_payment_success, ma
 
 SERVICE = AUTOCRM_CORE_SERVICE_NAME
 gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME
+THREADS_PER_SESSION = 0.25
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(SERVICE)
 logger = mlogger

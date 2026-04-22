@@ -23,7 +23,8 @@ from tasks.variant_feature import process_brochure_chunk, run_brochure_orchestra
 # GRYD_ENVIRONMENT = os.environ.get("ENVIRONMENT")
 # setup_environment(GRYD_ENVIRONMENT)
 
-gryd.SERVICE = GRYD_SERVICE 
+gryd.SERVICE = GRYD_SERVICE
+THREADS_PER_SESSION = 0.1
 gryd.set_queue_manager()
 
 
