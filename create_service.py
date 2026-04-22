@@ -232,10 +232,6 @@ if __name__ == "__main__":
     # list
     subparsers.add_parser("list", help="List all registered gryd service plugins")
 
-    # reload
-    p_reload = subparsers.add_parser("reload", help="Reload a plugin with new code from a file")
-    p_reload.add_argument("--module-name", required=True, help="Module name to reload")
-    p_reload.add_argument("--code-file", required=True, help="Path to .py file containing new module code")
 
     args = parser.parse_args()
     manager = PluginManager()
