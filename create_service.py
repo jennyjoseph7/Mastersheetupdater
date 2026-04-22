@@ -107,7 +107,7 @@ class PluginManager:
             with open("start_worker_config.json", "r") as f:
                 swc = json.load(f)
             swc["workers"] = [
-                w for w in swc["workers"] if w.get("entry_point") != module_name
+                w for w in swc["workers"] if w.get("entry_point") != f"{module_name}.py"
             ]
             with open("start_worker_config.json", "w") as f:
                 json.dump(swc, f, indent=4)
@@ -214,8 +214,8 @@ class PluginManager:
 
 
         code = (
-            f"from {service_name} import {service_module}\n"
-            f"from {service_name}.{service_module} import *\n"
+            f"import {service_module}\n"
+            f"from {service_module} import *\n"
             f"import config\n"
             f"import os, sys, json, time\n"
             f"from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as dbhp\n"
