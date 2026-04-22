@@ -479,7 +479,9 @@ class BaseCustomCampaignManager:
                 # logger.info(f"[voice_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
                 d={**campaign_data,**campaign_users[0]}
                 # logger.info(f"Voice call payload--{json.dumps(d,indent=4)}")
-                gryd.create_async_task('trigger_voice_call', AUTOCRM_VOICE_SERVICE_NAME, args=[],kwargs={"user_data":d})
+                voice_service_name = campaign_data.get("voice_service_name") or AUTOCRM_VOICE_SERVICE_NAME
+
+                gryd.create_async_task('trigger_voice_call', voice_service_name, args=[],kwargs={"user_data":d})
             elif channel.upper()=="EMAIL":
                 logger.info("Sending Email campaign---")
                 # logger.info(f"[email_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
@@ -1036,6 +1038,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     sender_name = None
     template_message = None
     buttons = None
+    voice_service_name  = None
+
     TEMPLATE_RESOLVERS = {
         "email": get_email_template,
         "whatsapp_chat": get_whatsapp_template,
@@ -1091,6 +1095,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     logger.info(f"Template resolver for channel={channel}: {get_template}")
     if channel == "voice_phone":
         provider_name = VOICE_PROVIDER_NAME
+        with get_pg_connector() as pg:
+            voice_service_name = pg.get("dealership","dealership_id",lead_data.get("dealership_id")).get("voice_service_name")
     elif channel == "email":
         sender_name=EMAIL_SENDER_NAME
         provider_name = EMAIL_PROVIDER_NAME
@@ -1235,6 +1241,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         "enterprise_id": campaign_details.get("enterprise_id"),
         "campaign_id": campaign_details.get("campaign_id"),
         "channel": channel,
+        "voice_service_name": voice_service_name,
         "sender": sender_name or (template_data.get("sender") if template_data else None),
         "provider_name": provider_name or (template_data.get("provider_name").lower() if template_data else None),
         "template_message": template_message,
