@@ -43,28 +43,6 @@ class PluginManager:
             with open(file_path, "w") as f:
                 f.write(code)
 
-        module = types.ModuleType(name)
-        exec(code, module.__dict__)
-
-        sys.modules[name] = module
-        self.modules[name] = module
-
-        return module
-
-    def get_plugin(self, module_name: str):
-        return self.modules.get(module_name)
-
-    def reload_plugin(self, module_name: str, new_code: str):
-        if module_name not in self.modules:
-            raise ValueError(f"Plugin '{module_name}' not found")
-
-        module = self.modules[module_name]
-        module.__dict__.clear()
-        module.__dict__["__name__"] = module_name
-        exec(new_code, module.__dict__)
-
-        return module
-
     def delete_service(self, service_name: str):
         """Delete all modules registered under a service name."""
         entries = list(self.registry.get(service_name, []))
@@ -80,13 +58,6 @@ class PluginManager:
         if entry is None:
             logger.warning(f"Plugin '{module_name}' not found in registry")
             return
-
-        # remove from sys.modules and in-memory modules
-        if module_name in sys.modules:
-            del sys.modules[module_name]
-        if module_name in self.modules:
-            del self.modules[module_name]
-        gc.collect()
 
         # delete the physical module file
         file_path = os.path.join(service_name, f"{module_name}.py")
@@ -178,8 +149,10 @@ class PluginManager:
             self.registry[service_name] = [new_entry]
             logger.debug(f"Registered new service '{service_name}' in duplicate_services_registry.json")
 
-        with open("duplicate_services_registry.json", "w") as f:
-            json.dump(self.registry, f, indent=4)
+        # with open("duplicate_services_registry.json", "w") as f:
+        #     json.dump(self.registry, f, indent=4)
+
+        self._save_registry()
 
         with open("config.py", "a") as f:
             f.write(f'\n{new_variable_name} = os.environ.get("{new_variable_name}", "{new_service_name_value}")')
@@ -297,9 +270,3 @@ if __name__ == "__main__":
                 print(f"{p['service_key']:<20} {p['module_name']:<20} {p['service_name']:<35} {p['variable_name']}")
         else:
             print("No plugins registered.")
-
-    elif args.command == "reload":
-        with open(args.code_file, "r") as f:
-            new_code = f.read()
-        manager.reload_plugin(args.module_name, new_code)
-        print(f"Plugin '{args.module_name}' reloaded.")
