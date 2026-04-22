@@ -203,7 +203,7 @@ class PluginManager:
 
         start_worker_config["workers"].append({
             "name": service_name,
-            "entry_point": self.new_module_name,
+            "entry_point": f"{self.new_module_name}.py",
             "gryd_service": new_variable_name,
             "parallel_threads": num_threads or x.get("parallel_threads"),
             "shutdown_time": x.get("shutdown_time", 0)
