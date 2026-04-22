@@ -47,6 +47,7 @@ from spark_helpers import func_gryd_file_system, download_file
 from prompt_formatter import convert_prompt as _convert_prompt
 SERVICE = 'spark'
 gryd.SERVICE = SERVICE
+THREADS_PER_SESSION = 0.3
 gryd.set_queue_manager()
 FIREFLY_API_BASE = "https://firefly-api.adobe.io"
 FIREFLY_IMS_TOKEN_URL = "https://ims-na1.adobelogin.com/ims/token/v3"
