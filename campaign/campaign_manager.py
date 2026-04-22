@@ -1030,6 +1030,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     template_message = None
     buttons = None
     voice_service_name  = None
+    
     TEMPLATE_RESOLVERS = {
         "email": get_email_template,
         "whatsapp_chat": get_whatsapp_template,
