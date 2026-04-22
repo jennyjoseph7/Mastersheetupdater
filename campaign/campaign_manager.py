@@ -19,7 +19,6 @@ if _root not in sys.path:
 # from gryd_worker import gryd,gryd_helpers as hp
 # from communication.connectors.communication_configs import DB_TIMEZONE,WA_TO_DISPOSITION
 # ---
-
 from communication.connectors.base_connector_communication import *
 
 from communication.connectors.communication_helpers import _wait_for_next_minute
@@ -31,6 +30,7 @@ from agents.get_rcs_template_agent import get_rcs_template
 from communication.connectors.email_communication import communication_sender
 from communication.connectors.connector_rcs import gryd_send_rcs
 from conversation.lead_post_processing import update_error_in_lead_and_session
+from communication.common_functions import get_communication_credential,generate_uid
 from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME, SERVICE,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
@@ -477,9 +477,12 @@ class BaseCustomCampaignManager:
                 logger.info("Sending Voice campaign---")
                 logger.info(f"[{count}] Sent {channel} message for phone_number:{campaign_data.get('mobile_number')}, campaign_id:{campaign_data.get('campaign_id')}, lead_id:{user.get('lead_id')}")
                 # logger.info(f"[voice_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
-                d={**campaign_data,**campaign_users[0]}
-                # logger.info(f"Voice call payload--{json.dumps(d,indent=4)}")
-                gryd.create_async_task('trigger_voice_call', AUTOCRM_VOICE_SERVICE_NAME, args=[],kwargs={"user_data":d})
+                d={**campaign_data,**campaign_users[0]}                
+                logger.info(f"Voice call payload--{json.dumps(d,indent=4)}")
+
+                voice_service_name = campaign_data.get("voice_service_name") or AUTOCRM_VOICE_SERVICE_NAME
+
+                gryd.create_async_task('trigger_voice_call', voice_service_name, args=[],kwargs={"user_data":d})
             elif channel.upper()=="EMAIL":
                 logger.info("Sending Email campaign---")
                 # logger.info(f"[email_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
@@ -831,27 +834,31 @@ def manual_register_pre_sales(name, phone_number, email, *args, **kwargs):
     Manually register a pre-sales lead using process_pre_sales_lead_row logic
     and trigger the campaign immediately.
     """
-   
 
-    # 1. Hardcoded Campaign/Dealership Details
-    campaign_id = "d9a2cd16-8877-3802-bbf0-0e3c14a6b69c"
-    dealership_id = "stellantis-india"
-    campaign_type = "pre-sales"
-    campaign_objective_id = "pre-sales-test-drive-booking"
+    # 1. Extract Details from kwargs with fallbacks (optional)
+    campaign_id = kwargs.get("campaign_id")
+    dealership_id = kwargs.get("dealership_id")
+    campaign_type = kwargs.get("campaign_type", "pre-sales")
+    campaign_objective_id = kwargs.get("campaign_objective_id")
     
+    # Validation check to ensure required params are present
+    if not all([campaign_id, dealership_id, campaign_objective_id]):
+        error_msg = f"Missing required kwargs. Got: campaign_id={campaign_id}, dealership_id={dealership_id}"
+        logger.error(error_msg)
+        yield {"_error": error_msg}
+        return
+
     # 2. Load Models
     models = BaseCampaignCreater.load_models(campaign_type)
     lead_model = models.get('lead_model')
 
-    # 3. Construct Data Dictionary (Following process_pre_sales_lead_row pattern)
-    # We initialize the row with the mandatory fields and campaign context
+    # 3. Construct Data Dictionary
     row = {
         "person_name": name,
         "phone_number": phone_number,
         "email": email,
         "campaign_id": campaign_id,
         "dealership_id": dealership_id,
-       
         "campaign_objective_id": campaign_objective_id
     }
 
@@ -863,7 +870,6 @@ def manual_register_pre_sales(name, phone_number, email, *args, **kwargs):
         "phone_number", "email", "person_name", "campaign_id", "dealership_id", 
         "last_contacted_whatsapp_number", "last_contacted_email", "last_contacted_phone_number"
     ]:
-        # Using a direct get check to mirror is_valid_value logic
         data[k] = row.get(k) if row.get(k) else None
 
     # Logic from process_pre_sales_lead_row: List/Preference fields
@@ -881,28 +887,25 @@ def manual_register_pre_sales(name, phone_number, email, *args, **kwargs):
             data[k] = None
 
     try:
- 
         # 1. Post the lead to the model
         lead = lead_model.post(data)
         
         if not lead:
             raise ValueError("Lead model post returned empty result.")
 
-        # 2. KEY MAPPING: Map the specific model key to the generic 'lead_id'
-        # This ensures 'lead_id' exists for the next task and the final result
+        # 2. KEY MAPPING
         if not lead.get('lead_id'):
             lead['lead_id'] = lead.get('pre_sales_lead_id') or lead.get('id')
 
-        # 3. Final ID check for logging
         actual_id = lead.get('lead_id')
-        logger.info(f"Triggering campaign for lead_id: {actual_id} , person_name: {name}, phone_number: {phone_number} , lead_model response: {lead}")
+        logger.info(f"Triggering campaign for lead_id: {actual_id}, person: {name}")
 
-        # 4. Trigger Campaign
-        # We pass the modified 'lead' object which now contains 'lead_id'
+        # 3. Trigger Campaign
+        # Note: Using campaign_id and campaign_type extracted from kwargs
         gryd.create_async_task(
             "process_single_lead",
             AUTOCRM_CAMPAIGN_SERVICE_NAME,
-            args=["voice_phone", lead, "pre-sales", campaign_id],
+            args=["voice_phone", lead, campaign_type, campaign_id],
             kwargs={}
         )
 
@@ -916,7 +919,6 @@ def manual_register_pre_sales(name, phone_number, email, *args, **kwargs):
         logger.error(f"Manual registration/trigger failed: {str(e)}")
         yield {"_error": f"Failed to process manual entry: {str(e)}"}
         raise
-
 
 
 def check_and_create_lead_object(**kwargs):
@@ -994,15 +996,6 @@ def check_and_create_lead_object(**kwargs):
             logger.info(f"Pre-sales lead data created -- {lead_d[0].get('pre_sales_lead_id')}")
             return lead_d[0].get("pre_sales_lead_id")
         
-def generate_uid(data):
-    if isinstance(data, (dict, list)):
-        data_str = json.dumps(data, sort_keys=True)
-    else:
-        data_str = str(data)
-
-    uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
-
-    return uid.hex[:16]
  
 # @handle_session_errors
 @gryd.is_a_task(function_name="process_single_lead")
@@ -1036,6 +1029,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     sender_name = None
     template_message = None
     buttons = None
+    voice_service_name  = None
     TEMPLATE_RESOLVERS = {
         "email": get_email_template,
         "whatsapp_chat": get_whatsapp_template,
@@ -1054,6 +1048,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     with get_pg_connector() as pg:
         # campaign_details = list(pg.list(campaign_table, {"campaign_id": campaign_id}))
         campaign_details=pg.get(campaign_table,"campaign_id",campaign_id)
+
     if not campaign_details:
         yield {"status": "Error", "error_description": f"No campaign found for campaign_id={campaign_id}"}
         return
@@ -1091,6 +1086,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     logger.info(f"Template resolver for channel={channel}: {get_template}")
     if channel == "voice_phone":
         provider_name = VOICE_PROVIDER_NAME
+        with get_pg_connector() as pg:
+            voice_service_name = pg.get("dealership","dealership_id",lead_data.get("dealership_id")).get("voice_service_name")
     elif channel == "email":
         sender_name=EMAIL_SENDER_NAME
         provider_name = EMAIL_PROVIDER_NAME
@@ -1235,6 +1232,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         "enterprise_id": campaign_details.get("enterprise_id"),
         "campaign_id": campaign_details.get("campaign_id"),
         "channel": channel,
+        "voice_service_name": voice_service_name,
         "sender": sender_name or (template_data.get("sender") if template_data else None),
         "provider_name": provider_name or (template_data.get("provider_name").lower() if template_data else None),
         "template_message": template_message,
