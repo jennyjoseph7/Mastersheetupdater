@@ -562,6 +562,11 @@
             "ui_element": "tags"
         },
         {
+            "name":"voice_service_name",
+            "type":"text",
+            "default": "autocrm-voice"
+        },
+        {
             "name": "dealership_id",
             "type": "uid",
             "indexed": true,
