@@ -27,6 +27,7 @@ from typing import *
 import traceback
 import requests 
 import numpy as np
+from pathlib import Path
 from typing import List, Dict
 
 logger = get_logger(__name__)
@@ -193,6 +194,17 @@ valid_billing_events = [
     "POST_ENGAGEMENT"
     "VIDEO_VIEWS"
 ]
+# BASE_DIR = os.path.dirname(__file__)
+BASE_DIR = Path(__file__).resolve().parent
+logger.info(f"BASE_DIR: {BASE_DIR}")
+def load_default_meta_values():
+    json_path = BASE_DIR.parent / "utils" / "meta_sdk_default_values.json"
+    logger.info(f"Loading default meta values from {json_path}")
+    with open(json_path, "r") as f:
+        return json.load(f)
+
+default_meta_values = load_default_meta_values()
+logger.info(f"Loaded default meta values: {json.dumps(default_meta_values, indent=4, default=str)}")
 
 
 class MetaAdCampaignAgent(UtilityMixin):
@@ -238,9 +250,7 @@ class MetaAdCampaignAgent(UtilityMixin):
                 {
                     "campaign_name": "string",
                     "campaign_id" : "string",
-                    "objective": (
-                        "OUTCOME_LEADS", "OUTCOME_SALES", "OUTCOME_ENGAGEMENT", "OUTCOME_AWARENESS", "OUTCOME_TRAFFIC", "OUTCOME_APP_PROMOTION"
-                    ),
+                    "objective": "\n".join(default_meta_values.get("valid_campaign_objectives")),
                     "special_ad_category": (
                         "NONE | CREDIT | EMPLOYMENT | HOUSING | ISSUES_ELECTIONS_POLITICS"
                     ),
@@ -417,8 +427,8 @@ class MetaAdAdsetAgent(UtilityMixin):
                     "campaign_id": "string - Reference to the campaign this adset belongs to. If campaign data is not there, keep it None.",
                     "title" : "Title for the adset.",
                     "daily_budget": 10000,
-                    "optimization_goal" : "\n".join(valid_optimization_goals),
-                    "billing_event" : "\n".join(valid_billing_events),
+                    "optimization_goal" : "\n".join(default_meta_values.get("valid_optimization_goals")),
+                    "billing_event" : "\n".join(default_meta_values.get("valid_billing_events")),
                     "targeting": {
                         "age_min": 18,
                         "age_max": 65,
@@ -630,7 +640,7 @@ class MetaAdCreativeAgent(UtilityMixin):
                     "headline": "string — max 40 chars, punchy and benefit-driven",
                     "primary_text": "string — max 125 chars, hooks the audience immediately",
                     "description": "string — max 30 chars, supports the headline",
-                    "call_to_action": "\n".join(valid_call_to_action_values),
+                    "call_to_action": "\n".join(default_meta_values.get("valid_call_to_action_values")),
                     "destination_url": "string — landing page URL or product page URL or brochure URL",
                 }
             ],
@@ -1360,6 +1370,8 @@ if __name__ == "__main__":
 
     print(json.dumps(adset_data, indent=2))
     print("**" * 50)
+
+    assert False
 
     agent3 = MetaAdCreativeAgent(
     source=None,

@@ -362,6 +362,7 @@ class MetaAdsManager:
         self.ad_account_id = ad_account_id
 
         self.page_id = page_id
+        self.api_version = api_version
 
         if not all([self.app_id, self.app_secret, self.access_token, self.ad_account_id]):
             raise ValueError("Missing Meta credentials. Please configure environment variables.")
@@ -370,7 +371,7 @@ class MetaAdsManager:
             app_id          = self.app_id,
             app_secret      = self.app_secret,
             access_token    = self.access_token,
-            api_version     = api_version
+            api_version     = self.api_version
         )
 
         self.ad_account = AdAccount(self.ad_account_id)
@@ -430,6 +431,8 @@ class MetaAdsManager:
             "optimization_goals": valid_optimization_goals,
             "preview_formats": valid_preview_formats,
         }
+
+        _check_value_for = _check_value_for.lower()
         if _check_value_for == "all":
             return value_map
         
@@ -549,21 +552,6 @@ class MetaAdsManager:
         for page in pages:
             logger.info(page)
 
-    def check_valid_values(self, _check_value_for : str) -> Union[list[str], Dict[str, list[str]]]:
-        value_map = {
-            "campaign_objectives": valid_campaign_objectives,
-            "call_to_actions": valid_call_to_action_values,
-            "optimization_goals": valid_optimization_goals,
-            "preview_formats": valid_preview_formats,
-        }
-        if _check_value_for == "all":
-            return value_map
-        
-        if _check_value_for not in value_map:
-            raise ValueError(f"Invalid value for: {_check_value_for}")
-        _valid_values = value_map.get(_check_value_for)
-        return _valid_values
-
     def upload_image(
         self,
         image_path: Optional[str] = None,
@@ -674,8 +662,9 @@ class MetaAdsManager:
         )
 
         for adset in existing_adsets:
-            logger.info(f"Found existing ad set: {name}. Returning : {adset[AdSet.Field.id]}")
-            return AdSet(adset[AdSet.Field.id])
+            adset_id = adset[AdSet.Field.id]
+            logger.info(f"Found existing ad set: {name}. Returning : {adset_id}")
+            return AdSet(adset_id)
 
         import pytz
         ist = pytz.timezone('Asia/Kolkata')
@@ -787,6 +776,90 @@ class MetaAdsManager:
             })
 
         return results
+    
+    def get_account_insights(self,  since: str, until: str):
+        insights = self.ad_account.get_insights(
+            fields=[
+                "campaign_name",
+                "campaign_id",
+                "adset_name",
+                "adset_id",
+                "ad_name",
+                "ad_id",
+                "spend",
+                "impressions",
+                "clicks",
+                "ctr",
+                "cpc",
+            ],
+            params={
+                "time_range": {"since": since, "until": until},
+                "level": "ad",
+            },
+        )
+        return [dict(i) for i in insights]
+    
+    def get_ad_insights(self, ad_id: str, since: str, until: str):
+        ad = Ad(ad_id)
+
+        insights = ad.get_insights(
+            fields=[
+                "ad_name",
+                "impressions",
+                "clicks",
+                "ctr",
+                "cpc",
+                "spend",
+                "actions",
+                "video_30_sec_watched_actions",
+            ],
+            params={
+                "time_range": {"since": since, "until": until},
+                "level": "ad",
+            },
+        )
+
+        return [dict(i) for i in insights]
+    
+    def get_adset_insights(self, adset_id: str, since: str, until: str):
+        adset = AdSet(adset_id)
+
+        insights = adset.get_insights(
+            fields=["adset_name", "spend", "impressions", "clicks", "ctr"],
+            params={
+                "time_range": {"since": since, "until": until},
+                "level": "adset",
+            },
+        )
+
+        return [dict(i) for i in insights]
+    
+
+    def get_campaign_insights(self, campaign_id: str, since: str, until: str):
+        campaign = Campaign(campaign_id)
+
+        insights = campaign.get_insights(
+            fields=[
+                "campaign_name",
+                "impressions",
+                "reach",
+                "clicks",
+                "ctr",
+                "cpc",
+                "cpm",
+                "spend",
+                "actions",
+                "cost_per_action_type",
+                "date_start",
+                "date_stop",
+            ],
+            params={
+                "time_range": {"since": since, "until": until},
+                "level": "campaign",
+            },
+        )
+
+        return [dict(i) for i in insights]
 
     def create_complete_ad(
         self,
@@ -833,6 +906,127 @@ class MetaAdsManager:
         }
         logger.info("Complete ad pipeline finished")
         return result
+    
+    def get_meta_ads_insights(self, since: str, until: str, page_size: int = 500):
+        def _extract_action_value(action_list: list, action_type: str) -> str:
+            for item in action_list or []:
+                if item.get("action_type") == action_type:
+                    return item.get("value", "0")
+            return "0"
+        
+        FIELDS = [
+            "date_start", "date_stop",
+            "campaign_id", "campaign_name",
+            "adset_id", "adset_name",
+            "ad_id", "ad_name",
+            "impressions", "reach", "frequency",
+            "clicks", "unique_clicks", "ctr", "cpc", "cpm", "spend",
+            "actions", "action_values", "cost_per_action_type",
+            "purchase_roas",
+            "quality_ranking",
+            "engagement_rate_ranking",
+            "conversion_rate_ranking",
+            "outbound_clicks",
+            "video_p50_watched_actions",
+        ]
+
+        ACTION_KEYS = {
+            "landing_page_views": "landing_page_view",
+            "video_views_3s":     "video_view",
+            "leads":              "lead",
+            "purchases":          "purchase",
+        }
+
+        params = {
+            "level": "ad",
+            "time_range": {"since": since, "until": until},
+            "limit": page_size,
+        }
+
+        try:
+            insights_cursor = self.ad_account.get_insights(fields=FIELDS, params=params)
+        except Exception as e:
+            logger.error("Failed to fetch Meta Ads insights: %s", e)
+            raise
+
+        results = []
+
+        for row in insights_cursor:
+            try:
+                data = row.export_all_data()
+            except Exception as e:
+                logger.warning("Skipping row due to export error: %s", e)
+                continue
+
+            actions = data.get("actions", [])
+            for field_name, action_type in ACTION_KEYS.items():
+                data[field_name] = _extract_action_value(actions, action_type)       
+
+            data["video_views_50p"] = _extract_action_value(
+                data.get("video_p50_watched_actions") or [],
+                "video_p50_watched_actions",
+            )
+
+            data["outbound_clicks_count"] = _extract_action_value(
+                 data.get("outbound_clicks") or [],
+                "outbound_click",
+            )
+            results.append(data)
+            logger.info(
+                "Fetched %d ad insight rows for range %s → %s",
+                len(results), since, until,
+            )
+
+
+        return results
+    
+
+    def post_text(self, message: str) -> dict:
+        try:
+            api_ver = self.api_version or "v19.0"
+            url = f"https://graph.facebook.com/{api_ver}/{self.page_id}/feed"
+            resp = requests.post(url, data={
+                "message": message,
+                "access_token": self.access_token
+            })
+            return resp.json()
+        except Exception as e:
+            raise e 
+
+    def post_image_url(self, image_url: str, caption: str = "") -> dict:
+        api_ver = self.api_version or "v19.0"
+        url = f"https://graph.facebook.com/{api_ver}/{self.page_id}/photos"
+        resp = requests.post(url, data={
+            "url": image_url,
+            "caption": caption,
+            "access_token": self.access_token
+        })
+        return resp.json()
+    
+    def schedule_post(self, message: str, publish_time_unix: int) -> dict:
+        api_ver = self.api_version or "v19.0"
+        url = f"https://graph.facebook.com/{api_ver}/{self.page_id}/feed"
+        resp = requests.post(url, data={
+            "message": message,
+            "published": "false",
+            "scheduled_publish_time": publish_time_unix,
+            "access_token": self.access_token
+        })
+        return resp.json()
+    
+    def post_video(self, video_path: str, description: str = "") -> dict:
+        api_ver = self.api_version or "v19.0"
+        url = f"https://graph-video.facebook.com/{api_ver}/{self.page_id}/videos"
+        with open(video_path, "rb") as f:
+            resp = requests.post(url, files={
+                "source": f
+            }, data={
+                "description": description,
+                "access_token": self.access_token
+            })
+
+        return resp.json()
+
 
 
 if __name__ == "__main__":
@@ -845,15 +1039,28 @@ if __name__ == "__main__":
 
 
 
+
+
+
+
     manager = MetaAdsManager(
-        app_id=app_id,
-        app_secret=app_secret,
-        access_token=access_token,
-        ad_account_id=account_id,
-        page_id=page_id
+        app_id          =   app_id,
+        app_secret      =   app_secret,
+        access_token    =   access_token,
+        ad_account_id   =   account_id,
+        page_id         =   page_id
     )
 
 
+    
+
+    data = manager.post_text("Abhishek is the greatest developer of all time..")
+
+    print(f"data : {json.dumps(data, indent=4, default=str)}")
+
+    assert False
+
+    # data = manager.get_meta_ads_insights(since="2026-01-01", until="2026-04-21")
     tata_sierra_campaign = manager.create_campaign(
         name="My Test Campaign for Tata Sierra",
         objective="OUTCOME_TRAFFIC",
@@ -893,8 +1100,16 @@ if __name__ == "__main__":
 
     logger.info(f"Adset created: {adset}")
 
-    assert False
 
+    # insights = manager.get_account_insights(since="2025-12-01", until="2026-04-14")
+    # logger.info(f"Insights: {json.dumps(insights, indent=2, default=str)}")
+
+    # ad_insights = manager.get_ad_insights(ad_id=120245458007230664, since="2025-12-01", until="2026-04-14")
+
+ #    logger.info(f"Ad insights: {json.dumps(ad_insights, indent=2, default=str)}")
+
+
+    
 
     adset_for_tata_sierra = "120245325100150664"
 
@@ -909,8 +1124,10 @@ if __name__ == "__main__":
     # )
 
     # logger.info(f"Creative created: {creative}")
+    # assert False
 
-    creative_id = "1466079638253637"
+
+    creative_id = "1564283655700763"
 
     ad= manager.create_ad(
         ad_set_id=adset_for_tata_sierra,
@@ -920,6 +1137,8 @@ if __name__ == "__main__":
     )
 
     logger.info(f"Ad created: {ad}")
+
+    assert False
 
     ad_id = "120245955023010664"
 
@@ -931,7 +1150,7 @@ if __name__ == "__main__":
     # logger.info(f"Campaign created: {tata_sierra_campaign}")
 
 
-    assert False
+
 
 
 

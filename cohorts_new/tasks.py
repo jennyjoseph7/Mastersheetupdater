@@ -26,8 +26,6 @@ def setup_gryd():
 setup_gryd()
 THREADS_PER_SESSION = 0.1
 
-agents_var = "cohorts_agents"
-
 @gryd.is_a_task(function_name="post_cohorts_to_model",)
 def post_cohorts_to_cohorts_registrymodel(*args, **kwargs):
     def validate_cohorts(cohorts):
@@ -400,7 +398,52 @@ def meta_ad_manager_functions(*args, **kwargs):
         raise ValueError(f"Invalid function name: {function_name}. Supported functions: {supported_functions}")
     
 
-    
+# META SDK GRYD TASKS
+
+
+def _build_meta_manager(**kwargs):
+    # TODO - We should not get Meta credentials through API directly need to store them in a model and then use pid for authentication.
+    from ad_platforms.meta_ads_manager import MetaAdsManager
+    _credentials = {
+        "app_id" : kwargs.get("app_id", None),
+        "app_secret" : kwargs.get("app_secret", None),
+        "access_token" : kwargs.get("access_token", None),
+        "ad_account_id" : kwargs.get("ad_account_id", None),
+        "page_id" : kwargs.get("page_id", None),
+        "api_version" : kwargs.get("api_version", "v19.0")
+    }
+    required = ["app_id", "app_secret", "access_token", "ad_account_id", "page_id"]
+    missing = []
+    for k in required:
+        if k not in _credentials:
+            missing.append(k)
+    if len(missing) > 0:
+        raise ValueError(f"Missing credentials for Meta Ads API: {missing}")
+    return MetaAdsManager(**_credentials)
+
+
+@gryd.is_a_task()
+def meta_post_text(*args, **kwargs):
+    manager = _build_meta_manager(**kwargs)
+    message = kwargs.get("message", None)
+    if message is None:
+        raise ValueError("Message is required.")
+    response = manager.post_text(message = message)
+    return response
+
+
+@gryd.is_a_task()
+def meta_post_image_url(*args, **kwargs):
+    manager = _build_meta_manager(**kwargs)
+    image_url = kwargs.get("image_url", None)
+    caption = kwargs.get("caption", None)
+    response = manager.post_image_url(image_url = image_url, caption = caption)
+    return response
+
+
+
+
+
 if __name__ == "__main__":
 
     t_json ={
