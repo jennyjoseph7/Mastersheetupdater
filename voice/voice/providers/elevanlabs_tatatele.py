@@ -57,8 +57,8 @@ def _append_bridge_timing_jsonl(record: Dict[str, Any], agent_number: str  = "da
         if not os.path.isdir(BRIDGE_TIMING_LOG_DIR):
             os.makedirs(BRIDGE_TIMING_LOG_DIR, exist_ok=True)
         with bridge_timing_log_lock:
-            BRIDGE_TIMING_LOG_DIR = os.path.join(BRIDGE_TIMING_LOG_DIR, f"voice_session_timing_{agent_number}_{customer_number}_{time()}.json")
-            with open(BRIDGE_TIMING_LOG_DIR, "a", encoding="utf-8") as f:
+            log_path = os.path.join(BRIDGE_TIMING_LOG_DIR, f"voice_session_timing_{agent_number}_{customer_number}_{time()}.json")
+            with open(log_path, "a", encoding="utf-8") as f:
                 f.write(line)
     except Exception as e:
         logger.warning("BRIDGE_TIMING_LOG_DIR write failed: %s", e)

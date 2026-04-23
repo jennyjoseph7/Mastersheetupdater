@@ -50,7 +50,8 @@ function setup_logio_agent() {
     if [ -f ./logio_track_files.logfile ];then
         track_files=$(cat ./logio_track_files.logfile)
     else
-        echo "$LOG_FILE,$STDOUT_LOG_FILE,$STDERR_LOG_FILE" > ./logio_track_files.logfile
+        # echo "$LOG_FILE,$STDOUT_LOG_FILE,$STDERR_LOG_FILE" > ./logio_track_files.logfile
+        echo "$LOG_FILE" > ./logio_track_files.logfile
         track_files=$(cat ./logio_track_files.logfile)
 
     fi
@@ -147,10 +148,10 @@ function start_workers() {
 	WORKER_FNAME=${WORKER_ENTRYPOINT%.*}
 
     if [ $PRIMARY == 0 ];then
-    	nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME 1>> $STDOUT_LOG_FILE 2>> $STDERR_LOG_FILE &
+    	nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME &
         worker_pid=$!
 	else
-	    nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME --primary 1>> $STDOUT_LOG_FILE 2>> $STDERR_LOG_FILE &
+	    nohup $worker_path -m $ENTRYPOINT_PREFIX/$WORKER_ENTRYPOINT -n $PARALLEL_THREADS --shutdown-time=$SHUTDOWN_TIME --primary &
         worker_pid=$!
 	fi
 
@@ -205,7 +206,7 @@ function main() {
 		if [ $stat != 0 ];then
 			echo "Process exited or not started. Starting."
 
-			nohup $CRON_SCHEDULER_PATH 1>> $STDOUT_LOG_FILE 2>> $STDERR_LOG_FILE &
+			nohup $CRON_SCHEDULER_PATH &
 			w_pid=$!
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
@@ -237,12 +238,11 @@ function main() {
 
 		if [ $stat != 0 ];then
 			echo "Process exited or not started. Starting."
-            export LOG_FILE=${LOGDIR}/${a}_${log_append_text}.log
 
 			if [ $PRIMARY == 0 ];then
-				nohup $CRON_WORKER_PATH -n $PARALLEL_THREADS 1>> ${LOGDIR}/${a}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${a}_stderr_${log_append_text}.log &
+				nohup $CRON_WORKER_PATH -n $PARALLEL_THREADS &
 			else
-				nohup $CRON_WORKER_PATH -n $PARALLEL_THREADS --primary 1>> ${LOGDIR}/${a}_stdout_${log_append_text}.log 2>> ${LOGDIR}/${a}_stderr_${log_append_text}.log &
+				nohup $CRON_WORKER_PATH -n $PARALLEL_THREADS --primary &
 			fi
 			w_pid=$!
 			echo "PID is $w_pid"

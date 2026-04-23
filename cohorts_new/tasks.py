@@ -24,6 +24,7 @@ def setup_gryd():
     logger.info(f"Environment currently set to '{gryd.ENVIRONMENT}'")
     
 setup_gryd()
+THREADS_PER_SESSION = 0.1
 
 agents_var = "cohorts_agents"
 
