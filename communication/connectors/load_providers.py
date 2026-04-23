@@ -35,11 +35,11 @@ def load_providers(channel=None, provider_name=None):
                 WhatsappReceiverConnector,
                 WhatsappCampaignTemplate,
             ),
-            "twilio": lambda: _load_twilio(
-                WhatsappMessangerConnector,
-                WhatsappReceiverConnector,
-                WhatsappCampaignTemplate,
-            ),
+            # "twilio": lambda: _load_twilio(
+            #     WhatsappMessangerConnector,
+            #     WhatsappReceiverConnector,
+            #     WhatsappCampaignTemplate,
+            # ),
         }
 
     elif channel == "email":
