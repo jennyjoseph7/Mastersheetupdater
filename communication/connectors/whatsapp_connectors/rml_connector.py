@@ -659,11 +659,13 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
             'media': handle_media,
             'location': handle_location,
             'location_request_message':handel_request_loaction,
-            'contact': handle_contact,
+            # 'contact': handle_contact,
             "flow":handle_flow
         }
 
-        function_sequence = response_data.get('message_send_sequence', ['template','location','location_request_message','contact','flow','message', 'media'])
+        # function_sequence = response_data.get('message_send_sequence', ['template','location','location_request_message','contact','flow','message', 'media'])
+        function_sequence = response_data.get('message_send_sequence', ['template','location','location_request_message','flow','message', 'media'])
+        
 
         logger.info(f'Received function calling sequence: {function_sequence}' )
 
