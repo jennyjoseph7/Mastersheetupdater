@@ -1,7 +1,8 @@
 import sys, os
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
+if BASE_DIR in sys.path:
+    sys.path.remove(BASE_DIR)
+sys.path.insert(0, BASE_DIR)
 from core.core import generate_otp, dealership_signup, reset_password
 from core.razorpay_service import razorpay_webhook_handler
 import json
@@ -208,7 +209,7 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
     return dealership
 
 
-# app.register_blueprint(ai_service_app.ai_service_routes)
+app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
 app.register_blueprint(elevanlabs_tatatele_routes)
 app.register_blueprint(twilio_routes)

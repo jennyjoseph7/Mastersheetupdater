@@ -122,7 +122,7 @@ export default function DealerSignup() {
     phone: "",
     password: "",
     confirmPassword: "",
-    region: "south-india",
+    region: "india",
   });
 
   // Additional dealership details (step 2)
@@ -244,6 +244,10 @@ export default function DealerSignup() {
     }
     if (!registrationData.phone) {
       setError("Phone is required");
+      return;
+    }
+    if (!registrationData.region) {
+      setError("Region is required");
       return;
     }
     if (!phoneOtpToken) {
@@ -638,10 +642,10 @@ Check browser console and Network tab for more details.`
                         placeholder="Enter dealership name"
                         value={registrationData.dealershipName}
                         onChange={(e) =>
-                          setRegistrationData({
-                            ...registrationData,
+                          setRegistrationData((prev) => ({
+                            ...prev,
                             dealershipName: e.target.value,
-                          })
+                          }))
                         }
                         className="pl-10"
                         required
@@ -660,10 +664,10 @@ Check browser console and Network tab for more details.`
                         placeholder="Enter your name"
                         value={registrationData.fullName}
                         onChange={(e) =>
-                          setRegistrationData({
-                            ...registrationData,
+                          setRegistrationData((prev) => ({
+                            ...prev,
                             fullName: e.target.value,
-                          })
+                          }))
                         }
                         className="pl-10"
                         required
@@ -682,16 +686,16 @@ Check browser console and Network tab for more details.`
                           id="email"
                           type="email"
                           placeholder="you@dealership.com"
-                          value={registrationData.email}
-                          onChange={(e) =>
-                            setRegistrationData({
-                              ...registrationData,
-                              email: e.target.value,
-                            })
-                          }
-                          className="pl-10"
-                          required
-                        />
+                        value={registrationData.email}
+                        onChange={(e) =>
+                          setRegistrationData((prev) => ({
+                            ...prev,
+                            email: e.target.value,
+                          }))
+                        }
+                        className="pl-10"
+                        required
+                      />
                       </div>
                     </div>
 
@@ -704,10 +708,10 @@ Check browser console and Network tab for more details.`
                           <PhoneInput
                             value={registrationData.phone}
                             onChange={(phone) => {
-                              setRegistrationData({
-                                ...registrationData,
+                              setRegistrationData((prev) => ({
+                                ...prev,
                                 phone: phone,
-                              });
+                              }));
                               // Reset OTP token if phone number changes
                               if (phoneOtpToken) {
                                 setPhoneOtpToken(null);
@@ -854,10 +858,10 @@ Check browser console and Network tab for more details.`
                         id="region"
                         value={registrationData.region}
                         onChange={(e) =>
-                          setRegistrationData({
-                            ...registrationData,
+                          setRegistrationData((prev) => ({
+                            ...prev,
                             region: e.target.value,
-                          })
+                          }))
                         }
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         required
@@ -889,10 +893,10 @@ Check browser console and Network tab for more details.`
                           placeholder="Create password"
                           value={registrationData.password}
                           onChange={(e) =>
-                            setRegistrationData({
-                              ...registrationData,
+                            setRegistrationData((prev) => ({
+                              ...prev,
                               password: e.target.value,
-                            })
+                            }))
                           }
                           className="pl-10 pr-10"
                           required
@@ -932,10 +936,10 @@ Check browser console and Network tab for more details.`
                           placeholder="Confirm password"
                           value={registrationData.confirmPassword}
                           onChange={(e) =>
-                            setRegistrationData({
-                              ...registrationData,
+                            setRegistrationData((prev) => ({
+                              ...prev,
                               confirmPassword: e.target.value,
-                            })
+                            }))
                           }
                           className="pl-10 pr-10"
                           required

@@ -463,7 +463,7 @@ class BaseCustomCampaignManager:
                 d={**campaign_data,**campaign_users[0]}                
                 logger.info(f"Voice call payload--{json.dumps(d,indent=4)}")
 
-                voice_service_name = campaign_data.get("voice_service_name", AUTOCRM_VOICE_SERVICE_NAME)
+                voice_service_name = campaign_data.get("voice_service_name") or AUTOCRM_VOICE_SERVICE_NAME
 
                 gryd.create_async_task('trigger_voice_call', voice_service_name, args=[],kwargs={"user_data":d})
             elif channel.upper()=="EMAIL":
@@ -1013,6 +1013,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     template_message = None
     buttons = None
     voice_service_name  = None
+    
     TEMPLATE_RESOLVERS = {
         "email": get_email_template,
         "whatsapp_chat": get_whatsapp_template,

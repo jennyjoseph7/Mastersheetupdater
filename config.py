@@ -11,9 +11,6 @@ AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME = os.environ.get("AUTOCRM_CONVERS
 AUTOCRM_AGENT_SERVICE_NAME = os.environ.get("AUTOCRM_AGENT_SERVICE_NAME", "autocrm-agent")
 AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME = os.environ.get("AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME", "autocrm-short-run-agent")
 AUTOCRM_VOICE_SERVICE_NAME = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME", "autocrm-voice")
-AUTOCRM_VOICE_SERVICE_NAME_V1 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_V1", "autocrm-voice-v1")
-AUTOCRM_VOICE_SERVICE_NAME_V2 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_V2", "autocrm-voice-v2")
-AUTOCRM_VOICE_SERVICE_NAME_V3 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_V3", "autocrm-voice-v3")
 AUTOCRM_COMMUNICATION_SERVICE_NAME = os.environ.get("AUTOCRM_COMMUNICATION_SERVICE_NAME", "autocrm-communication")
 AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME = os.environ.get("AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME", "autocrm-cohort-campaign") # For Cohort Generation, Classification, Affinity Mapping Service.
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
@@ -499,3 +496,9 @@ if __name__ == "__main__":
             post_autocrm_data(data, reseed = args.reseed, start_from = args.start_from, limit = args.limit)
 
   
+
+AUTOCRM_VOICE_SERVICE_NAME_1 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_1", "autocrm-voice-1")
+AUTOCRM_VOICE_SERVICE_NAME_2 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_2", "autocrm-voice-2")
+AUTOCRM_VOICE_SERVICE_NAME_3 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_3", "autocrm-voice-3")
+AUTOCRM_VOICE_SERVICE_NAME_4 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_4", "autocrm-voice-4")
+AUTOCRM_VOICE_SERVICE_NAME_5 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_5", "autocrm-voice-5")

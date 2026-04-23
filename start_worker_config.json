@@ -1,12 +1,12 @@
 {
-    "webapps":[ 
+    "webapps": [
         {
             "port": 5000,
             "url_scheme": "http",
             "api_threads": 8,
             "name": "app"
         }
-     ],
+    ],
     "agents": [],
     "workers": [
         {
@@ -73,27 +73,6 @@
             "shutdown_time": 0
         },
         {
-            "name": "voice",
-            "entry_point": "v1.py",
-            "parallel_threads": 5,
-            "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_V1",
-            "shutdown_time": 0
-        },
-        {
-            "name": "voice",
-            "entry_point": "v2.py",
-            "parallel_threads": 5,
-            "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_V2",
-            "shutdown_time": 0
-        },
-        {
-            "name": "voice",
-            "entry_point": "v3.py",
-            "parallel_threads": 5,
-            "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_V3",
-            "shutdown_time": 0
-        },
-        {
             "name": "spark",
             "entry_point": "spark.py",
             "gryd_service": "AUTOCRM_SPARK_SERVICE_NAME",
@@ -119,6 +98,41 @@
             "entry_point": "tasks.py",
             "gryd_service": "AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME",
             "parallel_threads": 1,
+            "shutdown_time": 0
+        },
+        {
+            "name": "voice",
+            "entry_point": "voice_1.py",
+            "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_1",
+            "parallel_threads": 5,
+            "shutdown_time": 0
+        },
+        {
+            "name": "voice",
+            "entry_point": "voice_2.py",
+            "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_2",
+            "parallel_threads": 5,
+            "shutdown_time": 0
+        },
+        {
+            "name": "voice",
+            "entry_point": "voice_3.py",
+            "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_3",
+            "parallel_threads": 5,
+            "shutdown_time": 0
+        },
+        {
+            "name": "voice",
+            "entry_point": "voice_4.py",
+            "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_4",
+            "parallel_threads": 5,
+            "shutdown_time": 0
+        },
+        {
+            "name": "voice",
+            "entry_point": "voice_5.py",
+            "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_5",
+            "parallel_threads": 5,
             "shutdown_time": 0
         }
     ]

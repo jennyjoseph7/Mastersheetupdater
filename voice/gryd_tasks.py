@@ -24,6 +24,7 @@ logger = hp.get_logger(__name__)
 
 
 gryd.SERVICE = config.AUTOCRM_VOICE_SERVICE_NAME
+THREADS_PER_SESSION = 0.5
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(__name__)
 
@@ -85,16 +86,7 @@ def trigger_voice_call(*args, **kwargs):
         None or dict: (Describe return value if applicable)
     """
     
-    #temporary changes-
-    #4c99d5ea-4441-3ce6-841f-de5d7585b3b7  - campaign id for testing
-    dealership_provider_map = {
-        "us-dealership-united-states": ("elevanlab", "agent_6501kg4h48mbfhp8cryeh1a66t3j"),
-        "sales-dealership1-india": ("tatatele", "agent_5701ka8618cbfxcbdp4wg6xb3x23"),  #stellantis
-        "stellantis-india": ("tatatele", "agent_5701ka8618cbfxcbdp4wg6xb3x23"),
-        "dave-ai-sociograph-solutions-india": ("tatatele", "agent_5701ka8618cbfxcbdp4wg6xb3x23"),
-        "ambal-auto-india": ("tatatele", "agent_0501k747d7s6e3xv5t3xew1rn217")
-    }
-    import json
+   
     #TODO: Get agent number from dealership model and add in session_data in agent_number
     # logger.info(f"Received request to trigger voice call with args: {args}, kwargs: {json.dumps(kwargs,indent=4)}")
     user_data = kwargs.get("user_data", {})
@@ -398,7 +390,7 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
         session_data.update(additiona_params)
 
     logger.info(f'Posting contact status with payload: {session_data}: status: {session_data.get("status")}, message_id: {message_id}, session_id: {session_id}')
-    attrs=["phone_number", "lead_id","campaign_id","campaign_type","email","dealership_id","channel","campaign_model"]
+    attrs=["phone_number", "user_id", "lead_id","campaign_id","campaign_type","email","dealership_id","channel","campaign_model"]
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
     payload["message_id"] = message_id or generate_uid(session_data)
