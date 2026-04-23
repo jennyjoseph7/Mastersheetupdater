@@ -134,7 +134,7 @@ class BaseCampaignCreater:
             )
             sender = campaign_details.get("sender")
             template_type = campaign_details.get("template_type")
-
+            logger.info(f"Template type: {template_type}")
             if not template_type:
                 logger.error("Template type not found in campaign details")
                 return {}
@@ -144,10 +144,12 @@ class BaseCampaignCreater:
             # Generate WhatsApp template payload
             try:
                 template_class = WhatsappCampaignTemplate.whatsapp(whatsapp_provider)
+                logger.info(f"Template class: {template_class}")
                 template_payload = template_class.create_template(
                     campaign_details,
                     params_data=campaign_user_data
                 )
+                # logger.info(f"Generated template payload: {template_payload}")
                 template_payload.update({"is_campaign": True})
                 logger.debug(f"Generated template payload: {template_payload}")
 
@@ -321,6 +323,7 @@ class BaseCampaignCreater:
                     "dealership_id":campaign_details.get("dealership_id"),
                     "message_id": (response.get("message_id", None) if channel == "whatsapp_chat" else getattr(response.get("response"), "sid", None)),
                     "provider_status":msg_status,
+                    "message_template_type": campaign_details.get("message_template_type"),
                     "channel_provider":provider_name,
                     "channel":patch_user_data.get("channel") or channel,
                     "template_message":campaign_details.get("template_message")
@@ -376,14 +379,16 @@ class BaseCustomCampaignManager:
         List[str]
             List of processed campaign user IDs.
         """
+        # logger.info(f"------ process_campaign_users_generic ------ {json.dumps(campaign_data,indent=4)}")
         channel= campaign_data.get("channel").upper()
-        logger.info(f"Starting processing {len(campaign_users)} users for campaign_id={campaign_id}, channel={channel} , campaign_data={json.dumps(campaign_data,indent=4)}")
+        # logger.info(f"Starting processing {len(campaign_users)} users for campaign_id={campaign_id}, channel={channel} , campaign_data={json.dumps(campaign_data,indent=4)}")
         #  use contact status model ---
         
         # --- Load credentials ---
         channel_key = "sender" if channel.upper() == "WHATSAPP_CHAT" else "caller_id"
         credential=None
         if channel.upper() == "WHATSAPP_CHAT":
+            
             credential, provider = self.get_dyanamic_provider_creds(
                 enterprise_id, campaign_data.get(channel_key), campaign_data
             )
@@ -479,6 +484,7 @@ class BaseCustomCampaignManager:
     def get_dyanamic_provider_creds(self,enterprise_id,sender,campaign_details):
         logger.info("Loading Dyanamic Provider creds")
         AUTH = AuthManager(campaign_details.get("whatsapp_provider"))
+        logger.info(f"Dynamic provider creds--{AUTH}, sender--{sender}, enterprise_id--{enterprise_id}")
         whatsapp_cred_details= AUTH.get_headers(sender, enterprise_id,complete_data=True)
         logger.debug(f"whatsapp_cred_details:: {whatsapp_cred_details}, {type(whatsapp_cred_details)}")
         whatsapp_credential, whatsapp_provider = whatsapp_cred_details.get("auth_headers"),whatsapp_cred_details.get("whatsapp_provider")
@@ -746,7 +752,7 @@ def trigger_campaign(*args, **kwargs):
         # )
 
     logger.info("All valid leads queued successfully.")
-
+   
 @gryd.is_a_task(function_name="nada_pre_sales")
 def nada_pre_sales(*args,**kwargs):
     logger.info(f"------ nada_pre_sales ------")
@@ -1126,11 +1132,13 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 template_data= get_template(
                     lead_id=lead_id,
                     campaign_type=campaign_type,
-                    # campaign_objective= [campaign_objective_name] or [],
-                    campaign_objective= ["TESTTT"] or [],
+                    campaign_objective= [campaign_objective_name] or [],
+                    # campaign_objective= ["TESTTT"] or [],
                     dealership_id=lead_data.get("dealership_id"),
                     lead_info={}
                 )
+                # template_data=testing_whatsapp_template()
+                
             except Exception as e:
                 logger.error(f"Error in get_template for channel {channel}: {str(e)}")
                 update_error_to_models(
@@ -1146,9 +1154,17 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 yield {"status": "Error", "error_description": f"Error in get_template: {str(e)}"}
                 return
             
-            _d=get_communication_credential(dealership_id=lead_data.get("dealership_id"), channel=channel)
+            if not template_data:
+                yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
+                return
+            
+            template_data = template_data[0]
+            
+            _d=get_communication_credential(dealership_id=lead_data.get("dealership_id"), channel=channel,provider_name=template_data.get("provider_name"))
+            logger.info(f"GET COMMUNICATION CREDS-->{_d}, dealership_id: {lead_data.get('dealership_id')}, channel: {channel} and provider_name: {template_data.get('provider_name')}")
             if _d:
                 sender_name=_d.get("sender")
+                
             logger.info(f"Communication Credential found for dealership_id: {lead_data.get('dealership_id')}, channel: {channel} and sender phone_number: {sender_name}")
             
             
@@ -1157,6 +1173,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 template_details=pg.get("template","template_id",templateID)
                 template_data=template_details
         logger.info(f"TEmplate data: {template_data}")
+        if template_data.get("provider_name")=="Rml":
+            template_data["template_type"] = template_data.get("template_type")+"_template"
         logger.info(f"Template ID for phone_number={lead_data.get('phone_number')}: {template_data.get('template_id')}")
     else:
         yield {"status": "Error", "error_description": f"Unsupported channel: {channel}"}
@@ -1362,8 +1380,9 @@ def format_email_payload(campaign_data,campaign_user,mobile_number):
 
 def testing_whatsapp_template():
     
-    return [        {
-            "sender": "919187210945",
+    return [
+        {
+            "sender": "917795030599",
             "status": "approved",
             "buttons": [
                 {
@@ -1380,34 +1399,30 @@ def testing_whatsapp_template():
                 }
             ],
             "channel": "whatsapp_chat",
-            "created": 1775569405.7440195,
-            "updated": 1775651902.2331889,
+            "created": 1776770802.5813954,
+            "updated": 1776771015.0534973,
             "language": "english",
-            # "media_id": "1504520517915714",
-            "media_type": "document",
             "dealer_name": "Dave AI",
             "region_name": "India",
-            "search_term": "aircross_confirm_test_drive_for_value_advantage text english pre-sales thank you for showing interest in the citroën aircross 🙏 we have a special offer for you ✅ running cost from just ₹0.40 km ✅ additional benefits worth ₹1.15 lakh ⏳ limited stock valid till 30th april only 🚗 book a test drive and experience the basalt for yourself — nothing beats a real drive for any questions feel free to reach out. i m happy to help 😊",
-            "template_id": "01knm1xzec4k24dd83ya2z8ddc",
+            "search_term": "aircross_confirm_test_drives_for_value_advantage text english pre-sales hi person_name thank you for showing interest in the citroën aircross 🙏 we have a special offer for you ✅ running cost from just ₹0.40 km ✅ additional benefits worth ₹1.15 lakh ⏳ limited stock valid till 30th april only 🚗 book a test drive and experience the aircross for yourself — nothing beats a real drive",
+            "template_id": "950110724542119",
             "campaign_type": "pre-sales",
             "dealership_id": "dave-ai-india",
-            "provider_name": "Airtel",
-            "template_name": "Aircross_Confirm_Test_Drive_For_Value_Advantage",
-            "template_type": "media",
-            "template_message": "Thank you for showing interest in the Citroën Aircross! 🙏\n\nWe have a special offer for you:\n\n✅ Running cost from just ₹0.40/km*\n✅ Additional benefits worth ₹1.15 Lakh\n\n⏳ Limited stock | Valid till 30th April only\n\n🚗 Book a test drive and experience the Aircross for yourself — nothing beats a real drive!\n\nFor any questions, feel free to reach out. I'm happy to help 😊",
-            "template_variables": [],
+            "provider_name": "Rml",
+            "template_name": "aircross_confirm_test_drives_for_value_advantage",
+            "template_type": "text",
+            "template_message": "Hi {{person_name}},\n\nThank you for showing interest in the Citroën Aircross! 🙏\n\nWe have a special offer for you:\n\n✅ Running cost from just ₹0.40/km* \n✅ Additional benefits worth ₹1.15 Lakh ⏳ Limited stock | Valid till 30th April only\n\n🚗 Book a test drive and experience the Aircross for yourself — nothing beats a real drive!\n",
+            "template_variables": [
+                "person_name"
+            ],
             "campaign_objective_name": "Aircross- Confirm Test Drive for Value Advantage- WhatsApp",
-            "template_button_payload": [
-                "confirm_test_drives_through_tech_appeal_whatsapp-book_test_drive",
-                "confirm_test_drives_through_tech_appeal_whatsapp-explore_aircross",
-                "confirm_test_drives_through_tech_appeal_whatsapp-request_a_call_back"
-            ],
             "template_button_payloads": [
-                "confirm_test_drives_through_tech_appeal_whatsapp-book_test_drive",
-                "confirm_test_drives_through_tech_appeal_whatsapp-explore_aircross",
-                "confirm_test_drives_through_tech_appeal_whatsapp-request_a_call_back"
+                "aircross_confirm_test_drives_for_value_advantage-book_test_drive",
+                "aircross_confirm_test_drives_for_value_advantage-explore_aircross",
+                "aircross_confirm_test_drives_for_value_advantage-request_a_call_back"
             ],
-            "communication_credentials_id": "airtel-whatsapp_chat-919187210945"
-        }]
+            "communication_credentials_id": "rml-whatsapp_chat-917795030599"
+        }
+    ]
     
     # return "No Template Found"

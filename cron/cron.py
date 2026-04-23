@@ -8,13 +8,14 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
+from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME, gryd, hp
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 from gryd_worker import gryd_db_helper as db, beats as cron_worker,gryd_audit_helper
 from communication.connectors.communication_helpers import handle_session_post_process_or_end
+
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 
@@ -359,7 +360,7 @@ def manage_active_sessions(*args, **kwargs):
                 new_records = []
                 for row in history_rows:
                     ts = normalize_ts(row.get("created") or row.get("updated"))
-                    mlogger.info(f"ts: {ts}-->{session_id}")
+                    # mlogger.info(f"ts: {ts}-->{session_id}")
                     if ts and (last_history_epoch is None or ts > last_history_epoch):
                         new_records.append((row, ts))
 
@@ -571,6 +572,92 @@ def create_campaign_ideas_for_dealerships(
     return {
         "created_idea_count": created_idea_count,
     }
+
+
+def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,channel_identifier,disposition,pg=None):
+    mlogger.info(f"In the campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+    if not campaign_id:
+        mlogger.error(f"campaign_id is required for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+        return
+    campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
+    def _do_db_work(pg_conn):
+        a=list(pg_conn.list(campaign_model, {"campaign_status": "Active"}))
+        if not a:
+            mlogger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
+            return
+        # TODO:before calling ananth task check the campaign status and then call.. 
+        mlogger.info(f"Calling next campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+        gryd.create_async_task(
+            "determine_campaign_next_action",
+            AUTOCRM_CAMPAIGN_SERVICE_NAME,
+            args=[campaign_type,lead_id,channel,channel_identifier,disposition],
+            kwargs={"enterprise_id": AUTOCRM_APP_ENTERPRISE_ID},
+        )
+        # determine_campaign_next_action(campaign_type,lead_id,channel,channel_identifier,disposition,pg_conn)
+
+    if pg:
+        _do_db_work(pg)
+    else:
+        with get_pg_connector() as pg_conn:
+            _do_db_work(pg_conn)
+     
+def call_campaign_workflow(*args, **kwargs):
+
+    campaign_id = kwargs.get("campaign_id")
+    channel_identifier = kwargs.get("channel_identifier")
+    mlogger.info(f"campaign_id: {campaign_id}, channel_identifier: {channel_identifier}")
+    if not campaign_id:
+        return
+    with get_pg_connector() as pg:
+        query = """
+        SELECT DISTINCT ON (dict->>'lead_id')
+            dict->>'lead_id',
+            dict->>'provider_status',
+            dict->>'campaign_id',
+            dict->>'campaign_type',
+            dict->>'channel',
+            dict->>'phone_number',
+            dict->>'email'
+        FROM contact_status
+        WHERE dict->>'campaign_id' = %s
+        ORDER BY dict->>'lead_id', dict->>'created' DESC;
+        """
+        records = pg.fetch_all(query, (campaign_id,))
+        # mlogger.info(f"records --{records}")
+        if not records:
+            return
+
+        columns = ["lead_id", "disposition", "campaign_id", "campaign_type", "channel", "phone_number", "email"]
+        
+        if isinstance(records, tuple):
+            records = [records]
+        
+        for row in records:
+            row_dict = dict(zip(columns, row))
+            mlogger.info(f"row_dict --{row_dict}")
+            channel = row_dict.get("channel")
+            # mlogger.info(f"channel --{channel}")
+            
+            if channel == "email":
+                c = row_dict.get("email")
+            elif channel in ["voice_phone", "sms", "whatsapp_chat"]:
+                c = row_dict.get("phone_number")
+            else:
+                c = None
+            # c=row_dict.get("email") if row_dict.get("channel") in ["email"] else row_dict.get("phone_number")
+            mlogger.info(f"channel_identifier --{c}")
+            # try:
+            #     call_next_campaign_workflow_task(
+            #         row_dict.get("campaign_id"),
+            #         row_dict.get("campaign_type"),
+            #         row_dict.get("lead_id"),
+            #         None,
+            #         channel_identifier,
+            #         row_dict.get("disposition"),
+            #         pg=pg
+            #     )
+            # except Exception as e:
+            #     print(f"[Workflow Error] Lead {row.get('lead_id')}: {str(e)}")
 
 @gryd.is_a_task('create_campaign_templates', logger_param='logger', job_param='job')
 def create_campaign_templates(logger=None, job=None):
@@ -1119,3 +1206,90 @@ def update_template_status(dealership_id:str,logger=None, job=None):
                continue
 
     return "Completed !!!!"
+
+        
+def rml_auth_login(user_name, password, max_retries=10, backoff=2):
+    url = "https://apis.rmlconnect.net/auth/v1/login/"
+    payload = json.dumps({
+        "username": user_name,
+        "password": password,
+        "tdvalue": "3650",
+        "recaptcha": None
+    })
+    headers = {
+        'origin': 'https://myaccount.rmlconnect.net',
+        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+        'Content-Type': 'application/json'
+    }
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.post(url, headers=headers, data=payload, timeout=10)
+
+            response.raise_for_status()
+
+            mlogger.info(f"Success on attempt {attempt}")
+            return response.json()
+
+        except requests.HTTPError as http_err:
+            status_code = http_err.response.status_code
+            if 400 <= status_code < 500:
+                mlogger.error(f"Fatal error {status_code}: {http_err.response.text}")
+                raise
+            else:
+                mlogger.warning(f"Server error {status_code} on attempt {attempt}: {http_err.response.text}")
+
+        except requests.RequestException as e:
+            mlogger.warning(f"Network error on attempt {attempt}: {e}")
+
+        # retry logic
+        if attempt < max_retries:
+            sleep_time = backoff * attempt
+            mlogger.info(f"Retrying in {sleep_time}s...")
+            time.sleep(sleep_time)
+
+    raise Exception(f"Failed after {max_retries} attempts")
+
+@gryd.is_a_task(function_name="reset_auth_creds")
+def reset_auth_creds(*args, **kwargs):
+    filters = {k: v for k, v in kwargs.items() if v is not None}
+    mlogger.info(f"Filters for resetting auth creds: {filters}")
+    mlogger.info("Resetting Auth credentials...")
+    
+    # NOTE: For now we are doing just for RML. 
+    with get_pg_connector() as pg:
+        creds = list(pg.list("communication_credential",filters))
+        
+        for i in creds:
+            auth_creds=i.get("auth_creds")
+            
+            if not auth_creds:
+                mlogger.warning(f"No auth creds found for credential {i.get('communication_credentials_id')} and for the number {i.get('sender')}")
+                continue
+            
+            user_name=auth_creds.get("username")
+            password=auth_creds.get("password")
+            
+            try:
+                if i.get("provider_name") in ["Rml","rml"]:
+                    resp=rml_auth_login(user_name, password)
+                    
+                    if isinstance(resp, dict):
+                        JWTAUTH = resp.get("JWTAUTH")
+                        if not JWTAUTH:
+                            raise Exception(f"No JWTAUTH found in response: {resp.keys()}")
+
+                        auth_headers = i.get("auth_headers", {})
+                        auth_headers.update({"Authorization": JWTAUTH})
+
+                        pg.update("communication_credential","communication_credentials_id",i.get("communication_credentials_id"),{"auth_headers": auth_headers})
+                    
+                    mlogger.info(f"Successfully reset RML credentials for credential {i.get('communication_credentials_id')} and for the number {i.get('sender')}")
+                    
+                else:
+                    mlogger.warning(f"Provider {i.get('provider_name')} is not supported for credential {i.get('communication_credentials_id')}")
+            except Exception as e:
+                mlogger.error(f"Failed to reset RML credentials for credential {i.get('communication_credentials_id')}: {e} and for the number {i.get('sender')}")
+                continue
+
+    return "Completed!"

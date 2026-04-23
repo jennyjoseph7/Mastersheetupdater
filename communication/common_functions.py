@@ -16,7 +16,7 @@ def generate_uid(data):
     return uid.hex[:16]
 
 
-def get_communication_credential(dealership_id="daveai", channel=None):
+def get_communication_credential(dealership_id="daveai", channel=None, provider_name=None):
     logger.info(f"Getting communication credential for dealership - {dealership_id}")
 
     if not channel:
@@ -26,7 +26,7 @@ def get_communication_credential(dealership_id="daveai", channel=None):
         return None
 
     with get_pg_connector() as pg:
-        creds = list(pg.list("communication_credential",{"dealership_id": dealership_id, "channel": channel}))
+        creds = list(pg.list("communication_credential",{"dealership_id": dealership_id, "channel": channel, "provider_name": provider_name}))
         if creds:
             return creds[0]
 

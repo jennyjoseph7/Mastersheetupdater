@@ -124,7 +124,7 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
                 l_person_name = l.get("person_name",None)
                 l_campaign_obj_name = l.get("campaign_objective_name",None)
                 l_campaign_name = l.get("campaign_name",None)
-
+                # l_dealership_id=l.get("dealership_id",None)
             payload.update({
                 "campaign_id": campaign_id,
                 "campaign_type": campaign_type,
@@ -133,7 +133,8 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
                 "lead_model": lead_model,
                 "person_name": l_person_name,
                 "campaign_objective_name": l_campaign_obj_name,
-                "campaign_name": l_campaign_name
+                "campaign_name": l_campaign_name,
+                # "dealership_id":l_dealership_id
             })
         else:
             logger.info(f"No existing campaign association for {phone_number}")
@@ -228,6 +229,8 @@ def get_or_create_session(data,channel=None,engaged=False):
     filters = {
         "session_id":data.get("session_id"),
         "user_id":data.get("user_id"),
+        # TODO: have a dealership_id also as a filter. 
+        "dealership_id":data.get("dealership_id"),
         # "campaign_id":data.get("campaign_id"),
         # "channel": channel or "whatsapp_chat" if data.get("campaign_type")=="post-sales" else None, 
         "channel": channel or "whatsapp_chat",

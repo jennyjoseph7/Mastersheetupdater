@@ -80,6 +80,16 @@ ALLOWED_COUNTRY_CODES = list(map(str.strip, os.environ.get("ALLOWED_COUNTRY_CODE
 OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe")
 EXCHANGE_RATE_HOST_API_KEY = os.environ.get("EXCHANGE_RATE_HOST_API_KEY","b6e93843fe72674909722d79859d7c4c")
 EXCHANGE_RATE_HOST_BASE_URL = os.environ.get("EXCHANGE_RATE_HOST_BASE_URL", "https://api.exchangerate.host")
+
+WHATSAPP_PRICING_INR = {
+    "airtel": {
+        "marketing": 0.01,
+        "utility": 0.02,
+        "authentication": 0.03
+    },
+    "rml": {}
+}
+
 #model names
 SESSION_MODEL_NAME = "session"
 BILLING_MODEL_NAME = "billing"

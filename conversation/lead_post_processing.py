@@ -4,9 +4,9 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_MESSAGE_DELIVERED_ITEM,AUTOCRM_MESSAGE_DELIVERED_PRICE,AUTOCRM_MESSAGE_DELIVERED_UNITS,AutocrmModel
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_MESSAGE_DELIVERED_ITEM,AUTOCRM_MESSAGE_DELIVERED_PRICE,AUTOCRM_MESSAGE_DELIVERED_UNITS,AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PRICING_INR,AutocrmModel
 import config
-from gryd_worker import gryd, gryd_helpers as hp
+from gryd_worker import gryd, gryd_helpers as hp,gryd_audit_helper
 from autocrm_db_helper import get_pg_connector
 json = hp.json
 from conversation.yield_response import yield_result,yield_error, yield_status
@@ -355,7 +355,8 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
     if should_bill:
         mlogger.info(f"[post_contact_status] Billing triggered for incoming_status ={incoming_status}")
         post_billing_obj(**data)
-    
+        # post_audit_logs(**data)
+        
     DISPOSITION_SEQUENCE = [
         "queued",
         "attempted",
@@ -579,9 +580,44 @@ def post_billing_obj(**message_dict):
                 "whatsapp_chat"
             ]
         )
+        
+        # posting_audit_logs
+        
         mlogger.info(f"Posted Billing for lead_id: {lead_id} and campaign_id: {campaign_id} with item_description: {item_description}")    
 
 
+def post_audit_logs(**message_dict):
+    mlogger.info(f"Post audit logs for message_dict: {json.dumps(message_dict)}")
+
+    output_quantity = 1
+
+    provider = message_dict.get("provider")
+    category = message_dict.get("message_category")
+
+    output_pricing_dollars = WHATSAPP_PRICING_INR.get(provider, {}).get(category, 0)
+
+    output_cost_dollars = output_quantity * output_pricing_dollars
+
+    _job = {
+        "channel": message_dict.get("channel"),
+        "message_id": message_dict.get("message_id"),
+        "mobile_number": message_dict.get("mobile_number"),
+        "session_id": message_dict.get("session_id"),
+        "user_id": message_dict.get("user_id"),
+        "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
+        "service": AUTOCRM_COMMUNICATION_SERVICE_NAME
+    }
+
+    _tasks = {
+        "output_pricing_units": "count",
+        "output_quantity": output_quantity,
+        "output_pricing_dollars": output_pricing_dollars,
+        "output_cost_dollars": output_cost_dollars
+    }
+
+    gryd_audit_helper.audit_log(job=_job, value=_tasks)
+    
+    
 def get_summary(session_id,session_data):
     messages = session_data.get("messages")
 
