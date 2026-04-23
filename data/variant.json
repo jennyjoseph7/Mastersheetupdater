@@ -140,6 +140,16 @@
             "ui_element": "select"
         },
         {
+            "name": "transmission_types_aliases",
+            "type": "string_list",
+            "converter": {
+                "function": "ensure_in_list",
+                "args": [
+                    "transmission_type"
+                ]
+            }
+        },
+        {
             "name": "vehicle_category",
             "refers": "parents.model_year.vehicle_category"
         },
