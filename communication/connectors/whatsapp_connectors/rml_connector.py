@@ -172,6 +172,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
         Uses kwargs for flexible inputs.
         """
         logger.info("*****************")
+        # logger.info(f"RML create_template template_type: {template_type}, kwargs: {kwargs}")
         if template_type not in RMLWhatsAppMessenger.SUPPORTED_TEMPLATES:
             raise ValueError(f"Unsupported template type: {template_type}")
 
@@ -180,15 +181,18 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
             kwargs.get("template_name", "")
         )
         lang_code = kwargs.get("template_language_code", "en")
-        params_data = kwargs.get("params_data", {}) or {}
+        # params_data = kwargs.get("params_data", {}) or {}
+        params_data = kwargs.get("body", {}) or  kwargs.get("params_data", {})
         template_variables = kwargs.get("template_variables", [])
         button_payloads = kwargs.get("template_buttons_payload", [])
 
         # ------ Body Resolution ------
-        resolved_body = [
-            {"text": params_data.get(var, "")}
-            for var in template_variables
-        ]
+        # resolved_body = [
+        #     {"text": params_data.get(var, "")}
+        #     for var in template_variables
+        # ]
+        
+        
 
         # ------ Button Resolution ------
         def _make_button(idx, payload):
@@ -201,7 +205,6 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
             for idx, payload in enumerate(button_payloads)
             if payload
         ]
-
         payload = {
             # "type": "media",
             "type": template_type,
@@ -224,20 +227,19 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
 
                 payload["header"] = [{media_type: media_header}]
 
-            if resolved_body:
-                payload["body"] = resolved_body
+            if params_data:
+                payload["body"] = params_data
 
             if buttons:
                 payload["button"] = buttons
-
             return payload
 
         # ----------------------
         # CASE 2: TEXT TEMPLATE
         # ----------------------
         if template_type == "text_template":
-            if resolved_body:
-                payload["body"] = resolved_body
+            if params_data:
+                payload["body"] = params_data
             if buttons:
                 payload["button"] = buttons
             return payload
@@ -275,10 +277,11 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
                 if payload_data:
                     carousel.append(payload_data)
 
-            if resolved_body:
-                payload["body"] = resolved_body
+            if params_data:
+                payload["body"] = params_data
 
             payload["carousel"] = carousel
+            
             return payload
 
     

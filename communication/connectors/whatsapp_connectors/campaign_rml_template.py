@@ -42,6 +42,8 @@ class RMLCampaignManager:
         Creates a media-based template message (image/video/doc) for WhatsApp.
         Conditionally includes file_name in header if available.
         """
+        
+        # logger.info(f"RML media template message_data: {message_data}, params_data: {params_data}")
 
         template_id =message_data.get("template_name") or message_data.get("template_id",)
         lang_code = message_data.get("template_language_code", "en")
@@ -94,7 +96,10 @@ class RMLCampaignManager:
         lang_code = message_data.get("template_language_code", "eng")
         template_variables = message_data.get("template_variables", [])
         button_payloads = message_data.get("template_buttons_payload", [])
-
+        
+        # logger.info(f"RML TEXT template message_data: {message_data}, params_data: {params_data}")
+        
+        
         # Resolve body variables
         body = [{"text": params_data.get(var, "")} for var in template_variables]
 
@@ -113,6 +118,7 @@ class RMLCampaignManager:
             payload["button"] = buttons
         if body:
             payload["body"] = body
+        # logger.info(f"RML TEXT template payload: {payload}")
         return payload
     
     def _create_carousel_template(self, message_data, params_data):
