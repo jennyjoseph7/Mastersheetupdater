@@ -1,3 +1,5 @@
+import types
+
 from connectors.whatsapp_connectors.source_connectors import *
 
 logger= hp.get_logger(__name__,level=hp.logging.DEBUG)
@@ -526,11 +528,20 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
         self.res={}
         data = kwargs.pop("data", {})
         response_data = data.get("response_data", {})
-        message = kwargs.pop("message",None)  or data.pop("placeholder",None)  or data.pop("message",None)
+        nested_placeholder = (
+            data
+                .get("response", {})
+                # .get("placeholder", {})
+                .get("placeholder")
+        )
+        
+        
+        message = kwargs.pop("message",None)  or nested_placeholder or data.pop("placeholder",None)  or data.pop("message",None)
         session_id = kwargs.pop("session_id",None) or data.pop("session_id",None)
+        
         self.default_payload=default_payload
         # self.default_payload.update({"sessionId": session_id}) if session_id else None
-        logger.info(f"Response data for creating payload: {safe_orjson_dumps(response_data)}", )
+        # logger.info(f"Response data for creating payload: {safe_orjson_dumps(response_data)}")
         extra_payload= {
             "extra":json.dumps({"goto":response_data.get("goto"),"go_to":response_data.get("go_to"),"intent":response_data.get("intent")})}
         kwargs.update(extra_payload =extra_payload)

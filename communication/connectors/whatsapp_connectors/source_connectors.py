@@ -972,6 +972,7 @@ class BaseWhatsappMessenger:
             raise ValueError("Response object can't dict")
         if response.status_code not in [200, 202]:
             logger.error(f"Error Response: {response.text}, Status Code: {response.status_code}")
+            #TODO: add error response 
             return self._handle_error_response(response)
 
         try:
