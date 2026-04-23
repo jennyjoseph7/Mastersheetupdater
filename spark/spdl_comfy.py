@@ -12,6 +12,8 @@ import google.genai as genai
 from google.genai import types as genai_types
 from google.genai.local_tokenizer import LocalTokenizer
 from gryd_worker import gryd
+from config import AUTOCRM_SPARK_COMFY_SERVICE_NAME
+from prompt_formatter import convert_prompt as _convert_prompt
 
 # -------------------- BASE DIR --------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -44,6 +46,10 @@ mlogger.info(f"LOCATION: {LOCATION}")
 # -------------------- WORKFLOW --------------------
 WORKFLOW_PATH = os.path.join(BASE_DIR, "comfy_workflows", "Flex.json")
 mlogger.info(f"WORKFLOW_PATH: {WORKFLOW_PATH}")
+SERVICE = AUTOCRM_SPARK_COMFY_SERVICE_NAME
+gryd.SERVICE = SERVICE
+THREADS_PER_SESSION = 0.3
+gryd.set_queue_manager()
 
 # -------------------- HELPERS --------------------
 def load_workflow():
@@ -356,4 +362,18 @@ def gemini_image_generation_task(
     except Exception as e:
         logger.exception("Gemini task failed")
         return {"error": str(e)}
+
+
+@gryd.is_a_task(function_name = "comfy_image_generation", job_param = 'job', logger_param = 'logger')
+def comfy_image_generation(
+    input_image_url,
+    prompt,
+    number_of_images=1,
+    job = None,
+    logger = None,
+    **kwargs):
+    logger = logger or mlogger
+    if kwargs.get('optimise_prompt',True):
+        prompt, elapsed = _convert_prompt(prompt)
+    return comfy_image_generation_task(input_image_url, prompt, number_of_images, logger = logger, **kwargs)
 

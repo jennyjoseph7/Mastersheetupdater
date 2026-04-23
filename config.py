@@ -114,6 +114,7 @@ PHONE_NUMBER_ID="phnum_8201k1anbf9wet6v915q8arr1vmz"
 
 # spark/openai
 AUTOCRM_SPARK_SERVICE_NAME = os.environ.get('AUTOCRM_SPARK_SERVICE_NAME', 'spark')
+AUTOCRM_SPARK_COMFY_SERVICE_NAME = os.environ.get('AUTOCRM_SPARK_COMFY_SERVICE_NAME', 'spark_comfy')
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1.5")
 OPENAI_IMAGE_SIZE = os.environ.get("OPENAI_IMAGE_SIZE", "1024x1536")

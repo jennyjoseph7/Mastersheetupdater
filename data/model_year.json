@@ -223,14 +223,6 @@
         {
             "name": "transmission_types_aliases",
             "type": "list",
-            "options": [
-                "Automatic",
-                "Clutchless Manual",
-                "Manual",
-                "CVT",
-                "DCT",
-                "Other"
-            ],
             "default": {
                 "function": "get_from_model",
                 "args": [

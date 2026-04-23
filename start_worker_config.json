@@ -80,6 +80,13 @@
             "shutdown_time": 0
         },
         {
+            "name": "spark_comfy",
+            "entry_point": "spdl_comfy.py",
+            "gryd_service": "AUTOCRM_SPARK_COMFY_SERVICE_NAME",
+            "parallel_threads": 1,
+            "shutdown_time": 0
+        },
+        {
             "name": "brochure_pipeline",
             "entry_point": "brochure_task.py",
             "gryd_service": "AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME",
