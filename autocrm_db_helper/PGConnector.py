@@ -50,7 +50,7 @@ class AutoCRMPGConnector(db.GrydPGConnector):
     
     def delete(self, table_name, id_attr, id):
         print("DELETE FROM {} WHERE {} = '{}'".format(table_name,id_attr,id))
-        return super().execute_write("DELETE FROM {} WHERE {} = '{}'".format(table_name,id_attr,id), _fetch=False)
+        return super().execute_write("DELETE FROM {} WHERE {} = %s".format(table_name,id_attr), (id,), _fetch=False)
     
     def iadd(self, table_name, id_attr, id, attr, value):
         return super().iadd(table_name, id, attr, value, id_attr)
