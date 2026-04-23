@@ -867,7 +867,7 @@ def firefly_image_generation(
 
             upload_id = _firefly_upload_image(local_img_path, client_id, token, logger)
 
-            generate_url = f"{FIREFLY_API_BASE}/v3/images/generate-async"
+            generate_url = f"{FIREFLY_API_BASE}/v4/images/generate-async"
             body = {
                 "prompt": edit_prompt,
                 "modelId": "firefly_image",
@@ -890,6 +890,7 @@ def firefly_image_generation(
                 "Authorization": f"Bearer {token}",
                 "x-api-key": client_id,
                 "Content-Type": "application/json",
+                "x-model-version": "image5",
             }
             logger.debug(f"Firefly request headers: {headers}")
             logger.info(f"Firefly request body: {body}")
