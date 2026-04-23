@@ -1442,7 +1442,9 @@ def gryd_task_import_leads_from_csv(
                     if error > MAX_AUDIENCE_ERRORS:
                         # too many errors, stop the task
                         logger.error(f"Too many errors, stopping the task")
+                        yield {"_result": f"Too many errors, stopping the task"}
                         break
+            yield {"_status": "100% completed"}
             # Write error CSV
             if error > 0:
                 url = func_gryd_file_system(error_csv_path, logger = logger)
@@ -1450,9 +1452,9 @@ def gryd_task_import_leads_from_csv(
             else:
                 yield {"_result": {'total': total, 'error': error, 'processed': processed}}
     except Exception as e:
-        wind_up(csv_path, error_csv_path)
         raise ValueError(f"Failed to create temporary files: {str(e)}") from e
-    wind_up(csv_path, error_csv_path)
+    finally:
+        wind_up(csv_path, error_csv_path)
     return
 
 @gryd.is_a_task()
