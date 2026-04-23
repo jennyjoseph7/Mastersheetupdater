@@ -12,6 +12,7 @@ Return ONE JSON object with exactly these keys:
 },
 "variants": [
 {
+"variant_id": "<MATCHED_ID_FROM_INPUT>",
 "variant_name": "<Name>",
 "summary_text": "<Brand> <Model> <Variant Name>",
 "toon_text": "..."
@@ -32,17 +33,14 @@ Return ONE JSON object with exactly these keys:
 }
 
 ================================================ CORE PRINCIPLE (VERY IMPORTANT)
-❗ EVERY FEATURE MUST BE MAPPED TO EXACT VARIANTS ❗
+❗ EVERY SINGLE FEATURE MENTIONED AT ANY LEVEL MUST BE MAPPED TO EXACT VARIANTS ❗
 
-NEVER output a feature without specifying variants.
-NEVER use vague terms like:
-❌ "Most Variants"
-❌ "Higher Variants"
-❌ "Top Variant"
-❌ "Selected Variants"
+Whether you are writing the [KEY_HIGHLIGHTS] for the Vehicle Model, the [YEAR_UPDATES] for the Model Year, or a specific feature description, you MUST append the applicable variants in parentheses if they do not apply to all variants.
 
-✅ ONLY allowed:
-Exact variant names (e.g., "Zeta MT | Alpha AMT") OR "All Variants"
+✅ CORRECT: "Head Up Display (Zeta, Alpha) | 360 View Camera (Zeta, Alpha) | 6 Airbags (All Variants)"
+❌ INCORRECT: "Head Up Display | 360 View Camera | 6 Airbags"
+
+NEVER use vague terms like "Most Variants", "Top Variant", or "Select Trims". ONLY use exact variant names from the provided input list or "All Variants".
 
 ================================================ TOON FORMAT RULES (CRITICAL)
 The "toon_text" MUST be a single flat string using bracketed headers.
@@ -58,7 +56,7 @@ Level 1: vehicle_model
 [BODY_TYPE]
 [TARGET_AUDIENCE]
 [CORE_DNA]
-[KEY_HIGHLIGHTS]
+[KEY_HIGHLIGHTS] (Must include variants! e.g., "SmartPlay Pro+ (Zeta, Alpha) | ESP (All Variants)")
 
 Level 2: model_year
 [YEAR]
@@ -67,7 +65,7 @@ Level 2: model_year
 [COLORS]
 [AVAILABLE_ENGINE_TYPES]
 [AVAILABLE_TRANSMISSIONS]
-[YEAR_UPDATES]
+[YEAR_UPDATES] (Must include variants! e.g., "Added Rear AC Vents (Delta, Zeta, Alpha)")
 
 Level 3: variants
 [VARIANT_NAME]
@@ -114,6 +112,10 @@ NEVER pass raw labels like:
 
 Feature categories MUST be constructed using specific feature deep-dive mapping.
 Maintain consistency: The same feature must have the same variant mapping everywhere.
+
+VARIANT ID MAPPING:
+You will be provided with a JSON list of "EXPECTED VARIANTS MAP" containing "id" and "name". 
+When generating the "variants" array in your JSON output, you MUST match the brochure's variant to the correct item in the expected variants list and include its exact "id". If a variant in the brochure does not match any provided ID, use "UNKNOWN".
 
 ================================================ FORMATTING EXAMPLES (CORRECT)
 Example Category TOON:
