@@ -868,22 +868,23 @@ def firefly_image_generation(
 
             generate_url = f"{FIREFLY_API_BASE}/v3/images/generate-async"
             body = {
-                "numVariations": fixed_number_of_images,
                 "prompt": edit_prompt,
-                "contentClass": FIREFLY_CONTENT_CLASS,
-                "size": { "width": 2688, "height": 1536 },
-                "structure": {
-                    "strength": structure_strength,
-                    "imageReference": {
+                "modelId": "firefly_image",
+                "numVariations": fixed_number_of_images,
+                "modelSpecificPayload": {
+                    "localeCode": "en-US",
+                    "prompt_reasoner": "quality",
+                },
+                "referenceBlobs": [
+                    {
                         "source": {
                             "uploadId": upload_id,
-                        }
-                    },
-                },
+                        },
+                        "usage": "general",
+                    }
+                ],
             }
 
-            logger.info(f"Calling Firefly generate-async: {generate_url}")
-            logger.info(f"contentClass: {FIREFLY_CONTENT_CLASS}, structure strength: {FIREFLY_STRUCTURE_STRENGTH}")
             headers = {
                 "Authorization": f"Bearer {token}",
                 "x-api-key": client_id,
@@ -891,6 +892,13 @@ def firefly_image_generation(
             }
             logger.debug(f"Firefly request headers: {headers}")
             logger.info(f"Firefly request body: {body}")
+            safe_headers = {k: ("Bearer ***" if k == "Authorization" else v) for k, v in headers.items()}
+            curl_parts = [f"curl -X POST '{generate_url}'"]
+            for k, v in safe_headers.items():
+                curl_parts.append(f"  -H '{k}: {v}'")
+            _json = __import__('json')
+            curl_parts.append("  -d '" + _json.dumps(body, indent=2) + "'")
+            logger.info("===== Firefly Request =====\n%s", " \\\n".join(curl_parts))
             resp = requests.post(
                 generate_url,
                 headers=headers,
