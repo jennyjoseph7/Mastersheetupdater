@@ -220,6 +220,13 @@
                     "vehicle_category",
                     "vehicle_type"
                 ]
+            },
+            "default": {
+                "function": "ensure_in_list",
+                "args": [
+                    "vehicle_category",
+                    "vehicle_type"
+                ]
             }
         },
         {
@@ -273,8 +280,9 @@
             "auto_updater": true,
             "default": {
                 "args": [
+                    "brand_name",
                     "vehicle_model_name",
-                    "brand_name"
+                    "region_id"
                 ],
                 "function": "name_to_id",
                 "kwargs": {

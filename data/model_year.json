@@ -326,7 +326,8 @@
                 "args": [
                     "brand_name",
                     "vehicle_model_generic_name",
-                    "year"
+                    "year",
+                    "region_name"
                 ],
                 "function": "name_to_id",
                 "kwargs": {

@@ -33,6 +33,10 @@
             "refers": "parents.model_year.vehicle_model_generic_name"
         },
         {
+            "name": "vehicle_model_name",
+            "refers": "parents.model_year.vehicle_model_name"
+        },
+        {
             "name": "brand_id",
             "refers": "parents.model_year.brand_id"
         },
@@ -143,6 +147,12 @@
             "name": "transmission_types_aliases",
             "type": "string_list",
             "converter": {
+                "function": "ensure_in_list",
+                "args": [
+                    "transmission_type"
+                ]
+            },
+            "default": {
                 "function": "ensure_in_list",
                 "args": [
                     "transmission_type"
