@@ -7,6 +7,8 @@ import requests
 import vertexai
 import tempfile
 from openai import OpenAI
+import sys
+print(sys.path)
 from vertexai.preview.vision_models import Image, ImageGenerationModel
 import google.genai as genai
 from google.genai import types as genai_types
@@ -16,7 +18,10 @@ from config import AUTOCRM_SPARK_COMFY_SERVICE_NAME
 from prompt_formatter import convert_prompt as _convert_prompt
 
 # -------------------- BASE DIR --------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
 # -------------------- LOGGING --------------------
 logging.basicConfig(
