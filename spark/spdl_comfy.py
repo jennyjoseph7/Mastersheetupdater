@@ -8,7 +8,7 @@ import vertexai
 import tempfile
 from openai import OpenAI
 import sys
-print(sys.path)
+print(f"system path:{sys.path}")
 from vertexai.preview.vision_models import Image, ImageGenerationModel
 import google.genai as genai
 from google.genai import types as genai_types
@@ -30,7 +30,7 @@ logging.basicConfig(
 )
 mlogger = logging.getLogger("spdl_comfy")
 
-mlogger.info(f"BASE_DIR: {BASE_DIR}")
+mlogger.info(f": {BASE_DIR}")
 
 # -------------------- ENV VARS --------------------
 PROJECT_ID = os.getenv("PROJECT_ID")
