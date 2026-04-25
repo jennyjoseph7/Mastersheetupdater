@@ -737,77 +737,6 @@
       }
     }
 
-    /* ── CALL ANALYSIS SUMMARY CARD ──────────────────────────────────── */
-    .summary-card {
-      max-width: 1400px;
-      margin: 1.25rem auto 2.5rem;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 1.5rem 2rem;
-    }
-
-    .summary-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 1rem;
-      padding-bottom: 0.75rem;
-    }
-
-    .summary-title {
-      font-family: var(--sans);
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--accent);
-      letter-spacing: 0.02em;
-    }
-
-    .summary-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem 2.5rem;
-    }
-
-    .summary-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.9rem;
-    }
-
-    .summary-label {
-      color: var(--text-dim);
-      font-weight: 500;
-    }
-
-    .summary-dash {
-      color: var(--text-muted);
-    }
-
-    .summary-val {
-      font-family: var(--mono);
-      font-weight: 600;
-      font-size: 0.95rem;
-    }
-
-    .summary-val.blue {
-      color: #60a5fa;
-    }
-
-    .summary-val.green {
-      color: var(--success);
-    }
-
-    .summary-val.amber {
-      color: var(--accent);
-    }
-
-    .summary-val.purple {
-      color: #c084fc;
-    }
-
     /* POLISH PASS: UI ONLY */
     [data-theme="dark"] {
       --bg: #080b10;
@@ -1286,7 +1215,6 @@
     }
 
     .stat-card,
-    .summary-card,
     .quality-card,
     .table-wrapper {
       border-radius: 18px;
@@ -1301,17 +1229,6 @@
     .stat-val {
       font-size: 1.85rem;
       letter-spacing: -0.04em;
-    }
-
-    .summary-card {
-      max-width: none;
-      margin: 0 0 1rem;
-      padding: 1.15rem;
-    }
-
-    .summary-title {
-      color: var(--text);
-      letter-spacing: -0.02em;
     }
 
     .quality-card {
@@ -1700,12 +1617,6 @@
       border-color: var(--border);
     }
 
-    [data-theme="light"] .summary-grid .metric-card,
-    [data-theme="light"] .metric-card {
-      background: rgba(0, 0, 0, 0.02);
-      border-color: var(--border);
-    }
-
     [data-theme="light"] .copy-btn,
     [data-theme="light"] .download-btn {
       background: rgba(0, 0, 0, 0.04);
@@ -1777,6 +1688,10 @@
           <a class="nav-link" href="dashboard.html">
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
             Dashboard
+          </a>
+          <a class="nav-link" href="call_analysis_summary.html">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6m4 6V7m4 10v-4M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            Call Summary
           </a>
         </div>
         <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
@@ -1887,14 +1802,14 @@
           <div class="eyebrow">Step 2</div>
           <div class="section-title">Review and hand off</div>
         </div>
-        <div class="section-note">After processing, check the summary first, then use the preview tables for spot checks
-          before copying or exporting.</div>
+        <div class="section-note">After processing, use the stats and preview tables for spot checks before copying or
+          exporting.</div>
       </div>
 
       <div class="empty-state">
         <div>
           <strong>Waiting for a processed batch</strong>
-          <p>Upload both files and run processing. The call summary, stats, and preview tables will appear here.</p>
+          <p>Upload both files and run processing. The stats, quality checks, and preview tables will appear here.</p>
         </div>
         <div class="empty-steps" aria-hidden="true">
           <span>Upload</span>
@@ -1926,16 +1841,6 @@
           <div class="stat-label">With Recording</div>
           <div class="stat-val blue" id="sRecording">0</div>
         </div>
-      </div>
-
-      <!-- Call Analysis Summary -->
-      <div class="summary-card" id="summaryCard" style="display:none">
-        <div class="summary-header">
-          <div class="summary-title" id="summaryTitle"></div>
-          <button class="btn btn-secondary" onclick="copySummaryText()" id="btnCopySummary"
-            style="padding: 0.25rem 0.6rem; font-size: 0.75rem; height: auto;">Copy</button>
-        </div>
-        <div class="summary-grid" id="summaryGrid"></div>
       </div>
 
       <!-- Data Quality / Reconciliation -->
@@ -2715,7 +2620,6 @@
         renderConvertedTable(output);
         renderTestDriveTable(output);
         renderStats(output);
-        renderSummary(output);
         renderQualityReport(qualityReport);
         hideOverlay();
 
@@ -2762,11 +2666,6 @@
       });
     }
 
-    function compareCaseSensitiveStrings(a, b) {
-      if (a === b) return 0;
-      return a < b ? -1 : 1;
-    }
-
     function getSortedData(data) {
       let sorted = data;
       if (currentSortKey && currentSortDir) {
@@ -2775,7 +2674,7 @@
         sorted.sort((a, b) => {
           const va = String(a[currentSortKey] || '');
           const vb = String(b[currentSortKey] || '');
-          return dir * compareCaseSensitiveStrings(va, vb);
+          return dir * va.localeCompare(vb, undefined, { caseFirst: 'upper' });
         });
       }
       
@@ -2994,81 +2893,6 @@
       document.getElementById('statsBar').classList.add('fade-in');
     }
 
-    // ─── RENDER CALL ANALYSIS SUMMARY ────────────────────────────────────────────
-    function copySummaryText() {
-      const title = document.getElementById('summaryTitle').textContent;
-      const grid = document.getElementById('summaryGrid');
-      const items = Array.from(grid.querySelectorAll('.summary-item')).map(item => {
-        const label = item.querySelector('.summary-label').textContent;
-        const val = item.querySelector('.summary-val').textContent;
-        return `${label} - ${val}`;
-      });
-      const text = `${title}\n\n${items.join('\n')}`;
-
-      try {
-        navigator.clipboard.writeText(text);
-        const btn = document.getElementById('btnCopySummary');
-        btn.textContent = 'Copied';
-        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
-      } catch (e) {
-        console.error('Failed to copy summary:', e);
-      }
-    }
-
-    function renderSummary(data) {
-      const now = new Date();
-      const dateLabel = `${now.getDate()} ${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`;
-
-      const total = data.length;
-      const connected = data.filter(r => r.outcome === 'Connected').length;
-      const bookings = data.filter(r => {
-        const s = (r.summary || '').toLowerCase();
-        return s.includes('converted') || s.includes('booking') || s.includes('booked');
-      }).length;
-      const followUps = data.filter(r => {
-        const s = (r.summary || '').toLowerCase();
-        return s.includes('follow up');
-      }).length;
-      const requestedCallbacks = data.filter(r => {
-        const d = (r.disposition || '').toLowerCase();
-        const s = (r.summary || '').toLowerCase();
-        const ss = (r.session_summary || '').toLowerCase();
-        return d.includes('call back') || d.includes('callback') || d.includes('call later') ||
-          s.includes('requested call back') || s.includes('callback requested') || s.includes('requested callback') ||
-          ss.includes('requested call back') || ss.includes('callback requested') || ss.includes('requested callback');
-      }).length;
-      const testDriveCompleted = data.filter(r => {
-        const s = (r.summary || '').toLowerCase();
-        return s.includes('purchased elsewhere') || s.includes('already purchased');
-      }).length;
-      const notConnectedCalls = data.filter(r => r.outcome === 'Not Connected').length;
-
-      document.getElementById('summaryTitle').textContent = `${dateLabel} — Call Analysis Summary`;
-
-      const items = [
-        { label: 'Total Calls Triggered', val: total, cls: 'blue' },
-        { label: 'Connected Calls', val: connected, cls: 'green' },
-        { label: 'Bookings', val: bookings, cls: 'green' },
-        { label: 'Follow Up Required', val: followUps, cls: 'amber' },
-        { label: 'Requested Call Back', val: requestedCallbacks, cls: 'amber' },
-        { label: 'Test Drive Completed', val: testDriveCompleted, cls: 'blue' },
-        { label: 'Not Connected Calls', val: notConnectedCalls, cls: 'purple' },
-      ];
-
-      const grid = document.getElementById('summaryGrid');
-      grid.innerHTML = items.map(i =>
-        `<div class="summary-item">
-          <span class="summary-label">${i.label}</span>
-          <span class="summary-dash">—</span>
-          <span class="summary-val ${i.cls}">${i.val}</span>
-        </div>`
-      ).join('');
-
-      const card = document.getElementById('summaryCard');
-      card.style.display = 'block';
-      card.classList.add('fade-in');
-    }
-
     function renderQualityReport(report) {
       if (!report) return;
 
@@ -3152,6 +2976,18 @@
       const ws = XLSX.utils.aoa_to_sheet(dataRows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Processed Leads");
+      const summaryRows = [[
+        'Full_Name', 'Phone', 'Outcome', 'Disposition', 'SUMMARY', 'Call_Date', 'Session_Summary'
+      ]];
+      for (const r of getSortedData(processedData)) {
+        summaryRows.push([
+          r.full_name, r.phone, r.outcome, r.disposition, r.summary, r.call_date, r.session_summary || ''
+        ].map(v => typeof v === 'string' ? v.trim() : v));
+      }
+      const summaryWs = XLSX.utils.aoa_to_sheet(summaryRows);
+      XLSX.utils.book_append_sheet(wb, summaryWs, "Summary Source");
+      wb.Workbook = wb.Workbook || {};
+      wb.Workbook.Sheets = wb.SheetNames.map((name, index) => ({ name, Hidden: index === 1 ? 1 : 0 }));
       XLSX.writeFile(wb, "JEJO_Disposition_Sync.xlsx");
     }
 
@@ -3224,7 +3060,6 @@
       document.getElementById('convertedTableWrapper').style.display = 'none';
       document.getElementById('testDriveTableWrapper').style.display = 'none';
       document.getElementById('statsBar').style.display = 'none';
-      document.getElementById('summaryCard').style.display = 'none';
       document.getElementById('qualityCard').style.display = 'none';
       document.getElementById('btnCopy').style.display = 'none';
       document.getElementById('btnExport').style.display = 'none';

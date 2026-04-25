@@ -32,6 +32,8 @@
       --accent2-soft: rgba(91, 156, 245, 0.13);
       --accent3: #a78bfa;
       --accent3-soft: rgba(167, 139, 250, 0.13);
+      --accent4: #63d6a3;
+      --accent4-soft: rgba(99, 214, 163, 0.12);
       --success: #63d6a3;
       --text: #f4f0e8;
       --text-dim: #aeb8c3;
@@ -48,9 +50,11 @@
       --card-hover-shadow-amber: 0 24px 70px rgba(230, 164, 86, 0.1);
       --card-hover-shadow-blue: 0 24px 70px rgba(91, 156, 245, 0.1);
       --card-hover-shadow-purple: 0 24px 70px rgba(167, 139, 250, 0.1);
+      --card-hover-shadow-green: 0 24px 70px rgba(99, 214, 163, 0.1);
       --card-hover-border-amber: rgba(230, 164, 86, 0.4);
       --card-hover-border-blue: rgba(91, 156, 245, 0.4);
       --card-hover-border-purple: rgba(167, 139, 250, 0.4);
+      --card-hover-border-green: rgba(99, 214, 163, 0.4);
     }
 
     /* ── THEME TOKENS — LIGHT ────────────────────────────────────────── */
@@ -65,6 +69,8 @@
       --accent2-soft: rgba(45, 111, 214, 0.08);
       --accent3: #7c3aed;
       --accent3-soft: rgba(124, 58, 237, 0.08);
+      --accent4: #1a9960;
+      --accent4-soft: rgba(26, 153, 96, 0.08);
       --success: #1a9960;
       --text: #1a1e26;
       --text-dim: #4a5568;
@@ -78,9 +84,11 @@
       --card-hover-shadow-amber: 0 16px 48px rgba(196, 122, 30, 0.1);
       --card-hover-shadow-blue: 0 16px 48px rgba(45, 111, 214, 0.1);
       --card-hover-shadow-purple: 0 16px 48px rgba(124, 58, 237, 0.1);
+      --card-hover-shadow-green: 0 16px 48px rgba(26, 153, 96, 0.1);
       --card-hover-border-amber: rgba(196, 122, 30, 0.35);
       --card-hover-border-blue: rgba(45, 111, 214, 0.35);
       --card-hover-border-purple: rgba(124, 58, 237, 0.35);
+      --card-hover-border-green: rgba(26, 153, 96, 0.35);
     }
 
     *,
@@ -213,7 +221,7 @@
 
     .tools-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 1.25rem;
       max-width: 1100px;
       width: 100%;
@@ -254,6 +262,11 @@
       box-shadow: var(--card-hover-shadow-purple);
     }
 
+    .tool-card.green:hover {
+      border-color: var(--card-hover-border-green);
+      box-shadow: var(--card-hover-shadow-green);
+    }
+
     .tool-icon {
       width: 48px;
       height: 48px;
@@ -279,6 +292,12 @@
       background: var(--accent3-soft);
       border: 1px solid rgba(167, 139, 250, 0.3);
       color: var(--accent3);
+    }
+
+    .tool-icon.green {
+      background: var(--accent4-soft);
+      border: 1px solid rgba(99, 214, 163, 0.3);
+      color: var(--accent4);
     }
 
     .tool-name {
@@ -314,6 +333,7 @@
     .tool-card.amber:hover .tool-arrow { color: var(--accent); }
     .tool-card.blue:hover .tool-arrow { color: var(--accent2); }
     .tool-card.purple:hover .tool-arrow { color: var(--accent3); }
+    .tool-card.green:hover .tool-arrow { color: var(--accent4); }
 
     footer {
       margin-top: 3rem;
@@ -325,20 +345,11 @@
       .tools-grid {
         grid-template-columns: 1fr 1fr;
       }
-      .tools-grid .tool-card:last-child {
-        grid-column: 1 / -1;
-        max-width: 400px;
-        justify-self: center;
-      }
     }
 
     @media (max-width: 600px) {
       .tools-grid {
         grid-template-columns: 1fr;
-      }
-      .tools-grid .tool-card:last-child {
-        grid-column: auto;
-        max-width: none;
       }
     }
   </style>
@@ -369,6 +380,21 @@
         table. Process daily call batches.</div>
       <div class="tool-arrow">
         Open tool →
+      </div>
+    </a>
+
+    <a class="tool-card green" href="call_analysis_summary.html">
+      <div class="tool-icon green">
+        <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M9 17v-6m4 6V7m4 10v-4M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+      </div>
+      <div class="tool-name">Call Summary</div>
+      <div class="tool-desc">Upload the processed Disposition Sync export and generate the daily call analysis
+        summary.</div>
+      <div class="tool-arrow">
+        Open summary &#8594;
       </div>
     </a>
 
