@@ -2711,6 +2711,7 @@
         qualityReport = buildQualityReport(rows1, rows2, allLeads, sessionGroups, sessionMap, output, callTriggered);
 
         renderTable(output);
+        updateSortIndicators();
         renderConvertedTable(output);
         renderTestDriveTable(output);
         renderStats(output);
@@ -2769,7 +2770,7 @@
         sorted.sort((a, b) => {
           const va = String(a[currentSortKey] || '');
           const vb = String(b[currentSortKey] || '');
-          return dir * va.localeCompare(vb, undefined, { sensitivity: 'base' });
+          return dir * va.localeCompare(vb, undefined, { caseFirst: 'upper' });
         });
       }
       
