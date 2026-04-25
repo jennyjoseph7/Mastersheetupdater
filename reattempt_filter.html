@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
   <script>
-    (function() {
+    (function () {
       var theme = localStorage.getItem('jejo-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', theme);
     })();
@@ -12,7 +12,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Re-Attempt Filter — JEJO</title>
   <meta name="description"
-    content="Filters truly not-connected leads across multiple days and exports in AutoEngage upload format for re-triggering calls." />
+    content="Filters re-attemptable leads across multiple days and exports in AutoEngage upload format for re-triggering calls." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -22,7 +22,7 @@
   <style>
     /* ── DESIGN TOKENS ─────────────────────────────────────────────────── */
     :root {
-    /* combined dark/light */
+      /* combined dark/light */
       --bg: #080b10;
       --surface: #10151d;
       --surface2: #151c27;
@@ -1073,16 +1073,33 @@
     }
 
     .theme-toggle {
-      width: 40px; height: 40px; border-radius: 12px;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
       border: 1px solid var(--border);
-      background: rgba(255,255,255,0.04);
-      color: var(--text-dim); cursor: pointer;
-      display: grid; place-items: center;
-      transition: all 0.25s; flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-dim);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: all 0.25s;
+      flex-shrink: 0;
     }
-    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); transform: rotate(15deg); }
-    [data-theme="dark"] .icon-sun { display: none; }
-    [data-theme="light"] .icon-moon { display: none; }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+      transform: rotate(15deg);
+    }
+
+    [data-theme="dark"] .icon-sun {
+      display: none;
+    }
+
+    [data-theme="light"] .icon-moon {
+      display: none;
+    }
 
     /* ═════════════════════════════════════════════════════════════════
        LIGHT THEME — FULL PAGE OVERRIDES
@@ -1093,35 +1110,139 @@
         linear-gradient(180deg, #f3f5f8 0%, #eef1f5 42%, #f3f5f8 100%);
       color: var(--text);
     }
+
     [data-theme="light"] body::before {
-      background: linear-gradient(rgba(0,0,0,0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px);
+      background: linear-gradient(rgba(0, 0, 0, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.025) 1px, transparent 1px);
     }
-    [data-theme="light"] header { background: rgba(255,255,255,0.85); backdrop-filter: blur(18px); }
-    [data-theme="light"] .header-badge { background: rgba(0,0,0,0.04); }
-    [data-theme="light"] .header-steps .step-pill { background: rgba(0,0,0,0.04); color: var(--text-muted); }
-    [data-theme="light"] .header-steps .step-pill.active { background: var(--accent-soft); }
-    [data-theme="light"] .panel { background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(250,251,253,0.96)); border-color: var(--border); box-shadow: 0 8px 32px rgba(0,30,80,0.06); }
-    [data-theme="light"] .file-card { background: linear-gradient(160deg, rgba(0,0,0,0.01), rgba(0,0,0,0.005)), var(--surface); border-color: var(--border); box-shadow: inset 0 1px 0 rgba(0,0,0,0.02), 0 2px 12px rgba(0,0,0,0.05); }
-    [data-theme="light"] .drop-zone { background: var(--surface2); border-color: var(--border); }
-    [data-theme="light"] .drop-zone:hover { border-color: var(--accent); background: var(--accent-soft); }
-    [data-theme="light"] .drop-zone-hint { background: rgba(0,0,0,0.03); color: var(--text-muted); }
-    [data-theme="light"] .setting-pill { background: rgba(0,0,0,0.03); border-color: var(--border); }
-    [data-theme="light"] .process-btn { background: linear-gradient(135deg, var(--accent), var(--accent-dim)); color: #fff; }
-    [data-theme="light"] table { background: rgba(255,255,255,0.92); box-shadow: inset 0 1px 0 rgba(0,0,0,0.03); }
-    [data-theme="light"] thead th, [data-theme="light"] thead { background: #eef0f4; color: var(--text-dim); }
-    [data-theme="light"] tr:nth-child(even) { background: rgba(0,0,0,0.02); }
-    [data-theme="light"] tr:hover { background: rgba(0,0,0,0.04); }
-    [data-theme="light"] td, [data-theme="light"] th { border-color: var(--border); }
-    [data-theme="light"] .metric-card, [data-theme="light"] .stat-card { background: rgba(0,0,0,0.02); border-color: var(--border); }
-    [data-theme="light"] .copy-btn, [data-theme="light"] .download-btn { background: rgba(0,0,0,0.04); color: var(--text-dim); border-color: var(--border); }
-    [data-theme="light"] .copy-btn:hover, [data-theme="light"] .download-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
-    [data-theme="light"] footer { border-color: var(--border); }
-    [data-theme="light"] .empty-state { background: rgba(0,0,0,0.02); border-color: var(--border); }
-    [data-theme="light"] select, [data-theme="light"] input[type="text"], [data-theme="light"] input[type="number"] { background: var(--surface); color: var(--text); border-color: var(--border); }
-    [data-theme="light"] .brand-mark { box-shadow: 0 6px 20px rgba(45,111,214,0.2); }
-    [data-theme="light"] .nav-link { background: rgba(0,0,0,0.03); }
-    [data-theme="light"] .theme-toggle { background: rgba(0,0,0,0.04); }
+
+    [data-theme="light"] header {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(18px);
+    }
+
+    [data-theme="light"] .header-badge {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    [data-theme="light"] .header-steps .step-pill {
+      background: rgba(0, 0, 0, 0.04);
+      color: var(--text-muted);
+    }
+
+    [data-theme="light"] .header-steps .step-pill.active {
+      background: var(--accent-soft);
+    }
+
+    [data-theme="light"] .panel {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 251, 253, 0.96));
+      border-color: var(--border);
+      box-shadow: 0 8px 32px rgba(0, 30, 80, 0.06);
+    }
+
+    [data-theme="light"] .file-card {
+      background: linear-gradient(160deg, rgba(0, 0, 0, 0.01), rgba(0, 0, 0, 0.005)), var(--surface);
+      border-color: var(--border);
+      box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.02), 0 2px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    [data-theme="light"] .drop-zone {
+      background: var(--surface2);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .drop-zone:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    [data-theme="light"] .drop-zone-hint {
+      background: rgba(0, 0, 0, 0.03);
+      color: var(--text-muted);
+    }
+
+    [data-theme="light"] .setting-pill {
+      background: rgba(0, 0, 0, 0.03);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .process-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #fff;
+    }
+
+    [data-theme="light"] table {
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.03);
+    }
+
+    [data-theme="light"] thead th,
+    [data-theme="light"] thead {
+      background: #eef0f4;
+      color: var(--text-dim);
+    }
+
+    [data-theme="light"] tr:nth-child(even) {
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    [data-theme="light"] tr:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    [data-theme="light"] td,
+    [data-theme="light"] th {
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .metric-card,
+    [data-theme="light"] .stat-card {
+      background: rgba(0, 0, 0, 0.02);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .copy-btn,
+    [data-theme="light"] .download-btn {
+      background: rgba(0, 0, 0, 0.04);
+      color: var(--text-dim);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .copy-btn:hover,
+    [data-theme="light"] .download-btn:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    [data-theme="light"] footer {
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .empty-state {
+      background: rgba(0, 0, 0, 0.02);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] select,
+    [data-theme="light"] input[type="text"],
+    [data-theme="light"] input[type="number"] {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .brand-mark {
+      box-shadow: 0 6px 20px rgba(45, 111, 214, 0.2);
+    }
+
+    [data-theme="light"] .nav-link {
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    [data-theme="light"] .theme-toggle {
+      background: rgba(0, 0, 0, 0.04);
+    }
   </style>
 </head>
 
@@ -1143,7 +1264,7 @@
         <div>
           <div class="header-badge">JEJO OPS</div>
           <h1>Re-Attempt Filter</h1>
-          <div class="header-sub">Zoho Master Sheet → Smart Not-Connected Filter → AutoEngage Upload</div>
+          <div class="header-sub">Zoho Master Sheet → Smart Re-Attempt Filter → AutoEngage Upload</div>
         </div>
       </div>
       <div class="header-nav">
@@ -1161,19 +1282,33 @@
           </svg>
           Re-Attempt Filter
         </a>
-          <a class="nav-link" href="dashboard.html">
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-            Dashboard
-          </a>
-          <a class="nav-link" href="call_analysis_summary.html">
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6m4 6V7m4 10v-4M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-            Call Summary
-          </a>
+        <a class="nav-link" href="dashboard.html">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          Dashboard
+        </a>
+        <a class="nav-link" href="call_analysis_summary.html">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 17v-6m4 6V7m4 10v-4M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          Call Summary
+        </a>
       </div>
-        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-          <svg class="icon-moon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
-          <svg class="icon-sun" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-        </button>
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <svg class="icon-moon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+        <svg class="icon-sun" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      </button>
     </div>
   </header>
 
@@ -1187,7 +1322,7 @@
           <div class="section-title">Upload & Configure</div>
         </div>
         <div class="section-note">Upload your Zoho Master Sheet export with multi-day data. The tool scans every row,
-          groups by phone, and keeps only truly never-connected leads.</div>
+          groups by phone, and keeps not-connected leads plus connected calls with re-attemptable summaries.</div>
       </div>
 
       <!-- Upload Zone -->
@@ -1216,7 +1351,7 @@
             <path
               d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          Filter Not-Connected Leads
+          Filter Re-Attempt Leads
         </button>
 
         <div class="control-group">
@@ -1235,8 +1370,7 @@
 
         <button class="btn btn-success" id="btnExport" disabled onclick="exportAutoEngage()" style="display:none">
           <svg fill="currentColor" width="14" height="14" viewBox="0 0 24 24">
-            <path
-              d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
           </svg>
           Download AutoEngage CSV
         </button>
@@ -1289,7 +1423,7 @@
           <div class="stat-val purple" id="sUniquePhones">0</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Connected (Excluded)</div>
+          <div class="stat-label">Other Connected (Excluded)</div>
           <div class="stat-val green" id="sConnected">0</div>
         </div>
         <div class="stat-card">
@@ -1340,7 +1474,7 @@
       <!-- Excluded Table -->
       <div class="table-wrapper" id="excludedTableWrapper">
         <div class="table-header">
-          <div class="table-title excluded">Excluded Leads (Already Connected / Terminal)</div>
+          <div class="table-title excluded">Excluded Leads (Other Connected / Terminal)</div>
           <div class="table-caption" id="excludedCaption">0 leads</div>
         </div>
         <div class="table-scroll">
@@ -1372,7 +1506,7 @@
       <span style="color:var(--border);">·</span>
       <span>Re-Attempt Filter</span>
       <span style="color:var(--border);">·</span>
-      <span>Zoho → Not-Connected → AutoEngage</span>
+      <span>Zoho → Re-Attempt → AutoEngage</span>
       <span style="color:var(--border);">·</span>
       <span>No backend · No install</span>
     </div>
@@ -1405,12 +1539,34 @@
 
     // Connected outcomes: lead was successfully reached
     const CONNECTED_OUTCOMES = new Set(['connected']);
+    const REATTEMPT_CONNECTED_SUMMARY_PHRASES = [
+      'LANGUAGE BARRIER',
+      'No Response',
+      'Received call at wrong time',
+      'REQUESTED CALLBACK',
+      'VOICEMAIL',
+      'JUST EXPLORING',
+    ];
 
     function isConnectedOutcome(outcome) {
       const o = String(outcome || '').toLowerCase().trim();
       if (!o) return false;
       if (CONNECTED_OUTCOMES.has(o)) return true;
       return o.includes('connected') && !o.includes('not connected');
+    }
+
+    function normalizeSummaryText(summary) {
+      return String(summary || '')
+        .toLowerCase()
+        .replace(/[_-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function isReattemptConnectedSummary(summary) {
+      const s = normalizeSummaryText(summary);
+      if (!s) return false;
+      return REATTEMPT_CONNECTED_SUMMARY_PHRASES.some(phrase => s.includes(phrase));
     }
 
     // ─── PHONE NORMALIZATION ─────────────────────────────────────────────────────
@@ -1488,6 +1644,10 @@
 
     function detectDisposition(row) {
       return findCol(row, ['disposition', 'call_disposition']);
+    }
+
+    function detectSummary(row) {
+      return findCol(row, ['summary', 'call_summary', 'conversation_summary', 'notes']);
     }
 
     function detectFullName(row) {
@@ -1571,13 +1731,17 @@
         await tick();
 
         // ── CLASSIFY EACH PHONE ──────────────────────────────────────────────
-        const included = [];      // Truly not connected — for re-attempt
+        const included = [];      // Re-attemptable not-connected or connected summary rows
         const excluded = [];      // Connected or terminal — skip
         let connectedCount = 0;
         let terminalCount = 0;
 
         for (const [phone, group] of phoneGroups) {
-          const hasConnected = group.outcomes.some(o => isConnectedOutcome(o));
+          const connectedRows = group.rows.filter(row => isConnectedOutcome(detectOutcome(row)));
+          const reattemptableConnectedRows = connectedRows.filter(row => isReattemptConnectedSummary(detectSummary(row)));
+          const blockingConnectedRows = connectedRows.filter(row => !isReattemptConnectedSummary(detectSummary(row)));
+          const hasConnected = blockingConnectedRows.length > 0;
+          const hasReattemptableConnected = reattemptableConnectedRows.length > 0;
           const hasTerminal = excludeTerminal && group.dispositions.some(d => TERMINAL_DISPOSITIONS.has(d));
 
           // Pick the best (latest) row for this phone's data
@@ -1607,7 +1771,7 @@
               reason: `Terminal: ${termDisp}`,
             });
           } else {
-            // Truly not connected across ALL days → include for re-attempt
+            // Include if never connected, or only connected with a re-attemptable summary
             included.push({
               phone,
               full_name: detectFullName(bestRow),
@@ -1622,6 +1786,7 @@
               dealership_id: dealership.dealership_id,
               brand: dealership.brand,
               subdivision_name: dealership.subdivision_name,
+              reattempt_reason: hasReattemptableConnected ? detectSummary(reattemptableConnectedRows[reattemptableConnectedRows.length - 1]) : '',
             });
           }
         }
@@ -1676,7 +1841,7 @@
         { label: 'Total input rows', value: totalRows, tone: 'blue' },
         { label: 'Unique phones', value: uniquePhones, tone: 'purple' },
         { label: 'Duplicate rows removed', value: totalRows - uniquePhones - skipped, tone: 'amber' },
-        { label: 'Connected (excluded)', value: connected, tone: 'green' },
+        { label: 'Other connected (excluded)', value: connected, tone: 'green' },
         { label: 'Terminal disp. (excluded)', value: terminal, tone: 'amber' },
         { label: 'Invalid phones skipped', value: skipped, tone: 'red' },
         { label: 'Re-attempt output', value: reattempt, tone: 'blue' },
