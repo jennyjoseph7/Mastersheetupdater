@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -1566,7 +1566,7 @@
     function isReattemptConnectedSummary(summary) {
       const s = normalizeSummaryText(summary);
       if (!s) return false;
-      return REATTEMPT_CONNECTED_SUMMARY_PHRASES.some(phrase => s.includes(phrase));
+      return REATTEMPT_CONNECTED_SUMMARY_PHRASES.some(phrase => s.includes(phrase.toLowerCase()));
     }
 
     // ─── PHONE NORMALIZATION ─────────────────────────────────────────────────────
