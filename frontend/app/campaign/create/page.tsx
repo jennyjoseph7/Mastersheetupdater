@@ -1991,7 +1991,7 @@ const handleProceed = async () => {
 
                       {/* Total Row */}
                       <div className="p-4 bg-slate-50 flex justify-between items-center font-bold text-lg rounded-b-lg">
-                        <span>Total Credits</span>
+                        <span>Estimated Credits Required </span>
                         <span>{calculateCredits().toLocaleString()}</span>
                       </div>
                     </div>
