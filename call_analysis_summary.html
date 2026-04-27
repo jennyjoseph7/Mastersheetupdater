@@ -1045,8 +1045,11 @@
       const total = data.length;
       const connected = data.filter(isConnected).length;
       const bookings = data.filter(function(row) {
+        if (!isConnected(row)) return false;
         const s = lower(getEffectiveSummary(row));
-        return s.includes('follow up required') || s.includes('converted') || s.includes('interested');
+        if (s.includes('follow up required') || s.includes('converted')) return true;
+        if (s.includes('not interested')) return false;
+        return s.includes('interested');
       }).length;
       const followUps = data.filter(function(row) {
         return lower(getEffectiveSummary(row)).includes('follow up');
@@ -1060,8 +1063,9 @@
           ss.includes('requested call back') || ss.includes('callback requested') || ss.includes('requested callback');
       }).length;
       const testDriveCompleted = data.filter(function(row) {
+        if (!isConnected(row)) return false;
         const s = lower(getEffectiveSummary(row));
-        return s.includes('purchased elsewhere') || s.includes('already purchased');
+        return s.includes('already booked');
       }).length;
       const notConnectedCalls = data.filter(isNotConnected).length;
 
