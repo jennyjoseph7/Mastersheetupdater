@@ -1471,8 +1471,9 @@
       const COL_MODEL = find(['vehicle_model', 'vehiclemodel', 'model', 'model_preference', 'car_model']);
       const COL_DETAIL = find(['disposition_detail', 'dispositiondetail', 'detail', 'disposition_details']);
       const COL_SUMMARY = find(['summary', 'call_summary', 'callsummary']);
+      const COL_ATTEMPT = find(['attempt', 'number_of_attempts', 'attempts', 'call_attempt']);
 
-      console.log('[Dashboard] Column mapping:', { COL_PHONE, COL_OUTCOME, COL_DATE, COL_MODEL, COL_DETAIL, COL_SUMMARY });
+      console.log('[Dashboard] Column mapping:', { COL_PHONE, COL_OUTCOME, COL_DATE, COL_MODEL, COL_DETAIL, COL_SUMMARY, COL_ATTEMPT });
       console.log('[Dashboard] Sample row:', dashData[0]);
       if (!COL_DATE) {
         alert('Required column missing: Call_Date. Please upload a file that includes the Call_Date column.');
@@ -1486,7 +1487,7 @@
       const norm = (v) => String(v || '').trim().toLowerCase();
 
       let connected = 0, notConnectedStrict = 0, voicemail = 0;
-      let bookings = 0, callsTriggered = 0;
+      let bookings = 0, callsTriggered = 0, invalidLead = 0;
       let incompleteCall = 0, callbackRequestedFromSummary = 0;
 
       rows.forEach(r => {
@@ -1518,6 +1519,10 @@
           bookings++;
         }
 
+        if (sum === 'not interested') {
+          invalidLead++;
+        }
+
         if (det.includes('incomplete') || out.includes('incomplete')) {
           incompleteCall++;
         }
@@ -1525,17 +1530,29 @@
 
       const pendingFollowup = incompleteCall + callbackRequestedFromSummary + notConnectedStrict;
 
-      // ── Unique phones for dedup ──
+      // ── Unique phones for dedup & attempts ──
       const phoneSet = new Set();
       const dupes = [];
-      if (COL_PHONE) {
-        rows.forEach(r => {
+      let uniqueCallsByAttempt = 0;
+
+      rows.forEach(r => {
+        if (COL_PHONE) {
           const p = String(r[COL_PHONE] || '').replace(/\D/g, '');
           if (p) {
             if (phoneSet.has(p)) dupes.push(p);
             else phoneSet.add(p);
           }
-        });
+        }
+        if (COL_ATTEMPT) {
+          const att = String(r[COL_ATTEMPT] || '').trim();
+          if (att === '1' || att === '1.0' || att.toLowerCase() === 'one') {
+            uniqueCallsByAttempt++;
+          }
+        }
+      });
+      
+      if (!COL_ATTEMPT) {
+        uniqueCallsByAttempt = phoneSet.size;
       }
 
       // ── Date range ──
@@ -1612,10 +1629,11 @@
       // KPI Row 1
       const kpiRow1 = document.getElementById('kpiRow1');
       kpiRow1.innerHTML = '';
+      
       const kpis1 = [
-        { label: 'LEADS GIVEN', value: totalLeads, sub: 'Base lead file', color: 'blue', delay: 1 },
-        { label: 'CALLS TRIGGERED', value: callsTriggered, sub: 'From uploaded records', color: 'purple', delay: 2 },
-        { label: 'CONNECTED', value: connected, sub: 'Outcome based', color: 'green', delay: 3 },
+        { label: 'CALLS TRIGGERED', value: callsTriggered, sub: 'Total row count', color: 'purple', delay: 1 },
+        { label: 'CONNECTED', value: connected, sub: 'Outcome based', color: 'green', delay: 2 },
+        { label: 'NOT CONNECTED', value: notConnectedStrict, sub: 'Outcome based', color: 'red', delay: 3 },
         { label: 'VOICEMAIL', value: voicemail, sub: 'Summary based', color: 'amber', delay: 4 },
       ];
       kpis1.forEach(k => kpiRow1.appendChild(makeKPI(k)));
@@ -1624,10 +1642,10 @@
       const kpiRow2 = document.getElementById('kpiRow2');
       kpiRow2.innerHTML = '';
       const kpis2 = [
-        { label: 'UNIQUE CALLS', value: phoneSet.size, sub: 'No duplicates', color: 'amber', delay: 5 },
-        { label: 'BOOKINGS', value: bookings, sub: 'Summary based', color: 'green', delay: 6 },
+        { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: COL_ATTEMPT ? 'Attempt = 1' : 'No duplicates', color: 'amber', delay: 5 },
+        { label: 'TEST DRIVE BOOKINGS', value: bookings, sub: 'Summary based', color: 'green', delay: 6 },
         { label: 'CALLBACK REQUESTED', value: callbackRequestedFromSummary, sub: 'Summary based', color: 'teal', delay: 7 },
-        { label: 'NOT CONNECTED', value: notConnectedStrict, sub: 'Outcome based', color: 'red', delay: 8 },
+        { label: 'INVALID LEAD', value: invalidLead, sub: 'Summary based', color: 'red', delay: 8 },
       ];
       kpis2.forEach(k => kpiRow2.appendChild(makeKPI(k)));
 
