@@ -1250,7 +1250,7 @@ const handleProceed = async () => {
           </DialogContent>
         </Dialog>
 
-        <AddDataSourceDialog
+     <AddDataSourceDialog
           isOpen={isUploadDialogOpen}
           onClose={() => setIsUploadDialogOpen(false)}
           prefilledData={{
@@ -1259,12 +1259,36 @@ const handleProceed = async () => {
             campaignId: createdCampaignId || undefined,
           }}
           onSave={(dataSource) => {
-            loadAudienceData(1); // Reload page 1 on upload
-            if (dataSource.connectionDetails?.taskId) {
-              setTargetAudience((prev) => [
-                ...prev,
-                dataSource.connectionDetails.taskId,
-              ]);
+            // 1. Keep the view on "upload" card
+            setAudienceSourceType("upload");
+            
+            // 2. Extract the new Task ID
+            const newTaskId = dataSource?.connectionDetails?.taskId || dataSource?.task_id || dataSource?.id;
+            
+            if (newTaskId) {
+              setTargetAudience([newTaskId]);
+              
+              // 3. Set initial details (Size might be 0 initially while backend processes)
+              const initialSize = dataSource?.process_size || dataSource?.total_records || dataSource?.total || 0;
+              setSelectedAudienceDetails({
+                task_id: newTaskId,
+                process_size: initialSize,
+                source_name: dataSource?.source_name || dataSource?.audience_name || "Newly Uploaded Audience",
+              });
+
+              // 4. Ping server after 3 seconds to get the fully processed size
+              setTimeout(async () => {
+                 try {
+                   const res: any = await fetchAudienceTasks(1, 10, "all");
+                   const items = res.items || res.data || res || [];
+                   const updatedTask = items.find((t: any) => t.task_id === newTaskId);
+                   if (updatedTask) {
+                      setSelectedAudienceDetails(updatedTask); // Updates size automatically
+                   }
+                 } catch (e) {
+                   console.error("Failed to refresh uploaded task size", e);
+                 }
+              }, 3000);
             }
           }}
         />
@@ -1567,7 +1591,7 @@ const handleProceed = async () => {
                               <div className="space-y-2">
                                 <Label>Start Date</Label>
                                 <Input
-                                  type="date"
+                                  type="datetime-local"
                                   value={duration.start}
                                   onChange={(e) =>
                                     setDuration({
@@ -1586,7 +1610,7 @@ const handleProceed = async () => {
                               <div className="space-y-2">
                                 <Label>End Date</Label>
                                 <Input
-                                  type="date"
+                                  type="datetime-local"
                                   value={duration.end}
                                   onChange={(e) =>
                                     setDuration({
@@ -1813,9 +1837,35 @@ const handleProceed = async () => {
                       <p className="text-xs text-muted-foreground mt-1">Select unused leads</p>
                     </Card>
                   </div>
-
+{/* Render Uploaded Success State */}
+                  {audienceSourceType === "upload" && targetAudience.length > 0 && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-4">
+                      <div className="p-4 border rounded-md bg-green-50 border-green-200 flex justify-between items-center">
+                        <div>
+                          <h4 className="font-semibold text-green-900 flex items-center gap-2">
+                            <Check className="h-5 w-5 text-green-600" /> Audience Uploaded Successfully
+                          </h4>
+                          <p className="text-sm text-green-700 mt-1">
+                            Selected: {selectedAudienceDetails?.source_name || "Custom Audience"}
+                          </p>
+                          {/* <p className="text-xs text-green-600/80 mt-0.5 font-mono">
+                            ID: {targetAudience[0]}
+                          </p> */}
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                           <Badge className="bg-green-600 hover:bg-green-700">Selected</Badge>
+                           {/* Show a loading indicator if size is 0 while waiting for background refresh */}
+                           {parseInt(selectedAudienceDetails?.process_size || 0) === 0 && (
+                             <span className="text-xs text-muted-foreground flex items-center gap-1 animate-pulse mt-1">
+                               <RefreshCw className="h-3 w-3 animate-spin" /> Processing size...
+                             </span>
+                           )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {/* Render Selection Dropdowns Conditionally */}
-                  {(audienceSourceType === "previous" || audienceSourceType === "fresh") && (
+                 {(audienceSourceType === "previous" || audienceSourceType === "fresh") && (
                     <div className="space-y-2 animate-in fade-in slide-in-from-top-4">
                       <Label htmlFor="audience-select" className="font-semibold">
                         {audienceSourceType === "previous" ? "Select Previously Used Audience" : "Select Fresh Audience"}
