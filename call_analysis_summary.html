@@ -978,6 +978,7 @@
             outcome: clean(get(['Outcome'])),
             disposition: clean(get(['Disposition'])),
             summary: clean(get(['SUMMARY', 'Summary', 'disposition_detail', 'call_summary', 'conversation_summary', 'notes'])),
+            updated_summary: clean(get(['Updated SUMMARY', 'Updated Summary', 'updated_summary'])),
             session_summary: clean(get(['Session_Summary', 'Session Summary', 'session_summary'])),
             call_date: clean(get(['Call_Date', 'Call Date', 'created', 'start_time', 'date']))
           };
@@ -1023,6 +1024,12 @@
       return clean(value).toLowerCase();
     }
 
+    function getEffectiveSummary(row) {
+      const updated = clean(row.updated_summary);
+      if (updated) return updated;
+      return clean(row.summary);
+    }
+
     function isConnected(row) {
       return lower(row.outcome) === 'connected';
     }
@@ -1038,22 +1045,22 @@
       const total = data.length;
       const connected = data.filter(isConnected).length;
       const bookings = data.filter(function(row) {
-        const s = lower(row.summary);
-        return s.includes('converted') || s.includes('booking') || s.includes('booked');
+        const s = lower(getEffectiveSummary(row));
+        return s.includes('follow up required') || s.includes('converted') || s.includes('interested');
       }).length;
       const followUps = data.filter(function(row) {
-        return lower(row.summary).includes('follow up');
+        return lower(getEffectiveSummary(row)).includes('follow up');
       }).length;
       const requestedCallbacks = data.filter(function(row) {
         const d = lower(row.disposition);
-        const s = lower(row.summary);
+        const s = lower(getEffectiveSummary(row));
         const ss = lower(row.session_summary);
         return d.includes('call back') || d.includes('callback') || d.includes('call later') ||
           s.includes('requested call back') || s.includes('callback requested') || s.includes('requested callback') ||
           ss.includes('requested call back') || ss.includes('callback requested') || ss.includes('requested callback');
       }).length;
       const testDriveCompleted = data.filter(function(row) {
-        const s = lower(row.summary);
+        const s = lower(getEffectiveSummary(row));
         return s.includes('purchased elsewhere') || s.includes('already purchased');
       }).length;
       const notConnectedCalls = data.filter(isNotConnected).length;
