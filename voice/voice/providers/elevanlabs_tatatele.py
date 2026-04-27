@@ -546,12 +546,6 @@ class CallSession:
                     logger.info(f"[{self.call_id}] Agent requested call end via tool: {tool_name} - triggering hangup")
                     self.stop_event.set() 
 
-                if tool_name in ["language_detection"]:
-                    gryd_tasks.post_lanuage_change(
-                        self.session_data, 
-                        "language_changed"
-                    )    
-
             #  VAD (Voice Activity Detection) 
             elif msg_type == "vad_score":
                 vad_event = msg_data.get("vad_score", {})
