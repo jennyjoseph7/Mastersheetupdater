@@ -14,8 +14,8 @@ import google.genai as genai
 from google.genai import types as genai_types
 from google.genai.local_tokenizer import LocalTokenizer
 from gryd_worker import gryd
-from config import AUTOCRM_SPARK_COMFY_SERVICE_NAME
 from prompt_formatter import convert_prompt as _convert_prompt
+from spark_helpers import func_gryd_file_system
 
 # -------------------- BASE DIR --------------------
 from os.path import dirname, abspath, join as joinpath
@@ -23,6 +23,7 @@ BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
+from config import AUTOCRM_SPARK_COMFY_SERVICE_NAME
 # -------------------- LOGGING --------------------
 logging.basicConfig(
     level=logging.INFO,
@@ -49,7 +50,7 @@ mlogger.info(f"PROJECT_ID: {PROJECT_ID}")
 mlogger.info(f"LOCATION: {LOCATION}")
 
 # -------------------- WORKFLOW --------------------
-WORKFLOW_PATH = os.path.join(BASE_DIR, "comfy_workflows", "Flex.json")
+WORKFLOW_PATH = os.path.join(BASE_DIR,"spark", "comfy_workflows", "Flex.json")
 mlogger.info(f"WORKFLOW_PATH: {WORKFLOW_PATH}")
 SERVICE = AUTOCRM_SPARK_COMFY_SERVICE_NAME
 gryd.SERVICE = SERVICE
@@ -180,7 +181,7 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
                 logger.info(f"Processing output image: {output_path}")
 
                 if os.path.exists(output_path):
-                    url = upload_to_gryd(output_path)
+                    url = func_gryd_file_system(output_path)
                     if url:
                         image_urls.append(url)
                         logger.info(f"Uploaded to GRYD, URL: {url}")
@@ -240,7 +241,8 @@ def gemini_image_generation_task(
             location=LOCATION
         )
 
-        model = "gemini-3-pro-image-preview"
+        model = kwargs.get('model_name', "gemini-2.5-flash-image")
+
 
         task_dir = tempfile.mkdtemp(prefix="gemini_")
         image_urls = []
@@ -304,7 +306,7 @@ def gemini_image_generation_task(
                         with open(output_path, "wb") as f:
                             f.write(part.inline_data.data)
 
-                        url = upload_to_gryd(output_path)
+                        url = func_gryd_file_system(output_path,media_type='image')
 
                         if url:
                             image_urls.append(url)
