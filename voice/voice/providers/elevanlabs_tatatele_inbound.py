@@ -81,7 +81,7 @@ def start_inbound_session_tatatele(session_data: dict) -> dict:
             call_sessions[call_id] = session
 
         logger.info(f"[{call_id}] Starting Connection to websocket bridge (inbound)")
-        external_wss = f"{config.AUTOCRM_WEBSOCKET_BASE_URL}/tatatele/{customer_number}/{agent_number}_{customer_number}"
+        external_wss = f"{config.get_websocket_base_url()}/tatatele/{customer_number}/{agent_number}_{customer_number}"
 
         async def start_bridge():
             await session.connect_external_websocket(external_wss)
@@ -91,7 +91,7 @@ def start_inbound_session_tatatele(session_data: dict) -> dict:
 
     started = start_session(session_id)
 
-    base_ws_url = config.AUTOCRM_WEBSOCKET_BASE_URL
+    base_ws_url = config.get_websocket_base_url()
     wss_url = f"{base_ws_url}/tatatele/{customer_number}_{agent_number}/{agent_number}"
 
     return {
@@ -131,7 +131,7 @@ def inbound_create_stream_url(*args, **kwargs):
     if not from_number or not to_number:
         return jsonify({"success": False, "error": "from_number and to_number are required"}), 400
 
-    base_ws_url = config.AUTOCRM_WEBSOCKET_BASE_URL
+    base_ws_url = config.get_websocket_base_url()
     wss_url = f"{base_ws_url}/tatatele/{from_number}_{to_number}/{to_number}"
     return jsonify({"success": True, "wss_url": wss_url}), 200
 

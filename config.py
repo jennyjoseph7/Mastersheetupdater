@@ -503,3 +503,9 @@ AUTOCRM_VOICE_SERVICE_NAME_2 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_2", "a
 AUTOCRM_VOICE_SERVICE_NAME_3 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_3", "autocrm-voice-3")
 AUTOCRM_VOICE_SERVICE_NAME_4 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_4", "autocrm-voice-4")
 AUTOCRM_VOICE_SERVICE_NAME_5 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_5", "autocrm-voice-5")
+
+
+def get_websocket_base_url():
+    base_ws_url = AUTOCRM_WEBSOCKET_BASE_URL
+    base_ws_url = list(map(lambda x: x.strip(), base_ws_url.split(',')))
+    return hp.random.choice(base_ws_url)

@@ -58,6 +58,7 @@ Thumbs.db
 *.wmv
 
 *audit_logs*
+*logs*
 *__pycache__*
 .env/*
 setup.sh

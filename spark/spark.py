@@ -572,7 +572,7 @@ def openai_image_generation(
         }
 
         data = {
-            "model": OPENAI_IMAGE_MODEL,
+            "model": kwargs.get('model_name', OPENAI_IMAGE_MODEL),
             "prompt": edit_prompt,
             "n": fixed_number_of_images,
             "size": kwargs.get("size", OPENAI_IMAGE_SIZE),

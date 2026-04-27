@@ -1,0 +1,24 @@
+{
+    "name": "socket_server",
+    "attributes": [
+        {
+            "name": "socket_server_url",
+            "id": true
+        },
+        {
+            "name": "environment",
+            "type": "text",
+            "default": "autongage-production"
+        },
+        {
+            "name": "active_connections",
+            "type": "number",
+            "default": 0
+        },
+        {
+            "name": "max_active_connections",
+            "type": "number",
+            "default": 100
+        }
+    ]
+}

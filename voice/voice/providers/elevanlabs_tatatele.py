@@ -1,5 +1,6 @@
 from time import time, monotonic
 import os, sys
+from gryd_worker import gryd_helpers as hp
 
 import pytz
 _root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -1034,7 +1035,7 @@ def make_call_tatatele(session_data, *args, **kwargs):
             call_sessions[call_id] = session
 
         logger.info(f"[{call_id}] Starting Connection to websocket bridge")
-        external_wss = f"{config.AUTOCRM_WEBSOCKET_BASE_URL}/tatatele/{customer_number}/{agent_number}_{customer_number}"
+        external_wss = f"{config.get_websocket_base_url()}/tatatele/{customer_number}/{agent_number}_{customer_number}"
 
         async def start_bridge():
             await session.connect_external_websocket(external_wss)
@@ -1142,7 +1143,7 @@ def root():
 def create_stream_url(*args, **kwargs):
     t = time()
     data = request.get_json()
-    base_ws_url = config.AUTOCRM_WEBSOCKET_BASE_URL
+    base_ws_url = config.get_websocket_base_url()
 
     from_number = data.get("from_number")[1:]
     to_number = data.get("to_number")[1:]
