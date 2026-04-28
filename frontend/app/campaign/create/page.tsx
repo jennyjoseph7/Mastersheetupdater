@@ -1591,7 +1591,7 @@ const handleProceed = async () => {
                               <div className="space-y-2">
                                 <Label>Start Date</Label>
                                 <Input
-                                  type="datetime-local"
+                                  type="datetime"
                                   value={duration.start}
                                   onChange={(e) =>
                                     setDuration({
@@ -1610,7 +1610,7 @@ const handleProceed = async () => {
                               <div className="space-y-2">
                                 <Label>End Date</Label>
                                 <Input
-                                  type="datetime-local"
+                                  type="datetime"
                                   value={duration.end}
                                   onChange={(e) =>
                                     setDuration({
