@@ -407,6 +407,7 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     if payload.get("provider_status") == "attempted":
         post_contact_status(**payload)
     else: 
+        payload.pop("user_id", None)
         post_contact_status(message_id, **payload)
 
 
