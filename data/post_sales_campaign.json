@@ -296,17 +296,16 @@
                 ]
             }
         },
-        {
-            "name": "custom_attributes",
+         {
+            "name": "campaign_custom_attributes",
             "type": "object_list",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "campaign_objective",
-                    "campaign_objective_id",
-                    "custom_attributes"
-                ]
-            }
+            "list_type": "nested_object",
+            "dict_keys": [
+                "attribute_name",
+                "attribute_value",
+                "attribute_type",
+                "attribute_description"
+            ]
         },
         {
             "name": "campaign_guardrails_guidelines",
