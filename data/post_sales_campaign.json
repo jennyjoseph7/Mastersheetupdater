@@ -296,7 +296,7 @@
                 ]
             }
         },
-         {
+        {
             "name": "campaign_custom_attributes",
             "type": "object_list",
             "list_type": "nested_object",
@@ -816,7 +816,6 @@
     ],
     "parents": [
         "workshop",
-        "dealership",
-        "communication_credential"
+        "dealership"
     ]
 }

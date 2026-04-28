@@ -803,7 +803,6 @@
     ],
     "parents": [
         "dealership",
-        "showroom",
-        "communication_credential"
+        "showroom"
     ]
 }
