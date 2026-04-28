@@ -768,6 +768,22 @@ def trigger_campaign(*args, **kwargs):
 
     logger.info("All valid leads queued successfully.")
 
+@gryd.is_a_task(function_name="trigger_queued_campaigns")
+def trigger_queued_campaigns(*args, **kwargs):
+    logger.info("------ Triggering Queued Campaigns ------")
+    campaign_type=kwargs.get("campaign_type")
+    lead_table="pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
+    start_timestamp=kwargs.get("start")
+    end_timestamp=kwargs.get("end","")
+
+
+    lead_model = AutocrmModel(lead_table)
+    leads = lead_model.list(_as_option=True, disposition="queued", created=f"{start_timestamp},{end_timestamp}")
+    logger.info(f"Total leads fetched: {len(leads)}, {leads[0] if leads else 'No leads found'}")
+    for lead in leads:
+        logger.info(f"Queueing task for lead_id={lead.get('lead_id')}")
+        list(process_single_lead(None, lead, lead.get("campaign_type"), lead.get("campaign_id")))
+
 @gryd.is_a_task(function_name="nada_pre_sales")
 def nada_pre_sales(*args,**kwargs):
     logger.info(f"------ nada_pre_sales ------")
@@ -1447,3 +1463,22 @@ def testing_whatsapp_template():
         }]
     
     # return "No Template Found"
+
+
+
+if  __name__ == "__main__":
+#    gryd.create_async_task(
+#        "trigger_queued_campaigns",
+#        AUTOCRM_CAMPAIGN_SERVICE_NAME,
+#         args=[],
+#         kwargs={
+          
+#             "campaign_type": "pre-sales",
+#             "start": 1777036302
+#         },
+#    )
+
+   trigger_queued_campaigns(
+       campaign_type="pre-sales",
+       start=1777036302
+   )
