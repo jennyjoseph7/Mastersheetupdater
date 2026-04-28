@@ -790,6 +790,7 @@ const handleProceed = async () => {
       : selectedObjective,
       campaign_sub_type: selectedObjectiveData?.campaignSubType || "other",
       campaign_user_source: "file",
+      campaign_custom_attributes: selectedObjectiveData?.custom_campaign_attributes || [],
     };
 
     // NEW LOGIC: Append Voice configs if voice is selected
