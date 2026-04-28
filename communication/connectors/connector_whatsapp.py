@@ -289,6 +289,7 @@ def post_contact_status(*args, **data):
                     order="DESC",
                 )
             )
+            logger.info(f"[post_contact_status] user with phone_number={data.get('phone_number')} has person records: {person_d}")
             if person_d and channel:
                 person = person_d[0]
                 user_id = person.get("user_id")

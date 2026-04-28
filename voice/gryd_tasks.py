@@ -398,7 +398,7 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
         session_data.update(additiona_params)
 
     logger.info(f'Posting contact status with payload: {session_data}: status: {session_data.get("status")}, message_id: {message_id}, session_id: {session_id}')
-    attrs=["phone_number", "user_id", "lead_id","campaign_id","campaign_type","email","dealership_id","channel","campaign_model"]
+    attrs=["phone_number", "lead_id","campaign_id","campaign_type","email","dealership_id","channel","campaign_model"]
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
     payload["message_id"] = message_id or generate_uid(session_data)
@@ -407,7 +407,6 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     if payload.get("provider_status") == "attempted":
         post_contact_status(**payload)
     else: 
-        payload.pop("user_id", None)
         post_contact_status(message_id, **payload)
 
 
