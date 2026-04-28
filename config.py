@@ -441,6 +441,19 @@ def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, 
         logger.error(f"File: {filename_csv} or {filename_json} not found")
         raise FileNotFoundError(f"Seed file for : {data_name} not found")
 
+AUTOCRM_VOICE_SERVICE_NAME_1 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_1", "autocrm-voice-1")
+AUTOCRM_VOICE_SERVICE_NAME_2 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_2", "autocrm-voice-2")
+AUTOCRM_VOICE_SERVICE_NAME_3 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_3", "autocrm-voice-3")
+AUTOCRM_VOICE_SERVICE_NAME_4 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_4", "autocrm-voice-4")
+AUTOCRM_VOICE_SERVICE_NAME_5 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_5", "autocrm-voice-5")
+
+
+def get_websocket_base_url():
+    base_ws_url = AUTOCRM_WEBSOCKET_BASE_URL
+    base_ws_url = list(map(lambda x: x.strip(), base_ws_url.split(',')))
+    return hp.random.choice(base_ws_url)
+
+
 
 if __name__ == "__main__":
     
@@ -498,14 +511,3 @@ if __name__ == "__main__":
 
   
 
-AUTOCRM_VOICE_SERVICE_NAME_1 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_1", "autocrm-voice-1")
-AUTOCRM_VOICE_SERVICE_NAME_2 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_2", "autocrm-voice-2")
-AUTOCRM_VOICE_SERVICE_NAME_3 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_3", "autocrm-voice-3")
-AUTOCRM_VOICE_SERVICE_NAME_4 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_4", "autocrm-voice-4")
-AUTOCRM_VOICE_SERVICE_NAME_5 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_5", "autocrm-voice-5")
-
-
-def get_websocket_base_url():
-    base_ws_url = AUTOCRM_WEBSOCKET_BASE_URL
-    base_ws_url = list(map(lambda x: x.strip(), base_ws_url.split(',')))
-    return hp.random.choice(base_ws_url)
