@@ -31,7 +31,9 @@
                     "vehicle_model_id"
                 ],
                 "kwargs": {
-                    "vehicle_model_name": "{vehicle_model_generic_name}"
+                    "vehicle_model_name": "{vehicle_model_generic_name}",
+                    "brand_name": "{brand_name}",
+                    "region_name": "{region_name}"
                 }
             }
         },
@@ -50,7 +52,8 @@
                     "brand_id"
                 ],
                 "kwargs": {
-                    "brand_name": "{brand_name}"
+                    "brand_name": "{brand_name}",
+                    "region_name": "{region_name}"
                 }
             }
         },
@@ -62,7 +65,17 @@
         {
             "name": "region_id",
             "refers": "parents.vehicle_model.region_id",
-            "indexed": true
+            "indexed": true,
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "region",
+                    "region_id"
+                ],
+                "kwargs": {
+                    "region_name": "{region_name}"
+                }
+            }
         },
         {
             "name": "region_name",
