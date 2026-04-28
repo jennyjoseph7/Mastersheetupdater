@@ -502,7 +502,7 @@ def process_common_row(campaign_type, row, models, missing_reason = None, dealer
                 audience_attributes.append({
                     "attribute_name": aa.get("attribute_name"),
                     "attribute_type": aa.get("attribute_type"),
-                    "attribute_description": aa.get("attribute_description")
+                    "attribute_description": aa.get("attribute_description"),
                     "attribute_value": ca
                 })
         if audience_attributes:
