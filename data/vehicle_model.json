@@ -40,7 +40,17 @@
         },
         {
             "name": "region_id",
-            "refers": "parents.brand.region_id"
+            "refers": "parents.brand.region_id",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "region",
+                    "region_id"
+                ],
+                "kwargs": {
+                    "region_name": "{region_name}"
+                }
+            }
         },
         {
             "name": "region_name",
@@ -289,7 +299,8 @@
                     "case": "lower",
                     "attribute_join": "-",
                     "is_unique": true,
-                    "separator": "-"
+                    "separator": "-",
+                    "skip_empty": true
                 }
             },
             "name": "vehicle_model_id",
