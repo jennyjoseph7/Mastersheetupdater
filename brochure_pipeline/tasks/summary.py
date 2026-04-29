@@ -11,7 +11,7 @@ import urllib.parse
 from pathlib import Path
 from bp_utils import get_logger
 from gryd_worker import gryd
-from agents.summary_agent import VectorIngestionAgent
+from brochure_pipeline.agents.summary_agent import VectorIngestionAgent
 from dotenv import load_dotenv
 from config import AutocrmModel
 
