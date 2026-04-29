@@ -644,6 +644,7 @@ class BaseWebhookConverter:
         d=handle_session_logic(mobile_number,"whatsapp_chat",True)
         logger.info(f"Session logic result: {d}")
         user_d=temporary_data.get("whatsapp_user_details")
+        # session_id , channel 
         converse_kwargs.update({
             "session_id":d.get("session_id",None),
             "campaign_id":d.get("campaign_id","inbound"),
@@ -652,7 +653,7 @@ class BaseWebhookConverter:
             # these 2 we need to check and send for email also..
             "provider":user_d.get("whatsapp_provider",None), 
             "contact":user_d.get("mobile_number",None),
-            "lead_id":"inbound" if not d.get("campaign_id") else d.get("lead_id","inbound"),
+            "lead_id":"inbound" if not d.get("campaign_id") else d.get("lead_id","inbound")
             # "lead_id":d.get("lead_id",None),
         })
         # Remove all None values
