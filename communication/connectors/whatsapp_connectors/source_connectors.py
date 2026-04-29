@@ -534,7 +534,7 @@ class BaseWebhookConverter:
             **kwargs: Additional keyword arguments.
         """
         message_dict = self.default_message_dict
-        # logger.info(f"TEST process message dict ---{message_dict}")
+        logger.info(f"TEST process message dict ---{message_dict}")
         if not message_dict:return
         # Extract required fields
         enterprise_id = message_dict.get("enterprise_id")
@@ -544,6 +544,7 @@ class BaseWebhookConverter:
         message_media_url  =message_dict.get("message_media_url")
         message_type= message_dict.get("message_type")
         message_media_type= message_dict.get("message_media_type")
+
 
         if not message_text and not message_media_url:
             logger.error("No valid message text found in body or media URL. Cannot process further.")
