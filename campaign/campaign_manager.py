@@ -49,7 +49,7 @@ def clean_phone_number(phone_number: str) -> str:
 
 def update_error_to_models(error_msg,source=None,stack_trace=None,**kwargs):
     logger.info(f"Error occurred in source-{source} and Error message -{error_msg}")
-    update_lead_disposition_and_post_billing()
+    update_lead_disposition_and_post_billing(kwargs)
         
     return
 
@@ -433,7 +433,7 @@ class BaseCustomCampaignManager:
                     continue
                 # logger.info(f"Session logic result in campaign : {session_data}")
                 user["session_id"]=session_data.get("session_id")
-                
+                logger.info(f"Session_id when triggering campaign to the user--{user.get('session_id')} for a campaign_id--{campaign_data.get('campaign_id')}")
                 #TODO Send async 
                 if is_testing:
                     logger.info(f"[{count}] Sending WhatsApp message synchronously for {campaign_data.get('campaign_id')} for phone_number={campaign_data.get('mobile_number')}")
@@ -752,7 +752,33 @@ def trigger_campaign(*args, **kwargs):
         # )
 
     logger.info("All valid leads queued successfully.")
-   
+
+@gryd.is_a_task(function_name="trigger_queued_campaigns")
+def trigger_queued_campaigns(*args, **kwargs):
+    logger.info("------ Triggering Queued Campaigns ------")
+    campaign_type=kwargs.get("campaign_type")
+    lead_table="pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
+    start_timestamp=kwargs.get("start")
+    end_timestamp=kwargs.get("end")
+    with get_pg_connector() as pg:
+        # leads=list(pg.list(lead_table,f"""
+        #     dict @> '{{"disposition": "queued"}}'
+        #     AND (dict->>'created')::bigint >= {start_timestamp}
+        # """))
+        query = f"""
+        SELECT *
+        FROM {lead_table}
+        WHERE dict @> '{{"disposition": "queued"}}'
+        AND (dict->>'created_at')::bigint >= 1775842778
+        """
+
+        leads = pg.fetch_all(query)
+            # AND (dict->>'created')::bigint BETWEEN {start_timestamp} AND {end_timestamp}
+    logger.info(f"Total leads fetched: {len(leads)}")
+    # for lead in leads:
+    #     logger.info(f"Queueing task for lead_id={lead.get('lead_id')}")
+    #     list(process_single_lead(None, lead, lead.get("campaign_type"), lead.get("campaign_id")))
+        
 @gryd.is_a_task(function_name="nada_pre_sales")
 def nada_pre_sales(*args,**kwargs):
     logger.info(f"------ nada_pre_sales ------")
@@ -1161,8 +1187,9 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
             
             template_data = template_data[0]
             
-            _d=get_communication_credential(dealership_id=lead_data.get("dealership_id"), channel=channel,provider_name=template_data.get("provider_name"))
-            logger.info(f"GET COMMUNICATION CREDS-->{_d}, dealership_id: {lead_data.get('dealership_id')}, channel: {channel} and provider_name: {template_data.get('provider_name')}")
+            # _d=get_communication_credential(dealership_id=lead_data.get("dealership_id"), channel=channel,provider_name=template_data.get("provider_name","rml"))
+            _d=get_communication_credential(dealership_id=lead_data.get("dealership_id"), channel=channel)
+            logger.info(f"GET COMMUNICATION CREDS-->{_d}, dealership_id: {lead_data.get('dealership_id')}, channel: {channel}")
             if _d:
                 sender_name=_d.get("sender")
                 

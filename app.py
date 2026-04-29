@@ -73,7 +73,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
         )
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
-              task="template_approval",
+              task="template_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
               schedule = "*/10 * * * *",
               add_schedule_to_queue=False

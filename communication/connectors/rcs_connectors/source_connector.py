@@ -158,7 +158,7 @@ class RCSMessengerConnector:
             # "provider":user_d.get("rcs",None), 
             "contact":user_d.get("mobile_number",None),
             "lead_id":"inbound" if not d.get("campaign_id") else d.get("lead_id","inbound"),
-            # "lead_id":d.get("lead_id",None),
+            # "lead_id":d.get("lead_id",None)
         })
         # Remove all None values
         converse_kwargs = {k: v for k, v in converse_kwargs.items() if v is not None}

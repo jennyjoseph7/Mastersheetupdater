@@ -478,14 +478,15 @@ def schedule_campaign_trigger(*args, **kwargs):
 
             mlogger.info(f"Found {len(campaigns)} campaigns to trigger in {table}")
 
-            for campaign in campaigns:
-                pg.update(
-                    table,
-                    "campaign_id",
-                    campaign.get("campaign_id"),
-                    {"campaign_status": "Active"},
-                )
+            # for campaign in campaigns:
+            #     pg.update(
+            #         table,
+            #         "campaign_id",
+            #         campaign.get("campaign_id"),
+            #         {"campaign_status": "Active"},
+            #     )
                 # call ananth's task
+                
 
 @gryd.is_a_task(function_name="end_campaigns")
 def end_campaigns():
