@@ -294,8 +294,9 @@ def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id =
     missing_reason = missing_reason or []
     row, missing_reason = get_rooftop(row, models, 'workshop', missing_reason, rooftop_id, logger)
     if isinstance(required_attributes, list):
-        if not all(get_valid_value(row, k) for k in required_attributes):
-            missing_reason.append(f"Required attribute {k} not found in row")
+        for k in required_attributes:
+            if not get_valid_value(row, k):
+                missing_reason.append(f"Required attribute {k} not found in row")
     elif not any([get_valid_value(row, k) for k in ['next_service_due', 'warranty_expiry_date', 'insurance_expiry_date', 'extended_warranty_expiry_date']]):
         missing_reason.append("Either one of next service due date, warranty expiry date, or insurance expiry date is required")
     if is_valid_value(row, 'next_service_due'):
