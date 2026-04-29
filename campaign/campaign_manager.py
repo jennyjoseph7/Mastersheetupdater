@@ -755,32 +755,6 @@ def trigger_campaign(*args, **kwargs):
 
 @gryd.is_a_task(function_name="trigger_queued_campaigns")
 def trigger_queued_campaigns(*args, **kwargs):
-<<<<<<< HEAD
-    logger.info("------ Triggering Queued Campaigns ------")
-    campaign_type=kwargs.get("campaign_type")
-    lead_table="pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
-    start_timestamp=kwargs.get("start")
-    end_timestamp=kwargs.get("end")
-    with get_pg_connector() as pg:
-        # leads=list(pg.list(lead_table,f"""
-        #     dict @> '{{"disposition": "queued"}}'
-        #     AND (dict->>'created')::bigint >= {start_timestamp}
-        # """))
-        query = f"""
-        SELECT *
-        FROM {lead_table}
-        WHERE dict @> '{{"disposition": "queued"}}'
-        AND (dict->>'created_at')::bigint >= 1775842778
-        """
-
-        leads = pg.fetch_all(query)
-            # AND (dict->>'created')::bigint BETWEEN {start_timestamp} AND {end_timestamp}
-    logger.info(f"Total leads fetched: {len(leads)}")
-    # for lead in leads:
-    #     logger.info(f"Queueing task for lead_id={lead.get('lead_id')}")
-    #     list(process_single_lead(None, lead, lead.get("campaign_type"), lead.get("campaign_id")))
-        
-=======
     campaign_type = kwargs.get("campaign_type")
     lead_table="pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
     start_timestamp = kwargs.get("start")
@@ -804,7 +778,6 @@ def trigger_queued_campaigns(*args, **kwargs):
                 logger.error(f"Error occurred while processing lead {lead.get('lead_id')}: {e}")
                 continue
 
->>>>>>> production
 @gryd.is_a_task(function_name="nada_pre_sales")
 def nada_pre_sales(*args,**kwargs):
     logger.info(f"------ nada_pre_sales ------")
