@@ -1035,9 +1035,7 @@ def make_call_tatatele(session_data, *args, **kwargs):
             call_sessions[call_id] = session
 
         logger.info(f"[{call_id}] Starting Connection to websocket bridge")
-        customer_number  = customer_number[-10:]
-        agent_number = agent_number[-10:]
-        external_wss = f"{config.get_websocket_base_url(customer_number)}/tatatele/{customer_number}/{agent_number}_{customer_number}"
+        external_wss = f"{config.get_websocket_base_url(customer_number[-10:])}/tatatele/{customer_number[-10:]}/{agent_number[-10:]}_{customer_number[-10:]}"
 
         async def start_bridge():
             await session.connect_external_websocket(external_wss)
