@@ -315,8 +315,9 @@ def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = 
     row, missing_reason = get_rooftop(row, models, 'showroom', missing_reason, rooftop_id, logger)
     data = row
     if isinstance(required_attributes, list):
-        if not all(get_valid_value(row, k) for k in required_attributes):
-            missing_reason.append(f"Required attribute {k} not found in row")
+        for k in required_attributes:
+            if not get_valid_value(row, k):
+                missing_reason.append(f"Required attribute {k} not found in row")
     for k in [
         "phone_number",
         "email",
