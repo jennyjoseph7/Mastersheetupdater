@@ -1,12 +1,17 @@
 import os
 import json
 import uuid
+import sys
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 import copy
 import urllib.parse
 from pathlib import Path
 from bp_utils import get_logger
 from gryd_worker import gryd
-from agents.summary_agent import VectorIngestionAgent
+from brochure_pipeline.agents.summary_agent import VectorIngestionAgent
 from dotenv import load_dotenv
 from config import AutocrmModel
 

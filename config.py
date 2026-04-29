@@ -448,10 +448,13 @@ AUTOCRM_VOICE_SERVICE_NAME_4 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_4", "a
 AUTOCRM_VOICE_SERVICE_NAME_5 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_5", "autocrm-voice-5")
 
 
-def get_websocket_base_url():
+
+def get_websocket_base_url(seed=None):
+    import random
     base_ws_url = AUTOCRM_WEBSOCKET_BASE_URL
     base_ws_url = list(map(lambda x: x.strip(), base_ws_url.split(',')))
-    return hp.random.choice(base_ws_url)
+    rng = random.Random(int(seed) if seed is not None else None)
+    return rng.choice(base_ws_url)
 
 
 

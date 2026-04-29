@@ -2,7 +2,7 @@ import os
 import json
 from bp_utils import get_logger
 from ai_service import ai_service_app
-from agents.base_agent import BaseAgent
+from brochure_pipeline.agents.base_agent import BaseAgent
 
 logger = get_logger(__name__)
 
