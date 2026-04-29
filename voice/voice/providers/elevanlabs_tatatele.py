@@ -1035,7 +1035,9 @@ def make_call_tatatele(session_data, *args, **kwargs):
             call_sessions[call_id] = session
 
         logger.info(f"[{call_id}] Starting Connection to websocket bridge")
-        external_wss = f"{config.get_websocket_base_url()}/tatatele/{customer_number}/{agent_number}_{customer_number}"
+        customer_number  = customer_number[-10:]
+        agent_number = agent_number[-10:]
+        external_wss = f"{config.get_websocket_base_url(customer_number)}/tatatele/{customer_number}/{agent_number}_{customer_number}"
 
         async def start_bridge():
             await session.connect_external_websocket(external_wss)
@@ -1143,10 +1145,12 @@ def root():
 def create_stream_url(*args, **kwargs):
     t = time()
     data = request.get_json()
-    base_ws_url = config.get_websocket_base_url()
 
-    from_number = data.get("from_number")[1:]
-    to_number = data.get("to_number")[1:]
+    from_number = data.get("from_number")[-10:]
+    to_number = data.get("to_number")[-10:]
+
+    base_ws_url = config.get_websocket_base_url(to_number)
+
     wss_url = f"{base_ws_url}/tatatele/{from_number}_{to_number}/{to_number}"
 
     logger.info(f"[webhook-/tatatele/create-stream-url] Generated wss_url took {time() - t:.2f} seconds: {wss_url}")
