@@ -1479,8 +1479,7 @@ if  __name__ == "__main__":
         kwargs={
           
             "campaign_type": "pre-sales",
-            "start": 1777036302,
-            "end":  1777420689
+            "start": 1776885055
         }
    )
 
