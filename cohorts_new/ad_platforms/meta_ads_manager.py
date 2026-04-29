@@ -5,6 +5,7 @@ if _parent not in sys.path:
     sys.path.insert(0, _parent)
 from datetime import datetime, timedelta
 from typing import * 
+from pathlib import Path
 
 try:
     from facebook_business.api import FacebookAdsApi
@@ -24,7 +25,38 @@ except ImportError:
 from cohorts_new.utils.utility import *
 from cohorts_new.utils.common_utils import *
 
+
 logger = get_logger(__name__)
+
+BASE_DIR = Path(__file__).resolve().parent
+logger.info(f"BASE_DIR : {BASE_DIR}")
+def load_default_meta_values():
+    json_path = BASE_DIR.parent / "utils" / "meta_sdk_default_values.json"
+    logger.info(f"Loading default meta values from {json_path}")
+    with open(json_path, "r") as f:
+        return json.load(f)
+
+default_meta_values = load_default_meta_values()
+
+def check_valid_values(_check_value_for : str) -> Union[list[str], Dict[str, list[str]]]:
+    value_map = {
+        "valid_campaign_objectives"     : default_meta_values.get("valid_campaign_objectives"),
+        "valid_call_to_action_values"   : default_meta_values.get("valid_call_to_action_values"),
+        "valid_optimization_goals"      : default_meta_values.get("valid_optimization_goals"),
+        "valid_preview_formats"         : default_meta_values.get("valid_preview_formats"),
+        "valid_billing_events"          : default_meta_values.get("valid_billing_events"),
+        "valid_campaign_status"         : default_meta_values.get("valid_campaign_status"),
+        "valid_special_ad_categories"   : default_meta_values.get("valid_special_ad_categories")
+    }
+
+    _check_value_for = _check_value_for.lower()
+    if _check_value_for == "all":
+        return value_map
+    
+    if _check_value_for not in value_map:
+        raise ValueError(f"Invalid value for: {_check_value_for}")
+    _valid_values = value_map.get(_check_value_for)
+    return _valid_values
 
 CAMPAIGN_FIELDS = [
     "id",
@@ -76,241 +108,18 @@ CREATIVE_FIELDS = [
     "title"
 ]
 
-valid_campaign_objectives = [
-    "OUTCOME_LEADS", "OUTCOME_SALES", "OUTCOME_ENGAGEMENT", "OUTCOME_AWARENESS", "OUTCOME_TRAFFIC", "OUTCOME_APP_PROMOTION"
-]
 
-valid_optimization_goals = [
-    "NONE",
-    "APP_INSTALLS",
-    "AD_RECALL_LIFT",
-    "ENGAGED_USERS",
-    "EVENT_RESPONSES",
-    "IMPRESSIONS",
-    "LEAD_GENERATION",
-    "QUALITY_LEAD",
-    "LINK_CLICKS",
-    "OFFSITE_CONVERSIONS",
-    "PAGE_LIKES",
-    "POST_ENGAGEMENT",
-    "QUALITY_CALL",
-    "REACH",
-    "LANDING_PAGE_VIEWS",
-    "VISIT_INSTAGRAM_PROFILE",
-    "ENGAGED_PAGE_VIEWS",
-    "VALUE",
-    "THRUPLAY",
-    "DERIVED_EVENTS",
-    "APP_INSTALLS_AND_OFFSITE_CONVERSIONS",
-    "CONVERSATIONS",
-    "IN_APP_VALUE",
-    "MESSAGING_PURCHASE_CONVERSION",
-    "SUBSCRIBERS",
-    "REMINDERS_SET",
-    "MEANINGFUL_CALL_ATTEMPT",
-    "PROFILE_VISIT",
-    "PROFILE_AND_PAGE_ENGAGEMENT",
-    "ADVERTISER_SILOED_VALUE",
-    "AUTOMATIC_OBJECTIVE",
-    "MESSAGING_APPOINTMENT_CONVERSION"
-]
-
-valid_call_to_action_values = [
-    "BOOK_TRAVEL",
-    "CONTACT_US",
-    "DONATE",
-    "DONATE_NOW",
-    "DOWNLOAD",
-    "GET_DIRECTIONS",
-    "GO_LIVE",
-    "INTERESTED",
-    "LEARN_MORE",
-    "SEE_DETAILS",
-    "LIKE_PAGE",
-    "MESSAGE_PAGE",
-    "RAISE_MONEY",
-    "SAVE",
-    "SEND_TIP",
-    "SHOP_NOW",
-    "SIGN_UP",
-    "VIEW_INSTAGRAM_PROFILE",
-    "INSTAGRAM_MESSAGE",
-    "LOYALTY_LEARN_MORE",
-    "PURCHASE_GIFT_CARDS",
-    "PAY_TO_ACCESS",
-    "SEE_MORE",
-    "TRY_IN_CAMERA",
-    "WHATSAPP_LINK",
-    "GET_IN_TOUCH",
-    "TRY_NOW",
-    "ASK_A_QUESTION",
-    "START_A_CHAT",
-    "CHAT_NOW",
-    "ASK_US",
-    "CHAT_WITH_US",
-    "BOOK_NOW",
-    "CHECK_AVAILABILITY",
-    "ORDER_NOW",
-    "WHATSAPP_MESSAGE",
-    "GET_MOBILE_APP",
-    "INSTALL_MOBILE_APP",
-    "USE_MOBILE_APP",
-    "INSTALL_APP",
-    "USE_APP",
-    "PLAY_GAME",
-    "TRY_DEMO",
-    "WATCH_VIDEO",
-    "WATCH_MORE",
-    "OPEN_LINK",
-    "NO_BUTTON",
-    "LISTEN_MUSIC",
-    "MOBILE_DOWNLOAD",
-    "GET_OFFER",
-    "GET_OFFER_VIEW",
-    "BUY_NOW",
-    "BUY_TICKETS",
-    "UPDATE_APP",
-    "BET_NOW",
-    "ADD_TO_CART",
-    "SELL_NOW",
-    "GET_SHOWTIMES",
-    "LISTEN_NOW",
-    "GET_EVENT_TICKETS",
-    "REMIND_ME",
-    "SEARCH_MORE",
-    "PRE_REGISTER",
-    "SWIPE_UP_PRODUCT",
-    "SWIPE_UP_SHOP",
-    "PLAY_GAME_ON_FACEBOOK",
-    "VISIT_WORLD",
-    "OPEN_INSTANT_APP",
-    "JOIN_GROUP",
-    "GET_PROMOTIONS",
-    "SEND_UPDATES",
-    "INQUIRE_NOW",
-    "VISIT_PROFILE",
-    "CHAT_ON_WHATSAPP",
-    "EXPLORE_MORE",
-    "CONFIRM",
-    "JOIN_CHANNEL",
-    "MAKE_AN_APPOINTMENT",
-    "ASK_ABOUT_SERVICES",
-    "BOOK_A_CONSULTATION",
-    "GET_A_QUOTE",
-    "BUY_VIA_MESSAGE",
-    "ASK_FOR_MORE_INFO",
-    "VIEW_PRODUCT",
-    "VIEW_CHANNEL",
-    "WATCH_LIVE_VIDEO",
-    "IMAGINE",
-    "CALL",
-    "MISSED_CALL",
-    "CALL_NOW",
-    "CALL_ME",
-    "APPLY_NOW",
-    "BUY",
-    "GET_QUOTE",
-    "SUBSCRIBE",
-    "RECORD_NOW",
-    "VOTE_NOW",
-    "GIVE_FREE_RIDES",
-    "REGISTER_NOW",
-    "OPEN_MESSENGER_EXT",
-    "EVENT_RSVP",
-    "CIVIC_ACTION",
-    "SEND_INVITES",
-    "REFER_FRIENDS",
-    "REQUEST_TIME",
-    "SEE_MENU",
-    "SEARCH",
-    "TRY_IT",
-    "TRY_ON",
-    "LINK_CARD",
-    "DIAL_CODE",
-    "FIND_YOUR_GROUPS",
-    "START_ORDER"
-]
-
-
-valid_preview_formats = [
-    "AUDIENCE_NETWORK_INSTREAM_VIDEO",
-    "AUDIENCE_NETWORK_INSTREAM_VIDEO_MOBILE",
-    "AUDIENCE_NETWORK_OUTSTREAM_VIDEO",
-    "AUDIENCE_NETWORK_REWARDED_VIDEO",
-    "BIZ_DISCO_FEED_MOBILE",
-    "DESKTOP_FEED_STANDARD",
-    "FACEBOOK_IFU_REELS_MOBILE",
-    "FACEBOOK_PROFILE_FEED_DESKTOP",
-    "FACEBOOK_PROFILE_FEED_MOBILE",
-    "FACEBOOK_PROFILE_REELS_MOBILE",
-    "FACEBOOK_REELS_BANNER",
-    "FACEBOOK_REELS_BANNER_DESKTOP",
-    "FACEBOOK_REELS_BANNER_FEED_ANDROID",
-    "FACEBOOK_REELS_BANNER_FEED_ANDROID_LARGE",
-    "FACEBOOK_REELS_BANNER_FULLSCREEN_IOS",
-    "FACEBOOK_REELS_BANNER_FULLSCREEN_MOBILE",
-    "FACEBOOK_REELS_MOBILE",
-    "FACEBOOK_REELS_POSTLOOP",
-    "FACEBOOK_REELS_POSTLOOP_FEED",
-    "FACEBOOK_REELS_SIMILAR_PRODUCTS_MOBILE",
-    "FACEBOOK_REELS_STICKER",
-    "FACEBOOK_STORY_MOBILE",
-    "FACEBOOK_STORY_STICKER_MOBILE",
-    "INSTAGRAM_EXPLORE_CONTEXTUAL",
-    "INSTAGRAM_EXPLORE_GRID_HOME",
-    "INSTAGRAM_EXPLORE_IMMERSIVE",
-    "INSTAGRAM_FEED_WEB",
-    "INSTAGRAM_FEED_WEB_M_SITE",
-    "INSTAGRAM_LEAD_GEN_MULTI_SUBMIT_ADS",
-    "INSTAGRAM_PROFILE_FEED",
-    "INSTAGRAM_PROFILE_REELS",
-    "INSTAGRAM_REELS",
-    "INSTAGRAM_REELS_OVERLAY",
-    "INSTAGRAM_REELS_WEB",
-    "INSTAGRAM_REELS_WEB_M_SITE",
-    "INSTAGRAM_SEARCH_CHAIN",
-    "INSTAGRAM_SEARCH_GRID",
-    "INSTAGRAM_STANDARD",
-    "INSTAGRAM_STORY",
-    "INSTAGRAM_STORY_EFFECT_TRAY",
-    "INSTAGRAM_STORY_WEB",
-    "INSTAGRAM_STORY_WEB_M_SITE",
-    "INSTANT_ARTICLE_RECIRCULATION_AD",
-    "INSTANT_ARTICLE_STANDARD",
-    "INSTREAM_BANNER_DESKTOP",
-    "INSTREAM_BANNER_FEED_IOS",
-    "INSTREAM_BANNER_FULLSCREEN_IOS",
-    "INSTREAM_BANNER_FULLSCREEN_MOBILE",
-    "INSTREAM_BANNER_IMMERSIVE_MOBILE",
-    "INSTREAM_BANNER_MOBILE",
-    "INSTREAM_VIDEO_DESKTOP",
-    "INSTREAM_VIDEO_FULLSCREEN_IOS",
-    "INSTREAM_VIDEO_FULLSCREEN_MOBILE",
-    "INSTREAM_VIDEO_IMAGE",
-    "INSTREAM_VIDEO_IMMERSIVE_MOBILE",
-    "INSTREAM_VIDEO_MOBILE",
-    "JOB_BROWSER_DESKTOP",
-    "JOB_BROWSER_MOBILE",
-    "MARKETPLACE_MOBILE",
-    "MESSENGER_MOBILE_INBOX_MEDIA",
-    "MESSENGER_MOBILE_STORY_MEDIA",
-    "MOBILE_BANNER",
-    "MOBILE_FEED_BASIC",
-    "MOBILE_FEED_STANDARD",
-    "MOBILE_FULLWIDTH",
-    "MOBILE_INTERSTITIAL",
-    "MOBILE_MEDIUM_RECTANGLE",
-    "MOBILE_NATIVE",
-    "RIGHT_COLUMN_STANDARD",
-    "SUGGESTED_VIDEO_DESKTOP",
-    "SUGGESTED_VIDEO_FULLSCREEN_MOBILE",
-    "SUGGESTED_VIDEO_IMMERSIVE_MOBILE",
-    "SUGGESTED_VIDEO_MOBILE",
-    "WATCH_FEED_HOME",
-    "WATCH_FEED_MOBILE",
-    "WHATSAPP_STATUS_MEDIA",
-
-]
+class MetaGraphAPIException(Exception):
+    def __init__(self, error_message, *args, **kwargs):
+        self.error = error_message
+        self.trace = traceback.format_exc()
+        super().__init__(self.error)
+    
+    def to_dict(self):
+        return {
+            "error": self.error,
+            "trace": self.trace
+        }
 
 class MetaAdsManager:
     """
@@ -422,24 +231,6 @@ class MetaAdsManager:
         self.page_id = page_id
         logger.info(f"Page ID set to {self.page_id}")
         return self.page_id
-    
-
-    def check_valid_values(self, _check_value_for : str) -> Union[list[str], Dict[str, list[str]]]:
-        value_map = {
-            "campaign_objectives": valid_campaign_objectives,
-            "call_to_actions": valid_call_to_action_values,
-            "optimization_goals": valid_optimization_goals,
-            "preview_formats": valid_preview_formats,
-        }
-
-        _check_value_for = _check_value_for.lower()
-        if _check_value_for == "all":
-            return value_map
-        
-        if _check_value_for not in value_map:
-            raise ValueError(f"Invalid value for: {_check_value_for}")
-        _valid_values = value_map.get(_check_value_for)
-        return _valid_values
         
 
     def list_all_campaigns(self):
@@ -588,6 +379,52 @@ class MetaAdsManager:
         logger.info(f"Image uploaded. Hash: {image_hash}")
 
         return image_hash
+    
+    def upload_image(
+        self,
+        image_path: Optional[str] = None,
+        image_url: Optional[str] = None,
+        image_name: Optional[str] = None
+    ) -> str:
+        MIME_EXTENSION_MAP = {
+            "image/jpeg": ".jpg",
+            "image/jpg": ".jpg",
+            "image/png": ".png",
+            "image/webp": ".webp",
+            "image/gif": ".gif",
+            "image/bmp": ".bmp",
+            "image/tiff": ".tiff",
+        }
+
+        if not image_path and not image_url:
+            raise ValueError("Either image_path or image_url must be provided")
+        
+        temp_file_path = None 
+
+
+        if image_url:
+            response = requests.get(image_url, timeout=30)
+            response.raise_for_status()
+            content_type = response.headers.get("Content-Type", "").split(";")[0].lower()
+            suffix = MIME_EXTENSION_MAP.get(content_type, ".jpg")  # fallback
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+            tmp.write(response.content)
+            tmp.close()
+            temp_file_path = tmp.name
+            image_path = temp_file_path
+
+        params = {"filename": image_path}
+
+        if image_name:
+            params["name"] = image_name
+            
+        image = self.ad_account.create_ad_image(params=params)
+        image_hash = image["hash"]
+
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+        
+        return image_hash
 
     def create_campaign(
             self,
@@ -608,6 +445,16 @@ class MetaAdsManager:
         if existing_campaign:
             logger.info(f"Found existing campaign: {name}")
             return existing_campaign
+        
+        if objective not in default_meta_values.get("valid_campaign_objectives"):
+            raise ValueError(f"Invalid campaign objective: '{objective}'. Supported objectives: {default_meta_values.get('valid_campaign_objectives')}") 
+
+        if status not in default_meta_values.get("valid_campaign_status"):
+            raise ValueError(f"Invalid campaign status: '{status}'. Supported statuses: {default_meta_values.get('valid_campaign_status')}")
+        
+        if special_ad_categories is not None:
+            if special_ad_categories not in default_meta_values.get("valid_special_ad_categories"):
+                raise ValueError(f"Invalid special ad categories: '{special_ad_categories}'. Supported categories: {default_meta_values.get('valid_special_ad_categories')}")
 
         logger.info(f"Creating campaign: {name}")
         params = {
@@ -628,15 +475,17 @@ class MetaAdsManager:
         daily_budget: int,
         targeting: Dict,
         destination_url: Optional[str] = None,
+        status: str = "PAUSED",
         optimization_goal: str = "LINK_CLICKS",
-        billing_event: str = "IMPRESSIONS"
+        billing_event: str = "IMPRESSIONS",
+        bid_strategy: str = "LOWEST_COST_WITHOUT_CAP"
     ) -> AdSet:
         """
         Create an Ad Set.
         Parameters
         ----------
         daily_budget : int
-            Budget in cents (5000 = $50)
+            Budget in cents (5000 = 50 rupee or $50)
         """
 
         logger.info(f"Ensuring ad set exists : {name}")
@@ -665,11 +514,20 @@ class MetaAdsManager:
             adset_id = adset[AdSet.Field.id]
             logger.info(f"Found existing ad set: {name}. Returning : {adset_id}")
             return AdSet(adset_id)
+        
+        if optimization_goal not in default_meta_values.get("valid_optimization_goals"):
+            raise ValueError(f"Invalid optimization goal: '{optimization_goal}'. Supported goals: {default_meta_values.get('valid_optimization_goals')}")
+
+        if billing_event not in default_meta_values.get("valid_billing_events"):
+            raise ValueError(f"Invalid billing event: '{billing_event}'. Supported events: {default_meta_values.get('valid_billing_events')}")
+
+        if bid_strategy not in default_meta_values.get("valid_bid_strategies"):
+            raise ValueError(f"Invalid bid strategy: '{bid_strategy}'. Supported strategies: {default_meta_values.get('valid_bid_strategies')}")
 
         import pytz
         ist = pytz.timezone('Asia/Kolkata')
         logger.info(f"Creating ad set: {name}")
-        start_time = (datetime.now(ist) + timedelta(minutes=10)).isoformat()
+        # start_time = (datetime.now(ist) + timedelta(minutes=10)).isoformat()
         params = {
             AdSet.Field.name: name,
             AdSet.Field.campaign_id: campaign_id,
@@ -677,13 +535,13 @@ class MetaAdsManager:
             AdSet.Field.billing_event: billing_event,
             AdSet.Field.optimization_goal: optimization_goal,
             AdSet.Field.targeting: targeting,
-            AdSet.Field.start_time: start_time,
-            AdSet.Field.status: "PAUSED",
-            AdSet.Field.bid_strategy: "LOWEST_COST_WITHOUT_CAP"
+            # AdSet.Field.start_time: start_time,
+            AdSet.Field.status: status,
+            AdSet.Field.bid_strategy: bid_strategy
         }
 
-        if destination_url:
-            params[AdSet.Field.promoted_object] = {"link": destination_url}
+        # if destination_url:
+        #     params[AdSet.Field.promoted_object] = {"link": destination_url}
 
         adset = self.ad_account.create_ad_set(params=params)
         logger.info(f"AdSet created: {adset.get_id()}")
@@ -693,6 +551,7 @@ class MetaAdsManager:
             self,
             name: str,
             image_hash: str,
+            # image_url: str,
             title: str,
             body: str,
             link_url: str,
@@ -714,6 +573,7 @@ class MetaAdsManager:
             "page_id": page_id,
             "link_data": {
                 "image_hash": image_hash,
+                # "image_url": image_url,
                 "link": link_url,
                 "message": body,
                 "name": title,
@@ -739,16 +599,31 @@ class MetaAdsManager:
         logger.info(f"Creative created: {creative.get_id()}")
         return creative
 
-    def create_ad(
-        self,
-        ad_set_id: str,
-        creative_id: str,
-        name: str,
-        status: str = "PAUSED"
-    ) -> Ad:
-        """
-        Create an Ad.
-        """
+    def create_ad(self, ad_set_id: str, creative_id: str, name: str, status: str = "PAUSED") -> Ad:
+        """Create an Ad."""
+
+        logger.info(f"Ensuring ad exists : {name}")
+        existing_ads = self.ad_account.get_ads(
+            fields=[
+                Ad.Field.id,
+                Ad.Field.name,
+                Ad.Field.adset_id,
+                Ad.Field.creative,
+                Ad.Field.status,
+            ],
+            params={
+                "adset_id": ad_set_id
+            }
+        )
+
+        for ad in existing_ads:
+            ad_creative = ad.get("creative", {})
+            existing_creative_id = ad_creative.get("id")
+            if ad.get("name") == name and existing_creative_id == creative_id:
+                logger.info(f"Ad already exists. Reusing Ad ID: {ad.get_id()}")
+                return ad
+            
+
         logger.info(f"Creating ad: {name}")
         params = {
             Ad.Field.name: name,
@@ -907,6 +782,110 @@ class MetaAdsManager:
         logger.info("Complete ad pipeline finished")
         return result
     
+    from typing import Optional, Dict, List
+
+    def create_complete_ad(
+        self,
+        # ---------------- CAMPAIGN ----------------
+        campaign_name: str,
+        campaign_objective: str = "OUTCOME_TRAFFIC",
+        campaign_status: str = "PAUSED",
+        special_ad_categories: Optional[List[str]] = None,
+        is_adset_budget_sharing_enabled: bool = False,
+
+        # ---------------- AD SET ----------------
+        adset_name: str = "",
+        daily_budget: int = 0,
+        targeting: Dict = None,
+        destination_url: Optional[str] = None,
+        optimization_goal: str = "LINK_CLICKS",
+        billing_event: str = "IMPRESSIONS",
+
+        # ---------------- IMAGE ----------------
+        image_url: Optional[str] = None,
+        image_name: Optional[str] = None,
+
+        # ---------------- CREATIVE ----------------
+        creative_name: str = "",
+        title: str = "",
+        body: str = "",
+        link_url: str = "",
+        call_to_action: str = "LEARN_MORE",
+        page_id: Optional[str] = None,
+        description: Optional[str] = None,
+
+        # ---------------- AD ----------------
+        ad_name: str = "",
+        ad_status: str = "PAUSED",
+    ) -> Dict[str, str]:
+        """
+        Complete flow:
+        Campaign → Ad Set → Image → Creative → Ad
+        """
+
+        if not targeting:
+            raise ValueError("targeting dict is required")
+
+        # ---------------- CAMPAIGN ----------------
+        campaign = self.create_campaign(
+            name=campaign_name,
+            objective=campaign_objective,
+            status=campaign_status,
+            special_ad_categories=special_ad_categories,
+            is_adset_budget_sharing_enabled=is_adset_budget_sharing_enabled
+        )
+        campaign_id = campaign.get_id()
+
+        # ---------------- AD SET ----------------
+        adset = self.create_ad_set(
+            campaign_id=campaign_id,
+            name=adset_name,
+            daily_budget=daily_budget,
+            targeting=targeting,
+            destination_url=destination_url or link_url,
+            optimization_goal=optimization_goal,
+            billing_event=billing_event
+        )
+        adset_id = adset.get_id()
+
+        # ---------------- IMAGE UPLOAD ----------------
+        image_hash = self.upload_image(
+            image_url = image_url,
+            image_name = image_name
+        )
+
+        # ---------------- CREATIVE ----------------
+        creative = self.create_image_ad_creative(
+            name=creative_name,
+            image_hash=image_hash,
+            title=title,
+            body=body,
+            link_url=link_url,
+            call_to_action=call_to_action,
+            page_id=page_id,
+            description=description
+        )
+        creative_id = creative.get_id()
+
+        # ---------------- AD ----------------
+        ad = self.create_ad(
+            ad_set_id=adset_id,
+            creative_id=creative_id,
+            name=ad_name,
+            status=ad_status
+        )
+        ad_id = ad.get_id()
+
+        return {
+            "campaign_id": campaign_id,
+            "adset_id": adset_id,
+            "creative_id": creative_id,
+            "ad_id": ad_id,
+            "image_hash": image_hash
+        }
+
+                           
+    
     def get_meta_ads_insights(self, since: str, until: str, page_size: int = 500):
         def _extract_action_value(action_list: list, action_type: str) -> str:
             for item in action_list or []:
@@ -1037,12 +1016,6 @@ if __name__ == "__main__":
     page_id =       "your_page_id"
     account_id =    "your_account_id"
 
-
-
-
-
-
-
     manager = MetaAdsManager(
         app_id          =   app_id,
         app_secret      =   app_secret,
@@ -1050,6 +1023,66 @@ if __name__ == "__main__":
         ad_account_id   =   account_id,
         page_id         =   page_id
     )
+
+
+    # ---------------- TARGETING (broad India desktop/mobile example) ----------------
+    targeting = {
+        "geo_locations": {
+            "countries": ["IN"]
+        },
+        "age_min": 21,
+
+        "publisher_platforms": ["facebook", "instagram"],
+        "facebook_positions": ["feed"],
+        "instagram_positions": ["stream"],
+
+        "targeting_automation": {
+            "advantage_audience": 0
+        }
+    }
+
+    result = manager.create_complete_ad(
+        # ---------------- CAMPAIGN ----------------
+        campaign_name="IAMDAVE | Traffic | April - Meta SDK Testing Shreyas",
+        campaign_objective="OUTCOME_TRAFFIC",
+        campaign_status="PAUSED",
+        special_ad_categories=[],
+        is_adset_budget_sharing_enabled=False,
+
+        # ---------------- AD SET ----------------
+        adset_name="India Broad | Traffic Test",
+        daily_budget=10000, 
+        targeting=targeting,
+        destination_url="https://www.iamdave.ai/",
+        optimization_goal="LINK_CLICKS",
+        billing_event="IMPRESSIONS",
+
+        # ---------------- IMAGE ----------------
+        image_url="https://img.freepik.com/free-vector/gradient-npl-illustration_52683-80462.jpg",
+        image_name=None,
+
+        # ---------------- CREATIVE ----------------
+        creative_name="IAMDAVE Main Image Creative",
+        title="Turn Your Ideas into AI Workflows",
+        body="Automate research, content, and workflows with Dave. Start in seconds.",
+        link_url="https://www.iamdave.ai/",
+        call_to_action="LEARN_MORE",
+        page_id=None,  # uses manager.page_id
+        description="AI tools to automate your daily work",
+
+        # ---------------- AD ----------------
+        ad_name="IAMDAVE Traffic Ad v1",
+        ad_status="PAUSED"
+    )
+
+    print(json.dumps(result, indent=4, default=str))
+
+    assert False
+
+
+
+
+
 
 
     
