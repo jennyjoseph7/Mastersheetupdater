@@ -770,19 +770,28 @@ def trigger_campaign(*args, **kwargs):
 
 @gryd.is_a_task(function_name="trigger_queued_campaigns")
 def trigger_queued_campaigns(*args, **kwargs):
-    logger.info("------ Triggering Queued Campaigns ------")
-    campaign_type=kwargs.get("campaign_type")
+    campaign_type = kwargs.get("campaign_type")
     lead_table="pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
-    start_timestamp=kwargs.get("start")
-    end_timestamp=kwargs.get("end","")
+    start_timestamp = kwargs.get("start")
+    end_timestamp = kwargs.get("end","")
+    filters = { "_as_option": True, "disposition": "queued", "created": f"{start_timestamp},{end_timestamp}" }
+    filters.update(kwargs.get("additional_filters", {}))
 
+    logger.info(f"Fetching queued leads for campaign_type={campaign_type} with filters: {filters}")
 
     lead_model = AutocrmModel(lead_table)
-    leads = lead_model.list(_as_option=True, disposition="queued", created=f"{start_timestamp},{end_timestamp}")
+    leads = lead_model.list(**filters)
+
     logger.info(f"Total leads fetched: {len(leads)}, {leads[0] if leads else 'No leads found'}")
-    for lead in leads:
-        logger.info(f"Queueing task for lead_id={lead.get('lead_id')}")
-        list(process_single_lead(None, lead, lead.get("campaign_type"), lead.get("campaign_id")))
+
+    if not kwargs.get("only_list", False):
+        for lead in leads:
+            try:
+                logger.info(f"Queueing task for lead_id={lead.get('lead_id')}")
+                list(process_single_lead(None, lead, lead.get("campaign_type"), lead.get("campaign_id")))
+            except Exception as e:
+                logger.error(f"Error occurred while processing lead {lead.get('lead_id')}: {e}")
+                continue
 
 @gryd.is_a_task(function_name="nada_pre_sales")
 def nada_pre_sales(*args,**kwargs):
@@ -1467,18 +1476,23 @@ def testing_whatsapp_template():
 
 
 if  __name__ == "__main__":
-#    gryd.create_async_task(
-#        "trigger_queued_campaigns",
-#        AUTOCRM_CAMPAIGN_SERVICE_NAME,
-#         args=[],
-#         kwargs={
+   gryd.create_async_task(
+       "trigger_queued_campaigns",
+       AUTOCRM_CAMPAIGN_SERVICE_NAME,
+        args=[],
+        kwargs={
           
-#             "campaign_type": "pre-sales",
-#             "start": 1777036302
-#         },
+            "campaign_type": "pre-sales",
+            "start": 1777036302,
+            "end":  1777420689
+        }
+   )
+
+#    trigger_queued_campaigns(
+#        campaign_type="pre-sales",
+#        start=1777036302,
+#        end = 1777420689,
+#        only_list = True
 #    )
 
-   trigger_queued_campaigns(
-       campaign_type="pre-sales",
-       start=1777036302
-   )
+
