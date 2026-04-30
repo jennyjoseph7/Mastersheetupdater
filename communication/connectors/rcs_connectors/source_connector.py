@@ -57,7 +57,7 @@ class RCSMessengerConnector:
 
             # === Content Type ===
             "message_type": '',            # Type of message (text, image, document, etc.)
-            # "message_text": '',            # Plain text message content
+            "message_text": '',            # Plain text message content
             "message_voice": None,           # Voice media metadata (if any)
             "message_image": None,           # Image media metadata (if any)
             "message_document": None,        # Document media metadata (if any)

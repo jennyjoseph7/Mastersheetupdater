@@ -524,7 +524,6 @@ class BaseWebhookConverter:
     
     # @timelogger(label="process_message_dict")
     
-    
     def process_message_dict(self, *args, **kwargs):
         """
         Processes the message dictionary and triggers a conversation workflow.
@@ -544,7 +543,6 @@ class BaseWebhookConverter:
         message_media_url  =message_dict.get("message_media_url")
         message_type= message_dict.get("message_type")
         message_media_type= message_dict.get("message_media_type")
-
 
         if not message_text and not message_media_url:
             logger.error("No valid message text found in body or media URL. Cannot process further.")
