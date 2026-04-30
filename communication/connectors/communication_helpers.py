@@ -467,143 +467,143 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
         logger.info(f"after triggering post_session_process for session {session_id}.Also updating the last_post_process_time in session_model.")
         return
         
-# def create_new_session(data,channel=None,engaged=False):
-#     logger.info(f"Creating new session for user_id: {data.get('user_id')} and data: {json.dumps(data,indent=4)}")
-#     with get_pg_connector() as pg:
-#         if engaged:
-#             logger.info(f"User has initiated the conversation.So considering it as a pure inbound session.")
-#             campaign_model="pre_sales_campaign" if data.get("campaign_type") == "pre-sales" else "post_sales_campaign"
-#             _d=list(pg.list(campaign_model,{"campaign_objective_name":"Inbound Lead Handling","dealership_id":data.get("dealership_id"),"campaign_type":data.get("campaign_type")}))
-#             if not _d:
-#                 logger.error(f"No inbound campaign found for dealership_id: {data.get('dealership_id')} and campaign_type: {data.get('campaign_type')}")
-#                 return
-#             _c_data=_d[0]
-#         new_session = {
-#             **data,
-#             "session_live": True,
-#             "channel": channel or "whatsapp_chat",
-#             "status": "interacted" if engaged else "queued",
-#             "disposition": "engaged" if engaged else "queued",
-#             "campaign_type": data.get("campaign_type","inbound") if not engaged else _c_data.get("campaign_type"),
-#             "campaign_id": data.get("campaign_id",'inbound') if not engaged else _c_data.get("campaign_id"),
-#             "person_name": data.get("person_name"),
-#             "campaign_objective_name": data.get("campaign_objective_name") if not engaged else _c_data.get("campaign_objective_name"),
-#             "campaign_name": data.get("campaign_name") if not engaged else _c_data.get("campaign_name"),
-#             "created": time.time(),
-#             "updated": time.time(),
-#             "start_time": time.time()
-#         }
-                
-#         data["updated"] = time.time()
-#         # logger.info(f"Data for new session: {json.dumps(new_session,indent=4)}")
-#         # logger.info(f"Generating session_id for new session with data: {json.dumps(data,indent=4)}")
-#         session_id=generate_uid(data)
-#         s= pg.update("session","session_id",session_id,new_session)
-#         logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. And the session_id is -- {s}")
-        
-#         # updating lead last_session_channel 
-#         if data.get("campaign_type") == "pre-sales":
-#             pg.update("pre_sales_lead","pre_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel,"user_id":data.get("user_id")})
-#         elif data.get("campaign_type") == "post-sales":
-#             pg.update("post_sales_lead","post_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel})
-#         # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
-#         return s 
-
-
-def create_new_session(data, channel=None, engaged=False):
+def create_new_session(data,channel=None,engaged=False):
     logger.info(f"Creating new session for user_id: {data.get('user_id')} and data: {json.dumps(data,indent=4)}")
-    
-    user_id = data.get("user_id")
-    dealership_id = data.get("dealership_id")
-    campaign_type = data.get("campaign_type", "inbound")
-
-    now = time.time()
-
     with get_pg_connector() as pg:
-        campaign_data = {}
-
-        # Handling engaged (inbound) scenario
-        if engaged:
-            logger.info("User initiated conversation → inbound session")
-
-            campaign_model = (
-                "pre_sales_campaign"
-                if campaign_type == "pre-sales"
-                else "post_sales_campaign"
-            )
-
-            campaigns = list(pg.list(
-                campaign_model,
-                {
-                    "campaign_objective_name": "Inbound Lead Handling",
-                    "dealership_id": dealership_id,
-                    "campaign_type": campaign_type
-                }
-            ))
-
-            if not campaigns:
-                logger.error(
-                    f"No inbound campaign found for dealership_id: {dealership_id} "
-                    f"and campaign_type: {campaign_type}"
-                )
-                return None
-
-            campaign_data = campaigns[0]
-
+        # if engaged:
+        #     logger.info(f"User has initiated the conversation.So considering it as a pure inbound session.")
+        #     campaign_model="pre_sales_campaign" if data.get("campaign_type") == "pre-sales" else "post_sales_campaign"
+        #     _d=list(pg.list(campaign_model,{"campaign_objective_name":"Inbound Lead Handling","dealership_id":data.get("dealership_id"),"campaign_type":data.get("campaign_type")}))
+        #     if not _d:
+        #         logger.error(f"No inbound campaign found for dealership_id: {data.get('dealership_id')} and campaign_type: {data.get('campaign_type')}")
+        #         return
+        #     _c_data=_d[0]
         new_session = {
             **data,
             "session_live": True,
             "channel": channel or "whatsapp_chat",
             "status": "interacted" if engaged else "queued",
             "disposition": "engaged" if engaged else "queued",
-            "campaign_type": campaign_data.get("campaign_type", campaign_type),
-            "campaign_id": campaign_data.get("campaign_id", data.get("campaign_id", "inbound")),
-            "campaign_objective_name": campaign_data.get(
-                "campaign_objective_name", data.get("campaign_objective_name")
-            ),
-            "campaign_name": campaign_data.get(
-                "campaign_name", data.get("campaign_name")
-            ),
+            "campaign_type": data.get("campaign_type","inbound") ,
+            "campaign_id": data.get("campaign_id",'inbound') ,
             "person_name": data.get("person_name"),
-            "created": now,
-            "updated": now,
-            "start_time": now,
+            "campaign_objective_name": data.get("campaign_objective_name"),
+            "campaign_name": data.get("campaign_name"),
+            "created": time.time(),
+            "updated": time.time(),
+            "start_time": time.time()
         }
-
-        data["updated"] = now
-        # Generate session_id
-        session_id = generate_uid(data)
-
-        session = pg.update("session", "session_id", session_id, new_session)
-
-        logger.info(f"Session created for user_id: {user_id} → session_id: {session_id}")
-
+                
+        data["updated"] = time.time()
+        # logger.info(f"Data for new session: {json.dumps(new_session,indent=4)}")
+        # logger.info(f"Generating session_id for new session with data: {json.dumps(data,indent=4)}")
+        session_id=generate_uid(data)
+        s= pg.update("session","session_id",session_id,new_session)
+        logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. And the session_id is -- {s}")
+        
         # updating lead last_session_channel 
-        lead_id = session.get("lead_id")
-
-        if campaign_type == "pre-sales":
-            pg.update(
-                "pre_sales_lead",
-                "pre_sales_lead_id",
-                lead_id,
-                {
-                    "last_session_channel": channel,
-                    "user_id": user_id
-                }
-            )
-
-        elif campaign_type == "post-sales":
-            pg.update(
-                "post_sales_lead",
-                "post_sales_lead_id",
-                lead_id,
-                {
-                    "last_session_channel": channel
-                }
-            )
+        if data.get("campaign_type") == "pre-sales":
+            pg.update("pre_sales_lead","pre_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel,"user_id":data.get("user_id")})
+        elif data.get("campaign_type") == "post-sales":
+            pg.update("post_sales_lead","post_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel})
         # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
+        return s 
 
-        return session
+
+# def create_new_session(data, channel=None, engaged=False):
+#     logger.info(f"Creating new session for user_id: {data.get('user_id')} and data: {json.dumps(data,indent=4)}")
+    
+#     user_id = data.get("user_id")
+#     dealership_id = data.get("dealership_id")
+#     campaign_type = data.get("campaign_type", "inbound")
+
+#     now = time.time()
+
+#     with get_pg_connector() as pg:
+#         campaign_data = {}
+
+#         # Handling engaged (inbound) scenario
+#         if engaged:
+#             logger.info("User initiated conversation → inbound session")
+
+#             campaign_model = (
+#                 "pre_sales_campaign"
+#                 if campaign_type == "pre-sales"
+#                 else "post_sales_campaign"
+#             )
+
+#             campaigns = list(pg.list(
+#                 campaign_model,
+#                 {
+#                     "campaign_objective_name": "Inbound Lead Handling",
+#                     "dealership_id": dealership_id,
+#                     "campaign_type": campaign_type
+#                 }
+#             ))
+
+#             if not campaigns:
+#                 logger.error(
+#                     f"No inbound campaign found for dealership_id: {dealership_id} "
+#                     f"and campaign_type: {campaign_type}"
+#                 )
+#                 return None
+
+#             campaign_data = campaigns[0]
+
+#         new_session = {
+#             **data,
+#             "session_live": True,
+#             "channel": channel or "whatsapp_chat",
+#             "status": "interacted" if engaged else "queued",
+#             "disposition": "engaged" if engaged else "queued",
+#             "campaign_type": campaign_data.get("campaign_type", campaign_type),
+#             "campaign_id": campaign_data.get("campaign_id", data.get("campaign_id", "inbound")),
+#             "campaign_objective_name": campaign_data.get(
+#                 "campaign_objective_name", data.get("campaign_objective_name")
+#             ),
+#             "campaign_name": campaign_data.get(
+#                 "campaign_name", data.get("campaign_name")
+#             ),
+#             "person_name": data.get("person_name"),
+#             "created": now,
+#             "updated": now,
+#             "start_time": now,
+#         }
+
+#         data["updated"] = now
+#         # Generate session_id
+#         session_id = generate_uid(data)
+
+#         session = pg.update("session", "session_id", session_id, new_session)
+
+#         logger.info(f"Session created for user_id: {user_id} → session_id: {session_id}")
+
+#         # updating lead last_session_channel 
+#         lead_id = session.get("lead_id")
+
+#         if campaign_type == "pre-sales":
+#             pg.update(
+#                 "pre_sales_lead",
+#                 "pre_sales_lead_id",
+#                 lead_id,
+#                 {
+#                     "last_session_channel": channel,
+#                     "user_id": user_id
+#                 }
+#             )
+
+#         elif campaign_type == "post-sales":
+#             pg.update(
+#                 "post_sales_lead",
+#                 "post_sales_lead_id",
+#                 lead_id,
+#                 {
+#                     "last_session_channel": channel
+#                 }
+#             )
+#         # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
+
+#         return session
 
 def get_or_create_person(phone_number):
     """Return person object; create if not exists."""

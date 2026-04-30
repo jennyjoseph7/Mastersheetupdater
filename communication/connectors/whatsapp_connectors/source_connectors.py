@@ -544,9 +544,9 @@ class BaseWebhookConverter:
         message_type= message_dict.get("message_type")
         message_media_type= message_dict.get("message_media_type")
 
-        # if not message_text and not message_media_url:
-        #     logger.error("No valid message text found in body or media URL. Cannot process further.")
-        #     return
+        if not message_text and not message_media_url:
+            logger.error("No valid message text found in body or media URL. Cannot process further.")
+            return
 
         # logger.info(f"[process_message_dict] PROCESSING MESSAGE DICT---{json.dumps(message_dict, indent=4)}")
         
