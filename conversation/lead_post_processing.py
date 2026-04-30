@@ -303,14 +303,14 @@ def post_session_process(*args, **kwargs):
     new_desposition = updated_lead_data.get("disposition", 0)
     position_new_despo = DISPOSITION_SEQUENCE.get(new_desposition, -1)
     existing_position_despo = DISPOSITION_SEQUENCE.get(cur_lead, -1)
-    if position_new_despo > existing_position_despo:
-        with get_pg_connector() as pg:
-            """
-            check heirarchy of diposition before updating lead and session data, only update if the new diposition is higher in heirarchy than the current disposition
-            """
+    with get_pg_connector() as pg:
+        """
+        check heirarchy of diposition before updating lead and session data, only update if the new diposition is higher in heirarchy than the current disposition
+        """
+        pg.update("session","session_id",session_id,session_update_data)
+        mlogger.info("appointment data == {}".format(appt_date_time_purpose))
+        if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
-            pg.update("session","session_id",session_id,session_update_data)
-            mlogger.info("appointment data == {}".format(appt_date_time_purpose))
             if appt_date_time_purpose.get("appointment_date"):
                 visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data)
                 mlogger.info("visit data == {}".format(visit_data))
