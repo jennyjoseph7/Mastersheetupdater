@@ -349,6 +349,10 @@ function start_default_workers() {
 function start_worker() {
 	worker_name=$1
 	entry_point=$( echo $worker_name | awk -F"/" '{print $2}' )
+    if [[ -n $entry_point ]]; then
+    	worker_name=$( echo $worker_name | awk -F"/" '{print $1}' )
+    fi
+    is_foreground=${2:-0}
 	shutdown_time=${3:-110}
 	worker_type=${4:-workers}
 	echo "Checking for $worker_type $worker_name/$entry_point with a timeout of $shutdown_time seconds" 1>&2
@@ -411,9 +415,9 @@ function start_worker() {
 
 function start_agent() {
 	agent_name=$1
-	entry_point=${2:-0}
-	is_foreground=${3:-0}
-	shutdown_time=${4:-110}
+	entry_point=$( echo $agent_name | awk -F"/" '{print $2}' )
+	is_foreground=${2:-0}
+	shutdown_time=${3:-110}
 	echo "Starting agent $agent_name/$entry_point with a timeout of $shutdown_time seconds: foreground? $is_foreground" 1>&2
 	start_worker $agent_name $is_foreground $shutdown_time agents
 	return $?

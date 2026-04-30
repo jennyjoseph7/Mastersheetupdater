@@ -524,7 +524,6 @@ class BaseWebhookConverter:
     
     # @timelogger(label="process_message_dict")
     
-    
     def process_message_dict(self, *args, **kwargs):
         """
         Processes the message dictionary and triggers a conversation workflow.
@@ -534,7 +533,7 @@ class BaseWebhookConverter:
             **kwargs: Additional keyword arguments.
         """
         message_dict = self.default_message_dict
-        # logger.info(f"TEST process message dict ---{message_dict}")
+        logger.info(f"TEST process message dict ---{message_dict}")
         if not message_dict:return
         # Extract required fields
         enterprise_id = message_dict.get("enterprise_id")
@@ -640,9 +639,10 @@ class BaseWebhookConverter:
         logger.info("Calling session logic...")
         
         # call session logic here...
-        d=handle_session_logic(mobile_number,"whatsapp_chat",True)
+        d=handle_session_logic(mobile_number,message_dict.get("from_number"),"whatsapp_chat",True)
         logger.info(f"Session logic result: {d}")
         user_d=temporary_data.get("whatsapp_user_details")
+        # session_id , channel 
         converse_kwargs.update({
             "session_id":d.get("session_id",None),
             "campaign_id":d.get("campaign_id","inbound"),
@@ -651,7 +651,7 @@ class BaseWebhookConverter:
             # these 2 we need to check and send for email also..
             "provider":user_d.get("whatsapp_provider",None), 
             "contact":user_d.get("mobile_number",None),
-            "lead_id":"inbound" if not d.get("campaign_id") else d.get("lead_id","inbound"),
+            "lead_id":"inbound" if not d.get("campaign_id") else d.get("lead_id","inbound")
             # "lead_id":d.get("lead_id",None),
         })
         # Remove all None values

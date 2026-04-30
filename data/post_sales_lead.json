@@ -1698,6 +1698,7 @@
         {
             "name": "disposition",
             "type": "text",
+            "indexed": true,
             "options": [
                 "queued",
                 "attempted",

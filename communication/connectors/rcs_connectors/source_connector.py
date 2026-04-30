@@ -145,8 +145,9 @@ class RCSMessengerConnector:
         
         kwargs["temporary_data"] = temporary_data
         logger.info("Calling session logic...")
+        logger.info(f"message_data.get('to')----{message_data.get('to')}")
         # call session logic here...
-        d=handle_session_logic(message_data.get("mobile_number").replace('rcs:+',''),"rcs",True)
+        d=handle_session_logic(message_data.get("mobile_number").replace('rcs:+',''),message_data.get('to'),"rcs",True)
         logger.info(f"Session logic result: {d}")
         user_d=temporary_data.get("user_details")
         converse_kwargs.update({

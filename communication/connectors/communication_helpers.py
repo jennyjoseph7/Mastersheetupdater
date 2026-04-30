@@ -66,7 +66,7 @@ NullEmptyCheck=[None, "", "null", "None"]
 
 # common functions
 
-def handle_session_logic(phone_number, channel=None,engaged=False,campaign_details=None, from_web_chat=False):
+def handle_session_logic(phone_number, from_number=None,channel=None,engaged=False,campaign_details=None, from_web_chat=False):
     payload = {}
     dealership_id = None
 
@@ -94,10 +94,18 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
             return {**session}
 
         logger.info(f"TEST phone_number: {phone_number}")
+        # get the dealership_id
+        _f={"sender": from_number,"channel":channel}
+        _f = {k: v for k, v in _f.items() if v is not None}
+        creds = list(pg.list("communication_credential", _f ))
+        logger.info(f"TESTT creds: {creds[0]}")
+        if creds:
+            dealership_id = creds[0].get("dealership_id")
+            payload["dealership_id"] = dealership_id
         # 3. CONTACT STATUS
         contact_list = list(
             pg.list_order_by("contact_status", {
-                "phone_number": phone_number,"channel":channel
+                "phone_number": phone_number,"channel":channel,"dealership_id":dealership_id
             },order_by="created", order="DESC")
         )
         logger.info(f"TEST contact_list present: {len(contact_list)}")
@@ -166,11 +174,11 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
             # campaign_data = pg.get(model_name, {"campaign_id": campaign_id})
             campaign_data= pg.get(model_name,"campaign_id",campaign_id)
             if campaign_data:
-                dealership_id = campaign_data.get("dealership_id")
+                # dealership_id = campaign_data.get("dealership_id")
                 payload["campaign_objective_name"] = campaign_data.get("campaign_objective_name")
                 payload["campaign_name"] = campaign_data.get("campaign_name")
-                payload["dealership_id"] = dealership_id
-
+                # payload["dealership_id"] = dealership_id
+                logger.info(f"TESTT in handle_session_logic dealership_id inside ---> {dealership_id}")
                 # get credentials for dealership (skip if "dave")
                 if dealership_id and dealership_id.lower() != "dave":
                     _ = list(pg.list("communication_credential", {"dealership_id": dealership_id}))
@@ -180,10 +188,13 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
             return {**session, "dealership_id": dealership_id}
 
         # 5. NON-CAMPAIGN FLOW
-        creds = list(pg.list("communication_credential", {"sender": phone_number}))
-        if creds:
-            dealership_id = creds[0].get("dealership_id")
-            payload["dealership_id"] = dealership_id
+        # _f={"sender": from_number,"channel":channel}
+        # _f = {k: v for k, v in _f.items() if v is not None}
+        # creds = list(pg.list("communication_credential", _f ))
+        # logger.info(f"TESTT creds: {creds[0]}")
+        # if creds:
+        #     dealership_id = creds[0].get("dealership_id")
+        #     payload["dealership_id"] = dealership_id
 
         session = get_or_create_session(payload,channel,engaged)
         return {**session, "dealership_id": dealership_id}
@@ -470,25 +481,25 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
 # def create_new_session(data,channel=None,engaged=False):
 #     logger.info(f"Creating new session for user_id: {data.get('user_id')} and data: {json.dumps(data,indent=4)}")
 #     with get_pg_connector() as pg:
-#         if engaged:
-#             logger.info(f"User has initiated the conversation.So considering it as a pure inbound session.")
-#             campaign_model="pre_sales_campaign" if data.get("campaign_type") == "pre-sales" else "post_sales_campaign"
-#             _d=list(pg.list(campaign_model,{"campaign_objective_name":"Inbound Lead Handling","dealership_id":data.get("dealership_id"),"campaign_type":data.get("campaign_type")}))
-#             if not _d:
-#                 logger.error(f"No inbound campaign found for dealership_id: {data.get('dealership_id')} and campaign_type: {data.get('campaign_type')}")
-#                 return
-#             _c_data=_d[0]
+#         # if engaged:
+#         #     logger.info(f"User has initiated the conversation.So considering it as a pure inbound session.")
+#         #     campaign_model="pre_sales_campaign" if data.get("campaign_type") == "pre-sales" else "post_sales_campaign"
+#         #     _d=list(pg.list(campaign_model,{"campaign_objective_name":"Inbound Lead Handling","dealership_id":data.get("dealership_id"),"campaign_type":data.get("campaign_type")}))
+#         #     if not _d:
+#         #         logger.error(f"No inbound campaign found for dealership_id: {data.get('dealership_id')} and campaign_type: {data.get('campaign_type')}")
+#         #         return
+#         #     _c_data=_d[0]
 #         new_session = {
 #             **data,
 #             "session_live": True,
 #             "channel": channel or "whatsapp_chat",
 #             "status": "interacted" if engaged else "queued",
 #             "disposition": "engaged" if engaged else "queued",
-#             "campaign_type": data.get("campaign_type","inbound") if not engaged else _c_data.get("campaign_type"),
-#             "campaign_id": data.get("campaign_id",'inbound') if not engaged else _c_data.get("campaign_id"),
+#             "campaign_type": data.get("campaign_type","inbound") ,
+#             "campaign_id": data.get("campaign_id",'inbound') ,
 #             "person_name": data.get("person_name"),
-#             "campaign_objective_name": data.get("campaign_objective_name") if not engaged else _c_data.get("campaign_objective_name"),
-#             "campaign_name": data.get("campaign_name") if not engaged else _c_data.get("campaign_name"),
+#             "campaign_objective_name": data.get("campaign_objective_name"),
+#             "campaign_name": data.get("campaign_name"),
 #             "created": time.time(),
 #             "updated": time.time(),
 #             "start_time": time.time()
@@ -515,7 +526,7 @@ def create_new_session(data, channel=None, engaged=False):
     
     user_id = data.get("user_id")
     dealership_id = data.get("dealership_id")
-    campaign_type = data.get("campaign_type", "inbound")
+    campaign_type = data.get("campaign_type", "pre-sales")
 
     now = time.time()
 
@@ -549,7 +560,7 @@ def create_new_session(data, channel=None, engaged=False):
                 return None
 
             campaign_data = campaigns[0]
-
+            logger.info(f"Found inbound campaign: {json.dumps(campaign_data,indent=4)}")
         new_session = {
             **data,
             "session_live": True,

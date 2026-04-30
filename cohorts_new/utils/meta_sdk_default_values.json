@@ -290,5 +290,18 @@
     "PAGE_LIKES",
     "POST_ENGAGEMENT",
     "LEAD_GENERATION"
-    ]
+    ],
+    "valid_campaign_status": [
+    "ACTIVE",
+    "PAUSED",
+    "DELETED",
+    "ARCHIVED"
+],
+"valid_special_ad_categories": [
+    "NONE",
+    "HOUSING",
+    "EMPLOYMENT",
+    "CREDIT",
+    "ISSUES_ELECTIONS_POLITICS"
+]
 }
