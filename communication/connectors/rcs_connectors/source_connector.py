@@ -97,7 +97,7 @@ class RCSMessengerConnector:
         Skips keys with None, empty strings, empty lists/dicts, or string "null".
         Adds new keys if not present already.
         """
-        logger.info(f"TEST safe update dict ---{updates}")
+        # logger.info(f"TEST safe update dict ---{updates}")
         for key, value in updates.items():
             if value in (None, "", [], {}, "null"):
                 continue
@@ -105,7 +105,7 @@ class RCSMessengerConnector:
             
     def process_message_dict(self,*args,**kwargs):
         message_data = self.default_message_dict
-        logger.info(f"TEST process message dict ---{message_data}")
+        # logger.info(f"TEST process message dict ---{message_data}")
         if not message_data:return
         message_dict=message_data.get("message_dict",{}).get("channelPayload")
         temporary_data = {  

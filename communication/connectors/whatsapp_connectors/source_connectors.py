@@ -533,7 +533,7 @@ class BaseWebhookConverter:
             **kwargs: Additional keyword arguments.
         """
         message_dict = self.default_message_dict
-        logger.info(f"TEST process message dict ---{message_dict}")
+        # logger.info(f"TEST process message dict ---{message_dict}")
         if not message_dict:return
         # Extract required fields
         enterprise_id = message_dict.get("enterprise_id")
@@ -544,7 +544,7 @@ class BaseWebhookConverter:
         message_type= message_dict.get("message_type")
         message_media_type= message_dict.get("message_media_type")
         profile_name= message_dict.get("profile_name")
-        logger.info(f"TESTT profile_name in process message dict ---{profile_name}")
+        logger.info(f"Profile_name in process message dict ---{profile_name}")
         if not message_text and not message_media_url:
             logger.error("No valid message text found in body or media URL. Cannot process further.")
             return
@@ -640,7 +640,7 @@ class BaseWebhookConverter:
         logger.info("Calling session logic...")
         
         # call session logic here...
-        d=handle_session_logic(mobile_number,message_dict.get("from_number"),"whatsapp_chat",True)
+        d=handle_session_logic(mobile_number,profile_name,message_dict.get("from_number"),"whatsapp_chat",True)
         logger.info(f"Session logic result: {d}")
         user_d=temporary_data.get("whatsapp_user_details")
         # session_id , channel 

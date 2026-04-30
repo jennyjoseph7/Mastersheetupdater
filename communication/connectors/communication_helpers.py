@@ -98,7 +98,7 @@ def handle_session_logic(phone_number, profile_name=None,from_number=None,channe
         _f={"sender": from_number,"channel":channel}
         _f = {k: v for k, v in _f.items() if v is not None}
         creds = list(pg.list("communication_credential", _f ))
-        logger.info(f"TESTT creds: {creds[0]}")
+        logger.info(f"In handle_session_logic communication creds: {creds[0]}")
         if creds:
             dealership_id = creds[0].get("dealership_id")
             payload["dealership_id"] = dealership_id
@@ -178,7 +178,7 @@ def handle_session_logic(phone_number, profile_name=None,from_number=None,channe
                 payload["campaign_objective_name"] = campaign_data.get("campaign_objective_name")
                 payload["campaign_name"] = campaign_data.get("campaign_name")
                 # payload["dealership_id"] = dealership_id
-                logger.info(f"TESTT in handle_session_logic dealership_id inside ---> {dealership_id}")
+                logger.info(f"In handle_session_logic dealership_id inside ---> {dealership_id}")
                 # get credentials for dealership (skip if "dave")
                 if dealership_id and dealership_id.lower() != "dave":
                     _ = list(pg.list("communication_credential", {"dealership_id": dealership_id}))
