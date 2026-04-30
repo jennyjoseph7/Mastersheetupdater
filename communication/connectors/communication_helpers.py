@@ -526,7 +526,7 @@ def create_new_session(data, channel=None, engaged=False):
     
     user_id = data.get("user_id")
     dealership_id = data.get("dealership_id")
-    campaign_type = data.get("campaign_type", "inbound")
+    campaign_type = data.get("campaign_type", "pre-sales")
 
     now = time.time()
 
@@ -560,7 +560,7 @@ def create_new_session(data, channel=None, engaged=False):
                 return None
 
             campaign_data = campaigns[0]
-
+            logger.info(f"Found inbound campaign: {json.dumps(campaign_data,indent=4)}")
         new_session = {
             **data,
             "session_live": True,
