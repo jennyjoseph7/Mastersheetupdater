@@ -106,6 +106,7 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
     "engine_capacity_cc",
     "drivetrain",
     "vehicle_variant",
+    "lead_tags",
 
     // VEHICLE IDENTIFIERS
     "vin_number",
