@@ -66,7 +66,7 @@ NullEmptyCheck=[None, "", "null", "None"]
 
 # common functions
 
-def handle_session_logic(phone_number, profile_name=None,from_number=None,channel=None,engaged=False,campaign_details=None, from_web_chat=False):
+def handle_session_logic(phone_number,from_number=None,channel=None,engaged=False,campaign_details=None, from_web_chat=False, profile_name=None):
     payload = {}
     dealership_id = None
 
@@ -98,8 +98,8 @@ def handle_session_logic(phone_number, profile_name=None,from_number=None,channe
         _f={"sender": from_number,"channel":channel}
         _f = {k: v for k, v in _f.items() if v is not None}
         creds = list(pg.list("communication_credential", _f ))
-        logger.info(f"In handle_session_logic communication creds: {creds[0]}")
         if creds:
+            logger.info(f"In handle_session_logic communication creds: {creds[0]}")
             dealership_id = creds[0].get("dealership_id")
             payload["dealership_id"] = dealership_id
         # 3. CONTACT STATUS
