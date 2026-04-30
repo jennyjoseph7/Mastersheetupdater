@@ -20,6 +20,7 @@ if BASE_DIR not in sys.path:
 
 from config import (
     AUTOCRM_APP_ENTERPRISE_ID,
+    AUTOCRM_COMMUNICATION_SERVICE_NAME,
     AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME,
     AutocrmModel,
     gryd,
@@ -34,6 +35,19 @@ from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 m = AutocrmModel("dealership_idea")
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 logger = hp.get_logger("TemplateMigratorAgent")
+
+
+class TemplateMigrationAbortError(Exception):
+    """Raised by a migrator to abort the entire batch immediately.
+
+    Use this when continuing the loop is pointless (e.g. provider-side
+    auth failures that will repeat for every template). Carries a
+    ``user_message`` that is safe to surface to end users / the frontend.
+    """
+
+    def __init__(self, user_message: str, *args):
+        super().__init__(user_message, *args)
+        self.user_message = user_message
 
 
 class TemplateMigratorAgent(BaseAgent, ABC):
@@ -199,6 +213,16 @@ class TemplateMigratorAgent(BaseAgent, ABC):
                 new_record = self.build_migration_record(
                     tmpl, credential, cred_id
                 )
+            except TemplateMigrationAbortError as abort:
+                # Hard-stop signal from a migrator (e.g. RML auth failure).
+                # Continuing the loop would re-trigger the same error for
+                # every remaining template, so we bail out with a clean
+                # user-facing message for the frontend.
+                logger.error(
+                    f"Migration aborted for {cred_id}: {abort.user_message}"
+                )
+                results["error"] = abort.user_message
+                return results
             except Exception as e:
                 logger.error(f"Failed to build migration record: {e}")
                 results["failed"] += 1
@@ -368,6 +392,11 @@ class RouteMobileTemplateMigrator(TemplateMigratorAgent):
     RML_TEMPLATE_URL = "https://apis.rmlconnect.net/wba/template/create"
     RML_LOGIN_URL = "https://apis.rmlconnect.net/auth/v1/login/"
 
+    # Support inbox notified when the RML Login API rejects the stored
+    # credentials (typically a stale/rotated password). The dealership's
+    # primary contact is added alongside it as the receiver.
+    RML_SUPPORT_NOTIFY_EMAIL = "support@autongage.com"
+
     # Route Mobile only accepts these three template categories.
     _VALID_RML_CATEGORIES = {"MARKETING", "UTILITY", "AUTHENTICATION"}
 
@@ -472,11 +501,126 @@ class RouteMobileTemplateMigrator(TemplateMigratorAgent):
         is intentionally ignored.
         """
         if not self._jwt:
-            self._jwt = self._login_for_jwt(credential)
+            try:
+                self._jwt = self._login_for_jwt(credential)
+            except Exception as e:
+                # Bad/expired RML password is the dominant failure here; alert
+                # the support team and the dealership's primary contact so the
+                # credentials can be refreshed before the migration is retried.
+                self._notify_login_failure(credential, str(e))
+                # Hard-stop the batch — every subsequent template would hit
+                # the same auth wall and re-spam the support inbox.
+                raise TemplateMigrationAbortError(
+                    "Invalid login password"
+                ) from e
         return {
             "Content-Type": "application/json",
             "Authorization": self._jwt,
         }
+
+    def _resolve_primary_contact_email(self, credential: dict) -> Optional[str]:
+        """Resolve the dealership's primary contact email for RML alerts.
+
+        Prefers the value already projected onto the credential (via a
+        ``refers`` to the parent dealership). Falls back to fetching the
+        ``dealership`` model when not present, so this works even on
+        credentials whose schema doesn't expose the field directly.
+        """
+        email = credential.get("primary_contact_email")
+        if email:
+            return email
+
+        dealership_id = credential.get("dealership_id")
+        if not dealership_id:
+            return None
+
+        try:
+            dealership = gryd.base_model.Model(
+                "dealership", AUTOCRM_APP_ENTERPRISE_ID
+            ).get(dealership_id)
+        except Exception as e:
+            hp.print_error()
+            logger.warning(
+                f"RML notify: failed to fetch dealership '{dealership_id}' "
+                f"for primary_contact_email: {e}"
+            )
+            return None
+
+        return (dealership or {}).get("primary_contact_email")
+
+    def _notify_login_failure(self, credential: dict, error_message: str) -> None:
+        """Email support + dealership primary contact on RML login failure.
+
+        Best-effort: never raises — a notification failure must not mask
+        the underlying login error that the caller is about to surface.
+        """
+        try:
+            primary_contact_email = self._resolve_primary_contact_email(credential)
+
+            receiver_emails = [self.RML_SUPPORT_NOTIFY_EMAIL]
+            if primary_contact_email and primary_contact_email not in receiver_emails:
+                receiver_emails.append(primary_contact_email)
+
+            dealership_id = credential.get("dealership_id", "")
+            dealer_name = credential.get("dealer_name", "")
+            sender_number = credential.get("sender", "")
+            channel = credential.get("channel", "")
+            waba_id = credential.get("waba_id", "")
+            cred_id = self.communication_credential_id
+
+            html_string = f"""
+                <p>Hi Team,</p>
+
+                <p><b>RML whatsapp api login failed during generic template migration, It could be due to change of username/password or deactivation of account</b></p>
+
+                <p><b>Details:</b></p>
+                <ul>
+                    <li><b>Dealership Id:</b> {dealership_id}</li>
+                    <li><b>Dealer Name:</b> {dealer_name}</li>
+                    <li><b>Sender Number:</b> {sender_number}</li>
+                    <li><b>Channel:</b> {channel}</li>
+                    <li><b>Communication Credential Id:</b> {cred_id}</li>
+                    <li><b>Waba Id :</b> {waba_id}</li>
+                </ul>
+
+                <p><b>Error Response:</b></p>
+                <pre style="background:#f4f4f4;padding:12px;border-radius:6px;font-size:13px;white-space:pre-wrap;">{error_message}</pre>
+
+                <p>Please check the RML credentials (username/password) or account status.</p>
+            """
+
+            email_kwargs = {
+                "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
+                "sender": {
+                    "name": "info",
+                    "email": "info@iamdave.ai",
+                },
+                "receiver": {
+                    "emails": receiver_emails,
+                },
+                "html_string": html_string,
+                "subject": (
+                    f"⚠️ RML Credential Failure for {dealer_name} "
+                    f"{sender_number} - {cred_id}"
+                ),
+            }
+
+            enqueue_result = gryd.create_async_task(
+                "communication_sender",
+                "communication",
+                kwargs=email_kwargs,
+                environment="test"
+            )
+            logger.info(
+                f"RML notify: credential-failure email enqueued to "
+                f"{receiver_emails} for credential '{cred_id}': "
+                f"{enqueue_result}"
+            )
+        except Exception as notify_exc:
+            logger.error(
+                f"RML notify: failed to enqueue login-failure email: "
+                f"{notify_exc}"
+            )
 
     def _build_components(
         self,
