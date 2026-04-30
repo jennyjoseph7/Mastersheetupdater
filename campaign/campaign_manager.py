@@ -1159,7 +1159,6 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                     lead_id=lead_id,
                     campaign_type=campaign_type,
                     campaign_objective= [campaign_objective_name] or [],
-                    # campaign_objective= ["TESTTT"] or [],
                     dealership_id=lead_data.get("dealership_id"),
                     lead_info={}
                 )

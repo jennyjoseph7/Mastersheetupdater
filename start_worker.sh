@@ -30,6 +30,7 @@ export WORKER_PATH=worker
 export WAITRESS_PATH=waitress-serve
 export CRON_SCHEDULER_PATH=execute-cron-continuous
 export CRON_WORKER_PATH=cron_worker
+<<<<<<< HEAD
 DEFAULT_WORKER_EXECUTABLES=""
 
 if [ $PYTHON_VENV != 0 ];then
@@ -39,6 +40,18 @@ if [ $PYTHON_VENV != 0 ];then
 	export CRON_WORKER_PATH=$PYTHON_VENV/bin/cron_worker
 fi
 
+=======
+DEFAULT_WORKER_EXECUTABLES=""i
+
+if [ $PYTHON_VENV != 0 ];then
+        export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
+        export WORKER_PATH=$PYTHON_VENV/bin/worker
+        export CRON_SCHEDULER_PATH=$PYTHON_VENV/bin/execute-cron-continuous
+        export CRON_WORKER_PATH=$PYTHON_VENV/bin/cron_worker
+fi
+
+
+>>>>>>> b2b0d35a7094972405e6a7816149103f95e86a59
 if [[ $DEFAULT_WORKERS != 0 ]];then
 	if [[ $DEFAULT_WORKERS == 1 ]];then
 		DEFAULT_WORKERS="cron-scheduler,cron-worker"
@@ -334,10 +347,17 @@ function start_default_workers() {
 	for executable in ${DEFAULT_WORKER_EXECUTABLES//,/ };do
 		stop_default_worker $executable
 		echo "Starting default workers - $executable"
+<<<<<<< HEAD
         pid_filename=$BASE_DIR/${executable}.pid
         export LOG_FILE=${LOGDIR}/${executable##*/}_stderr.log
         STDOUT_FILE=${LOGDIR}/${executable##*/}_stdout.log
         STDERR_FILE=${LOGDIR}/${executable##*/}.log
+=======
+		pid_filename=$BASE_DIR/${executable}.pid
+		export LOG_FILE=${LOGDIR}/${executable##*/}_stderr.log
+		STDOUT_FILE=${LOGDIR}/${executable##*/}_stdout.log
+		STDERR_FILE=${LOGDIR}/${executable##*/}.log
+>>>>>>> b2b0d35a7094972405e6a7816149103f95e86a59
 		nohup $executable 1>> ${STDOUT_FILE} 2>> ${STDERR_FILE} &
 		w_pid=$!
 		echo $w_pid > $pid_filename
