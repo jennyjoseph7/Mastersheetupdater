@@ -124,7 +124,7 @@ class AirtelWebhookConverter(BaseWebhookConverter):
         text, option_id, media_url, media_mime = None, None, None, None
         if message_type == "text":
             text = message.get("text", {}).get("body")
-            logger.info(f"TEST message_text--{text}")
+            # logger.info(f"TEST message_text--{text}")
             
 
         elif message_type == "button":

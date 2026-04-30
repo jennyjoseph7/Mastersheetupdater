@@ -264,7 +264,7 @@ def post_contact_status(*args, **data):
 
     BILLABLE_STATUSES = {"delivered", "reached", "read", "contacted"}
 
-    # logger.info(f"[post_contact_status] args={args} | data={data}")
+    logger.info(f"[post_contact_status] args={args} | data={data}")
 
     message_id = args[0] if args else None
     incoming_status = (data.get("message_status") or data.get("provider_status","")).lower()

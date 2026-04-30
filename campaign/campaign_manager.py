@@ -50,7 +50,6 @@ def clean_phone_number(phone_number: str) -> str:
 def update_error_to_models(error_msg,source=None,stack_trace=None,**kwargs):
     logger.info(f"Error occurred in source-{source} and Error message -{error_msg}")
     update_lead_disposition_and_post_billing(kwargs)
-        
     return
 
 class BaseCampaignCreater:
@@ -426,8 +425,8 @@ class BaseCustomCampaignManager:
                 
                 logger.info("Checking and creating a session for channel: {channel} and user: {mobile_number}")
                 campaign_d={**campaign_data,**user}
-                session_data=handle_session_logic(mobile_number,channel.lower(),False,campaign_d)
-                logger.info(f"Session logic result in campaign : {session_data}")
+                session_data=handle_session_logic(mobile_number,None,channel.lower(),False,campaign_d)
+                logger.info(f"Session logic result in campaign : {json.dumps(session_data,indent=4)}")
                 if not session_data:
                     logger.error(f"Failed to create session for channel: {channel} and user: {mobile_number}")
                     continue
@@ -1179,7 +1178,17 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 yield {"status": "Error", "error_description": f"Error in get_template: {str(e)}"}
                 return
             
-            if not template_data:
+            if not template_data or not isinstance(template_data, list):
+                update_error_to_models(
+                    error_msg=f"Error in get_template: Invalid template data- {template_data}",
+                    source="get_template",
+                    **{
+                        "lead_id": lead_id,
+                        "campaign_id": campaign_id,
+                        "campaign_type": campaign_type,
+                        "channel": channel
+                    }
+                )
                 yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
                 return
             
@@ -1199,6 +1208,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 template_details=pg.get("template","template_id",templateID)
                 template_data=template_details
         logger.info(f"TEmplate data: {template_data}")
+        
         if template_data.get("provider_name")=="Rml":
             template_data["template_type"] = template_data.get("template_type")+"_template"
         logger.info(f"Template ID for phone_number={lead_data.get('phone_number')}: {template_data.get('template_id')}")
@@ -1406,52 +1416,52 @@ def format_email_payload(campaign_data,campaign_user,mobile_number):
 
 def testing_whatsapp_template():
     
-    return [
-        {
-            "sender": "917795030599",
-            "status": "approved",
-            "buttons": [
-                {
-                    "text": "Book Test Drive",
-                    "type": "QUICK_REPLY"
-                },
-                {
-                    "text": "Explore Aircross",
-                    "type": "QUICK_REPLY"
-                },
-                {
-                    "text": "Request a Call Back",
-                    "type": "QUICK_REPLY"
-                }
-            ],
-            "channel": "whatsapp_chat",
-            "created": 1776770802.5813954,
-            "updated": 1776771015.0534973,
-            "language": "english",
-            "dealer_name": "Dave AI",
-            "region_name": "India",
-            "search_term": "aircross_confirm_test_drives_for_value_advantage text english pre-sales hi person_name thank you for showing interest in the citroën aircross 🙏 we have a special offer for you ✅ running cost from just ₹0.40 km ✅ additional benefits worth ₹1.15 lakh ⏳ limited stock valid till 30th april only 🚗 book a test drive and experience the aircross for yourself — nothing beats a real drive",
-            "template_id": "950110724542119",
-            "campaign_type": "pre-sales",
-            "dealership_id": "dave-ai-india",
-            "provider_name": "Rml",
-            "template_name": "aircross_confirm_test_drives_for_value_advantage",
-            "template_type": "text",
-            "template_message": "Hi {{person_name}},\n\nThank you for showing interest in the Citroën Aircross! 🙏\n\nWe have a special offer for you:\n\n✅ Running cost from just ₹0.40/km* \n✅ Additional benefits worth ₹1.15 Lakh ⏳ Limited stock | Valid till 30th April only\n\n🚗 Book a test drive and experience the Aircross for yourself — nothing beats a real drive!\n",
-            "template_variables": [
-                "person_name"
-            ],
-            "campaign_objective_name": "Aircross- Confirm Test Drive for Value Advantage- WhatsApp",
-            "template_button_payloads": [
-                "aircross_confirm_test_drives_for_value_advantage-book_test_drive",
-                "aircross_confirm_test_drives_for_value_advantage-explore_aircross",
-                "aircross_confirm_test_drives_for_value_advantage-request_a_call_back"
-            ],
-            "communication_credentials_id": "rml-whatsapp_chat-917795030599"
-        }
-    ]
+    # return [
+    #     {
+    #         "sender": "917795030599",
+    #         "status": "approved",
+    #         "buttons": [
+    #             {
+    #                 "text": "Book Test Drive",
+    #                 "type": "QUICK_REPLY"
+    #             },
+    #             {
+    #                 "text": "Explore Aircross",
+    #                 "type": "QUICK_REPLY"
+    #             },
+    #             {
+    #                 "text": "Request a Call Back",
+    #                 "type": "QUICK_REPLY"
+    #             }
+    #         ],
+    #         "channel": "whatsapp_chat",
+    #         "created": 1776770802.5813954,
+    #         "updated": 1776771015.0534973,
+    #         "language": "english",
+    #         "dealer_name": "Dave AI",
+    #         "region_name": "India",
+    #         "search_term": "aircross_confirm_test_drives_for_value_advantage text english pre-sales hi person_name thank you for showing interest in the citroën aircross 🙏 we have a special offer for you ✅ running cost from just ₹0.40 km ✅ additional benefits worth ₹1.15 lakh ⏳ limited stock valid till 30th april only 🚗 book a test drive and experience the aircross for yourself — nothing beats a real drive",
+    #         "template_id": "950110724542119",
+    #         "campaign_type": "pre-sales",
+    #         "dealership_id": "dave-ai-india",
+    #         "provider_name": "Rml",
+    #         "template_name": "aircross_confirm_test_drives_for_value_advantage",
+    #         "template_type": "text",
+    #         "template_message": "Hi {{person_name}},\n\nThank you for showing interest in the Citroën Aircross! 🙏\n\nWe have a special offer for you:\n\n✅ Running cost from just ₹0.40/km* \n✅ Additional benefits worth ₹1.15 Lakh ⏳ Limited stock | Valid till 30th April only\n\n🚗 Book a test drive and experience the Aircross for yourself — nothing beats a real drive!\n",
+    #         "template_variables": [
+    #             "person_name"
+    #         ],
+    #         "campaign_objective_name": "Aircross- Confirm Test Drive for Value Advantage- WhatsApp",
+    #         "template_button_payloads": [
+    #             "aircross_confirm_test_drives_for_value_advantage-book_test_drive",
+    #             "aircross_confirm_test_drives_for_value_advantage-explore_aircross",
+    #             "aircross_confirm_test_drives_for_value_advantage-request_a_call_back"
+    #         ],
+    #         "communication_credentials_id": "rml-whatsapp_chat-917795030599"
+    #     }
+    # ]
     
-    # return "No Template Found"
+    return "No Template Found"
 
 
 

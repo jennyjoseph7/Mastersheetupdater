@@ -603,7 +603,7 @@ def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,c
             _do_db_work(pg_conn)
      
 def call_campaign_workflow(*args, **kwargs):
-
+    
     campaign_id = kwargs.get("campaign_id")
     channel_identifier = kwargs.get("channel_identifier")
     mlogger.info(f"campaign_id: {campaign_id}, channel_identifier: {channel_identifier}")
@@ -624,7 +624,7 @@ def call_campaign_workflow(*args, **kwargs):
         ORDER BY dict->>'lead_id', dict->>'created' DESC;
         """
         records = pg.fetch_all(query, (campaign_id,))
-        # mlogger.info(f"records --{records}")
+        mlogger.info(f"records --{records}")
         if not records:
             return
 
