@@ -30,7 +30,16 @@ export WORKER_PATH=worker
 export WAITRESS_PATH=waitress-serve
 export CRON_SCHEDULER_PATH=execute-cron-continuous
 export CRON_WORKER_PATH=cron_worker
-DEFAULT_WORKER_EXECUTABLES=""
+DEFAULT_WORKER_EXECUTABLES=""i
+
+if [ $PYTHON_VENV != 0 ];then
+        export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
+        export WORKER_PATH=$PYTHON_VENV/bin/worker
+        export CRON_SCHEDULER_PATH=$PYTHON_VENV/bin/execute-cron-continuous
+        export CRON_WORKER_PATH=$PYTHON_VENV/bin/cron_worker
+fi
+
+
 if [[ $DEFAULT_WORKERS != 0 ]];then
 	if [[ $DEFAULT_WORKERS == 1 ]];then
 		DEFAULT_WORKERS="cron-scheduler,cron-worker"
@@ -53,13 +62,6 @@ process_config=`cat start_worker_config.json`
 
 echo "APP Config"
 echo $process_config
-
-if [ $PYTHON_VENV != 0 ];then
-	export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
-	export WORKER_PATH=$PYTHON_VENV/bin/worker
-	export CRON_SCHEDULER_PATH=$PYTHON_VENV/bin/execute-cron-continuous
-	export CRON_WORKER_PATH=$PYTHON_VENV/bin/cron_worker
-fi
 
 function get_process_pids() {
 	# Get the first pid of the process matching the search string
@@ -334,9 +336,9 @@ function start_default_workers() {
 		stop_default_worker $executable
 		echo "Starting default workers - $executable"
 		pid_filename=$BASE_DIR/${executable}.pid
-		export LOG_FILE=${LOGDIR}/${executable}_stderr.log
-		STDOUT_FILE=${LOGDIR}/${executable}_stdout.log
-		STDERR_FILE=${LOGDIR}/${executable}.log
+		export LOG_FILE=${LOGDIR}/${executable##*/}_stderr.log
+		STDOUT_FILE=${LOGDIR}/${executable##*/}_stdout.log
+		STDERR_FILE=${LOGDIR}/${executable##*/}.log
 		nohup $executable 1>> ${STDOUT_FILE} 2>> ${STDERR_FILE} &
 		w_pid=$!
 		echo $w_pid > $pid_filename
