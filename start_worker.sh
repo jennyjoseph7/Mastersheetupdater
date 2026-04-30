@@ -30,7 +30,7 @@ export WORKER_PATH=worker
 export WAITRESS_PATH=waitress-serve
 export CRON_SCHEDULER_PATH=execute-cron-continuous
 export CRON_WORKER_PATH=cron_worker
-DEFAULT_WORKER_EXECUTABLES=""i
+DEFAULT_WORKER_EXECUTABLES=""
 
 if [ $PYTHON_VENV != 0 ];then
         export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
