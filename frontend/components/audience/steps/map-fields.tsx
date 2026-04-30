@@ -91,7 +91,7 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
     "lead_tags"
   ],
      postsales: [
-
+"lead_tags",
     // VEHICLE INFO
     "reg_number",
     "vehicle_brand",
