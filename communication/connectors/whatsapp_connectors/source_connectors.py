@@ -543,7 +543,8 @@ class BaseWebhookConverter:
         message_media_url  =message_dict.get("message_media_url")
         message_type= message_dict.get("message_type")
         message_media_type= message_dict.get("message_media_type")
-
+        profile_name= message_dict.get("profile_name")
+        logger.info(f"TESTT profile_name in process message dict ---{profile_name}")
         if not message_text and not message_media_url:
             logger.error("No valid message text found in body or media URL. Cannot process further.")
             return

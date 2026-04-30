@@ -66,7 +66,7 @@ NullEmptyCheck=[None, "", "null", "None"]
 
 # common functions
 
-def handle_session_logic(phone_number, from_number=None,channel=None,engaged=False,campaign_details=None, from_web_chat=False):
+def handle_session_logic(phone_number, profile_name=None,from_number=None,channel=None,engaged=False,campaign_details=None, from_web_chat=False):
     payload = {}
     dealership_id = None
 
@@ -76,7 +76,7 @@ def handle_session_logic(phone_number, from_number=None,channel=None,engaged=Fal
         payload.update({
             "phone_number": phone_number,
             "user_id": person.get("user_id"),
-            "person_name": person.get("name"),
+            "person_name": person.get("name") or profile_name,
             "email": person.get("email")
         })
 
@@ -527,7 +527,12 @@ def create_new_session(data, channel=None, engaged=False):
     user_id = data.get("user_id")
     dealership_id = data.get("dealership_id")
     campaign_type = data.get("campaign_type", "pre-sales")
-
+    
+    _additional_attributes={
+        "phone_number": data.get("phone_number"),
+        "person_name":data.get("person_name"),
+        "email_name":data.get("email")
+    }
     now = time.time()
 
     with get_pg_connector() as pg:
@@ -560,7 +565,14 @@ def create_new_session(data, channel=None, engaged=False):
                 return None
 
             campaign_data = campaigns[0]
+            
             logger.info(f"Found inbound campaign: {json.dumps(campaign_data,indent=4)}")
+            # creating a lead for this inbound user
+            _final_payload={
+                **campaign_data,
+                **_additional_attributes}
+            d=check_and_create_inbound_lead_object(_final_payload)
+            data["lead_id"] = d.get("lead_id")
         new_session = {
             **data,
             "session_live": True,
@@ -588,10 +600,11 @@ def create_new_session(data, channel=None, engaged=False):
         session = pg.update("session", "session_id", session_id, new_session)
 
         logger.info(f"Session created for user_id: {user_id} → session_id: {session_id}")
-
         # updating lead last_session_channel 
         lead_id = session.get("lead_id")
-
+        if not lead_id:
+            logger.error(f"No lead_id found for session_id: {session_id}")
+            return
         if campaign_type == "pre-sales":
             pg.update(
                 "pre_sales_lead",
@@ -616,6 +629,66 @@ def create_new_session(data, channel=None, engaged=False):
 
         return session
 
+def check_and_create_inbound_lead_object(**kwargs):
+    dealership_id=kwargs.get("dealership_id")
+    campaign_id=kwargs.get("campaign_id")
+    user_id=kwargs.get("user_id")
+    urgency_hook=kwargs.get("urgency_hook")
+    with get_pg_connector() as pg:
+        existing_leads=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
+        if existing_leads:
+            logger.info(f"Inbound Lead already exists for campaign_id={campaign_id}, user_id={user_id}")
+            return existing_leads[0].get("pre_sales_lead_id")
+        logger.info(f"TEST USER ID--{user_id} and campaign_id--{campaign_id}")
+        lead_data={
+            "ctas": kwargs.get("ctas"),
+            "created": time.time(),
+            "updated": time.time(),
+            "lead_tags": [],
+            "dealership_id": dealership_id,
+            "region_id": kwargs.get("region_id"),
+            "campaign_id": campaign_id,
+            "user_id": user_id,
+            "person_name": kwargs.get("person_name"),
+            "email": kwargs.get("email"),
+            "dealer_name": kwargs.get("dealership_name"),
+            "disposition": "queued",
+            "region_name": kwargs.get("region_name"),
+            "workshop_id": "None",
+            "phone_number": kwargs.get("phone_number"), #get the number from session,
+            "urgency_hook": urgency_hook,
+            # "audience_name": "us test",
+            "campaign_name": kwargs.get("campaign_name"),
+            "campaign_type": kwargs.get("pre-sales"),
+            "campaign_offer": kwargs.get("campaign_offer"),
+            "finance_required": False,
+            "supported_brands": kwargs.get("supported_brands"),
+            "vehicle_category": kwargs.get("vehicle_category"),
+            "campaign_sub_type": kwargs.get("campaign_sub_type"),
+            "conversation_tone": kwargs.get("conversation_tone"),
+            "campaign_description": kwargs.get("campaign_description"),
+            "campaign_objective_id": kwargs.get("campaign_objective_id"),
+            "campaign_objective_name": kwargs.get("campaign_objective_name"),
+            "supported_brand_names": {},
+            "region_level_guardrails": kwargs.get("region_level_guardrails"),
+            "region_level_guidelines": kwargs.get("region_level_guidelines"),
+            "why_user_should_avail_this": kwargs.get("why_user_should_avail_this"),
+            "supported_brands_guidelines": {},
+            "previous_interaction_details": {},
+            "reasons_for_non_applicability": kwargs.get("reasons_for_non_applicability"),
+            "campaign_objective_description": kwargs.get("campaign_objective_description"),
+            "reasons_users_may_not_be_interested": kwargs.get("reasons_users_may_not_be_interested"),
+        }
+        
+        lead_id=generate_uid(lead_data)
+        logger.info(f"Creating new pre-sales lead with lead_id={lead_id}")     
+        with get_pg_connector() as pg:
+            l=pg.update("pre_sales_lead", "pre_sales_lead_id", lead_id,lead_data)
+            lead_d=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
+            # logger.info(f"Lead created: {json.dumps(lead_d,indent=4)} with user_id={user_id} and campaign_id={campaign_id}")
+            logger.info(f"Pre-sales lead data created -- {lead_d[0].get('pre_sales_lead_id')}")
+            return lead_d[0].get("pre_sales_lead_id")
+        
 def get_or_create_person(phone_number):
     """Return person object; create if not exists."""
     logger.info(f"Getting or creating person for phone_number: {phone_number}")
