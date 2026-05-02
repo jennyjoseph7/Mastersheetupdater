@@ -1062,6 +1062,11 @@
           s.includes('requested call back') || s.includes('callback requested') || s.includes('requested callback') ||
           ss.includes('requested call back') || ss.includes('callback requested') || ss.includes('requested callback');
       }).length;
+      const interested = data.filter(function(row) {
+        if (!isConnected(row)) return false;
+        const s = lower(getEffectiveSummary(row));
+        return s.includes('interested') && !s.includes('not interested');
+      }).length;
       const testDriveCompleted = data.filter(function(row) {
         if (!isConnected(row)) return false;
         const s = lower(getEffectiveSummary(row));
@@ -1075,6 +1080,7 @@
         { label: 'Connected Calls', val: connected, cls: 'green', sub: 'Outcome based' },
         { label: 'Test Drive Bookings', val: bookings, cls: 'green', sub: 'Summary based' },
         { label: 'Follow Up Required', val: followUps, cls: 'amber', sub: 'Summary based' },
+        { label: 'Interested', val: interested, cls: 'amber', sub: 'Summary based' },
         { label: 'Requested Call Back', val: requestedCallbacks, cls: 'teal', sub: 'Disposition + summary' },
         { label: 'Test Drive Completed', val: testDriveCompleted, cls: 'blue', sub: 'Summary based' },
         { label: 'Not Connected Calls', val: notConnectedCalls, cls: 'red', sub: 'Outcome based' }
