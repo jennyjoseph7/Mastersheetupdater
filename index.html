@@ -221,9 +221,9 @@
 
     .tools-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1.25rem;
-      max-width: 1100px;
+      max-width: 1200px;
       width: 100%;
     }
 
@@ -380,6 +380,22 @@
         table. Process daily call batches.</div>
       <div class="tool-arrow">
         Open tool →
+      </div>
+    </a>
+
+    <a class="tool-card blue" href="recording_renamer.html">
+      <div class="tool-icon blue">
+        <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6" />
+        </svg>
+      </div>
+      <div class="tool-name">Recording Renamer</div>
+      <div class="tool-desc">Upload the processed Disposition Sync file, fetch links from the Recordings column, and
+        download renamed call recordings as a ZIP.</div>
+      <div class="tool-arrow">
+        Open tool ->
       </div>
     </a>
 

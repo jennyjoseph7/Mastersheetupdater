@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script>
+    (function () {
+      var theme = localStorage.getItem('jejo-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recording Renamer - JEJO</title>
+  <meta name="description" content="Rename local call recordings from a processed Disposition Sync export." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <style>
+    :root,
+    [data-theme="dark"] {
+      --bg: #080b10;
+      --bg-gradient: radial-gradient(ellipse at 15% -5%, rgba(230, 164, 86, 0.12), transparent 38rem),
+        radial-gradient(ellipse at 85% 5%, rgba(91, 156, 245, 0.10), transparent 32rem),
+        linear-gradient(180deg, #070a0f 0%, #0b1017 42%, #080c12 100%);
+      --surface: #10151d;
+      --surface2: #151c27;
+      --surface3: #1d2632;
+      --border: rgba(218, 230, 242, 0.09);
+      --accent: #e6a456;
+      --accent-dim: #c78331;
+      --accent-soft: rgba(230, 164, 86, 0.13);
+      --blue: #5b9cf5;
+      --blue-soft: rgba(91, 156, 245, 0.13);
+      --success: #63d6a3;
+      --success-soft: rgba(99, 214, 163, 0.12);
+      --warn: #f2c464;
+      --warn-soft: rgba(242, 196, 100, 0.12);
+      --danger: #f16f6f;
+      --danger-soft: rgba(241, 111, 111, 0.12);
+      --text: #f4f0e8;
+      --text-dim: #aeb8c3;
+      --text-muted: #6f7b88;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'Manrope', 'Inter', sans-serif;
+      --body: 'Inter', sans-serif;
+      --radius: 8px;
+      --shadow-card: 0 18px 60px rgba(0, 0, 0, 0.26);
+      --header-bg: rgba(8, 11, 16, 0.78);
+      --thead-bg: #111820;
+      --grid-line: rgba(255, 255, 255, 0.022);
+    }
+
+    [data-theme="light"] {
+      --bg: #f3f5f8;
+      --bg-gradient: radial-gradient(ellipse at 15% -5%, rgba(230, 164, 86, 0.08), transparent 38rem),
+        radial-gradient(ellipse at 85% 5%, rgba(91, 156, 245, 0.06), transparent 32rem),
+        linear-gradient(180deg, #f3f5f8 0%, #eef1f5 42%, #f3f5f8 100%);
+      --surface: #ffffff;
+      --surface2: #f7f8fa;
+      --surface3: #eef0f4;
+      --border: rgba(0, 20, 50, 0.08);
+      --accent: #c47a1e;
+      --accent-dim: #a86510;
+      --accent-soft: rgba(196, 122, 30, 0.1);
+      --blue: #2d6fd6;
+      --blue-soft: rgba(45, 111, 214, 0.08);
+      --success: #1a9960;
+      --success-soft: rgba(26, 153, 96, 0.08);
+      --warn: #c89520;
+      --warn-soft: rgba(200, 149, 32, 0.08);
+      --danger: #d63636;
+      --danger-soft: rgba(214, 54, 54, 0.08);
+      --text: #1a1e26;
+      --text-dim: #4a5568;
+      --text-muted: #8896a6;
+      --shadow-card: 0 8px 32px rgba(0, 30, 80, 0.06);
+      --header-bg: rgba(255, 255, 255, 0.85);
+      --thead-bg: #f0f2f6;
+      --grid-line: rgba(0, 0, 0, 0.03);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 52px 52px;
+      -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 65%);
+      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 65%);
+    }
+
+    header {
+      padding: 1.1rem 2rem;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(18px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .header-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      color: #15100a;
+      font-family: var(--sans);
+      font-weight: 800;
+      font-size: 1.1rem;
+      background: linear-gradient(135deg, #f5c97a, #e6a456, #c97d22);
+      flex-shrink: 0;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      width: fit-content;
+      margin-bottom: 0.18rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.22rem 0.65rem;
+      font-size: 0.66rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    h1 {
+      font-family: var(--sans);
+      font-size: clamp(1.35rem, 1.8vw, 1.8rem);
+      line-height: 1.15;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .header-sub {
+      color: var(--text-muted);
+      font-size: 0.82rem;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-link,
+    .theme-toggle {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.48rem 0.75rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .theme-toggle {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+
+    .nav-link:hover,
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    [data-theme="light"] .nav-link,
+    [data-theme="light"] .theme-toggle {
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    [data-theme="dark"] .icon-sun {
+      display: none;
+    }
+
+    [data-theme="light"] .icon-moon {
+      display: none;
+    }
+
+    main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .workflow-panel,
+    .results-panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(16, 21, 29, 0.92);
+      box-shadow: var(--shadow-card);
+      padding: 1.15rem;
+      margin-bottom: 1.25rem;
+    }
+
+    [data-theme="light"] .workflow-panel,
+    [data-theme="light"] .results-panel {
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      color: var(--accent);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .section-title {
+      font-family: var(--sans);
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .section-note {
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      text-align: right;
+      max-width: 52ch;
+    }
+
+    .upload-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1rem;
+    }
+
+    .drop-zone {
+      min-height: 205px;
+      padding: 1.25rem;
+      border: 1.5px dashed rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(230, 164, 86, 0.06);
+      transform: translateY(-2px);
+    }
+
+    .drop-zone.has-file {
+      border-style: solid;
+      border-color: var(--success);
+      background: var(--success-soft);
+    }
+
+    .dz-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid rgba(230, 164, 86, 0.28);
+    }
+
+    .dz-icon.blue {
+      color: var(--blue);
+      background: var(--blue-soft);
+      border-color: rgba(91, 156, 245, 0.28);
+    }
+
+    .dz-label {
+      font-family: var(--sans);
+      font-weight: 800;
+      font-size: 1rem;
+    }
+
+    .dz-sublabel {
+      color: var(--text-dim);
+      font-size: 0.82rem;
+    }
+
+    .dz-cols {
+      margin-top: auto;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(0, 0, 0, 0.12);
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      line-height: 1.7;
+    }
+
+    .dz-status {
+      width: fit-content;
+      padding: 0.25rem 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface2);
+      color: var(--text-dim);
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
+    .dz-status.ok {
+      color: var(--success);
+      background: var(--success-soft);
+      border-color: rgba(99, 214, 163, 0.3);
+    }
+
+    .dz-status.err {
+      color: var(--danger);
+      background: var(--danger-soft);
+      border-color: rgba(241, 111, 111, 0.3);
+    }
+
+    input[type=file] {
+      display: none;
+    }
+
+    .action-bar {
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.035);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      border: 0;
+      border-radius: var(--radius);
+      padding: 0.6rem 1rem;
+      font-family: var(--body);
+      font-size: 0.82rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #1a0e00;
+      box-shadow: 0 4px 16px rgba(230, 164, 86, 0.25);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success), #3ecf8e);
+      color: #082018;
+      box-shadow: 0 4px 16px rgba(99, 214, 163, 0.2);
+    }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .status-msg {
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .status-msg.ok {
+      color: var(--success);
+    }
+
+    .status-msg.warn {
+      color: var(--warn);
+    }
+
+    .status-msg.err {
+      color: var(--danger);
+    }
+
+    .stats-grid {
+      display: none;
+      grid-template-columns: repeat(5, minmax(130px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .stat-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 0.85rem 1rem;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .stat-val {
+      margin-top: 0.15rem;
+      font-family: var(--mono);
+      font-size: 1.55rem;
+      font-weight: 700;
+    }
+
+    .stat-val.blue {
+      color: var(--blue);
+    }
+
+    .stat-val.green {
+      color: var(--success);
+    }
+
+    .stat-val.amber {
+      color: var(--warn);
+    }
+
+    .stat-val.red {
+      color: var(--danger);
+    }
+
+    .empty-state {
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.025);
+      padding: 1rem;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    .table-wrapper {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .table-header {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .table-title {
+      font-family: var(--sans);
+      font-weight: 800;
+    }
+
+    .table-caption {
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 0.76rem;
+    }
+
+    .table-scroll {
+      overflow: auto;
+      max-height: 520px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 980px;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--thead-bg);
+    }
+
+    th,
+    td {
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--text-muted);
+      font-size: 0.66rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    td {
+      color: var(--text-dim);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.18rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      font-size: 0.68rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .badge.ok {
+      color: var(--success);
+      background: var(--success-soft);
+      border-color: rgba(99, 214, 163, 0.3);
+    }
+
+    .badge.warn {
+      color: var(--warn);
+      background: var(--warn-soft);
+      border-color: rgba(242, 196, 100, 0.3);
+    }
+
+    .badge.err {
+      color: var(--danger);
+      background: var(--danger-soft);
+      border-color: rgba(241, 111, 111, 0.3);
+    }
+
+    .mono {
+      font-family: var(--mono);
+      color: var(--text);
+    }
+
+    .truncate {
+      max-width: 280px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    @media (max-width: 980px) {
+      .upload-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .section-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .section-note {
+        text-align: left;
+      }
+    }
+
+    @media (max-width: 620px) {
+      header,
+      main {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .header-inner {
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <div class="brand-mark">J</div>
+        <div>
+          <div class="header-badge">Recording Tool</div>
+          <h1>Recording Renamer</h1>
+          <div class="header-sub">Processed Disposition Sync CSV/XLSX to renamed recording ZIP</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a class="nav-link" href="index.html">Home</a>
+        <a class="nav-link" href="disposition_sync_v2.html">Disposition Sync</a>
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+          <svg class="icon-moon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+          <svg class="icon-sun" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 018 0z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="workflow-panel">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Inputs</div>
+          <div class="section-title">Load processed data</div>
+        </div>
+        <div class="section-note">The processed file must contain Phone, Call_Date, and Recordings. Each recording URL
+          is fetched, renamed, and packed into one ZIP.</div>
+      </div>
+
+      <div class="upload-grid">
+        <label class="drop-zone" id="dataZone" for="dataInput">
+          <div class="dz-icon" aria-hidden="true">
+            <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div class="dz-label">Processed CSV/XLSX</div>
+          <div class="dz-sublabel">Upload the output file from Disposition Sync.</div>
+          <div class="dz-cols">Phone | Call_Date | Recordings</div>
+          <div class="dz-status" id="dataStatus">Click to browse or drop file</div>
+          <input type="file" id="dataInput" accept=".csv,.xlsx,.xls,.tsv">
+        </label>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn btn-primary" id="btnProcess" disabled onclick="processBatch()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+          </svg>
+          Process
+        </button>
+        <button class="btn btn-success" id="btnDownload" disabled onclick="downloadZip()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+          </svg>
+          Download ZIP
+        </button>
+        <button class="btn btn-secondary" id="btnReport" disabled onclick="downloadReport()">Download Report</button>
+        <button class="btn btn-secondary" onclick="resetAll()">Reset</button>
+        <span class="status-msg" id="statusMsg"></span>
+      </div>
+    </section>
+
+    <section class="results-panel">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Output</div>
+          <div class="section-title">Review downloads</div>
+        </div>
+        <div class="section-note">Renamed files use the format <span class="mono">9035937158_2May.mp3</span>.</div>
+      </div>
+
+      <div class="empty-state" id="emptyState">Waiting for inputs.</div>
+
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-label">Rows Read</div>
+          <div class="stat-val blue" id="sRows">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Recording URLs</div>
+          <div class="stat-val blue" id="sAudio">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Ready</div>
+          <div class="stat-val green" id="sMatched">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Missing</div>
+          <div class="stat-val amber" id="sMissing">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Skipped</div>
+          <div class="stat-val red" id="sSkipped">0</div>
+        </div>
+      </div>
+
+      <div class="table-wrapper" id="tableWrapper">
+        <div class="table-header">
+          <div class="table-title">Match Preview</div>
+          <div class="table-caption" id="tableCaption">0 rows</div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Row</th>
+                <th>Phone</th>
+                <th>Call Date</th>
+                <th>Source URL</th>
+                <th>Output File</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const OUTPUT_HEADERS = [
+      'Lead_ID', 'Full_Name', 'Phone', 'City', 'Pincode', 'Language', 'Lead_Source', 'Cohort',
+      'Campaign_ID', 'Call Triggered', 'Outcome', 'Disposition', 'SUMMARY', 'Updated SUMMARY',
+      'Conversion', 'Call_Date', 'Number of attempts', 'SENTIMENT', 'Recordings', 'Model',
+      'Seating', 'Exclusion_Flag'
+    ];
+
+    const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    let dataFile = null;
+    let parsedRows = [];
+    let resultRows = [];
+    let matchedRows = [];
+    let reportCsv = '';
+
+    function normalizeHeader(value) {
+      return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+    }
+
+    function normalizePhone(raw) {
+      if (raw === undefined || raw === null || raw === '') return '';
+      let s = String(raw).trim();
+      if (/^\d[\d.]*e[+\-]?\d+$/i.test(s)) {
+        s = String(Math.round(parseFloat(s)));
+      }
+      const digits = s.replace(/\D/g, '');
+      if (!digits) return '';
+      if (digits.length === 10) return digits;
+      if (digits.startsWith('91') && digits.length === 12) return digits.slice(2);
+      if (digits.startsWith('0') && digits.length === 11) return digits.slice(1);
+      if (digits.startsWith('91') && digits.length > 12) return digits.slice(-10);
+      return '';
+    }
+
+    function cellToString(value) {
+      if (value === undefined || value === null || value === '') return '';
+      if (value instanceof Date) return value.toISOString();
+      if (typeof value === 'number') {
+        if (Number.isInteger(value)) return String(value);
+        if (value > 999999 && Math.abs(value - Math.round(value)) < 0.01) return String(Math.round(value));
+      }
+      return String(value).trim();
+    }
+
+    function parseExcelSerial(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num) || num < 20000 || num > 70000) return null;
+      const epoch = Date.UTC(1899, 11, 30);
+      return new Date(epoch + num * 86400000);
+    }
+
+    function parseDate(value) {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+      if (value === undefined || value === null || value === '') return null;
+      if (typeof value === 'number') return parseExcelSerial(value);
+
+      const raw = String(value).trim();
+      if (!raw) return null;
+
+      const serial = parseExcelSerial(raw);
+      if (serial) return serial;
+
+      const dmy = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?/i);
+      if (dmy) {
+        let day = parseInt(dmy[1], 10);
+        let month = parseInt(dmy[2], 10);
+        let year = parseInt(dmy[3], 10);
+        let hour = parseInt(dmy[4] || '0', 10);
+        const minute = parseInt(dmy[5] || '0', 10);
+        const second = parseInt(dmy[6] || '0', 10);
+        const ampm = String(dmy[7] || '').toLowerCase();
+        if (year < 100) year += 2000;
+        if (ampm === 'pm' && hour !== 12) hour += 12;
+        if (ampm === 'am' && hour === 12) hour = 0;
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          return new Date(year, month - 1, day, hour, minute, second);
+        }
+      }
+
+      const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+      if (iso) {
+        const year = parseInt(iso[1], 10);
+        const month = parseInt(iso[2], 10);
+        const day = parseInt(iso[3], 10);
+        const hour = parseInt(iso[4] || '0', 10);
+        const minute = parseInt(iso[5] || '0', 10);
+        const second = parseInt(iso[6] || '0', 10);
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          return new Date(year, month - 1, day, hour, minute, second);
+        }
+      }
+
+      return null;
+    }
+
+    function formatDateToken(date) {
+      if (!date) return '';
+      return `${date.getDate()}${MONTH_SHORT[date.getMonth()]}`;
+    }
+
+    function formatDateDisplay(date) {
+      if (!date) return '';
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      return `${dd}/${mm}/${date.getFullYear()}`;
+    }
+
+    function getExtension(name) {
+      const clean = String(name || '').split(/[?#]/)[0];
+      const match = clean.match(/\.([a-z0-9]{2,5})$/i);
+      return match ? match[1].toLowerCase() : '';
+    }
+
+    function getRowValue(row, names) {
+      for (const name of names) {
+        const key = normalizeHeader(name);
+        if (row.values[key] !== undefined && row.values[key] !== '') return row.values[key];
+      }
+      return '';
+    }
+
+    function readFileAsArrayBuffer(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = event => resolve(event.target.result);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    async function parseDataFile(file) {
+      const ab = await readFileAsArrayBuffer(file);
+      const wb = XLSX.read(ab, { type: 'array', raw: true, cellText: false, cellDates: false });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+      if (!rows.length) return [];
+
+      const first = rows[0].map(cellToString);
+      const firstNormalized = new Set(first.map(normalizeHeader));
+      const hasHeader = firstNormalized.has('phone') &&
+        (firstNormalized.has('calldate') || firstNormalized.has('recordings') || firstNormalized.has('leadid'));
+
+      const headers = hasHeader ? first : OUTPUT_HEADERS;
+      const startIndex = hasHeader ? 1 : 0;
+      const parsed = [];
+
+      for (let i = startIndex; i < rows.length; i++) {
+        const raw = rows[i];
+        if (!raw || raw.every(cell => String(cellToString(cell)).trim() === '')) continue;
+        const values = {};
+        for (let j = 0; j < headers.length; j++) {
+          const key = normalizeHeader(headers[j] || OUTPUT_HEADERS[j] || `column_${j + 1}`);
+          const cellRef = XLSX.utils.encode_cell({ r: i, c: j });
+          const cell = ws[cellRef];
+          values[key] = cell && cell.l && cell.l.Target ? cell.l.Target : cellToString(raw[j]);
+        }
+        parsed.push({ rowNumber: i + 1, values, raw: raw.map(cellToString) });
+      }
+
+      return parsed;
+    }
+
+    function uniqueOutputName(baseName, extension, usedOutputNames) {
+      const ext = extension ? `.${extension}` : '';
+      let name = `${baseName}${ext}`;
+      let counter = 2;
+      while (usedOutputNames.has(name.toLowerCase())) {
+        name = `${baseName}_${counter}${ext}`;
+        counter += 1;
+      }
+      usedOutputNames.add(name.toLowerCase());
+      return name;
+    }
+
+    function buildResults(rows) {
+      const usedOutputNames = new Set();
+      const results = [];
+      const matches = [];
+
+      for (const row of rows) {
+        const phone = normalizePhone(getRowValue(row, ['Phone', 'phone_number', 'Mobile', 'Contact Number']));
+        const dateRaw = getRowValue(row, ['Call_Date', 'Call Date', 'Date', 'Updated']);
+        const date = parseDate(dateRaw);
+        const recordingRef = String(getRowValue(row, [
+          'Recordings', 'Recording', 'Recording URL', 'Call Recording', 'call_recording', 'call_url', 'audio_url'
+        ]) || '').trim();
+
+        if (!phone) {
+          results.push({
+            status: 'Skipped',
+            tone: 'err',
+            rowNumber: row.rowNumber,
+            phone: '',
+            callDate: '',
+            sourceFile: '',
+            outputFile: '',
+            recordingRef,
+            reason: 'Missing or invalid phone'
+          });
+          continue;
+        }
+
+        if (!date) {
+          results.push({
+            status: 'Skipped',
+            tone: 'err',
+            rowNumber: row.rowNumber,
+            phone,
+            callDate: String(dateRaw || ''),
+            sourceFile: '',
+            outputFile: '',
+            recordingRef,
+            reason: 'Missing or invalid Call_Date'
+          });
+          continue;
+        }
+
+        if (!recordingRef) {
+          results.push({
+            status: 'Missing',
+            tone: 'warn',
+            rowNumber: row.rowNumber,
+            phone,
+            callDate: formatDateDisplay(date),
+            sourceFile: '',
+            outputFile: '',
+            recordingRef,
+            reason: 'Missing Recordings URL'
+          });
+          continue;
+        }
+
+        if (!/^https?:\/\//i.test(recordingRef)) {
+          results.push({
+            status: 'Skipped',
+            tone: 'err',
+            rowNumber: row.rowNumber,
+            phone,
+            callDate: formatDateDisplay(date),
+            sourceFile: recordingRef,
+            outputFile: '',
+            recordingRef,
+            reason: 'Recording value is not an HTTP URL'
+          });
+          continue;
+        }
+
+        const ext = getExtension(recordingRef) || 'mp3';
+        const outputFile = uniqueOutputName(`${phone}_${formatDateToken(date)}`, ext, usedOutputNames);
+
+        const result = {
+          status: 'Ready',
+          tone: 'ok',
+          rowNumber: row.rowNumber,
+          phone,
+          callDate: formatDateDisplay(date),
+          sourceFile: recordingRef,
+          outputFile,
+          recordingRef,
+          reason: 'Ready to download from Recordings URL'
+        };
+        results.push(result);
+        matches.push({ ...result, url: recordingRef });
+      }
+
+      return {
+        results,
+        matches,
+        urlCount: results.filter(row => row.recordingRef && /^https?:\/\//i.test(row.recordingRef)).length
+      };
+    }
+
+    function csvEscape(value) {
+      const s = String(value ?? '');
+      if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    }
+
+    function makeReportCsv(results) {
+      const header = ['Status', 'Row', 'Phone', 'Call_Date', 'Recording_URL', 'Source_URL', 'Output_File', 'Reason'];
+      const lines = [header.map(csvEscape).join(',')];
+      for (const row of results) {
+        lines.push([
+          row.status,
+          row.rowNumber,
+          row.phone,
+          row.callDate,
+          row.recordingRef,
+          row.sourceFile,
+          row.outputFile,
+          row.reason
+        ].map(csvEscape).join(','));
+      }
+      return lines.join('\r\n');
+    }
+
+    async function processBatch() {
+      if (!dataFile) return;
+      setStatus('Reading processed file...', '');
+      setBusy(true);
+
+      try {
+        if (!window.XLSX) throw new Error('XLSX library did not load.');
+        if (!window.JSZip) throw new Error('JSZip library did not load.');
+
+        parsedRows = await parseDataFile(dataFile);
+        const built = buildResults(parsedRows);
+        resultRows = built.results;
+        matchedRows = built.matches;
+        reportCsv = makeReportCsv(resultRows);
+
+        renderResults(resultRows, built.urlCount);
+        document.getElementById('btnDownload').disabled = matchedRows.length === 0;
+        document.getElementById('btnReport').disabled = resultRows.length === 0;
+
+        const missing = resultRows.filter(row => row.status === 'Missing').length;
+        const skipped = resultRows.filter(row => row.status === 'Skipped').length;
+        const tone = missing || skipped ? 'warn' : 'ok';
+        setStatus(`${matchedRows.length} recording URL(s) ready. ${missing} missing, ${skipped} skipped.`, tone);
+      } catch (error) {
+        console.error(error);
+        setStatus(`Error: ${error.message}`, 'err');
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function downloadZip() {
+      if (!matchedRows.length) return;
+      setStatus('Downloading recordings from URLs...', '');
+      setBusy(true);
+
+      try {
+        const zip = new JSZip();
+        const folder = zip.folder('renamed_recordings');
+        let downloaded = 0;
+        let failed = 0;
+
+        for (let i = 0; i < matchedRows.length; i++) {
+          const row = matchedRows[i];
+          setStatus(`Downloading ${i + 1}/${matchedRows.length}: ${row.outputFile}`, '');
+
+          try {
+            const response = await fetch(row.url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const blob = await response.blob();
+            const detectedExt = extensionFromContentType(response.headers.get('content-type'));
+            const outputFile = detectedExt && getExtension(row.outputFile) === 'mp3'
+              ? replaceExtension(row.outputFile, detectedExt)
+              : row.outputFile;
+
+            folder.file(outputFile, blob);
+            downloaded += 1;
+            updateResultStatus(row, 'Downloaded', 'ok', outputFile, 'Downloaded from Recordings URL');
+          } catch (error) {
+            failed += 1;
+            updateResultStatus(row, 'Failed', 'err', row.outputFile,
+              `Download failed: ${error.message || 'browser blocked the request'}`);
+          }
+        }
+
+        reportCsv = makeReportCsv(resultRows);
+
+        if (!downloaded) {
+          renderResults(resultRows, getUrlCount(resultRows));
+          setStatus('No recordings could be downloaded. Check the report for failed URLs.', 'err');
+          return;
+        }
+
+        zip.file('recording_rename_report.csv', reportCsv);
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const dateToken = getZipDateToken();
+        triggerDownload(blob, `JEJO_Recordings_${dateToken}.zip`);
+        renderResults(resultRows, getUrlCount(resultRows));
+        setStatus(`ZIP downloaded with ${downloaded} recording(s). ${failed} failed.`, failed ? 'warn' : 'ok');
+      } catch (error) {
+        console.error(error);
+        setStatus(`Error: ${error.message}`, 'err');
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function extensionFromContentType(contentType) {
+      const type = String(contentType || '').toLowerCase();
+      if (type.includes('audio/mpeg') || type.includes('audio/mp3')) return 'mp3';
+      if (type.includes('audio/wav') || type.includes('audio/x-wav')) return 'wav';
+      if (type.includes('audio/mp4') || type.includes('audio/aac')) return 'm4a';
+      if (type.includes('audio/ogg')) return 'ogg';
+      if (type.includes('audio/webm')) return 'webm';
+      if (type.includes('audio/flac')) return 'flac';
+      if (type.includes('video/mp4')) return 'mp4';
+      return '';
+    }
+
+    function replaceExtension(filename, extension) {
+      return String(filename || '').replace(/\.[a-z0-9]{2,5}$/i, `.${extension}`);
+    }
+
+    function updateResultStatus(matchRow, status, tone, outputFile, reason) {
+      const result = resultRows.find(row => row.rowNumber === matchRow.rowNumber && row.recordingRef === matchRow.recordingRef);
+      if (!result) return;
+      result.status = status;
+      result.tone = tone;
+      result.outputFile = outputFile;
+      result.reason = reason;
+    }
+
+    function downloadReport() {
+      if (!resultRows.length) return;
+      const blob = new Blob([reportCsv || makeReportCsv(resultRows)], { type: 'text/csv;charset=utf-8' });
+      triggerDownload(blob, `JEJO_Recording_Rename_Report_${getZipDateToken()}.csv`);
+    }
+
+    function getZipDateToken() {
+      const matchedDates = matchedRows.map(row => parseDate(row.callDate)).filter(Boolean);
+      const unique = new Set(matchedDates.map(formatDateToken));
+      if (unique.size === 1) return Array.from(unique)[0];
+      const now = new Date();
+      return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function getUrlCount(rows) {
+      return rows.filter(row => row.recordingRef && /^https?:\/\//i.test(row.recordingRef)).length;
+    }
+
+    function renderResults(rows, urlCount) {
+      const matched = rows.filter(row => row.status === 'Ready' || row.status === 'Downloaded').length;
+      const missing = rows.filter(row => row.status === 'Missing').length;
+      const skipped = rows.filter(row => row.status === 'Skipped' || row.status === 'Failed').length;
+
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('statsGrid').style.display = 'grid';
+      document.getElementById('tableWrapper').style.display = 'block';
+      document.getElementById('sRows').textContent = parsedRows.length;
+      document.getElementById('sAudio').textContent = urlCount;
+      document.getElementById('sMatched').textContent = matched;
+      document.getElementById('sMissing').textContent = missing;
+      document.getElementById('sSkipped').textContent = skipped;
+      document.getElementById('tableCaption').textContent = `${rows.length} row(s)`;
+
+      const body = document.getElementById('resultBody');
+      body.innerHTML = '';
+      for (const row of rows.slice(0, 300)) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="badge ${row.tone}">${esc(row.status)}</span></td>
+          <td class="mono">${esc(row.rowNumber)}</td>
+          <td class="mono">${esc(row.phone)}</td>
+          <td>${esc(row.callDate)}</td>
+          <td class="truncate" title="${esc(row.sourceFile)}">${esc(row.sourceFile)}</td>
+          <td class="mono truncate" title="${esc(row.outputFile)}">${esc(row.outputFile)}</td>
+          <td>${esc(row.reason)}</td>
+        `;
+        body.appendChild(tr);
+      }
+    }
+
+    function updateProcessButton() {
+      document.getElementById('btnProcess').disabled = !dataFile;
+      document.getElementById('btnDownload').disabled = true;
+      document.getElementById('btnReport').disabled = true;
+    }
+
+    function resetAll() {
+      dataFile = null;
+      parsedRows = [];
+      resultRows = [];
+      matchedRows = [];
+      reportCsv = '';
+      document.getElementById('dataInput').value = '';
+      document.getElementById('dataZone').classList.remove('has-file');
+      document.getElementById('dataStatus').className = 'dz-status';
+      document.getElementById('dataStatus').textContent = 'Click to browse or drop file';
+      document.getElementById('emptyState').style.display = 'block';
+      document.getElementById('emptyState').textContent = 'Waiting for inputs.';
+      document.getElementById('statsGrid').style.display = 'none';
+      document.getElementById('tableWrapper').style.display = 'none';
+      document.getElementById('resultBody').innerHTML = '';
+      setStatus('', '');
+      updateProcessButton();
+    }
+
+    function setBusy(isBusy) {
+      document.getElementById('btnProcess').disabled = isBusy || !dataFile;
+      document.getElementById('btnDownload').disabled = isBusy || matchedRows.length === 0;
+      document.getElementById('btnReport').disabled = isBusy || resultRows.length === 0;
+    }
+
+    function setStatus(message, type) {
+      const el = document.getElementById('statusMsg');
+      el.textContent = message;
+      el.className = 'status-msg' + (type ? ` ${type}` : '');
+    }
+
+    function esc(value) {
+      return String(value ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[c]));
+    }
+
+    function setupDropZone(zoneId, inputId, onFiles) {
+      const zone = document.getElementById(zoneId);
+      const input = document.getElementById(inputId);
+
+      input.addEventListener('change', function () {
+        onFiles(Array.from(this.files || []));
+      });
+
+      zone.addEventListener('dragover', event => {
+        event.preventDefault();
+        zone.classList.add('drag-over');
+      });
+
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+
+      zone.addEventListener('drop', event => {
+        event.preventDefault();
+        zone.classList.remove('drag-over');
+        const files = Array.from(event.dataTransfer.files || []);
+        if (files.length) onFiles(files);
+      });
+    }
+
+    setupDropZone('dataZone', 'dataInput', files => {
+      const file = files[0];
+      if (!file) return;
+      dataFile = file;
+      document.getElementById('dataZone').classList.add('has-file');
+      document.getElementById('dataStatus').className = 'dz-status ok';
+      document.getElementById('dataStatus').textContent = `Loaded: ${file.name}`;
+      setStatus('', '');
+      updateProcessButton();
+    });
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('jejo-theme', theme);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    }
+
+    applyTheme(localStorage.getItem('jejo-theme') || 'dark');
+  </script>
+</body>
+
+</html>
