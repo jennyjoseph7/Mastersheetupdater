@@ -1471,9 +1471,10 @@
       const COL_MODEL = find(['vehicle_model', 'vehiclemodel', 'model', 'model_preference', 'car_model']);
       const COL_DETAIL = find(['disposition_detail', 'dispositiondetail', 'detail', 'disposition_details']);
       const COL_SUMMARY = find(['summary', 'call_summary', 'callsummary']);
+      const COL_UPDATED_SUMMARY = find(['updated_summary', 'updatedsummary', 'updated summary']);
       const COL_ATTEMPT = find(['attempt', 'number_of_attempts', 'attempts', 'call_attempt']);
 
-      console.log('[Dashboard] Column mapping:', { COL_PHONE, COL_OUTCOME, COL_DATE, COL_MODEL, COL_DETAIL, COL_SUMMARY, COL_ATTEMPT });
+      console.log('[Dashboard] Column mapping:', { COL_PHONE, COL_OUTCOME, COL_DATE, COL_MODEL, COL_DETAIL, COL_SUMMARY, COL_UPDATED_SUMMARY, COL_ATTEMPT });
       console.log('[Dashboard] Sample row:', dashData[0]);
       if (!COL_DATE) {
         alert('Required column missing: Call_Date. Please upload a file that includes the Call_Date column.');
@@ -1494,6 +1495,7 @@
         const out = norm(r[COL_OUTCOME]);
         const det = norm(r[COL_DETAIL] || '');
         const sum = norm(r[COL_SUMMARY] || '');
+        const updatedSum = norm(COL_UPDATED_SUMMARY ? r[COL_UPDATED_SUMMARY] : '');
 
         callsTriggered++;
 
@@ -1512,10 +1514,10 @@
           callbackRequestedFromSummary++;
         }
 
-        // Bookings: exact match on SUMMARY to avoid "not interested" matching "interested"
-        if (sum === 'converted' || sum === 'interested' ||
-            sum === 'follow up required' || sum === 'follow-up required' ||
-            sum === 'test drive booked') {
+        // Bookings: exact match on SUMMARY; Follow Up Required needs Updated SUMMARY confirmation.
+        const qualifiedFollowUp = (sum === 'follow up required' || sum === 'follow-up required') &&
+          (updatedSum === 'interested' || updatedSum === 'converted');
+        if (sum === 'converted' || sum === 'interested' || sum === 'test drive booked' || qualifiedFollowUp) {
           bookings++;
         }
 
@@ -1643,7 +1645,7 @@
       kpiRow2.innerHTML = '';
       const kpis2 = [
         { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: COL_ATTEMPT ? 'Attempt = 1' : 'No duplicates', color: 'amber', delay: 5 },
-        { label: 'TEST DRIVE BOOKINGS', value: bookings, sub: 'Summary based', color: 'green', delay: 6 },
+        { label: 'TEST DRIVE BOOKINGS', value: bookings, sub: 'Summary + Updated Summary', color: 'green', delay: 6 },
         { label: 'CALLBACK REQUESTED', value: callbackRequestedFromSummary, sub: 'Summary based', color: 'teal', delay: 7 },
         { label: 'INVALID LEAD', value: invalidLead, sub: 'Summary based', color: 'red', delay: 8 },
       ];
