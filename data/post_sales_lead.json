@@ -1609,6 +1609,11 @@
             "type": "string_list"
         },
         {
+            "name": "lead_code_for_dealership",
+            "type": "text",
+            "indexed": true
+        },
+        {
             "auto_updater": true,
             "default": {
                 "args": [
@@ -1817,6 +1822,25 @@
         {
             "name": "scheduled_timestamp",
             "type": "number"
+        },
+        {
+            "name": "next_channel",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "next_channel_identifier",
+            "type": "text"
+        },
+        {
+            "name": "next_schedule_time",
+            "type": "number",
+            "indexed": true
+        },
+        {
+            "name": "next_trigger",
+            "type": "text",
+            "indexed": true
         }
     ],
     "parents": [

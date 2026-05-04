@@ -195,15 +195,17 @@ def sort_channel_by_cheapest(channels: list, current_channel: str = None):
 
 def get_highest_status(statuses: list):
     if not statuses:
+        logger.info("No statuses, hence making it queued")
         return "queued"
-    mstatuses = set(map(lambda x: DISPOSITION_MAP.get(x.get('status'), x.get('status')), statuses))
-    for k in ["contacted", "reached", "attempted", "failed", "error", "queued"]:
+    mstatuses = set(list(map(lambda x: DISPOSITION_MAP.get(x.get('provider_status'), x.get('provider_status')), statuses)))
+    mlogger.info("Got statuses after transforming: %s", mstatuses)
+    for k in ["contacted", "reached", "failed", "attempted", "error", "queued"]:
         if k in mstatuses:
             return k
     return "queued"
 
 def get_attempts(statuses: list, status: str):
-    return sum(1 for _ in filter(lambda x: x.get('status') == status, statuses))
+    return sum(1 for _ in filter(lambda x: DISPOSITION_MAP.get(x.get('provider_status'), x.get('provider_status')) == status, statuses))
 
 def get_next_delay(status: str, attempts: int, workflow_stage: dict, timezone: str = None):
     timezone = timezone or "Asia/Kolkata"
@@ -231,6 +233,9 @@ def get_statuses(channel: str, channel_type: str, channel_identifier: str, statu
     channel_type = CHANNEL_IDENTIFIER_MAP.get(channel)
     if not channel_type:
         raise ValueError(f"Invalid channel: {channel}, doing nothing.")
+    if channel_type in ["phone_number"]:
+        if len(channel_identifier) <= 10:
+            channel_identifier = f"91{channel_identifier}"
     kws = {"channel": channel, channel_type: channel_identifier, "_sort_by": "updated", "_sort_reverse": True, "_as_option":True, "_page_size":100}
     if campaign_id:
         kws["campaign_id"] = campaign_id
@@ -289,6 +294,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
     logger.info("Loading models for get_channel_from_lead")
     enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
     campaign_id = campaign_details.get('campaign_id')
+    dealership_id = campaign_details.get('dealership_id')
     status_model = AutocrmModel('contact_status')
     region_model = AutocrmModel('region')
     region_subdivision_model = AutocrmModel('region_subdivision')
@@ -318,7 +324,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
         change_channel = False
         for channel_identifier in channel_identifier_list:
             logger.info(f"Processing channel identifier: {channel_identifier} for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
-            statuses = get_statuses(channel, channel_type, channel_identifier, status_model=status_model, campaign_id=campaign_id, dealership_id=enterprise_id, logger=logger)
+            statuses = get_statuses(channel, channel_type, channel_identifier, status_model=status_model, campaign_id=campaign_id, dealership_id=dealership_id, logger=logger)
             if not statuses:
                 logger.info(f"No statuses found for channel: {channel} with channel identifier: {channel_identifier} for campaign_id={campaign_id}, enterprise_id={enterprise_id}, starting now.")
                 return channel, channel_identifier, 0, None
@@ -329,10 +335,13 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
                 return channel, channel_identifier, 0, None
             if highest_status != "contacted":
                 attempts = get_attempts(statuses, highest_status)
+                logger.info("Got attempts for uncontacted: %s", attempts)
                 workflow_stage = (workflow or {}).get(highest_status) or CAMPAIGN_WORKFLOW.get(highest_status)
+                logger.info("Workflow stage taken: %s", workflow_stage)
                 # We haven't contacted yet, so we need to try and find the right credential and channel to connect to.
                 next_delay = get_next_delay(highest_status, attempts, workflow_stage, timezone=timezone)
                 next_retries = get_remaining_retries(workflow_stage, attempts)
+                logger.info("Next retries: %s, attempts: %s", next_retries, attempts)
                 if next_retries > 0:
                     return channel, channel_identifier, next_delay, None
                 trigger = workflow_stage.get('trigger', 'switch_to_next_credential')
@@ -343,7 +352,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
                 attempts = get_attempts(statuses, "contacted") # We need to count the number of times we have contacted.
                 logger.info(f"Attempts: {attempts}")
                 if disposition in ["engaged", "converted"]:
-                    attempts /= workflow_stage.get('retries', 0) # We need to calculate attempts per contact.
+                    attempts /= max(workflow_stage.get('retries', 0), 1) # We need to calculate attempts per contact.
                     logger.info(f"Attempts per contact: {attempts}")
                 next_delay = get_next_delay(highest_status, attempts, workflow_stage)
                 logger.info(f"Next delay: {next_delay}")
@@ -573,11 +582,11 @@ def determine_campaign_next_action(
         campaign_objective_id=_values.get('campaign_objective', {}).get('id'),
         workflow_stage=workflow_stage
     )
-    logger.info(f"Workflows before remapping: {workflows}")
+    logger.debug(f"Workflows before remapping: {workflows}")
     workflow = remap_workflow(workflows, campaign_id=campaign_details.get('campaign_id'), dealership_id=dealership_id, campaign_objective_id=campaign_details.get('campaign_objective_id'), campaign_type=campaign_type, logger=logger)
     logger.info(f"Workflow after remapping: {workflow}")
     channel, channel_identifier, delay, trigger = get_channel_from_lead(lead, campaign_details, workflow=workflow, channel=channel, disposition=disposition, logger=logger)
-    logger.info(f"Channel: {channel}, Channel identifier: {channel_identifier}, Delay: {delay}, Trigger: {trigger}")
+    logger.debug(f"Channel: {channel}, Channel identifier: {channel_identifier}, Delay: {delay}, Trigger: {trigger}")
     logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
     if kwargs.get('debug', False):
         return {
@@ -587,24 +596,21 @@ def determine_campaign_next_action(
             "trigger": trigger
         }
     if channel and channel_identifier:
-        gryd.create_async_task('process_single_lead', AUTOCRM_CAMPAIGN_SERVICE_NAME, args= [
-            channel,
-            lead,
-            campaign_type,
-            campaign_id,
-        ], kwargs = {
-            "user_id": _values.get('user', {}).get('id'),
-            "disposition_tag": disposition,
-            "disposition_detail_tag": lead.get('disposition_detail'),
-            "channel_identifier": channel_identifier
-        }, delay = delay)
-    return
+        next_schedule_time = hp.epoch() + delay
+    else:
+        next_schedule_time = None
+    return lead_model.update(lead_id, {
+        "next_channel": channel,
+        "next_channel_identifier": channel_identifier,
+        "next_schedule_time": next_schedule_time,
+        "next_trigger": trigger
+    })
 
 def get_previous_contacted_channel(statuses):
     if not statuses:
         return None
     for s in statuses:
-        status = s.get('status')
+        status = s.get('provider_status')
         if DISPOSITION_MAP[status] in ["contacted", "engaged", "converted"]:
             return s.get('channel')
     return None
@@ -616,7 +622,7 @@ def get_last_contacted_phone_number(statuses):
         channel = s.get('channel')
         if channel not in ['voice_phone', 'rcs', 'sms', 'voicebot', 'voice']:
             continue
-        status = s.get('status')
+        status = s.get('provider_status')
         if DISPOSITION_MAP[status] in  ["contacted", "engaged", "converted"]:
             return s.get('phone_number')
     return None
@@ -628,7 +634,7 @@ def get_last_contacted_whatsapp_number(statuses):
         channel = s.get('channel')
         if channel not in ['whatsapp', 'whatsapp_chat', 'whatsapp_voice_note', 'whatsapp_voice_call']:
             continue
-        status = s.get('status')
+        status = s.get('provider_status')
         if DISPOSITION_MAP[status] in  ["contacted", "engaged", "converted"]:
             return s.get('phone_number')
     return None
@@ -640,7 +646,7 @@ def get_last_contacted_email(statuses):
         channel = s.get('channel')
         if channel not in ['email']:
             continue
-        status = s.get('status')
+        status = s.get('provider_status')
         if DISPOSITION_MAP[status] in  ["contacted", "engaged", "converted"]:
             return s.get('email')
     return None
@@ -651,15 +657,15 @@ if __name__ == "__main__":
     if lead_id == "123":
         DEBUG_STATUS = [
             {
-                "status": "attempted",
+                "provider_status": "attempted",
                 "channel": "whatsapp_chat",
             },
             {
-                "status": "contacted",
+                "provider_status": "contacted",
                 "channel": "voice_phone",
             },
             {
-                "status": "attempted",
+                "provider_status": "attempted",
                 "channel": "voice_phone",
             }
         ]
@@ -854,6 +860,6 @@ if __name__ == "__main__":
         lead_id=lead_id,
         channel="voice_phone",
         channel_identifier="919108310847",
-        disposition="busy",
+        disposition="converted",
         debug = True
     ))
