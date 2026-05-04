@@ -3,465 +3,500 @@
     "name": "session",
     "model_type": "default",
     "attributes": [
-      {
-        "name": "created",
-        "type": "number",
-        "auto_updater": true,
-        "default": {
-          "function": "now_ctime"
-        }
-      },
-      {
-        "name": "updated",
-        "type": "number",
-        "auto_updater": true,
-        "force_update": true,
-        "default": {
-          "function": "now_ctime"
-        }
-      },
-      {
-        "name": "user_id",
-        "type": "uid",
-        "indexed": true,
-        "required": true
-      },
-      {
-        "name": "phone_number",
-        "type": "text",
-        "constraint": {
-          "function": "phone_validator"
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
         },
-        "indexed": true
-      },
-      {
-        "name": "email",
-        "type": "text",
-        "constraint": {
-          "function": "email_validator"
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
         },
-        "indexed": true
-      },
-      {
-        "name": "start_time",
-        "type": "number"
-      },
-      {
-        "name": "end_time",
-        "type": "number"
-      },
-      {
-        "name": "duration",
-        "type": "number",
-        "default": {
-          "function": "time_diff",
-          "args": ["end_time", "start_time"],
-          "kwargs": {
-            "units": "seconds"
-          }
+        {
+            "name": "user_id",
+            "type": "uid",
+            "indexed": true,
+            "required": true
         },
-        "auto_updater": true
-      },
-      {
-        "name": "channel",
-        "type": "text",
-        "options": [
-          "rcs",
-          "email",
-          "web_chat",
-          "web_chat_voice",
-          "fb_chat",
-          "insta_chat",
-          "twitter_chat",
-          "voice_phone",
-          "whatsapp_chat",
-          "whatsapp_voice_note",
-          "whatsapp_voice_call",
-          "zoom_bot",
-          "ms_teams"
-        ]
-      },
-      {
-        "name": "campaign_id",
-        "type": "text",
-        "indexed": true,
-        "default": "inbound",
-        "required": true
-      },
-      {
-        "name": "campaign_type",
-        "type": "text",
-        "options": ["inbound", "pre-sales", "post-sales", "dealer"],
-        "default": "inbound",
-        "required": true
-      },
-      {
-        "name": "campaign_model",
-        "type": "text",
-        "options": [
-          "pre_sales_campaign",
-          "post_sales_campaign",
-          "dealership_campaign"
-        ],
-        "auto_updater": true,
-        "force_update": ["campaign_id"],
-        "default": {
-          "function": "attribute_mapper",
-          "args": ["campaign_type", null],
-          "kwargs": {
-            "pre-sales": "pre_sales_campaign",
-            "post-sales": "post_sales_campaign",
-            "dealership": "dealership_campaign"
-          }
-        }
-      },
-      {
-        "name": "lead_model",
-        "type": "text",
-        "options": ["pre_sales_lead", "post_sales_lead", "dealership_lead"],
-        "auto_updater": true,
-        "force_update": ["campaign_id"],
-        "default": {
-          "function": "attribute_mapper",
-          "args": ["campaign_type", null],
-          "kwargs": {
-            "pre-sales": "pre_sales_lead",
-            "post-sales": "post_sales_lead",
-            "dealership": "dealership_lead"
-          }
-        }
-      },
-      {
-        "name": "dealership_id",
-        "type": "text",
-        "required": false
-      },
-      {
-        "name": "origin",
-        "type": "text",
-        "required": false
-      },
-      {
-        "name": "referrer",
-        "type": "text"
-      },
-      {
-        "name": "id_salt",
-        "type": "text",
-        "default": {
-          "function": "make_view_id",
-          "kwargs": {
-            "make_unique": false
-          }
-        }
-      },
-      {
-        "name": "session_id",
-        "type": "uid",
-        "indexed": true,
-        "id": true,
-        "default": {
-          "function": "make_uuid3",
-          "args": ["created", "id_salt", "user_id", "campaign_id", "channel"]
-        }
-      },
-      {
-        "name": "utm_source",
-        "type": "text"
-      },
-      {
-        "name": "utm_medium",
-        "type": "text"
-      },
-      {
-        "name": "utm_campaign",
-        "type": "text"
-      },
-      {
-        "name": "utm_term",
-        "type": "text"
-      },
-      {
-        "name": "utm_content",
-        "type": "text"
-      },
-      {
-        "name": "browser",
-        "type": "text",
-        "required": false
-      },
-      {
-        "name": "os",
-        "type": "text",
-        "required": false
-      },
-      {
-        "name": "device_type",
-        "type": "text",
-        "required": false
-      },
-      {
-        "name": "last_response_time",
-        "type": "number",
-        "required": false
-      },
-      {
-        "name": "last_interaction_time",
-        "type": "number",
-        "indexed": true,
-        "required": false
-      },
-      {
-        "name": "session_live",
-        "type": "bool",
-        "indexed": true,
-        "default": true,
-        "required": false
-      },
-      {
-        "name": "status",
-        "type": "text",
-        "options": [
-          "ongoing",
-          "completed",
-          "sent",
-          "delivered",
-          "read",
-          "initiated",
-          "interacted",
-          "engaged",
-          "converted",
-          "queued",
-          "ringing",
-          "in-progress",
-          "busy",
-          "no-answer",
-          "cancelled",
-          "failed",
-          "pre-initiated"
-        ],
-        "indexed": true,
-        "option_others": true,
-        "default": "pre-initiated"
-      },
-      {
-        "name": "history_updated_time",
-        "type": "number",
-        "required": false
-      },
-      {
-        "name": "last_post_process_time",
-        "type": "number",
-        "required": false
-      },
-      {
-        "name": "history",
-        "type": "list",
-        "required": false
-      },
-      {
-        "name":"has_unprocessed_history",
-        "type": "bool",
-        "required": false,
-        "default": false
-      },
-      {
-        "name": "disposition",
-        "type": "text",
-        "options": [
-          "queued",
-          "attempted",
-          "reached",
-          "contacted",
-          "engaged",
-          "converted",
-          "failed",
-          "error"
-        ]
-      },
-      {
-        "name": "disposition_detail",
-        "type": "text",
-        "options": [
-          "Invalid no.",
-          "Not registered on Whatsapp",
-          "User's no. is part of an experiment",
-          "Message undeliverable",
-          "Unable to send message",
-          "Unable to deliver message to deliver message/Unsubcribed",
-          "Message not delivered to maintained healty ecosystem management",
-          "Invalid / Doesn't exist",
-          "DND",
-          "Spam",
-          "Bounced",
-          "Not reachable",
-          "Didnt pickup",
-          "Requested Callback",
-          "Rejected",
-          "Vehicle is commercial or part of a fleet",
-          "Vehicle is not being run",
-          "Requires special spare parts",
-          "Others",
-          "Wrong contact number",
-          "Voicemail",
-          "Has sold/given away the car",
-          "Has moved to another location",
-          "Cannot make decision on servicing",
-          "Will call workshop themselves",
-          "Requested Callback",
-          "Looking for a discount",
-          "Language barrier",
-          "Has serviced car in another dealership",
-          "Will decide tomorrow",
-          "Will decide within 1 to 3 days",
-          "Will decide within 4 to 7 days",
-          "Will decide within 8 to 14 days",
-          "Will decide within 15 to 30 days",
-          "Will decide within 31 to 60 days",
-          "Will decide within 61 to 90 days",
-          "Will decide after 90 days",
-          "Converted",
-          "Bounced",
-          "Unsubscribed",
-          "Spam",
-          "Is not decision maker",
-          "Will decide later, will purchase within 15 days",
-          "Will decide later, will purchase within 1 to 3 months",
-          "Will decide later, exploring options",
-          "No buying intent",
-          "Just Exploring",
-          "Will call showroom themselves",
-          "Requested Callback",
-          "Purchased elsewhere",
-          "Converted",
-          "Enquired for Pricing",
-          "Enquired for Specifications",
-          "Enquired for Test Drive",
-          "Enquired for Showroom Visit",
-          "Enquired for Brochure",
-          "Enquired for Dealership Details",
-          "Enquired for Others",
-          "Comparing with another brand"
-        ],
-        "option_others": true
-      },
-      {
-        "name": "error_reason",
-        "type": "text",
-        "required": false
-      },
-      {
-        "name": "failed_reason",
-        "type": "text",
-        "required": false
-      },
-      {
-        "name": "queries_per_session",
-        "type": "number"
-      },
-      {
-        "name": "unknown_queries_per_session",
-        "type": "number"
-      },
-      {
-        "name": "emotions",
-        "type": "string_list"
-      },
-      {
-        "type": "number",
-        "name": "sentiment_score"
-      },
-      {
-        "name": "lead_id",
-        "type": "text"
-      },
-      {
-        "name": "emotion_analysis",
-        "type": "text"
-      },
-      {
-        "name": "sentiment_classification",
-        "type": "text"
-      },
-      {
-        "name": "person_name",
-        "type": "text",
-        "default": {
-          "function": "resolve_and_search_in_model",
-          "kwargs": {
-            "model_name": "{lead_model}",
-            "attribute_name": "person_name",
-            "lead_id": "{lead_id}",
-            "_get_lead_id": true
-          }
-        }
-      },
-      {
-        "name": "campaign_name",
-        "type": "text",
-        "default": {
-          "function": "resolve_and_search_in_model",
-          "kwargs": {
-            "model_name": "{lead_model}",
-            "attribute_name": "campaign_name",
-            "lead_id": "{lead_id}",
-            "_get_lead_id": true
-          }
-        }
-      },
-      {
-        "name": "campaign_objective_name",
-        "type": "text",
-        "default": {
-          "function": "resolve_and_search_in_model",
-          "kwargs": {
-            "model_name": "{lead_model}",
-            "attribute_name": "campaign_objective_name",
-            "lead_id": "{lead_id}",
-            "_get_lead_id": true
-          }
-        }
-      },
-      {
-        "name": "campaign_objective_id",
-        "type": "text",
-        "default": {
-          "function": "resolve_and_search_in_model",
-          "kwargs": {
-            "model_name": "{lead_model}",
-            "attribute_name": "campaign_objective_id",
-            "lead_id": "{lead_id}",
-            "_get_lead_id": true
-          }
-        }
-      },
-      {
-        "name": "summary",
-        "type": "text",
-        "required": false
-      },
-      {
-        "name": "audio_transcript",
-        "type": "text",
-        "constraint": {
-          "function": "url_validator"
+        {
+            "name": "phone_number",
+            "type": "text",
+            "constraint": {
+                "function": "phone_validator"
+            },
+            "indexed": true
         },
-        "converter": {
-          "function": "url_converter"
+        {
+            "name": "email",
+            "type": "text",
+            "constraint": {
+                "function": "email_validator"
+            },
+            "indexed": true
+        },
+        {
+            "name": "start_time",
+            "type": "number"
+        },
+        {
+            "name": "end_time",
+            "type": "number"
+        },
+        {
+            "name": "duration",
+            "type": "number",
+            "default": {
+                "function": "time_diff",
+                "args": [
+                    "end_time",
+                    "start_time"
+                ],
+                "kwargs": {
+                    "units": "seconds"
+                }
+            },
+            "auto_updater": true
+        },
+        {
+            "name": "channel",
+            "type": "text",
+            "options": [
+                "rcs",
+                "email",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "voice_phone",
+                "whatsapp_chat",
+                "whatsapp_voice_note",
+                "whatsapp_voice_call",
+                "zoom_bot",
+                "ms_teams"
+            ]
+        },
+        {
+            "name": "campaign_id",
+            "type": "text",
+            "indexed": true,
+            "default": "inbound",
+            "required": true
+        },
+        {
+            "name": "campaign_type",
+            "type": "text",
+            "options": [
+                "inbound",
+                "pre-sales",
+                "post-sales",
+                "dealer"
+            ],
+            "default": "inbound",
+            "required": true
+        },
+        {
+            "name": "campaign_model",
+            "type": "text",
+            "options": [
+                "pre_sales_campaign",
+                "post_sales_campaign",
+                "dealership_campaign"
+            ],
+            "auto_updater": true,
+            "force_update": [
+                "campaign_id"
+            ],
+            "default": {
+                "function": "attribute_mapper",
+                "args": [
+                    "campaign_type",
+                    null
+                ],
+                "kwargs": {
+                    "pre-sales": "pre_sales_campaign",
+                    "post-sales": "post_sales_campaign",
+                    "dealership": "dealership_campaign"
+                }
+            }
+        },
+        {
+            "name": "lead_model",
+            "type": "text",
+            "options": [
+                "pre_sales_lead",
+                "post_sales_lead",
+                "dealership_lead"
+            ],
+            "auto_updater": true,
+            "force_update": [
+                "campaign_id"
+            ],
+            "default": {
+                "function": "attribute_mapper",
+                "args": [
+                    "campaign_type",
+                    null
+                ],
+                "kwargs": {
+                    "pre-sales": "pre_sales_lead",
+                    "post-sales": "post_sales_lead",
+                    "dealership": "dealership_lead"
+                }
+            }
+        },
+        {
+            "name": "dealership_id",
+            "type": "text",
+            "required": false
+        },
+        {
+            "name": "origin",
+            "type": "text",
+            "required": false
+        },
+        {
+            "name": "referrer",
+            "type": "text"
+        },
+        {
+            "name": "id_salt",
+            "type": "text",
+            "default": {
+                "function": "make_view_id",
+                "kwargs": {
+                    "make_unique": false
+                }
+            }
+        },
+        {
+            "name": "session_id",
+            "type": "uid",
+            "indexed": true,
+            "id": true,
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "created",
+                    "id_salt",
+                    "user_id",
+                    "campaign_id",
+                    "channel"
+                ]
+            }
+        },
+        {
+            "name": "utm_source",
+            "type": "text"
+        },
+        {
+            "name": "utm_medium",
+            "type": "text"
+        },
+        {
+            "name": "utm_campaign",
+            "type": "text"
+        },
+        {
+            "name": "utm_term",
+            "type": "text"
+        },
+        {
+            "name": "utm_content",
+            "type": "text"
+        },
+        {
+            "name": "browser",
+            "type": "text",
+            "required": false
+        },
+        {
+            "name": "os",
+            "type": "text",
+            "required": false
+        },
+        {
+            "name": "device_type",
+            "type": "text",
+            "required": false
+        },
+        {
+            "name": "last_response_time",
+            "type": "number",
+            "required": false
+        },
+        {
+            "name": "last_interaction_time",
+            "type": "number",
+            "indexed": true,
+            "required": false
+        },
+        {
+            "name": "session_live",
+            "type": "bool",
+            "indexed": true,
+            "default": true,
+            "required": false
+        },
+        {
+            "name": "status",
+            "type": "text",
+            "options": [
+                "ongoing",
+                "completed",
+                "sent",
+                "delivered",
+                "read",
+                "initiated",
+                "interacted",
+                "engaged",
+                "converted",
+                "queued",
+                "ringing",
+                "in-progress",
+                "busy",
+                "no-answer",
+                "cancelled",
+                "failed",
+                "pre-initiated"
+            ],
+            "indexed": true,
+            "option_others": true,
+            "default": "pre-initiated"
+        },
+        {
+            "name": "history_updated_time",
+            "type": "number",
+            "required": false
+        },
+        {
+            "name": "last_post_process_time",
+            "type": "number",
+            "required": false
+        },
+        {
+            "name": "history",
+            "type": "list",
+            "required": false
+        },
+        {
+            "name": "has_unprocessed_history",
+            "type": "bool",
+            "required": false,
+            "default": false
+        },
+        {
+            "name": "disposition",
+            "type": "text",
+            "options": [
+                "queued",
+                "attempted",
+                "reached",
+                "contacted",
+                "engaged",
+                "converted",
+                "failed",
+                "error"
+            ]
+        },
+        {
+            "name": "disposition_detail",
+            "type": "text",
+            "options": [
+                "Invalid no.",
+                "Not registered on Whatsapp",
+                "User's no. is part of an experiment",
+                "Message undeliverable",
+                "Unable to send message",
+                "Unable to deliver message to deliver message/Unsubcribed",
+                "Message not delivered to maintained healty ecosystem management",
+                "Invalid / Doesn't exist",
+                "DND",
+                "Spam",
+                "Bounced",
+                "Not reachable",
+                "Didnt pickup",
+                "Requested Callback",
+                "Rejected",
+                "Vehicle is commercial or part of a fleet",
+                "Vehicle is not being run",
+                "Requires special spare parts",
+                "Others",
+                "Wrong contact number",
+                "Voicemail",
+                "Has sold/given away the car",
+                "Has moved to another location",
+                "Cannot make decision on servicing",
+                "Will call workshop themselves",
+                "Requested Callback",
+                "Looking for a discount",
+                "Language barrier",
+                "Has serviced car in another dealership",
+                "Will decide tomorrow",
+                "Will decide within 1 to 3 days",
+                "Will decide within 4 to 7 days",
+                "Will decide within 8 to 14 days",
+                "Will decide within 15 to 30 days",
+                "Will decide within 31 to 60 days",
+                "Will decide within 61 to 90 days",
+                "Will decide after 90 days",
+                "Converted",
+                "Bounced",
+                "Unsubscribed",
+                "Spam",
+                "Is not decision maker",
+                "Will decide later, will purchase within 15 days",
+                "Will decide later, will purchase within 1 to 3 months",
+                "Will decide later, exploring options",
+                "No buying intent",
+                "Just Exploring",
+                "Will call showroom themselves",
+                "Requested Callback",
+                "Purchased elsewhere",
+                "Converted",
+                "Enquired for Pricing",
+                "Enquired for Specifications",
+                "Enquired for Test Drive",
+                "Enquired for Showroom Visit",
+                "Enquired for Brochure",
+                "Enquired for Dealership Details",
+                "Enquired for Others",
+                "Comparing with another brand"
+            ],
+            "option_others": true
+        },
+        {
+            "name": "automated_disposition",
+            "type": "text"
+        },
+        {
+            "name": "automated_disposition_detail",
+            "type": "text"
+        },
+        {
+            "name": "error_reason",
+            "type": "text",
+            "required": false
+        },
+        {
+            "name": "failed_reason",
+            "type": "text",
+            "required": false
+        },
+        {
+            "name": "queries_per_session",
+            "type": "number"
+        },
+        {
+            "name": "unknown_queries_per_session",
+            "type": "number"
+        },
+        {
+            "name": "emotions",
+            "type": "string_list"
+        },
+        {
+            "type": "number",
+            "name": "sentiment_score"
+        },
+        {
+            "name": "lead_id",
+            "type": "text"
+        },
+        {
+            "name": "emotion_analysis",
+            "type": "text"
+        },
+        {
+            "name": "sentiment_classification",
+            "type": "text"
+        },
+        {
+            "name": "person_name",
+            "type": "text",
+            "default": {
+                "function": "resolve_and_search_in_model",
+                "kwargs": {
+                    "model_name": "{lead_model}",
+                    "attribute_name": "person_name",
+                    "lead_id": "{lead_id}",
+                    "_get_lead_id": true
+                }
+            }
+        },
+        {
+            "name": "campaign_name",
+            "type": "text",
+            "default": {
+                "function": "resolve_and_search_in_model",
+                "kwargs": {
+                    "model_name": "{lead_model}",
+                    "attribute_name": "campaign_name",
+                    "lead_id": "{lead_id}",
+                    "_get_lead_id": true
+                }
+            }
+        },
+        {
+            "name": "campaign_objective_name",
+            "type": "text",
+            "default": {
+                "function": "resolve_and_search_in_model",
+                "kwargs": {
+                    "model_name": "{lead_model}",
+                    "attribute_name": "campaign_objective_name",
+                    "lead_id": "{lead_id}",
+                    "_get_lead_id": true
+                }
+            }
+        },
+        {
+            "name": "campaign_objective_id",
+            "type": "text",
+            "default": {
+                "function": "resolve_and_search_in_model",
+                "kwargs": {
+                    "model_name": "{lead_model}",
+                    "attribute_name": "campaign_objective_id",
+                    "lead_id": "{lead_id}",
+                    "_get_lead_id": true
+                }
+            }
+        },
+        {
+            "name": "summary",
+            "type": "text",
+            "required": false
+        },
+        {
+            "name": "audio_transcript",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            }
+        },
+        {
+            "name": "escalations",
+            "type": "number"
+        },
+        {
+            "name": "human_agents",
+            "type": "string_list"
+        },
+        {
+            "name": "call_recording",
+            "type": "text"
         }
-      },
-
-      {
-        "name": "escalations",
-        "type": "number"
-      },
-      {
-        "name": "human_agents",
-        "type": "string_list"
-      },
-      {
-        "name": "call_recording",
-        "type": "text"
-      }
     ]
 }
