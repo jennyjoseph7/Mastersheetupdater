@@ -405,9 +405,9 @@ function start_worker() {
         fi
         worker_fname=${entry_point%.*}
         pid_filename=$BASE_DIR/${worker_name}_${worker_fname}.pid
-        export LOG_FILE=${LOGDIR}/${worker_name}_${worker_fname}_stderr.log
-        STDOUT_FILE=${LOGDIR}/${worker_name}_${worker_fname}_stdout.log
-        STDERR_FILE=${LOGDIR}/${worker_name}_${worker_fname}.log
+        export LOG_FILE=${LOGDIR}/${worker_name}_${worker_fnamei##*/}_stderr.log
+        STDOUT_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}_stdout.log
+        STDERR_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}.log
         pushd $BASE_DIR > /dev/null
         if [ $worker_type == "workers" ];then
             entry_point=${worker_name}/${entry_point}
