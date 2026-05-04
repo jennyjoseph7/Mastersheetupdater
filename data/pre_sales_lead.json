@@ -8,6 +8,23 @@
     ],
     "attributes": [
         {
+            "name": "created",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            },
+            "indexed": true
+        },
+        {
+            "auto_updater": true,
+            "name": "updated",
+            "type": "number",
+            "default": {
+                "function": "now_ctime"
+            },
+            "indexed": true
+        },
+        {
             "name": "dealership_id",
             "refers": "parents.dealership.dealership_id",
             "required": true,
@@ -335,11 +352,16 @@
             "default": {
                 "function": "get_from_model",
                 "args": [
-                    "campaign_objective",
-                    "campaign_objective_id",
+                    "pre_sales_campaign",
+                    "campaign_id",
                     "campaign_custom_attributes"
                 ]
             }
+        },
+        {
+            "name": "audience_attributes",
+            "type": "object_list",
+            "list_type": "nested_object"
         },
         {
             "name": "campaign_guardrails_guidelines",
@@ -1178,6 +1200,11 @@
             "type": "text"
         },
         {
+            "name": "lead_code_for_dealership",
+            "type": "text",
+            "indexed": true
+        },
+        {
             "auto_updater": true,
             "default": {
                 "args": [
@@ -1203,7 +1230,19 @@
         },
         {
             "name": "last_session_id",
-            "type": "uid"
+            "type": "uid",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "session",
+                    "session_id"
+                ],
+                "kwargs": {
+                    "lead_id": "{pre_sales_lead_id}",
+                    "_sort_by": "updated",
+                    "_sort_reverse": true
+                }
+            }
         },
         {
             "name": "last_session_status",
@@ -1259,6 +1298,10 @@
                     "channel"
                 ]
             }
+        },
+        {
+            "name": "lead_timeline",
+            "type": "text"
         },
         {
             "name": "lead_tags",
@@ -1325,6 +1368,7 @@
                 "Message not delivered to maintained healty ecosystem management",
                 "Invalid / Doesn't exist",
                 "DND",
+                "Busy",
                 "Voicemail",
                 "Wrong contact number",
                 "Not reachable",
@@ -1413,20 +1457,22 @@
             }
         },
         {
-            "name": "created",
-            "type": "number",
-            "default": {
-                "function": "now_ctime"
-            },
+            "name": "next_channel",
+            "type": "text",
             "indexed": true
         },
         {
-            "auto_updater": true,
-            "name": "updated",
+            "name": "next_channel_identifier",
+            "type": "text"
+        },
+        {
+            "name": "next_schedule_time",
             "type": "number",
-            "default": {
-                "function": "now_ctime"
-            },
+            "indexed": true
+        },
+        {
+            "name": "next_trigger",
+            "type": "text",
             "indexed": true
         }
     ]

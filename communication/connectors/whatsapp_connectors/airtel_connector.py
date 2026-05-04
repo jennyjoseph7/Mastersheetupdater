@@ -115,6 +115,7 @@ class AirtelWebhookConverter(BaseWebhookConverter):
 
         Supports: text, button, interactive (list/button reply), audio/image/document.
         """
+        # logger.info(f"TESTT extract_text_media--{json.dumps(params,indent=4)}")
         message = params.get("message", {})
         message_type = message.get("type", "text").lower()
         enterprise_id = params.get("enterprise_id")
@@ -194,6 +195,7 @@ class AirtelWebhookConverter(BaseWebhookConverter):
             self.default_message_dict: Stores structured message data.
         """
         try:
+            # logger.info(f"TESTT payload converter--{json.dumps(kwargs,indent=4)}")
             # Extract required parameters
             message = kwargs.get("message", {})
             profile = kwargs.get("profile", {})
@@ -209,6 +211,8 @@ class AirtelWebhookConverter(BaseWebhookConverter):
                 "message_id": kwargs.get("messageId"),
                 "message_request_id": kwargs.get("messageRequestId", ""),
                 "session_id": kwargs.get("sessionId"),
+                # "message_template_type": kwargs.get("ConversationType", ""),
+                # "message_type": message.get("type", ""),
                 "message_status": kwargs.get("msgStatus", "").upper(),
                 "message_sort": kwargs.get("msgSort"),
                 "message_stream": kwargs.get("msgStream"),
@@ -229,7 +233,7 @@ class AirtelWebhookConverter(BaseWebhookConverter):
             if isinstance(error_details, dict):
                 self.safe_update_dict({f"error_{key}": value for key, value in error_details.items()})
 
-            logger.info(f"Airtel webhook payload_converter: {kwargs}")
+            logger.info(f"Airtel webhook payload_converter: {json.dumps(kwargs,indent=4)}")
             # Extract and update additional context and media details
             self.safe_update_dict(self.extract_context_message(kwargs) or {})
             self.safe_update_dict(self.extract_text_media(kwargs) or {})

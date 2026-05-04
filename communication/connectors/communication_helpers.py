@@ -38,7 +38,9 @@ from os.path import (
 )
 
 from validate_email import validate_email
-from campaign.campaign_workflow import determine_campaign_next_action
+from communication.common_functions import get_communication_credential, generate_uid
+# from communication.connectors.connector_whatsapp import post_lead_disposition
+from conversation.lead_post_processing import update_lead_disposition_and_post_billing
 # --- Set import path for internal modules ---
 _communication_dir = dirname(dirname(abspath(__file__)))
 if _communication_dir not in sys.path:
@@ -64,7 +66,7 @@ NullEmptyCheck=[None, "", "null", "None"]
 
 # common functions
 
-def handle_session_logic(phone_number, channel=None,engaged=False,campaign_details=None, from_web_chat=False):
+def handle_session_logic(phone_number,from_number=None,channel=None,engaged=False,campaign_details=None, from_web_chat=False, profile_name=None):
     payload = {}
     dealership_id = None
 
@@ -74,7 +76,7 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
         payload.update({
             "phone_number": phone_number,
             "user_id": person.get("user_id"),
-            "person_name": person.get("name"),
+            "person_name": person.get("name") or profile_name,
             "email": person.get("email")
         })
 
@@ -92,10 +94,18 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
             return {**session}
 
         logger.info(f"TEST phone_number: {phone_number}")
+        # get the dealership_id
+        _f={"sender": from_number,"channel":channel}
+        _f = {k: v for k, v in _f.items() if v is not None}
+        creds = list(pg.list("communication_credential", _f ))
+        if creds:
+            logger.info(f"In handle_session_logic communication creds: {creds[0]}")
+            dealership_id = creds[0].get("dealership_id")
+            payload["dealership_id"] = dealership_id
         # 3. CONTACT STATUS
         contact_list = list(
             pg.list_order_by("contact_status", {
-                "phone_number": phone_number,"channel":channel
+                "phone_number": phone_number,"channel":channel,"dealership_id":dealership_id
             },order_by="created", order="DESC")
         )
         logger.info(f"TEST contact_list present: {len(contact_list)}")
@@ -122,7 +132,7 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
                 l_person_name = l.get("person_name",None)
                 l_campaign_obj_name = l.get("campaign_objective_name",None)
                 l_campaign_name = l.get("campaign_name",None)
-
+                # l_dealership_id=l.get("dealership_id",None)
             payload.update({
                 "campaign_id": campaign_id,
                 "campaign_type": campaign_type,
@@ -131,7 +141,8 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
                 "lead_model": lead_model,
                 "person_name": l_person_name,
                 "campaign_objective_name": l_campaign_obj_name,
-                "campaign_name": l_campaign_name
+                "campaign_name": l_campaign_name,
+                # "dealership_id":l_dealership_id
             })
         else:
             logger.info(f"No existing campaign association for {phone_number}")
@@ -163,11 +174,11 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
             # campaign_data = pg.get(model_name, {"campaign_id": campaign_id})
             campaign_data= pg.get(model_name,"campaign_id",campaign_id)
             if campaign_data:
-                dealership_id = campaign_data.get("dealership_id")
+                # dealership_id = campaign_data.get("dealership_id")
                 payload["campaign_objective_name"] = campaign_data.get("campaign_objective_name")
                 payload["campaign_name"] = campaign_data.get("campaign_name")
-                payload["dealership_id"] = dealership_id
-
+                # payload["dealership_id"] = dealership_id
+                logger.info(f"In handle_session_logic dealership_id inside ---> {dealership_id}")
                 # get credentials for dealership (skip if "dave")
                 if dealership_id and dealership_id.lower() != "dave":
                     _ = list(pg.list("communication_credential", {"dealership_id": dealership_id}))
@@ -177,10 +188,13 @@ def handle_session_logic(phone_number, channel=None,engaged=False,campaign_detai
             return {**session, "dealership_id": dealership_id}
 
         # 5. NON-CAMPAIGN FLOW
-        creds = list(pg.list("communication_credential", {"sender": phone_number}))
-        if creds:
-            dealership_id = creds[0].get("dealership_id")
-            payload["dealership_id"] = dealership_id
+        # _f={"sender": from_number,"channel":channel}
+        # _f = {k: v for k, v in _f.items() if v is not None}
+        # creds = list(pg.list("communication_credential", _f ))
+        # logger.info(f"TESTT creds: {creds[0]}")
+        # if creds:
+        #     dealership_id = creds[0].get("dealership_id")
+        #     payload["dealership_id"] = dealership_id
 
         session = get_or_create_session(payload,channel,engaged)
         return {**session, "dealership_id": dealership_id}
@@ -226,6 +240,8 @@ def get_or_create_session(data,channel=None,engaged=False):
     filters = {
         "session_id":data.get("session_id"),
         "user_id":data.get("user_id"),
+        # TODO: have a dealership_id also as a filter. 
+        "dealership_id":data.get("dealership_id"),
         # "campaign_id":data.get("campaign_id"),
         # "channel": channel or "whatsapp_chat" if data.get("campaign_type")=="post-sales" else None, 
         "channel": channel or "whatsapp_chat",
@@ -257,7 +273,8 @@ def get_or_create_session(data,channel=None,engaged=False):
                 return sessions[0]
             logger.info(f"Is previous session inbound: {is_previous_session_inbound}")
             # if (new_campaign_id != old_campaign_id):
-            if not engaged and sessions[0].get("session_id"):
+            
+            if not engaged and sessions[0].get("session_id"): 
                 logger.info("There is a new triggered campaign for this user. Since there is an existing session, we are ending the existing(old) session and creating a new session..")
                 logger.info(f"OLD SESSIONID--{sessions[0].get('session_id')}")
                 # end the old session also check if session end_time
@@ -268,7 +285,7 @@ def get_or_create_session(data,channel=None,engaged=False):
                     args=[],
                     kwargs={"session_id":sessions[0].get("session_id")}
                 )
-                # end_session_and_post_process(**{"session_id":sessions[0].get("session_id"),"pg":pg})
+                # TODO: call it as a function end_session_and_post_process(**{"session_id":sessions[0].get("session_id"),"pg":pg})
                 # create new session
                 s=create_new_session(data,channel,engaged)
                 return s
@@ -289,27 +306,28 @@ def get_or_create_session(data,channel=None,engaged=False):
                 elif previous_disposition == "converted":
                     logger.info(f"Session {session_id} already converted. Handling converted session logic.")
                     logger.info(f"Calling determine_campaign_next_action for disposition {previous_disposition} and the session_id: {session_id}")
-                    # call_next_campaign_workflow_task(sessions[0].get("campaign_id"),sessions[0].get("campaign_type"),sessions[0].get("lead_id"),sessions[0].get("channel"),channel_identifier,data.get("disposition"),pg=pg)
                 # Case 3: anything else → update the disposition to engaged
                 else:
                     if engaged:
                         logger.info(f"Since the user has interacted . Updating the disposition from {previous_disposition} to engaged for session {session_id}.")
                         logger.info(f"Calling determine_campaign_next_action for the session_id: {session_id}--> diposition is set to engaged.")
-                        # call_next_campaign_workflow_task(sessions[0].get("campaign_id"),sessions[0].get("campaign_type"),sessions[0].get("lead_id"),sessions[0].get("channel"),channel_identifier,"engaged",pg=pg)
 
                     pg.update("session","session_id",session_id,{"disposition":"engaged","status":"interacted"})
                     
+                    
                     # updating disposition in lead
-                    if data.get("campaign_type") == "pre-sales":
-                        pg.update("pre_sales_lead","pre_sales_lead_id",data.get("lead_id"),{"disposition":"engaged"})
-                    elif data.get("campaign_type") == "post-sales":
-                        pg.update("post_sales_lead","post_sales_lead_id",data.get("lead_id"),{"disposition":"engaged"})
+                    update_lead_disposition_and_post_billing("engaged",**data)
+                    
+                    # if data.get("campaign_type") == "pre-sales":
+                    #     pg.update("pre_sales_lead","pre_sales_lead_id",data.get("lead_id"),{"disposition":"engaged"})
+                    # elif data.get("campaign_type") == "post-sales":
+                    #     pg.update("post_sales_lead","post_sales_lead_id",data.get("lead_id"),{"disposition":"engaged"})
                     # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
                     sessions[0]["disposition"] = "engaged"
                 return sessions[0]
 
         logger.info(f"No Existing session found. Creating a new one..")
-        
+        logger.info(f"CREATE NEW SESSION CHECKING engaged--{engaged}")
         # Create new session
         s=create_new_session(data,channel,engaged)
         
@@ -460,43 +478,217 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
         logger.info(f"after triggering post_session_process for session {session_id}.Also updating the last_post_process_time in session_model.")
         return
         
-def create_new_session(data,channel=None,engaged=False):
+# def create_new_session(data,channel=None,engaged=False):
+#     logger.info(f"Creating new session for user_id: {data.get('user_id')} and data: {json.dumps(data,indent=4)}")
+#     with get_pg_connector() as pg:
+#         # if engaged:
+#         #     logger.info(f"User has initiated the conversation.So considering it as a pure inbound session.")
+#         #     campaign_model="pre_sales_campaign" if data.get("campaign_type") == "pre-sales" else "post_sales_campaign"
+#         #     _d=list(pg.list(campaign_model,{"campaign_objective_name":"Inbound Lead Handling","dealership_id":data.get("dealership_id"),"campaign_type":data.get("campaign_type")}))
+#         #     if not _d:
+#         #         logger.error(f"No inbound campaign found for dealership_id: {data.get('dealership_id')} and campaign_type: {data.get('campaign_type')}")
+#         #         return
+#         #     _c_data=_d[0]
+#         new_session = {
+#             **data,
+#             "session_live": True,
+#             "channel": channel or "whatsapp_chat",
+#             "status": "interacted" if engaged else "queued",
+#             "disposition": "engaged" if engaged else "queued",
+#             "campaign_type": data.get("campaign_type","inbound") ,
+#             "campaign_id": data.get("campaign_id",'inbound') ,
+#             "person_name": data.get("person_name"),
+#             "campaign_objective_name": data.get("campaign_objective_name"),
+#             "campaign_name": data.get("campaign_name"),
+#             "created": time.time(),
+#             "updated": time.time(),
+#             "start_time": time.time()
+#         }
+                
+#         data["updated"] = time.time()
+#         # logger.info(f"Data for new session: {json.dumps(new_session,indent=4)}")
+#         # logger.info(f"Generating session_id for new session with data: {json.dumps(data,indent=4)}")
+#         session_id=generate_uid(data)
+#         s= pg.update("session","session_id",session_id,new_session)
+#         logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. And the session_id is -- {s}")
+        
+#         # updating lead last_session_channel 
+#         if data.get("campaign_type") == "pre-sales":
+#             pg.update("pre_sales_lead","pre_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel,"user_id":data.get("user_id")})
+#         elif data.get("campaign_type") == "post-sales":
+#             pg.update("post_sales_lead","post_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel})
+#         # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
+#         return s 
+
+
+def create_new_session(data, channel=None, engaged=False):
     logger.info(f"Creating new session for user_id: {data.get('user_id')} and data: {json.dumps(data,indent=4)}")
+    
+    user_id = data.get("user_id")
+    dealership_id = data.get("dealership_id")
+    campaign_type = data.get("campaign_type", "pre-sales")
+    
+    _additional_attributes={
+        "phone_number": data.get("phone_number"),
+        "person_name":data.get("person_name"),
+        "email_name":data.get("email")
+    }
+    now = time.time()
+
     with get_pg_connector() as pg:
+        campaign_data = {}
+
+        # Handling engaged (inbound) scenario
+        if engaged:
+            logger.info("User initiated conversation → inbound session")
+
+            campaign_model = (
+                "pre_sales_campaign"
+                if campaign_type == "pre-sales"
+                else "post_sales_campaign"
+            )
+
+            campaigns = list(pg.list(
+                campaign_model,
+                {
+                    "campaign_objective_name": "Inbound Lead Handling",
+                    "dealership_id": dealership_id,
+                    "campaign_type": campaign_type
+                }
+            ))
+
+            if not campaigns:
+                logger.error(
+                    f"No inbound campaign found for dealership_id: {dealership_id} "
+                    f"and campaign_type: {campaign_type}"
+                )
+                return None
+
+            campaign_data = campaigns[0]
+            
+            logger.info(f"Found inbound campaign: {json.dumps(campaign_data,indent=4)}")
+            # creating a lead for this inbound user
+            _final_payload={
+                **campaign_data,
+                **_additional_attributes}
+            d=check_and_create_inbound_lead_object(_final_payload)
+            data["lead_id"] = d.get("lead_id")
         new_session = {
             **data,
             "session_live": True,
             "channel": channel or "whatsapp_chat",
             "status": "interacted" if engaged else "queued",
             "disposition": "engaged" if engaged else "queued",
-            "campaign_type": data.get("campaign_type","inbound"),
-            "campaign_id": data.get("campaign_id",'inbound'),
+            "campaign_type": campaign_data.get("campaign_type", campaign_type),
+            "campaign_id": campaign_data.get("campaign_id", data.get("campaign_id", "inbound")),
+            "campaign_objective_name": campaign_data.get(
+                "campaign_objective_name", data.get("campaign_objective_name")
+            ),
+            "campaign_name": campaign_data.get(
+                "campaign_name", data.get("campaign_name")
+            ),
             "person_name": data.get("person_name"),
-            "campaign_objective_name": data.get("campaign_objective_name"),
-            "campaign_name": data.get("campaign_name"),
+            "created": now,
+            "updated": now,
+            "start_time": now,
+        }
+
+        data["updated"] = now
+        # Generate session_id
+        session_id = generate_uid(data)
+
+        session = pg.update("session", "session_id", session_id, new_session)
+
+        logger.info(f"Session created for user_id: {user_id} → session_id: {session_id}")
+        # updating lead last_session_channel 
+        lead_id = session.get("lead_id")
+        if not lead_id:
+            logger.error(f"No lead_id found for session_id: {session_id}")
+            return
+        if campaign_type == "pre-sales":
+            pg.update(
+                "pre_sales_lead",
+                "pre_sales_lead_id",
+                lead_id,
+                {
+                    "last_session_channel": channel,
+                    "user_id": user_id
+                }
+            )
+
+        elif campaign_type == "post-sales":
+            pg.update(
+                "post_sales_lead",
+                "post_sales_lead_id",
+                lead_id,
+                {
+                    "last_session_channel": channel
+                }
+            )
+        # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
+
+        return session
+
+def check_and_create_inbound_lead_object(**kwargs):
+    dealership_id=kwargs.get("dealership_id")
+    campaign_id=kwargs.get("campaign_id")
+    user_id=kwargs.get("user_id")
+    urgency_hook=kwargs.get("urgency_hook")
+    with get_pg_connector() as pg:
+        existing_leads=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
+        if existing_leads:
+            logger.info(f"Inbound Lead already exists for campaign_id={campaign_id}, user_id={user_id}")
+            return existing_leads[0].get("pre_sales_lead_id")
+        logger.info(f"TEST USER ID--{user_id} and campaign_id--{campaign_id}")
+        lead_data={
+            "ctas": kwargs.get("ctas"),
             "created": time.time(),
             "updated": time.time(),
-            "start_time": time.time()
+            "lead_tags": [],
+            "dealership_id": dealership_id,
+            "region_id": kwargs.get("region_id"),
+            "campaign_id": campaign_id,
+            "user_id": user_id,
+            "person_name": kwargs.get("person_name"),
+            "email": kwargs.get("email"),
+            "dealer_name": kwargs.get("dealership_name"),
+            "disposition": "queued",
+            "region_name": kwargs.get("region_name"),
+            "workshop_id": "None",
+            "phone_number": kwargs.get("phone_number"), #get the number from session,
+            "urgency_hook": urgency_hook,
+            # "audience_name": "us test",
+            "campaign_name": kwargs.get("campaign_name"),
+            "campaign_type": kwargs.get("pre-sales"),
+            "campaign_offer": kwargs.get("campaign_offer"),
+            "finance_required": False,
+            "supported_brands": kwargs.get("supported_brands"),
+            "vehicle_category": kwargs.get("vehicle_category"),
+            "campaign_sub_type": kwargs.get("campaign_sub_type"),
+            "conversation_tone": kwargs.get("conversation_tone"),
+            "campaign_description": kwargs.get("campaign_description"),
+            "campaign_objective_id": kwargs.get("campaign_objective_id"),
+            "campaign_objective_name": kwargs.get("campaign_objective_name"),
+            "supported_brand_names": {},
+            "region_level_guardrails": kwargs.get("region_level_guardrails"),
+            "region_level_guidelines": kwargs.get("region_level_guidelines"),
+            "why_user_should_avail_this": kwargs.get("why_user_should_avail_this"),
+            "supported_brands_guidelines": {},
+            "previous_interaction_details": {},
+            "reasons_for_non_applicability": kwargs.get("reasons_for_non_applicability"),
+            "campaign_objective_description": kwargs.get("campaign_objective_description"),
+            "reasons_users_may_not_be_interested": kwargs.get("reasons_users_may_not_be_interested"),
         }
-                
-        data["updated"] = time.time()
-        # logger.info(f"Data for new session: {json.dumps(new_session,indent=4)}")
-        # logger.info(f"Generating session_id for new session with data: {json.dumps(data,indent=4)}")
-        session_id=generate_uid(data)
-        s= pg.update("session","session_id",session_id,new_session)
-        logger.info(f"Session with user_id: {data.get('user_id')}. Doesnt exist. Created a new session. And the session_id is -- {s}")
         
-        # updating lead last_session_channel 
-        if data.get("campaign_type") == "pre-sales":
-            pg.update("pre_sales_lead","pre_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel,"user_id":data.get("user_id")})
-        elif data.get("campaign_type") == "post-sales":
-            pg.update("post_sales_lead","post_sales_lead_id",s.get("lead_id"),{"last_session_channel":channel})
-        # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
-        return s 
-
-
-
-
+        lead_id=generate_uid(lead_data)
+        logger.info(f"Creating new pre-sales lead with lead_id={lead_id}")     
+        with get_pg_connector() as pg:
+            l=pg.update("pre_sales_lead", "pre_sales_lead_id", lead_id,lead_data)
+            lead_d=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
+            # logger.info(f"Lead created: {json.dumps(lead_d,indent=4)} with user_id={user_id} and campaign_id={campaign_id}")
+            logger.info(f"Pre-sales lead data created -- {lead_d[0].get('pre_sales_lead_id')}")
+            return lead_d[0].get("pre_sales_lead_id")
+        
 def get_or_create_person(phone_number):
     """Return person object; create if not exists."""
     logger.info(f"Getting or creating person for phone_number: {phone_number}")
@@ -528,82 +720,7 @@ def get_or_create_person(phone_number):
             "updated":time.time()
             })
         logger.info(f"Person with phone_number: {phone_number}. Doesnt exist. Created a new one. data: {d}")
-        return d
-
-def generate_uid(data):
-    if isinstance(data, (dict, list)):
-        data_str = json.dumps(data, sort_keys=True, ensure_ascii=True)
-    else:
-        try:
-            data_str = str(data)
-        except Exception:
-            data_str = repr(data)
-
-    # Sanitize surrogates/invalid Unicode that would cause uuid3 to fail on encode
-    data_str = data_str.encode('utf-8', errors='replace').decode('utf-8')
-
-    uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
-    # logger.info(f"Generated UID: {uid} and type of uid: {type(uid)} for data: {data_str}")
-    return str(uid)
-
-def get_communication_credential(dealership_id="daveai", channel=None):
-    logger.info(f"Getting communication credential for dealership - {dealership_id}")
-
-    if not channel:
-        logger.info(
-            f"Channel not provided for dealership - {dealership_id}. Returning None."
-        )
-        return None
-
-    with get_pg_connector() as pg:
-        creds = list(pg.list("communication_credential",{"dealership_id": dealership_id, "channel": channel}))
-        if creds:
-            return creds[0]
-
-        # Fallback to default dealership "daveai" if no creds found for the dealership and channel
-        if dealership_id != "daveai":
-            logger.info(
-                f"No credential found for dealership - {dealership_id}. "
-                f"Falling back to default dealership - daveai for channel - {channel}"
-            )
-            creds = list(
-                pg.list(
-                    "communication_credential",
-                    {"dealership_id": "daveai", "channel": channel}
-                )
-            )
-            if creds:
-                return creds[0]
-
-    return None
-
-def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,channel_identifier,disposition,pg=None):
-    logger.info(f"In the campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
-    if not campaign_id:
-        logger.error(f"campaign_id is required for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
-        return
-    campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
-    def _do_db_work(pg_conn):
-        a=list(pg_conn.list(campaign_model, {"campaign_status": "Active"}))
-        # if not a:
-        #     logger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
-        #     return
-        # TODO:before calling ananth task check the campaign status and then call.. 
-        logger.info(f"Calling next campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
-        gryd.create_async_task(
-            "determine_campaign_next_action",
-            AUTOCRM_CAMPAIGN_SERVICE_NAME,
-            args=[campaign_type,lead_id,channel,channel_identifier,disposition],
-            kwargs={"enterprise_id": AUTOCRM_APP_ENTERPRISE_ID},
-        )
-        # determine_campaign_next_action(campaign_type,lead_id,channel,channel_identifier,disposition,pg_conn)
-
-    if pg:
-        _do_db_work(pg)
-    else:
-        with get_pg_connector() as pg_conn:
-            _do_db_work(pg_conn)
-            
+        return d    
         
 def reload_model_ref(model_name,enteprise_id):
         logger.info(f"Getting Model Connection for model_name: {model_name} and enteprise_id : {enteprise_id}")

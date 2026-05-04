@@ -142,6 +142,8 @@ export function AddDataSourceDialog({
       // Use the prefilled Draft Campaign ID if available, otherwise fallback to Objective ID
       const targetCampaignId = formData.campaignId || formData.campaignObjectiveId;
       
+
+      
       const data = await startImportTask(
         formData.category,
         formData.audienceName,
@@ -160,7 +162,7 @@ export function AddDataSourceDialog({
         task_id: taskId,
         campaign_type: formData.category,
         campaign_objective_id: formData.campaignObjectiveId, 
-        campaign_id: targetCampaignId,
+        campaign_id: formData.campaignId || "",
         campaign_objective_name: "",
         audience_name: formData.audienceName,
         dealership_id: getDealershipId(),

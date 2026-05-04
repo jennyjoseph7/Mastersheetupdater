@@ -22,19 +22,59 @@
         },
         {
             "name": "model_year_id",
-            "refers": "parents.model_year.model_year_id"
+            "refers": "parents.model_year.model_year_id",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "model_year",
+                    "model_year_id"
+                ],
+                "kwargs": {
+                    "vehicle_model_generic_name": "{vehicle_model_generic_name}",
+                    "year": "{year}",
+                    "brand_name": "{brand_name}",
+                    "region_name": "{region_name}"
+                }
+            }
         },
         {
             "name": "vehicle_model_id",
-            "refers": "parents.model_year.vehicle_model_id"
+            "refers": "parents.model_year.vehicle_model_id",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "vehicle_model",
+                    "vehicle_model_id"
+                ],
+                "kwargs": {
+                    "vehicle_model_name": "{vehicle_model_generic_name}",
+                    "brand_name": "{brand_name}",
+                    "region_name": "{region_name}"
+                }
+            }
         },
         {
             "name": "vehicle_model_generic_name",
             "refers": "parents.model_year.vehicle_model_generic_name"
         },
         {
+            "name": "vehicle_model_name",
+            "refers": "parents.model_year.vehicle_model_name"
+        },
+        {
             "name": "brand_id",
-            "refers": "parents.model_year.brand_id"
+            "refers": "parents.model_year.brand_id",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "brand",
+                    "brand_id"
+                ],
+                "kwargs": {
+                    "brand_name": "{brand_name}",
+                    "region_name": "{region_name}"
+                }
+            }
         },
         {
             "name": "brand_name",
@@ -42,7 +82,17 @@
         },
         {
             "name": "region_id",
-            "refers": "parents.model_year.region_id"
+            "refers": "parents.model_year.region_id",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "region",
+                    "region_id"
+                ],
+                "kwargs": {
+                    "region_name": "{region_name}"
+                }
+            }
         },
         {
             "name": "region_name",
@@ -140,6 +190,22 @@
             "ui_element": "select"
         },
         {
+            "name": "transmission_types_aliases",
+            "type": "string_list",
+            "converter": {
+                "function": "ensure_in_list",
+                "args": [
+                    "transmission_type"
+                ]
+            },
+            "default": {
+                "function": "ensure_in_list",
+                "args": [
+                    "transmission_type"
+                ]
+            }
+        },
+        {
             "name": "vehicle_category",
             "refers": "parents.model_year.vehicle_category"
         },
@@ -214,7 +280,9 @@
                 "Diesel",
                 "CNG",
                 "Electric",
-                "Hybrid"
+                "Hybrid",
+                "LPG",
+                "Hydrogen"
             ],
             "ui_element": "select"
         },

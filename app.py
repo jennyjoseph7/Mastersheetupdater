@@ -1,7 +1,8 @@
 import sys, os
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
+if BASE_DIR in sys.path:
+    sys.path.remove(BASE_DIR)
+sys.path.insert(0, BASE_DIR)
 from core.core import generate_otp, dealership_signup, reset_password
 from core.razorpay_service import razorpay_webhook_handler
 import json
@@ -55,13 +56,13 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
         load_stored_procedures()
     if (not skip_cron) or new_environment:
         cron_worker.add_cron_job(AUTOCRM_APP_ENTERPRISE_ID, "clear_otp_cache", "cron", "*/15 * * * *", logger = logger)
-        cron_worker.add_cron_job(
-             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
-               task="overall_campaign_summary",
-               service=AUTOCRM_CRON_SERVICE_NAME,
-               schedule = "*/10 * * * *",
-               add_schedule_to_queue=False
-        )
+        # cron_worker.add_cron_job(
+        #      enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+        #        task="overall_campaign_summary",
+        #        service=AUTOCRM_CRON_SERVICE_NAME,
+        #        schedule = "*/10 * * * *",
+        #        add_schedule_to_queue=False
+        # )
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="manage_active_sessions",
@@ -72,7 +73,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
         )
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
-              task="template_approval",
+              task="template_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
               schedule = "*/10 * * * *",
               add_schedule_to_queue=False
@@ -85,6 +86,14 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
               schedule = "*/30 * * * *",
               add_schedule_to_queue=False
         )
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="reset_auth_creds",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule = "*/45 * * * *",
+              add_schedule_to_queue=False
+        )
+        
         # cron_worker.add_cron_job(
         #     enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
         #       task="set_worker_count",
@@ -200,7 +209,7 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
     return dealership
 
 
-# app.register_blueprint(ai_service_app.ai_service_routes)
+app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
 app.register_blueprint(elevanlabs_tatatele_routes)
 app.register_blueprint(twilio_routes)

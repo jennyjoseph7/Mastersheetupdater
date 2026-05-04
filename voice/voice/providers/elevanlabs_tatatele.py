@@ -1,5 +1,6 @@
 from time import time, monotonic
 import os, sys
+from gryd_worker import gryd_helpers as hp
 
 import pytz
 _root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -57,8 +58,8 @@ def _append_bridge_timing_jsonl(record: Dict[str, Any], agent_number: str  = "da
         if not os.path.isdir(BRIDGE_TIMING_LOG_DIR):
             os.makedirs(BRIDGE_TIMING_LOG_DIR, exist_ok=True)
         with bridge_timing_log_lock:
-            BRIDGE_TIMING_LOG_DIR = os.path.join(BRIDGE_TIMING_LOG_DIR, f"voice_session_timing_{agent_number}_{customer_number}_{time()}.json")
-            with open(BRIDGE_TIMING_LOG_DIR, "a", encoding="utf-8") as f:
+            log_path = os.path.join(BRIDGE_TIMING_LOG_DIR, f"voice_session_timing_{agent_number}_{customer_number}_{time()}.json")
+            with open(log_path, "a", encoding="utf-8") as f:
                 f.write(line)
     except Exception as e:
         logger.warning("BRIDGE_TIMING_LOG_DIR write failed: %s", e)
@@ -793,7 +794,7 @@ class CallSession:
                         bridge_error,
                     ),
                     agent_number=self.session_data.get("agent_number"),
-                    user_number=self.session_data.get("phone_number")
+                    customer_number=self.session_data.get("phone_number")
                 )
 
             # Cleanup session
@@ -1034,7 +1035,7 @@ def make_call_tatatele(session_data, *args, **kwargs):
             call_sessions[call_id] = session
 
         logger.info(f"[{call_id}] Starting Connection to websocket bridge")
-        external_wss = f"{config.AUTOCRM_WEBSOCKET_BASE_URL}/tatatele/{customer_number}/{agent_number}_{customer_number}"
+        external_wss = f"{config.get_websocket_base_url(customer_number[-10:])}/tatatele/{customer_number[-10:]}/{agent_number[-10:]}_{customer_number[-10:]}"
 
         async def start_bridge():
             await session.connect_external_websocket(external_wss)
@@ -1142,10 +1143,12 @@ def root():
 def create_stream_url(*args, **kwargs):
     t = time()
     data = request.get_json()
-    base_ws_url = config.AUTOCRM_WEBSOCKET_BASE_URL
 
-    from_number = data.get("from_number")[1:]
-    to_number = data.get("to_number")[1:]
+    from_number = data.get("from_number")[-10:]
+    to_number = data.get("to_number")[-10:]
+
+    base_ws_url = config.get_websocket_base_url(to_number)
+
     wss_url = f"{base_ws_url}/tatatele/{from_number}_{to_number}/{to_number}"
 
     logger.info(f"[webhook-/tatatele/create-stream-url] Generated wss_url took {time() - t:.2f} seconds: {wss_url}")

@@ -8,13 +8,14 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
+from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME, gryd, hp
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 from gryd_worker import gryd_db_helper as db, beats as cron_worker,gryd_audit_helper
 from communication.connectors.communication_helpers import handle_session_post_process_or_end
+
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 
@@ -359,7 +360,7 @@ def manage_active_sessions(*args, **kwargs):
                 new_records = []
                 for row in history_rows:
                     ts = normalize_ts(row.get("created") or row.get("updated"))
-                    mlogger.info(f"ts: {ts}-->{session_id}")
+                    # mlogger.info(f"ts: {ts}-->{session_id}")
                     if ts and (last_history_epoch is None or ts > last_history_epoch):
                         new_records.append((row, ts))
 
@@ -477,14 +478,15 @@ def schedule_campaign_trigger(*args, **kwargs):
 
             mlogger.info(f"Found {len(campaigns)} campaigns to trigger in {table}")
 
-            for campaign in campaigns:
-                pg.update(
-                    table,
-                    "campaign_id",
-                    campaign.get("campaign_id"),
-                    {"campaign_status": "Active"},
-                )
+            # for campaign in campaigns:
+            #     pg.update(
+            #         table,
+            #         "campaign_id",
+            #         campaign.get("campaign_id"),
+            #         {"campaign_status": "Active"},
+            #     )
                 # call ananth's task
+                
 
 @gryd.is_a_task(function_name="end_campaigns")
 def end_campaigns():
@@ -571,6 +573,92 @@ def create_campaign_ideas_for_dealerships(
     return {
         "created_idea_count": created_idea_count,
     }
+
+
+def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,channel_identifier,disposition,pg=None):
+    mlogger.info(f"In the campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+    if not campaign_id:
+        mlogger.error(f"campaign_id is required for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+        return
+    campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
+    def _do_db_work(pg_conn):
+        a=list(pg_conn.list(campaign_model, {"campaign_status": "Active"}))
+        if not a:
+            mlogger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
+            return
+        # TODO:before calling ananth task check the campaign status and then call.. 
+        mlogger.info(f"Calling next campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+        gryd.create_async_task(
+            "determine_campaign_next_action",
+            AUTOCRM_CAMPAIGN_SERVICE_NAME,
+            args=[campaign_type,lead_id,channel,channel_identifier,disposition],
+            kwargs={"enterprise_id": AUTOCRM_APP_ENTERPRISE_ID},
+        )
+        # determine_campaign_next_action(campaign_type,lead_id,channel,channel_identifier,disposition,pg_conn)
+
+    if pg:
+        _do_db_work(pg)
+    else:
+        with get_pg_connector() as pg_conn:
+            _do_db_work(pg_conn)
+     
+def call_campaign_workflow(*args, **kwargs):
+    
+    campaign_id = kwargs.get("campaign_id")
+    channel_identifier = kwargs.get("channel_identifier")
+    mlogger.info(f"campaign_id: {campaign_id}, channel_identifier: {channel_identifier}")
+    if not campaign_id:
+        return
+    with get_pg_connector() as pg:
+        query = """
+        SELECT DISTINCT ON (dict->>'lead_id')
+            dict->>'lead_id',
+            dict->>'provider_status',
+            dict->>'campaign_id',
+            dict->>'campaign_type',
+            dict->>'channel',
+            dict->>'phone_number',
+            dict->>'email'
+        FROM contact_status
+        WHERE dict->>'campaign_id' = %s
+        ORDER BY dict->>'lead_id', dict->>'created' DESC;
+        """
+        records = pg.fetch_all(query, (campaign_id,))
+        mlogger.info(f"records --{records}")
+        if not records:
+            return
+
+        columns = ["lead_id", "disposition", "campaign_id", "campaign_type", "channel", "phone_number", "email"]
+        
+        if isinstance(records, tuple):
+            records = [records]
+        
+        for row in records:
+            row_dict = dict(zip(columns, row))
+            mlogger.info(f"row_dict --{row_dict}")
+            channel = row_dict.get("channel")
+            # mlogger.info(f"channel --{channel}")
+            
+            if channel == "email":
+                c = row_dict.get("email")
+            elif channel in ["voice_phone", "sms", "whatsapp_chat"]:
+                c = row_dict.get("phone_number")
+            else:
+                c = None
+            # c=row_dict.get("email") if row_dict.get("channel") in ["email"] else row_dict.get("phone_number")
+            mlogger.info(f"channel_identifier --{c}")
+            # try:
+            #     call_next_campaign_workflow_task(
+            #         row_dict.get("campaign_id"),
+            #         row_dict.get("campaign_type"),
+            #         row_dict.get("lead_id"),
+            #         None,
+            #         channel_identifier,
+            #         row_dict.get("disposition"),
+            #         pg=pg
+            #     )
+            # except Exception as e:
+            #     print(f"[Workflow Error] Lead {row.get('lead_id')}: {str(e)}")
 
 @gryd.is_a_task('create_campaign_templates', logger_param='logger', job_param='job')
 def create_campaign_templates(logger=None, job=None):
@@ -1013,19 +1101,248 @@ def create_campaign_templates(logger=None, job=None):
         "created_template_count": created_template_count,
     }
 
+def _normalize_template_status(raw_status):
+    """Normalize provider-specific status strings to our canonical values."""
+    if not raw_status:
+        return None
+    status = str(raw_status).strip().lower()
+    # Airtel returns `pending_for_review`; Meta/RML return `pending`.
+    if status == "pending_for_review":
+        status = "pending"
+    return status
+
+
+def _sync_airtel_template_statuses(auth_data, template_ids, logger):
+    """Sync status for Airtel-provided WhatsApp templates (per-template GET)."""
+    for template_id in template_ids:
+        try:
+            url = (
+                "https://iqwhatsapp.airtel.in/gateway/airtel-xchange/"
+                "whatsapp-content-manager/v1/template"
+                f"?customerId={auth_data['customer_id']}"
+                f"&subAccountId={auth_data['sub_account_id']}"
+                f"&wabaId={auth_data['waba_id']}"
+                f"&templateId={template_id}"
+            )
+            headers = auth_data["auth_headers"]
+            logger.debug(f"[Airtel] GET → {url}")
+
+            response = requests.request("GET", url, headers=headers, data={})
+            response_json = response.json()
+            template_data = response_json.get("template")
+            if not template_data:
+                logger.warning(
+                    f"[Airtel] No template data for template {template_id}: {response_json}"
+                )
+                continue
+
+            logger.info(f"[Airtel] response for {template_id}: {response_json}")
+            status = _normalize_template_status(template_data.get("registrationStatus"))
+            if not status:
+                logger.warning(f"[Airtel] Empty status for template {template_id}")
+                continue
+
+            pg.update(
+                table_name="template",
+                id_attr="template_id",
+                id=template_id,
+                data={"status": status},
+            )
+            logger.info(f"[Airtel] Updated status='{status}' for template_id={template_id}")
+        except Exception as e:
+            logger.error(f"[Airtel] [FAILED] template {template_id}: {e}")
+            continue
+
+
+RML_LOGIN_URL = "https://apis.rmlconnect.net/auth/v1/login/"
+RML_TEMPLATES_URL = "https://apis.rmlconnect.net/wba/templates"
+
+
+def _rml_login(auth_creds, logger):
+    """Call Route Mobile's Login API (``POST /auth/v1/login/``) and return a JWT.
+
+    Spec: https://routemobile.github.io/WhatsApp-Business-API/WBS.html
+      #tag/WhatsApp-Login/operation/loginApi2
+
+    Returns the ``JWTAUTH`` string on success, ``None`` otherwise.
+    """
+    if not isinstance(auth_creds, dict):
+        logger.error("[RML] auth_creds missing; cannot login for JWT.")
+        return None
+    username = auth_creds.get("username")
+    password = auth_creds.get("password")
+    if not username or not password:
+        logger.error("[RML] auth_creds.username / auth_creds.password missing.")
+        return None
+
+    try:
+        resp = requests.post(
+            RML_LOGIN_URL,
+            headers={"Content-Type": "application/json"},
+            data=json.dumps({"username": username, "password": password}),
+        )
+    except Exception as e:
+        logger.error(f"[RML] login request failed: {e}")
+        return None
+
+    if not resp.ok:
+        logger.error(
+            f"[RML] login failed: {resp.status_code} - "
+            f"{resp.text[:500] if resp.text else '<empty>'}"
+        )
+        return None
+
+    try:
+        body = resp.json()
+    except Exception as e:
+        logger.error(f"[RML] login response not JSON: {e}")
+        return None
+
+    jwt = body.get("JWTAUTH") or body.get("jwtauth") or body.get("token")
+    if not jwt:
+        logger.error(f"[RML] login response missing JWTAUTH: {body}")
+        return None
+
+    logger.info("[RML] login succeeded; obtained fresh JWTAUTH")
+    return jwt
+
+
+def _rml_fetch_templates(jwt, logger):
+    """Fetch the full template list from RML using a freshly-minted JWT.
+
+    Returns the parsed JSON body (expected shape: ``{"total": N, "data": [...]}``)
+    or ``None`` on unrecoverable failure.
+    """
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": jwt,
+    }
+    try:
+        logger.debug(f"[RML] GET → {RML_TEMPLATES_URL}")
+        response = requests.request(
+            "GET", RML_TEMPLATES_URL, headers=headers, data={}
+        )
+    except Exception as e:
+        logger.error(f"[RML] [FAILED] fetching templates: {e}")
+        return None
+
+    try:
+        response_json = response.json()
+    except Exception:
+        response_json = None
+
+    if not response.ok:
+        logger.error(
+            f"[RML] viewTemplateMessage error: {response.status_code} - "
+            f"{response_json if response_json is not None else response.text[:500]}"
+        )
+        return None
+
+    if response_json is None:
+        logger.error("[RML] viewTemplateMessage returned non-JSON body.")
+        return None
+
+    return response_json
+
+
+def _sync_rml_template_statuses(auth_data, template_ids, logger):
+    """Sync status for Route Mobile (RML) WhatsApp templates.
+
+    For every run we call the Login API (``POST /auth/v1/login/``) with
+    ``auth_creds`` from the communication credential to mint a fresh JWT,
+    then call the View Template Message endpoint
+    (``GET /wba/templates``) which returns every template on the account.
+    We look up each of our pending templates in the returned ``data`` array
+    and update their status. Any stored JWT on the credential is ignored —
+    only ``auth_creds.username`` / ``auth_creds.password`` are read from DB.
+
+    Spec:
+      - https://routemobile.github.io/WhatsApp-Business-API/WBS.html
+        #tag/WhatsApp-Login/operation/loginApi2
+      - https://routemobile.github.io/WhatsApp-Business-API/WBS.html
+        #tag/WhatsApp-Messaging-Template-API/operation/viewTemplateMessage
+    """
+    jwt = _rml_login(auth_data.get("auth_creds"), logger)
+    if not jwt:
+        logger.error(
+            f"[RML] login failed for credential "
+            f"{auth_data.get('communication_credentials_id')}; "
+            f"skipping status sync."
+        )
+        return
+
+    response_json = _rml_fetch_templates(jwt, logger)
+    if response_json is None:
+        return
+
+    templates_by_id = {}
+    templates_by_name = {}
+    for item in response_json.get("data") or []:
+        if not isinstance(item, dict):
+            continue
+        item_id = item.get("id")
+        item_name = item.get("name")
+        if item_id:
+            templates_by_id[str(item_id)] = item
+        if item_name:
+            templates_by_name[str(item_name)] = item
+
+    logger.info(
+        f"[RML] fetched {len(templates_by_id)} templates from viewTemplateMessage"
+    )
+
+    for template_id in template_ids:
+        try:
+            remote = templates_by_id.get(str(template_id)) or templates_by_name.get(
+                str(template_id)
+            )
+            if not remote:
+                logger.warning(
+                    f"[RML] template_id={template_id} not found in remote listing"
+                )
+                continue
+
+            status = _normalize_template_status(remote.get("status"))
+            if not status:
+                logger.warning(
+                    f"[RML] Empty status for template {template_id}: {remote}"
+                )
+                continue
+
+            update_payload = {"status": status}
+            rejected_reason = remote.get("rejected_reason")
+            if status == "rejected" and rejected_reason and rejected_reason.upper() != "NONE":
+                update_payload["rejection_reason"] = rejected_reason
+
+            pg.update(
+                table_name="template",
+                id_attr="template_id",
+                id=template_id,
+                data=update_payload,
+            )
+            logger.info(
+                f"[RML] Updated status='{status}' for template_id={template_id}"
+            )
+        except Exception as e:
+            logger.error(f"[RML] [FAILED] template {template_id}: {e}")
+            continue
+
+
 @gryd.is_a_task('update_template_status', logger_param='logger', job_param='job')
 def update_template_status(dealership_id:str,logger=None, job=None):
     """
     get_template_status worker gets the status of a whatsapp template and update the status in template model:
-    input : dealership_id : Id of the dealership, required for getting their comm creds 
+    input : dealership_id : Id of the dealership, required for getting their comm creds
 
+    Provider dispatch (read from ``communication_credential.provider_name``):
+      - ``airtel`` → Airtel iqwhatsapp per-template GET
+      - ``rml`` / ``route mobile`` → Route Mobile ``/wba/templates`` list
     """
     logger = logger or mlogger
     if not dealership_id:
         logger.error("dealership_id is None or empty.")
         return
-    
-    
+
     def retrieve_template_ids(communication_credentials_id):
         records = list(pg.list(
             table_name="template",
@@ -1040,44 +1357,32 @@ def update_template_status(dealership_id:str,logger=None, job=None):
             if r.get("template_id")
         ]
 
-
     default_data = {
-            "waba_id": "113485138500957",
-            "customer_id": "SOCIOGRAPH_uu76NiJRbNmsq5zPgu5V",
-            "sub_account_id": "965a92cd-ac2e-4674-87ab-99fc174e071f",
-            "auth_headers": {
-                "Content-Type": "application/json",
-                "Authorization": "Basic ZGF2ZV9haTpJSjJQVjhebDVjODU="
-            }       
+        "waba_id": "113485138500957",
+        "customer_id": "SOCIOGRAPH_uu76NiJRbNmsq5zPgu5V",
+        "sub_account_id": "965a92cd-ac2e-4674-87ab-99fc174e071f",
+        "auth_headers": {
+            "Content-Type": "application/json",
+            "Authorization": "Basic ZGF2ZV9haTpJSjJQVjhebDVjODU="
         }
+    }
     records = list(pg.list(
-        table_name= "communication_credential",
-        where= {
+        table_name="communication_credential",
+        where={"dealership_id": dealership_id}
+    ))
 
-            "dealership_id": dealership_id
-
-        }))
-    
     for data in records:
-
-        string_auth_fields = [
-                data.get("waba_id"),
-                data.get("customer_id"),
-                data.get("sub_account_id")
-            ]
-
         communication_credential_id = data.get("communication_credentials_id")
+        provider_name = (data.get("provider_name") or "").strip().lower()
+
         template_ids = retrieve_template_ids(communication_credential_id)
         if not template_ids:
-            if logger:
-                logger.info(f"No pending templates for credential {communication_credential_id}")
+            logger.info(
+                f"No pending templates for credential {communication_credential_id}"
+            )
             continue
 
-        valid_strings = all(
-            isinstance(v, (str, int)) and str(v).strip() != ""
-            for v in string_auth_fields
-        )
-        # Validate auth header dict
+        # Validate auth header dict (common to every provider)
         auth = data.get("auth_headers")
         valid_auth_header = (
             isinstance(auth, dict)
@@ -1085,37 +1390,138 @@ def update_template_status(dealership_id:str,logger=None, job=None):
             and isinstance(auth["Authorization"], str)
             and auth["Authorization"].strip() != ""
         )
-        # If ANY field is missing/invalid → fallback to default
-        auth_data = data if (valid_strings and valid_auth_header) else default_data
-
 
         total = len(template_ids)
-        logger.info(f"Starting template approval sync for {total} templates")
+        logger.info(
+            f"Starting template approval sync for {total} templates "
+            f"(provider={provider_name or 'unknown'}, "
+            f"credential={communication_credential_id})"
+        )
 
-        
-        for id in template_ids:
-            try:
-        
-                url = "https://iqwhatsapp.airtel.in/gateway/airtel-xchange/whatsapp-content-manager/v1/template?customerId="+auth_data["customer_id"]+"&"+"subAccountId="+auth_data["sub_account_id"]+"&"+"wabaId="+auth_data["waba_id"]+"&"+"templateId="+id
-                payload = {}
-                headers = auth_data["auth_headers"]
-                logger.debug(f"GET → {url}")
-                response = requests.request("GET", url, headers=headers, data=payload)
-                response = response.json()
-                template_data = response.get("template")
-                if not template_data:
-                    if logger:
-                        logger.warning(f"No template data for template {id}: {response}")
-                    continue
-                logger.info(f"response is {response}")
-                status = template_data.get("registrationStatus").lower()
-                if status == "pending_for_review":
-                    status = "pending"
-                pg.update(table_name="template",id_attr="template_id", id=id,data={"status" : status})
-                logger.info(f"Updated Successfully for template id = {id}")
-            except Exception as e:
-               # Log and continue to next one
-               print(f"[FAILED] template {id}: {e}")
-               continue
+        if provider_name in ("airtel", ""):
+            # Airtel needs waba_id / customer_id / sub_account_id to be present.
+            string_auth_fields = [
+                data.get("waba_id"),
+                data.get("customer_id"),
+                data.get("sub_account_id"),
+            ]
+            valid_strings = all(
+                isinstance(v, (str, int)) and str(v).strip() != ""
+                for v in string_auth_fields
+            )
+            auth_data = data if (valid_strings and valid_auth_header) else default_data
+            _sync_airtel_template_statuses(auth_data, template_ids, logger)
+
+        elif provider_name in ("rml", "route_mobile", "route mobile", "routemobile"):
+            # RML always logs in fresh using auth_creds to mint a JWT; any
+            # stored Authorization is ignored.
+            auth_creds = data.get("auth_creds") or {}
+            has_auth_creds = bool(
+                isinstance(auth_creds, dict)
+                and auth_creds.get("username")
+                and auth_creds.get("password")
+            )
+            if not has_auth_creds:
+                logger.error(
+                    f"[RML] Missing auth_creds.username/password on credential "
+                    f"{communication_credential_id}; skipping."
+                )
+                continue
+            _sync_rml_template_statuses(data, template_ids, logger)
+
+        else:
+            logger.warning(
+                f"Unsupported provider_name='{data.get('provider_name')}' for "
+                f"credential {communication_credential_id}; skipping "
+                f"{total} templates."
+            )
+            continue
 
     return "Completed !!!!"
+
+        
+def rml_auth_login(user_name, password, max_retries=10, backoff=2):
+    url = "https://apis.rmlconnect.net/auth/v1/login/"
+    payload = json.dumps({
+        "username": user_name,
+        "password": password,
+        "tdvalue": "3650",
+        "recaptcha": None
+    })
+    headers = {
+        'origin': 'https://myaccount.rmlconnect.net',
+        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
+        'Content-Type': 'application/json'
+    }
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.post(url, headers=headers, data=payload, timeout=10)
+
+            response.raise_for_status()
+
+            mlogger.info(f"Success on attempt {attempt}")
+            return response.json()
+
+        except requests.HTTPError as http_err:
+            status_code = http_err.response.status_code
+            if 400 <= status_code < 500:
+                mlogger.error(f"Fatal error {status_code}: {http_err.response.text}")
+                raise
+            else:
+                mlogger.warning(f"Server error {status_code} on attempt {attempt}: {http_err.response.text}")
+
+        except requests.RequestException as e:
+            mlogger.warning(f"Network error on attempt {attempt}: {e}")
+
+        # retry logic
+        if attempt < max_retries:
+            sleep_time = backoff * attempt
+            mlogger.info(f"Retrying in {sleep_time}s...")
+            time.sleep(sleep_time)
+
+    raise Exception(f"Failed after {max_retries} attempts")
+
+@gryd.is_a_task(function_name="reset_auth_creds")
+def reset_auth_creds(*args, **kwargs):
+    filters = {k: v for k, v in kwargs.items() if v is not None}
+    mlogger.info(f"Filters for resetting auth creds: {filters}")
+    mlogger.info("Resetting Auth credentials...")
+    
+    # NOTE: For now we are doing just for RML. 
+    with get_pg_connector() as pg:
+        creds = list(pg.list("communication_credential",filters))
+        
+        for i in creds:
+            auth_creds=i.get("auth_creds")
+            
+            if not auth_creds:
+                mlogger.warning(f"No auth creds found for credential {i.get('communication_credentials_id')} and for the number {i.get('sender')}")
+                continue
+            
+            user_name=auth_creds.get("username")
+            password=auth_creds.get("password")
+            
+            try:
+                if i.get("provider_name") in ["Rml","rml"]:
+                    resp=rml_auth_login(user_name, password)
+                    
+                    if isinstance(resp, dict):
+                        JWTAUTH = resp.get("JWTAUTH")
+                        if not JWTAUTH:
+                            raise Exception(f"No JWTAUTH found in response: {resp.keys()}")
+
+                        auth_headers = i.get("auth_headers", {})
+                        auth_headers.update({"Authorization": JWTAUTH})
+
+                        pg.update("communication_credential","communication_credentials_id",i.get("communication_credentials_id"),{"auth_headers": auth_headers})
+                    
+                    mlogger.info(f"Successfully reset RML credentials for credential {i.get('communication_credentials_id')} and for the number {i.get('sender')}")
+                    
+                else:
+                    mlogger.warning(f"Provider {i.get('provider_name')} is not supported for credential {i.get('communication_credentials_id')}")
+            except Exception as e:
+                mlogger.error(f"Failed to reset RML credentials for credential {i.get('communication_credentials_id')}: {e} and for the number {i.get('sender')}")
+                continue
+
+    return "Completed!"

@@ -16,14 +16,14 @@ from flask import request
 # added new instead of
 import sys,os
 import time
-from connectors.communication_helpers import format_box_log,safe_orjson_dumps,generate_uid,get_communication_credential,call_next_campaign_workflow_task,apply_filters
+from connectors.communication_helpers import format_box_log,safe_orjson_dumps
 from connectors.communication_configs import DB_TIMEZONE
+from communication.common_functions import generate_uid
 from config import *
 from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappReceiverConnector
 import json
 import functools
 from autocrm_db_helper import get_pg_connector
-from conversation.converse import post_messages_data
 #  this from connectors.base_connector_communication import *
 
 _root = dirname(dirname(abspath(__file__)))
@@ -91,7 +91,6 @@ def reupdateConversation(enterprise_id, conversation_id, conversation):
 
 
 @gryd.is_a_task(function_name="process_forwarded_webhook")
-# def process_forwarded_webhook(channel, channel_provider, enterprise_id, conversation_id, payload, language="english"):
 def process_forwarded_webhook(*args, **kwargs):
 
     """
@@ -265,7 +264,7 @@ def post_contact_status(*args, **data):
 
     BILLABLE_STATUSES = {"delivered", "reached", "read", "contacted"}
 
-    # logger.info(f"[post_contact_status] args={args} | data={data}")
+    logger.info(f"[post_contact_status] args={args} | data={data}")
 
     message_id = args[0] if args else None
     incoming_status = (data.get("message_status") or data.get("provider_status","")).lower()

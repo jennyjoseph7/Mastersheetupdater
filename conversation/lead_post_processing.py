@@ -4,14 +4,17 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_MESSAGE_DELIVERED_ITEM,AUTOCRM_MESSAGE_DELIVERED_PRICE,AUTOCRM_MESSAGE_DELIVERED_UNITS,AutocrmModel
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_MESSAGE_DELIVERED_ITEM,AUTOCRM_MESSAGE_DELIVERED_PRICE,AUTOCRM_MESSAGE_DELIVERED_UNITS,AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PRICING_INR,AutocrmModel
 import config
-from gryd_worker import gryd, gryd_helpers as hp
+from gryd_worker import gryd, gryd_helpers as hp,gryd_audit_helper
 from autocrm_db_helper import get_pg_connector
 json = hp.json
 from conversation.yield_response import yield_result,yield_error, yield_status
 from conversation.prompt import run_prompt_sync
-from communication.connectors.communication_helpers import get_communication_credential,generate_uid
+# from campaign.campaign_manager import generate_uid
+# # from communication.connectors.communication_helpers import get_communication_credential,generate_uid
+# ----
+from communication.common_functions import get_communication_credential,generate_uid
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
@@ -188,12 +191,16 @@ def post_session_process(*args, **kwargs):
     with get_pg_connector() as pg:
         lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data")
 
+        cur_lead = lead_data.get('disposition', None)
+        cur_disp_detail = lead_data.get('disposition_detail', None)
+
+
     if not lead_data:
         yield from yield_error("error","lead_data not found",*args, **kwargs)
         mlogger.info("session_id not passed in kwargs")
 
         return
-
+    ## if lower in heirarchy than we would not change
     # lead_disposition = lead_data.get("disposition")
 
     # if lead_disposition != "engaged":
@@ -281,21 +288,39 @@ def post_session_process(*args, **kwargs):
             if updated_lead_data.get("follow_up_language"):
                 user_or_vehicle_data["preferred_language"] = [updated_lead_data.get("follow_up_language")]
             pg.update("person","user_id",session_mdl_obj.get("user_id"),user_or_vehicle_data)
-    
+
+    DISPOSITION_SEQUENCE = {
+        "queued": 0,
+        "attempted": 1,
+        "error": 2,
+        "failed": 3,
+        "busy": 4,
+        "reached": 5,
+        "contacted": 6,
+        "engaged": 7,
+        "converted": 8
+    }
+    new_desposition = updated_lead_data.get("disposition", 0)
+    position_new_despo = DISPOSITION_SEQUENCE.get(new_desposition, -1)
+    existing_position_despo = DISPOSITION_SEQUENCE.get(cur_lead, -1)
     with get_pg_connector() as pg:
-        updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
+        """
+        check heirarchy of diposition before updating lead and session data, only update if the new diposition is higher in heirarchy than the current disposition
+        """
         pg.update("session","session_id",session_id,session_update_data)
         mlogger.info("appointment data == {}".format(appt_date_time_purpose))
-        if appt_date_time_purpose.get("appointment_date"):
-            visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data)
-            mlogger.info("visit data == {}".format(visit_data))
-            if not visit_data:
-                return
-            visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "service_visit"
-            m = AutocrmModel(visit_model)
-            mlogger.info("visit_model == {}".format(visit_model))
-            posted = m.post(visit_data)
-            mlogger.info("visit posted == {}".format(posted))
+        if position_new_despo > existing_position_despo:
+            updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
+            if appt_date_time_purpose.get("appointment_date"):
+                visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data)
+                mlogger.info("visit data == {}".format(visit_data))
+                if not visit_data:
+                    return
+                visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "service_visit"
+                m = AutocrmModel(visit_model)
+                mlogger.info("visit_model == {}".format(visit_model))
+                posted = m.post(visit_data)
+                mlogger.info("visit posted == {}".format(posted))
     
 @gryd.is_a_task(function_name="update_channel_identifier")
 def update_channel_identifier(user_id,**data):
@@ -327,12 +352,12 @@ def update_channel_identifier(user_id,**data):
 def update_lead_disposition_and_post_billing(incoming_status, user_id=None, should_bill=None, **data):    
     # mlogger.info(f"[update_lead_disposition] Called with incoming_status={incoming_status} for lead_id={data.get('lead_id')} and DATA= {json.dumps(data,indent=4)}")
     mlogger.info(f"[update_lead_disposition] Attempting to update lead disposition with incoming_status={incoming_status}, user_id={user_id}, data={data}")
-    
     post_template_message=data.get("post_template_message")
     if should_bill:
         mlogger.info(f"[post_contact_status] Billing triggered for incoming_status ={incoming_status}")
         post_billing_obj(**data)
-    
+        # post_audit_logs(**data)
+        
     DISPOSITION_SEQUENCE = [
         "queued",
         "attempted",
@@ -433,6 +458,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         update_payload.pop("dealership_id", None)
         # mlogger.info(f"[post_contact_status] update_payload for lead_id={lead_id}: {update_payload}")
         if update_payload:
+            # mlogger.info(f"update_payload for lead_id={lead_id}: {update_payload}")
             pg.update(
                 lead_table,
                 lead_pk,
@@ -555,9 +581,44 @@ def post_billing_obj(**message_dict):
                 "whatsapp_chat"
             ]
         )
+        
+        # posting_audit_logs
+        
         mlogger.info(f"Posted Billing for lead_id: {lead_id} and campaign_id: {campaign_id} with item_description: {item_description}")    
 
 
+def post_audit_logs(**message_dict):
+    mlogger.info(f"Post audit logs for message_dict: {json.dumps(message_dict)}")
+
+    output_quantity = 1
+
+    provider = message_dict.get("provider")
+    category = message_dict.get("message_category")
+
+    output_pricing_dollars = WHATSAPP_PRICING_INR.get(provider, {}).get(category, 0)
+
+    output_cost_dollars = output_quantity * output_pricing_dollars
+
+    _job = {
+        "channel": message_dict.get("channel"),
+        "message_id": message_dict.get("message_id"),
+        "mobile_number": message_dict.get("mobile_number"),
+        "session_id": message_dict.get("session_id"),
+        "user_id": message_dict.get("user_id"),
+        "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
+        "service": AUTOCRM_COMMUNICATION_SERVICE_NAME
+    }
+
+    _tasks = {
+        "output_pricing_units": "count",
+        "output_quantity": output_quantity,
+        "output_pricing_dollars": output_pricing_dollars,
+        "output_cost_dollars": output_cost_dollars
+    }
+
+    gryd_audit_helper.audit_log(job=_job, value=_tasks)
+    
+    
 def get_summary(session_id,session_data):
     messages = session_data.get("messages")
 
@@ -1777,7 +1838,7 @@ def get_disposition_classification(query = None, session_id = None, session_data
     
     NEGATIVE (Customer explicitly declines the objective)
      - Reasoning: The user provides a definitive 'No' or a contextual rejection that closes the loop on the specific goal. No alternative or future opening is provided.
-     - Example 1: [{{'role': 'agent', 'message': 'Would you be interested in booking a test drive?'}}, {{'role': 'user', 'message': "No, I'm at a state by state"}}] -> Objective rejected.
+     - Example 1: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 01:22:23 PM +0000'}}, {{'role': 'agent', 'message': 'Would you be interested in booking a test drive?'}}, {{'role': 'user', 'message': "No, I'm at a state by state"}}] -> Objective rejected.
      - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 01:22:23 PM +0000'}}, {{'role': 'user', 'message': 'Yeah', 'timestamp': '2026-03-03 01:22:29 PM +0000'}}, {{'role': 'agent', 'message': 'Thanks for considering the Citroen Aircross, Aarun Gaur Are there any specific questions you have about service support or ownership experience in India?', 'timestamp': '2026-03-03 01:22:31 PM +0000'}}, {{'role': 'user', 'message': 'No, madam No', 'timestamp': '2026-03-03 01:22:40 PM +0000'}}, {{'role': 'agent', 'message': 'Got it So, um, Aarun Gaur, are you interested in booking a test drive for the Citroen C3 Aircross?', 'timestamp': '2026-03-03 01:22:43 PM +0000'}}, {{'role': 'user', 'message': '[car engine] <|unintellig', 'timestamp': '2026-03-03 01:22:51 PM +0000'}}, {{'role': 'agent', 'message': 'Sorry, I couldn't hear what you said Could', 'timestamp': '2026-03-03 01:22:55 PM +0000'}}, {{'role': 'user', 'message': 'Uh, already madam le-le-le-le li hai madam already trial Gaadi aayi thi aapki Toh hum dekh liya, chala ke drive kar liya', 'timestamp': '2026-03-03 01:22:58 PM +0000'}}, {{'role': 'agent', 'message': 'Ah, got it So, you've already taken a test drive of the Citroen C3 Aircross That makes sense\n\nUhm,', 'timestamp': '2026-03-03 01:23:08 PM +0000'}}, {{'role': 'user', 'message': 'Yeah Yeah', 'timestamp': '2026-03-03 01:23:14 PM +0000'}}, {{'role': 'agent', 'message': 'Okay So, um, Aarun Gaur, since you've already had a test drive, is there anything else I can help you with regarding the Citroen C3 Aircross, or perhaps any other Citroen or Jeep models?', 'timestamp': '2026-03-03 01:23:16 PM +0000'}}, {{'role': 'user', 'message': 'No, thank you', 'timestamp': '2026-03-03 01:23:29 PM +0000'}}, {{'role': 'agent', 'message': 'Alright, Aarun Gaur Thanks for your time I really appreciate it Have a great day!', 'timestamp': '2026-03-03 01:23:31 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 01:23:31 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 01:23:37 PM +0000'}}]
      
     NEUTRAL (Inconclusive, language barrier, or no clear progress)
@@ -1822,3 +1883,5 @@ def update_error_in_lead_and_session(error_msg,source,**kwargs):
         pg.update("session","session_id",session_id,{"disposition":"error","disposition_detail":error_msg})
         mlogger.info(f"Updated ERROR in lead and session for lead_id={lead_id} and lead_model={lead_model} and channel={channel} and session_id={session_id}")
     return
+
+

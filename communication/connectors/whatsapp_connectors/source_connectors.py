@@ -524,7 +524,6 @@ class BaseWebhookConverter:
     
     # @timelogger(label="process_message_dict")
     
-    
     def process_message_dict(self, *args, **kwargs):
         """
         Processes the message dictionary and triggers a conversation workflow.
@@ -544,7 +543,8 @@ class BaseWebhookConverter:
         message_media_url  =message_dict.get("message_media_url")
         message_type= message_dict.get("message_type")
         message_media_type= message_dict.get("message_media_type")
-
+        profile_name= message_dict.get("profile_name")
+        logger.info(f"Profile_name in process message dict ---{profile_name}")
         if not message_text and not message_media_url:
             logger.error("No valid message text found in body or media URL. Cannot process further.")
             return
@@ -640,9 +640,10 @@ class BaseWebhookConverter:
         logger.info("Calling session logic...")
         
         # call session logic here...
-        d=handle_session_logic(mobile_number,"whatsapp_chat",True)
+        d=handle_session_logic(mobile_number,message_dict.get("from_number"),"whatsapp_chat",True,None,None,profile_name)
         logger.info(f"Session logic result: {d}")
         user_d=temporary_data.get("whatsapp_user_details")
+        # session_id , channel 
         converse_kwargs.update({
             "session_id":d.get("session_id",None),
             "campaign_id":d.get("campaign_id","inbound"),
@@ -651,7 +652,7 @@ class BaseWebhookConverter:
             # these 2 we need to check and send for email also..
             "provider":user_d.get("whatsapp_provider",None), 
             "contact":user_d.get("mobile_number",None),
-            "lead_id":"inbound" if not d.get("campaign_id") else d.get("lead_id","inbound"),
+            "lead_id":"inbound" if not d.get("campaign_id") else d.get("lead_id","inbound")
             # "lead_id":d.get("lead_id",None),
         })
         # Remove all None values
@@ -972,6 +973,7 @@ class BaseWhatsappMessenger:
             raise ValueError("Response object can't dict")
         if response.status_code not in [200, 202]:
             logger.error(f"Error Response: {response.text}, Status Code: {response.status_code}")
+            #TODO: add error response 
             return self._handle_error_response(response)
 
         try:

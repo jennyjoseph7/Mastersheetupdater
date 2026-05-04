@@ -1,5 +1,5 @@
-db_routes @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/i2ce_routes/db_routes-0.0.1-py3-none-any.whl
 pdfkit==1.0.0
+db_routes @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/i2ce_routes/db_routes-0.0.2-py3-none-any.whl 
 razorpay
 twilio
 dotenv
@@ -28,6 +28,7 @@ bs4>=0.0.2
 cleantext==1.1.4
 lxml>=6.0.2
 pypdf==6.6.2
+facebook_business==25.0.0
 
 # streamlit 
 plotly==6.5.2

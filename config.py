@@ -77,6 +77,16 @@ ALLOWED_COUNTRY_CODES = list(map(str.strip, os.environ.get("ALLOWED_COUNTRY_CODE
 OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe")
 EXCHANGE_RATE_HOST_API_KEY = os.environ.get("EXCHANGE_RATE_HOST_API_KEY","b6e93843fe72674909722d79859d7c4c")
 EXCHANGE_RATE_HOST_BASE_URL = os.environ.get("EXCHANGE_RATE_HOST_BASE_URL", "https://api.exchangerate.host")
+
+WHATSAPP_PRICING_INR = {
+    "airtel": {
+        "marketing": 0.01,
+        "utility": 0.02,
+        "authentication": 0.03
+    },
+    "rml": {}
+}
+
 #model names
 SESSION_MODEL_NAME = "session"
 BILLING_MODEL_NAME = "billing"
@@ -104,6 +114,7 @@ PHONE_NUMBER_ID="phnum_8201k1anbf9wet6v915q8arr1vmz"
 
 # spark/openai
 AUTOCRM_SPARK_SERVICE_NAME = os.environ.get('AUTOCRM_SPARK_SERVICE_NAME', 'spark')
+AUTOCRM_SPARK_COMFY_SERVICE_NAME = os.environ.get('AUTOCRM_SPARK_COMFY_SERVICE_NAME', 'spark_comfy')
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1.5")
 OPENAI_IMAGE_SIZE = os.environ.get("OPENAI_IMAGE_SIZE", "1024x1536")
@@ -430,6 +441,22 @@ def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, 
         logger.error(f"File: {filename_csv} or {filename_json} not found")
         raise FileNotFoundError(f"Seed file for : {data_name} not found")
 
+AUTOCRM_VOICE_SERVICE_NAME_1 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_1", "autocrm-voice-1")
+AUTOCRM_VOICE_SERVICE_NAME_2 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_2", "autocrm-voice-2")
+AUTOCRM_VOICE_SERVICE_NAME_3 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_3", "autocrm-voice-3")
+AUTOCRM_VOICE_SERVICE_NAME_4 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_4", "autocrm-voice-4")
+AUTOCRM_VOICE_SERVICE_NAME_5 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_5", "autocrm-voice-5")
+
+
+
+def get_websocket_base_url(seed=None):
+    import random
+    base_ws_url = AUTOCRM_WEBSOCKET_BASE_URL
+    base_ws_url = list(map(lambda x: x.strip(), base_ws_url.split(',')))
+    rng = random.Random(int(seed) if seed is not None else None)
+    return rng.choice(base_ws_url)
+
+
 
 if __name__ == "__main__":
     
@@ -487,8 +514,3 @@ if __name__ == "__main__":
 
   
 
-AUTOCRM_VOICE_SERVICE_NAME_1 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_1", "autocrm-voice-1")
-AUTOCRM_VOICE_SERVICE_NAME_2 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_2", "autocrm-voice-2")
-AUTOCRM_VOICE_SERVICE_NAME_3 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_3", "autocrm-voice-3")
-AUTOCRM_VOICE_SERVICE_NAME_4 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_4", "autocrm-voice-4")
-AUTOCRM_VOICE_SERVICE_NAME_5 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_5", "autocrm-voice-5")

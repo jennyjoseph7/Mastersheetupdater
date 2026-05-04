@@ -30,6 +30,16 @@ def load_providers(channel=None, provider_name=None):
                 WhatsappReceiverConnector,
                 WhatsappCampaignTemplate,
             ),
+            "rml": lambda: _load_rml(
+                WhatsappMessangerConnector,
+                WhatsappReceiverConnector,
+                WhatsappCampaignTemplate,
+            ),
+            # "twilio": lambda: _load_twilio(
+            #     WhatsappMessangerConnector,
+            #     WhatsappReceiverConnector,
+            #     WhatsappCampaignTemplate,
+            # ),
         }
 
     elif channel == "email":
@@ -68,9 +78,34 @@ def _load_airtel(
     WhatsappMessangerConnector.register("airtel", AirtelWhatsAppMessenger)
     WhatsappReceiverConnector.register("airtel", AirtelWebhookConverter)
     WhatsappCampaignTemplate.register("airtel",AirtelCampaignManager)
-    
-    
 
+def _load_rml(
+    WhatsappMessangerConnector,
+    WhatsappReceiverConnector,
+    WhatsappCampaignTemplate,
+):
+    print("Loading RML Connectors----")
+    from connectors.whatsapp_connectors.rml_connector import RMLWebhookConverter,RMLWhatsAppMessenger
+    from connectors.whatsapp_connectors.campaign_rml_template import RMLCampaignManager
+
+    WhatsappMessangerConnector.register("rml", RMLWhatsAppMessenger)
+    WhatsappReceiverConnector.register("rml", RMLWebhookConverter)
+    WhatsappCampaignTemplate.register("rml",RMLCampaignManager)
+
+    
+def _load_twilio(
+    WhatsappMessangerConnector,
+    WhatsappReceiverConnector,
+    WhatsappCampaignTemplate,
+):
+    print("Loading Twilio Connectors----")
+    from connectors.whatsapp_connectors.twilio_connector import TwilioWebhookConverter,TwilioWhatsAppMessenger
+    from connectors.whatsapp_connectors.campaign_twilio_template import TwilioCampaignManager
+
+    WhatsappMessangerConnector.register("twilio",TwilioWhatsAppMessenger)
+    WhatsappReceiverConnector.register("twilio",TwilioWebhookConverter)
+    WhatsappCampaignTemplate.register("twilio",TwilioCampaignManager)
+    
 def _load_AwsSender(MailSourceFactory):
     print("Loading Email Connectors----")
     

@@ -139,7 +139,7 @@ def wind_up(*files):
     return
 
 
-def get_vehicle_id(vehicle_model, row, missing_reason = None, logger = None):
+def get_vehicle_id(vehicle_model, row, missing_reason = None, required_attributes = None, logger = None):
     logger = logger or mlogger
     logger.info(f"Getting vehicle ID for row: {row}")
     missing_reason = missing_reason or []
@@ -244,7 +244,8 @@ def get_vehicle_id(vehicle_model, row, missing_reason = None, logger = None):
         if is_valid_value(row, k):
             data[k] = row.get(k)
     if not data:
-        missing_reason.append("No vehicle data found")
+        if not required_attributes or "vehicle_id" not in required_attributes:
+            missing_reason.append("No vehicle data found")
         return row, missing_reason
     try:
         logger.info("Before posting/updating vehicle details: %s", data)
@@ -287,29 +288,37 @@ def get_rooftop(row, models, model_name, missing_reason = None, rooftop_id = Non
     return row, missing_reason
 
 
-def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id = None, logger = None):
+def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id = None, required_attributes = None, logger = None):
     logger = logger or mlogger
     logger.info(f"Processing post-sales lead row: {row}")
     missing_reason = missing_reason or []
     row, missing_reason = get_rooftop(row, models, 'workshop', missing_reason, rooftop_id, logger)
-    if not any([get_valid_value(row, k) for k in ['next_service_due', 'warranty_expiry_date', 'insurance_expiry_date', 'extended_warranty_expiry_date']]):
+    if isinstance(required_attributes, list):
+        for k in required_attributes:
+            if not get_valid_value(row, k):
+                missing_reason.append(f"Required attribute {k} not found in row")
+    elif not any([get_valid_value(row, k) for k in ['next_service_due', 'warranty_expiry_date', 'insurance_expiry_date', 'extended_warranty_expiry_date']]):
         missing_reason.append("Either one of next service due date, warranty expiry date, or insurance expiry date is required")
     if is_valid_value(row, 'next_service_due'):
         try:
             row['service_due_timestamp'] = hp.to_epoch(row.get('next_service_due'))
         except Exception as e:
             missing_reason.append(f"Failed to convert next service due date to epoch: {str(e)}")
-    row, missing_reason = get_vehicle_id(models['vehicle_model'], row, missing_reason, logger = logger)
+    row, missing_reason = get_vehicle_id(models['vehicle_model'], row, missing_reason, required_attributes = required_attributes, logger = logger)
     row, missing_reason = get_persons_involved(row, models, missing_reason, logger = logger)
     return row, missing_reason
 
 
-def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = None, logger = None):
+def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = None, required_attributes = None, logger = None):
     logger = logger or mlogger
     logger.info(f"Processing pre-sales lead row: {row}")
     missing_reason = missing_reason or []
     row, missing_reason = get_rooftop(row, models, 'showroom', missing_reason, rooftop_id, logger)
     data = row
+    if isinstance(required_attributes, list):
+        for k in required_attributes:
+            if not get_valid_value(row, k):
+                missing_reason.append(f"Required attribute {k} not found in row")
     for k in [
         "phone_number",
         "email",
@@ -485,12 +494,28 @@ def process_common_row(campaign_type, row, models, missing_reason = None, dealer
     row['audience_name'] = audience_name
     row[f"{rooftop_type}_id"] = rooftop_id if rooftop_type else None
     logger.info(f"Processing common row after adding common columns: {row}")
+    campaign_objective_model = AutocrmModel('campaign_objective')
+    campaign_objective = campaign_objective_model.get(campaign_objective_id)
+    if campaign_objective.get("audience_attributes"):
+        audience_attributes = []
+        for aa in campaign_objective.get("audience_attributes", []):
+            ca = row.pop(aa.get('attribute_name'), None) or row.pop(aa.get('attribute_description'), None) or aa.get('attribute_value')
+            if ca:
+                audience_attributes.append({
+                    "attribute_name": aa.get("attribute_name"),
+                    "attribute_type": aa.get("attribute_type"),
+                    "attribute_description": aa.get("attribute_description"),
+                    "attribute_value": ca
+                })
+        if audience_attributes:
+            row["audience_attributes"] = audience_attributes
+    required_attributes = campaign_objective.get('required_attributes')
     if is_valid_value(row, 'customer_score'):
         row['customer_score'] = int(row['customer_score'])
     if campaign_type == 'pre-sales':
-        row, missing_reason = process_pre_sales_lead_row(row, models, missing_reason, rooftop_id, logger = logger)
+        row, missing_reason = process_pre_sales_lead_row(row, models, missing_reason, rooftop_id, required_attributes = required_attributes, logger = logger)
     elif campaign_type == 'post-sales':
-        row, missing_reason = process_post_sales_lead_row(row, models, missing_reason, rooftop_id, logger = logger)
+        row, missing_reason = process_post_sales_lead_row(row, models, missing_reason, rooftop_id, required_attributes = required_attributes, logger = logger)
         logger.info(f"Post-sales lead processed: {row}")
     elif campaign_type == 'dealership':
         row, missing_reason = process_dealership_lead_row(row, models, missing_reason, rooftop_id, logger = logger)
@@ -1442,7 +1467,9 @@ def gryd_task_import_leads_from_csv(
                     if error > MAX_AUDIENCE_ERRORS:
                         # too many errors, stop the task
                         logger.error(f"Too many errors, stopping the task")
+                        yield {"_result": f"Too many errors, stopping the task"}
                         break
+            yield {"_status": "100% completed"}
             # Write error CSV
             if error > 0:
                 url = func_gryd_file_system(error_csv_path, logger = logger)
@@ -1450,9 +1477,9 @@ def gryd_task_import_leads_from_csv(
             else:
                 yield {"_result": {'total': total, 'error': error, 'processed': processed}}
     except Exception as e:
-        wind_up(csv_path, error_csv_path)
         raise ValueError(f"Failed to create temporary files: {str(e)}") from e
-    wind_up(csv_path, error_csv_path)
+    finally:
+        wind_up(csv_path, error_csv_path)
     return
 
 @gryd.is_a_task()

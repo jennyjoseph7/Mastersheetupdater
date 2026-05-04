@@ -12,20 +12,6 @@ gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
 
-# # PDF generation
-# def make_pdf(html: str, path: str) -> str | None:
-#     try:
-#         output_path = Path(path)
-#         pdfkit.from_string(html, str(output_path))
-#         logger.info(" PDF generated at: %s", output_path)
-#         return str(output_path)
-#     except Exception as e:
-#         logger.error(" Error generating PDF: %s", e)
-#         hp.print_error()
-#         return None
-
-
-
 @gryd.is_a_task(function_name="receive_converse_response_rcs")
 def receive_converse_response_rcs(*args,**kwargs):
     logger.info(f"Received Converse Response with args :{args}")

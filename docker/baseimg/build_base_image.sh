@@ -9,9 +9,9 @@ function update_repo() {
 }
 
 function main() {
-	update_repo "staging"
+	update_repo "master"
 	cp ../../requirements.txt ./
-      	cp ../../spark/requirements.txt ./spark_requirements.txt
+    cp ../../spark/requirements.txt ./spark_requirements.txt
 	docker build -t autobot_prod_baseimage:latest .	
 	docker tag autobot_prod_baseimage:latest asia-south1-docker.pkg.dev/dave-70c8e/autobot-base-image/base_image:latest
 	docker push asia-south1-docker.pkg.dev/dave-70c8e/autobot-base-image/base_image:latest

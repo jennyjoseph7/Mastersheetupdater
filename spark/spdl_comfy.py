@@ -7,15 +7,23 @@ import requests
 import vertexai
 import tempfile
 from openai import OpenAI
+import sys
+print(f"system path:{sys.path}")
 from vertexai.preview.vision_models import Image, ImageGenerationModel
 import google.genai as genai
 from google.genai import types as genai_types
 from google.genai.local_tokenizer import LocalTokenizer
 from gryd_worker import gryd
+from prompt_formatter import convert_prompt as _convert_prompt
+from spark_helpers import func_gryd_file_system
 
 # -------------------- BASE DIR --------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
+from config import AUTOCRM_SPARK_COMFY_SERVICE_NAME, OPENAI_IMAGE_RESOLUTION
 # -------------------- LOGGING --------------------
 logging.basicConfig(
     level=logging.INFO,
@@ -23,7 +31,7 @@ logging.basicConfig(
 )
 mlogger = logging.getLogger("spdl_comfy")
 
-mlogger.info(f"BASE_DIR: {BASE_DIR}")
+mlogger.info(f": {BASE_DIR}")
 
 # -------------------- ENV VARS --------------------
 PROJECT_ID = os.getenv("PROJECT_ID")
@@ -42,8 +50,12 @@ mlogger.info(f"PROJECT_ID: {PROJECT_ID}")
 mlogger.info(f"LOCATION: {LOCATION}")
 
 # -------------------- WORKFLOW --------------------
-WORKFLOW_PATH = os.path.join(BASE_DIR, "comfy_workflows", "Flex.json")
+WORKFLOW_PATH = os.path.join(BASE_DIR,"spark", "comfy_workflows", "Flex.json")
 mlogger.info(f"WORKFLOW_PATH: {WORKFLOW_PATH}")
+SERVICE = AUTOCRM_SPARK_COMFY_SERVICE_NAME
+gryd.SERVICE = SERVICE
+THREADS_PER_SESSION = 0.3
+gryd.set_queue_manager()
 
 # -------------------- HELPERS --------------------
 def load_workflow():
@@ -169,7 +181,7 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
                 logger.info(f"Processing output image: {output_path}")
 
                 if os.path.exists(output_path):
-                    url = upload_to_gryd(output_path)
+                    url = func_gryd_file_system(output_path)
                     if url:
                         image_urls.append(url)
                         logger.info(f"Uploaded to GRYD, URL: {url}")
@@ -198,6 +210,34 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
         logger.exception("Comfy task failed")
         return {"error": str(e)}
 
+def media_resolution_from_size(size):
+    if 'x' in size:
+        width, height = size.split('x')
+        max_size = max(int(width), int(height))
+        if max_size <= 1024:
+            return genai_types.MediaResolution.MEDIA_RESOLUTION_LOW
+        elif max_size <= 2048:
+            return genai_types.MediaResolution.MEDIA_RESOLUTION_MEDIUM
+        elif max_size <= 8192:
+            return genai_types.MediaResolution.MEDIA_RESOLUTION_HIGH
+        else:
+            return genai_types.MediaResolution.MEDIA_RESOLUTION_UNSPECIFIED
+    return genai_types.MediaResolution.MEDIA_RESOLUTION_MEDIUM
+
+
+def aspect_ratio_from_size(size):
+    # Options: 1:1, 4:3, 16:9, 9:16,
+    options = {
+        "1:1": 1.0,
+        "4:3": 4.0/3.0,
+        "16:9": 16.0/9.0,
+        "9:16": 9.0/16.0,
+    }
+    if 'x' in size:
+        width, height = size.split('x')
+        aspect_ratio = int(width) / int(height)
+        return min(options.items(), key=lambda x: abs(x[1] - aspect_ratio))[0]
+    return None
 
 # nano banana
 def gemini_image_generation_task(
@@ -229,7 +269,8 @@ def gemini_image_generation_task(
             location=LOCATION
         )
 
-        model = "gemini-3-pro-image-preview"
+        model = kwargs.get('model_name', "gemini-2.5-flash-image")
+
 
         task_dir = tempfile.mkdtemp(prefix="gemini_")
         image_urls = []
@@ -258,12 +299,22 @@ def gemini_image_generation_task(
                     parts=[image_part, text_part]
                 )
             ]
+            media_resolution = kwargs.get('size', OPENAI_IMAGE_RESOLUTION)
+            if 'x' in media_resolution:
+                width, height = media_resolution.split('x')
+                media_resolution = int(width), int(height)
+            else:
+                media_resolution = int(media_resolution)
 
             config = genai_types.GenerateContentConfig(
                 temperature=temperature,
                 top_p=top_p,
                 max_output_tokens=32768,
                 response_modalities=["TEXT", "IMAGE"],
+                media_resolution=media_resolution_from_size(kwargs.get('size', '')),
+                image_config = genai_types.ImageConfig(
+                    aspect_ratio=aspect_ratio_from_size(kwargs.get('size', '')),
+                ),
                 safety_settings=[
                     genai_types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="OFF"),
                     genai_types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="OFF"),
@@ -293,7 +344,7 @@ def gemini_image_generation_task(
                         with open(output_path, "wb") as f:
                             f.write(part.inline_data.data)
 
-                        url = upload_to_gryd(output_path)
+                        url = func_gryd_file_system(output_path,media_type='image')
 
                         if url:
                             image_urls.append(url)
@@ -356,4 +407,18 @@ def gemini_image_generation_task(
     except Exception as e:
         logger.exception("Gemini task failed")
         return {"error": str(e)}
+
+
+@gryd.is_a_task(function_name = "comfy_image_generation", job_param = 'job', logger_param = 'logger')
+def comfy_image_generation(
+    input_image_url,
+    prompt,
+    number_of_images=1,
+    job = None,
+    logger = None,
+    **kwargs):
+    logger = logger or mlogger
+    if kwargs.get('optimise_prompt',True):
+        prompt, elapsed = _convert_prompt(prompt)
+    return comfy_image_generation_task(input_image_url, prompt, number_of_images, logger = logger, **kwargs)
 
