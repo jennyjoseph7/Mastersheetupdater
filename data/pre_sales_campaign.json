@@ -799,6 +799,16 @@
                     "doc_data"
                 ]
             }
+        },
+        {
+            "name": "audience_field_mapping",
+            "type": "object_list",
+            "list_type": "nested_object",
+            "dict_keys": [
+                "source_field",
+                "target_field",
+                "enabled"
+            ]
         }
     ],
     "parents": [

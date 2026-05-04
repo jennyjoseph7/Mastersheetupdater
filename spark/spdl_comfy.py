@@ -23,7 +23,7 @@ BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from config import AUTOCRM_SPARK_COMFY_SERVICE_NAME
+from config import AUTOCRM_SPARK_COMFY_SERVICE_NAME, OPENAI_IMAGE_RESOLUTION
 # -------------------- LOGGING --------------------
 logging.basicConfig(
     level=logging.INFO,
@@ -210,6 +210,34 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
         logger.exception("Comfy task failed")
         return {"error": str(e)}
 
+def media_resolution_from_size(size):
+    if 'x' in size:
+        width, height = size.split('x')
+        max_size = max(int(width), int(height))
+        if max_size <= 1024:
+            return genai_types.MediaResolution.MEDIA_RESOLUTION_LOW
+        elif max_size <= 2048:
+            return genai_types.MediaResolution.MEDIA_RESOLUTION_MEDIUM
+        elif max_size <= 8192:
+            return genai_types.MediaResolution.MEDIA_RESOLUTION_HIGH
+        else:
+            return genai_types.MediaResolution.MEDIA_RESOLUTION_UNSPECIFIED
+    return genai_types.MediaResolution.MEDIA_RESOLUTION_MEDIUM
+
+
+def aspect_ratio_from_size(size):
+    # Options: 1:1, 4:3, 16:9, 9:16,
+    options = {
+        "1:1": 1.0,
+        "4:3": 4.0/3.0,
+        "16:9": 16.0/9.0,
+        "9:16": 9.0/16.0,
+    }
+    if 'x' in size:
+        width, height = size.split('x')
+        aspect_ratio = int(width) / int(height)
+        return min(options.items(), key=lambda x: abs(x[1] - aspect_ratio))[0]
+    return None
 
 # nano banana
 def gemini_image_generation_task(
@@ -271,12 +299,22 @@ def gemini_image_generation_task(
                     parts=[image_part, text_part]
                 )
             ]
+            media_resolution = kwargs.get('size', OPENAI_IMAGE_RESOLUTION)
+            if 'x' in media_resolution:
+                width, height = media_resolution.split('x')
+                media_resolution = int(width), int(height)
+            else:
+                media_resolution = int(media_resolution)
 
             config = genai_types.GenerateContentConfig(
                 temperature=temperature,
                 top_p=top_p,
                 max_output_tokens=32768,
                 response_modalities=["TEXT", "IMAGE"],
+                media_resolution=media_resolution_from_size(kwargs.get('size', '')),
+                image_config = genai_types.ImageConfig(
+                    aspect_ratio=aspect_ratio_from_size(kwargs.get('size', '')),
+                ),
                 safety_settings=[
                     genai_types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="OFF"),
                     genai_types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="OFF"),
