@@ -63,7 +63,7 @@ echo "APP Config"
 echo $process_config
 
 function get_process_pids() {
-    # Get the first pid of the process matching the search string
+    # Get the list of pid of the process matching the search string
     # e.g. get_pid "python.*app.py" will return the pid of the first process matching the regex "python.*app.py"
     echo "Getting process pids for search-string $@" 1>&2
     ssw_pid=`ps -eaf | grep "$@" | grep -v grep | grep -v "ps -eaf" | awk '{print $2}' | sort`
@@ -168,6 +168,7 @@ function is_process_running() {
 }
 
 function kill_process() {
+    # Kill the process with the given PID and a timeout of 110 seconds
     ssw_pid=$1
     shutdown_time=${2:-110}
     echo "Killing process $ssw_pid with a timeout of $shutdown_time seconds" 1>&2
