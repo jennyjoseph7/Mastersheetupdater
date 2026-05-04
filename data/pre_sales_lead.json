@@ -1230,7 +1230,19 @@
         },
         {
             "name": "last_session_id",
-            "type": "uid"
+            "type": "uid",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "session",
+                    "session_id"
+                ],
+                "kwargs": {
+                    "lead_id": "{pre_sales_lead_id}",
+                    "_sort_by": "updated",
+                    "_sort_reverse": true
+                }
+            }
         },
         {
             "name": "last_session_status",
@@ -1286,6 +1298,10 @@
                     "channel"
                 ]
             }
+        },
+        {
+            "name": "lead_timeline",
+            "type": "text"
         },
         {
             "name": "lead_tags",

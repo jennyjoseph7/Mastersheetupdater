@@ -1637,7 +1637,19 @@
         },
         {
             "name": "last_session_id",
-            "type": "uid"
+            "type": "uid",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "session",
+                    "session_id"
+                ],
+                "kwargs": {
+                    "lead_id": "{post_sales_lead_id}",
+                    "_sort_by": "updated",
+                    "_sort_reverse": true
+                }
+            }
         },
         {
             "name": "last_session_status",
@@ -1699,6 +1711,10 @@
             },
             "auto_updater": true,
             "force_update": "last_session_id"
+        },
+        {
+            "name": "lead_timeline",
+            "type": "text"
         },
         {
             "name": "disposition",
