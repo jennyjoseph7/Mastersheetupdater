@@ -5,7 +5,7 @@ from ai_service import ai_service_app
 
 # Import BaseAgent from its separate file
 try:
-    from agents.base_agent import BaseAgent
+    from brochure_pipeline.agents.base_agent import BaseAgent
 except ImportError:
     from base_agent import BaseAgent
 
