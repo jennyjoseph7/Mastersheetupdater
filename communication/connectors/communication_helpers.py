@@ -67,6 +67,20 @@ NullEmptyCheck=[None, "", "null", "None"]
 # common functions
 
 def handle_session_logic(phone_number,from_number=None,channel=None,engaged=False,campaign_details=None, from_web_chat=False, profile_name=None):
+    
+    """
+    Handles the session logic for a user. Checks and creates the user first and then session.
+    
+    Parameters:
+        phone_number: The phone number of the user.
+        from_number (optional): The number from which the message was sent.
+        channel (optional): The channel through which the message was sent.
+        engaged (optional): A boolean flag indicating whether the user is engaged. For inbound scenario send as True.
+        campaign_details (optional): Details about the campaign.
+        from_web_chat (optional): A boolean flag indicating whether the message was sent from a web chat.
+        profile_name (optional): The name of the user's profile.
+    """
+    
     payload = {}
     dealership_id = None
 
@@ -233,7 +247,14 @@ def apply_filters(session_id=None, user_id=None, channel=None, session_live=None
 def get_or_create_session(data,channel=None,engaged=False):
     """
     Find active session or create new one.
-    session_live=True AND status != completed
+    data: This is a dictionary that contains the data needed to create or find a session. It is expected to have the following keys:
+            session_id: The ID of the session.
+            user_id: The ID of the user.
+            dealership_id: The ID of the dealership.
+            campaign_id: The ID of the campaign.
+            campaign_type: The type of the campaign.
+    channel (optional): The channel of the session.
+    engaged (optional): This is a boolean flag that indicates whether the user is engaged with the session. It is set to False by default.
     """
     logger.info(f"In create or get session function. User id: {data.get('user_id')}, data: {data} and engaged flag:{engaged}")
     
@@ -406,7 +427,7 @@ def update_history_in_session(session_data):
 def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_post_process,inactive_cutoff_epoch):
     """
     Handles post session process or end session based on session end date and history update.
-
+    
     If the end date is reached and there is no new history, the session is ended.
     If the end date is reached but there is new history, the post session process is triggered.
     If there is new history and can_call_post_process is True, the post session process is triggered.
@@ -522,6 +543,33 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
 
 
 def create_new_session(data, channel=None, engaged=False):
+    """
+Create a new session based on the provided data, channel, and engaged flag.
+
+Parameters:
+    data (dict): A dictionary containing the data needed to create the session.
+        It should have the following keys:
+            - session_id (str): The ID of the session.
+            - user_id (str): The ID of the user.
+            - dealership_id (str): The ID of the dealership.
+            - campaign_type (str, optional): The type of the campaign. Defaults to "pre-sales".
+            - campaign_id (str, optional): The ID of the campaign.
+            - phone_number (str, optional): The phone number associated with the session.
+            - person_name (str, optional): The name of the person associated with the session.
+            - email (str, optional): The email associated with the session.
+    channel (str, optional): The channel through which the session is accessed.
+        It can have the following values:
+            - "whatsapp_chat": The session is accessed through a WhatsApp chat.
+            - "rcs": The session is accessed through a Rich Communication Services (RCS) chat.
+            - "email": The session is accessed through an email.
+        Defaults to "whatsapp_chat".
+    engaged (bool, optional): A flag indicating whether the user is engaged with the session. ( Inbound scenario )
+        Defaults to False.
+
+    When it is an inbound scenario, the session is created with the "Inbound Lead Handling" campaign. And also respective lead objects are created.
+Returns:
+    dict: The newly created session.
+"""
     logger.info(f"Creating new session for user_id: {data.get('user_id')} and data: {json.dumps(data,indent=4)}")
     
     user_id = data.get("user_id")
