@@ -99,7 +99,7 @@ export function StatusCell({
     <div className="flex items-center gap-2">
       {getStatusBadge(status)}
       
-      {onRefreshStatus && (
+      {onRefreshStatus && (status === "Processing" || status === "Pending") && (
         <Button
           variant="ghost"
           size="sm"
