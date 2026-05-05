@@ -1,4 +1,4 @@
-FROM pyreqbaseimg
+FROM asia-south1-docker.pkg.dev/dave-70c8e/autobot-base-image/base_image:latest
 
 WORKDIR /root/
 
