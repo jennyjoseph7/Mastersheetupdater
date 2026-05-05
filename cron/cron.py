@@ -1512,7 +1512,7 @@ def reset_auth_creds(*args, **kwargs):
                             raise Exception(f"No JWTAUTH found in response: {resp.keys()}")
 
                         auth_headers = i.get("auth_headers", {})
-                        auth_headers.update({"Authorization": JWTAUTH})
+                        auth_headers.update({"Content-Type": "application/json","Authorization": JWTAUTH})
 
                         pg.update("communication_credential","communication_credentials_id",i.get("communication_credentials_id"),{"auth_headers": auth_headers})
                     
