@@ -83,6 +83,7 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
     
     payload = {}
     dealership_id = None
+    session = {}
 
     # 1. PERSON
     person = get_or_create_person(phone_number)
@@ -114,6 +115,7 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
         creds = list(pg.list("communication_credential", _f ))
         if creds:
             logger.info(f"In handle_session_logic communication creds: {creds[0]}")
+            session["communication_credentials"] = creds[0]
             dealership_id = creds[0].get("dealership_id")
             payload["dealership_id"] = dealership_id
         # 3. CONTACT STATUS
