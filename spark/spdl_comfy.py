@@ -23,7 +23,7 @@ BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from config import AUTOCRM_SPARK_COMFY_SERVICE_NAME, OPENAI_IMAGE_RESOLUTION
+from config import AUTOCRM_SPARK_COMFY_SERVICE_NAME, GEMINI_IMAGE_ASPECT_RATIO, GEMINI_IMAGE_MODEL
 # -------------------- LOGGING --------------------
 logging.basicConfig(
     level=logging.INFO,
@@ -210,7 +210,7 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
         logger.exception("Comfy task failed")
         return {"error": str(e)}
 
-def media_resolution_from_size(size):
+def gemini_media_resolution_from_size(size):
     if 'x' in size:
         width, height = size.split('x')
         max_size = max(int(width), int(height))
@@ -269,7 +269,7 @@ def gemini_image_generation_task(
             location=LOCATION
         )
 
-        model = kwargs.get('model_name', "gemini-2.5-flash-image")
+        model = kwargs.get('model_name', GEMINI_IMAGE_MODEL)
 
 
         task_dir = tempfile.mkdtemp(prefix="gemini_")
@@ -299,31 +299,25 @@ def gemini_image_generation_task(
                     parts=[image_part, text_part]
                 )
             ]
-            media_resolution = kwargs.get('size', OPENAI_IMAGE_RESOLUTION)
-            if 'x' in media_resolution:
-                width, height = media_resolution.split('x')
-                media_resolution = int(width), int(height)
-            else:
-                media_resolution = int(media_resolution)
 
             config = genai_types.GenerateContentConfig(
                 temperature=temperature,
                 top_p=top_p,
                 max_output_tokens=32768,
                 response_modalities=["TEXT", "IMAGE"],
-                media_resolution=media_resolution_from_size(kwargs.get('size', '')),
+                media_resolution=gemini_media_resolution_from_size(kwargs.get('size', '')),
                 image_config = genai_types.ImageConfig(
-                    aspect_ratio=aspect_ratio_from_size(kwargs.get('size', '')),
+                    aspect_ratio=aspect_ratio_from_size(kwargs.get('size', ''), default = GEMINI_IMAGE_ASPECT_RATIO),
                 ),
                 safety_settings=[
-                    genai_types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="OFF"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="OFF"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="OFF"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_HATE", threshold="OFF"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_DANGEROUS_CONTENT", threshold="OFF"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_HARASSMENT", threshold="OFF"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT", threshold="OFF"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_MEDIUM_AND_ABOVE"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_MEDIUM_AND_ABOVE"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_MEDIUM_AND_ABOVE"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_MEDIUM_AND_ABOVE"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_HATE", threshold="BLOCK_MEDIUM_AND_ABOVE"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_DANGEROUS_CONTENT", threshold="BLOCK_MEDIUM_AND_ABOVE"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_HARASSMENT", threshold="BLOCK_MEDIUM_AND_ABOVE"),
+                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT", threshold="BLOCK_MEDIUM_AND_ABOVE"),
                 ],
             )
 
