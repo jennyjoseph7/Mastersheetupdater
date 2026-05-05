@@ -403,6 +403,7 @@ class BaseCustomCampaignManager:
             mobile_number = clean_phone_number(user.get("mobile_number", "")) if channel.upper() == "WHATSAPP_CHAT" else user.get("mobile_number", "")
             logger.info(f"mobile_number-----{ mobile_number}")
             logger.info(f"USER----------{user}")
+            logger.info(f"CHANNEL ---{channel}")
             if channel.upper()=="WHATSAPP_CHAT":
                 mobile_number = BaseCampaignCreater()._format_mobile_number(mobile_number,user.get("country_code","91"))
                 
@@ -457,10 +458,11 @@ class BaseCustomCampaignManager:
                     ],enterprise_id=enterprise_id)
             elif channel.upper()=="VOICE_PHONE":
                 logger.info("Sending Voice campaign---")
-                logger.info(f"[{count}] Sent {channel} message for phone_number:{campaign_data.get('mobile_number')}, campaign_id:{campaign_data.get('campaign_id')}, lead_id:{user.get('lead_id')}")
                 # logger.info(f"[voice_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
-                d={**campaign_data,**campaign_users[0]}                
-                logger.info(f"Voice call payload--{json.dumps(d,indent=4)}")
+                d={**campaign_data,**campaign_users[0]}  
+                logger.info(f"[{count}] Sent {channel} message for phone_number:{d.get('mobile_number')}, campaign_id:{d.get('campaign_id')}, lead_id:{d.get('lead_id')}")
+                              
+                # logger.info(f"Voice call payload--{json.dumps(d,indent=4)}")
 
                 voice_service_name = campaign_data.get("voice_service_name") or AUTOCRM_VOICE_SERVICE_NAME
 
@@ -1086,11 +1088,12 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         return
 
     logger.info(f"Lead found for lead_id={lead_id}")
+    # logger.info(f"CHANNEL_IDENTIFIER-----{channel_identifier}")
     if channel_identifier:
         channel_identifier=channel_identifier
     else:
         channel_identifier=CHANNEL_IDENTIFIER_MAP.get(channel)
-        lead_data["channel_identifier"] = lead_data.get("channel_identifier") or channel_identifier
+    lead_data["channel_identifier"] = lead_data.get("channel_identifier") or channel_identifier
     if not channel:
         channel = get_channel(lead_data, campaign_details)
 
@@ -1218,7 +1221,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         return
 
     mobile = lead_data.get("channel_identifier") 
-    logger.info(f"Campaign ID: {campaign_id}, Original Mobile: {lead_data}")
+    
+    # logger.info(f"Campaign ID: {campaign_id}, Original Mobile: {mobile}")
     customer_name = "Dear NADA Visitor" if campaign_id == "4c99d5ea-4441-3ce6-841f-de5d7585b3b7" and lead_data.get("person_name") is None else lead_data.get("person_name")
     lead_data['person_name']=customer_name
     logger.info(f"Customer Name: {customer_name}")
