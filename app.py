@@ -17,6 +17,7 @@ from ai_service import ai_service_app
 from db_routes import db_routes, ai_service_app
 from voice.voice.providers.twilio import app as twilio_routes
 from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_routes
+from voice.voice.providers.elevanlabs_tatatele_inbound import app as elevanlabs_tatatele_inbound_routes
 from voice.voice.providers.elevanlab import app as elevanlab_routes
 from core.razorpay_service import razorpay_webhook_handler
 from core.core import generate_otp, dealership_signup, reset_password
@@ -212,6 +213,7 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
 app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
 app.register_blueprint(elevanlabs_tatatele_routes)
+app.register_blueprint(elevanlabs_tatatele_inbound_routes)
 app.register_blueprint(twilio_routes)
 app.register_blueprint(elevanlab_routes)
 
