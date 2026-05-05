@@ -11,6 +11,7 @@ AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME = os.environ.get("AUTOCRM_CONVERS
 AUTOCRM_AGENT_SERVICE_NAME = os.environ.get("AUTOCRM_AGENT_SERVICE_NAME", "autocrm-agent")
 AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME = os.environ.get("AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME", "autocrm-short-run-agent")
 AUTOCRM_VOICE_SERVICE_NAME = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME", "autocrm-voice")
+AUTOCRM_VOICE_INBOUND_SERVICE_NAME = os.environ.get("AUTOCRM_VOICE_INBOUND_SERVICE_NAME", "autocrm-voice-inbound")
 AUTOCRM_COMMUNICATION_SERVICE_NAME = os.environ.get("AUTOCRM_COMMUNICATION_SERVICE_NAME", "autocrm-communication")
 AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME = os.environ.get("AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME", "autocrm-cohort-campaign") # For Cohort Generation, Classification, Affinity Mapping Service.
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')

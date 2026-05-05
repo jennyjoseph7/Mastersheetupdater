@@ -3,14 +3,15 @@ import json
 import os
 import sys
 from typing import Any, Dict
+
 _voice_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if _voice_root not in sys.path:
     sys.path.insert(0, _voice_root)
 from flask import Blueprint, request, jsonify
 from gryd_worker import gryd_helpers as hp, gryd
 import gryd_tasks
-from gryd_tasks import config, communication
-
+import config
+from communication.connectors.communication_helpers import handle_session_logic
 
 from voice.providers.elevanlabs_tatatele import (
     CallSession,
@@ -36,7 +37,7 @@ def start_call_from_inbound(*args, **kwargs):
     agent_number = data.get("call_to_number")
     logger.info(f"[start_call_from_inbound] customer={customer_number}, agent={agent_number}")
 
-    session_data = communication.connectors.communication_helpers.handle_session_logic(customer_number, from_number=agent_number, channel = "voice_phone", engaged=True)
+    session_data = handle_session_logic(customer_number, from_number=agent_number, channel = "voice_phone", engaged=True)
     
     for x in gryd_tasks.converse.get_primary_prompt(*args, **{
             "session_id" : session_data['session_id'],
