@@ -106,6 +106,8 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
                 "lead_id": campaign_details.get("lead_id"),
             })
             session = get_or_create_session(payload,channel,engaged)
+            if session is None:
+                return {"error": "Failed to create or retrieve session"}
             return {**session}
 
         logger.info(f"TEST phone_number: {phone_number}")
@@ -201,6 +203,8 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
 
             logger.info(f"TEST BEFORE SESSION FINAL PAYLOAD: {payload}")
             session = get_or_create_session(payload,channel,engaged)
+            if session is None:
+                return {"error": "Failed to create or retrieve session"}
             return {**session, "dealership_id": dealership_id}
 
         # 5. NON-CAMPAIGN FLOW
@@ -213,6 +217,8 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
         #     payload["dealership_id"] = dealership_id
 
         session = get_or_create_session(payload,channel,engaged)
+        if session is None:
+            return {"error": "Failed to create or retrieve session"}
         return {**session, "dealership_id": dealership_id}
 
 def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None,campaign_id=None):
@@ -621,7 +627,7 @@ Returns:
             _final_payload={
                 **campaign_data,
                 **_additional_attributes}
-            d=check_and_create_inbound_lead_object(_final_payload)
+            d=check_and_create_inbound_lead_object(**_final_payload)
             data["lead_id"] = d.get("lead_id")
         new_session = {
             **data,
@@ -688,7 +694,7 @@ def check_and_create_inbound_lead_object(**kwargs):
         existing_leads=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
         if existing_leads:
             logger.info(f"Inbound Lead already exists for campaign_id={campaign_id}, user_id={user_id}")
-            return existing_leads[0].get("pre_sales_lead_id")
+            return existing_leads[0]
         logger.info(f"TEST USER ID--{user_id} and campaign_id--{campaign_id}")
         lead_data={
             "ctas": kwargs.get("ctas"),
@@ -737,7 +743,7 @@ def check_and_create_inbound_lead_object(**kwargs):
             lead_d=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
             # logger.info(f"Lead created: {json.dumps(lead_d,indent=4)} with user_id={user_id} and campaign_id={campaign_id}")
             logger.info(f"Pre-sales lead data created -- {lead_d[0].get('pre_sales_lead_id')}")
-            return lead_d[0].get("pre_sales_lead_id")
+            return lead_d[0]
         
 def get_or_create_person(phone_number):
     """Return person object; create if not exists."""

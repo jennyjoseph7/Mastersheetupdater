@@ -38,8 +38,9 @@ def create_stream_url(*args, **kwargs):
 
     logger.info(f"Processing create_stream_url request: {json.dumps(data, indent=4)}")
     
-    from_number = data.get("from_number")[-10:]
-    to_number = data.get("to_number")[-10:]
+    #inbound case swap
+    to_number = data.get("from_number")[-10:]
+    from_number = data.get("to_number")[-10:]
 
     base_ws_url = config.get_websocket_base_url(to_number)
 
