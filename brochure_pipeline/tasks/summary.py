@@ -13,7 +13,7 @@ from bp_utils import get_logger
 from gryd_worker import gryd
 from brochure_pipeline.agents.summary_agent import VectorIngestionAgent
 from dotenv import load_dotenv
-from config import AutocrmModel
+from autobot_agents.config import AutocrmModel
 
 load_dotenv()
 logger = get_logger(__name__)
