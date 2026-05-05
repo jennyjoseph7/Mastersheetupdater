@@ -38,6 +38,9 @@ def start_call_from_inbound(*args, **kwargs):
     logger.info(f"[start_call_from_inbound] customer={customer_number}, agent={agent_number}")
 
     session_data = handle_session_logic(customer_number, from_number=agent_number, channel = "voice_phone", engaged=True)
+    if "error" in session_data:
+        logger.error(f"Error in session logic: {session_data['error']}")
+        return session_data
     
     for x in gryd_tasks.converse.get_primary_prompt(*args, **{
             "session_id" : session_data['session_id'],
@@ -62,7 +65,7 @@ def start_call_from_inbound(*args, **kwargs):
         logger.warning(f"No credentials found for dealership_id {session_data.get('dealership_id')}, channel voice_phone")  
 
 
-    terminated = terminate_sessions_for_phone(customer_number, agent_number, exclude_session_id=session_id)
+    terminated = terminate_sessions_for_phone(customer_number, agent_number, exclude_session_id=session_data["session_id"])
     if terminated > 0:
         logger.info(f"Terminated {terminated} old session(s) for {customer_number}/{agent_number}")
 
