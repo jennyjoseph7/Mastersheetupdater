@@ -195,7 +195,7 @@ def sort_channel_by_cheapest(channels: list, current_channel: str = None):
 
 def get_highest_status(statuses: list):
     if not statuses:
-        logger.info("No statuses, hence making it queued")
+        mlogger.info("No statuses, hence making it queued")
         return "queued"
     mstatuses = set(list(map(lambda x: DISPOSITION_MAP.get(x.get('provider_status'), x.get('provider_status')), statuses)))
     mlogger.info("Got statuses after transforming: %s", mstatuses)
