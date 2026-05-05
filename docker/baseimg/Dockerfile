@@ -14,5 +14,5 @@ RUN python3 -m venv pyenv
 ENV PYENV_PATH=pyenv
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
-RUN /root/pyenv/bin/pip install -U pip setuptools
+RUN /root/pyenv/bin/pip install -U pip setuptools google-auth google-cloud-aiplatform google-genai
 RUN /root/pyenv/bin/pip install torch
