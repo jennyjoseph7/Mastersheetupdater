@@ -652,6 +652,106 @@
     .kpi-card.teal .kpi-dot { background: var(--teal); box-shadow: 0 0 8px rgba(94, 234, 212, var(--kpi-dot-shadow)); }
     .kpi-card.teal .kpi-label { color: var(--teal); }
 
+    .preview-table-wrapper {
+      display: none;
+      margin-top: 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface-card);
+      box-shadow: var(--shadow-subtle);
+      overflow: hidden;
+      transition: background 0.35s, border-color 0.35s;
+    }
+
+    .preview-table-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .preview-title {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      font-family: var(--sans);
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .preview-count {
+      color: var(--text-muted);
+      font-family: var(--body);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .preview-table-scroll {
+      overflow: auto;
+      max-height: 380px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      background: var(--surface);
+    }
+
+    thead {
+      background: var(--thead-bg);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    th,
+    td {
+      padding: 0.72rem 0.85rem;
+      border-bottom: 1px solid var(--border-subtle);
+      text-align: left;
+      white-space: nowrap;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--text-dim);
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    td {
+      color: var(--text);
+    }
+
+    tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.018);
+    }
+
+    tr:hover {
+      background: var(--surface-card-hover);
+    }
+
+    .cell-phone {
+      color: var(--accent2);
+      font-family: var(--mono);
+      font-weight: 700;
+    }
+
+    .cell-detail {
+      min-width: 280px;
+      max-width: 520px;
+      white-space: normal;
+      line-height: 1.45;
+    }
+
     .empty-dashboard {
       text-align: center;
       padding: 4rem 2rem;
@@ -729,6 +829,11 @@
     @media (max-width: 1100px) {
       .summary-grid {
         grid-template-columns: 1fr 1fr;
+      }
+
+      .preview-table-header {
+        align-items: flex-start;
+        flex-direction: column;
       }
     }
 
@@ -866,6 +971,55 @@
 
     <div class="summary-panel" id="summaryPanel">
       <div class="summary-grid" id="summaryGrid"></div>
+
+      <div class="preview-table-wrapper" id="bookingTableWrapper">
+        <div class="preview-table-header">
+          <div class="preview-title">
+            Test Drive Bookings Preview
+            <span class="preview-count" id="bookingPreviewCount">0 rows</span>
+          </div>
+          <button class="btn" id="btnCopyBookings" type="button" onclick="copyBookingData()">Copy Bookings</button>
+        </div>
+        <div class="preview-table-scroll">
+          <table id="bookingTable">
+            <thead>
+              <tr>
+                <th>PHONE_NUMBER</th>
+                <th>VEHICLE_MODEL</th>
+                <th>DISPOSITION_DETAILS</th>
+                <th>LOCATION</th>
+                <th>CALL_DATE</th>
+                <th>ANANTCARS CRE REMARKS</th>
+              </tr>
+            </thead>
+            <tbody id="bookingBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="preview-table-wrapper" id="completedTableWrapper">
+        <div class="preview-table-header">
+          <div class="preview-title">
+            Test Drive Completed Preview
+            <span class="preview-count" id="completedPreviewCount">0 rows</span>
+          </div>
+          <button class="btn" id="btnCopyCompleted" type="button" onclick="copyCompletedData()">Copy Completed</button>
+        </div>
+        <div class="preview-table-scroll">
+          <table id="completedTable">
+            <thead>
+              <tr>
+                <th>PHONE_NUMBER</th>
+                <th>VEHICLE_MODEL</th>
+                <th>CALL_DATE</th>
+                <th>DISPOSITION_DETAILS</th>
+                <th>ANANTCARS CRE REMARKS</th>
+              </tr>
+            </thead>
+            <tbody id="completedBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <div class="empty-dashboard" id="emptyPanel">
@@ -889,6 +1043,8 @@
     let importedRows = [];
     let summaryItems = [];
     let summaryTitleText = '';
+    let bookingPreviewData = [];
+    let completedPreviewData = [];
 
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
@@ -939,9 +1095,7 @@
         const sheetName = getSummarySheetName(workbook);
         if (!sheetName) throw new Error('No worksheet found in the uploaded file.');
 
-        const worksheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
-        importedRows = normalizeRows(rows);
+        importedRows = getWorkbookRows(workbook);
 
         if (!importedRows.length) {
           throw new Error('No usable rows found. Upload the processed Disposition Sync output file.');
@@ -957,6 +1111,7 @@
         importedRows = [];
         summaryItems = [];
         summaryTitleText = '';
+        hidePreviewTables();
         document.getElementById('rowCount').textContent = '0';
         document.getElementById('summaryPanel').classList.remove('show');
         document.getElementById('summaryBar').style.display = 'none';
@@ -975,14 +1130,73 @@
           return {
             full_name: clean(get(['Full_Name', 'Full Name', 'person_name', 'name'])),
             phone: clean(get(['Phone', 'phone_number', 'mobile', 'contact_number'])),
+            city: clean(get(['City', 'city'])),
+            model: clean(get(['Model', 'Vehicle_Model', 'Vehicle Model', 'model_preference', 'interested_vehicle_name'])),
             outcome: clean(get(['Outcome'])),
             disposition: clean(get(['Disposition'])),
             summary: clean(get(['SUMMARY', 'Summary', 'disposition_detail', 'call_summary', 'conversation_summary', 'notes'])),
             updated_summary: clean(get(['Updated SUMMARY', 'Updated Summary', 'updated_summary'])),
+            conversion: clean(get(['Conversion', 'conversion'])),
             session_summary: clean(get(['Session_Summary', 'Session Summary', 'session_summary'])),
             call_date: clean(get(['Call_Date', 'Call Date', 'created', 'start_time', 'date']))
           };
         });
+    }
+
+    function getWorkbookRows(workbook) {
+      const primarySheetName = getSummarySheetName(workbook);
+      if (!primarySheetName) return [];
+
+      const primaryRows = normalizeRows(readSheetRows(workbook, primarySheetName));
+      const processedSheetName = workbook.SheetNames.find(function(name) {
+        return normalizeKey(name) === 'processedleads';
+      });
+      const supplementSheetName = processedSheetName && processedSheetName !== primarySheetName
+        ? processedSheetName
+        : workbook.SheetNames.find(function(name) {
+            return name !== primarySheetName;
+          });
+
+      if (!supplementSheetName) return primaryRows;
+      return mergeWorkbookRows(primaryRows, normalizeRows(readSheetRows(workbook, supplementSheetName)));
+    }
+
+    function readSheetRows(workbook, sheetName) {
+      const worksheet = workbook.Sheets[sheetName];
+      if (!worksheet) return [];
+      return XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
+    }
+
+    function mergeWorkbookRows(primaryRows, supplementRows) {
+      if (!primaryRows.length) return supplementRows;
+      if (!supplementRows.length) return primaryRows;
+
+      const supplementsByPhone = new Map();
+      supplementRows.forEach(function(row) {
+        const key = phoneKey(row.phone);
+        if (key && !supplementsByPhone.has(key)) supplementsByPhone.set(key, row);
+      });
+
+      const seenPhones = new Set();
+      const merged = primaryRows.map(function(row) {
+        const key = phoneKey(row.phone);
+        if (key) seenPhones.add(key);
+        const supplement = key ? supplementsByPhone.get(key) : null;
+        if (!supplement) return row;
+
+        const combined = Object.assign({}, supplement, row);
+        Object.keys(supplement).forEach(function(field) {
+          if (!clean(combined[field]) && clean(supplement[field])) combined[field] = supplement[field];
+        });
+        return combined;
+      });
+
+      supplementRows.forEach(function(row) {
+        const key = phoneKey(row.phone);
+        if (!key || !seenPhones.has(key)) merged.push(row);
+      });
+
+      return merged;
     }
 
     function getSummarySheetName(workbook) {
@@ -1024,6 +1238,12 @@
       return clean(value).toLowerCase();
     }
 
+    function phoneKey(value) {
+      const digits = clean(value).replace(/\D/g, '');
+      if (!digits) return '';
+      return digits.length > 10 ? digits.slice(-10) : digits;
+    }
+
     function getEffectiveSummary(row) {
       const updated = clean(row.updated_summary);
       if (updated) return updated;
@@ -1038,19 +1258,28 @@
       return lower(row.outcome) === 'not connected';
     }
 
+    function isTestDriveBooking(row) {
+      if (lower(row.conversion) === 'yes') return true;
+      if (!isConnected(row)) return false;
+
+      const s = lower(getEffectiveSummary(row));
+      if (s.includes('follow up required') || s.includes('converted')) return true;
+      if (s.includes('not interested')) return false;
+      return s.includes('interested');
+    }
+
+    function isTestDriveCompleted(row) {
+      const s = lower(getEffectiveSummary(row));
+      return isConnected(row) && s.includes('already booked');
+    }
+
     function renderSummary(data) {
       const now = new Date();
       const dateLabel = now.getDate() + ' ' + MONTH_NAMES[now.getMonth()] + ' ' + now.getFullYear();
 
       const total = data.length;
       const connected = data.filter(isConnected).length;
-      const bookings = data.filter(function(row) {
-        if (!isConnected(row)) return false;
-        const s = lower(getEffectiveSummary(row));
-        if (s.includes('follow up required') || s.includes('converted')) return true;
-        if (s.includes('not interested')) return false;
-        return s.includes('interested');
-      }).length;
+      const bookings = data.filter(isTestDriveBooking).length;
       const followUps = data.filter(function(row) {
         return lower(getEffectiveSummary(row)).includes('follow up');
       }).length;
@@ -1067,11 +1296,7 @@
         const s = lower(getEffectiveSummary(row));
         return s.includes('interested') && !s.includes('not interested');
       }).length;
-      const testDriveCompleted = data.filter(function(row) {
-        if (!isConnected(row)) return false;
-        const s = lower(getEffectiveSummary(row));
-        return s.includes('already booked');
-      }).length;
+      const testDriveCompleted = data.filter(isTestDriveCompleted).length;
       const notConnectedCalls = data.filter(isNotConnected).length;
 
       summaryTitleText = dateLabel + ' \u2014 Call Analysis Summary';
@@ -1099,6 +1324,160 @@
       document.getElementById('summaryBar').style.display = 'flex';
       document.getElementById('summaryPanel').classList.add('show');
       document.getElementById('emptyPanel').style.display = 'none';
+      renderPreviewTables(data);
+    }
+
+    function renderPreviewTables(data) {
+      renderBookingTable(data);
+      renderCompletedTable(data);
+    }
+
+    function renderBookingTable(data) {
+      bookingPreviewData = data.filter(isTestDriveBooking);
+      const wrapper = document.getElementById('bookingTableWrapper');
+      const tbody = document.getElementById('bookingBody');
+      tbody.innerHTML = '';
+
+      if (!bookingPreviewData.length) {
+        wrapper.style.display = 'none';
+        document.getElementById('bookingPreviewCount').textContent = '0 rows';
+        return;
+      }
+
+      bookingPreviewData.forEach(function(row) {
+        const cols = getBookingColumns(row);
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td class="cell-phone">' + escapeHtml(cols[0]) + '</td>' +
+          '<td>' + escapeHtml(cols[1]) + '</td>' +
+          '<td class="cell-detail">' + escapeHtml(cols[2]) + '</td>' +
+          '<td>' + escapeHtml(cols[3]) + '</td>' +
+          '<td>' + escapeHtml(cols[4]) + '</td>' +
+          '<td>' + escapeHtml(cols[5]) + '</td>';
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('bookingPreviewCount').textContent = rowCountLabel(bookingPreviewData.length);
+      wrapper.style.display = 'block';
+      wrapper.classList.add('fade-in');
+    }
+
+    function renderCompletedTable(data) {
+      completedPreviewData = data.filter(isTestDriveCompleted);
+      const wrapper = document.getElementById('completedTableWrapper');
+      const tbody = document.getElementById('completedBody');
+      tbody.innerHTML = '';
+
+      if (!completedPreviewData.length) {
+        wrapper.style.display = 'none';
+        document.getElementById('completedPreviewCount').textContent = '0 rows';
+        return;
+      }
+
+      completedPreviewData.forEach(function(row) {
+        const cols = getCompletedColumns(row);
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td class="cell-phone">' + escapeHtml(cols[0]) + '</td>' +
+          '<td>' + escapeHtml(cols[1]) + '</td>' +
+          '<td>' + escapeHtml(cols[2]) + '</td>' +
+          '<td class="cell-detail">' + escapeHtml(cols[3]) + '</td>' +
+          '<td>' + escapeHtml(cols[4]) + '</td>';
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('completedPreviewCount').textContent = rowCountLabel(completedPreviewData.length);
+      wrapper.style.display = 'block';
+      wrapper.classList.add('fade-in');
+    }
+
+    function getBookingColumns(row) {
+      return [
+        row.phone,
+        row.model,
+        getBookingDisposition(row),
+        detectBookingLocation(row),
+        row.call_date,
+        ''
+      ];
+    }
+
+    function getCompletedColumns(row) {
+      return [
+        row.phone,
+        row.model,
+        row.call_date,
+        getEffectiveSummary(row),
+        ''
+      ];
+    }
+
+    function getBookingDisposition(row) {
+      const disp = clean(row.disposition);
+      if (lower(disp).includes('converted') || (!disp && lower(row.conversion) === 'yes')) {
+        return 'Test Drive Booked';
+      }
+      return disp;
+    }
+
+    function detectBookingLocation(row) {
+      const text = lower(row.session_summary);
+      if (text.includes('bannerghatta road') || text.includes('bannerghatta')) return 'Bannerghatta Road';
+      if (text.includes('mysore rd') || text.includes('mysore road')) return 'Mysore Rd';
+      if (text.includes('ramanagara')) return 'Ramanagara';
+      if (text.includes('marathahalli')) return 'Marathahalli';
+      if (text.includes('kr puram') || text.includes('k r puram')) return 'KR Puram';
+      return '';
+    }
+
+    function rowCountLabel(count) {
+      return count + (count === 1 ? ' row' : ' rows');
+    }
+
+    function hidePreviewTables() {
+      bookingPreviewData = [];
+      completedPreviewData = [];
+      const bookingWrapper = document.getElementById('bookingTableWrapper');
+      const completedWrapper = document.getElementById('completedTableWrapper');
+      if (bookingWrapper) bookingWrapper.style.display = 'none';
+      if (completedWrapper) completedWrapper.style.display = 'none';
+      const bookingBody = document.getElementById('bookingBody');
+      const completedBody = document.getElementById('completedBody');
+      if (bookingBody) bookingBody.innerHTML = '';
+      if (completedBody) completedBody.innerHTML = '';
+      const bookingCount = document.getElementById('bookingPreviewCount');
+      const completedCount = document.getElementById('completedPreviewCount');
+      if (bookingCount) bookingCount.textContent = '0 rows';
+      if (completedCount) completedCount.textContent = '0 rows';
+    }
+
+    async function copyBookingData() {
+      if (!bookingPreviewData.length) return;
+      await copyPreviewRows(bookingPreviewData.map(getBookingColumns), 'btnCopyBookings', 'Copy Bookings');
+    }
+
+    async function copyCompletedData() {
+      if (!completedPreviewData.length) return;
+      await copyPreviewRows(completedPreviewData.map(getCompletedColumns), 'btnCopyCompleted', 'Copy Completed');
+    }
+
+    async function copyPreviewRows(rows, buttonId, defaultLabel) {
+      const tsv = rows.map(function(cols) {
+        return cols.map(toTsvCell).join('\t');
+      }).join('\n');
+
+      try {
+        await copyText(tsv);
+        const btn = document.getElementById(buttonId);
+        btn.textContent = 'Copied';
+        setTimeout(function() {
+          btn.textContent = defaultLabel;
+        }, 1600);
+      } catch (error) {
+        setStatus('Copy failed. Select the preview table and copy manually.', 'err');
+      }
+    }
+
+    function toTsvCell(value) {
+      return String(value == null ? '' : value).replace(/\t/g, ' ').replace(/\r?\n/g, ' ');
     }
 
     async function copySummaryText() {
