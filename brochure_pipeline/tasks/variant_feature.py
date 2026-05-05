@@ -25,7 +25,7 @@ from brochure_pipeline.agents.variant_feature_agent import (
 )
 from brochure_pipeline.agents.postProcessing import process_batch_extraction, finalize_results_json
 
-from autobot_agents.config import AutocrmModel
+from config import AutocrmModel
 
 load_dotenv()
 logger = get_logger(__name__)
