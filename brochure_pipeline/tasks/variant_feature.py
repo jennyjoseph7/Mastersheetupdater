@@ -4,7 +4,11 @@ import json
 import uuid
 import time
 import pandas as pd
-
+import sys
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 import concurrent.futures
 from pathlib import Path
 from filelock import FileLock
@@ -20,10 +24,6 @@ from brochure_pipeline.agents.variant_feature_agent import (
     generate_bulk_questions
 )
 from brochure_pipeline.agents.postProcessing import process_batch_extraction, finalize_results_json
-from os.path import dirname, abspath, join as joinpath
-BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
-if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
 
 from config import AutocrmModel
 

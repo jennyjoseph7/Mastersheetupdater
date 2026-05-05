@@ -166,7 +166,7 @@ def post_billing_data(customer_response, out_put_text, campaign_data, dealership
         "_job":{
             "task": "post_billing",
             "service" : AUTOCRM_CORE_SERVICE_NAME,
-            "args": [dealership_id, transaction_type, "conversation", item_desc, tme, credits, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, currency,campaign_data.get("campaign_id"), channel],
+            "args": [dealership_id, transaction_type, AUTOCRM_RESPONSE_PROVIDED_ITEM, item_desc, tme, credits, AUTOCRM_RESPONSE_PROVIDED_PRICE, AUTOCRM_RESPONSE_PROVIDED_UNITS, currency,campaign_data.get("campaign_id"), channel],
         }
     }
 
