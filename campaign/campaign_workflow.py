@@ -504,6 +504,7 @@ def determine_campaign_next_action(
         disposition: str = None,
         disposition_detail: str = None,
         enterprise_id: Union[str, None] = None,
+        call_process_single_lead: bool = False,
         logger=None, job=None, auth=None, 
         *args, **kwargs):
     """
@@ -599,6 +600,25 @@ def determine_campaign_next_action(
         next_schedule_time = hp.epoch() + delay
     else:
         next_schedule_time = None
+    if call_process_single_lead and channel and channel_identifier:
+        r = gryd.create_async_task('process_single_lead', AUTOCRM_CAMPAIGN_SERVICE_NAME, args= [
+            channel,
+            lead,
+            campaign_type,
+            campaign_id,
+        ], kwargs = {
+            "user_id": _values.get('user', {}).get('id'),
+            "disposition_tag": disposition,
+            "disposition_detail_tag": lead.get('disposition_detail'),
+            "channel_identifier": channel_identifier
+        }, delay = delay)
+        lead_model.update(lead_id, {
+            "next_channel": None,
+            "next_channel_identifier": None,
+            "next_schedule_time": None,
+            "next_trigger": None
+        })
+        return r
     return lead_model.update(lead_id, {
         "next_channel": channel,
         "next_channel_identifier": channel_identifier,
