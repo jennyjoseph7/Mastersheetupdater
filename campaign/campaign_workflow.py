@@ -504,6 +504,7 @@ def determine_campaign_next_action(
         disposition: str = None,
         disposition_detail: str = None,
         enterprise_id: Union[str, None] = None,
+        call_process_single_lead: bool = False,
         logger=None, job=None, auth=None, 
         *args, **kwargs):
     """
@@ -599,6 +600,32 @@ def determine_campaign_next_action(
         next_schedule_time = hp.epoch() + delay
     else:
         next_schedule_time = None
+    if call_process_single_lead and channel and channel_identifier:
+        # If we are calling the process_single_lead task, then we need to update the lead model to remove the next channel and channel identifier.
+        # This is because we are calling the process_single_lead task to process the lead and we don't want to process the lead again.
+        # We will update the lead model to remove the next channel and channel identifier and set the next schedule time and trigger to None.
+        # We will return the async task response.
+        logger.info(f"Calling process_single_lead task for channel: {channel}, channel_identifier: {channel_identifier}, delay: {delay}")
+        r = gryd.create_async_task('process_single_lead', AUTOCRM_CAMPAIGN_SERVICE_NAME, args= [
+            channel,
+            lead,
+            campaign_type,
+            campaign_id,
+        ], kwargs = {
+            "user_id": _values.get('user', {}).get('id'),
+            "disposition_tag": disposition,
+            "disposition_detail_tag": lead.get('disposition_detail'),
+            "channel_identifier": channel_identifier
+        }, delay = delay)
+        lead_model.update(lead_id, {
+            "next_channel": None,
+            "next_channel_identifier": None,
+            "next_schedule_time": None,
+            "next_trigger": None
+        })
+        return r
+    # We will update the lead model to set the next channel etc., so that cron job can pick it up and process the lead.
+    logger.info(f"Updating lead model for channel: {channel}, channel_identifier: {channel_identifier}, delay: {delay}, trigger: {trigger}")
     return lead_model.update(lead_id, {
         "next_channel": channel,
         "next_channel_identifier": channel_identifier,

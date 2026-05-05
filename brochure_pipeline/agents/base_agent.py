@@ -1,8 +1,13 @@
 import json
 import re
 import ast
+import sys
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 from typing import Any, Dict, Optional
-from bp_utils import get_logger
+from autobot_agents.brochure_pipeline.bp_utils import get_logger
 
 logger = get_logger(__name__)
 

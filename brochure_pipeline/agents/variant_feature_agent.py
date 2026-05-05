@@ -1,13 +1,15 @@
 import os
 import json
+import sys
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 from bp_utils import get_logger
 from ai_service import ai_service_app
 
 # Import BaseAgent from its separate file
-try:
-    from brochure_pipeline.agents.base_agent import BaseAgent
-except ImportError:
-    from base_agent import BaseAgent
+from brochure_pipeline.agents.base_agent import BaseAgent
 
 logger = get_logger(__name__)
 
