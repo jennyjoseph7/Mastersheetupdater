@@ -266,7 +266,7 @@ def get_channel_identifier_from_lead(channel: str, lead: dict, channel_identifie
     return channel_identifier_list
 
 @gryd.is_a_task(function_name="get_channel_from_lead", job_param='job', auth_param='auth', logger_param='logger')
-def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Union[str, None] = None, workflow = None, current_channel = None, current_channel_identifier = None, disposition = None, logger=None, job=None, auth=None, *args, **kwargs):
+def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Union[str, None] = None, workflow = None, current_channel = None, current_channel_identifier = None, disposition = None, lead_id = None, logger=None, job=None, auth=None, *args, **kwargs):
     """
     This function is used to get the next channel and channel identifier from the lead.
     Args:
@@ -320,7 +320,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
         change_channel = False
         for channel_identifier in channel_identifier_list:
             logger.info(f"Processing channel identifier: {channel_identifier} for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
-            statuses = get_statuses(channel, channel_type, channel_identifier, status_model=status_model, campaign_id=campaign_id, dealership_id=dealership_id, logger=logger)
+            statuses = get_statuses(channel, channel_type, channel_identifier, status_model=status_model, lead_id=lead_id, campaign_id=campaign_id, dealership_id=dealership_id, logger=logger)
             if not statuses:
                 logger.info(f"No statuses found for channel: {channel} with channel identifier: {channel_identifier} for campaign_id={campaign_id}, enterprise_id={enterprise_id}, starting now.")
                 return channel, channel_identifier, 0, None
@@ -584,7 +584,7 @@ def determine_campaign_next_action(
     logger.debug(f"Workflows before remapping: {workflows}")
     workflow = remap_workflow(workflows, campaign_id=campaign_details.get('campaign_id'), dealership_id=dealership_id, campaign_objective_id=campaign_details.get('campaign_objective_id'), campaign_type=campaign_type, logger=logger)
     logger.info(f"Workflow after remapping: {workflow}")
-    channel, channel_identifier, delay, trigger = get_channel_from_lead(lead, campaign_details, workflow=workflow, channel=channel, disposition=disposition, logger=logger)
+    channel, channel_identifier, delay, trigger = get_channel_from_lead(lead, campaign_details, workflow=workflow, channel=channel, disposition=disposition, lead_id=lead_id, logger=logger)
     logger.debug(f"Channel: {channel}, Channel identifier: {channel_identifier}, Delay: {delay}, Trigger: {trigger}")
     logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
     if kwargs.get('debug', False):
