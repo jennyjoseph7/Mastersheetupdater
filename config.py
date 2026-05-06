@@ -82,6 +82,8 @@ EXCHANGE_RATE_HOST_BASE_URL = os.environ.get("EXCHANGE_RATE_HOST_BASE_URL", "htt
 DEFAULT_CHANNELS = ["whatsapp_chat", "voice_phone"]
 VOICE_BATCH_SIZE=100
 NON_VOICE_BATCH_SIZE=100
+VOICE_CHANNELS = ["voice_phone", "voice"]
+NON_VOICE_CHANNELS = ["whatsapp", "whatsapp_chat", "rms", "email"]
 
 WHATSAPP_PRICING_INR = {
     "airtel": {
