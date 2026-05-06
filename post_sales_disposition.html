@@ -1289,6 +1289,18 @@
       return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
 
+    function safeRecordingHref(value) {
+      const raw = String(value ?? '').trim();
+      if (!raw) return null;
+      const lower = raw.toLowerCase();
+      if (lower.startsWith('javascript:') || lower.startsWith('data:') || lower.startsWith('vbscript:')) return null;
+      if (lower.startsWith('http://') || lower.startsWith('https://')) return raw;
+      if (lower.startsWith('s3:')) return raw;
+      // If it looks like a domain/path, assume https; otherwise omit link.
+      if (/^[a-z0-9.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(raw)) return `https://${raw}`;
+      return null;
+    }
+
     function clean(v) {
       return String(v ?? '').trim();
     }
@@ -1711,8 +1723,9 @@
           const val = r[col.key] || '';
           if (col.key === 'phone_number') return `<td class="cell-phone">${esc(val)}</td>`;
           if (col.key === 'call_recording' && val) {
-            const href = String(val).startsWith('http') || String(val).startsWith('s3:') ? val : `https://${val}`;
-            return `<td><a class="cell-url" href="${esc(href)}" target="_blank" title="${esc(val)}">Recording</a></td>`;
+            const href = safeRecordingHref(val);
+            if (!href) return `<td title="${esc(val)}">${esc(val)}</td>`;
+            return `<td><a class="cell-url" href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${esc(val)}">Recording</a></td>`;
           }
           return `<td title="${esc(val)}">${esc(val)}</td>`;
         }).join('');
