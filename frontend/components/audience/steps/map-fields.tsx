@@ -88,10 +88,10 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
     "emotions",
     "engagement_events",
     "previous_interaction_ids",
-    "lead_tags"
+    "lead_code_for_dealership"
   ],
      postsales: [
-"lead_tags",
+"lead_code_for_dealership",
     // VEHICLE INFO
     "reg_number",
     "vehicle_brand",
