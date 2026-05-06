@@ -1459,6 +1459,7 @@ def normalize_channels(raw_channels):
     return DEFAULT_CHANNELS
 
 def get_queue_length(pg,channel,dealership_id=None):
+    mlogger.info(f"Getting queue length for dealership_id={dealership_id} and channel={channel}")
     if channel in ["whatsapp","whatsapp_chat", "rms","email"]:
         que_length=gryd.get_queue_length(service=AUTOCRM_COMMUNICATION_SERVICE_NAME)
         print("Queue length for whatsapp_chat",que_length)
@@ -1467,7 +1468,7 @@ def get_queue_length(pg,channel,dealership_id=None):
         #TODO: get the function from nikit for each dealership_id 
         return 0
     
-def get_all_dealerships():
+def get_all_dealerships(pg):
     # query = """
     #     SELECT DISTINCT ON (dict->>'dealership_id')
     #         dict->>'dealership_id' AS dealership_id,
@@ -1503,11 +1504,14 @@ def process_channel_leads(pg,dealership_id, channel, batch_size):
 
 
 def process_lead(pg,lead, channel):
+    # mlogger.info(f"[PROCESS] Processing lead for channel {lead}")
+    lead_id=None
     try:
-        campaign_type=lead.get("campaign_type")
+        data, lead_type = lead  
+        campaign_type=data.get("campaign_type")
         lead_model="pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
         lead_model_id="pre_sales_lead_id" if campaign_type == "pre-sales" else "post_sales_lead_id"
-        lead_id=lead.get(lead_model_id)
+        lead_id=data.get(lead_model_id)
         mlogger.info("[PROCESS] Processing lead %s for channel %s", lead_id,channel)
         
         # TODO: Based on the next_trigger and  next_channel call process_single_lead
@@ -1580,6 +1584,7 @@ def process_all_dealerships_for_voice(voice_batch_size=None):
 
             for channel in channels:
                 try:
+                    
                     queue_length = get_queue_length(pg,channel,dealership_id)
                     mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")        
                     if queue_length <= MAX_THRESHOLD:
