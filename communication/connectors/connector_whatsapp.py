@@ -309,6 +309,7 @@ def post_contact_status(*args, **data):
             contact_status_id = generate_uid(payload)
             logger.info(f"[post_contact_status] No message_id provided. Creating new contact_status with contact_status_id={contact_status_id}")
             pg.update("contact_status", "contact_status_id", contact_status_id, payload)
+            logger.info(f"[post_contact_status] New contact_status created for incoming_status={incoming_status}.Also calling next determine_campaign_next_action--{json.dumps(data,indent=4)}")
             # logger.info(f"Checking data for lead_disposition- Payload new --{json.dumps(data,indent=4)}")
             
             gryd.create_async_task(
@@ -355,6 +356,8 @@ def post_contact_status(*args, **data):
                 contact_status_id,
                 payload
             )
+            logger.info(f"[post_contact_status] contact_status created with incoming_status={incoming_status} and contact_status_id={contact_status_id}. Also calling next determine_campaign_next_action in--{json.dumps(data,indent=4)}")
+            
 
         # post billing obj
         should_bill = (channel in ["whatsapp_chat"]
