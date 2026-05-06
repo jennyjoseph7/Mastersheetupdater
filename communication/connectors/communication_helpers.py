@@ -45,7 +45,7 @@ from conversation.lead_post_processing import update_lead_disposition_and_post_b
 _communication_dir = dirname(dirname(abspath(__file__)))
 if _communication_dir not in sys.path:
     sys.path.insert(0, _communication_dir)
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_COMMUNICATION_SERVICE_NAME
 from gryd_worker import gryd, gryd_helpers as hp,gryd_db_helper as db
 logger=gryd.logger
 
@@ -606,18 +606,19 @@ Returns:
 
         # Handling engaged (inbound) scenario
         if engaged:
-            logger.info("User initiated conversation → inbound session")
+            logger.info("User initiated conversation → inbound session. NEW USER..")
 
             campaign_model = (
                 "pre_sales_campaign"
                 if campaign_type == "pre-sales"
                 else "post_sales_campaign"
             )
-
+            
+                
             campaigns = list(pg.list(
                 campaign_model,
                 {
-                    "campaign_objective_name": "Inbound Lead Handling",
+                    "campaign_objective_name": "Inbound Lead Handling" if channel == "voice_phone" else "Inbound Lead Handling- Whatsapp",
                     "dealership_id": dealership_id,
                     "campaign_type": campaign_type
                 }
@@ -632,13 +633,25 @@ Returns:
 
             campaign_data = campaigns[0]
             
-            logger.info(f"Found inbound campaign: {json.dumps(campaign_data,indent=4)}")
+            logger.info(f"Found inbound campaign for channel: {channel} and data: {json.dumps(campaign_data,indent=4)}")
             # creating a lead for this inbound user
             _final_payload={
                 **campaign_data,
                 **_additional_attributes}
+            
+            
             d=check_and_create_inbound_lead_object(**_final_payload)
             data["lead_id"] = d.get("lead_id")
+            
+            #post contact_status object with status as "incoming"
+            if channel in ["whatsapp","whatsapp_chat","rms","email"]:
+                logger.info(f"Creating post contact status for Inbound and with provider status : 'answered' for channel: {channel} and data: {json.dumps(data,indent=4)}")
+                gryd.create_async_task(
+                    "post_contact_status", 
+                    AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+                    kwargs={**data,"provider_status":"answered"}
+                )
+                
         new_session = {
             **data,
             "session_live": True,
