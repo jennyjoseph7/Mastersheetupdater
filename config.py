@@ -478,7 +478,7 @@ def get_websocket_base_url(room=None):
         base_ws_url = AUTOCRM_WEBSOCKET_BASE_URL
         if not base_ws_url:
             raise hp.GrydError(msg)
-        logger.warning(msg)
+        clogger.warning(msg)
         base_ws_url = list(map(lambda x: x.strip(), base_ws_url.split(',')))
         rng = hp.random.Random(int(room) if room is not None else None)
         return rng.choice(base_ws_url)
