@@ -41,6 +41,10 @@
             "type": "list",
             "default": [],
             "indexed": true
+        },
+        {
+            "name": "last_uptime_ping",
+            "type": "number"
         }
     ]
 }
