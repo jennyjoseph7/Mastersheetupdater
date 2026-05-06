@@ -135,11 +135,13 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
             },order_by="created", order="DESC")
         )
         logger.info(f"TEST contact_list present: {len(contact_list)}")
-        
+
         campaign_id = campaign_type = campaign_model = lead_id = None
 
+        #we found campaign for this user
         if contact_list and campaign_details is None:
-            
+            engaged = False
+
             contact = contact_list[0]
             logger.info(f"Contact found: {contact}")
 
@@ -670,7 +672,7 @@ Returns:
         lead_id = session.get("lead_id")
         if not lead_id:
             logger.error(f"No lead_id found for session_id: {session_id}")
-            return
+            return session
         if campaign_type == "pre-sales":
             pg.update(
                 "pre_sales_lead",
