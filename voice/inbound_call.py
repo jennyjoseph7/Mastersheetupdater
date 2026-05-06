@@ -98,5 +98,4 @@ def start_call_from_inbound(*args, **kwargs):
     yield {"status": "success", "message": "Inbound call session created.", "session_id": session_data.get('session_id')}
 
 
-    
-    
+
