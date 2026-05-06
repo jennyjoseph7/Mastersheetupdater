@@ -11,7 +11,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Call Analysis Summary - JEJO</title>
-  <meta name="description" content="Import a processed Disposition Sync export and generate the call analysis summary." />
+  <meta name="description" content="Import a processed Pre-Sales Sync export and generate the call analysis summary." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -899,14 +899,18 @@
         <div>
           <div class="header-badge">JEJO OPS</div>
           <h1>Call Analysis Summary</h1>
-          <div class="header-sub">Processed Disposition Sync export · Generate call analysis summary</div>
+          <div class="header-sub">Processed Pre-Sales Sync export · Generate call analysis summary</div>
         </div>
       </div>
       <div class="header-right">
         <div class="header-nav">
           <a class="nav-link" href="disposition_sync_v2.html">
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            Disposition Sync
+            Pre-Sales Sync
+          </a>
+          <a class="nav-link" href="post_sales_disposition.html">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+            Post-Sales Sync
           </a>
           <a class="nav-link" href="reattempt_filter.html">
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -932,7 +936,7 @@
 
   <main>
     <div class="upload-section slide-up" id="uploadSection">
-      <div class="section-title">Upload Processed Disposition Sync Export</div>
+      <div class="section-title">Upload Processed Pre-Sales Sync Export</div>
       <div class="upload-row">
         <div class="drop-zone-dash" id="dropZone" onclick="document.getElementById('fileInput').click()" role="button" tabindex="0">
           <div class="dz-icon">
@@ -961,7 +965,7 @@
     <div class="campaign-bar slide-up" id="summaryBar" style="display:none;">
       <div class="campaign-info">
         <div class="campaign-name" id="summaryTitle">Call Analysis <span>Summary</span></div>
-        <div class="campaign-subtitle" id="summarySubtitle">Processed Disposition Sync data</div>
+        <div class="campaign-subtitle" id="summarySubtitle">Processed Pre-Sales Sync data</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
         <div class="date-range-label">IMPORTED ROWS</div>
@@ -1030,7 +1034,7 @@
         </svg>
       </div>
       <h2>Upload a Processed File to See the Summary</h2>
-      <p>Use the Excel export generated from Disposition Sync. The summary will compute calls triggered, connected, test drive bookings, callbacks, and not connected calls.</p>
+      <p>Use the Excel export generated from Pre-Sales Sync. The summary will compute calls triggered, connected, test drive bookings, callbacks, and not connected calls.</p>
     </div>
   </main>
 
@@ -1098,7 +1102,7 @@
         importedRows = getWorkbookRows(workbook);
 
         if (!importedRows.length) {
-          throw new Error('No usable rows found. Upload the processed Disposition Sync output file.');
+          throw new Error('No usable rows found. Upload the processed Pre-Sales Sync output file.');
         }
 
         renderSummary(importedRows);
@@ -1281,7 +1285,12 @@
       const connected = data.filter(isConnected).length;
       const bookings = data.filter(isTestDriveBooking).length;
       const followUps = data.filter(function(row) {
-        return lower(getEffectiveSummary(row)).includes('follow up');
+        const u = lower(row.updated_summary || '');
+        if (u.includes('interested') && !u.includes('not interested')) return true;
+        if (u.includes('follow up')) return true;
+        
+        const s = lower(row.summary || '');
+        return s.includes('follow up');
       }).length;
       const requestedCallbacks = data.filter(function(row) {
         const d = lower(row.disposition);

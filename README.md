@@ -1,8 +1,8 @@
-# Disposition Sync — JEJO Lead Operations Automation
+# Pre-Sales Sync — JEJO Lead Operations Automation
 
 ## What This Is
 
-A single-file browser tool (`disposition_sync_v2.html`) that takes two AutoEngage export files, merges them by phone number, applies all business logic, and produces a fully populated table ready to copy-paste directly into the Zoho Master Sheet. No backend. No Python. No installation. Open in any browser.
+A single-file browser tool (`disposition_sync_v2.html`) that takes two pre-sales AutoEngage export files, merges them by phone number, applies all business logic, and produces a fully populated table ready to copy-paste directly into the Zoho Master Sheet. No backend. No Python. No installation. Open in any browser.
 
 ---
 
@@ -10,7 +10,7 @@ A single-file browser tool (`disposition_sync_v2.html`) that takes two AutoEngag
 
 | File | Purpose |
 |---|---|
-| `disposition_sync_v2.html` | The entire tool — UI + logic in one file |
+| `disposition_sync_v2.html` | Pre-Sales Sync — UI + logic in one file |
 | `README.md` | This file |
 
 ---
