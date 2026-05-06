@@ -25,7 +25,7 @@ def inbound_call(*args, **kwargs):
     if data.get("call_type", "").lower() in ["inbound"]:
         logger.info(f"Processing inbound call for {data.get('caller_id_number')}")
 
-        list(gryd.create_async_task('start_call_from_inbound',config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME , args=[], kwargs={"user_data":data}))
+        gryd.create_async_task('start_call_from_inbound',config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME , args=[], kwargs={"user_data":data})
         
         return jsonify({"status": "success", "message": "Inbound call session created."})
 

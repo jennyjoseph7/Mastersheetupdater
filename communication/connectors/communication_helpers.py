@@ -85,6 +85,14 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
     dealership_id = None
     session = {}
 
+    if engaged:
+        payload.update(
+            {
+                "lead_model":"pre_sales_lead",
+                "campaign_model":"pre_sales_campaign"
+            }
+        )
+
     # 1. PERSON
     person = get_or_create_person(phone_number)
     if person:
@@ -216,7 +224,7 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
         #     dealership_id = creds[0].get("dealership_id")
         #     payload["dealership_id"] = dealership_id
 
-        session = get_or_create_session(payload,channel,engaged)
+        session.update({**get_or_create_session(payload, channel, engaged)})
         if session is None:
             return {"error": "Failed to create or retrieve session"}
         return {**session, "dealership_id": dealership_id}
