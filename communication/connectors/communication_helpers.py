@@ -140,8 +140,7 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
 
         #we found campaign for this user
         if contact_list and campaign_details is None:
-            engaged = False
-
+            engaged = False if channel == "voice_phone" else engaged
             contact = contact_list[0]
             logger.info(f"Contact found: {contact}")
 
