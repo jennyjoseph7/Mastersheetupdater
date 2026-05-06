@@ -396,7 +396,7 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     payload["message_id"] = message_id or generate_uid(session_data)
     
     logger.info(f"Constructed payload for contact status: {payload.get('provider_status')}, message_id: {payload.get('message_id')}")
-    if payload.get("provider_status") == "attempted":
+    if payload.get("provider_status") in ["attempted", "answered"]:
         post_contact_status(**payload)
     else: 
         post_contact_status(message_id, **payload)

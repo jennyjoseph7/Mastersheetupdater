@@ -1,4 +1,4 @@
-from time import time
+import time
 import json
 import os
 import sys
@@ -38,9 +38,9 @@ def start_call_from_inbound(*args, **kwargs):
     logger.info(f"[start_call_from_inbound] customer={customer_number}, agent={agent_number}")
 
     session_data = handle_session_logic(customer_number, from_number=agent_number, channel = "voice_phone", engaged=True)
-    gryd_tasks.post_contact_status_voice(session_id = session_data['session_id'], message_id = session_data['session_id'],  **{"status": "attempted"})
-
     logger.info(f"Session data after handling session logic: {session_data}")
+
+    gryd_tasks.post_contact_status_voice(session_id = session_data['session_id'], message_id = session_data['session_id'],  **{"status": "answered"})
     if "error" in session_data:
         logger.error(f"Error in session logic: {session_data['error']}")
         return session_data
@@ -95,9 +95,24 @@ def start_call_from_inbound(*args, **kwargs):
         #we have to check how to disconnect socket from elevanlabs -  
         return True
     
+    yield {"status": "success", "message": "Inbound call session created.", "session_id": session_data.get('session_id')}
+
     s = start_session(session_data.get('session_id'))
 
-    yield {"status": "success", "message": "Inbound call session created.", "session_id": session_data.get('session_id')}
+    timeout = time.time() + float(session_data.get("call_timeout", 600))  # 10 minutes
+    while time.time() < timeout:
+        time.sleep(5)
+        logger.info(f"Inbound call is ongoing for {customer_number}, checking status...")
+        with gryd_tasks.get_pg_connector() as pg:
+            contact_status = hp.make_single(list(pg.list_order_by("contact_status", {"message_id": session_data["session_id"]}, order_by="created", order="DESC")), force = True)
+            if contact_status and contact_status.get("provider_status") in ["contacted"]:
+                logger.info(f"Call ended with status {contact_status.get('provider_status')}, terminating session {session_data['session_id']}")
+                session = call_sessions.get(session_data['session_id'])
+                if session:
+                    session.terminate()
+                return {"status": "success", "message": f"Inbound call session ended with status {contact_status.get('provider_status')}"}
+    logger.info(f"Inbound call session {session_data['session_id']} timed out after {time.time() - (timeout - float(session_data.get('call_timeout', 600))):.2f} seconds, terminating session.")
+    return {"status": "success", "message": "Inbound call session ended due to timeout."}
 
 
 

@@ -60,7 +60,7 @@ def inbound_call(*args, **kwargs):
             
 
 
-        logger.info(f"[webhook-/smartflo/webhook] Time taken to update session with recording URL and duration: {time() - t:.2f} seconds")
+        logger.info(f"[webhook-/smartflo/webhook/inbound] Time taken to update session with recording URL and duration: {time() - t:.2f} seconds")
         gryd_tasks.post_contact_status_voice(session_id = session["session_id"], message_id = session["session_id"],  **{"status": "contacted"})
 
     return jsonify({"status": "success", "message": "Inbound call received and processed.", "data": data})
@@ -85,5 +85,3 @@ def create_stream_url(*args, **kwargs):
         "success": True,
         "wss_url": wss_url
     })
-
-
