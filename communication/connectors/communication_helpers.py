@@ -85,6 +85,14 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
     dealership_id = None
     session = {}
 
+    if engaged:
+        payload.update(
+            {
+                "lead_model":"pre_sales_lead",
+                "campaign_model":"pre_sales_campaign"
+            }
+        )
+
     # 1. PERSON
     person = get_or_create_person(phone_number)
     if person:
@@ -216,9 +224,10 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
         #     dealership_id = creds[0].get("dealership_id")
         #     payload["dealership_id"] = dealership_id
 
-        session = get_or_create_session(payload,channel,engaged)
-        if session is None:
+        new_session = get_or_create_session(payload, channel, engaged)
+        if new_session is None:
             return {"error": "Failed to create or retrieve session"}
+        session.update(new_session)
         return {**session, "dealership_id": dealership_id}
 
 def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None,campaign_id=None):
@@ -654,6 +663,7 @@ Returns:
 
         session = pg.update("session", "session_id", session_id, new_session)
 
+        logger.info(f"session_data for new session: {json.dumps(session,indent=4)}")
         logger.info(f"Session created for user_id: {user_id} → session_id: {session_id}")
         # updating lead last_session_channel 
         lead_id = session.get("lead_id")
