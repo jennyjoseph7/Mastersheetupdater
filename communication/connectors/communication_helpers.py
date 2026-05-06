@@ -280,7 +280,6 @@ def get_or_create_session(data,channel=None,engaged=False):
     filters = {
         "session_id":data.get("session_id"),
         "user_id":data.get("user_id"),
-        # TODO: have a dealership_id also as a filter. 
         "dealership_id":data.get("dealership_id"),
         # "campaign_id":data.get("campaign_id"),
         # "channel": channel or "whatsapp_chat" if data.get("campaign_type")=="post-sales" else None, 
