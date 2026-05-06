@@ -3,6 +3,7 @@ import json
 import os
 import sys
 from typing import Any, Dict
+
 _root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 if _root not in sys.path:
     sys.path.insert(0, _root)
@@ -10,18 +11,17 @@ if _root not in sys.path:
 import config
 from flask import Blueprint, request, jsonify
 from gryd_worker import gryd_helpers as hp, gryd
-
+import time
 logger = hp.get_logger(__name__)
 
 app = Blueprint("tatatelli_inbound", __name__)
-    
-# ---------- Flask endpoints ----------
 
 @app.route("/smartflo/webhook/inbound", methods=["POST"])
 def inbound_call(*args, **kwargs):
     data = request.get_json()
     logger.info(f"Received inbound call data: {json.dumps(data, indent=4)}")
 
+    # Note: call connected for inbound billing is pending.
     if data.get("call_type", "").lower() in ["inbound"]:
         caller_id = data.get("caller_id_number", "")
         if caller_id and not str(caller_id).startswith("91"):
@@ -32,6 +32,36 @@ def inbound_call(*args, **kwargs):
         gryd.create_async_task('start_call_from_inbound',config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME , args=[], kwargs={"user_data":data})
         
         return jsonify({"status": "success", "message": "Inbound call session created."})
+    elif data.get("call_status") in ["answered"]:
+        t = time.time()
+        import gryd_tasks
+
+        with gryd_tasks.get_pg_connector as pg:
+                session = hp.make_single(
+                    list(
+                        pg.list_order_by("session", 
+                        {
+                            "phone_number": data.get("customer_no_with_prefix"),
+                            "channel": "voice_phone",
+                        },
+                        order_by="created", order="DESC")
+                    ), 
+                    force = True
+                )
+                logger.info(f"Session found for inbound status 'contacted': {session}")
+                pg.update("session",
+                        "session_id",
+                        session["session_id"], 
+                        {
+                            "call_recording": data.get("recording_url"), 
+                            "duration": float(data.get("duration", 0.0))
+                        }
+                ) #add more attributes when needed
+            
+
+
+        logger.info(f"[webhook-/smartflo/webhook] Time taken to update session with recording URL and duration: {time() - t:.2f} seconds")
+        gryd_tasks.post_contact_status_voice(session_id = session["session_id"], message_id = session["session_id"],  **{"status": "contacted"})
 
     return jsonify({"status": "success", "message": "Inbound call received and processed.", "data": data})
 

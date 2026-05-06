@@ -38,6 +38,8 @@ def start_call_from_inbound(*args, **kwargs):
     logger.info(f"[start_call_from_inbound] customer={customer_number}, agent={agent_number}")
 
     session_data = handle_session_logic(customer_number, from_number=agent_number, channel = "voice_phone", engaged=True)
+    gryd_tasks.post_contact_status_voice(session_id = session_data['session_id'], message_id = session_data['session_id'],  **{"status": "answered"})
+
     logger.info(f"Session data after handling session logic: {session_data}")
     if "error" in session_data:
         logger.error(f"Error in session logic: {session_data['error']}")
