@@ -640,16 +640,13 @@ Returns:
             
             
             d=check_and_create_inbound_lead_object(**_final_payload)
-            data["lead_id"] = d.get("lead_id")
+            logger.info(f"Created inbound lead for user_id: {user_id} and data: {json.dumps(d,indent=4)}")
+            data["lead_id"] = d.get("pre_sales_lead_id")
             
             #post contact_status object with status as "incoming"
             if channel in ["whatsapp","whatsapp_chat","rms","email"]:
                 logger.info(f"Creating post contact status for Inbound and with provider status : 'answered' for channel: {channel} and data: {json.dumps(data,indent=4)}")
-                gryd.create_async_task(
-                    "post_contact_status", 
-                    AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-                    kwargs={**data,"provider_status":"answered"}
-                )
+                build_data_for_post_contact_status(**_final_payload,**data)
                 
         new_session = {
             **data,
@@ -707,7 +704,13 @@ Returns:
         # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
 
         return session
-
+def build_data_for_post_contact_status(**kwargs):
+    logger.info(f"Creating post contact status for Inbound and with provider status : 'answered' for channel: {kwargs.get('channel')} and data: {json.dumps(kwargs,indent=4)}")
+    # gryd.create_async_task(
+    #                 "post_contact_status", 
+    #                 AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+    #                 kwargs={**data,"provider_status":"answered"}
+    #             )
 def check_and_create_inbound_lead_object(**kwargs):
     dealership_id=kwargs.get("dealership_id")
     campaign_id=kwargs.get("campaign_id")
