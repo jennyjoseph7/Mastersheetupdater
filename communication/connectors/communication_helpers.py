@@ -614,14 +614,6 @@ Returns:
                 else "post_sales_campaign"
             )
             
-            #post contact_status object with status as "incoming"
-            if channel in ["whatsapp","whatsapp_chat","rms","email"]:
-                logger.info(f"Creating post contact status for Inbound and with provider status : 'answered' for channel: {channel} and data: {json.dumps(data,indent=4)}")
-                gryd.create_async_task(
-                    "post_contact_status", 
-                    AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-                    kwargs={**data,"provider_status":"answered"}
-                )
                 
             campaigns = list(pg.list(
                 campaign_model,
@@ -650,6 +642,16 @@ Returns:
             
             d=check_and_create_inbound_lead_object(**_final_payload)
             data["lead_id"] = d.get("lead_id")
+            
+            #post contact_status object with status as "incoming"
+            if channel in ["whatsapp","whatsapp_chat","rms","email"]:
+                logger.info(f"Creating post contact status for Inbound and with provider status : 'answered' for channel: {channel} and data: {json.dumps(data,indent=4)}")
+                gryd.create_async_task(
+                    "post_contact_status", 
+                    AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+                    kwargs={**data,"provider_status":"answered"}
+                )
+                
         new_session = {
             **data,
             "session_live": True,
