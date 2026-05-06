@@ -457,13 +457,32 @@ AUTOCRM_VOICE_SERVICE_NAME_5 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_5", "a
 
 
 
-def get_websocket_base_url(seed=None):
-    import random
-    base_ws_url = AUTOCRM_WEBSOCKET_BASE_URL
-    base_ws_url = list(map(lambda x: x.strip(), base_ws_url.split(',')))
-    rng = random.Random(int(seed) if seed is not None else None)
-    return rng.choice(base_ws_url)
-
+def get_websocket_base_url(room=None):
+    ssm = AutocrmModel('socket_server')
+    required_uptime_ping = hp.epoch() - 120
+    environment = os.environ.get('ENVIRONMENT', 'local')
+    kwargs = {
+        "_as_option": True,
+        "environment": environment,
+        "_sort_by": "active_connections",
+        "_page_size": 1,
+        "last_uptime_ping": f"{required_uptime_ping},",
+        "_filter_attributes": ["socket_server_url", "rooms"]
+    }
+    base_socket_urls = ssm.list(**kwargs)
+    if room and not base_socket_urls:
+        kwargs.pop("rooms", None)
+        base_socket_urls = ssm.list(**kwargs)
+    if not base_socket_urls:
+        msg = f"Did not get any free socket server with uptime ping later {required_uptime_ping} in environment {environment}"
+        base_ws_url = AUTOCRM_WEBSOCKET_BASE_URL
+        if not base_ws_url:
+            raise hp.GrydError(msg)
+        logger.warning(msg)
+        base_ws_url = list(map(lambda x: x.strip(), base_ws_url.split(',')))
+        rng = hp.random.Random(int(room) if room is not None else None)
+        return rng.choice(base_ws_url)
+    return hp.make_single(base_socket_urls).get('socket_server_url')
 
 
 if __name__ == "__main__":

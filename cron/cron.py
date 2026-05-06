@@ -1441,7 +1441,6 @@ def reset_auth_creds(*args, **kwargs):
 
     return "Completed!"
 
-   
 def normalize_channels(raw_channels):
     if not raw_channels:
         return DEFAULT_CHANNELS
@@ -1615,3 +1614,69 @@ def process_dealerships_non_voice(batch_size=None):
                         return
                 except Exception as e:
                     mlogger.error(f"[ERROR] Failed for dealership={dealership_id}, channel={channel}")
+
+
+@gryd.is_a_task(function_name="manage_socket_server_load", job_param = 'job', logger_param = 'logger')
+def manage_socket_server_load(
+        upgrade_threshold = None,
+        socket_server_app_name = None,
+        max_replicas = 100,
+        logger = None,
+        job = None
+    ):
+    """
+    function to go through all the socket servers, associated with the current environment,
+    scale_up if any one has max_connections - upgrade_threshold connections,
+    scale_down if total connections < upgrade_threshold * total servers
+    """
+    logger = logger or mlogger
+    ssm = AutocrmModel("socket_server")
+    environment = os.environ.get('ENVIRONMENT', 'local')
+    upgrade_threshold = upgrade_threshold or 10
+    gke_namespace = os.environ.get('GKE_NAMESPACE', 'autobot')
+    socket_server_app_name = os.environ.get('AUTOCRM_WEBSOCKET_APP', 'autocrm-socket')
+    wctr = cron_worker.wctr.get_controller('gke')
+    v1 = wcrt.app_client_v1()
+    def scale_up(count = 1):
+        current_replicas = 0
+        ml = list(map(lambda x: (x.metadata.name, x.spec.replicas), list(filter(lambda x: (x.metadata.name == socket_server_app_name), v1.list_namespaced_deployment(gke_namespace).items))))
+        if ml:
+            current_replicas = ml[0][1]
+        new_replicas = current_replicas + count
+        new_replicas = max(min(new_replicas, max_replicas), 0)
+        if new_replicas == current_replicas:
+            logger.info("Reached threshold, so not scaling by %s", count)
+            return current_replicas
+        body = {"spec": {"replicas": new_replicas}}
+        # Apply the patch to scale the deployment
+        r = v1.patch_namespaced_deployment_scale(
+            name=socket_server_app_name, 
+            namespace=gke_namespace, 
+            body=body
+        )
+        logger.info("Scaled app %s in namespace %s for environment %s to %s, by %s", socket_server_app_name, gke_namespace, environment, r.spec.replicas, count)
+        return r.spec.replicas
+    any_connections = 0
+    any_servers = 0
+    to_delete = []
+    kwargs = {
+        "environment": environment,
+    }
+    for sv in ssm.yield_list(**kwargs):
+        if not sv.get('last_uptime_ping') or sv.get('last_uptime_ping') < hp.epoch() - 120:
+            to_delete.append(sv.get('socker_server_id'))
+        else:
+            any_servers += 1
+        any_connection += sv.get('active_connections')
+        if sv.get('active_connections', 0) > sv.get('max_active_connections', 100) - upgrade_threshold:
+            scale_up()
+            return True
+    if (any_connections < upgrade_threshold*any_servers) and any_servers > 1:
+        logger.info("Total active connections %s are less than %s x %s, scaling down", any_connections, upgrade_threshold, any_servers)
+        scale_up(-1)
+        return True
+    for k in to_delete:
+        ssm.delete(k)
+    return False
+
+
