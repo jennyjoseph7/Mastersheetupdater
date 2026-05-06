@@ -79,6 +79,10 @@ OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe"
 EXCHANGE_RATE_HOST_API_KEY = os.environ.get("EXCHANGE_RATE_HOST_API_KEY","b6e93843fe72674909722d79859d7c4c")
 EXCHANGE_RATE_HOST_BASE_URL = os.environ.get("EXCHANGE_RATE_HOST_BASE_URL", "https://api.exchangerate.host")
 
+DEFAULT_CHANNELS = ["whatsapp_chat", "voice_phone"]
+VOICE_BATCH_SIZE=100
+NON_VOICE_BATCH_SIZE=100
+
 WHATSAPP_PRICING_INR = {
     "airtel": {
         "marketing": 0.01,
