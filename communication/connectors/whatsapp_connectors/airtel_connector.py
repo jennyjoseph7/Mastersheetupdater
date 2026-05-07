@@ -405,6 +405,7 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
                 "media_attachment", {}
             ) or self.interactive_media_payload(response_data).get("mediaAttachment", {})
         
+        
         return payload
 
     def long_text(self,message:str, limit:int=1024):

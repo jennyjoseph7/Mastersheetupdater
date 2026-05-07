@@ -20,7 +20,7 @@ from connectors.communication_helpers import format_box_log,safe_orjson_dumps
 from connectors.communication_configs import DB_TIMEZONE
 from communication.common_functions import generate_uid
 from config import *
-from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappReceiverConnector
+from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappReceiverConnector,BaseWebhookConverter
 import json
 import functools
 from autocrm_db_helper import get_pg_connector
@@ -309,7 +309,6 @@ def post_contact_status(*args, **data):
             contact_status_id = generate_uid(payload)
             logger.info(f"[post_contact_status] No message_id provided. Creating new contact_status with contact_status_id={contact_status_id}")
             pg.update("contact_status", "contact_status_id", contact_status_id, payload)
-            logger.info(f"[post_contact_status] New contact_status created for incoming_status={incoming_status}.Also calling next determine_campaign_next_action--{json.dumps(data,indent=4)}")
             # logger.info(f"Checking data for lead_disposition- Payload new --{json.dumps(data,indent=4)}")
             
             gryd.create_async_task(
@@ -318,7 +317,9 @@ def post_contact_status(*args, **data):
                 args=[incoming_status],
                 kwargs={"user_id": user_id , **data},
             )
-            # call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get("phone_number"),incoming_status,pg=pg)
+            logger.info(f"[post_contact_status] New contact_status created for incoming_status={incoming_status}.Also calling next determine_campaign_next_action--{json.dumps(data,indent=4)}")
+            
+            call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get("phone_number"),incoming_status,pg=pg)
             # update_lead_disposition(pg, incoming_status,user_id=user_id, **data) 
             return
         
@@ -358,7 +359,7 @@ def post_contact_status(*args, **data):
                 payload
             )
             logger.info(f"[post_contact_status] contact_status created with incoming_status={incoming_status} and contact_status_id={contact_status_id}. Also calling next determine_campaign_next_action in--{json.dumps(data,indent=4)}")
-            # call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get("phone_number"),incoming_status,pg=pg)
+            call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get("phone_number"),incoming_status,pg=pg)
             
 
         # post billing obj
@@ -413,7 +414,9 @@ def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,c
 # def check_or_create_session(phone_number, campaign_details, from_web_chat): 
 #     return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
 
-
+@gryd.is_a_task(function_name="send_media_template")
+def send_media_template(*args, **kwargs):
+    return BaseWebhookConverter().send_media_template(*args, **kwargs)
     
 if __name__=="__main__":
     # for airtel 
