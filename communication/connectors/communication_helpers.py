@@ -645,8 +645,7 @@ Returns:
             
             #post contact_status object with status as "incoming"
             if channel in ["whatsapp","whatsapp_chat","rms","email"]:
-                logger.info(f"Creating post contact status for Inbound and with provider status : 'answered' for channel: {channel} and data: {json.dumps(data,indent=4)}")
-                build_data_for_post_contact_status(channel,from_number,**d)
+                build_data_for_post_contact_status(channel,**d)
                 
         new_session = {
             **data,
@@ -704,11 +703,11 @@ Returns:
         # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
 
         return session
-def build_data_for_post_contact_status(**kwargs):
-    logger.info(f"Creating post contact status for Inbound and with provider status : 'answered' for channel: {kwargs.get('channel')} and data: {json.dumps(kwargs,indent=4)}")
+def build_data_for_post_contact_status(channel,**kwargs):
+    logger.info(f"Creating post contact status for Inbound and with provider status : 'answered' for channel: {channel}.")
     lead_table_id="pre_sales_lead_id" if kwargs.get("campaign_type")=="pre-sales" else "post_sales_lead"
     
-    provider_details=get_communication_credential(kwargs.get("dealership_id"),kwargs.get("channel"))
+    provider_details=get_communication_credential(kwargs.get("dealership_id"),channel)
     logger.info(f"provider_details for channel: {kwargs.get('channel')} and data: {json.dumps(provider_details,indent=4)}")
     _d={
         "channel": "whatsapp_chat",
@@ -721,6 +720,8 @@ def build_data_for_post_contact_status(**kwargs):
         "provider_status": "answered",
         "channel_provider": provider_details.get("provider_name").lower()
     }
+    
+    logger.info(f"post_contact_status for channel: {channel} and data: {json.dumps(_d,indent=4)}")
     gryd.create_async_task(
         "post_contact_status", 
         AUTOCRM_COMMUNICATION_SERVICE_NAME, 
