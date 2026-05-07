@@ -37,26 +37,31 @@ def inbound_call(*args, **kwargs):
         import gryd_tasks
 
         with gryd_tasks.get_pg_connector() as pg:
-                session = hp.make_single(
-                    list(
-                        pg.list_order_by("session", 
-                        {
-                            "phone_number": data.get("customer_no_with_prefix"),
-                            "channel": "voice_phone",
-                        },
-                        order_by="created", order="DESC")
-                    ), 
-                    force = True
+            sessions =  list(
+                    pg.list_order_by("session", 
+                    {
+                        "phone_number": data.get("customer_no_with_prefix"),
+                        "channel": "voice_phone",
+                    },
+                    order_by="created", order="DESC")
                 )
-                logger.info(f"Session found for inbound status 'contacted': {session}")
-                pg.update("session",
-                        "session_id",
-                        session["session_id"], 
-                        {
-                            "call_recording": data.get("recording_url"), 
-                            "duration": float(data.get("duration", 0.0))
-                        }
-                ) #add more attributes when needed
+            
+            logger.info(f"Sessions found for inbound status 'contacted': {len(sessions)}")
+
+            if not sessions:
+                logger.info(f"No sessions found for inbound status 'contacted'")
+                return jsonify({"status": "error", "message": "No session found for inbound status 'contacted'"})
+                
+            session = hp.make_single( sessions,  force = True)
+            logger.info(f"Session found for inbound status 'contacted': {session}")
+            pg.update("session",
+                    "session_id",
+                    session["session_id"], 
+                    {
+                        "call_recording": data.get("recording_url"), 
+                        "duration": float(data.get("duration", 0.0))
+                    }
+            ) #add more attributes when needed
             
 
 

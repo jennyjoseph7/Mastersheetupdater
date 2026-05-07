@@ -18,7 +18,8 @@ from voice.providers.elevanlabs_tatatele import (
     call_sessions,
     session_lock,
     run_async_in_thread,
-    terminate_sessions_for_phone
+    terminate_sessions_for_phone,
+    terminate_session
 )
 
 gryd.SERVICE = config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME
@@ -104,17 +105,16 @@ def start_call_from_inbound(*args, **kwargs):
     gryd_tasks.post_contact_status_voice(session_id = session_data['session_id'], message_id = session_data['session_id'],  **{"status": "answered"})
     
     timeout = time.time() + float(session_data.get("call_timeout", 600))  # 10 minutes
+
     while time.time() < timeout:
         time.sleep(5)
         logger.info(f"Inbound call is ongoing for {customer_number}, checking status...")
         with gryd_tasks.get_pg_connector() as pg:
-            contact_status = hp.make_single(list(pg.list_order_by("contact_status", {"message_id": session_data["session_id"]}, order_by="created", order="DESC")), force = True)
-            if contact_status and contact_status.get("provider_status") in ["contacted"]:
+            contact_status = hp.make_single(list[Any](pg.list_order_by("contact_status", {"message_id": session_data["session_id"]}, order_by="created", order="DESC")), force = True)
+            if (contact_status and contact_status.get("provider_status") in ["contacted"]):
                 logger.info(f"Call ended with status {contact_status.get('provider_status')}, terminating session {session_data['session_id']}")
-                session = call_sessions.get(session_data['session_id'])
-                if session:
-                    session.terminate()
                 return {"status": "success", "message": f"Inbound call session ended with status {contact_status.get('provider_status')}"}
+            
     logger.info(f"Inbound call session {session_data['session_id']} timed out after {time.time() - (timeout - float(session_data.get('call_timeout', 600))):.2f} seconds, terminating session.")
     return {"status": "success", "message": "Inbound call session ended due to timeout."}
 

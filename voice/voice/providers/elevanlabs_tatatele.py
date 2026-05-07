@@ -705,6 +705,7 @@ class CallSession:
 
                         elif ev == "stop":
                             logger.info(f"[{self.call_id}] Call ended by platform")
+                            self.stop_event.set()
                             break
 
                         elif ev == "mark":
@@ -717,6 +718,7 @@ class CallSession:
                         raise  # Re-raise to properly exit
                     except Exception as e:
                         logger.error(f"[{self.call_id}] Tatatele reader error: %s", e)
+                        self.stop_event.set()
                         break
 
             async def dave_reader():
