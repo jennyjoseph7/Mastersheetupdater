@@ -1263,7 +1263,7 @@
         { header: 'CALL_DATE', key: 'call_date' },
         { header: 'SENTIMENT', key: 'sentiment_score' },
         { header: 'RECORDINGS', key: 'call_recording' },
-        { header: 'RECORDING_DURATION', key: 'recording_duration' },
+        { header: 'duration', key: 'duration' },
         { header: 'CAMPAIGN_ID', key: 'campaign_id' },
         { header: 'LAST_SESSION_ID', key: 'last_session_id' },
         { header: 'INTERESTED', key: 'interested' },
@@ -1280,7 +1280,7 @@
         { header: 'CALL_DATE', key: 'call_date' },
         { header: 'SENTIMENT', key: 'sentiment_score' },
         { header: 'RECORDINGS', key: 'call_recording' },
-        { header: 'RECORDING_DURATION', key: 'recording_duration' },
+        { header: 'duration', key: 'duration' },
         { header: 'CAMPAIGN_ID', key: 'campaign_id' },
         { header: 'LAST_SESSION_ID', key: 'last_session_id' },
         { header: 'SATISFIED', key: 'satisfied' },
@@ -1635,8 +1635,8 @@
           summary: get(best, ['summary', 'call_summary', 'conversation_summary', 'notes']),
           recording: detectRecording(best),
           sentiment: get(best, ['sentiment_score', 'sentiment', 'score']),
-          // RECORDING_DURATION must come from Sessions (File 2). Some exports only have a generic "duration".
-          recordingDuration: get(best, ['recording_duration', 'call_recording_duration', 'recording_length', 'recording_time', 'audio_duration', 'duration', 'call_duration']),
+          // duration must come from Sessions (File 2). Some exports only have a generic "duration".
+          recordingDuration: get(best, ['duration', 'call_duration', 'recording_length', 'recording_time', 'audio_duration', 'duration', 'call_duration']),
           lastSessionId: get(best, ['last_session_id', 'session_id', 'sessionid', 'id', 'call_id'])
         };
       }
@@ -1944,7 +1944,8 @@
     async function copyData() {
       if (!processedData.length) return;
       const OUTPUT_COLUMNS = getOutputColumnsForDealer(document.getElementById('dealerSelect').value);
-      await copyText(rowsToTsv(processedData, OUTPUT_COLUMNS.map(c => c.key)), 'Copied rows. Paste with Ctrl+V in Zoho.');
+      const sortedRows = getSortedData(processedData);
+      await copyText(rowsToTsv(sortedRows, OUTPUT_COLUMNS.map(c => c.key)), 'Copied rows. Paste with Ctrl+V in Zoho.');
       const btn = document.getElementById('btnCopy');
       const old = btn.innerHTML;
       btn.textContent = 'Copied';
@@ -1980,7 +1981,8 @@
       const OUTPUT_COLUMNS = getOutputColumnsForDealer(document.getElementById('dealerSelect').value);
       const headers = OUTPUT_COLUMNS.map(c => c.header);
       const keys = OUTPUT_COLUMNS.map(c => c.key);
-      const dataRows = [headers, ...processedData.map(r => keys.map(k => r[k] ?? ''))];
+      const sortedRows = getSortedData(processedData);
+      const dataRows = [headers, ...sortedRows.map(r => keys.map(k => r[k] ?? ''))];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataRows), 'Output');
 
