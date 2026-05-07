@@ -1285,6 +1285,51 @@
 
     const PREVIEW_LIMIT = 200;
 
+    // ── SORT STATE (mirrors pre-sales sheet behaviour) ────────────────────────────
+    // Sortable keys in this tool: person_name | phone_number | disposition_detail
+    let currentSortKey = 'person_name';   // default sort by name
+    let currentSortDir = 'asc';           // 'asc' | 'desc' | null
+
+    function toggleSort(key) {
+      if (currentSortKey === key) {
+        if (currentSortDir === 'asc') currentSortDir = 'desc';
+        else if (currentSortDir === 'desc') { currentSortKey = null; currentSortDir = null; }
+      } else {
+        currentSortKey = key;
+        currentSortDir = 'asc';
+      }
+      updateSortIndicators();
+      renderTable();
+    }
+
+    function updateSortIndicators() {
+      document.querySelectorAll('.th-sortable').forEach(th => {
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (th.dataset.sortKey === currentSortKey && currentSortDir) {
+          th.classList.add(currentSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+        }
+      });
+    }
+
+    function compareCaseSensitiveStrings(a, b) {
+      if (a === b) return 0;
+      return a < b ? -1 : 1;
+    }
+
+    function getSortedData(data) {
+      let sorted = data;
+      if (currentSortKey && currentSortDir) {
+        sorted = [...data];
+        const dir = currentSortDir === 'asc' ? 1 : -1;
+        sorted.sort((a, b) => {
+          const va = String(a[currentSortKey] || '');
+          const vb = String(b[currentSortKey] || '');
+          return dir * compareCaseSensitiveStrings(va, vb);
+        });
+      }
+      return sorted;
+    }
+
     function esc(v) {
       return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
@@ -1715,9 +1760,21 @@
       const OUTPUT_COLUMNS = getOutputColumnsForDealer(document.getElementById('dealerSelect').value);
       const head = document.getElementById('outputHead');
       const body = document.getElementById('outputBody');
-      head.innerHTML = OUTPUT_COLUMNS.map(col => `<th>${esc(col.header)}</th>`).join('');
+      head.innerHTML = OUTPUT_COLUMNS.map(col => {
+        if (col.key === 'person_name') {
+          return `<th class="th-sortable" data-sort-key="person_name" onclick="toggleSort('person_name')">${esc(col.header)}</th>`;
+        }
+        if (col.key === 'phone_number') {
+          return `<th class="th-sortable" data-sort-key="phone_number" onclick="toggleSort('phone_number')">${esc(col.header)}</th>`;
+        }
+        if (col.key === 'disposition_detail') {
+          return `<th class="th-sortable" data-sort-key="disposition_detail" onclick="toggleSort('disposition_detail')">${esc(col.header)}</th>`;
+        }
+        return `<th>${esc(col.header)}</th>`;
+      }).join('');
       body.innerHTML = '';
-      for (const r of processedData.slice(0, PREVIEW_LIMIT)) {
+      const sorted = getSortedData(processedData);
+      for (const r of sorted.slice(0, PREVIEW_LIMIT)) {
         const tr = document.createElement('tr');
         tr.innerHTML = OUTPUT_COLUMNS.map(col => {
           const val = r[col.key] || '';
