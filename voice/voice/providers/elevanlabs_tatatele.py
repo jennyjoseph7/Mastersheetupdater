@@ -769,13 +769,13 @@ class CallSession:
             logger.exception(f"[{self.call_id}] Main error: %s", e)
         finally:
             self.processed_agent_responses.clear()
-            try:
-                if self.dave_ws:
-                    ## TODO send ws.send FLAG TO CLOSE. to say lets close all connections from the room
-                    await self.dave_ws.close()
-                    self.dave_ws = None
-            except Exception as e:
-                logger.warning(f"[{self.call_id}] Error closing ElevenLabs WebSocket: {e}")
+            # try:
+            #     if self.dave_ws:
+            #         ## TODO send ws.send FLAG TO CLOSE. to say lets close all connections from the room
+            #         await self.dave_ws.close()
+            #         self.dave_ws = None
+            # except Exception as e:
+            #     logger.warning(f"[{self.call_id}] Error closing ElevenLabs WebSocket: {e}")
 
             # Hang up the TataTele phone call so the user isn't left on a dead line
             await self.hangup_tatatele_call()
@@ -827,11 +827,28 @@ class CallSession:
         except Exception as e:
             logger.exception(f"[{self.call_id}] connection failed: %s", e)
         finally:
-            try:
-                if ws:
-                    await ws.close()
-            except Exception as e:
-                logger.warning(f"[{self.call_id}] Error closing external WebSocket: {e}")
+            sockets_to_close = []
+            if ws:
+                sockets_to_close.append(("local_ws", ws))
+            if getattr(self, "external_ws", None):
+                sockets_to_close.append(("external_ws", self.external_ws))
+            if getattr(self, "dave_ws", None):
+                sockets_to_close.append(("dave_ws", self.dave_ws))
+
+            closed_ids = set()
+            for socket_name, socket_obj in sockets_to_close:
+                if id(socket_obj) in closed_ids:
+                    continue
+                closed_ids.add(id(socket_obj))
+                try:
+                    if not getattr(socket_obj, "closed", False):
+                        await socket_obj.close()
+                        logger.info(f"[{self.call_id}] Closed {socket_name}")
+                except Exception as e:
+                    logger.warning(f"[{self.call_id}] Error closing {socket_name}: {e}")
+
+            self.external_ws = None
+            self.dave_ws = None
             self.bridge_started = False
             logger.info(f"[{self.call_id}] external websocket closed")
 
