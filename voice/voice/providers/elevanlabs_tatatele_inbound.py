@@ -11,14 +11,14 @@ if _root not in sys.path:
 import config
 from flask import Blueprint, request, jsonify
 from gryd_worker import gryd_helpers as hp, gryd
-import time
+
 logger = hp.get_logger(__name__)
 
 app = Blueprint("tatatelli_inbound", __name__)
 
 @app.route("/smartflo/webhook/inbound", methods=["POST"])
 def inbound_call(*args, **kwargs):
-    data = request.get_json()
+    data = request.get_json(silent=True) or request.form.to_dict() or request.data.decode() or {}
     logger.info(f"Received inbound call data: {json.dumps(data, indent=4)}")
 
     # Note: call connected for inbound billing is pending.
@@ -36,7 +36,7 @@ def inbound_call(*args, **kwargs):
         t = time.time()
         import gryd_tasks
 
-        with gryd_tasks.get_pg_connector as pg:
+        with gryd_tasks.get_pg_connector() as pg:
                 session = hp.make_single(
                     list(
                         pg.list_order_by("session", 
@@ -60,15 +60,16 @@ def inbound_call(*args, **kwargs):
             
 
 
-        logger.info(f"[webhook-/smartflo/webhook/inbound] Time taken to update session with recording URL and duration: {time() - t:.2f} seconds")
+        logger.info(f"[webhook-/smartflo/webhook/inbound] Time taken to update session with recording URL and duration: {time.time() - t:.2f} seconds")
         gryd_tasks.post_contact_status_voice(session_id = session["session_id"], message_id = session["session_id"],  **{"status": "contacted"})
 
     return jsonify({"status": "success", "message": "Inbound call received and processed.", "data": data})
 
 @app.route("/tatatele/create-stream-url/inbound", methods=["POST"])
 def create_stream_url(*args, **kwargs):
-    t = time()
-    data = request.get_json()
+    t = time.time()
+    data =  request.get_json(silent=True) or request.form.to_dict() or request.data.decode() or {}
+
 
     logger.info(f"Processing create_stream_url request: {json.dumps(data, indent=4)}")
     
@@ -80,7 +81,7 @@ def create_stream_url(*args, **kwargs):
 
     wss_url = f"{base_ws_url}/tatatele/{from_number}_{to_number}/{to_number}"
 
-    logger.info(f"[webhook-/tatatele/create-stream-url/inbound] Generated wss_url took {time() - t:.2f} seconds: {wss_url}")
+    logger.info(f"[webhook-/tatatele/create-stream-url/inbound] Generated wss_url took {time.time() - t:.2f} seconds: {wss_url}")
     return jsonify({
         "success": True,
         "wss_url": wss_url

@@ -5,13 +5,14 @@
     ],
     "attributes": [
         {
-            "name": "voice_provider_name",
-            "refers": "parents.voice_provider.voice_provider_name",
+            "name": "voice_provider_id",
+            "refers": "parents.voice_provider.voice_provider_id",
             "indexed": true
         },
         {
-            "name": "gender",
-            "refers": "parents.voice_provider.gender"
+            "name": "voice_provider_name",
+            "refers": "parents.voice_provider.voice_provider_name",
+            "indexed": true
         },
         {
             "name": "name",
@@ -95,7 +96,19 @@
             "indexed": true
         },
         {
-            "name": "voice_provider_id",
+            "name": "speaker_name",
+            "type": "text"
+        },
+        {
+            "name": "speaker_phone_number",
+            "type": "text"
+        },
+        {
+            "name": "speaker_phone_email",
+            "type": "text"
+        },
+        {
+            "name": "voice_agent_id",
             "id": true,
             "type": "uid",
             "auto_updater": true,

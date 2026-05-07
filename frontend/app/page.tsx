@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -116,6 +116,7 @@ export default function CampaignDashboard() {
   const [activeCampaignCount, setActiveCampaignCount] = useState<number>(0);
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(5); // Feature 2: Page Size State
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [totalReach, setTotalReach] = useState<number>(0);
   const [conversionRate, setConversionRate] = useState<number>(0);
   const [pageCount, setPageCount] = useState<number>(0); // Add this new state
@@ -128,6 +129,46 @@ export default function CampaignDashboard() {
     null,
   );
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load filters from localStorage on mount
+  useEffect(() => {
+    const savedStatus = localStorage.getItem("dashboard_statusFilter");
+    const savedChannel = localStorage.getItem("dashboard_channelFilter");
+    const savedType = localStorage.getItem("dashboard_campaignTypeFilter");
+    const savedPageSize = localStorage.getItem("dashboard_pageSize");
+    const savedSearch = localStorage.getItem("dashboard_searchQuery");
+    const savedPage = localStorage.getItem("dashboard_page");
+
+    if (savedStatus) setStatusFilter(savedStatus);
+    if (savedChannel) setChannelFilter(savedChannel);
+    if (savedType) setCampaignTypeFilter(savedType);
+    if (savedPageSize) setPageSize(parseInt(savedPageSize));
+    if (savedSearch) setSearchQuery(savedSearch);
+    if (savedPage) setPage(parseInt(savedPage));
+
+    setIsLoaded(true);
+  }, []);
+
+  // Save filters to localStorage when they change
+  useEffect(() => {
+    if (!isLoaded) return;
+    localStorage.setItem("dashboard_statusFilter", statusFilter);
+    localStorage.setItem("dashboard_channelFilter", channelFilter);
+    localStorage.setItem("dashboard_campaignTypeFilter", campaignTypeFilter);
+    localStorage.setItem("dashboard_pageSize", pageSize.toString());
+    localStorage.setItem("dashboard_searchQuery", searchQuery);
+    localStorage.setItem("dashboard_page", page.toString());
+  }, [
+    statusFilter,
+    channelFilter,
+    campaignTypeFilter,
+    pageSize,
+    searchQuery,
+    page,
+    isLoaded,
+  ]);
 
   // Feature 1: Export CSV Logic
   const handleExport = () => {
@@ -200,11 +241,20 @@ export default function CampaignDashboard() {
     };
   };
   // Inside CampaignDashboard component
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  // const [searchQuery, setSearchQuery] = useState<string>("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
+
+  const isFirstSearch = useRef(true);
 
   // Handle Debouncing
   useEffect(() => {
+    // If it's the first run, just set the debounced query without resetting page
+    if (isFirstSearch.current) {
+      setDebouncedSearchQuery(searchQuery);
+      isFirstSearch.current = false;
+      return;
+    }
+
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
       setPage(1); // Reset to page 1 on new search
