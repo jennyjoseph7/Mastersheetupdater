@@ -758,7 +758,7 @@ def check_and_create_inbound_lead_object(**kwargs):
             "urgency_hook": urgency_hook,
             # "audience_name": "us test",
             "campaign_name": kwargs.get("campaign_name"),
-            "campaign_type": kwargs.get("pre-sales"),
+            "campaign_type": kwargs.get("campaign_type") or "pre-sales",
             "campaign_offer": kwargs.get("campaign_offer"),
             "finance_required": False,
             "supported_brands": kwargs.get("supported_brands"),
