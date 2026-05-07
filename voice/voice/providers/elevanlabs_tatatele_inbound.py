@@ -42,7 +42,7 @@ def inbound_call(*args, **kwargs):
                 "channel": "voice_phone"
             }
 
-            logger.info(f"Session filters: {filter}")
+            logger.info(f"Session filters: {filters}")
             sessions =  list(
                     pg.list_order_by("session", 
                     filters,
