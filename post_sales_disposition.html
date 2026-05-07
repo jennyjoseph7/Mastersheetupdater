@@ -622,6 +622,46 @@
       text-transform: uppercase;
     }
 
+    /* ── SORTABLE HEADERS ─────────────────────────────────────────────── */
+    .th-sortable {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      padding-right: 1.4rem !important;
+      transition: color 0.15s;
+    }
+
+    .th-sortable:hover {
+      color: var(--accent);
+    }
+
+    .th-sortable::after {
+      content: '⇅';
+      position: absolute;
+      right: 0.35rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.7rem;
+      opacity: 0.35;
+      transition: opacity 0.15s;
+    }
+
+    .th-sortable:hover::after {
+      opacity: 0.7;
+    }
+
+    .th-sortable.sort-asc::after {
+      content: '↑';
+      opacity: 1;
+      color: var(--accent);
+    }
+
+    .th-sortable.sort-desc::after {
+      content: '↓';
+      opacity: 1;
+      color: var(--accent);
+    }
+
     tbody tr {
       border-bottom: 1px solid var(--border);
     }
@@ -1792,6 +1832,7 @@
         ? `Showing first ${PREVIEW_LIMIT} of ${processedData.length} rows`
         : `${processedData.length} rows`;
       document.getElementById('tableWrapper').style.display = 'block';
+      updateSortIndicators();
     }
 
     function renderPreviewTables() {
