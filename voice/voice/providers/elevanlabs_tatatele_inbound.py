@@ -18,7 +18,7 @@ app = Blueprint("tatatelli_inbound", __name__)
 
 @app.route("/smartflo/webhook/inbound", methods=["POST"])
 def inbound_call(*args, **kwargs):
-    data = request.get_json()
+    data = request.get_json(silent=True) or request.form.to_dict() or request.data.decode() or {}
     logger.info(f"Received inbound call data: {json.dumps(data, indent=4)}")
 
     # Note: call connected for inbound billing is pending.
@@ -68,7 +68,8 @@ def inbound_call(*args, **kwargs):
 @app.route("/tatatele/create-stream-url/inbound", methods=["POST"])
 def create_stream_url(*args, **kwargs):
     t = time.time()
-    data = request.get_json()
+    data =  request.get_json(silent=True) or request.form.to_dict() or request.data.decode() or {}
+
 
     logger.info(f"Processing create_stream_url request: {json.dumps(data, indent=4)}")
     
