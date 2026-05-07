@@ -111,6 +111,9 @@ def start_call_from_inbound(*args, **kwargs):
         logger.info(f"Inbound call is ongoing for {customer_number}, checking status...")
         with gryd_tasks.get_pg_connector() as pg:
             contact_status = hp.make_single(list[Any](pg.list_order_by("contact_status", {"message_id": session_data["session_id"]}, order_by="created", order="DESC")), force = True)
+            if session_data["session_id"] not in call_sessions:
+                logger.info(f"Session not found or likely to be terminated already....")
+                return 
             if (contact_status and contact_status.get("provider_status") in ["contacted"]):
                 logger.info(f"Call ended with status {contact_status.get('provider_status')}, terminating session {session_data['session_id']}")
                 return {"status": "success", "message": f"Inbound call session ended with status {contact_status.get('provider_status')}"}
