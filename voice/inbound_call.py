@@ -40,7 +40,6 @@ def start_call_from_inbound(*args, **kwargs):
     session_data = handle_session_logic(customer_number, from_number=agent_number, channel = "voice_phone", engaged=True)
     logger.info(f"Session data after handling session logic: {session_data}")
 
-    gryd_tasks.post_contact_status_voice(session_id = session_data['session_id'], message_id = session_data['session_id'],  **{"status": "answered"})
     if "error" in session_data:
         logger.error(f"Error in session logic: {session_data['error']}")
         return session_data
@@ -99,6 +98,11 @@ def start_call_from_inbound(*args, **kwargs):
 
     s = start_session(session_data.get('session_id'))
 
+    with gryd_tasks.get_pg_connector() as pg:
+        pg.update("session", "session_id", session_data.get('session_id'), {"status": "answered"})
+
+    gryd_tasks.post_contact_status_voice(session_id = session_data['session_id'], message_id = session_data['session_id'],  **{"status": "answered"})
+    
     timeout = time.time() + float(session_data.get("call_timeout", 600))  # 10 minutes
     while time.time() < timeout:
         time.sleep(5)

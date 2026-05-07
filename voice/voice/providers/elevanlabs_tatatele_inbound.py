@@ -36,7 +36,7 @@ def inbound_call(*args, **kwargs):
         t = time.time()
         import gryd_tasks
 
-        with gryd_tasks.get_pg_connector as pg:
+        with gryd_tasks.get_pg_connector() as pg:
                 session = hp.make_single(
                     list(
                         pg.list_order_by("session", 
