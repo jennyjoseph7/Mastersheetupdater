@@ -211,7 +211,7 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
                     _ = list(pg.list("communication_credential", {"dealership_id": dealership_id}))
 
             logger.info(f"TEST BEFORE SESSION FINAL PAYLOAD: {payload}")
-            session = get_or_create_session(payload,channel,engaged)
+            session = get_or_create_session(payload,channel,engaged,from_number)
             if session is None:
                 return {"error": "Failed to create or retrieve session"}
             return {**session, "dealership_id": dealership_id}
@@ -225,7 +225,7 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
         #     dealership_id = creds[0].get("dealership_id")
         #     payload["dealership_id"] = dealership_id
 
-        new_session = get_or_create_session(payload, channel, engaged)
+        new_session = get_or_create_session(payload, channel, engaged,from_number)
         if new_session is None:
             return {"error": "Failed to create or retrieve session"}
         session.update(new_session)
@@ -262,7 +262,7 @@ def apply_filters(session_id=None, user_id=None, channel=None, session_live=None
     condition = "Where " + " AND ".join(conditions)
     return condition, params
 
-def get_or_create_session(data,channel=None,engaged=False):
+def get_or_create_session(data,channel=None,engaged=False,from_number=None):
     """
     Find active session or create new one.
     data: This is a dictionary that contains the data needed to create or find a session. It is expected to have the following keys:
@@ -325,7 +325,7 @@ def get_or_create_session(data,channel=None,engaged=False):
                 )
                 # TODO: call it as a function end_session_and_post_process(**{"session_id":sessions[0].get("session_id"),"pg":pg})
                 # create new session
-                s=create_new_session(data,channel,engaged)
+                s=create_new_session(data,channel,engaged,from_number)
                 return s
             else:
                 logger.info("Session has exisiting campaign_id. So we are returning the existing session.")
@@ -367,7 +367,7 @@ def get_or_create_session(data,channel=None,engaged=False):
         logger.info(f"No Existing session found. Creating a new one..")
         logger.info(f"CREATE NEW SESSION CHECKING engaged--{engaged}")
         # Create new session
-        s=create_new_session(data,channel,engaged)
+        s=create_new_session(data,channel,engaged,from_number)
         
         return s
     
@@ -559,7 +559,7 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
 #         return s 
 
 
-def create_new_session(data, channel=None, engaged=False):
+def create_new_session(data, channel=None, engaged=False,from_number=None):
     """
 Create a new session based on the provided data, channel, and engaged flag.
 
@@ -645,8 +645,7 @@ Returns:
             
             #post contact_status object with status as "incoming"
             if channel in ["whatsapp","whatsapp_chat","rms","email"]:
-                logger.info(f"Creating post contact status for Inbound and with provider status : 'answered' for channel: {channel} and data: {json.dumps(data,indent=4)}")
-                build_data_for_post_contact_status(**_final_payload,**data)
+                build_data_for_post_contact_status(channel,**d)
                 
         new_session = {
             **data,
@@ -704,13 +703,31 @@ Returns:
         # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
 
         return session
-def build_data_for_post_contact_status(**kwargs):
-    logger.info(f"Creating post contact status for Inbound and with provider status : 'answered' for channel: {kwargs.get('channel')} and data: {json.dumps(kwargs,indent=4)}")
-    # gryd.create_async_task(
-    #                 "post_contact_status", 
-    #                 AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-    #                 kwargs={**data,"provider_status":"answered"}
-    #             )
+def build_data_for_post_contact_status(channel,**kwargs):
+    logger.info(f"Creating post contact status for Inbound and with provider status : 'answered' for channel: {channel}.")
+    lead_table_id="pre_sales_lead_id" if kwargs.get("campaign_type")=="pre-sales" else "post_sales_lead"
+    
+    provider_details=get_communication_credential(kwargs.get("dealership_id"),channel)
+    logger.info(f"provider_details for channel: {kwargs.get('channel')} and data: {json.dumps(provider_details,indent=4)}")
+    _d={
+        "channel": "whatsapp_chat",
+        "lead_id": kwargs.get(lead_table_id),
+        # "user_id": kwargs.get("user_id"),
+        "campaign_id": kwargs.get("campaign_id"),
+        "phone_number": kwargs.get("phone_number"),
+        "campaign_type": kwargs.get("campaign_type"),
+        "dealership_id": kwargs.get("dealership_id"),
+        "provider_status": "answered",
+        "channel_provider": provider_details.get("provider_name").lower()
+    }
+    
+    logger.info(f"post_contact_status for channel: {channel} and data: {json.dumps(_d,indent=4)}")
+    gryd.create_async_task(
+        "post_contact_status", 
+        AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+        kwargs={**_d}
+    )
+    
 def check_and_create_inbound_lead_object(**kwargs):
     dealership_id=kwargs.get("dealership_id")
     campaign_id=kwargs.get("campaign_id")
@@ -741,7 +758,7 @@ def check_and_create_inbound_lead_object(**kwargs):
             "urgency_hook": urgency_hook,
             # "audience_name": "us test",
             "campaign_name": kwargs.get("campaign_name"),
-            "campaign_type": kwargs.get("pre-sales"),
+            "campaign_type": kwargs.get("campaign_type") or "pre-sales",
             "campaign_offer": kwargs.get("campaign_offer"),
             "finance_required": False,
             "supported_brands": kwargs.get("supported_brands"),
