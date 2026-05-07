@@ -1,0 +1,15 @@
+{
+    "name": "voice_language",
+    "attributes": [
+        {
+            "name": "language",
+            "type": "text",
+            "id": true
+        },
+        {
+            "name": "default_agent_id",
+            "type": "text",
+            "indexed": true
+        }
+    ]
+}

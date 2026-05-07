@@ -187,12 +187,25 @@ def get_vehicle_id(vehicle_model, row, missing_reason = None, required_attribute
         if is_valid_value(row, k):
             row[k] = list(map(lambda x: x.strip(), row[k].split(',')))
             data[k] = row[k]
-    vehicles = vehicle_model.list(_as_option=True, _page_size=1, reg_number=row.get('reg_number'))
+    vehicles = []
+    for unique_param in ["reg_number", "vin_number", "engine_number", "chassis_number", "dealership_vehicle_code"]:
+        kw = {
+                "_as_option": True,
+                "_page_size": 1
+        }
+        if not is_valid_value(row, unique_param):
+            continue
+        kw[unique_param] = row.get(unique_param)
+        vehicles = vehicle_model.list(**kw)
+        if vehicles:
+            break
     vehicle_id = None
     if vehicles:
         vehicle_id = vehicles[0].get('vehicle_id')
     for k in [
+            "region_name",
             "reg_number",
+            "dealership_vehicle_code",
             "vehicle_brand_name",
             "vehicle_model_name",
             "vehicle_model_year",
@@ -265,7 +278,7 @@ def get_rooftop(row, models, model_name, missing_reason = None, rooftop_id = Non
     missing_reason = missing_reason or []
     ws_val = rooftop_id or get_valid_value(row, f'{model_name}_id')
     def get_ws_val(t):
-        ws_val = hp.make_single(
+        ws = hp.make_single(
             models['rooftop_model'].list(
                 _as_option=True, 
                 _page_size=1,
@@ -275,16 +288,17 @@ def get_rooftop(row, models, model_name, missing_reason = None, rooftop_id = Non
             force = True,
             default = {}
         )
-        ws_val = ws_val.get(f'{model_name}_id')
-        return ws_val
+        ws_val = ws.get(f'{model_name}_id')
+        return ws_val, ws
     if not ws_val:
         if is_valid_value(row, f"{model_name}_code"):
-            ws_val = get_ws_val('code')
+            ws_val, ws = get_ws_val('code')
         elif is_valid_value(row, f'{model_name}_name'):
-            ws_val = get_ws_val('name')
+            ws_val, ws = get_ws_val('name')
     if not ws_val:
         missing_reason.append(f"{model_name} ID or {model_name} code or {model_name} name not found")
     row[f'{model_name}_id'] = ws_val
+    row['region_name'] = ws.get('region_name')
     return row, missing_reason
 
 
