@@ -713,7 +713,7 @@ def build_data_for_post_contact_status(**kwargs):
     _d={
         "channel": "whatsapp_chat",
         "lead_id": kwargs.get(lead_table_id),
-        "user_id": kwargs.get("user_id"),
+        # "user_id": kwargs.get("user_id"),
         "campaign_id": kwargs.get("campaign_id"),
         "phone_number": kwargs.get("phone_number"),
         "campaign_type": kwargs.get("campaign_type"),
