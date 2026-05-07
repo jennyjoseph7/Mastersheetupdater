@@ -931,12 +931,13 @@
                 <option value="bullmen_service">Bullmen - Post-Sales Service Reminder</option>
                 <option value="fortune_service">Fortune - Post-Sales Service Reminder</option>
                 <option value="perfect_riders_service">Perfect Riders - Post-Sales Service Reminder</option>
-                <option value="pressana_service_feedback">Pressana - Post-Sales Service Reminder and Service Feedback
+                <option value="pressana_service_feedback">Pressana - Post-Sales Service Reminder 
                 </option>
                 <option value="suryabala_service">Suryabala Honda - Post-Sales Service Reminder</option>
               </optgroup>
               <optgroup label="Post-sales feedback reminder">
                 <option value="icare_feedback">Icare - Post-Sales Feedback Reminder</option>
+                <option value="pressana_post_service_feedback">Pressana Kia - Post Service Feedback</option>
               </optgroup>
 
             </select>
@@ -1147,6 +1148,13 @@
         leadColumns: ['campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'reg_number', 'vin_number'],
         sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail']
       },
+      pressana_post_service_feedback: {
+        name: 'Pressana Kia',
+        workflow: 'Post Service Feedback',
+        mode: 'post-sales',
+        leadColumns: ['campaign_id', 'phone_number', 'last_service_date'],
+        sessionColumns: ['duration', 'status', 'start_time', 'sentiment_score', 'summary', 'call_recording', 'disposition_detail']
+      },
       perfect_riders_service: {
         name: 'Perfect Riders',
         workflow: 'Post-Sales Service Reminder',
@@ -1177,6 +1185,22 @@
       pressana_service_feedback: [
         { header: 'PHONE_NUMBER', key: 'phone_number' },
         { header: 'VEHICLE_MODEL', key: 'vehicle_model' },
+        { header: 'STATUS', key: 'session_status' },
+        { header: 'SUMMARY', key: 'summary' },
+        { header: 'DISPOSITION_DETAILS', key: 'disposition_detail' },
+        { header: 'CALL_DATE', key: 'call_date' },
+        { header: 'SENTIMENT_SCORE', key: 'sentiment_score' },
+        { header: 'RECORDINGS', key: 'call_recording' },
+        { header: 'DURATION', key: 'duration' },
+        { header: 'CAMPAIGN_ID', key: 'campaign_id' },
+        { header: 'SESSION_ID', key: 'last_session_id' },
+        { header: 'INTERESTED', key: 'interested' },
+        { header: 'NUMBER OF ATTEMPTS', key: 'number_of_attempts' },
+        { header: 'AUTONGAGE', key: 'autongage_disposition' },
+      ],
+      pressana_post_service_feedback: [
+        { header: 'PHONE_NUMBER', key: 'phone_number' },
+        { header: 'LAST_SERVICE_DATE', key: 'last_service_date' },
         { header: 'STATUS', key: 'session_status' },
         { header: 'SUMMARY', key: 'summary' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition_detail' },
@@ -1285,12 +1309,13 @@
         { header: 'SUMMARY', key: 'summary' },
         { header: 'STATUS', key: 'session_status' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition_detail' },
+        { header: 'MANUAL_DISPOSITION', key: 'manual_disposition' },
         { header: 'CALL_DATE', key: 'call_date' },
         { header: 'SENTIMENT', key: 'sentiment_score' },
         { header: 'RECORDINGS', key: 'call_recording' },
         { header: 'DURATION', key: 'duration' },
         { header: 'CAMPAIGN_ID', key: 'campaign_id' },
-        { header: 'LAST_SESSION_ID', key: 'last_session_id' },
+        { header: 'SESSION_ID', key: 'last_session_id' },
         { header: 'INTERESTED', key: 'interested' },
         { header: 'SERVICE_TYPE', key: 'last_service_type' },
         { header: 'NEXT_SERVICE_DATE', key: 'next_service_due' },
@@ -1722,9 +1747,29 @@
             workshop_code: get(row, ['workshop_code', 'workshop', 'location_code', 'dealer_code', 'dealer']),
             dealer_code: get(row, ['workshop_code', 'workshop', 'location_code', 'dealer_code', 'dealer']),
             next_service_due: get(row, ['next_service_due', 'service_due_date', 'next_due_date']),
+            last_service_date: get(row, [
+              'last_service_date',
+              'last_service_dt',
+              'last_service_done_date',
+              'last_service_done',
+              'last_service_on',
+              'last_service',
+              'service_date',
+              'service_done_date',
+              'service_completed_date'
+            ]),
             customer_score: get(row, ['customer_score', 'score']),
             odometer_reading: get(row, ['odometer_reading', 'odometer', 'kms']),
             last_service_type: get(row, ['last_service_type', 'service_type']),
+            manual_disposition: get(row, [
+              'manual_disposition',
+              'manual disposition',
+              'manual_disposition_detail',
+              'manual_disposition_details',
+              'manual_disposition_status',
+              'manual_dispo',
+              'manual_status'
+            ]),
             session_status: sess.status || '',
             disposition_detail: sess.disposition || '',
             outcome: classification.outcome,
