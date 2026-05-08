@@ -19,7 +19,11 @@ app = Blueprint("tatatelli_inbound", __name__)
 @app.route("/smartflo/webhook/inbound", methods=["POST"])
 def inbound_call(*args, **kwargs):
     data = request.get_json(silent=True) or request.form.to_dict() or request.data.decode() or {}
+    data = {
+        key.strip():value for key, value in data.items()
+    }
     logger.info(f"Received inbound call data: {json.dumps(data, indent=4)}")
+  
 
     # Note: call connected for inbound billing is pending.
     if data.get("call_type", "").lower() in ["inbound"]:
@@ -38,7 +42,7 @@ def inbound_call(*args, **kwargs):
 
         with gryd_tasks.get_pg_connector() as pg:
             filters = {
-                "phone_number":  data.get("customer_no_with_prefix"),
+                "phone_number": data.get("customer_no_with_prefix") ,
                 "channel": "voice_phone"
             }
 
@@ -94,3 +98,4 @@ def create_stream_url(*args, **kwargs):
         "success": True,
         "wss_url": wss_url
     })
+
