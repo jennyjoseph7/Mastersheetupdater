@@ -11,7 +11,3 @@ gryd.set_queue_manager()
 def trigger_voice_call(*args, **kwargs):
     list(gryd_tasks.trigger_voice_call(*args, **kwargs))
     yield
-<<<<<<< HEAD
-
-=======
->>>>>>> staging
