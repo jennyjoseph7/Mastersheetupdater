@@ -1,3 +1,4 @@
+from asyncio.subprocess import create_subprocess_shell
 from time import time, monotonic
 import os, sys
 from gryd_worker import gryd_helpers as hp
@@ -137,6 +138,14 @@ session_lock = threading.Lock()
 
 
 # ---------- CallSession Class ----------
+
+def session_active(call_id, return_session = False):
+    with session_lock:
+        if call_id  in call_sessions:
+            if return_session:
+                return call_sessions[call_id]
+            return True
+        return False
 
 def terminate_session(call_id: str):
     with session_lock:
@@ -705,6 +714,7 @@ class CallSession:
 
                         elif ev == "stop":
                             logger.info(f"[{self.call_id}] Call ended by platform")
+                            self.stop_event.set()
                             break
 
                         elif ev == "mark":
@@ -717,6 +727,7 @@ class CallSession:
                         raise  # Re-raise to properly exit
                     except Exception as e:
                         logger.error(f"[{self.call_id}] Tatatele reader error: %s", e)
+                        self.stop_event.set()
                         break
 
             async def dave_reader():

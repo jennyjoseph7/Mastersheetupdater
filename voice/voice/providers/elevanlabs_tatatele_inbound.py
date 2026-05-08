@@ -19,7 +19,11 @@ app = Blueprint("tatatelli_inbound", __name__)
 @app.route("/smartflo/webhook/inbound", methods=["POST"])
 def inbound_call(*args, **kwargs):
     data = request.get_json(silent=True) or request.form.to_dict() or request.data.decode() or {}
+    data = {
+        key.strip():value for key, value in data.items()
+    }
     logger.info(f"Received inbound call data: {json.dumps(data, indent=4)}")
+  
 
     # Note: call connected for inbound billing is pending.
     if data.get("call_type", "").lower() in ["inbound"]:
@@ -37,26 +41,34 @@ def inbound_call(*args, **kwargs):
         import gryd_tasks
 
         with gryd_tasks.get_pg_connector() as pg:
-                session = hp.make_single(
-                    list(
-                        pg.list_order_by("session", 
-                        {
-                            "phone_number": data.get("customer_no_with_prefix"),
-                            "channel": "voice_phone",
-                        },
-                        order_by="created", order="DESC")
-                    ), 
-                    force = True
+            filters = {
+                "phone_number": data.get("customer_no_with_prefix") ,
+                "channel": "voice_phone"
+            }
+
+            logger.info(f"Session filters: {filters}")
+            sessions =  list[Any](
+                    pg.list_order_by("session", 
+                    filters,
+                    order_by="created", order="DESC")
                 )
-                logger.info(f"Session found for inbound status 'contacted': {session}")
-                pg.update("session",
-                        "session_id",
-                        session["session_id"], 
-                        {
-                            "call_recording": data.get("recording_url"), 
-                            "duration": float(data.get("duration", 0.0))
-                        }
-                ) #add more attributes when needed
+            
+            logger.info(f"Sessions found for inbound status 'contacted': {len(sessions)}")
+
+            if not sessions:
+                logger.info(f"No sessions found for inbound status 'contacted'")
+                return jsonify({"status": "error", "message": "No session found for inbound status 'contacted'"})
+
+            session = hp.make_single( sessions,  force = True)
+            logger.info(f"Latest session found for inbound status 'contacted': {session}")
+            pg.update("session",
+                    "session_id",
+                    session["session_id"], 
+                    {
+                        "call_recording": data.get("recording_url"), 
+                        "duration": float(data.get("duration", 0.0))
+                    }
+            ) #add more attributes when needed
             
 
 
@@ -86,3 +98,4 @@ def create_stream_url(*args, **kwargs):
         "success": True,
         "wss_url": wss_url
     })
+

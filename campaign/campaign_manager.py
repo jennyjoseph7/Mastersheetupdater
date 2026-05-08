@@ -868,7 +868,8 @@ def manual_register_pre_sales(name, phone_number, email, *args, **kwargs):
         "email": email,
         "campaign_id": campaign_id,
         "dealership_id": dealership_id,
-        "campaign_objective_id": campaign_objective_id
+        "campaign_objective_id": campaign_objective_id,
+        **kwargs
     }
 
     # Data container for the final post
