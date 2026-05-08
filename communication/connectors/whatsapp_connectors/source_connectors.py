@@ -776,7 +776,7 @@ class BaseWebhookConverter:
         )
         provider.handle_custom_template(**d)
 
-        return
+        return {"status": "initiated"}
     
     def send_custom_message(*args, **kwargs):
         logger.info("Send custom message called")
