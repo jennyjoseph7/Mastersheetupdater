@@ -277,6 +277,7 @@ def get_rooftop(row, models, model_name, missing_reason = None, rooftop_id = Non
     logger = logger or mlogger
     missing_reason = missing_reason or []
     ws_val = rooftop_id or get_valid_value(row, f'{model_name}_id')
+    ws = {}
     def get_ws_val(t):
         ws = hp.make_single(
             models['rooftop_model'].list(
@@ -298,7 +299,8 @@ def get_rooftop(row, models, model_name, missing_reason = None, rooftop_id = Non
     if not ws_val:
         missing_reason.append(f"{model_name} ID or {model_name} code or {model_name} name not found")
     row[f'{model_name}_id'] = ws_val
-    row['region_name'] = ws.get('region_name')
+    if ws.get('region_name'):
+        row['region_name'] = ws.get('region_name')
     return row, missing_reason
 
 
