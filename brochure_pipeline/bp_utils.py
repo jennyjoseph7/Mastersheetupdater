@@ -11,11 +11,33 @@ from os.path import dirname, abspath, join as joinpath
 
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
+    sys.path.insert(0, BASE_DIR)
 
-from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME
+from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME, AutocrmModel
 
 GRYD_SERVICE = AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME
+
+
+def fetch_brochure_text_from_api(document_id: str) -> str:
+    """Fetches extracted chunks from chunk_saver model and concatenates them."""
+    logger_local = logging.getLogger(__name__)
+    try:
+        chunk_saver_model = AutocrmModel('chunk_saver')
+        chunks = chunk_saver_model.list(document_id=document_id, page_size=1000)
+
+        extracted_text = []
+        chunk_list = chunks.get("data", []) if isinstance(chunks, dict) else chunks
+
+        for chunk in chunk_list:
+            if isinstance(chunk, dict):
+                text = chunk.get("text_content", "")
+                if text:
+                    extracted_text.append(str(text))
+
+        return "\n\n".join(extracted_text)
+    except Exception as e:
+        logger_local.error(f"Failed to fetch brochure text from chunk_saver API for {document_id}: {e}")
+        return ""
 
 def get_logger(name, log_level = "info"):
     log_level = log_level.upper()
