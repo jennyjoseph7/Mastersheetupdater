@@ -200,6 +200,9 @@ def trigger_voice_call(*args, **kwargs):
                 session_data["prompt"] = x.get('prompt')
                 break
 
+    if not user_data.get("generate_prompt") and user_data.get("prompt"):
+        session_data["prompt"] = user_data.get("prompt", "How may I help you?")
+
     
     user_data.update(session_data)
     
