@@ -197,10 +197,14 @@ function main() {
         exit 1
     fi
 	
+    echo "Patching base image tag."
+    sed -i "s/<DOCKER_IMG_TAG>/$WORKER_DOCKER_IMAGE_NAME/g" Dockerfile.wk
+
     if [ $ONLY_PUSH == 0 ];then
-	echo "Patching zipname."
+	    echo "Patching zipname."
     	sed "s/<zipname>/$WORKER_NAME/g" Dockerfile.wk > Dockerfile
         zip_repo $WORKER_DIR $WORKER_NAME.zip
+    
         build_docker_image
     fi
 
