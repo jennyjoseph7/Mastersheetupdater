@@ -216,6 +216,7 @@ def trigger_voice_call(*args, **kwargs):
     # voice_id = user_data.get("voice_id",None)
     voice_start_language= user_data.get("voice_start_language","en")
     voice_agent_id= user_data.get("voice_agent_id",None)
+    voice_first_message = user_data.get("voice_first_message")
     logger.info(f"Received Voice_agent_id from user data (i.e from campaign model): {voice_agent_id}")
     credentials = get_communication_credential(dealership_id = user_data.get("dealership_id"), channel = "voice_phone")
 
@@ -226,6 +227,7 @@ def trigger_voice_call(*args, **kwargs):
         provider = credentials.get("provider_name", "tatatele").replace("-", "").strip().lower()
         session_data["agent_id"] = voice_agent_id if voice_agent_id else credentials.get("bot_name")
         session_data["language"] = voice_start_language if voice_start_language else "en"
+        session_data["voice_first_message"] = voice_first_message
         session_data["provider_credentials"] = {
             "tatatele_phone_number_api_key": credentials.get("auth_token")
         }
