@@ -60,7 +60,7 @@ def inbound_call(*args, **kwargs):
                 return jsonify({"status": "error", "message": "No session found for inbound status 'contacted'"})
 
             session = hp.make_single( sessions,  force = True)
-            logger.info(f"Session found for inbound status 'contacted': {session}")
+            logger.info(f"Latest session found for inbound status 'contacted': {session}")
             pg.update("session",
                     "session_id",
                     session["session_id"], 
