@@ -19,7 +19,7 @@ from voice.providers.elevanlabs_tatatele import (
     session_lock,
     run_async_in_thread,
     terminate_sessions_for_phone,
-    terminate_session
+    session_active
 )
 
 gryd.SERVICE = config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME
@@ -111,7 +111,7 @@ def start_call_from_inbound(*args, **kwargs):
         logger.info(f"Inbound call is ongoing for {customer_number}, checking status...")
         with gryd_tasks.get_pg_connector() as pg:
             contact_status = hp.make_single(list[Any](pg.list_order_by("contact_status", {"message_id": session_data["session_id"]}, order_by="created", order="DESC")), force = True)
-            if session_data["session_id"] not in call_sessions:
+            if not session_active(session_data["session_id"]):
                 logger.info(f"Session not found or likely to be terminated already....")
                 return 
             if (contact_status and contact_status.get("provider_status") in ["contacted"]):

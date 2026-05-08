@@ -43,7 +43,7 @@ def inbound_call(*args, **kwargs):
             }
 
             logger.info(f"Session filters: {filters}")
-            sessions =  list(
+            sessions =  list[Any](
                     pg.list_order_by("session", 
                     filters,
                     order_by="created", order="DESC")
