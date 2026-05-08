@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script>
+    (function () {
+      var theme = localStorage.getItem('jejo-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoEngage Formatter - JEJO</title>
+  <meta name="description" content="Convert dealership files into AutoEngage upload format using predefined column mappings." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root,
+    [data-theme="dark"] {
+      --bg: #080b10;
+      --bg-gradient: radial-gradient(ellipse at 15% -5%, rgba(230, 164, 86, 0.12), transparent 38rem),
+        radial-gradient(ellipse at 85% 5%, rgba(91, 156, 245, 0.10), transparent 32rem),
+        linear-gradient(180deg, #070a0f 0%, #0b1017 42%, #080c12 100%);
+      --surface: #10151d;
+      --surface2: #151c27;
+      --border: rgba(218, 230, 242, 0.09);
+      --accent: #a78bfa;
+      --accent-dim: #7c3aed;
+      --accent-soft: rgba(167, 139, 250, 0.14);
+      --success: #63d6a3;
+      --success-soft: rgba(99, 214, 163, 0.12);
+      --danger: #f16f6f;
+      --text: #f4f0e8;
+      --text-dim: #aeb8c3;
+      --text-muted: #6f7b88;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'Manrope', 'Inter', sans-serif;
+      --body: 'Inter', sans-serif;
+      --shadow-card: 0 18px 60px rgba(0, 0, 0, 0.26);
+      --grid-line: rgba(255, 255, 255, 0.022);
+      --thead-bg: #111820;
+    }
+
+    [data-theme="light"] {
+      --bg: #f3f5f8;
+      --bg-gradient: radial-gradient(ellipse at 15% -5%, rgba(230, 164, 86, 0.08), transparent 38rem),
+        radial-gradient(ellipse at 85% 5%, rgba(91, 156, 245, 0.06), transparent 32rem),
+        linear-gradient(180deg, #f3f5f8 0%, #eef1f5 42%, #f3f5f8 100%);
+      --surface: #ffffff;
+      --surface2: #f7f8fa;
+      --border: rgba(0, 20, 50, 0.08);
+      --accent: #7c3aed;
+      --accent-dim: #6d28d9;
+      --accent-soft: rgba(124, 58, 237, 0.12);
+      --success: #1a9960;
+      --success-soft: rgba(26, 153, 96, 0.08);
+      --danger: #d63636;
+      --text: #1a1e26;
+      --text-dim: #4a5568;
+      --text-muted: #8896a6;
+      --shadow-card: 0 8px 32px rgba(0, 30, 80, 0.06);
+      --grid-line: rgba(0, 0, 0, 0.03);
+      --thead-bg: #f0f2f6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text);
+      font-family: var(--body);
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 52px 52px;
+      -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 65%);
+      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 65%);
+    }
+
+    header {
+      padding: 1.35rem 2rem 1.15rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(8, 11, 16, 0.78);
+      backdrop-filter: blur(18px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    [data-theme="light"] header {
+      background: rgba(255, 255, 255, 0.85);
+    }
+
+    .header-inner {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.1rem;
+      flex-wrap: wrap;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .header-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.22rem;
+    }
+
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      color: #15100a;
+      text-decoration: none;
+      font-family: var(--sans);
+      font-weight: 800;
+      background: linear-gradient(135deg, #c4b5fd, #a78bfa, #7c3aed);
+    }
+
+    .header-badge {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.2rem 0.6rem;
+      display: inline-flex;
+      margin-bottom: 0.12rem;
+    }
+
+    h1 {
+      font-family: var(--sans);
+      font-size: clamp(1.3rem, 1.8vw, 1.75rem);
+      font-weight: 800;
+      line-height: 1.08;
+      margin: 0;
+    }
+
+    .header-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+      margin-top: 0.05rem;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      row-gap: 0.5rem;
+    }
+
+    .nav-link,
+    .theme-toggle {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.75rem;
+      font-weight: 700;
+      transition: all 0.2s;
+    }
+
+    [data-theme="light"] .nav-link,
+    [data-theme="light"] .theme-toggle {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.5rem 0.8rem;
+    }
+
+    .theme-toggle {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+
+    .nav-link:hover,
+    .nav-link.active,
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    [data-theme="dark"] .icon-sun {
+      display: none;
+    }
+
+    [data-theme="light"] .icon-moon {
+      display: none;
+    }
+
+    main {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 1.7rem 2rem 2.1rem;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: var(--shadow-card);
+      padding: 1.25rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .section-title {
+      font-family: var(--sans);
+      font-weight: 800;
+      margin-bottom: 0.9rem;
+      position: relative;
+      padding-left: 0.7rem;
+    }
+
+    .section-title::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.15rem;
+      width: 3px;
+      height: calc(100% - 0.3rem);
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .select,
+    .btn {
+      min-height: 42px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 0.6rem 0.9rem;
+      font-size: 0.82rem;
+      font-family: var(--body);
+    }
+
+    .select {
+      background: var(--surface2);
+      color: var(--text);
+      min-width: 260px;
+      flex: 1 1 280px;
+    }
+
+    .btn {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .btn-primary {
+      border: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #1a0e00;
+    }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .btn-upload {
+      border: 1px solid rgba(167, 139, 250, 0.45);
+      background: linear-gradient(135deg, #ddd6fe, var(--accent));
+      color: #22123d;
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .drop-zone {
+      border: 1.4px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 1rem;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.02);
+      transition: all 0.2s;
+      margin-bottom: 0.9rem;
+    }
+
+    [data-theme="light"] .drop-zone {
+      border-color: var(--border);
+      background: rgba(0, 0, 0, 0.01);
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .drop-zone.has-file {
+      border-style: solid;
+      border-color: var(--success);
+      background: var(--success-soft);
+    }
+
+    .dz-label {
+      font-family: var(--sans);
+      font-weight: 800;
+      margin-bottom: 0.25rem;
+    }
+
+    .dz-sub {
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .upload-row {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    .step-note {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      line-height: 1.45;
+      margin-top: 0.1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .status {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    .status.ok {
+      color: var(--success);
+    }
+
+    .status.err {
+      color: var(--danger);
+    }
+
+    .mono {
+      font-family: var(--mono);
+    }
+
+    .hint {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.7rem;
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-dim);
+      font-size: 0.76rem;
+      margin-bottom: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 0.6rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .stat {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem;
+      background: var(--surface2);
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.64rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      font-weight: 700;
+    }
+
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-top: 0.15rem;
+    }
+
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .table-scroll {
+      overflow: auto;
+      max-height: 62vh;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.76rem;
+      min-width: 900px;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--thead-bg);
+    }
+
+    th,
+    td {
+      padding: 0.5rem 0.65rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    th {
+      color: var(--text-muted);
+      font-size: 0.65rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.25rem 2rem;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      border-top: 1px solid var(--border);
+    }
+
+    input[type=file] {
+      display: none;
+    }
+
+    @media (max-width: 980px) {
+      .header-right {
+        width: 100%;
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 780px) {
+      header,
+      main {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .select {
+        min-width: 0;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .controls .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <a class="brand-mark" href="index.html" aria-label="Go to home">J</a>
+        <div class="header-title-group">
+          <div class="header-badge">JEJO OPS</div>
+          <h1>AutoEngage Formatter</h1>
+          <div class="header-sub">Client file -> AutoEngage upload schema</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="header-nav">
+          <a class="nav-link" href="disposition_sync_v2.html">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Pre-Sales Sync
+          </a>
+          <a class="nav-link" href="post_sales_disposition.html">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12h6m2 7H7a2 2 0 01-2-2V7a2 2 0 012-2h3l2 2h5a2 2 0 012 2v3" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2 2 4-4" />
+            </svg>
+            Post-Sales Sync
+          </a>
+          <a class="nav-link" href="reattempt_filter.html">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Re-Attempt Filter
+          </a>
+          <a class="nav-link" href="dashboard.html">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+            </svg>
+            Dashboard
+          </a>
+          <a class="nav-link" href="call_analysis_summary.html">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 17v-6m4 6V7m4 10v-4M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            Call Summary
+          </a>
+          <a class="nav-link active" href="autongage_formatter.html">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Formatter
+          </a>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+          <svg class="icon-moon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+          <svg class="icon-sun" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="section-title">Step 1 - Template and file</div>
+      <div class="step-note">1) Choose template  2) Click Upload Sheet  3) Click Format File</div>
+      <div class="controls">
+        <select class="select" id="templateSelect"></select>
+        <button type="button" class="btn btn-upload" id="uploadBtn">Upload Sheet</button>
+        <button class="btn btn-primary" id="processBtn" onclick="processFile()" disabled>Format File</button>
+        <button class="btn btn-secondary" id="downloadBtn" onclick="downloadOutput()" disabled>Download XLSX</button>
+      </div>
+
+      <div class="drop-zone" id="dropZone">
+        <div class="upload-row">
+          <div>
+            <div class="dz-label">Upload client CSV/XLSX</div>
+            <div class="dz-sub">Use Upload Sheet button above, or drag and drop file into this area.</div>
+          </div>
+        </div>
+        <div class="status" id="fileStatus">No file selected</div>
+        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" />
+      </div>
+
+      <div class="hint mono" id="mappingHint"></div>
+      <div class="status" id="globalStatus"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title">Step 2 - Output preview</div>
+      <div class="stats">
+        <div class="stat"><div class="stat-label">Input Rows</div><div class="stat-value" id="inputRows">0</div></div>
+        <div class="stat"><div class="stat-label">Output Rows</div><div class="stat-value" id="outputRows">0</div></div>
+        <div class="stat"><div class="stat-label">Mapped Cells</div><div class="stat-value" id="mappedCells">0</div></div>
+        <div class="stat"><div class="stat-label">Default Cells</div><div class="stat-value" id="defaultCells">0</div></div>
+      </div>
+      <div class="table-wrap" id="tableWrap">
+        <div class="table-scroll">
+          <table>
+            <thead id="previewHead"></thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>JEJO Ops - AutoEngage Formatter - No backend - No install</footer>
+
+  <script>
+    const TEMPLATES = {
+      bullmenn_service: {
+        label: 'Bullmenn - Service Reminder',
+        sourceToTarget: {
+          'Sale Date': 'purchase_date',
+          'Dealer': 'workshop_code',
+          'Phone No': 'phone_number',
+          'Model': 'vehicle_model',
+          'Chassis No': 'VIN',
+          'Sales Customer Name': 'person_name',
+          'Vehicle Number': 'reg_number',
+          'Last Service Date': 'last_service_date',
+          'Service Due Date': 'next_service_due'
+        },
+        outputOrder: ['workshop_code', 'purchase_date', 'VIN', 'next_service_due', 'person_name', 'vehicle_model', 'reg_number', 'phone_number', 'alt_phone_number_2', 'last_service_date'],
+        defaults: {}
+      },
+      ambal_erode_service: {
+        label: 'Ambal ERODE - Service Reminder',
+        sourceToTarget: {
+          'Dealer Code': 'workshop_code',
+          'VIN': 'VIN',
+          'Due Date': 'next_service_due',
+          'Cust. Name': 'person_name',
+          'Model Name': 'vehicle_model',
+          'Registration Num': 'reg_number',
+          'Customer Mobile No.': 'phone_number',
+          'Last Scheduled Service KM': 'odometer_reading',
+          'Last Scheduled Service Date': 'last_service_date',
+          'Current Loyalty Points': 'customer_score'
+        },
+        outputOrder: ['workshop_code', 'VIN', 'next_service_due', 'person_name', 'vehicle_model', 'reg_number', 'phone_number', 'alt_phone_number_2', 'odometer_reading', 'last_service_date', 'customer_score', 'purpose_of_visit'],
+        defaults: { purpose_of_visit: 'yearly service' }
+      },
+      ambal_saibaba_service: {
+        label: 'Ambal SAIBABA - Service Reminder',
+        sourceToTarget: {
+          'Dealer Code': 'workshop_code',
+          'VIN': 'VIN',
+          'Due Date': 'next_service_due',
+          'Cust. Name': 'person_name',
+          'Model Name': 'vehicle_model',
+          'Registration Num': 'reg_number',
+          'Mobile Number': 'phone_number',
+          'Last Scheduled Service KM': 'odometer_reading',
+          'Last Scheduled Service Date': 'last_service_date',
+          'Current Loyalty Points': 'customer_score'
+        },
+        outputOrder: ['workshop_code', 'VIN', 'next_service_due', 'person_name', 'vehicle_model', 'reg_number', 'phone_number', 'alt_phone_number_2', 'odometer_reading', 'last_service_date', 'customer_score', 'purpose_of_visit'],
+        defaults: { purpose_of_visit: 'yearly service' }
+      },
+      suryabala_service: {
+        label: 'SURYABALA - Service Reminder',
+        sourceToTarget: {
+          'Customer Name': 'person_name',
+          'Contact Number': 'phone_number',
+          'Model Name': 'vehicle_model',
+          'Registration No.': 'reg_number',
+          'Next Service Type': 'service_type',
+          'Next Service Date': 'next_service_due',
+          'Frame #': 'vin_number'
+        },
+        outputOrder: ['person_name', 'phone_number', 'vehicle_model', 'reg_number', 'service_type', 'next_service_due', 'vin_number'],
+        defaults: {}
+      },
+      icare_feedback: {
+        label: 'ICARE - Post Service Feedback',
+        sourceToTarget: {
+          'Location Name': 'showroom_code',
+          'Bill No': 'lead_tags',
+          'Customer': 'person_name',
+          'Mobile No': 'phone_number'
+        },
+        outputOrder: ['showroom_code', 'person_name', 'phone_number', 'lead_tags'],
+        defaults: {}
+      },
+      anant_sales: {
+        label: 'Anant Cars - Sales / Lead Campaign',
+        sourceToTarget: {
+          'Customer Name': 'person_name',
+          'Customer Phone': 'phone_number',
+          'Product Family': 'interested_vehicle_name'
+        },
+        outputOrder: ['showroom_code', 'region_name', 'dealership_id', 'person_name', 'phone_number', 'interested_vehicle_name', 'interested_vehicle_brand_name', 'seating_capacity_preference', 'city', 'pincode', 'subdivision_name', 'alt_phone_number_2', 'lead_source'],
+        defaults: { interested_vehicle_brand_name: 'Mahindra' }
+      }
+    };
+
+    let rawFile = null;
+    let outputRows = [];
+
+    function canonicalHeader(text) {
+      return String(text || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+    }
+
+    function cellToString(value) {
+      if (value === undefined || value === null || value === '') return '';
+      if (typeof value === 'number') {
+        if (Number.isInteger(value)) return String(value);
+        if (value > 999999 && Math.abs(value - Math.round(value)) < 0.01) return String(Math.round(value));
+      }
+      return String(value).trim();
+    }
+
+    function setStatus(msg, type) {
+      const el = document.getElementById('globalStatus');
+      el.textContent = msg;
+      el.className = 'status' + (type ? ' ' + type : '');
+    }
+
+    function setCounts(inRows, outRows, mapped, defaults) {
+      document.getElementById('inputRows').textContent = inRows;
+      document.getElementById('outputRows').textContent = outRows;
+      document.getElementById('mappedCells').textContent = mapped;
+      document.getElementById('defaultCells').textContent = defaults;
+    }
+
+    function readFileAsArrayBuffer(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function parseSheet(ab) {
+      const wb = XLSX.read(ab, { type: 'array', raw: true, cellText: false, cellDates: false });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+      if (rows.length < 2) return [];
+      const rawHeaders = rows[0].map(cellToString);
+      const headers = rawHeaders.map(canonicalHeader);
+      const data = [];
+      for (let i = 1; i < rows.length; i++) {
+        const raw = rows[i];
+        if (!raw || raw.every(cell => cellToString(cell) === '')) continue;
+        const obj = {};
+        for (let j = 0; j < headers.length; j++) obj[headers[j]] = cellToString(raw[j]);
+        data.push(obj);
+      }
+      return { data, rawHeaders };
+    }
+
+    function buildMappingHint() {
+      const t = TEMPLATES[document.getElementById('templateSelect').value];
+      const lines = [];
+      for (const [src, trg] of Object.entries(t.sourceToTarget)) lines.push(src + ' -> ' + trg);
+      for (const [key, val] of Object.entries(t.defaults || {})) lines.push('[default] ' + key + ' = ' + val);
+      document.getElementById('mappingHint').textContent = lines.join(' | ');
+    }
+
+    async function processFile() {
+      if (!rawFile) return;
+      setStatus('Parsing file...', '');
+      try {
+        const template = TEMPLATES[document.getElementById('templateSelect').value];
+        const ab = await readFileAsArrayBuffer(rawFile);
+        const parsed = parseSheet(ab);
+        if (!parsed.data.length) {
+          setStatus('No data rows found in file.', 'err');
+          setCounts(0, 0, 0, 0);
+          return;
+        }
+
+        const sourceMap = {};
+        for (const [src, target] of Object.entries(template.sourceToTarget)) {
+          sourceMap[target] = canonicalHeader(src);
+        }
+
+        const rows = [];
+        let mappedCount = 0;
+        let defaultCount = 0;
+
+        for (const inputRow of parsed.data) {
+          const out = {};
+          for (const key of template.outputOrder) {
+            const sourceKey = sourceMap[key];
+            if (sourceKey && inputRow[sourceKey] !== undefined && inputRow[sourceKey] !== '') {
+              out[key] = inputRow[sourceKey];
+              mappedCount += 1;
+            } else if (template.defaults[key] !== undefined) {
+              out[key] = template.defaults[key];
+              defaultCount += 1;
+            } else {
+              out[key] = '';
+            }
+          }
+          rows.push(out);
+        }
+
+        outputRows = rows;
+        renderPreview(template.outputOrder, rows);
+        setCounts(parsed.data.length, rows.length, mappedCount, defaultCount);
+        document.getElementById('downloadBtn').disabled = !rows.length;
+        setStatus('Formatted ' + rows.length + ' row(s). Ready to download.', 'ok');
+      } catch (err) {
+        console.error(err);
+        setStatus('Error: ' + err.message, 'err');
+      }
+    }
+
+    function renderPreview(headers, rows) {
+      const head = document.getElementById('previewHead');
+      const body = document.getElementById('previewBody');
+      const preview = rows.slice(0, 250);
+      head.innerHTML = '<tr>' + headers.map(h => '<th>' + escapeHtml(h) + '</th>').join('') + '</tr>';
+      body.innerHTML = preview.map(row => '<tr>' + headers.map(h => '<td>' + escapeHtml(row[h]) + '</td>').join('') + '</tr>').join('');
+      document.getElementById('tableWrap').style.display = rows.length ? 'block' : 'none';
+    }
+
+    function downloadOutput() {
+      if (!outputRows.length) return;
+      const template = TEMPLATES[document.getElementById('templateSelect').value];
+      const headers = template.outputOrder;
+      const aoa = [headers];
+      for (const row of outputRows) aoa.push(headers.map(h => row[h] || ''));
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'AutoEngage');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const safeName = template.label.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
+      const fileName = safeName + '_AutoEngage_' + dateStr + '.xlsx';
+      XLSX.writeFile(wb, fileName);
+      setStatus('Downloaded ' + fileName, 'ok');
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('jejo-theme', theme);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    }
+
+    function setupDropZone() {
+      const zone = document.getElementById('dropZone');
+      const input = document.getElementById('fileInput');
+      const uploadBtn = document.getElementById('uploadBtn');
+      const fileStatus = document.getElementById('fileStatus');
+
+      input.addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+        rawFile = file;
+        fileStatus.textContent = 'Loaded: ' + file.name;
+        fileStatus.className = 'status ok';
+        zone.classList.add('has-file');
+        document.getElementById('processBtn').disabled = false;
+      });
+
+      uploadBtn.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        input.click();
+      });
+
+      zone.addEventListener('click', function () {
+        input.click();
+      });
+
+      zone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        zone.classList.add('drag-over');
+      });
+
+      zone.addEventListener('dragleave', function () {
+        zone.classList.remove('drag-over');
+      });
+
+      zone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        const f = e.dataTransfer.files[0];
+        if (!f) return;
+        const dt = new DataTransfer();
+        dt.items.add(f);
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change'));
+      });
+    }
+
+    function initTemplates() {
+      const select = document.getElementById('templateSelect');
+      const entries = Object.entries(TEMPLATES);
+      select.innerHTML = entries.map(([key, tpl]) => '<option value="' + key + '">' + tpl.label + '</option>').join('');
+      select.addEventListener('change', buildMappingHint);
+      buildMappingHint();
+    }
+
+    applyTheme(localStorage.getItem('jejo-theme') || 'dark');
+    initTemplates();
+    setupDropZone();
+  </script>
+</body>
+
+</html>
