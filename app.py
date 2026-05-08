@@ -216,8 +216,6 @@ app.register_blueprint(elevanlabs_tatatele_routes)
 app.register_blueprint(elevanlabs_tatatele_inbound_routes)
 app.register_blueprint(twilio_routes)
 app.register_blueprint(elevanlab_routes)
-
-
 app.register_blueprint(cohort_bp)
 app.register_blueprint(gryd_orchestration_bp)
 

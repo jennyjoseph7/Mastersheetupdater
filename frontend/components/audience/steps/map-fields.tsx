@@ -109,6 +109,10 @@ export function MapFields({ formData, updateFormData }: MapFieldsProps) {
         "drivetrain",
         "vehicle_variant",
         "lead_code_for_dealership",
+        "dealership_vehicle_code",
+         
+
+
 
         // VEHICLE IDENTIFIERS
         "vin_number",

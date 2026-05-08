@@ -1,3 +1,4 @@
+from asyncio.subprocess import create_subprocess_shell
 from time import time, monotonic
 import os, sys
 from gryd_worker import gryd_helpers as hp
@@ -120,7 +121,7 @@ def _build_bridge_timing_record(
 # ---- Config / env ----
 load_dotenv()
 API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_e232d2802c87154961d0fcdf71f5b418735282cc9a61a179")
-AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_5701ka8618cbfxcbdp4wg6xb3x23")
+AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_4501kp8jfafdfj297zej22s890y8")
 TATATELE_PHONE_NUMBER = os.environ.get("TATATELE_PHONE_NUMBER", "918065251305")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
@@ -137,6 +138,14 @@ session_lock = threading.Lock()
 
 
 # ---------- CallSession Class ----------
+
+def session_active(call_id, return_session = False):
+    with session_lock:
+        if call_id  in call_sessions:
+            if return_session:
+                return call_sessions[call_id]
+            return True
+        return False
 
 def terminate_session(call_id: str):
     with session_lock:
@@ -705,6 +714,7 @@ class CallSession:
 
                         elif ev == "stop":
                             logger.info(f"[{self.call_id}] Call ended by platform")
+                            self.stop_event.set()
                             break
 
                         elif ev == "mark":
@@ -717,6 +727,7 @@ class CallSession:
                         raise  # Re-raise to properly exit
                     except Exception as e:
                         logger.error(f"[{self.call_id}] Tatatele reader error: %s", e)
+                        self.stop_event.set()
                         break
 
             async def dave_reader():
@@ -769,13 +780,13 @@ class CallSession:
             logger.exception(f"[{self.call_id}] Main error: %s", e)
         finally:
             self.processed_agent_responses.clear()
-            try:
-                if self.dave_ws:
-                    ## TODO send ws.send FLAG TO CLOSE. to say lets close all connections from the room
-                    await self.dave_ws.close()
-                    self.dave_ws = None
-            except Exception as e:
-                logger.warning(f"[{self.call_id}] Error closing ElevenLabs WebSocket: {e}")
+            # try:
+            #     if self.dave_ws:
+            #         ## TODO send ws.send FLAG TO CLOSE. to say lets close all connections from the room
+            #         await self.dave_ws.close()
+            #         self.dave_ws = None
+            # except Exception as e:
+            #     logger.warning(f"[{self.call_id}] Error closing ElevenLabs WebSocket: {e}")
 
             # Hang up the TataTele phone call so the user isn't left on a dead line
             await self.hangup_tatatele_call()
@@ -827,11 +838,28 @@ class CallSession:
         except Exception as e:
             logger.exception(f"[{self.call_id}] connection failed: %s", e)
         finally:
-            try:
-                if ws:
-                    await ws.close()
-            except Exception as e:
-                logger.warning(f"[{self.call_id}] Error closing external WebSocket: {e}")
+            sockets_to_close = []
+            if ws:
+                sockets_to_close.append(("local_ws", ws))
+            if getattr(self, "external_ws", None):
+                sockets_to_close.append(("external_ws", self.external_ws))
+            if getattr(self, "dave_ws", None):
+                sockets_to_close.append(("dave_ws", self.dave_ws))
+
+            closed_ids = set()
+            for socket_name, socket_obj in sockets_to_close:
+                if id(socket_obj) in closed_ids:
+                    continue
+                closed_ids.add(id(socket_obj))
+                try:
+                    if not getattr(socket_obj, "closed", False):
+                        await socket_obj.close()
+                        logger.info(f"[{self.call_id}] Closed {socket_name}")
+                except Exception as e:
+                    logger.warning(f"[{self.call_id}] Error closing {socket_name}: {e}")
+
+            self.external_ws = None
+            self.dave_ws = None
             self.bridge_started = False
             logger.info(f"[{self.call_id}] external websocket closed")
 

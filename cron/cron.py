@@ -8,12 +8,12 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME, gryd, hp
+from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,gryd, hp,AutocrmModel
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
-from gryd_worker import gryd_db_helper as db, beats as cron_worker,gryd_audit_helper
+from gryd_worker import gryd,gryd_db_helper as db, beats as cron_worker,gryd_audit_helper
 from communication.connectors.communication_helpers import handle_session_post_process_or_end
 
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
@@ -37,6 +37,7 @@ def clear_otp_cache(logger=None, job=None):
 
 @gryd.is_a_task(function_name="overall_campaign_summary")
 def overall_campaign_summary():
+    mlogger.info("Running overall campaign summary...")
     with get_pg_connector() as pg:
 
         # Time before execution (force BIGINT -> Python int)
@@ -45,7 +46,7 @@ def overall_campaign_summary():
                 "SELECT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT"
             )
         )[0][0])
-
+        mlogger.info(f"Before: {before}")
         pg.execute_write(
             "CALL update_overall_campaign_summary();",
             _fetch=False
@@ -65,7 +66,7 @@ def overall_campaign_summary():
         )
 
         updated_rows = int(row[0]) if row else 0
-
+        mlogger.info(f"Updated Rows: {updated_rows}")
         # Count total rows (force BIGINT)
         row = next(
             pg.yield_results(
@@ -573,93 +574,7 @@ def create_campaign_ideas_for_dealerships(
     return {
         "created_idea_count": created_idea_count,
     }
-
-
-def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,channel_identifier,disposition,pg=None):
-    mlogger.info(f"In the campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
-    if not campaign_id:
-        mlogger.error(f"campaign_id is required for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
-        return
-    campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
-    def _do_db_work(pg_conn):
-        a=list(pg_conn.list(campaign_model, {"campaign_status": "Active"}))
-        if not a:
-            mlogger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
-            return
-        # TODO:before calling ananth task check the campaign status and then call.. 
-        mlogger.info(f"Calling next campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
-        gryd.create_async_task(
-            "determine_campaign_next_action",
-            AUTOCRM_CAMPAIGN_SERVICE_NAME,
-            args=[campaign_type,lead_id,channel,channel_identifier,disposition],
-            kwargs={"enterprise_id": AUTOCRM_APP_ENTERPRISE_ID},
-        )
-        # determine_campaign_next_action(campaign_type,lead_id,channel,channel_identifier,disposition,pg_conn)
-
-    if pg:
-        _do_db_work(pg)
-    else:
-        with get_pg_connector() as pg_conn:
-            _do_db_work(pg_conn)
-     
-def call_campaign_workflow(*args, **kwargs):
     
-    campaign_id = kwargs.get("campaign_id")
-    channel_identifier = kwargs.get("channel_identifier")
-    mlogger.info(f"campaign_id: {campaign_id}, channel_identifier: {channel_identifier}")
-    if not campaign_id:
-        return
-    with get_pg_connector() as pg:
-        query = """
-        SELECT DISTINCT ON (dict->>'lead_id')
-            dict->>'lead_id',
-            dict->>'provider_status',
-            dict->>'campaign_id',
-            dict->>'campaign_type',
-            dict->>'channel',
-            dict->>'phone_number',
-            dict->>'email'
-        FROM contact_status
-        WHERE dict->>'campaign_id' = %s
-        ORDER BY dict->>'lead_id', dict->>'created' DESC;
-        """
-        records = pg.fetch_all(query, (campaign_id,))
-        mlogger.info(f"records --{records}")
-        if not records:
-            return
-
-        columns = ["lead_id", "disposition", "campaign_id", "campaign_type", "channel", "phone_number", "email"]
-        
-        if isinstance(records, tuple):
-            records = [records]
-        
-        for row in records:
-            row_dict = dict(zip(columns, row))
-            mlogger.info(f"row_dict --{row_dict}")
-            channel = row_dict.get("channel")
-            # mlogger.info(f"channel --{channel}")
-            
-            if channel == "email":
-                c = row_dict.get("email")
-            elif channel in ["voice_phone", "sms", "whatsapp_chat"]:
-                c = row_dict.get("phone_number")
-            else:
-                c = None
-            # c=row_dict.get("email") if row_dict.get("channel") in ["email"] else row_dict.get("phone_number")
-            mlogger.info(f"channel_identifier --{c}")
-            # try:
-            #     call_next_campaign_workflow_task(
-            #         row_dict.get("campaign_id"),
-            #         row_dict.get("campaign_type"),
-            #         row_dict.get("lead_id"),
-            #         None,
-            #         channel_identifier,
-            #         row_dict.get("disposition"),
-            #         pg=pg
-            #     )
-            # except Exception as e:
-            #     print(f"[Workflow Error] Lead {row.get('lead_id')}: {str(e)}")
-
 @gryd.is_a_task('create_campaign_templates', logger_param='logger', job_param='job')
 def create_campaign_templates(logger=None, job=None):
     """
@@ -1525,3 +1440,252 @@ def reset_auth_creds(*args, **kwargs):
                 continue
 
     return "Completed!"
+
+def normalize_channels(raw_channels):
+    if not raw_channels:
+        return DEFAULT_CHANNELS
+
+    if isinstance(raw_channels, dict):
+        keys = list(raw_channels.keys())
+        if len(keys) == 1 and keys[0] == "null":
+            return DEFAULT_CHANNELS
+        return keys 
+
+    if isinstance(raw_channels, list):
+        if len(raw_channels) == 0:
+            return DEFAULT_CHANNELS
+        return raw_channels
+
+    return DEFAULT_CHANNELS
+
+def get_queue_length(pg,channel,dealership_id=None):
+    mlogger.info(f"Getting queue length for dealership_id={dealership_id} and channel={channel}")
+    if channel in ["whatsapp","whatsapp_chat", "rms","email"]:
+        que_length=gryd.get_queue_length(service=AUTOCRM_COMMUNICATION_SERVICE_NAME)
+        print("Queue length for whatsapp_chat",que_length)
+        return que_length
+    elif channel in ["voice_phone", "voice"]:
+        #TODO: get the function from nikit for each dealership_id 
+        return 0
+    
+def get_all_dealerships(pg, channel_filter=None):
+    # query = """
+    #     SELECT DISTINCT ON (dict->>'dealership_id')
+    #         dict->>'dealership_id' AS dealership_id,
+    #         COALESCE(dict->'channels', '[]'::jsonb) AS channels
+    #     FROM dealership
+    #     ORDER BY dict->>'dealership_id'
+    # """
+    result = list(pg.list("dealership", {}))
+    dealerships = []
+
+    for row in result:
+        dealership_id = row.get("dealership_id")
+        raw_channels = row.get("channels")
+        channels = normalize_channels(raw_channels)
+
+        if channel_filter:
+            channels = [c for c in channels if c in channel_filter]
+
+        if not channels:
+            continue
+
+        dealerships.append({
+            "id": dealership_id,
+            "channels": channels
+        })
+
+    return dealerships
+def process_channel_leads(pg,dealership_id, channel, batch_size):
+    leads = fetch_leads(dealership_id, channel, batch_size)
+    mlogger.info(f"[FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
+    if not leads:
+        mlogger.info(f"[EMPTY] No leads for {dealership_id} - {channel}")
+        return
+
+    mlogger.info(f"[PROCESS] Processing {len(leads)} leads for {dealership_id} - {channel}")
+
+    for lead in leads:
+        process_lead(pg,lead, channel)
+
+
+def process_lead(pg,lead, channel):
+    # mlogger.info(f"[PROCESS] Processing lead for channel {lead}")
+    lead_id=None
+    try:
+        data, lead_type = lead  
+        campaign_type=data.get("campaign_type")
+        lead_model="pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
+        lead_model_id="pre_sales_lead_id" if campaign_type == "pre-sales" else "post_sales_lead_id"
+        lead_id=data.get(lead_model_id)
+        mlogger.info("[PROCESS] Processing lead %s for channel %s", lead_id,channel)
+        
+        # TODO: Based on the next_trigger and  next_channel call process_single_lead
+        # TODO: update these attributes in lead_model
+        # pg.update(lead_model,lead_model_id,lead_id,{
+        #     "next_channel": None,
+        #     "next_channel_identifier": None,
+        #     "next_schedule_time": None,
+        #     "next_trigger": None
+        # })
+        
+
+    except Exception as e:
+        mlogger.error(f"[FAILED] Lead {lead_id}")
+
+
+def fetch_leads(dealership_id, channel, batch_size):
+    with get_pg_connector() as pg:
+        query = """
+            WITH pre AS (
+                SELECT dict, 'pre_sales' AS lead_type
+                FROM pre_sales_lead
+                WHERE 
+                    dict->>'dealership_id' = %s
+                    AND dict->>'next_channel' = %s
+                    AND (dict->>'next_schedule_time')::DOUBLE PRECISION <= EXTRACT(EPOCH FROM NOW())
+                ORDER BY (dict->>'next_schedule_time')::DOUBLE PRECISION ASC
+                LIMIT %s
+            ),
+            post AS (
+                SELECT dict, 'post_sales' AS lead_type
+                FROM post_sales_lead
+                WHERE 
+                    dict->>'dealership_id' = %s
+                    AND dict->>'next_channel' = %s
+                    AND (dict->>'next_schedule_time')::DOUBLE PRECISION <= EXTRACT(EPOCH FROM NOW())
+                ORDER BY (dict->>'next_schedule_time')::DOUBLE PRECISION ASC
+                LIMIT %s
+            )
+            SELECT *
+            FROM (
+                SELECT * FROM pre
+                UNION ALL
+                SELECT * FROM post
+            ) t
+            ORDER BY (dict->>'next_schedule_time')::DOUBLE PRECISION ASC
+            LIMIT %s
+        """
+        params = (
+            dealership_id, channel, batch_size,
+            dealership_id, channel, batch_size,
+            batch_size
+        )
+        _leads=pg.fetch_all(query, params)
+        mlogger.info(f"TOTAL LEADS-->{len(_leads)}")
+        # mlogger.info(f"LEAD_DATA-->{json.dumps(_leads,indent=4)}")
+        return _leads
+
+def process_dealerships(pg, dealerships, max_threshold, is_voice=False):
+    for dealership in dealerships:
+        dealership_id = dealership["id"]
+        channels = dealership["channels"]
+        #mlogger.info(f"channels--{channels}")
+        for channel in channels:
+            try:
+                if is_voice:
+                    queue_length = get_queue_length(pg, channel, dealership_id)
+                else:
+                    queue_length = get_queue_length(pg, channel)
+
+                mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
+
+                if queue_length <= max_threshold:
+                    process_channel_leads(pg, dealership_id, channel, max_threshold)
+                else:
+                    mlogger.info(f"[SKIP] Queue>{max_threshold} for dealership={dealership_id}, channel={channel}")
+                    continue  
+
+            except Exception as e:
+                mlogger.error(f"[ERROR] Failed for dealership={dealership_id}, channel={channel}")
+
+@gryd.is_a_task(function_name="process_all_dealerships_for_voice")
+def process_all_dealerships_for_voice(voice_batch_size=None):
+    mlogger.info("-------Process all dealerships for voice phone and trigger campaign next action-------")
+
+    max_threshold = voice_batch_size or VOICE_BATCH_SIZE
+
+    with get_pg_connector() as pg:
+        dealerships = get_all_dealerships(pg, channel_filter=VOICE_CHANNELS)
+
+        mlogger.info(f"Total dealerships for channel - voice_phone = {len(dealerships)}")
+
+        process_dealerships(pg,dealerships,max_threshold,is_voice=True)
+        
+@gryd.is_a_task(function_name="process_dealerships_non_voice")
+def process_dealerships_non_voice(batch_size=None):
+    mlogger.info("-------Process all dealerships for non voice channels and trigger campaign next action-------")
+
+    max_threshold = batch_size or NON_VOICE_BATCH_SIZE
+
+    with get_pg_connector() as pg:
+        dealerships = get_all_dealerships(pg, channel_filter=NON_VOICE_CHANNELS)
+
+        mlogger.info(f"Total dealerships for non voice channels = {len(dealerships)}")
+
+        process_dealerships(pg,dealerships,max_threshold,is_voice=False)
+
+@gryd.is_a_task(function_name="manage_socket_server_load", job_param = 'job', logger_param = 'logger')
+def manage_socket_server_load(
+        upgrade_threshold = None,
+        socket_server_app_name = None,
+        max_replicas = 100,
+        logger = None,
+        job = None
+    ):
+    """
+    function to go through all the socket servers, associated with the current environment,
+    scale_up if any one has max_connections - upgrade_threshold connections,
+    scale_down if total connections < upgrade_threshold * total servers
+    """
+    logger = logger or mlogger
+    ssm = AutocrmModel("socket_server")
+    environment = os.environ.get('ENVIRONMENT', 'local')
+    upgrade_threshold = upgrade_threshold or 10
+    gke_namespace = os.environ.get('GKE_NAMESPACE', 'autobot')
+    socket_server_app_name = os.environ.get('AUTOCRM_WEBSOCKET_APP', 'autocrm-socket')
+    wctr = cron_worker.wctr.get_controller('gke')
+    v1 = wcrt.app_client_v1()
+    def scale_up(count = 1):
+        current_replicas = 0
+        ml = list(map(lambda x: (x.metadata.name, x.spec.replicas), list(filter(lambda x: (x.metadata.name == socket_server_app_name), v1.list_namespaced_deployment(gke_namespace).items))))
+        if ml:
+            current_replicas = ml[0][1]
+        new_replicas = current_replicas + count
+        new_replicas = max(min(new_replicas, max_replicas), 0)
+        if new_replicas == current_replicas:
+            logger.info("Reached threshold, so not scaling by %s", count)
+            return current_replicas
+        body = {"spec": {"replicas": new_replicas}}
+        # Apply the patch to scale the deployment
+        r = v1.patch_namespaced_deployment_scale(
+            name=socket_server_app_name, 
+            namespace=gke_namespace, 
+            body=body
+        )
+        logger.info("Scaled app %s in namespace %s for environment %s to %s, by %s", socket_server_app_name, gke_namespace, environment, r.spec.replicas, count)
+        return r.spec.replicas
+    any_connections = 0
+    any_servers = 0
+    to_delete = []
+    kwargs = {
+        "environment": environment,
+    }
+    for sv in ssm.yield_list(**kwargs):
+        if not sv.get('last_uptime_ping') or sv.get('last_uptime_ping') < hp.epoch() - 120:
+            to_delete.append(sv.get('socker_server_id'))
+        else:
+            any_servers += 1
+        any_connection += sv.get('active_connections')
+        if sv.get('active_connections', 0) > sv.get('max_active_connections', 100) - upgrade_threshold:
+            scale_up()
+            return True
+    if (any_connections < upgrade_threshold*any_servers) and any_servers > 1:
+        logger.info("Total active connections %s are less than %s x %s, scaling down", any_connections, upgrade_threshold, any_servers)
+        scale_up(-1)
+        return True
+    for k in to_delete:
+        ssm.delete(k)
+    return False
+
+

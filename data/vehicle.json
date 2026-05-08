@@ -21,8 +21,22 @@
             }
         },
         {
+            "name": "region_name",
+            "default": "India"
+        },
+        {
             "name": "variant_id",
-            "type": "uid"
+            "type": "uid",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "variant",
+                    "variant_id"
+                ],
+                "kwargs": {
+                    "variant_aliases": "{variant_name}"
+                }
+            }
         },
         {
             "name": "variant_name",
@@ -73,16 +87,37 @@
             "name": "vehicle_model_id",
             "type": "uid",
             "default": {
-                "function": "get_from_model",
+                "function": "set_if_condition",
                 "args": [
-                    "variant",
-                    "variant_id",
-                    "vehicle_model_id"
-                ]
+                    {
+                        "function": "search_in_model",
+                        "args": [
+                            "vehicle_model",
+                            "vehicle_model_id"
+                        ],
+                        "kwargs": {
+                            "vehicle_model_name": "{vehicle_model_name}"
+                        }
+                    },
+                    {
+                        "function": "get_from_model",
+                        "args": [
+                            "variant",
+                            "variant_id",
+                            "vehicle_model_id"
+                        ]
+                    }
+                ],
+                "kwargs": {
+                    "vehicle_model_name~": null
+                }
             },
             "indexed": true,
             "auto_updater": true,
-            "force_update": "variant_id"
+            "force_update": [
+                "variant_id",
+                "vehicle_model_name"
+            ]
         },
         {
             "name": "vehicle_model_name",
@@ -103,12 +138,32 @@
             "name": "vehicle_brand_id",
             "type": "uid",
             "default": {
-                "function": "get_from_model",
+                "function": "set_if_condition",
                 "args": [
-                    "variant",
-                    "variant_id",
-                    "vehicle_brand_id"
-                ]
+                    {
+                        "function": "search_in_model",
+                        "args": [
+                            "brand",
+                            "brand_id"
+                        ],
+                        "kwargs": {
+                            "brand_name": "{vehicle_brand_name}",
+                            "region_name": "{region_name}"
+                        }
+                    },
+                    {
+                        "function": "get_from_model",
+                        "args": [
+                            "variant",
+                            "variant_id",
+                            "vehicle_brand_id"
+                        ]
+                    }
+                ],
+                "kwargs": {
+                    "vehicle_brand_name~": null,
+                    "region_name~": null
+                }
             },
             "indexed": true,
             "auto_updater": true,
@@ -137,7 +192,7 @@
                 "args": [
                     "variant",
                     "variant_id",
-                    "vehicle_model_year"
+                    "model_year"
                 ]
             },
             "auto_updater": false,
@@ -164,11 +219,16 @@
         {
             "name": "reg_number",
             "type": "text",
-            "required": true,
-            "indexed": true
+            "indexed": true,
+            "unique": true
         },
         {
             "name": "vin_number",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "dealership_vehicle_code",
             "type": "text",
             "indexed": true
         },
@@ -240,11 +300,13 @@
         },
         {
             "name": "engine_number",
-            "type": "text"
+            "type": "text",
+            "indexed": true
         },
         {
             "name": "chassis_number",
-            "type": "text"
+            "type": "text",
+            "indexed": true
         },
         {
             "name": "accessories",
@@ -633,15 +695,25 @@
             "auto_updater": true,
             "default": {
                 "args": [
+                    "region_name",
                     "variant_name",
                     "variant_color_name",
-                    "vin_number"
+                    "vehicle_model_name",
+                    "vehicle_brand_name",
+                    "vehicle_model_year",
+                    "reg_number",
+                    "vin_number",
+                    "chassis_number",
+                    "engine_number",
+                    "dealership_vehicle_code"
                 ],
                 "function": "name_to_id",
                 "kwargs": {
-                    "attribute_join": " ",
-                    "is_unique": true,
-                    "separator": " - "
+                    "case": "lower",
+                    "attribute_join": "-",
+                    "separator": "-",
+                    "skip_empty": true,
+                    "is_unique": true
                 }
             },
             "name": "vehicle_id",
