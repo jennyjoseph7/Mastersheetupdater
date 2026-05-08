@@ -1,11 +1,12 @@
 {
-    "webapp": {
-        "port": 5000,
-        "url_scheme": "http",
-        "api_threads": 4,
-        "name": "app"
-    },
-    "agents": [],
+    "webapps": [
+        {
+            "port": 5000,
+            "url_scheme": "http",
+            "api_threads": 8,
+            "name": "app"
+        }
+    ],
     "workers": [
         {
             "name": "agents",
@@ -60,7 +61,7 @@
             "name": "conversation",
             "entry_point": "lead_post_processing.py",
             "gryd_service": "AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME",
-            "parallel_threads": 1,
+            "parallel_threads": 2,
             "shutdown_time": 0
         },
         {
@@ -68,6 +69,13 @@
             "entry_point": "gryd_tasks.py",
             "parallel_threads": 3,
             "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME",
+            "shutdown_time": 0
+        },
+        {
+            "name": "voice",
+            "entry_point": "inbound_call.py",
+            "parallel_threads": 1,
+            "gryd_service": "AUTOCRM_VOICE_INBOUND_SERVICE_NAME",
             "shutdown_time": 0
         },
         {
@@ -81,7 +89,7 @@
             "name": "brochure_pipeline",
             "entry_point": "brochure_task.py",
             "gryd_service": "AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME",
-            "parallel_threads": 1,
+            "parallel_threads": 4,
             "shutdown_time": 0
         },
         {

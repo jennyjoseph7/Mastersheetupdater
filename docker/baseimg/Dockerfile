@@ -13,9 +13,6 @@ WORKDIR /root/
 RUN python3 -m venv pyenv
 ENV PYENV_PATH=pyenv
 
-COPY requirements.txt /tmp
-COPY spark_requirements.txt /tmp
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
-RUN /root/pyenv/bin/pip install -U pip setuptools
-RUN /root/pyenv/bin/pip install --ignore-installed -r /tmp/requirements.txt
-RUN /root/pyenv/bin/pip install --ignore-installed -r /tmp/spark_requirements.txt
+RUN /root/pyenv/bin/pip install -U pip setuptools google-auth google-cloud-aiplatform google-genai
+RUN /root/pyenv/bin/pip install torch

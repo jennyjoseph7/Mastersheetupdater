@@ -30,7 +30,8 @@
                     "brand_id"
                 ],
                 "kwargs": {
-                    "brand_name": "{brand_name}"
+                    "brand_name": "{brand_name}",
+                    "region_name": "{region_name}"
                 }
             }
         },
@@ -40,7 +41,17 @@
         },
         {
             "name": "region_id",
-            "refers": "parents.brand.region_id"
+            "refers": "parents.brand.region_id",
+            "default": {
+                "function": "search_in_model",
+                "args": [
+                    "region",
+                    "region_id"
+                ],
+                "kwargs": {
+                    "region_name": "{region_name}"
+                }
+            }
         },
         {
             "name": "region_name",
@@ -220,6 +231,13 @@
                     "vehicle_category",
                     "vehicle_type"
                 ]
+            },
+            "default": {
+                "function": "ensure_in_list",
+                "args": [
+                    "vehicle_category",
+                    "vehicle_type"
+                ]
             }
         },
         {
@@ -273,15 +291,17 @@
             "auto_updater": true,
             "default": {
                 "args": [
+                    "brand_name",
                     "vehicle_model_name",
-                    "brand_name"
+                    "region_id"
                 ],
                 "function": "name_to_id",
                 "kwargs": {
                     "case": "lower",
                     "attribute_join": "-",
                     "is_unique": true,
-                    "separator": "-"
+                    "separator": "-",
+                    "skip_empty": true
                 }
             },
             "name": "vehicle_model_id",

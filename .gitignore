@@ -58,12 +58,13 @@ Thumbs.db
 *.wmv
 
 *audit_logs*
+*logs*
 *__pycache__*
 .env/*
 setup.sh
 *.sw*
 AWSCLIV2.pkg
-
+*.pid
 
 core/testBillModel.py
 core/rezorpay_fe_test.html
@@ -76,3 +77,5 @@ frontend/app/campaign/create/page copy.tsx
 frontend/app/campaign/create/page copy 2.tsx
 .vscode
 
+frontend/csvtojson.html
+frontend/objective.html

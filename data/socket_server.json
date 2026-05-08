@@ -1,0 +1,50 @@
+{
+    "name": "socket_server",
+    "attributes": [
+        {
+            "name": "socket_server_url",
+            "type": "text",
+            "indexed": true,
+            "required": true
+        },
+        {
+            "name": "environment",
+            "type": "text",
+            "default": "autongage-production",
+            "indexed": true,
+            "required": true
+        },
+        {
+            "name": "socker_server_id",
+            "id": true,
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "socket_server_url",
+                    "environment"
+                ]
+            }
+        },
+        {
+            "name": "active_connections",
+            "type": "number",
+            "default": 0,
+            "indexed": true
+        },
+        {
+            "name": "max_active_connections",
+            "type": "number",
+            "default": 100
+        },
+        {
+            "name": "rooms",
+            "type": "list",
+            "default": [],
+            "indexed": true
+        },
+        {
+            "name": "last_uptime_ping",
+            "type": "number"
+        }
+    ]
+}

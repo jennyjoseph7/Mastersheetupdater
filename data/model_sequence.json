@@ -1,8 +1,12 @@
 [
+    "socket_server",
     "oem",
     "dealer_group",
     "person",
     "communication_provider",
+    "voice_provider",
+    "voice_agent",
+    "voice_language",
     "document",
     "region",
     "region_subdivision",

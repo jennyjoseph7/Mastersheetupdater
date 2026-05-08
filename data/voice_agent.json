@@ -1,0 +1,126 @@
+{
+    "name": "voice_agent",
+    "parents": [
+        "voice_provider"
+    ],
+    "attributes": [
+        {
+            "name": "voice_provider_id",
+            "refers": "parents.voice_provider.voice_provider_id",
+            "indexed": true
+        },
+        {
+            "name": "voice_provider_name",
+            "refers": "parents.voice_provider.voice_provider_name",
+            "indexed": true
+        },
+        {
+            "name": "name",
+            "type": "text",
+            "required": true,
+            "indexed": true
+        },
+        {
+            "name": "languages",
+            "type": "list",
+            "list_type": "text",
+            "indexed": true,
+            "default": [
+                "english"
+            ],
+            "options": [
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujarati",
+                "bengali",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic",
+                "french",
+                "bahasa_indonesia",
+                "tagalog",
+                "portuguese"
+            ]
+        },
+        {
+            "name": "default_language",
+            "type": "text",
+            "options": [
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujarati",
+                "bengali",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic",
+                "french",
+                "bahasa_indonesia",
+                "tagalog",
+                "portuguese"
+            ],
+            "default": "english"
+        },
+        {
+            "name": "accent",
+            "type": "text"
+        },
+        {
+            "name": "royalty_per_second",
+            "type": "number",
+            "default": 0
+        },
+        {
+            "name": "royalty_currency",
+            "type": "text",
+            "default": "INR"
+        },
+        {
+            "name": "agent_id",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "speaker_name",
+            "type": "text"
+        },
+        {
+            "name": "speaker_phone_number",
+            "type": "text"
+        },
+        {
+            "name": "speaker_phone_email",
+            "type": "text"
+        },
+        {
+            "name": "voice_agent_id",
+            "id": true,
+            "type": "uid",
+            "auto_updater": true,
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "voice_provider_name",
+                    "name",
+                    "gender",
+                    "languages"
+                ]
+            }
+        }
+    ]
+}

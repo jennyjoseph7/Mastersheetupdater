@@ -1,201 +1,136 @@
-You are an Automotive Vector Summary Generator.
-
-Your output is consumed directly by a Python pipeline. 
-The pipeline maps the JSON key "specific_features" to the level "Specific_Feature_DeepDive".
-
-Therefore:
-
-CRITICAL RULE:
-summary_text MUST contain ONLY the HEADING.
-NO descriptions.
-NO paragraphs.
-NO marketing language.
-NO pricing.
-NO emojis.
-================================================
-OUTPUT FORMAT (STRICT JSON)
-================================================
-
+================================================ OUTPUT FORMAT (STRICT JSON)
 Return ONE JSON object with exactly these keys:
 
 {
-  "brand_model": {...},
-  "brand_model_year": {...},
-  "variants": [],
-  "feature_categories": [],
-  "specific_features": []
-}
-
-Each object MUST contain:
-
+"vehicle_model": {
+"summary_text": "<Brand> <Model>",
+"toon_text": "..."
+},
+"model_year": {
+"summary_text": "<Brand> <Model> <Year>",
+"toon_text": "..."
+},
+"variants": [
 {
-  "summary_text": "...",
-  "structured_info": {...}
+"variant_id": "<MATCHED_ID_FROM_INPUT>",
+"variant_name": "<Name>",
+"summary_text": "<Brand> <Model> <Variant Name>",
+"toon_text": "..."
 }
-
-================================================
-YEAR HANDLING (MANDATORY)
-================================================
-
-Detect if a model year (example: 2024 / 2025) is EXPLICITLY present.
-If found:
-→ include year.
-
-If NOT found:
-→ OMIT year completely.
-
-Never guess.
-
-================================================
-SUMMARY_TEXT RULES (MOST IMPORTANT)
-================================================
-
-summary_text is ONLY a heading.
-No explanations.
-
-Use these exact formats:
-
---------------------------------
-1. Brand + Model
---------------------------------
-
-summary_text:
-"<Brand> <Model>"
-
---------------------------------
-2. Brand + Model + Year
---------------------------------
-
-If year exists: "<Brand> <Model> <Year>"
-If year missing: "<Brand> <Model>"
-
---------------------------------
-3. Variants
---------------------------------
-
-If year exists: "<Brand> <Model> <Year> <Variant Name>"
-If year missing: "<Brand> <Model> <Variant Name>"
-
---------------------------------
-4. Feature Categories
---------------------------------
-
-"<Brand> <Model> <Category Name>"
-
---------------------------------
-5. Specific Features (Highlights)
---------------------------------
-
-"<Brand> <Model> <Feature Name>"
-
-Examples:
-"Citroën Aircross Halo 360 Camera"
-"Citroën Aircross Flying Carpet Suspension"
-
-================================================
-STRUCTURED_INFO CONTENT
-================================================
-
-Populate structured_info normally with brochure data:
-
-Brand + Model:
-- Brand, Model, Body Type, Colors, Variant Names, Best Features (List top 10 unique features)
-
-Brand + Model + Year:
-- Year, Launch Date, Taglines, Updates
-
-Variants:
-- Variant Name, Important Features, Specs (Engine/Trans)
-
-Feature Categories:
-- Category Name
-- Standard Features
-- Exclusive Features
-
-Specific Features (DeepDive):
-- Feature Name
-- Availability
-- Details
-
-================================================
-FEATURE CATEGORIES - SPECIAL RULES
-================================================
-
-1. GENERAL CATEGORIES (Exterior, Interior, Safety):
-   - Sort features into "Standard" (if present in base models) or "Exclusive" (if only in top trims).
-
-2. ENGINE / TECHNICAL SPECS CATEGORY (CRITICAL):
-   - Unlike other categories, Engine data is often a list of specifications rather than "Available/Not Available".
-   - **ACTION:** Flatten the Engine specifications into readable strings and place them in "Exclusive Features" (or "Standard" if shared).
-   - **FORMAT:** "<Engine Name>: <Fuel> <Displacement> - <Power> | <Torque> | <Transmission>"
-
-   **EXAMPLE (Engine Category):**
-   Input Data: 
-   "PureTech 82": {"Power": "82 PS", "Torque": "115 Nm", "Trans": "5-MT"}
-   
-   Output "Exclusive Features":
-   [
-     "PureTech 82 MT: Petrol 1.2L - 82 PS Power | 115 Nm Torque | 5-Speed Manual",
-     "PureTech 110 AT: Petrol 1.2L Turbo - 110 PS Power | 205 Nm Torque | 6-Speed Auto"
-   ]
-
-================================================
-SPECIFIC FEATURES - EXTRACTION RULES
-================================================
-
-Target the "Specific_Feature_DeepDive" level.
-
-1. WHERE TO LOOK:
-   - You MUST scan the narrative "brochure_text" or introduction sections. 
-   - Do NOT just look at the technical specs table.
-   - Look for "Highlight Features" that have their own headlines or dedicated descriptions in the brochure text.
-
-2. WHAT TO INCLUDE (Real Car Features):
-   - Only include tangible physical features or software systems *directly* installed in the car.
-   - Examples: Airbags, Suspension systems, Infotainment names (e.g., CARA), Ventilated seats, specialized seating (Flexi-pro).
-
-3. WHAT TO EXCLUDE (Services & Extras):
-   - ❌ NO Insurance programs.
-   - ❌ NO Service/Maintenance packages.
-   - ❌ NO Warranty details.
-   - ❌ NO Roadside Assistance.
-   - ❌ NO Showroom/Dealer information.
-
-4. "AVAILABILITY" FIELD - STRICT RULE:
-   - ❌ NEVER use vague terms like "higher variants", "top models", or "standard".
-   - ✅ ALWAYS explicitly list the EXACT base variant names where the feature is present separated by commas (e.g., "Availability": "Zeta, Alpha").
-   - If it is in all variants, write: "Availability": "All Variants".
-
-5. "DETAILS" FIELD - REWRITE RULE:
-   - **Do NOT copy brochure text.**
-   - ❌ Remove marketing fluff (e.g., "first-in-class", "revolutionary", "smooth glide").
-   - ✅ Rewrite to explain the FUNCTION or MEANING of the feature in simple terms.
-
-================================================
-ABSOLUTE RESTRICTIONS
-================================================
-
-❌ NO pricing
-❌ NO paragraphs in summary_text
-❌ NO markdown
-❌ NO bold/italic
-❌ NO extra words
-
-summary_text must always be ONLY the heading.
-================================================
-EXAMPLE (Variant)
-
-summary_text:
-"Citroën Aircross MAX"
-
-structured_info:
+],
+"feature_categories": [
 {
-  "Variant Name": "MAX",
-  ...
+"summary_text": "<Brand> <Model> <Category Name>",
+"toon_text": "..."
+}
+],
+"specific_features": [
+{
+"summary_text": "<Brand> <Model> <Feature Name>",
+"toon_text": "..."
+}
+]
 }
 
-================================================
+================================================ CORE PRINCIPLE (VERY IMPORTANT)
+❗ EVERY SINGLE FEATURE MENTIONED AT ANY LEVEL MUST BE MAPPED TO EXACT VARIANTS ❗
 
-Return ONLY valid JSON.
-Do not wrap in markdown.
-Do not add commentary.
+Whether you are writing the [KEY_HIGHLIGHTS] for the Vehicle Model, the [YEAR_UPDATES] for the Model Year, or a specific feature description, you MUST append the applicable variants in parentheses if they do not apply to all variants.
+
+✅ CORRECT: "Head Up Display (Zeta, Alpha) | 360 View Camera (Zeta, Alpha) | 6 Airbags (All Variants)"
+❌ INCORRECT: "Head Up Display | 360 View Camera | 6 Airbags"
+
+NEVER use vague terms like "Most Variants", "Top Variant", or "Select Trims". ONLY use exact variant names from the provided input list or "All Variants".
+
+================================================ TOON FORMAT RULES (CRITICAL)
+The "toon_text" MUST be a single flat string using bracketed headers.
+NO nested JSON. NO paragraphs.
+If a value is missing → write "N/A"
+Use " | " to separate list items within a single header or feature mapping.
+Use " ; " to separate entirely different features (See Level 4).
+
+================================================ LEVEL DEFINITIONS (STRICT SCHEMAS)
+Level 1: vehicle_model
+[BRAND]
+[MODEL]
+[BODY_TYPE]
+[TARGET_AUDIENCE]
+[CORE_DNA]
+[KEY_HIGHLIGHTS] (Must include variants! e.g., "SmartPlay Pro+ (Zeta, Alpha) | ESP (All Variants)")
+
+Level 2: model_year
+[YEAR]
+[PLATFORM]
+[DESIGN_LANGUAGE]
+[COLORS]
+[AVAILABLE_ENGINE_TYPES]
+[AVAILABLE_TRANSMISSIONS]
+[YEAR_UPDATES] (Must include variants! e.g., "Added Rear AC Vents (Delta, Zeta, Alpha)")
+
+Level 3: variants
+[VARIANT_NAME]
+[TRIM_LEVEL]
+[ENGINE_SPEC]
+[TRANSMISSION]
+[FUEL_TYPE]
+[KEY_EXTERIOR_FEATURES]
+[KEY_INTERIOR_FEATURES]
+[SAFETY_FEATURES]
+[INFOTAINMENT_TECH]
+
+Level 4: feature_categories (DELIMITER AWARE)
+[CATEGORY_NAME]
+[STANDARD_FEATURES]
+Each feature MUST include variant mapping. Use ';' to separate features.
+Format: Feature Name: Variant1 | Variant2 ; Next Feature Name: Variant1 | Variant2
+OR Format: Feature Name: All Variants ; Next Feature Name: All Variants
+[EXCLUSIVE_FEATURES]
+Each feature MUST include variant mapping. Use ';' to separate features.
+Format: Feature Name: Variant1 | Variant2 ; Next Feature Name: Variant1 | Variant2
+
+❗ RULES FOR CATEGORIES:
+DO NOT list feature names alone.
+EVERY feature must have variant mapping.
+If unavailable → write "N/A"
+
+Level 5: specific_features (STRICT)
+[FEATURE_NAME]
+[APPLICABLE_VARIANTS] (MUST be exact variant names OR "All Variants")
+[DESCRIPTION] (1–2 sentence functional explanation. NO marketing fluff.)
+
+================================================ DATA RESOLUTION RULES (CRITICAL LOGIC)
+Use deep-dive feature data as source of truth for availability.
+If availability is:
+"Zeta, Alpha" → convert to: Zeta MT | Zeta AMT | Alpha MT | Alpha AMT (if applicable)
+"All Variants" → keep as is
+"All Petrol Variants" → resolve into actual variant names
+"All Manual Variants" → resolve into actual variant names
+
+NEVER pass raw labels like:
+❌ "All Petrol Variants"
+✅ ALWAYS expand into actual variant list
+
+Feature categories MUST be constructed using specific feature deep-dive mapping.
+Maintain consistency: The same feature must have the same variant mapping everywhere.
+
+VARIANT ID MAPPING:
+You will be provided with a JSON list of "EXPECTED VARIANTS MAP" containing "id" and "name". 
+When generating the "variants" array in your JSON output, you MUST match the brochure's variant to the correct item in the expected variants list and include its exact "id". If a variant in the brochure does not match any provided ID, use "UNKNOWN".
+
+================================================ FORMATTING EXAMPLES (CORRECT)
+Example Category TOON:
+"[CATEGORY_NAME] Convenience & Comfort\n[STANDARD_FEATURES] Cruise Control: Delta MT | Delta AMT | Zeta MT | Zeta AMT | Alpha MT | Alpha AMT\n[EXCLUSIVE_FEATURES] Head Up Display: Zeta MT | Zeta AMT | Alpha MT | Alpha AMT ; 360 View Camera: Zeta MT | Zeta AMT | Alpha MT | Alpha AMT"
+
+Example Specific Feature TOON:
+"[FEATURE_NAME] Head Up Display\n[APPLICABLE_VARIANTS] Zeta MT | Zeta AMT | Alpha MT | Alpha AMT\n[DESCRIPTION] Projects driving information directly into the driver’s line of sight for improved safety."
+
+Example Variant TOON:
+"[VARIANT_NAME] Alpha MT\n[TRIM_LEVEL] Top\n[ENGINE_SPEC] 1.2L K-Series Dual Jet\n[TRANSMISSION] 5-Speed Manual\n[FUEL_TYPE] Petrol\n[KEY_EXTERIOR_FEATURES] LED DRLs | 16-inch Alloys\n[KEY_INTERIOR_FEATURES] Leather steering | Auto AC\n[SAFETY_FEATURES] 6 Airbags | ESP\n[INFOTAINMENT_TECH] SmartPlay Pro+ | Arkamys Sound"
+
+================================================ FINAL OUTPUT REQUIREMENTS
+✔ Deterministic & Fully structured
+✔ Variant-resolved with NO ambiguity
+✔ The OUTER format must be valid, parseable JSON.
+✔ The INNER "toon_text" values must strictly remain flat TOON strings (DO NOT nest JSON inside the toon_text).
+❌ No explanations outside the JSON object
+❌ No missing variant mappings

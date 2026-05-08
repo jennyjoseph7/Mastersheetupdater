@@ -26,8 +26,6 @@ def setup_gryd():
 setup_gryd()
 THREADS_PER_SESSION = 0.1
 
-agents_var = "cohorts_agents"
-
 @gryd.is_a_task(function_name="post_cohorts_to_model",)
 def post_cohorts_to_cohorts_registrymodel(*args, **kwargs):
     def validate_cohorts(cohorts):
@@ -37,7 +35,13 @@ def post_cohorts_to_cohorts_registrymodel(*args, **kwargs):
 @gryd.is_a_task()
 def get_gryd_info(*args, **kwargs):
     logger.info(f"Environment currently set to '{gryd.ENVIRONMENT}'")
-    return {"message": f"Environment currently set to '{gryd.ENVIRONMENT}'"}
+    service_name = gryd.SERVICE
+    env = gryd.ENVIRONMENT
+    data = {
+        "service_name": service_name,
+        "environment": env
+    }
+    return data
 
 @gryd.is_a_task()
 def cohort_generation_agent_async(*args, **kwargs):
@@ -228,11 +232,12 @@ def embedding_affinity_score_agent(*args, **kwargs):
             **output
         }
     except Exception as e:
-        logger.error(f"Affinity Score Agent Error: {e}")
         traceback.print_exc()
+        full_trace = traceback.format_exc()
         return {
             "task": inspect.currentframe().f_code.co_name,
-            "error": str(e).strip()
+            "error": str(e).strip(),
+            "full_error_trace": full_trace
         }
 
 
@@ -255,7 +260,7 @@ def campaign_idea_generation_agent(*args, **kwargs):
             "num_of_campaign_post_sets": kwargs.get("num_of_campaign_post_sets", 3), 
             "num_of_hashtags": kwargs.get("num_of_hashtags", 20),
             "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o"),
-            "tition_max_length" : kwargs.get("title_max_length", None),
+            "title_max_length" : kwargs.get("title_max_length", None),
             "hook_max_length" : kwargs.get("hook_max_length", None),
             "slogan_max_length" : kwargs.get("slogan_max_length", None),
             "caption_max_length" : kwargs.get("caption_max_length", None),
@@ -269,6 +274,14 @@ def campaign_idea_generation_agent(*args, **kwargs):
             **output
         }
     except Exception as e:
+        traceback.print_exc()
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "full_error_trace": full_trace
+        }
+
         logger.error(f"Campaign Idea Generation Agent Error: {e}")
         raise e
 @gryd.is_a_task(function_name="campaign_idea_generation_agent_async", job_param='job', logger_param='logger')
@@ -290,7 +303,7 @@ def campaign_idea_generation_agent_async(*args, **kwargs):
             "num_of_campaign_post_sets": kwargs.get("num_of_campaign_post_sets", 3), 
             "num_of_hashtags": kwargs.get("num_of_hashtags", 20),
             "model_identifier": kwargs.get("model_identifier", "azure-gpt-4o"),
-            "tition_max_length" : kwargs.get("title_max_length", None),
+            "title_max_length" : kwargs.get("title_max_length", None),
             "hook_max_length" : kwargs.get("hook_max_length", None),
             "slogan_max_length" : kwargs.get("slogan_max_length", None),
             "caption_max_length" : kwargs.get("caption_max_length", None),
@@ -305,8 +318,13 @@ def campaign_idea_generation_agent_async(*args, **kwargs):
                 **event
             }
     except Exception as e:
-        logger.error(f"Campaign Idea Generation Agent Error: {e}")
-        raise e     
+        traceback.print_exc()
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "full_error_trace": full_trace
+        }
 
 @gryd.is_a_task(function_name="meta_ad_campaign_generator_agent", job_param='job', logger_param='logger')
 def meta_ad_campaign_generator_agent(*args, **kwargs):
@@ -377,16 +395,430 @@ def meta_ad_creative_generator_agent(*args, **kwargs):
             "full_error_trace": full_trace
         }
     
+@gryd.is_a_task()
+def meta_create_complete_ad(*args, **kwargs):
+    try:
+        manager = _build_meta_manager(**kwargs)
+        result = manager.create_complete_ad(**kwargs)
+        return result
+    except Exception as e:
+        logger.error(f"Meta Ad Manager Error: {e}")
+        traceback.print_exc()
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "full_error_trace": full_trace
+        }
+    
+
+# META SDK GRYD TASKS
+
+
+def _build_meta_manager(**kwargs):
+    # TODO - We should not get Meta credentials through API directly need to store them in a model and then use pid for authentication.
+    from ad_platforms.meta_ads_manager import MetaAdsManager
+    _credentials = {
+        "app_id" : kwargs.get("app_id", None),
+        "app_secret" : kwargs.get("app_secret", None),
+        "access_token" : kwargs.get("access_token", None),
+        "ad_account_id" : kwargs.get("ad_account_id", None),
+        "page_id" : kwargs.get("page_id", None),
+        "api_version" : kwargs.get("api_version", "v19.0")
+    }
+    required = ["app_id", "app_secret", "access_token", "ad_account_id", "page_id"]
+    missing = []
+    for k in required:
+        if k not in _credentials:
+            missing.append(k)
+    if len(missing) > 0:
+        raise ValueError(f"Missing credentials for Meta Ads API: {missing}")
+    return MetaAdsManager(**_credentials)
+
+
+# Meta ADS Gryd tasks
+@gryd.is_a_task()
+def meta_create_campaign(*args, **kwargs):
+    try:
+        manager = _build_meta_manager(**kwargs)
+        campaign_name = kwargs.get("campaign_name", None)
+        campaign_objective = kwargs.get("campaign_objective", None)
+        campaign_status = kwargs.get("campaign_status", "PAUSED")
+        special_ad_categories = kwargs.get("special_ad_categories", [])
+        is_adset_budget_sharing_enabled = kwargs.get("is_adset_budget_sharing_enabled", False)
+        campaign_object = manager.create_campaign(
+            name = campaign_name,
+            objective = campaign_objective,
+            status = campaign_status,
+            special_ad_categories = special_ad_categories,
+            is_adset_budget_sharing_enabled = is_adset_budget_sharing_enabled
+        )
+        response = campaign_object.export_all_data()
+        return response
+    except Exception as e: 
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "trace": full_trace
+        }
+    
+@gryd.is_a_task()
+def meta_create_adset(*args, **kwargs):
+    try:
+        manager = _build_meta_manager(**kwargs)
+        campaign_id = kwargs.get("campaign_id", None)
+        adset_name = kwargs.get("adset_name", None)
+        adset_status = kwargs.get("adset_status", "PAUSED")
+        daily_budget = kwargs.get("daily_budget", None)
+        targeting = kwargs.get("targeting", None)
+        destination_url = kwargs.get("destination_url", None)
+        billing_event = kwargs.get("billing_event", "IMPRESSIONS")
+        optimization_goal = kwargs.get("optimization_goal", "LINK_CLICKS")
+        bid_strategy = kwargs.get("bid_strategy", "LOWEST_COST_WITHOUT_CAP")
+
+        adset_object = manager.create_ad_set(
+            campaign_id = campaign_id,
+            name = adset_name,
+            daily_budget = daily_budget,
+            targeting = targeting,
+            destination_url = None,
+            billing_event = billing_event,
+            optimization_goal = optimization_goal,
+            status = adset_status,
+            bid_strategy = bid_strategy
+        )
+        response = adset_object.export_all_data()
+        return response
+    except Exception as e: 
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "trace": full_trace
+        }
+    
+@gryd.is_a_task()
+def upload_image_to_meta_ads_manager(*args, **kwargs):
+    try:
+        manager = _build_meta_manager(**kwargs)
+        image_url = kwargs.get("image_url", None)
+        response = manager.upload_image(image_url = image_url)
+        return response
+    except Exception as e: 
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "trace": full_trace
+        }
+    
+@gryd.is_a_task()
+def meta_create_image_ad_creative(*args, **kwargs):
+    try:
+        manager = _build_meta_manager(**kwargs)
+        creative_name = kwargs.get("creative_name", None)
+        image_hash = kwargs.get("image_hash", None)
+        title = kwargs.get("title", None)
+        body = kwargs.get("body", None)
+        link_url = kwargs.get("link_url", None)
+        call_to_action = kwargs.get("call_to_action", "LEARN_MORE")
+        description = kwargs.get("description", None)
+        creative_object = manager.create_image_ad_creative(
+            name = creative_name,
+            image_hash = image_hash,
+            title = title,
+            body = body,
+            link_url = link_url,
+            call_to_action = call_to_action,
+            description = description
+        )
+        response = creative_object.export_all_data()
+        return response
+    except Exception as e: 
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "trace": full_trace
+        }
+    
+@gryd.is_a_task()
+def meta_preview_creative(*args, **kwargs):
+    try:
+        manager = _build_meta_manager(**kwargs)
+        creative_id = kwargs.get("creative_id", None)
+        ad_format = kwargs.get("ad_format", "DESKTOP_FEED_STANDARD")
+        response = manager.preview_creative(creative_id = creative_id, ad_format = ad_format)
+        return response
+    except Exception as e: 
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "trace": full_trace
+        }
+    
+@gryd.is_a_task()
+def meta_create_ad(*args, **kwargs):
+    try:
+        manager = _build_meta_manager(**kwargs)
+        ad_name = kwargs.get("ad_name", None)
+        ad_set_id = kwargs.get("ad_set_id", None)
+        creative_id = kwargs.get("creative_id", None)
+        status = kwargs.get("status", "PAUSED")
+        ad_object = manager.create_ad(ad_set_id = ad_set_id, creative_id = creative_id, name = ad_name, status = status)
+        response = ad_object.export_all_data()
+        return response
+    except Exception as e: 
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "trace": full_trace
+        }
 
 @gryd.is_a_task()
-def meta_ad_manager_functions(*args, **kwargs):
-    supported_functions = ["get_campaign_list", "get_adset_list", "get_creative_list", "set_image_creative", "set_adset", "set_campaign"]
-    function_name = kwargs.get("function_name", "get_adset_list")
-    if function_name not in supported_functions:
-        raise ValueError(f"Invalid function name: {function_name}. Supported functions: {supported_functions}")
+def get_default_supported_values(*args, **kwargs):
+    _check_value_for = kwargs.get("_check_value_for", "all")
+    try:
+        from ad_platforms import meta_ads_manager
+        return meta_ads_manager.check_valid_values(_check_value_for = _check_value_for)
+    except Exception as e: 
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "trace": full_trace
+        }
+        
+
+
+@gryd.is_a_task()
+def meta_post_text(*args, **kwargs):
+    try:
+        manager = _build_meta_manager(**kwargs)
+        message = kwargs.get("message", None)
+        if message is None:
+            raise ValueError("Message is required.")
+        response = manager.post_text(message = message)
+        return response
+    except Exception as e: 
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "trace": full_trace
+        }
+
+
+@gryd.is_a_task()
+def meta_post_image_url(*args, **kwargs):
+    try:
+        manager = _build_meta_manager(**kwargs)
+        image_url = kwargs.get("image_url", None)
+        caption = kwargs.get("caption", None)
+        response = manager.post_image_url(image_url = image_url, caption = caption)
+        return response
+    except Exception as e: 
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "trace": full_trace
+        }
+
+@gryd.is_a_task()
+def exchange_for_long_lived_token(*args, **kwargs):
+    """
+    Exchange short-lived Meta user access token for long-lived token.
+    Required kwargs:
+        app_id: str
+        app_secret: str
+        short_lived_token: str
+        graph_api_version: str (e.g. 'v19.0')
+    """
+
+    try:
+        app_id              = kwargs["app_id"]
+        app_secret          = kwargs["app_secret"]
+        short_lived_token   = kwargs["short_lived_token"]
+        graph_api_version   = kwargs.get("graph_api_version", "v19.0")
+
+        url = f"https://graph.facebook.com/{graph_api_version}/oauth/access_token"
+
+        params = {
+            "grant_type"        : "fb_exchange_token",
+            "client_id"         : app_id,
+            "client_secret"     : app_secret,
+            "fb_exchange_token" : short_lived_token,
+        }
+
+        response = requests.get(url, params=params)
+        data = response.json()
+        if response.status_code != 200:
+            raise Exception(f"Meta token exchange failed: {data}")
+        return {**data}
+
+    except Exception as e:
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "trace": full_trace
+        }
+
+@gryd.is_a_task()
+def get_ig_user_id(*args, **kwargs):
+    try:
+        page_id = kwargs.get("page_id", None)
+        access_token = kwargs.get("access_token", None)
+
+        api_ver = "v19.0"
+        url = f"https://graph.facebook.com/{api_ver}/{page_id}"
+        params = {
+            "fields": "instagram_business_account",
+            "access_token": access_token
+        }
+        r = requests.get(url, params=params).json()
+        logger.info(f"Response from IG API: {json.dumps(r, indent=4, default=str)}")
+        return r
+    except Exception as e:
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "trace": full_trace
+        }
+
+@gryd.is_a_task()
+def create_ig_media(*args, **kwargs):
+    try:
+        ig_user_id = kwargs.get("ig_user_id", None) 
+        image_url = kwargs.get("image_url", None)
+        caption = kwargs.get("caption", None)
+        access_token = kwargs.get("access_token", None)
+
+        api_ver = "v19.0"
+        url = f"https://graph.facebook.com/{api_ver}/{ig_user_id}/media"
+        data = {
+            "image_url": image_url,
+            "caption": caption,
+            "access_token": access_token
+        }
+        r = requests.post(url, data=data).json()
+        logger.info(f"Response from IG API: {json.dumps(r, indent=4, default=str)}")
+        return r
+    except Exception as e:
+        full_trace = traceback.format_exc()
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e).strip(),
+            "trace": full_trace
+        }
     
 
+@gryd.is_a_task() 
+def get_pages(*args, **kwargs):
+    access_token = kwargs.get("access_token", None)
+    url = "https://graph.facebook.com/v19.0/me/accounts"
+
+    response = requests.get(url, params={
+        "access_token": access_token
+    })
+
+    response.raise_for_status()
+    result = response.json()
+    logger.info(f"Response from get_pages API: \n {json.dumps(result, indent=4, default=str)}")
+    return result
+
+@gryd.is_a_task() 
+def get_ig_business_details(*args, **kwargs):
+    ig_user_id = kwargs.get("ig_user_id", None)
+    access_token = kwargs.get("access_token", None)
+
+    try:
+        api_ver = "v19.0"
+        url = f"https://graph.facebook.com/{api_ver}/{ig_user_id}"
+
+        fields = ",".join([
+            "username",
+            "name",
+            "biography",
+            "website",
+            "profile_picture_url",
+            "followers_count",
+            "follows_count",
+            "media_count",
+            "ig_id"
+        ])
+
+        params = {
+            "fields": fields,
+            "access_token": access_token
+        }
+
+        r = requests.get(url, params=params)
+        r.raise_for_status()
+        result = r.json()
+        logger.info(f"Response from get_ig_business_details API: \n {json.dumps(result, indent=4, default=str)}")
+        return result
+
+    except Exception as e:
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e),
+            "trace": traceback.format_exc()
+        }
+@gryd.is_a_task() 
+def publish_ig_media(*args, **kwargs):
+    ig_user_id = kwargs.get("ig_user_id", None)
+    access_token = kwargs.get("access_token", None)
+    creation_id = kwargs.get("creation_id", None)
+    try:
+        api_ver = "v19.0"
+        url = f"https://graph.facebook.com/{api_ver}/{ig_user_id}/media_publish"
+
+        data = {
+            "creation_id": creation_id,
+            "access_token": access_token
+        }
+
+        r = requests.post(url, data=data)
+        r.raise_for_status()
+        result = r.json()
+        logger.info(f"Response from publish_ig_media API: \n {json.dumps(result, indent=4, default=str)}")
+        return result
+
+    except Exception as e:
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e),
+            "trace": traceback.format_exc()
+        }
     
+@gryd.is_a_task() 
+def check_container_status(*args, **kwargs):
+    access_token = kwargs.get("access_token", None)
+    creation_id = kwargs.get("creation_id", None)
+    try:
+        url = f"https://graph.facebook.com/v19.0/{creation_id}"
+        r = requests.get(url, params={
+            "fields": "status_code,status",
+            "access_token": access_token
+        })
+        r.raise_for_status()
+        result = r.json()
+        logger.info(f"Response from check_container_status API: \n {json.dumps(result, indent=4, default=str)}")
+        return result
+
+    except Exception as e:
+        return {
+            "task": inspect.currentframe().f_code.co_name,
+            "error": str(e),
+            "trace": traceback.format_exc()
+        }
+
 if __name__ == "__main__":
 
     t_json ={

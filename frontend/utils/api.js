@@ -355,14 +355,53 @@ async function fetchCampaignSummary(dealershipId = getDealershipId()) {
   return json?.data ?? [];
 }
 
-async function fetchAudienceTasks(page = 1, pageSize = 50) {
-  return fetchAPIData("audience_task", {
-    dealership_id: getDealershipId(),
-    page_number: page,
-    page_size: pageSize,
+// async function fetchAudienceTasks(page = 1, pageSize = 50) {
+//   return fetchAPIData("audience_task", {
+//     dealership_id: getDealershipId(),
+//     page_number: page,
+//     page_size: pageSize,
+//     sort_by: "created",
+//     sort_reverse: true,
+//   });
+// }
+async function fetchAudienceTasks(page = 1, pageSize = 10, filterType = "all") {
+  const dealershipId = getDealershipId();
+  if (!dealershipId) return { items: [], total: 0 };
+
+  // 1. Build the base parameters
+  const params = new URLSearchParams({
+    dealership_id: dealershipId,
+    page_number: String(page),
+    page_size: String(pageSize),
     sort_by: "created",
-    sort_reverse: true,
+    sort_reverse: "true",
   });
+
+  // 2. Append the exact filter logic matching your backend
+  if (filterType === "previous") {
+    // Appends "&campaign_id~="
+    params.append("campaign_id~", ""); 
+  } else if (filterType === "fresh") {
+    // Appends "&campaign_id="
+    params.append("campaign_id", "");  
+  }
+
+  const url = `${APP_BASE_URL}/gryd/db/objects/audience_task?${params.toString()}`;
+
+  // 3. Make the fetch call directly to bypass fetchAPIData's empty string blocker
+  try {
+    const response = await authenticatedFetch(url, { method: "GET" });
+    if (!response.ok) throw new Error("API request failed");
+    
+    const json = await response.json();
+    return {
+      items: json?.data ?? [],
+      total: json?.total ?? json?.total_number ?? 0,
+    };
+  } catch (error) {
+    console.error("fetchAudienceTasks error:", error);
+    return { items: [], total: 0 };
+  }
 }
 
 async function fetchCampaignPerformanceSummary(campaignId = "") {
@@ -800,6 +839,49 @@ export async function createCreditPurchaseOrder(
   }
 }
 
+
+async function cloneLeadsTask(
+  leadType,
+  oldCampaignId,
+  newCampaignId,
+  dealershipId,
+  onProgress = null
+) {
+  const servicename = process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
+  return executeTaskWithPolling(
+    servicename,
+    "clone_leads_between_campaigns",
+    {
+      args: [leadType, oldCampaignId, newCampaignId, dealershipId],
+      kwargs: {},
+      runtime_limit: 3600,
+      cancellable: true,
+    },
+    onProgress
+  );
+}
+
+async function assignAudienceTask(
+  leadType,
+  campaignId,
+  campaignObjectiveId,
+  dealershipId,
+  kwargs = {},
+  onProgress = null
+) {
+  const servicename = process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
+  return executeTaskWithPolling(
+    servicename,
+    "assign_audience_to_campaign",
+    {
+      args: [leadType, campaignId, campaignObjectiveId, dealershipId],
+      kwargs: kwargs,
+      runtime_limit: 3600,
+      cancellable: true,
+    },
+    onProgress
+  );
+}
 /* ---------------------------------------------------
    Exports
 --------------------------------------------------- */
@@ -825,5 +907,7 @@ export {
   capitalize,
   getDealershipId,
   getBrands,
+  cloneLeadsTask,
+  assignAudienceTask,
   // createCreditPurchaseOrder, // <-- New billing export added here
 };
