@@ -849,6 +849,7 @@ def manual_register_pre_sales(name, phone_number, email, *args, **kwargs):
     dealership_id = kwargs.get("dealership_id")
     campaign_type = kwargs.get("campaign_type", "pre-sales")
     campaign_objective_id = kwargs.get("campaign_objective_id")
+
     
     # Validation check to ensure required params are present
     if not all([campaign_id, dealership_id, campaign_objective_id]):
@@ -871,32 +872,23 @@ def manual_register_pre_sales(name, phone_number, email, *args, **kwargs):
         "campaign_objective_id": campaign_objective_id,
         **kwargs
     }
-
-    # Data container for the final post
-    data = {}
-
-    # Logic from process_pre_sales_lead_row: Simple string fields
-    for k in [
+    logger.info(f"Constructed row for manual registration: {row}")
+    # 4. Construct Final Data Payload
+    allowed_keys = [
         "phone_number", "email", "person_name", "campaign_id", "dealership_id", 
-        "last_contacted_whatsapp_number", "last_contacted_email", "last_contacted_phone_number"
-    ]:
-        data[k] = row.get(k) if row.get(k) else None
-
-    # Logic from process_pre_sales_lead_row: List/Preference fields
-    for k in [
-        "brand_preference", "model_preference", "variant_preference", "color_preference",
-        "engine_type_preference", "transmission_preference", "range_preference",
-        "feature_preferences", "segment_preference", "competitor_brands",
-        "competitor_models", "emotions", "engagement_events",
-        "previous_interaction_ids", "lead_tags", "interested_vehicle_competitor_vehicles"
-    ]:
-        val = row.get(k)
-        if val and isinstance(val, str):
-            data[k] = val.split(',')
-        else:
-            data[k] = None
+        "campaign_objective_id", "last_contacted_whatsapp_number", "last_contacted_email", 
+        "last_contacted_phone_number", "brand_preference", "model_preference", 
+        "variant_preference", "color_preference", "engine_type_preference", 
+        "transmission_preference", "range_preference", "feature_preferences", 
+        "segment_preference", "competitor_brands", "competitor_models", "emotions", 
+        "engagement_events", "previous_interaction_ids", "lead_tags", 
+        "interested_vehicle_competitor_vehicles"
+    ]
+    
+    data = {k: row.get(k) for k in allowed_keys if row.get(k) is not None}
 
     try:
+        logger.info(f"Posting {data}")
         # 1. Post the lead to the model
         lead = lead_model.post(data)
         
@@ -1091,10 +1083,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     logger.info(f"Lead found for lead_id={lead_id}")
     # logger.info(f"CHANNEL_IDENTIFIER-----{channel_identifier}")
     if channel_identifier:
-        channel_identifier=channel_identifier
-    else:
-        channel_identifier=CHANNEL_IDENTIFIER_MAP.get(channel)
-    lead_data["channel_identifier"] = lead_data.get("channel_identifier") or channel_identifier
+        lead_data["channel_identifier"] = channel_identifier
     if not channel:
         channel = get_channel(lead_data, campaign_details)
 
@@ -1221,7 +1210,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         yield {"status": "Error", "error_description": f"Unsupported channel: {channel}"}
         return
 
-    mobile = lead_data.get("channel_identifier") 
+    mobile = lead_data.get("channel_identifier") or lead_data.get("phone_number")
     
     # logger.info(f"Campaign ID: {campaign_id}, Original Mobile: {mobile}")
     customer_name = "Dear NADA Visitor" if campaign_id == "4c99d5ea-4441-3ce6-841f-de5d7585b3b7" and lead_data.get("person_name") is None else lead_data.get("person_name")
@@ -1487,8 +1476,7 @@ if  __name__ == "__main__":
         kwargs={
           
             "campaign_type": "pre-sales",
-            "start": 1777036302,
-            "end":  1777420689
+            "start": 1776885055
         }
    )
 
