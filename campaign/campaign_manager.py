@@ -1083,10 +1083,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     logger.info(f"Lead found for lead_id={lead_id}")
     # logger.info(f"CHANNEL_IDENTIFIER-----{channel_identifier}")
     if channel_identifier:
-        channel_identifier=channel_identifier
-    else:
-        channel_identifier=CHANNEL_IDENTIFIER_MAP.get(channel)
-    lead_data["channel_identifier"] = lead_data.get("channel_identifier") or channel_identifier
+        lead_data["channel_identifier"] = channel_identifier
     if not channel:
         channel = get_channel(lead_data, campaign_details)
 
@@ -1213,7 +1210,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         yield {"status": "Error", "error_description": f"Unsupported channel: {channel}"}
         return
 
-    mobile = lead_data.get("channel_identifier") 
+    mobile = lead_data.get("channel_identifier") or lead_data.get("phone_number")
     
     # logger.info(f"Campaign ID: {campaign_id}, Original Mobile: {mobile}")
     customer_name = "Dear NADA Visitor" if campaign_id == "4c99d5ea-4441-3ce6-841f-de5d7585b3b7" and lead_data.get("person_name") is None else lead_data.get("person_name")
