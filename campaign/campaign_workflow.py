@@ -85,6 +85,13 @@ DISPOSITION_OPTIONS = {
     "converted": ["converted"],
 }
 
+REQUIRED_RETRIGGER = {
+    "switch_to_next_credential": True,
+    "switch_to_next_channel": True,
+    "follow_up_contact": False,
+    "confirmation_message": False
+}
+
 CHANNEL_IDENTIFIER_MAP = {
     "whatsapp": "phone_number",
     "whatsapp_chat": "phone_number",
