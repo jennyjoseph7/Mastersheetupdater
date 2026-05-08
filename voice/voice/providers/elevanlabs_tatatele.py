@@ -555,6 +555,7 @@ class CallSession:
                 if tool_name in ("end_call", "hang_up", "hangup", "end_conversation", "disconnect"):
                     logger.info(f"[{self.call_id}] Agent requested call end via tool: {tool_name} - triggering hangup")
                     self.stop_event.set() 
+                    return
 
             #  VAD (Voice Activity Detection) 
             elif msg_type == "vad_score":
@@ -574,6 +575,7 @@ class CallSession:
                 error_message = error_event.get("message", str(error_event))
                 logger.error(f"[{self.call_id}] ElevenLabs ERROR: code={error_code}, message={error_message} - triggering call hangup")
                 self.stop_event.set()
+                return
 
             #  CONVERSATION END 
             elif msg_type == "conversation_end":
@@ -581,6 +583,7 @@ class CallSession:
                 reason = end_event.get("reason", "unknown")
                 logger.info(f"[{self.call_id}] ElevenLabs conversation ended: {reason} - triggering call hangup")
                 self.stop_event.set()
+                return
 
             #  UNKNOWN EVENT 
             else:
