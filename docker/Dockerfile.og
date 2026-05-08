@@ -1,4 +1,4 @@
-FROM asia-south1-docker.pkg.dev/dave-70c8e/autobot-base-image/base_image:<DOCKER_IMG_TAG>
+FROM asia-south1-docker.pkg.dev/dave-70c8e/autobot-pyreq-baseimage/autobot-pyreq-baseimage:<DOCKER_IMG_TAG>
 
 WORKDIR /root/
 COPY <zipname>.zip /root/
