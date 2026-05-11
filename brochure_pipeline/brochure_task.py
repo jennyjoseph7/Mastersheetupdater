@@ -9,8 +9,8 @@ from bp_utils import GRYD_SERVICE, get_logger
 
 logger = get_logger(__name__)
 
-from tasks.summary import run_summary_dispatcher, run_summary_worker, run_vector_ingestion
-from tasks.variant_feature import process_brochure_chunk, run_brochure_orchestrator
+from brochure_pipeline.tasks.summary import run_summary_dispatcher, run_summary_worker, run_vector_ingestion
+from brochure_pipeline.tasks.variant_feature import process_brochure_chunk, run_brochure_orchestrator
 
 gryd.SERVICE = GRYD_SERVICE 
 gryd.set_queue_manager()
