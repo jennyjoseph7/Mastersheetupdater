@@ -878,6 +878,7 @@
                 <th>Call Date</th>
                 <th>Source URL</th>
                 <th>Output File</th>
+                <th>Attempts</th>
                 <th>Reason</th>
               </tr>
             </thead>
@@ -900,6 +901,7 @@
 
     const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const RECORDING_FETCH_TIMEOUT_MS = 45000;
+    const RECORDING_FETCH_RETRIES = 2;
 
     let dataFile = null;
     let parsedRows = [];
@@ -1109,6 +1111,7 @@
             callDate: '',
             sourceFile: '',
             outputFile: '',
+            attempts: '',
             recordingRef,
             reason: 'Missing or invalid phone'
           });
@@ -1124,6 +1127,7 @@
             callDate: String(dateRaw || ''),
             sourceFile: '',
             outputFile: '',
+            attempts: '',
             recordingRef,
             reason: 'Missing or invalid Call_Date'
           });
@@ -1139,6 +1143,7 @@
             callDate: formatDateDisplay(date),
             sourceFile: '',
             outputFile: '',
+            attempts: '',
             recordingRef,
             reason: 'Missing Recordings URL'
           });
@@ -1154,6 +1159,7 @@
             callDate: formatDateDisplay(date),
             sourceFile: recordingRef,
             outputFile: '',
+            attempts: '',
             recordingRef,
             reason: 'Recording value is not an HTTP URL'
           });
@@ -1171,6 +1177,7 @@
           callDate: formatDateDisplay(date),
           sourceFile: recordingRef,
           outputFile,
+          attempts: '',
           recordingRef,
           reason: 'Ready to download from Recordings URL'
         };
@@ -1192,7 +1199,7 @@
     }
 
     function makeReportCsv(results) {
-      const header = ['Status', 'Row', 'Phone', 'Call_Date', 'Recording_URL', 'Source_URL', 'Output_File', 'Reason'];
+      const header = ['Status', 'Row', 'Phone', 'Call_Date', 'Recording_URL', 'Source_URL', 'Output_File', 'Attempts', 'Reason'];
       const lines = [header.map(csvEscape).join(',')];
       for (const row of results) {
         lines.push([
@@ -1203,6 +1210,7 @@
           row.recordingRef,
           row.sourceFile,
           row.outputFile,
+          row.attempts,
           row.reason
         ].map(csvEscape).join(','));
       }
@@ -1240,6 +1248,50 @@
       }
     }
 
+    function wait(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function fetchRecordingWithRetry(row, onAttempt) {
+      const maxAttempts = RECORDING_FETCH_RETRIES + 1;
+      let lastError = null;
+      let lastTimedOut = false;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        if (onAttempt) onAttempt(attempt, maxAttempts);
+
+        const controller = new AbortController();
+        let timedOut = false;
+        const timeoutId = setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, RECORDING_FETCH_TIMEOUT_MS);
+
+        try {
+          const response = await fetch(row.url, { signal: controller.signal });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+          const blob = await response.blob();
+          return {
+            blob,
+            attempts: attempt,
+            contentType: response.headers.get('content-type'),
+          };
+        } catch (error) {
+          lastError = error;
+          lastTimedOut = timedOut || error?.name === 'AbortError';
+          if (attempt < maxAttempts) await wait(500 * attempt);
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      }
+
+      const message = getDownloadFailureMessage(lastError, lastTimedOut);
+      const wrapped = new Error(`${message} (${maxAttempts} attempts)`);
+      wrapped.attempts = maxAttempts;
+      throw wrapped;
+    }
+
     async function downloadZip() {
       if (!matchedRows.length) return;
       setStatus('Downloading recordings from URLs...', '');
@@ -1253,34 +1305,31 @@
 
         for (let i = 0; i < matchedRows.length; i++) {
           const row = matchedRows[i];
-          setStatus(`Downloading ${i + 1}/${matchedRows.length}: ${row.outputFile}`, '');
-
-          const controller = new AbortController();
-          let timedOut = false;
-          const timeoutId = setTimeout(() => {
-            timedOut = true;
-            controller.abort();
-          }, RECORDING_FETCH_TIMEOUT_MS);
 
           try {
-            const response = await fetch(row.url, { signal: controller.signal });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-            const blob = await response.blob();
-            const detectedExt = extensionFromContentType(response.headers.get('content-type'));
+            const fetched = await fetchRecordingWithRetry(row, (attempt, maxAttempts) => {
+              const retryText = maxAttempts > 1 ? ` attempt ${attempt}/${maxAttempts}` : '';
+              setStatus(`Downloading ${i + 1}/${matchedRows.length}${retryText}: ${row.outputFile}`, '');
+            });
+            const detectedExt = extensionFromContentType(fetched.contentType);
             const outputFile = detectedExt && getExtension(row.outputFile) === 'mp3'
               ? replaceExtension(row.outputFile, detectedExt)
               : row.outputFile;
 
-            folder.file(outputFile, blob);
+            folder.file(outputFile, fetched.blob);
             downloaded += 1;
-            updateResultStatus(row, 'Downloaded', 'ok', outputFile, 'Downloaded from Recordings URL');
+            updateResultStatus(
+              row,
+              'Downloaded',
+              'ok',
+              outputFile,
+              fetched.attempts > 1 ? `Downloaded after ${fetched.attempts} attempts` : 'Downloaded from Recordings URL',
+              fetched.attempts
+            );
           } catch (error) {
             failed += 1;
             updateResultStatus(row, 'Failed', 'err', row.outputFile,
-              getDownloadFailureMessage(error, timedOut));
-          } finally {
-            clearTimeout(timeoutId);
+              error.message || 'Download failed', error.attempts || '');
           }
         }
 
@@ -1335,12 +1384,13 @@
       return String(filename || '').replace(/\.[a-z0-9]{2,5}$/i, `.${extension}`);
     }
 
-    function updateResultStatus(matchRow, status, tone, outputFile, reason) {
+    function updateResultStatus(matchRow, status, tone, outputFile, reason, attempts = '') {
       const result = resultRows.find(row => row.rowNumber === matchRow.rowNumber && row.recordingRef === matchRow.recordingRef);
       if (!result) return;
       result.status = status;
       result.tone = tone;
       result.outputFile = outputFile;
+      result.attempts = attempts;
       result.reason = reason;
     }
 
@@ -1399,6 +1449,7 @@
           <td>${esc(row.callDate)}</td>
           <td class="truncate" title="${esc(row.sourceFile)}">${esc(row.sourceFile)}</td>
           <td class="mono truncate" title="${esc(row.outputFile)}">${esc(row.outputFile)}</td>
+          <td class="mono">${esc(row.attempts)}</td>
           <td>${esc(row.reason)}</td>
         `;
         body.appendChild(tr);

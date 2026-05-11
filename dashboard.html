@@ -517,6 +517,12 @@
       color: var(--success);
     }
 
+    .drop-zone-dash .dz-status.err {
+      background: var(--danger-soft);
+      border-color: rgba(241, 111, 111, 0.3);
+      color: var(--danger);
+    }
+
     input[type=file] {
       display: none;
     }
@@ -907,6 +913,52 @@
     /* ═══════════════════════════════════════════════════════════════════════
        EMPTY STATE
        ═══════════════════════════════════════════════════════════════════════ */
+    .metric-audit {
+      margin-bottom: 1rem;
+    }
+
+    .metric-audit-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.65rem;
+    }
+
+    .metric-audit-item {
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      background: var(--surface2);
+      padding: 0.7rem 0.8rem;
+      min-width: 0;
+    }
+
+    .metric-audit-label {
+      color: var(--text-muted);
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+
+    .metric-audit-value {
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .metric-audit-item.warn {
+      border-color: rgba(230, 164, 86, 0.35);
+      background: var(--warn-soft);
+    }
+
+    .metric-audit-item.err {
+      border-color: rgba(241, 111, 111, 0.3);
+      background: var(--danger-soft);
+    }
+
     .empty-dashboard {
       text-align: center;
       padding: 4rem 2rem;
@@ -1056,6 +1108,9 @@
       .kpi-grid {
         grid-template-columns: 1fr 1fr;
       }
+      .metric-audit-grid {
+        grid-template-columns: 1fr 1fr;
+      }
       .data-panels {
         grid-template-columns: 1fr;
       }
@@ -1072,6 +1127,7 @@
       main { padding: 1rem; }
       header { padding: 1rem; position: static; }
       .kpi-grid { grid-template-columns: 1fr; }
+      .metric-audit-grid { grid-template-columns: 1fr; }
       .upload-row { grid-template-columns: 1fr; }
       .header-right { width: 100%; justify-content: flex-end; }
     }
@@ -1309,6 +1365,10 @@
 
     <!-- Dashboard Content (hidden until data loaded) -->
     <div id="dashboardContent" style="display:none;">
+      <div class="data-panel metric-audit slide-up" id="metricAudit" style="display:none;">
+        <div class="panel-title">Metric Audit</div>
+        <div class="metric-audit-grid" id="metricAuditGrid"></div>
+      </div>
 
       <!-- KPI Row 1 -->
       <div class="kpi-grid" id="kpiRow1"></div>
@@ -1382,6 +1442,14 @@
     const stDash = document.getElementById('stDash');
     const btnGenerate = document.getElementById('btnGenerate');
 
+    function clearDashboardOutput() {
+      document.getElementById('campaignBar').style.display = 'none';
+      document.getElementById('dashboardContent').style.display = 'none';
+      document.getElementById('metricAudit').style.display = 'none';
+      document.getElementById('btnPrintPDF').style.display = 'none';
+      document.getElementById('emptyState').style.display = '';
+    }
+
     // Keyboard activation (Enter / Space) for drop zone
     dzDash.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -1407,13 +1475,14 @@
     const ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls'];
 
     function handleFile(file) {
+      clearDashboardOutput();
       // Validate file extension
       const fileName = file.name || '';
       const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
       uploadedFileExt = ext;
       if (!ALLOWED_EXTENSIONS.includes(ext)) {
         stDash.textContent = '✗ Invalid file type. Allowed: .csv, .xlsx, .xls';
-        stDash.className = 'dz-status';
+        stDash.className = 'dz-status err';
         dzDash.classList.remove('has-file');
         dashData = null;
         btnGenerate.disabled = true;
@@ -1423,7 +1492,7 @@
       // Validate file size
       if (file.size > MAX_UPLOAD_BYTES) {
         stDash.textContent = '✗ File too large (max 50 MB)';
-        stDash.className = 'dz-status';
+        stDash.className = 'dz-status err';
         dzDash.classList.remove('has-file');
         dashData = null;
         btnGenerate.disabled = true;
@@ -1443,7 +1512,7 @@
           btnGenerate.disabled = false;
         } catch (err) {
           stDash.textContent = '✗ Error reading file';
-          stDash.className = 'dz-status';
+          stDash.className = 'dz-status err';
           dashData = null;
           btnGenerate.disabled = true;
         }
@@ -1483,10 +1552,9 @@
       const COL_UPDATED_SUMMARY = find(['updated_summary', 'updatedsummary', 'updated summary']);
       const COL_ATTEMPT = find(['attempt', 'number_of_attempts', 'attempts', 'call_attempt']);
 
-      console.log('[Dashboard] Column mapping:', { COL_PHONE, COL_OUTCOME, COL_DATE, COL_MODEL, COL_DETAIL, COL_SUMMARY, COL_UPDATED_SUMMARY, COL_ATTEMPT });
-      console.log('[Dashboard] Sample row:', dashData[0]);
       if (!COL_DATE) {
-        alert('Required column missing: Call_Date. Please upload a file that includes the Call_Date column.');
+        stDash.textContent = 'Required column missing: Call_Date.';
+        stDash.className = 'dz-status err';
         return;
       }
 
@@ -1628,13 +1696,23 @@
       }
       const parserLabel = dateParserInfo.order === 'MDY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY';
       document.getElementById('dateParserNote').textContent = `Source: ${COL_DATE} · Parser: ${parserLabel} · Valid: ${validDateCount}/${rows.length} · Rejected: ${rejectedDateCount}`;
-      console.log('[Dashboard] Date parse audit:', {
-        sourceColumn: COL_DATE,
-        parser: parserLabel,
-        uploadType: uploadedFileExt || 'unknown',
+      renderMetricAudit({
+        columns: {
+          Phone: COL_PHONE,
+          Outcome: COL_OUTCOME,
+          Date: COL_DATE,
+          Model: COL_MODEL,
+          Detail: COL_DETAIL,
+          Summary: COL_SUMMARY,
+          'Updated Summary': COL_UPDATED_SUMMARY,
+          Attempts: COL_ATTEMPT,
+        },
+        parserLabel,
         totalRows: rows.length,
         validDateCount,
         rejectedDateCount,
+        duplicatePhones: dupes.length,
+        uniquePhones: phoneSet.size,
       });
 
       // KPI Row 1
@@ -1812,6 +1890,46 @@
         </div>
         ` : ''}
       `;
+    }
+
+    function renderMetricAudit(audit) {
+      const panel = document.getElementById('metricAudit');
+      const grid = document.getElementById('metricAuditGrid');
+      if (!panel || !grid) return;
+
+      const items = Object.entries(audit.columns).map(([label, value]) => ({
+        label,
+        value: value || 'Missing',
+        tone: value ? '' : 'warn',
+      }));
+
+      items.push(
+        { label: 'Date Parser', value: audit.parserLabel, tone: '' },
+        { label: 'Valid Dates', value: `${audit.validDateCount}/${audit.totalRows}`, tone: audit.validDateCount ? '' : 'err' },
+        { label: 'Rejected Dates', value: String(audit.rejectedDateCount), tone: audit.rejectedDateCount ? 'warn' : '' },
+        { label: 'Unique Phones', value: String(audit.uniquePhones || 0), tone: audit.uniquePhones ? '' : 'warn' },
+        { label: 'Duplicate Rows', value: String(audit.duplicatePhones || 0), tone: audit.duplicatePhones ? 'warn' : '' }
+      );
+
+      grid.innerHTML = '';
+      for (const item of items) {
+        const card = document.createElement('div');
+        card.className = 'metric-audit-item' + (item.tone ? ' ' + item.tone : '');
+
+        const label = document.createElement('div');
+        label.className = 'metric-audit-label';
+        label.textContent = item.label;
+
+        const value = document.createElement('div');
+        value.className = 'metric-audit-value';
+        value.title = item.value;
+        value.textContent = item.value;
+
+        card.appendChild(label);
+        card.appendChild(value);
+        grid.appendChild(card);
+      }
+      panel.style.display = 'block';
     }
 
     /* ═══════════════════════════════════════════════════════════════════════

@@ -1618,6 +1618,7 @@
         const row = rows[i];
         const obj = {};
         headers.forEach((h, j) => { obj[h] = cellToString(row[j]); });
+        obj.__rowIndex = i;
         result.push(obj);
       }
       return result;
@@ -1692,6 +1693,89 @@
       return 1;
     }
 
+    function parseExcelSerialDate(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num) || num < 20000 || num > 80000) return null;
+      const epoch = Date.UTC(1899, 11, 30);
+      const date = new Date(epoch + num * 86400000);
+      return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    }
+
+    function buildValidatedDate(year, month, day) {
+      const date = new Date(year, month - 1, day);
+      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+      return date;
+    }
+
+    function parseCallDate(value) {
+      if (value === undefined || value === null || value === '') return null;
+      const serial = parseExcelSerialDate(value);
+      if (serial) return serial;
+
+      const raw = String(value).trim();
+      if (!raw) return null;
+
+      const iso = raw.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+      if (iso) {
+        return buildValidatedDate(parseInt(iso[1], 10), parseInt(iso[2], 10), parseInt(iso[3], 10));
+      }
+
+      const slash = raw.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+      if (slash) {
+        const first = parseInt(slash[1], 10);
+        const second = parseInt(slash[2], 10);
+        let year = parseInt(slash[3], 10);
+        if (year < 100) year += 2000;
+
+        // Zoho exports in this workflow are DD/MM/YYYY. Use MM/DD only when DD/MM is impossible.
+        const dmy = buildValidatedDate(year, second, first);
+        const mdy = buildValidatedDate(year, first, second);
+        if (first > 12 && dmy) return dmy;
+        if (second > 12 && mdy) return mdy;
+        return dmy || mdy;
+      }
+
+      const named = raw.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})/i);
+      if (named) {
+        const months = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+        return buildValidatedDate(parseInt(named[3], 10), months[named[2].toLowerCase().slice(0, 3)], parseInt(named[1], 10));
+      }
+
+      return null;
+    }
+
+    function getRowRank(row) {
+      const date = parseCallDate(detectCallDate(row));
+      return {
+        time: date ? date.getTime() : 0,
+        hasDate: Boolean(date),
+        attempts: detectAttempts(row),
+        rowIndex: Number(row.__rowIndex || 0),
+      };
+    }
+
+    function compareRowsByRecency(a, b) {
+      const ar = getRowRank(a);
+      const br = getRowRank(b);
+      if (ar.time !== br.time) return ar.time - br.time;
+      if (ar.attempts !== br.attempts) return ar.attempts - br.attempts;
+      return ar.rowIndex - br.rowIndex;
+    }
+
+    function getLatestRow(rows) {
+      if (!rows.length) return null;
+      return rows.slice().sort(compareRowsByRecency)[rows.length - 1];
+    }
+
+    function formatRankDate(row) {
+      if (!row) return 'date unavailable';
+      const date = parseCallDate(detectCallDate(row));
+      if (!date) return 'date unavailable';
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      return `${dd}/${mm}/${date.getFullYear()}`;
+    }
+
     // ─── CORE PROCESSING ─────────────────────────────────────────────────────────
     async function processFile() {
       if (!rawFile) return;
@@ -1747,6 +1831,8 @@
         const excluded = [];      // Connected or terminal — skip
         let connectedCount = 0;
         let terminalCount = 0;
+        let groupsWithDate = 0;
+        let groupsWithoutDate = 0;
 
         for (const [phone, group] of phoneGroups) {
           const connectedRows = group.rows.filter(row => isConnectedOutcome(detectOutcome(row)));
@@ -1756,31 +1842,37 @@
           const hasReattemptableConnected = reattemptableConnectedRows.length > 0;
           const hasTerminal = excludeTerminal && group.dispositions.some(d => TERMINAL_DISPOSITIONS.has(d));
 
-          // Pick the best (latest) row for this phone's data
-          const bestRow = group.rows[group.rows.length - 1];
+          // Pick the latest row by Call_Date first, then attempts, then original file order.
+          const bestRow = getLatestRow(group.rows);
+          const terminalRows = group.rows.filter(row => TERMINAL_DISPOSITIONS.has(String(detectDisposition(row)).toLowerCase().trim()));
+          const blockingConnectedRow = getLatestRow(blockingConnectedRows);
+          const reattemptableConnectedRow = getLatestRow(reattemptableConnectedRows);
+          const terminalRow = getLatestRow(terminalRows);
+          if (group.rows.some(row => getRowRank(row).hasDate)) groupsWithDate++;
+          else groupsWithoutDate++;
 
           if (hasConnected) {
             connectedCount++;
-            const bestDisp = group.dispositions.find(d => TERMINAL_DISPOSITIONS.has(d)) ||
+            const bestDisp = detectDisposition(blockingConnectedRow) || detectDisposition(bestRow) ||
               group.dispositions[group.dispositions.length - 1];
             excluded.push({
               phone,
               full_name: detectFullName(bestRow),
               bestOutcome: 'Connected',
-              bestDisposition: bestDisp || group.dispositions[group.dispositions.length - 1],
+              bestDisposition: bestDisp,
               daysSeen: group.rows.length,
-              reason: 'Connected on a later day',
+              reason: `Connected on ${formatRankDate(blockingConnectedRow)}; latest row ${formatRankDate(bestRow)}`,
             });
           } else if (hasTerminal) {
             terminalCount++;
-            const termDisp = group.dispositions.find(d => TERMINAL_DISPOSITIONS.has(d));
+            const termDisp = detectDisposition(terminalRow) || group.dispositions.find(d => TERMINAL_DISPOSITIONS.has(d));
             excluded.push({
               phone,
               full_name: detectFullName(bestRow),
-              bestOutcome: detectOutcome(bestRow),
+              bestOutcome: detectOutcome(terminalRow) || detectOutcome(bestRow),
               bestDisposition: termDisp || group.dispositions[group.dispositions.length - 1],
               daysSeen: group.rows.length,
-              reason: `Terminal: ${termDisp}`,
+              reason: `Terminal on ${formatRankDate(terminalRow)}: ${termDisp}`,
             });
           } else {
             // Include if never connected, or only connected with a re-attemptable summary
@@ -1798,7 +1890,8 @@
               dealership_id: dealership.dealership_id,
               brand: dealership.brand,
               subdivision_name: dealership.subdivision_name,
-              reattempt_reason: hasReattemptableConnected ? detectSummary(reattemptableConnectedRows[reattemptableConnectedRows.length - 1]) : '',
+              source_date: formatRankDate(bestRow),
+              reattempt_reason: hasReattemptableConnected ? detectSummary(reattemptableConnectedRow) : '',
             });
           }
         }
@@ -1809,7 +1902,10 @@
 
         // ── RENDER ───────────────────────────────────────────────────────────
         renderStats(rows.length, phoneGroups.size, connectedCount, terminalCount, included.length, skippedNoPhone);
-        renderDedupSummary(rows.length, phoneGroups.size, connectedCount, terminalCount, included.length, skippedNoPhone);
+        renderDedupSummary(rows.length, phoneGroups.size, connectedCount, terminalCount, included.length, skippedNoPhone, {
+          groupsWithDate,
+          groupsWithoutDate,
+        });
         renderIncludedTable(included);
         renderExcludedTable(excluded);
 
@@ -1847,7 +1943,7 @@
     }
 
     // ─── RENDER DEDUP SUMMARY ─────────────────────────────────────────────────────
-    function renderDedupSummary(totalRows, uniquePhones, connected, terminal, reattempt, skipped) {
+    function renderDedupSummary(totalRows, uniquePhones, connected, terminal, reattempt, skipped, selection = {}) {
       const grid = document.getElementById('dedupGrid');
       const items = [
         { label: 'Total input rows', value: totalRows, tone: 'blue' },
@@ -1858,6 +1954,8 @@
         { label: 'Invalid phones skipped', value: skipped, tone: 'red' },
         { label: 'Re-attempt output', value: reattempt, tone: 'blue' },
         { label: 'Exclusion rate', value: uniquePhones ? Math.round(((connected + terminal) / uniquePhones) * 100) + '%' : '0%', tone: 'purple' },
+        { label: 'Date-ranked phones', value: selection.groupsWithDate || 0, tone: 'green' },
+        { label: 'File-order fallback', value: selection.groupsWithoutDate || 0, tone: (selection.groupsWithoutDate || 0) ? 'amber' : 'green' },
       ];
 
       grid.innerHTML = items.map(i => `
@@ -1882,6 +1980,7 @@
       const preview = data.slice(0, PREVIEW_LIMIT);
       for (const r of preview) {
         const tr = document.createElement('tr');
+        tr.title = `Selected from ${r.source_date || 'date unavailable'} across ${r.daysSeen} row(s)`;
         tr.innerHTML = `
           <td>${esc(r.showroom_code)}</td>
           <td>${esc(r.region_name)}</td>

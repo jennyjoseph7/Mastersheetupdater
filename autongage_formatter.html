@@ -386,6 +386,10 @@
       color: var(--danger);
     }
 
+    .status.warn {
+      color: var(--warn);
+    }
+
     .mono {
       font-family: var(--mono);
     }
@@ -428,6 +432,62 @@
       font-size: 1.35rem;
       font-weight: 700;
       margin-top: 0.15rem;
+    }
+
+    .audit-card {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface2);
+      padding: 0.85rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .audit-title {
+      font-family: var(--sans);
+      font-size: 0.82rem;
+      font-weight: 800;
+      margin-bottom: 0.65rem;
+    }
+
+    .audit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem;
+    }
+
+    .audit-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.025);
+      padding: 0.65rem;
+      color: var(--text-dim);
+      font-size: 0.74rem;
+      line-height: 1.5;
+    }
+
+    .audit-item.ok {
+      border-color: rgba(90, 215, 161, 0.28);
+      background: var(--success-soft);
+    }
+
+    .audit-item.warn {
+      border-color: rgba(255, 200, 87, 0.28);
+      background: var(--warn-soft);
+    }
+
+    .audit-item.info {
+      border-color: rgba(77, 208, 225, 0.22);
+      background: var(--accent-soft);
+    }
+
+    .audit-item strong {
+      display: block;
+      color: var(--text);
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
     }
 
     .table-wrap {
@@ -511,6 +571,10 @@
 
       .stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .audit-grid {
+        grid-template-columns: 1fr;
       }
 
       .controls .btn {
@@ -622,6 +686,10 @@
         <div class="stat"><div class="stat-label">Output Rows</div><div class="stat-value" id="outputRows">0</div></div>
         <div class="stat"><div class="stat-label">Mapped Cells</div><div class="stat-value" id="mappedCells">0</div></div>
         <div class="stat"><div class="stat-label">Default Cells</div><div class="stat-value" id="defaultCells">0</div></div>
+      </div>
+      <div class="audit-card" id="auditCard">
+        <div class="audit-title" id="auditTitle">Mapping audit</div>
+        <div class="audit-grid" id="auditGrid"></div>
       </div>
       <div class="table-wrap" id="tableWrap">
         <div class="table-scroll">
@@ -789,6 +857,92 @@
       document.getElementById('mappingHint').textContent = lines.join(' | ');
     }
 
+    function limitedRows(rows, emptyText) {
+      if (!rows.length) return [emptyText || 'None'];
+      const limit = 8;
+      const shown = rows.slice(0, limit);
+      if (rows.length > limit) shown.push('+' + (rows.length - limit) + ' more');
+      return shown;
+    }
+
+    function buildMappingAudit(template, parsed, rows) {
+      const headerSet = new Set(parsed.rawHeaders.map(canonicalHeader).filter(Boolean));
+      const mappingEntries = Object.entries(template.sourceToTarget).map(([source, target]) => ({
+        source,
+        target,
+        sourceKey: canonicalHeader(source),
+      }));
+      const matched = mappingEntries.filter(entry => headerSet.has(entry.sourceKey));
+      const missing = mappingEntries.filter(entry => !headerSet.has(entry.sourceKey));
+      const usedSourceKeys = new Set(matched.map(entry => entry.sourceKey));
+      const defaults = Object.entries(template.defaults || {});
+      const blankColumns = template.outputOrder.filter(key => rows.every(row => String(row[key] || '').trim() === ''));
+      const ignoredHeaders = parsed.rawHeaders
+        .filter(header => {
+          const key = canonicalHeader(header);
+          return key && !usedSourceKeys.has(key);
+        });
+
+      return {
+        hasWarnings: Boolean(missing.length || blankColumns.length),
+        sections: [
+          {
+            title: 'Matched mappings',
+            level: matched.length ? 'ok' : 'warn',
+            rows: limitedRows(matched.map(entry => `${entry.source} -> ${entry.target}`), 'No template mappings matched uploaded headers.'),
+          },
+          {
+            title: 'Missing source columns',
+            level: missing.length ? 'warn' : 'ok',
+            rows: limitedRows(missing.map(entry => `${entry.source} -> ${entry.target}`), 'None'),
+          },
+          {
+            title: 'Defaults applied',
+            level: defaults.length ? 'info' : 'ok',
+            rows: limitedRows(defaults.map(([key, value]) => `${key} = ${value}`), 'None'),
+          },
+          {
+            title: 'Blank output columns',
+            level: blankColumns.length ? 'warn' : 'ok',
+            rows: limitedRows(blankColumns, 'None'),
+          },
+          {
+            title: 'Ignored upload columns',
+            level: ignoredHeaders.length ? 'info' : 'ok',
+            rows: limitedRows(ignoredHeaders, 'None'),
+          },
+        ],
+      };
+    }
+
+    function renderMappingAudit(audit) {
+      const card = document.getElementById('auditCard');
+      const grid = document.getElementById('auditGrid');
+      if (!audit) {
+        card.style.display = 'none';
+        grid.innerHTML = '';
+        return;
+      }
+      document.getElementById('auditTitle').textContent = audit.hasWarnings
+        ? 'Mapping audit - review before download'
+        : 'Mapping audit - ready';
+      grid.innerHTML = audit.sections.map(section => `
+        <div class="audit-item ${escapeHtml(section.level)}">
+          <strong>${escapeHtml(section.title)}</strong>
+          ${section.rows.map(row => `<div>${escapeHtml(row)}</div>`).join('')}
+        </div>
+      `).join('');
+      card.style.display = 'block';
+    }
+
+    function clearOutput() {
+      outputRows = [];
+      setCounts(0, 0, 0, 0);
+      renderPreview([], []);
+      renderMappingAudit(null);
+      document.getElementById('downloadBtn').disabled = true;
+    }
+
     async function processFile() {
       if (!rawFile) return;
       setStatus('Parsing file...', '');
@@ -799,6 +953,9 @@
         if (!parsed.data.length) {
           setStatus('No data rows found in file.', 'err');
           setCounts(0, 0, 0, 0);
+          renderMappingAudit(null);
+          outputRows = [];
+          document.getElementById('downloadBtn').disabled = true;
           return;
         }
 
@@ -830,9 +987,16 @@
 
         outputRows = rows;
         renderPreview(template.outputOrder, rows);
+        const audit = buildMappingAudit(template, parsed, rows);
+        renderMappingAudit(audit);
         setCounts(parsed.data.length, rows.length, mappedCount, defaultCount);
         document.getElementById('downloadBtn').disabled = !rows.length;
-        setStatus('Formatted ' + rows.length + ' row(s). Ready to download.', 'ok');
+        setStatus(
+          audit.hasWarnings
+            ? 'Formatted ' + rows.length + ' row(s). Review mapping audit before download.'
+            : 'Formatted ' + rows.length + ' row(s). Ready to download.',
+          audit.hasWarnings ? 'warn' : 'ok'
+        );
       } catch (err) {
         console.error(err);
         setStatus('Error: ' + err.message, 'err');
@@ -893,10 +1057,12 @@
         const file = this.files[0];
         if (!file) return;
         rawFile = file;
+        clearOutput();
         fileStatus.textContent = 'Loaded: ' + file.name;
         fileStatus.className = 'status ok';
         zone.classList.add('has-file');
         document.getElementById('processBtn').disabled = false;
+        setStatus('File loaded. Click Format File.', '');
       });
 
       uploadBtn.addEventListener('click', function (event) {
@@ -934,7 +1100,11 @@
       const select = document.getElementById('templateSelect');
       const entries = Object.entries(TEMPLATES);
       select.innerHTML = entries.map(([key, tpl]) => '<option value="' + key + '">' + tpl.label + '</option>').join('');
-      select.addEventListener('change', buildMappingHint);
+      select.addEventListener('change', function () {
+        buildMappingHint();
+        clearOutput();
+        setStatus(rawFile ? 'Template changed. Click Format File again.' : '', rawFile ? 'warn' : '');
+      });
       buildMappingHint();
     }
 

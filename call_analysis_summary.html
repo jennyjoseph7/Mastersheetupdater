@@ -653,6 +653,59 @@
     .kpi-card.teal .kpi-dot { background: var(--teal); box-shadow: 0 0 8px rgba(94, 234, 212, var(--kpi-dot-shadow)); }
     .kpi-card.teal .kpi-label { color: var(--teal); }
 
+    .rule-audit {
+      display: none;
+      margin-top: 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface-card);
+      box-shadow: var(--shadow-subtle);
+      overflow: hidden;
+    }
+
+    .rule-audit.show {
+      display: block;
+    }
+
+    .rule-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+      padding: 1rem;
+    }
+
+    .rule-item {
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      background: var(--surface2);
+      padding: 0.75rem 0.85rem;
+    }
+
+    .rule-item-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      color: var(--text);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+
+    .rule-item-count {
+      font-family: var(--mono);
+      color: var(--accent2);
+      white-space: nowrap;
+    }
+
+    .rule-item-detail {
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      line-height: 1.55;
+    }
+
     .preview-table-wrapper {
       display: none;
       margin-top: 1.25rem;
@@ -832,6 +885,10 @@
         grid-template-columns: 1fr 1fr;
       }
 
+      .rule-grid {
+        grid-template-columns: 1fr;
+      }
+
       .preview-table-header {
         align-items: flex-start;
         flex-direction: column;
@@ -980,6 +1037,16 @@
 
     <div class="summary-panel" id="summaryPanel">
       <div class="summary-grid" id="summaryGrid"></div>
+
+      <div class="rule-audit" id="ruleAudit">
+        <div class="preview-table-header">
+          <div class="preview-title">
+            Metric Rules
+            <span class="preview-count">How each count was classified</span>
+          </div>
+        </div>
+        <div class="rule-grid" id="ruleGrid"></div>
+      </div>
 
       <div class="preview-table-wrapper" id="bookingTableWrapper">
         <div class="preview-table-header">
@@ -1338,7 +1405,29 @@
       document.getElementById('summaryBar').style.display = 'flex';
       document.getElementById('summaryPanel').classList.add('show');
       document.getElementById('emptyPanel').style.display = 'none';
+      renderRuleAudit([
+        { label: 'Connected Calls', count: connected, detail: 'Outcome exactly equals Connected.' },
+        { label: 'Test Drive Bookings', count: bookings, detail: 'Connected rows where effective summary contains converted, interested, booked, location confirmed, or similar booking language.' },
+        { label: 'Follow Up Required', count: followUps, detail: 'Updated Summary contains interested or follow up, or Summary contains follow up.' },
+        { label: 'Interested', count: interested, detail: 'Connected rows where effective summary contains interested but not not interested.' },
+        { label: 'Requested Call Back', count: requestedCallbacks, detail: 'Disposition, Summary, or Session Summary contains callback or call later language.' },
+        { label: 'Test Drive Completed', count: testDriveCompleted, detail: 'Connected rows where effective summary contains already booked.' },
+        { label: 'Not Connected Calls', count: notConnectedCalls, detail: 'Outcome exactly equals Not Connected.' },
+      ]);
       renderPreviewTables(data);
+    }
+
+    function renderRuleAudit(rules) {
+      const panel = document.getElementById('ruleAudit');
+      const grid = document.getElementById('ruleGrid');
+      if (!panel || !grid) return;
+      grid.innerHTML = rules.map(function(rule) {
+        return '<div class="rule-item">' +
+          '<div class="rule-item-title"><span>' + escapeHtml(rule.label) + '</span><span class="rule-item-count">' + escapeHtml(rule.count) + '</span></div>' +
+          '<div class="rule-item-detail">' + escapeHtml(rule.detail) + '</div>' +
+          '</div>';
+      }).join('');
+      panel.classList.add('show');
     }
 
     function renderPreviewTables(data) {
@@ -1449,6 +1538,10 @@
     function hidePreviewTables() {
       bookingPreviewData = [];
       completedPreviewData = [];
+      const ruleAudit = document.getElementById('ruleAudit');
+      const ruleGrid = document.getElementById('ruleGrid');
+      if (ruleAudit) ruleAudit.classList.remove('show');
+      if (ruleGrid) ruleGrid.innerHTML = '';
       const bookingWrapper = document.getElementById('bookingTableWrapper');
       const completedWrapper = document.getElementById('completedTableWrapper');
       if (bookingWrapper) bookingWrapper.style.display = 'none';

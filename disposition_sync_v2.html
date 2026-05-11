@@ -2407,6 +2407,12 @@
       const unmatchedLeads = output.filter(r => !sessionMap[r.phone]);
       const matchedLeadCount = output.length - unmatchedLeads.length;
       const unknownDispositionRows = output.filter(r => r.outcome === 'Unknown');
+      const sessionSelectionCounts = { recording: 0, summary: 0, fallback: 0 };
+      Object.values(sessionMap).forEach(session => {
+        const reason = session.selectionReason || 'fallback';
+        if (sessionSelectionCounts[reason] === undefined) sessionSelectionCounts.fallback += 1;
+        else sessionSelectionCounts[reason] += 1;
+      });
       const missingFile1Required = getMissingColumnGroups(rows1, validation.file1RequiredGroups);
       const missingFile1Recommended = getMissingColumnGroups(rows1, validation.file1RecommendedGroups);
       const missingFile2Recommended = getMissingColumnGroups(rows2, validation.file2RecommendedGroups);
@@ -2460,6 +2466,9 @@
         { label: 'Skipped rows', value: invalidLeadRows.length, tone: invalidLeadRows.length ? 'red' : 'green' },
         { label: 'Duplicate phones', value: duplicatePhones.length, tone: duplicatePhones.length ? 'amber' : 'green' },
         { label: 'Unknown dispositions', value: unknownDispositionRows.length, tone: unknownDispositionRows.length ? 'amber' : 'green' },
+        { label: 'Selected by recording', value: sessionSelectionCounts.recording, tone: 'green' },
+        { label: 'Selected by summary', value: sessionSelectionCounts.summary, tone: 'blue' },
+        { label: 'Selection fallback', value: sessionSelectionCounts.fallback, tone: sessionSelectionCounts.fallback ? 'amber' : 'green' },
       ];
 
       const samples = [
@@ -2482,6 +2491,14 @@
         {
           title: 'Unknown dispositions',
           rows: unknownDispositionRows.slice(0, 5).map(r => `${r.phone}: ${r.disposition || '(blank)'}`)
+        },
+        {
+          title: 'Session selection method',
+          rows: [
+            `Recording priority: ${sessionSelectionCounts.recording}`,
+            `Summary priority: ${sessionSelectionCounts.summary}`,
+            `Fallback latest row: ${sessionSelectionCounts.fallback}`,
+          ]
         },
       ].filter(section => section.rows.length);
 
@@ -2552,19 +2569,29 @@
         const sessionMap = {};
         for (const [phone, sessions] of Object.entries(sessionGroups)) {
           let best = null;
+          let selectionReason = 'fallback';
           for (const s of sessions) {
             const rec = detectRecording(s);
-            if (rec) { best = s; break; }
+            if (rec) {
+              best = s;
+              selectionReason = 'recording';
+              break;
+            }
           }
           if (!best) {
             for (const s of sessions) {
               const summ = detectSummary(s);
-              if (summ) { best = s; break; }
+              if (summ) {
+                best = s;
+                selectionReason = 'summary';
+                break;
+              }
             }
           }
           if (!best) best = sessions[sessions.length - 1];
 
           sessionMap[phone] = {
+            selectionReason,
             recording: detectRecording(best),
             summary: detectSummary(best),
             sentiment: detectSentiment(best),
