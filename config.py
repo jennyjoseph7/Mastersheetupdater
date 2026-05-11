@@ -473,7 +473,7 @@ def get_websocket_base_url(room=None):
         "environment": environment,
         "_sort_by": "active_connections",
         "_page_size": 1,
-        "last_uptime_ping": [required_uptime_ping,None],
+        "last_uptime_ping": (required_uptime_ping,None),
         "_filter_attributes": ["socket_server_url", "rooms"]
     }
     base_socket_urls = ssm.list(**kwargs)
