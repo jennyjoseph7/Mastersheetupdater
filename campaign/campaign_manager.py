@@ -1081,8 +1081,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         return
 
     logger.info(f"Lead found for lead_id={lead_id}")
-    # logger.info(f"CHANNEL_IDENTIFIER-----{channel_identifier}")
     if channel_identifier:
+        logger.info(f"CHANNEL_IDENTIFIER-----{channel_identifier} for lead_id={lead_id}")
         lead_data["channel_identifier"] = channel_identifier
     if not channel:
         channel = get_channel(lead_data, campaign_details)

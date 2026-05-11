@@ -20,6 +20,7 @@ from connectors.communication_helpers import format_box_log,safe_orjson_dumps
 from connectors.communication_configs import DB_TIMEZONE
 from communication.common_functions import generate_uid
 from config import *
+from campaign.campaign_workflow import CHANNEL_IDENTIFIER_MAP
 from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappReceiverConnector,BaseWebhookConverter
 import json
 import functools
@@ -272,7 +273,7 @@ def post_contact_status(*args, **data):
     logger.info(f"[post_contact_status] Processing message_id={message_id} with incoming_status={incoming_status}")
     raw_channel = data.get("channel")
     channel = raw_channel.strip() if isinstance(raw_channel, str) else None
-
+    channel_identifier=CHANNEL_IDENTIFIER_MAP.get(channel)
     with get_pg_connector() as pg:
         user_id = None
         should_bill = None
@@ -319,7 +320,7 @@ def post_contact_status(*args, **data):
             )
             logger.info(f"[post_contact_status] New contact_status created for incoming_status={incoming_status}.Also calling next determine_campaign_next_action--{json.dumps(data,indent=4)}")
             
-            call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get("phone_number"),incoming_status,pg=pg)
+            # call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get(channel_identifier),incoming_status,pg=pg)
             # update_lead_disposition(pg, incoming_status,user_id=user_id, **data) 
             return
         
@@ -359,7 +360,7 @@ def post_contact_status(*args, **data):
                 payload
             )
             logger.info(f"[post_contact_status] contact_status created with incoming_status={incoming_status} and contact_status_id={contact_status_id}. Also calling next determine_campaign_next_action in--{json.dumps(data,indent=4)}")
-            call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get("phone_number"),incoming_status,pg=pg)
+            # call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get(channel_identifier),incoming_status,pg=pg)
             
 
         # post billing obj
