@@ -17,6 +17,7 @@ from ai_service import ai_service_app
 from db_routes import db_routes, ai_service_app
 from voice.voice.providers.twilio import app as twilio_routes
 from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_routes
+from voice.voice.providers.elevanlabs_tatatele_inbound import app as elevanlabs_tatatele_inbound_routes
 from voice.voice.providers.elevanlab import app as elevanlab_routes
 from core.razorpay_service import razorpay_webhook_handler
 from core.core import generate_otp, dealership_signup, reset_password
@@ -73,7 +74,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
         )
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
-              task="template_approval",
+              task="template_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
               schedule = "*/10 * * * *",
               add_schedule_to_queue=False
@@ -86,6 +87,14 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
               schedule = "*/30 * * * *",
               add_schedule_to_queue=False
         )
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="reset_auth_creds",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule = "*/45 * * * *",
+              add_schedule_to_queue=False
+        )
+        
         # cron_worker.add_cron_job(
         #     enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
         #       task="set_worker_count",
@@ -204,10 +213,9 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
 app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
 app.register_blueprint(elevanlabs_tatatele_routes)
+app.register_blueprint(elevanlabs_tatatele_inbound_routes)
 app.register_blueprint(twilio_routes)
 app.register_blueprint(elevanlab_routes)
-
-
 app.register_blueprint(cohort_bp)
 app.register_blueprint(gryd_orchestration_bp)
 

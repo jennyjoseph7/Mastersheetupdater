@@ -174,7 +174,7 @@ function main() {
         push_image_to_registry
     fi
 
-    #taking current image id
+    #taking current image id new updates
     echo "Saving current image full path..."
 
     if [ $WORKER_DOCKER_IMAGE_TAG == 0 ]; then

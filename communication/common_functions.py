@@ -12,11 +12,10 @@ def generate_uid(data):
         data_str = str(data)
 
     uid = uuid.uuid3(uuid.NAMESPACE_DNS, data_str)
+    return str(uid)
 
-    return uid.hex[:16]
 
-
-def get_communication_credential(dealership_id="daveai", channel=None):
+def get_communication_credential(dealership_id="daveai", channel=None, provider_name=None):
     logger.info(f"Getting communication credential for dealership - {dealership_id}")
 
     if not channel:
@@ -24,9 +23,10 @@ def get_communication_credential(dealership_id="daveai", channel=None):
             f"Channel not provided for dealership - {dealership_id}. Returning None."
         )
         return None
-
+    _k={"dealership_id": dealership_id, "channel": channel,"provider_name":provider_name}
+    _kwargs={k: v for k, v in _k.items() if v is not None}
     with get_pg_connector() as pg:
-        creds = list(pg.list("communication_credential",{"dealership_id": dealership_id, "channel": channel}))
+        creds = list(pg.list("communication_credential",_kwargs))
         if creds:
             return creds[0]
 

@@ -5,10 +5,13 @@ from typing import Any, Dict
 from PIL import Image, ImageOps
 import re, time, typing
 from ai_service import ai_service
-
+from os.path import dirname, abspath
+BASE_DIR = dirname(dirname(abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+from config import ANALYZE_IMAGE_MODEL
 mlogger = hp.get_logger(__name__)
 
-DEFAULT_MODEL = "gcp-gemini-2.0-flash"
 
 def check_image_size(image_path: str, min_dim: int = 1024, max_aspect_ratio: float = 3) -> tuple[bool, int, int]:
     """
@@ -82,7 +85,7 @@ def pad_and_resize_image(image_path:str, output_dimensions:typing.Union[list[int
 
 def analyze_image(
     image_path: str,
-    model: str = DEFAULT_MODEL,
+    model: str = ANALYZE_IMAGE_MODEL,
     min_dim: int = None,
     max_aspect_ratio: float = None,
     verbose: bool = False,
@@ -92,7 +95,7 @@ def analyze_image(
     Analyze an image for clarity, completeness, soundness, and lighting.
     args:
         image_path: Path to the image file.
-        model: Model to use for analysis, (default: gcp-gemini-2.0-flash)
+        model: Model to use for analysis, (default: gcp-gemini-2.5-flash)
         min_dim: Minimum dimension of the image, (default: 1024)
         max_aspect_ratio: Maximum aspect ratio of the image, (default: 3)
         verbose: Whether to print verbose output, (default: False)
@@ -113,7 +116,7 @@ def analyze_image(
     start_time = time.time()
     valid_size, width, height = check_image_size(image_path, min_dim, max_aspect_ratio)
     logger.info(f"Valid size for image: {image_path} is {valid_size}, width: {width}, height: {height}")
-    model = model or DEFAULT_MODEL
+    model = model or ANALYZE_IMAGE_MODEL
     min_dim = min_dim or 1024
     max_aspect_ratio = max_aspect_ratio or 3
     verbose = verbose or False
@@ -164,7 +167,7 @@ def analyze_image(
 def compare_images(
     original_image_path: str,
     generated_image_path: str,
-    model: str = DEFAULT_MODEL,
+    model: str = ANALYZE_IMAGE_MODEL,
     verbose: bool = False,
     logger: hp.logging.Logger = None,
 ) -> Dict[str, Any]:
@@ -173,7 +176,7 @@ def compare_images(
     args:
         original_image_path: Path to the original image file.
         generated_image_path: Path to the generated image file.
-        model: Model to use for analysis, (default: gcp-gemini-2.0-flash)
+        model: Model to use for analysis, (default: gcp-gemini-2.5-flash)
         verbose: Whether to print verbose output, (default: False)
         logger: Logger to use for logging, (default: mlogger)
     Returns:
@@ -183,7 +186,7 @@ def compare_images(
     """
     logger = logger or mlogger
     start_time = time.time()
-    model = model or DEFAULT_MODEL
+    model = model or ANALYZE_IMAGE_MODEL
     verbose = verbose or False
     system_prompt = (
         "You are a very strict expert automobile assessor for the physical accuracy of the car in the image. "
@@ -244,7 +247,7 @@ python check_distortion.py data/images/car_1.jpg
     parser.add_argument("mode", help="Mode to use", choices=["analyze", "compare"])
     parser.add_argument("image_path", help="Path to an image file")
     parser.add_argument("--generated_image_path", help="Path to the generated image file")
-    parser.add_argument("--model", help="OpenAI model name", default=DEFAULT_MODEL)
+    parser.add_argument("--model", help="Image Analysis Model name", default=ANALYZE_IMAGE_MODEL)
     parser.add_argument("--min-dim", help="Minimum dimension of the image", default=1024)
     parser.add_argument("--max-aspect-ratio", help="Maximum aspect ratio of the image", default=3)
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true", default=False)

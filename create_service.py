@@ -43,28 +43,6 @@ class PluginManager:
             with open(file_path, "w") as f:
                 f.write(code)
 
-        module = types.ModuleType(name)
-        exec(code, module.__dict__)
-
-        sys.modules[name] = module
-        self.modules[name] = module
-
-        return module
-
-    def get_plugin(self, module_name: str):
-        return self.modules.get(module_name)
-
-    def reload_plugin(self, module_name: str, new_code: str):
-        if module_name not in self.modules:
-            raise ValueError(f"Plugin '{module_name}' not found")
-
-        module = self.modules[module_name]
-        module.__dict__.clear()
-        module.__dict__["__name__"] = module_name
-        exec(new_code, module.__dict__)
-
-        return module
-
     def delete_service(self, service_name: str):
         """Delete all modules registered under a service name."""
         entries = list(self.registry.get(service_name, []))
@@ -80,13 +58,6 @@ class PluginManager:
         if entry is None:
             logger.warning(f"Plugin '{module_name}' not found in registry")
             return
-
-        # remove from sys.modules and in-memory modules
-        if module_name in sys.modules:
-            del sys.modules[module_name]
-        if module_name in self.modules:
-            del self.modules[module_name]
-        gc.collect()
 
         # delete the physical module file
         file_path = os.path.join(service_name, f"{module_name}.py")
@@ -107,7 +78,7 @@ class PluginManager:
             with open("start_worker_config.json", "r") as f:
                 swc = json.load(f)
             swc["workers"] = [
-                w for w in swc["workers"] if w.get("entry_point") != module_name
+                w for w in swc["workers"] if w.get("entry_point") != f"{module_name}.py"
             ]
             with open("start_worker_config.json", "w") as f:
                 json.dump(swc, f, indent=4)
@@ -178,8 +149,10 @@ class PluginManager:
             self.registry[service_name] = [new_entry]
             logger.debug(f"Registered new service '{service_name}' in duplicate_services_registry.json")
 
-        with open("duplicate_services_registry.json", "w") as f:
-            json.dump(self.registry, f, indent=4)
+        # with open("duplicate_services_registry.json", "w") as f:
+        #     json.dump(self.registry, f, indent=4)
+
+        self._save_registry()
 
         with open("config.py", "a") as f:
             f.write(f'\n{new_variable_name} = os.environ.get("{new_variable_name}", "{new_service_name_value}")')
@@ -203,7 +176,7 @@ class PluginManager:
 
         start_worker_config["workers"].append({
             "name": service_name,
-            "entry_point": self.new_module_name,
+            "entry_point": f"{self.new_module_name}.py",
             "gryd_service": new_variable_name,
             "parallel_threads": num_threads or x.get("parallel_threads"),
             "shutdown_time": x.get("shutdown_time", 0)
@@ -214,8 +187,8 @@ class PluginManager:
 
 
         code = (
-            f"from {service_name} import {service_module}\n"
-            f"from {service_name}.{service_module} import *\n"
+            f"import {service_module}\n"
+            f"from {service_module} import *\n"
             f"import config\n"
             f"import os, sys, json, time\n"
             f"from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, gryd_db_helper as dbhp\n"
@@ -259,10 +232,6 @@ if __name__ == "__main__":
     # list
     subparsers.add_parser("list", help="List all registered gryd service plugins")
 
-    # reload
-    p_reload = subparsers.add_parser("reload", help="Reload a plugin with new code from a file")
-    p_reload.add_argument("--module-name", required=True, help="Module name to reload")
-    p_reload.add_argument("--code-file", required=True, help="Path to .py file containing new module code")
 
     args = parser.parse_args()
     manager = PluginManager()
@@ -297,9 +266,3 @@ if __name__ == "__main__":
                 print(f"{p['service_key']:<20} {p['module_name']:<20} {p['service_name']:<35} {p['variable_name']}")
         else:
             print("No plugins registered.")
-
-    elif args.command == "reload":
-        with open(args.code_file, "r") as f:
-            new_code = f.read()
-        manager.reload_plugin(args.module_name, new_code)
-        print(f"Plugin '{args.module_name}' reloaded.")

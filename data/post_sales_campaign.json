@@ -1,805 +1,835 @@
 {
-  "timezone": "Asia/Kolkata",
-  "name": "post_sales_campaign",
-  "model_type": "default",
-  "attributes": [
-    {
-      "name": "created",
-      "type": "number",
-      "auto_updater": true,
-      "default": {
-        "function": "now_ctime"
-      }
-    },
-    {
-      "name": "updated",
-      "type": "number",
-      "auto_updater": true,
-      "force_update": true,
-      "default": {
-        "function": "now_ctime"
-      }
-    },
-    {
-      "name": "workshop_id",
-      "refers": "parents.workshop.workshop_id",
-      "required": false
-    },
-    {
-      "name": "dealership_id",
-      "refers": "parents.dealership.dealership_id",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "workshop",
-          "workshop_id",
-          "dealership_id"
-        ]
-      },
-      "required": true,
-      "auto_updater":false
-    },
-    {
-      "name": "dealer_name",
-      "refers": "parents.dealership.dealer_name"
-    },
-    {
-      "name": "dealership_guidelines",
-      "refers": "parents.dealership.dealership_guidelines"
-    },
-    {
-      "name": "dealership_guardrails",
-      "refers": "parents.dealership.dealership_guardrails"
-    },
-    {
-      "name": "dealership_description",
-      "refers": "parents.dealership.dealership_description"
-    },
-    {
-      "name": "region_id",
-      "refers": "parents.dealership.region_id"
-    },
-    {
-      "name": "region_name",
-      "refers": "parents.dealership.region_name"
-    },
-    {
-      "name": "region_level_guidelines",
-      "refers": "parents.dealership.region_level_guidelines"
-    },
-    {
-      "name": "region_level_guardrails",
-      "refers": "parents.dealership.region_level_guardrails"
-    },
-    {
-      "name" : "region_subdivision_id",
-      "refers" : "parents.workshop.region_subdivision_id"
-    },
-    {
-      "name": "workshop_pincode",
-      "refers": "parents.workshop.pincode"
-    },
-    {
-      "name": "supported_brands",
-      "refers": "parents.dealership.supported_brands"
-    },
-    {
-      "name": "supported_brands_guidelines",
-      "refers": "parents.dealership.supported_brands_guidelines"
-    },
-    {
-      "name": "workshop_level_guidelines",
-      "refers": "parents.workshop.workshop_level_guidelines"
-    },
-    {
-      "name": "workshop_level_guardrails",
-      "refers": "parents.workshop.workshop_level_guardrails"
-    },
-    {
-      "name": "audience_task_ids",
-      "type": "string_list",
-      "list_type": "text"
-    },
-	    {
-	      "name": "campaign_name",
-	      "type": "text",
-	      "required": true,
-	      "indexed": true
-	    },
-	    {
-	      "name": "search_term",
-	      "type": "text",
-	      "indexed": true,
-	      "force_update": [
-	        "dealer_name",
-	        "region_name",
-	        "workshop_pincode",
-	        "supported_brands",
-	        "campaign_name",
-	        "campaign_type",
-	        "campaign_sub_type",
-	        "campaign_objective_name",
-	        "campaign_objective_type",
-	        "campaign_objective_description",
-	        "campaign_description",
-	        "campaign_offer",
-	        "offer_applicability",
-	        "target_audience_tags",
-	        "start_date",
-	        "end_date",
-	        "channels",
-	        "languages",
-	        "campaign_status",
-	        "voice_start_language",
-	        "voice_first_message"
-	      ],
-	      "auto_updater": true,
-	      "default": {
-	        "function": "name_to_id",
-	        "args": [
-	          "dealer_name",
-	          "region_name",
-	          "workshop_pincode",
-	          "supported_brands",
-	          "campaign_name",
-	          "campaign_type",
-	          "campaign_sub_type",
-	          "campaign_objective_name",
-	          "campaign_objective_type",
-	          "campaign_objective_description",
-	          "campaign_description",
-	          "campaign_offer",
-	          "offer_applicability",
-	          "target_audience_tags",
-	          "start_date",
-	          "end_date",
-	          "channels",
-	          "languages",
-	          "campaign_status",
-	          "voice_start_language",
-	          "voice_first_message"
-	        ],
-	        "kwargs": {
-	          "attribute_join": " ",
-	          "is_unique": true,
-	          "separator": " ",
-	          "skip_empty": true,
-	          "case": "lower"
-	        }
-	      }
-	    },
-	    {
-	      "name": "campaign_type",
-	      "type": "text",
-	      "auto_updater": true,
-	      "default": "post-sales"
-	    },
-    {
-      "name": "campaign_user_source",
-      "type": "text",
-      "required": true,
-      "option_others": true,
-      "options": [
-        "auto_generated",
-        "file",
-        "crm"
-      ]
-    },
-    {
-      "name": "campaign_objective_id",
-      "type": "uid",
-      "option_others": true,
-      "options": "/options/campaign_objective/campaign_objective_id",
-      "required": false
-    },
-    {
-      "name": "campaign_objective_name",
-      "type": "text",
-      "options": [
-        "Product Launch / Reveal",
-        "Post-Purchase Call",
-        "Welcome Email / WhatsApp",
-        "First-Service Reminder",
-        "Accessory Suggestion",
-        "Insurance / RSA Onboarding",
-        "Scheduled Service Reminder",
-        "Missed Service Follow-Up",
-        "Seasonal Check-Up / Awareness",
-        "AMC Renewal",
-        "Warranty Expiry Offer",
-        "Referral Program / Loyalty",
-        "Birthday / Anniversary Offer",
-        "Exclusive Member Event",
-        "Post-Service Feedback (CSI / NPS)",
-        "Customer Education / How-To",
-        "Recall",
-        "Recall Follow-Up Call / WhatsApp",
-        "Recall Completion Confirmation"
-      ],
-      "option_others": true,
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "campaign_objective_name"
-        ]
-      }
-    },
-    {
-      "name": "campaign_objective_type",
-      "type": "list",
-      "options": [
-        "lead volume",
-        "budget based",
-        "roi target"
-      ],
-      "default": ["lead volume"]
-    },
-    {
-      "name": "campaign_objective_description",
-      "type": "text",
-      "title": "Campaign Objective Description"
-    },
-    {
-      "name": "campaign_sub_type",
-      "type": "text",
-      "options": [
-        "workshop awareness",
-        "event",
-        "new product lauch",
-        "offers",
-        "new accessories",
-        "new procedures",
-        "customer retention",
-        "service reminder",
-        "upsell/cross-sell",
-        "feedback",
-        "reminder",
-        "product recall",
-        "software update",
-        "other"
-      ],
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "campaign_sub_type"
-        ]
-      }
-    },
-    {
-      "name": "conversation_tone",
-      "type": "text",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "conversation_tone"
-        ]
-      }
-    },
-    {
-      "name": "custom_attributes",
-      "type": "object_list",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "custom_attributes"
-        ]
-      }
-    },
-    {
-      "name": "campaign_guardrails_guidelines",
-      "type": "text",
-      "title": "Campaign Guardrails and Guidelines",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "guardrails_guidelines"
-        ]
-      }
-    },
-    {
-      "name": "campaign_description",
-      "type": "text",
-      "title": "Campaign Description"
-    },
-    {
-      "name": "campaign_tagline",
-      "type": "text",
-      "title": "Campaign Tagline"
-    },
-    {
-      "name": "campaign_offer",
-      "type": "text",
-      "title": "Campaign Offer Description"
-    },
-    {
-      "name": "offer_applicability",
-      "type": "text",
-      "title": "Offer Applicability Details"
-    },
-    
-    {
-      "name": "urgency_hook",
-      "type": "text",
-      
-      "title": "Urgency Hooks"
-      
-    },
-    {
-      "name": "why_user_should_avail_this",
-      "type": "text",
-      "title": "Why User Should Avail This",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "why_user_should_avail_this"
-        ]
-      }
-    },
-    {
-      "name": "reasons_users_may_not_be_interested",
-      "type": "text",
-      "title": "Reasons Users May Not Be Interested",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "reasons_users_may_not_be_interested"
-        ]
-      }
-    },
-    {
-      "name": "reasons_for_non_applicability",
-      "type": "text",
-      "title": "Reasons for Non-Applicability",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "reasons_for_non_applicability"
-        ]
-      }
-    },
-    {
-      "name": "other_important_information",
-      "type": "text",
-      "title": "Other Important Information",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "other_important_information"
-        ]
-      }
-    },
-    {
-      "name": "target_audience_tags",
-      "type": "string_list",
-      "list_type": "text",
-      "title": "Target Audience Tags",
-      "ui_element": "tags",
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "target_audience_tags"
-        ]
-      }
-    },
-    {
-      "name": "start_date",
-      "type": "number"
-    },
-    {
-      "name": "end_date",
-      "type": "number"
-    },
-    {
-      "name": "channels",
-      "type": "list",
-      "options": [
-        "rcs",
-        "email",
-        "web_chat",
-        "web_chat_voice",
-        "fb_chat",
-        "insta_chat",
-        "twitter_chat",
-        "voice_phone",
-        "whatsapp_chat",
-        "whatsapp_voice_note",
-        "whatsapp_voice_call",
-        "zoom_bot",
-        "ms_teams"
-      ],
-      "ui_element": "multiselect"
-    },
-    {
-      "name": "languages",
-      "default": "english",
-      "type": "string_list",
-      "option_others": true,
-      "ui_element": "tags",
-      "options": [
-        "english",
-        "hindi",
-        "kannada",
-        "telugu",
-        "tamil",
-        "malayalam",
-        "odia",
-        "bengali",
-        "marathi",
-        "gujarati",
-        "bengali",
-        "assamese",
-        "punjabi",
-        "spanish",
-        "arabic"
-      ]
-    },
-    {
-      "name": "ctas",
-      "title": "Call to Actions",
-      "type": "string_list",
-      "list_type": "text",
-      "ui_element": "tags",
-      "options": [
-        "book-service",
-        "order-accessory",
-        "renew-insurance",
-        "order-spare-part",
-        "order-extended-warranty",
-        "order-care-package"
-      ],
-      "option_others": true,
-      "default": {
-        "function": "get_from_model",
-        "args": [
-          "campaign_objective",
-          "campaign_objective_id",
-          "ctas"
-        ]
-      }
-    },
-    {
-      "name": "number_targeted",
-      "type": "number"
-    },
-    {
-      "name": "number_reached",
-      "type": "number"
-    },
-    {
-      "name": "number_contacted",
-      "type": "number"
-    },
-    {
-      "name": "number_engaged",
-      "type": "number"
-    },
-    {
-      "name": "number_converted",
-      "type": "number"
-    },
-    {
-      "name": "budget_allocated",
-      "type": "number"
-    },
-    {
-      "name": "actual_spent",
-      "type": "number"
-    },
-    {
-      "name": "conversion_rate_percent",
-      "type": "number",
-      "default": {
-        "function": "divide_attributes",
-        "args": [
-          "number_converted",
-          "number_contacted"
-        ]
-      }
-    },
-    {
-      "name": "cost_per_lead",
-      "type": "number",
-      "default": {
-        "function": "divide_attributes",
-        "args": [
-          "actual_spent",
-          "number_converted"
-        ]
-      }
-    },
-    {
-      "name": "campaign_status",
-      "type": "text",
-      "options": [
-        "Drafted",
-        "Planned",
-        "Active",
-        "Completed",
-        "On Hold",
-        "Cancelled"
-      ]
-    },
-    {
-      "name": "responsible_person",
-      "type": "text"
-    },
-    {
-      "name": "remarks",
-      "type": "text"
-    },
-    {
-      "default": {
-        "function": "make_uuid3",
-        "args": [
-          "workshop_name",
-          "campaign_name",
-          "start_date",
-          "campaign_type",
-          "campaign_objective",
-          "created"
-        ]
-      },
-      "name": "campaign_id",
-      "type": "uid",
-      "id": true
-    },
-    {
-      "name" : "voice_agent_id",
-      "type" : "text",
-      "default" : {
-        "function" : "set_if_condition",
-        "args" : [
-          {
-            "function" : "get_from_model",
-            "args" : [
-              "region_subdivision",
-              "region_subdivision_id",
-              "voice_agent_id"
-            ]
-          },
-          {
-            "function" : "set_if_condition",
-            "args" : [
-              {
-                "function" : "get_from_model",
-                "args" : [
-                  "region",
-                  "region_id",
-                  "voice_agent_id"
-                ]
-              },
-              null
-            ],
-            "kwargs":{
-              "region_id" : "~null"
+    "timezone": "Asia/Kolkata",
+    "name": "post_sales_campaign",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
             }
-          }
-        ],
-        "kwargs" : {
-          "subdivision_id" : "~null"
-        }
-      }
-    },
-    {
-      "name" : "voice_id",
-      "type" : "text",
-      "default" : {
-        "function" : "set_if_condition",
-        "args" : [
-          {
-            "function" : "get_from_model",
-            "args" : [
-              "region_subdivision",
-              "region_subdivision_id",
-              "voice_id"
-            ]
-          },
-          {
-            "function" : "set_if_condition",
-            "args" : [
-              {
-                "function" : "get_from_model",
-                "args" : [
-                  "region",
-                  "region_id",
-                  "voice_id"
-                ]
-              },
-              null
-            ],
-            "kwargs":{
-              "region_id" : "~null"
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
             }
-          }
-        ],
-        "kwargs" : {
-          "subdivision_id" : "~null"
-        }
-      }
-    },
-    {
-      "name": "voice_start_language",
-      "type": "text",
-      "default": {
-        "function": "set_if_condition",
-        "args": [
-          {
-            "function": "get_from_model",
-            "args": [
-              "region_subdivision",
-              "region_subdivision_id",
-              "voice_start_language"
-            ]
-          },
-          {
-            "function": "set_if_condition",
-            "args": [
-              {
+        },
+        {
+            "name": "workshop_id",
+            "refers": "parents.workshop.workshop_id",
+            "required": false
+        },
+        {
+            "name": "dealership_id",
+            "refers": "parents.dealership.dealership_id",
+            "default": {
                 "function": "get_from_model",
-                "args": ["region", "region_id", "voice_start_language"]
-              },
-              null
-            ],
-            "kwargs": {
-              "region_id": "~null"
-            }
-          }
-        ],
-        "kwargs": {
-          "subdivision_id": "~null"
-        }
-      },
-      "options": [
-        "Arabic",
-        "Bulgarian",
-        "Chinese",
-        "Croatian",
-        "Czech",
-        "Danish",
-        "Dutch",
-        "English",
-        "Filipino",
-        "Finnish",
-        "French",
-        "German",
-        "Greek",
-        "Hindi",
-        "Hungarian",
-        "Indonesian",
-        "Italian",
-        "Japanese",
-        "Korean",
-        "Malay",
-        "Norwegian",
-        "Polish",
-        "Portuguese (Brazil)",
-        "Portuguese",
-        "Romanian",
-        "Russian",
-        "Slovak",
-        "Spanish",
-        "Swedish",
-        "Tamil",
-        "Turkish",
-        "Ukrainian",
-        "Vietnamese"
-      ],
-      "option_others": true
-    },
-    {
-      "name" : "voice_first_message",
-      "type" : "text",
-      "default" : {
-        "function" : "set_if_condition",
-        "args" : [
-          {
-            "function" : "get_from_model",
-            "args" : [
-              "region_subdivision",
-              "region_subdivision_id",
-              "voice_first_message"
-            ]
-          },
-          {
-            "function" : "set_if_condition",
-            "args" : [
-              {
-                "function" : "get_from_model",
-                "args" : [
-                  "region",
-                  "region_id",
-                  "voice_first_message"
+                "args": [
+                    "workshop",
+                    "workshop_id",
+                    "dealership_id"
                 ]
-              },
-              null
+            },
+            "required": true,
+            "auto_updater": false
+        },
+        {
+            "name": "dealer_name",
+            "refers": "parents.dealership.dealer_name"
+        },
+        {
+            "name": "dealership_guidelines",
+            "refers": "parents.dealership.dealership_guidelines"
+        },
+        {
+            "name": "dealership_guardrails",
+            "refers": "parents.dealership.dealership_guardrails"
+        },
+        {
+            "name": "dealership_description",
+            "refers": "parents.dealership.dealership_description"
+        },
+        {
+            "name": "region_id",
+            "refers": "parents.dealership.region_id"
+        },
+        {
+            "name": "region_name",
+            "refers": "parents.dealership.region_name"
+        },
+        {
+            "name": "region_level_guidelines",
+            "refers": "parents.dealership.region_level_guidelines"
+        },
+        {
+            "name": "region_level_guardrails",
+            "refers": "parents.dealership.region_level_guardrails"
+        },
+        {
+            "name": "region_subdivision_id",
+            "refers": "parents.workshop.region_subdivision_id"
+        },
+        {
+            "name": "workshop_pincode",
+            "refers": "parents.workshop.pincode"
+        },
+        {
+            "name": "supported_brands",
+            "refers": "parents.dealership.supported_brands"
+        },
+        {
+            "name": "supported_brands_guidelines",
+            "refers": "parents.dealership.supported_brands_guidelines"
+        },
+        {
+            "name": "workshop_level_guidelines",
+            "refers": "parents.workshop.workshop_level_guidelines"
+        },
+        {
+            "name": "workshop_level_guardrails",
+            "refers": "parents.workshop.workshop_level_guardrails"
+        },
+        {
+            "name": "audience_task_ids",
+            "type": "string_list",
+            "list_type": "text"
+        },
+        {
+            "name": "campaign_name",
+            "type": "text",
+            "required": true,
+            "indexed": true
+        },
+        {
+            "name": "search_term",
+            "type": "text",
+            "indexed": true,
+            "force_update": [
+                "dealer_name",
+                "region_name",
+                "workshop_pincode",
+                "supported_brands",
+                "campaign_name",
+                "campaign_type",
+                "campaign_sub_type",
+                "campaign_objective_name",
+                "campaign_objective_type",
+                "campaign_objective_description",
+                "campaign_description",
+                "campaign_offer",
+                "offer_applicability",
+                "target_audience_tags",
+                "start_date",
+                "end_date",
+                "channels",
+                "languages",
+                "campaign_status",
+                "voice_start_language",
+                "voice_first_message"
             ],
-            "kwargs":{
-              "region_id" : "~null"
+            "auto_updater": true,
+            "default": {
+                "function": "name_to_id",
+                "args": [
+                    "dealer_name",
+                    "region_name",
+                    "workshop_pincode",
+                    "supported_brands",
+                    "campaign_name",
+                    "campaign_type",
+                    "campaign_sub_type",
+                    "campaign_objective_name",
+                    "campaign_objective_type",
+                    "campaign_objective_description",
+                    "campaign_description",
+                    "campaign_offer",
+                    "offer_applicability",
+                    "target_audience_tags",
+                    "start_date",
+                    "end_date",
+                    "channels",
+                    "languages",
+                    "campaign_status",
+                    "voice_start_language",
+                    "voice_first_message"
+                ],
+                "kwargs": {
+                    "attribute_join": " ",
+                    "is_unique": true,
+                    "separator": " ",
+                    "skip_empty": true,
+                    "case": "lower"
+                }
             }
-          }
-        ],
-        "kwargs" : {
-          "subdivision_id" : "~null"
+        },
+        {
+            "name": "campaign_type",
+            "type": "text",
+            "auto_updater": true,
+            "default": "post-sales"
+        },
+        {
+            "name": "campaign_user_source",
+            "type": "text",
+            "required": true,
+            "option_others": true,
+            "options": [
+                "auto_generated",
+                "file",
+                "crm"
+            ],
+            "indexed": true
+        },
+        {
+            "name": "crm_source_details",
+            "type": "nested_object",
+            "dict_keys": [
+                "crm_name",
+                "api_key",
+                "batch_size",
+                "sheet_url",
+                "account_id",
+                "last_updated"
+            ]
+        },
+        {
+            "name": "last_sync_timestamp",
+            "type": "number"
+        },
+        {
+            "name": "campaign_objective_id",
+            "type": "uid",
+            "option_others": true,
+            "options": "/options/campaign_objective/campaign_objective_id",
+            "required": false
+        },
+        {
+            "name": "campaign_objective_name",
+            "type": "text",
+            "options": [
+                "Product Launch / Reveal",
+                "Post-Purchase Call",
+                "Welcome Email / WhatsApp",
+                "First-Service Reminder",
+                "Accessory Suggestion",
+                "Insurance / RSA Onboarding",
+                "Scheduled Service Reminder",
+                "Missed Service Follow-Up",
+                "Seasonal Check-Up / Awareness",
+                "AMC Renewal",
+                "Warranty Expiry Offer",
+                "Referral Program / Loyalty",
+                "Birthday / Anniversary Offer",
+                "Exclusive Member Event",
+                "Post-Service Feedback (CSI / NPS)",
+                "Customer Education / How-To",
+                "Recall",
+                "Recall Follow-Up Call / WhatsApp",
+                "Recall Completion Confirmation"
+            ],
+            "option_others": true,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "campaign_objective_name"
+                ]
+            }
+        },
+        {
+            "name": "campaign_objective_type",
+            "type": "list",
+            "options": [
+                "lead volume",
+                "budget based",
+                "roi target"
+            ],
+            "default": [
+                "lead volume"
+            ]
+        },
+        {
+            "name": "campaign_objective_description",
+            "type": "text",
+            "title": "Campaign Objective Description"
+        },
+        {
+            "name": "campaign_sub_type",
+            "type": "text",
+            "options": [
+                "workshop awareness",
+                "event",
+                "new product lauch",
+                "offers",
+                "new accessories",
+                "new procedures",
+                "customer retention",
+                "service reminder",
+                "upsell/cross-sell",
+                "feedback",
+                "reminder",
+                "product recall",
+                "software update",
+                "other"
+            ],
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "campaign_sub_type"
+                ]
+            }
+        },
+        {
+            "name": "conversation_tone",
+            "type": "text",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "conversation_tone"
+                ]
+            }
+        },
+        {
+            "name": "campaign_custom_attributes",
+            "type": "object_list",
+            "list_type": "nested_object",
+            "dict_keys": [
+                "attribute_name",
+                "attribute_value",
+                "attribute_type",
+                "attribute_description"
+            ]
+        },
+        {
+            "name": "campaign_guardrails_guidelines",
+            "type": "text",
+            "title": "Campaign Guardrails and Guidelines",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "guardrails_guidelines"
+                ]
+            }
+        },
+        {
+            "name": "campaign_description",
+            "type": "text",
+            "title": "Campaign Description"
+        },
+        {
+            "name": "campaign_tagline",
+            "type": "text",
+            "title": "Campaign Tagline"
+        },
+        {
+            "name": "campaign_offer",
+            "type": "text",
+            "title": "Campaign Offer Description"
+        },
+        {
+            "name": "offer_applicability",
+            "type": "text",
+            "title": "Offer Applicability Details"
+        },
+        {
+            "name": "urgency_hook",
+            "type": "text",
+            "title": "Urgency Hooks"
+        },
+        {
+            "name": "why_user_should_avail_this",
+            "type": "text",
+            "title": "Why User Should Avail This",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "why_user_should_avail_this"
+                ]
+            }
+        },
+        {
+            "name": "reasons_users_may_not_be_interested",
+            "type": "text",
+            "title": "Reasons Users May Not Be Interested",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "reasons_users_may_not_be_interested"
+                ]
+            }
+        },
+        {
+            "name": "reasons_for_non_applicability",
+            "type": "text",
+            "title": "Reasons for Non-Applicability",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "reasons_for_non_applicability"
+                ]
+            }
+        },
+        {
+            "name": "other_important_information",
+            "type": "text",
+            "title": "Other Important Information",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "other_important_information"
+                ]
+            }
+        },
+        {
+            "name": "target_audience_tags",
+            "type": "string_list",
+            "list_type": "text",
+            "title": "Target Audience Tags",
+            "ui_element": "tags",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "target_audience_tags"
+                ]
+            }
+        },
+        {
+            "name": "start_date",
+            "type": "number"
+        },
+        {
+            "name": "end_date",
+            "type": "number"
+        },
+        {
+            "name": "channels",
+            "type": "list",
+            "options": [
+                "rcs",
+                "email",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "voice_phone",
+                "whatsapp_chat",
+                "whatsapp_voice_note",
+                "whatsapp_voice_call",
+                "zoom_bot",
+                "ms_teams"
+            ],
+            "ui_element": "multiselect"
+        },
+        {
+            "name": "languages",
+            "default": "english",
+            "type": "string_list",
+            "option_others": true,
+            "ui_element": "tags",
+            "options": [
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujarati",
+                "bengali",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic"
+            ]
+        },
+        {
+            "name": "ctas",
+            "title": "Call to Actions",
+            "type": "string_list",
+            "list_type": "text",
+            "ui_element": "tags",
+            "options": [
+                "book-service",
+                "order-accessory",
+                "renew-insurance",
+                "order-spare-part",
+                "order-extended-warranty",
+                "order-care-package"
+            ],
+            "option_others": true,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "ctas"
+                ]
+            }
+        },
+        {
+            "name": "number_targeted",
+            "type": "number"
+        },
+        {
+            "name": "number_reached",
+            "type": "number"
+        },
+        {
+            "name": "number_contacted",
+            "type": "number"
+        },
+        {
+            "name": "number_engaged",
+            "type": "number"
+        },
+        {
+            "name": "number_converted",
+            "type": "number"
+        },
+        {
+            "name": "budget_allocated",
+            "type": "number"
+        },
+        {
+            "name": "actual_spent",
+            "type": "number"
+        },
+        {
+            "name": "conversion_rate_percent",
+            "type": "number",
+            "default": {
+                "function": "divide_attributes",
+                "args": [
+                    "number_converted",
+                    "number_contacted"
+                ]
+            }
+        },
+        {
+            "name": "cost_per_lead",
+            "type": "number",
+            "default": {
+                "function": "divide_attributes",
+                "args": [
+                    "actual_spent",
+                    "number_converted"
+                ]
+            }
+        },
+        {
+            "name": "campaign_status",
+            "type": "text",
+            "indexed": true,
+            "options": [
+                "Drafted",
+                "Planned",
+                "Active",
+                "Continuous",
+                "Completed",
+                "On Hold",
+                "Cancelled"
+            ]
+        },
+        {
+            "name": "responsible_person",
+            "type": "text"
+        },
+        {
+            "name": "remarks",
+            "type": "text"
+        },
+        {
+            "default": {
+                "function": "make_uuid3",
+                "args": [
+                    "workshop_name",
+                    "campaign_name",
+                    "start_date",
+                    "campaign_type",
+                    "campaign_objective",
+                    "created"
+                ]
+            },
+            "name": "campaign_id",
+            "type": "uid",
+            "id": true
+        },
+        {
+            "name": "voice_agent_id",
+            "type": "text",
+            "default": {
+                "function": "set_if_condition",
+                "args": [
+                    {
+                        "function": "get_from_model",
+                        "args": [
+                            "region_subdivision",
+                            "region_subdivision_id",
+                            "voice_agent_id"
+                        ]
+                    },
+                    {
+                        "function": "set_if_condition",
+                        "args": [
+                            {
+                                "function": "get_from_model",
+                                "args": [
+                                    "region",
+                                    "region_id",
+                                    "voice_agent_id"
+                                ]
+                            },
+                            null
+                        ],
+                        "kwargs": {
+                            "region_id": "~null"
+                        }
+                    }
+                ],
+                "kwargs": {
+                    "subdivision_id": "~null"
+                }
+            }
+        },
+        {
+            "name": "voice_id",
+            "type": "text",
+            "default": {
+                "function": "set_if_condition",
+                "args": [
+                    {
+                        "function": "get_from_model",
+                        "args": [
+                            "region_subdivision",
+                            "region_subdivision_id",
+                            "voice_id"
+                        ]
+                    },
+                    {
+                        "function": "set_if_condition",
+                        "args": [
+                            {
+                                "function": "get_from_model",
+                                "args": [
+                                    "region",
+                                    "region_id",
+                                    "voice_id"
+                                ]
+                            },
+                            null
+                        ],
+                        "kwargs": {
+                            "region_id": "~null"
+                        }
+                    }
+                ],
+                "kwargs": {
+                    "subdivision_id": "~null"
+                }
+            }
+        },
+        {
+            "name": "voice_start_language",
+            "type": "text",
+            "default": {
+                "function": "set_if_condition",
+                "args": [
+                    {
+                        "function": "get_from_model",
+                        "args": [
+                            "region_subdivision",
+                            "region_subdivision_id",
+                            "voice_start_language"
+                        ]
+                    },
+                    {
+                        "function": "set_if_condition",
+                        "args": [
+                            {
+                                "function": "get_from_model",
+                                "args": [
+                                    "region",
+                                    "region_id",
+                                    "voice_start_language"
+                                ]
+                            },
+                            null
+                        ],
+                        "kwargs": {
+                            "region_id": "~null"
+                        }
+                    }
+                ],
+                "kwargs": {
+                    "subdivision_id": "~null"
+                }
+            },
+            "options": [
+                "Arabic",
+                "Bulgarian",
+                "Chinese",
+                "Croatian",
+                "Czech",
+                "Danish",
+                "Dutch",
+                "English",
+                "Filipino",
+                "Finnish",
+                "French",
+                "German",
+                "Greek",
+                "Hindi",
+                "Hungarian",
+                "Indonesian",
+                "Italian",
+                "Japanese",
+                "Korean",
+                "Malay",
+                "Norwegian",
+                "Polish",
+                "Portuguese (Brazil)",
+                "Portuguese",
+                "Romanian",
+                "Russian",
+                "Slovak",
+                "Spanish",
+                "Swedish",
+                "Tamil",
+                "Turkish",
+                "Ukrainian",
+                "Vietnamese"
+            ],
+            "option_others": true
+        },
+        {
+            "name": "voice_first_message",
+            "type": "text",
+            "default": {
+                "function": "set_if_condition",
+                "args": [
+                    {
+                        "function": "get_from_model",
+                        "args": [
+                            "region_subdivision",
+                            "region_subdivision_id",
+                            "voice_first_message"
+                        ]
+                    },
+                    {
+                        "function": "set_if_condition",
+                        "args": [
+                            {
+                                "function": "get_from_model",
+                                "args": [
+                                    "region",
+                                    "region_id",
+                                    "voice_first_message"
+                                ]
+                            },
+                            null
+                        ],
+                        "kwargs": {
+                            "region_id": "~null"
+                        }
+                    }
+                ],
+                "kwargs": {
+                    "subdivision_id": "~null"
+                }
+            }
+        },
+        {
+            "name": "purpose",
+            "type": "text",
+            "require": false,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "purpose"
+                ]
+            }
+        },
+        {
+            "name": "purpose_steps",
+            "type": "string_list",
+            "require": false,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "purpose_steps"
+                ]
+            }
+        },
+        {
+            "name": "custom_conversation_start_pattern",
+            "type": "string_list",
+            "require": false,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "custom_conversation_start_pattern"
+                ]
+            },
+            "placeholder": "Custom Conversation Start Pattern Mention what the bot should say in the starting of a conversation and how."
+        },
+        {
+            "name": "doc_data",
+            "type": "text",
+            "required": false,
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "campaign_objective",
+                    "campaign_objective_id",
+                    "doc_data"
+                ]
+            }
+        },
+        {
+            "name": "audience_field_mapping",
+            "type": "object_list",
+            "list_type": "nested_object",
+            "dict_keys": [
+                "source_field",
+                "target_field",
+                "enabled"
+            ]
         }
-      }
-    },
-    {
-      "name" : "purpose",
-      "type" : "text",
-      "require" : false,
-      "default" : {
-        "function" : "get_from_model",
-        "args" : [
-          "campaign_objective",
-          "campaign_objective_id",
-          "purpose"
-        ]
-      }
-    },
-    {
-      "name" : "purpose_steps",
-      "type" : "string_list",
-      "require" : false,
-      "default" : {
-        "function" : "get_from_model",
-        "args" : [
-          "campaign_objective",
-          "campaign_objective_id",
-          "purpose_steps"
-        ]
-      }
-    },
-    {
-      "name" : "custom_conversation_start_pattern",
-      "type" : "string_list",
-      "require" : false,
-      "default" : {
-        "function" : "get_from_model",
-        "args" : [
-          "campaign_objective",
-          "campaign_objective_id",
-          "custom_conversation_start_pattern"
-        ]
-      },
-      "placeholder" : "Custom Conversation Start Pattern Mention what the bot should say in the starting of a conversation and how."
-    },
-    {
-      "name":"doc_data",
-      "type" : "text",
-      "required" : false,
-      "default" : {
-        "function" : "get_from_model",
-        "args" : [
-          "campaign_objective",
-          "campaign_objective_id",
-          "doc_data"
-        ]
-      }
-    }
-  ],
-  "parents": [
-    "workshop",
-    "dealership",
-    "communication_credential"
-  ]
+    ],
+    "parents": [
+        "workshop",
+        "dealership"
+    ]
 }

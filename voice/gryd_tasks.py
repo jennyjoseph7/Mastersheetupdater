@@ -24,6 +24,7 @@ logger = hp.get_logger(__name__)
 
 
 gryd.SERVICE = config.AUTOCRM_VOICE_SERVICE_NAME
+THREADS_PER_SESSION = 0.5
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(__name__)
 
@@ -199,6 +200,10 @@ def trigger_voice_call(*args, **kwargs):
                 session_data["prompt"] = x.get('prompt')
                 break
 
+        
+    if not user_data.get("generate_prompt") and user_data.get("prompt"):
+            session_data["prompt"] = user_data.get("prompt", "How may I help you?")
+
     
     user_data.update(session_data)
     
@@ -212,6 +217,7 @@ def trigger_voice_call(*args, **kwargs):
     # voice_id = user_data.get("voice_id",None)
     voice_start_language= user_data.get("voice_start_language","en")
     voice_agent_id= user_data.get("voice_agent_id",None)
+    voice_first_message = user_data.get("voice_first_message")
     logger.info(f"Received Voice_agent_id from user data (i.e from campaign model): {voice_agent_id}")
     credentials = get_communication_credential(dealership_id = user_data.get("dealership_id"), channel = "voice_phone")
 
@@ -222,6 +228,7 @@ def trigger_voice_call(*args, **kwargs):
         provider = credentials.get("provider_name", "tatatele").replace("-", "").strip().lower()
         session_data["agent_id"] = voice_agent_id if voice_agent_id else credentials.get("bot_name")
         session_data["language"] = voice_start_language if voice_start_language else "en"
+        session_data["voice_first_message"] = voice_first_message
         session_data["provider_credentials"] = {
             "tatatele_phone_number_api_key": credentials.get("auth_token")
         }
@@ -389,13 +396,13 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
         session_data.update(additiona_params)
 
     logger.info(f'Posting contact status with payload: {session_data}: status: {session_data.get("status")}, message_id: {message_id}, session_id: {session_id}')
-    attrs=["phone_number", "user_id", "lead_id","campaign_id","campaign_type","email","dealership_id","channel","campaign_model"]
+    attrs=["phone_number", "lead_id","campaign_id","campaign_type","email","dealership_id","channel","campaign_model"]
     payload = {a:session_data.get(a) for a in attrs if session_data.get(a)}
     payload["provider_status"] = session_data.get("status", "attempted")
     payload["message_id"] = message_id or generate_uid(session_data)
     
     logger.info(f"Constructed payload for contact status: {payload.get('provider_status')}, message_id: {payload.get('message_id')}")
-    if payload.get("provider_status") == "attempted":
+    if payload.get("provider_status") in ["attempted", "answered"]:
         post_contact_status(**payload)
     else: 
         post_contact_status(message_id, **payload)

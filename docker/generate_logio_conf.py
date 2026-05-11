@@ -14,9 +14,19 @@ def generate_conf(host, port, log_files, service_name):
             continue
 
         spl = os.path.basename(logf).split(".")
+
+        try:
+            streamName = spl[0].split("_")[0]
+            if not streamName:
+                streamName = spl[0]
+        except Exception as e:
+            print(e)
+            print("log file name formating issue, error in parsing log stream name, using fullname.")
+            streamName = spl[0]
+
         j = {}
         j["source"] = service_name
-        j["stream"] = spl[0]
+        j["stream"] = streamName
         j["config"] = {
             "path" : os.path.abspath(logf)
         }

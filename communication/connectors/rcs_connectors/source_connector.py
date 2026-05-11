@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from communication_helpers import *
-
+from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_CONVERSATION_SERVICE_NAME
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 logger = gryd.logger
         
@@ -97,7 +97,7 @@ class RCSMessengerConnector:
         Skips keys with None, empty strings, empty lists/dicts, or string "null".
         Adds new keys if not present already.
         """
-        logger.info(f"TEST safe update dict ---{updates}")
+        # logger.info(f"TEST safe update dict ---{updates}")
         for key, value in updates.items():
             if value in (None, "", [], {}, "null"):
                 continue
@@ -105,7 +105,7 @@ class RCSMessengerConnector:
             
     def process_message_dict(self,*args,**kwargs):
         message_data = self.default_message_dict
-        logger.info(f"TEST process message dict ---{message_data}")
+        # logger.info(f"TEST process message dict ---{message_data}")
         if not message_data:return
         message_dict=message_data.get("message_dict",{}).get("channelPayload")
         temporary_data = {  
@@ -126,7 +126,7 @@ class RCSMessengerConnector:
         converse_kwargs = {
             "customer_response" : message_dict.get("text"),
             "channel":"whatsapp_chat",
-            "temporary_data": {"channel_response_task":{"service":"autocrm-communication","task":"receive_converse_response_rcs","kwargs":temporary_data}},
+            "temporary_data": {"channel_response_task":{"service":AUTOCRM_COMMUNICATION_SERVICE_NAME,"task":"receive_converse_response_rcs","kwargs":temporary_data}},
             "response_length":"agent",
             "communication_data":{
                 "rcs_message_id":message_data.get("message_id"),
@@ -138,15 +138,16 @@ class RCSMessengerConnector:
         self.converse_payload = {
             "_job": {
                 "task": CONVERS_TASK_NAME,
-                "service": CONVERS_SERVICE_NAME,
+                "service": AUTOCRM_CONVERSATION_SERVICE_NAME,
                 "kwargs": converse_kwargs,
             }
         }
         
         kwargs["temporary_data"] = temporary_data
         logger.info("Calling session logic...")
+        logger.info(f"message_data.get('to')----{message_data.get('to')}")
         # call session logic here...
-        d=handle_session_logic(message_data.get("mobile_number").replace('rcs:+',''),"rcs",True)
+        d=handle_session_logic(message_data.get("mobile_number").replace('rcs:+',''),message_data.get('to'),"rcs",True)
         logger.info(f"Session logic result: {d}")
         user_d=temporary_data.get("user_details")
         converse_kwargs.update({
@@ -158,14 +159,14 @@ class RCSMessengerConnector:
             # "provider":user_d.get("rcs",None), 
             "contact":user_d.get("mobile_number",None),
             "lead_id":"inbound" if not d.get("campaign_id") else d.get("lead_id","inbound"),
-            # "lead_id":d.get("lead_id",None),
+            # "lead_id":d.get("lead_id",None)
         })
         # Remove all None values
         converse_kwargs = {k: v for k, v in converse_kwargs.items() if v is not None}
     
         res = gryd.create_async_task(
                 CONVERS_TASK_NAME,
-                CONVERS_SERVICE_NAME,
+                AUTOCRM_CONVERSATION_SERVICE_NAME,
                 kwargs=converse_kwargs
             )
         

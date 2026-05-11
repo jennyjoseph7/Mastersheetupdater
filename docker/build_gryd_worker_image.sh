@@ -21,6 +21,7 @@ ONLY_PUSH=${ONLY_PUSH:-0}
 PUSH_TO_REGISTRY=${PUSH_TO_REGISTRY:-0}
 BUILD_ENVIRONMENT=${BUILD_ENVIRONMENT:-0}
 GCP_CREDS_DIR=${GCP_CREDS_DIR:-0}
+DOCKER_BASE_IMG_TAG=${DOCKER_BASE_IMG_TAG:-lastest}
 
 export GCP_CREDS_PATH=0
 WORKING_DIR=$(pwd)
@@ -197,10 +198,14 @@ function main() {
         exit 1
     fi
 	
+    echo "Patching base image tag."
+    sed -i "s/<DOCKER_BASE_IMG_TAG>/$DOCKER_BASE_IMG_TAG/g" Dockerfile.wk
+
     if [ $ONLY_PUSH == 0 ];then
-	echo "Patching zipname."
+	    echo "Patching zipname."
     	sed "s/<zipname>/$WORKER_NAME/g" Dockerfile.wk > Dockerfile
         zip_repo $WORKER_DIR $WORKER_NAME.zip
+    
         build_docker_image
     fi
 

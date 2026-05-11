@@ -1,8 +1,13 @@
 import os
 import json
+import sys
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 from bp_utils import get_logger
 from ai_service import ai_service_app
-from agents.base_agent import BaseAgent
+from brochure_pipeline.agents.base_agent import BaseAgent
 
 logger = get_logger(__name__)
 
@@ -19,7 +24,7 @@ class VectorIngestionAgent(BaseAgent):
         self.config = kwargs if kwargs else {}
         logger.info("VectorIngestionAgent initialized")
         
-        prompt_path = os.path.join("prompt", "summary_prompt.txt")
+        prompt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "prompt", "summary_prompt.txt")
         try:
             with open(prompt_path, "r", encoding="utf-8") as f:
                 self.system_instruction = f.read().strip()
@@ -28,14 +33,17 @@ class VectorIngestionAgent(BaseAgent):
             logger.error(f"FATAL: Prompt file not found at {prompt_path}")
             self.system_instruction = ""
 
-    def messages_vector_gen(self, brochure_json: dict) -> list:
+    def messages_vector_gen(self, brochure_text: str, expected_variants: list) -> list:
         """Payload for Vector Summary Generation"""
-        # Convert the brochure JSON to string for the prompt
-        brochure_text = json.dumps(brochure_json, indent=2)
         
         prompt = f"""
-        Please generate the vector database summaries for the following brochure data:
+        Please generate the vector database summaries for the following brochure data.
         
+        === EXPECTED VARIANTS MAP ===
+        Use this list to map the "variant_id" in your JSON output:
+        {json.dumps(expected_variants, indent=2)}
+        
+        === BROCHURE TEXT ===
         {brochure_text}
         """
         return [
@@ -43,12 +51,12 @@ class VectorIngestionAgent(BaseAgent):
             {"role": "user", "content": prompt}
         ]
 
-    def run(self, brochure_json: dict) -> dict:
+    def run(self, brochure_text: str, expected_variants: list) -> dict:
         """Executes the Vector Summary Generation"""
         if not self.system_instruction: 
             return {}
             
-        messages = self.messages_vector_gen(brochure_json)
+        messages = self.messages_vector_gen(brochure_text, expected_variants)
         response = llm_service(messages)
         
         # Use your BaseAgent's JSON extraction

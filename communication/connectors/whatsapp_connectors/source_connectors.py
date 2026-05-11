@@ -524,7 +524,6 @@ class BaseWebhookConverter:
     
     # @timelogger(label="process_message_dict")
     
-    
     def process_message_dict(self, *args, **kwargs):
         """
         Processes the message dictionary and triggers a conversation workflow.
@@ -544,7 +543,8 @@ class BaseWebhookConverter:
         message_media_url  =message_dict.get("message_media_url")
         message_type= message_dict.get("message_type")
         message_media_type= message_dict.get("message_media_type")
-
+        profile_name= message_dict.get("profile_name")
+        logger.info(f"Profile_name in process message dict ---{profile_name}")
         if not message_text and not message_media_url:
             logger.error("No valid message text found in body or media URL. Cannot process further.")
             return
@@ -640,9 +640,10 @@ class BaseWebhookConverter:
         logger.info("Calling session logic...")
         
         # call session logic here...
-        d=handle_session_logic(mobile_number,"whatsapp_chat",True)
+        d=handle_session_logic(mobile_number,message_dict.get("from_number"),"whatsapp_chat",True,None,None,profile_name)
         logger.info(f"Session logic result: {d}")
         user_d=temporary_data.get("whatsapp_user_details")
+        # session_id , channel 
         converse_kwargs.update({
             "session_id":d.get("session_id",None),
             "campaign_id":d.get("campaign_id","inbound"),
@@ -651,7 +652,7 @@ class BaseWebhookConverter:
             # these 2 we need to check and send for email also..
             "provider":user_d.get("whatsapp_provider",None), 
             "contact":user_d.get("mobile_number",None),
-            "lead_id":"inbound" if not d.get("campaign_id") else d.get("lead_id","inbound"),
+            "lead_id":"inbound" if not d.get("campaign_id") else d.get("lead_id","inbound")
             # "lead_id":d.get("lead_id",None),
         })
         # Remove all None values
@@ -738,6 +739,44 @@ class BaseWebhookConverter:
         provider.handle_custom_template(**t_data)
 
         return
+    
+    def send_media_template(*args, **kwargs):
+        logger.info("Send Custom template CALLED")
+
+        template_id = kwargs.get("template_id")
+        mobile_number = kwargs.get("mobile_number")
+        
+
+        if not template_id or not mobile_number:
+            logger.error("template_id or mobile_number")
+            return
+
+        a=get_communication_credential(kwargs.get("dealership_id"),kwargs.get("channel"))
+        # logger.info(f"[Send template] Template details: {a}")
+        provider_name = a.get("provider_name")
+        sender = a.get("sender")
+        
+        t_data = {
+            "mobile_number": mobile_number,
+            "template_id": template_id,   
+            "sender": sender        
+        }
+        headers = BaseWebhookConverter().get_headers(sender, "")
+        logger.info(f"Headers: {headers}")
+        config = PROVIDER_CONFIG.get(provider_name.lower(), {})
+
+        t_data.update({
+            "headers": headers,
+            "base_url": config.get("base_url", ""),
+        })
+        d={**t_data,**kwargs}
+        logger.info(f"[Send template] Template details data: {d}")
+        provider = WhatsappMessangerConnector.whatsapp(
+            provider_name, *args, **kwargs
+        )
+        provider.handle_custom_template(**d)
+
+        return {"status": "initiated"}
     
     def send_custom_message(*args, **kwargs):
         logger.info("Send custom message called")
@@ -972,6 +1011,7 @@ class BaseWhatsappMessenger:
             raise ValueError("Response object can't dict")
         if response.status_code not in [200, 202]:
             logger.error(f"Error Response: {response.text}, Status Code: {response.status_code}")
+            #TODO: add error response 
             return self._handle_error_response(response)
 
         try:

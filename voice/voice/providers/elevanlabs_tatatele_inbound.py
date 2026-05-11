@@ -1,137 +1,101 @@
-from time import time
+import time
+import json
 import os
 import sys
 from typing import Any, Dict
 
-_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
-from flask import Blueprint, request, jsonify
-
 import config
-from gryd_worker import gryd_helpers as hp
-import utils
+from flask import Blueprint, request, jsonify
+from gryd_worker import gryd_helpers as hp, gryd
 
-# Reuse the existing outbound bridge/session implementation.
-from .elevanlabs_tatatele import (
-    CallSession,
-    call_sessions,
-    session_lock,
-    run_async_in_thread,
-    terminate_sessions_for_phone,
-)
-
-logger = utils.get_logger(__name__)
+logger = hp.get_logger(__name__)
 
 app = Blueprint("tatatelli_inbound", __name__)
 
-
-def start_inbound_session_tatatele(session_data: dict) -> dict:
-    """
-    Start a TataTele inbound call session bridge (no call origination).
-
-    Minimum expected session_data fields:
-    - from_number: inbound caller (customer)
-    - to_number: inbound dialed number (agent/DID)
-    """
-    session_data = session_data or {}
-
-    from_number = (session_data.get("from_number") or session_data.get("from") or "").strip()
-    to_number = (session_data.get("to_number") or session_data.get("to") or "").strip()
-
-    if from_number.startswith("+"):
-        from_number = from_number[1:]
-    if to_number.startswith("+"):
-        to_number = to_number[1:]
-
-    if not from_number or not to_number:
-        return {"success": False, "error": "from_number and to_number are required"}
-
-    customer_number = session_data.get("phone_number") or from_number
-    agent_number = session_data.get("agent_number") or to_number
-
-    if isinstance(customer_number, str) and customer_number.startswith("+"):
-        customer_number = customer_number[1:]
-    if isinstance(agent_number, str) and agent_number.startswith("+"):
-        agent_number = agent_number[1:]
-
-    session_id = session_data.get("session_id") or session_data.get("custom_identifier")
-    if not session_id:
-        session_id = str(hp.make_uuid3("tatatele_inbound", from_number, to_number, str(time())))
-        session_data["session_id"] = session_id
-
-    session_data["phone_number"] = customer_number
-    session_data["agent_number"] = agent_number
-    session_data["caller_id"] = agent_number
-
-    terminated = terminate_sessions_for_phone(customer_number, agent_number, exclude_session_id=session_id)
-    if terminated > 0:
-        logger.info(f"Terminated {terminated} old session(s) for {customer_number}/{agent_number}")
-
-    def start_session(call_id: str) -> bool:
-        logger.info(f"[inbound] Starting session with call_id: {call_id}")
-        with session_lock:
-            if call_id in call_sessions:
-                logger.info(f"[{call_id}] Session already exists, bridge likely running")
-                return True
-
-            session = CallSession(call_id)
-            session.session_data = session_data
-            call_sessions[call_id] = session
-
-        logger.info(f"[{call_id}] Starting Connection to websocket bridge (inbound)")
-        external_wss = f"{config.AUTOCRM_WEBSOCKET_BASE_URL}/tatatele/{customer_number}/{agent_number}_{customer_number}"
-
-        async def start_bridge():
-            await session.connect_external_websocket(external_wss)
-
-        run_async_in_thread(start_bridge())
-        return True
-
-    started = start_session(session_id)
-
-    base_ws_url = config.AUTOCRM_WEBSOCKET_BASE_URL
-    wss_url = f"{base_ws_url}/tatatele/{customer_number}_{agent_number}/{agent_number}"
-
-    return {
-        "success": bool(started),
-        "session_id": session_id,
-        "from_number": from_number,
-        "to_number": to_number,
-        "phone_number": customer_number,
-        "agent_number": agent_number,
-        "wss_url": wss_url,
-    }
-
-
-@app.route("/tatatele-inbound-call", methods=["POST"])
+@app.route("/smartflo/webhook/inbound", methods=["POST"])
 def inbound_call(*args, **kwargs):
-    logger.info("Received /tatatele-inbound-call request headers: %s", dict(request.headers))
-    data = request.get_json(silent=True) or {}
-    resp = start_inbound_session_tatatele(data)
-    if not resp.get("success"):
-        return jsonify(resp), 400
-    return jsonify(resp), 200
+    data = request.get_json(silent=True) or request.form.to_dict() or request.data.decode() or {}
+    data = {
+        key.strip():value for key, value in data.items()
+    }
+    logger.info(f"Received inbound call data: {json.dumps(data, indent=4)}")
+  
+
+    # Note: call connected for inbound billing is pending.
+    if data.get("call_type", "").lower() in ["inbound"]:
+        caller_id = data.get("caller_id_number", "")
+        if caller_id and not str(caller_id).startswith("91"):
+            caller_id = "91" + str(caller_id)
+        data["caller_id_number"] = caller_id
+        logger.info(f"Processing inbound call for {data.get('caller_id_number')}")
+
+        gryd.create_async_task('start_call_from_inbound',config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME , args=[], kwargs={"user_data":data})
+        
+        return jsonify({"status": "success", "message": "Inbound call session created."})
+    elif data.get("call_status") in ["answered"]:
+        t = time.time()
+        import gryd_tasks
+
+        with gryd_tasks.get_pg_connector() as pg:
+            filters = {
+                "phone_number": data.get("customer_no_with_prefix") ,
+                "channel": "voice_phone"
+            }
+
+            logger.info(f"Session filters: {filters}")
+            sessions =  list[Any](
+                    pg.list_order_by("session", 
+                    filters,
+                    order_by="created", order="DESC")
+                )
+            
+            logger.info(f"Sessions found for inbound status 'contacted': {len(sessions)}")
+
+            if not sessions:
+                logger.info(f"No sessions found for inbound status 'contacted'")
+                return jsonify({"status": "error", "message": "No session found for inbound status 'contacted'"})
+
+            session = hp.make_single( sessions,  force = True)
+            logger.info(f"Latest session found for inbound status 'contacted': {session}")
+            pg.update("session",
+                    "session_id",
+                    session["session_id"], 
+                    {
+                        "call_recording": data.get("recording_url"), 
+                        "duration": float(data.get("duration", 0.0))
+                    }
+            ) #add more attributes when needed
+            
 
 
-@app.route("/tatatele/inbound/create-stream-url", methods=["POST"])
-def inbound_create_stream_url(*args, **kwargs):
-    """
-    Helper endpoint that only builds the expected websocket URL.
-    Useful if your TataTele inbound webhook needs just a stream URL.
-    """
-    data = request.get_json(silent=True) or {}
-    from_number = (data.get("from_number") or "").strip()
-    to_number = (data.get("to_number") or "").strip()
-    if from_number.startswith("+"):
-        from_number = from_number[1:]
-    if to_number.startswith("+"):
-        to_number = to_number[1:]
-    if not from_number or not to_number:
-        return jsonify({"success": False, "error": "from_number and to_number are required"}), 400
+        logger.info(f"[webhook-/smartflo/webhook/inbound] Time taken to update session with recording URL and duration: {time.time() - t:.2f} seconds")
+        gryd_tasks.post_contact_status_voice(session_id = session["session_id"], message_id = session["session_id"],  **{"status": "contacted"})
 
-    base_ws_url = config.AUTOCRM_WEBSOCKET_BASE_URL
+    return jsonify({"status": "success", "message": "Inbound call received and processed.", "data": data})
+
+@app.route("/tatatele/create-stream-url/inbound", methods=["POST"])
+def create_stream_url(*args, **kwargs):
+    t = time.time()
+    data =  request.get_json(silent=True) or request.form.to_dict() or request.data.decode() or {}
+
+
+    logger.info(f"Processing create_stream_url request: {json.dumps(data, indent=4)}")
+    
+    #inbound case swap
+    to_number = data.get("from_number")[-10:]
+    from_number = data.get("to_number")[-10:]
+
+    base_ws_url = config.get_websocket_base_url(to_number)
+
     wss_url = f"{base_ws_url}/tatatele/{from_number}_{to_number}/{to_number}"
-    return jsonify({"success": True, "wss_url": wss_url}), 200
+
+    logger.info(f"[webhook-/tatatele/create-stream-url/inbound] Generated wss_url took {time.time() - t:.2f} seconds: {wss_url}")
+    return jsonify({
+        "success": True,
+        "wss_url": wss_url
+    })
 

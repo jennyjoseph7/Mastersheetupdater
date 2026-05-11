@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useMemo, useRef } from "react";
 import { useRouter, useSearchParams ,usePathname} from "next/navigation";
 
 // Imports
-import { fetchAudienceTasks ,getDealershipId,executeTaskWithPolling} from "@/utils/api";
+import { fetchAudienceTasks ,getDealershipId,executeTaskWithPolling,cloneLeadsTask,assignAudienceTask} from "@/utils/api";
 import { api } from "@/lib/api";
 
 import {
@@ -248,6 +248,9 @@ const [activeTab, setActiveTab] = useState("generic"); // Default to Generic
 const [genericObjectives, setGenericObjectives] = useState<any[]>([]);
 const [customObjectives, setCustomObjectives] = useState<any[]>([]);
 const [previousObjectives, setPreviousObjectives] = useState<any[]>([]);
+
+
+
 const prefillFromExistingCampaign = (data: any) => {
   // 1. Format today's date (DD-MM-YYYY)
   const today = new Date();
@@ -403,7 +406,11 @@ const searchQuery = searchParams.get("q") || "";
   const [audienceTasks, setAudienceTasks] = useState<any[]>([]);
   const [isLoadingAudience, setIsLoadingAudience] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+// const [audienceSourceType, setAudienceSourceType] = useState<"upload" | "previous" | "fresh" | null>(null);
 
+  // Filter fetched audiences based on presence of campaign_id
+  // const usedAudiences = audienceTasks.filter((t) => !!t.campaign_id);
+  // const freshAudiences = audienceTasks.filter((t) => !t.campaign_id);
   // Pagination State
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -420,7 +427,7 @@ const searchQuery = searchParams.get("q") || "";
   const [isLaunchSuccessOpen, setIsLaunchSuccessOpen] = useState(false);
   const [launchStatus, setLaunchStatus] = useState("");
   const [isLaunchError, setIsLaunchError] = useState(false);
-
+const [launchStep, setLaunchStep] = useState(0);
   // --- Computed State for Scheduling ---
   const isScheduledCampaign = useMemo(() => {
     if (!duration.start) return false;
@@ -461,30 +468,34 @@ const searchQuery = searchParams.get("q") || "";
     setSelectedAudienceDetails(null);
   }, [campaignType]);
 
-  // --- AUDIENCE FETCHING FIX ---
-  const loadAudienceData = async (currentPage = 1) => {
+// 1. Keep your state
+  const [audienceSourceType, setAudienceSourceType] = useState<"upload" | "previous" | "fresh" | null>(null);
+
+  // 2. Remove the client-side `usedAudiences` and `freshAudiences` filter variables. 
+  // We will just use `audienceTasks` directly since the server is filtering it now.
+
+  // 3. Update loadAudienceData to accept and pass the filter type
+  const loadAudienceData = async (currentPage = 1, type = audienceSourceType) => {
+    // Don't fetch if they selected upload or haven't selected yet
+    if (!type || type === "upload") return; 
+
     setIsLoadingAudience(true);
-    const fetchcount = 10; // ITEMS_PER_PAGE;
+    const fetchcount = 10; 
     try {
-      // Calling updated API with pagination parameters
-      const res: any = await fetchAudienceTasks(currentPage, fetchcount);
-      console.log("Fetched Audience Response:", res);
-      // FIX: Robust check for items and total_number based on response structure
+      // Pass the type down to the API
+      const res: any = await fetchAudienceTasks(currentPage, fetchcount, type);
+      
       let items = [];
       let total = 0;
 
       if (res.items && Array.isArray(res.items)) {
-         // Case 1: Helper returns mapped object { items: [], total_number: N }
          items = res.items;
          total = res.total || 0; 
       } else if (res.data && Array.isArray(res.data)) {
-         // Case 2: Raw API response { data: [], total_number: N }
          items = res.data;
          total = res.total || 0;
       } else if (Array.isArray(res)) {
-         // Case 3: Just an array (fallback, no total)
          items = res;
-         
       }
       
       setAudienceTasks(items);
@@ -497,12 +508,12 @@ const searchQuery = searchParams.get("q") || "";
     }
   };
 
+  // 4. Update useEffect to trigger fetching when the page OR the card type changes
   useEffect(() => {
     if (creationStep === "audience") {
-      loadAudienceData(page);
+      loadAudienceData(page, audienceSourceType);
     }
-  }, [creationStep, page]);
-
+  }, [creationStep, page, audienceSourceType]);
   // Fetch Objectives
 const [displayObjectives, setDisplayObjectives] = useState<any[]>([]);
 
@@ -779,6 +790,7 @@ const handleProceed = async () => {
       : selectedObjective,
       campaign_sub_type: selectedObjectiveData?.campaignSubType || "other",
       campaign_user_source: "file",
+      campaign_custom_attributes: selectedObjectiveData?.custom_campaign_attributes || [],
     };
 
     // NEW LOGIC: Append Voice configs if voice is selected
@@ -831,7 +843,7 @@ const handleProceed = async () => {
     }
   };
 
-  const handleLaunch = async () => {
+ const handleLaunch = async () => {
     if (!createdCampaignId) {
       alert("Error: Campaign ID missing.");
       return;
@@ -839,6 +851,38 @@ const handleProceed = async () => {
 
     setIsLaunchSuccessOpen(true);
     setIsLaunchError(false);
+    setLaunchStep(1); // Step 1: Processing Audience
+
+    try {
+      // --- Execute Audience Tasks Based on Selection ---
+      if (audienceSourceType === "previous" && selectedAudienceDetails) {
+        setLaunchStatus("Cloning leads from previous campaign...");
+        await cloneLeadsTask(
+          campaignType === "presales" ? "pre-sales" : "post-sales",
+          selectedAudienceDetails.campaign_id,
+          createdCampaignId,
+          getDealershipId(),
+          ((msg: string) => setLaunchStatus(msg)) as any
+        );
+      } else if (audienceSourceType === "fresh" && selectedAudienceDetails) {
+        setLaunchStatus("Assigning fresh audience to campaign...");
+        await assignAudienceTask(
+          campaignType === "presales" ? "pre-sales" : "post-sales",
+          createdCampaignId,
+          selectedAudienceDetails.campaign_objective_id || selectedAudienceDetails.objective_id || selectedObjective,
+          getDealershipId(),
+          {},
+          ((msg: string) => setLaunchStatus(msg)) as any
+        );
+      }
+    } catch (err) {
+      console.error("Audience task error", err);
+      setIsLaunchError(true);
+      setLaunchStatus("Failed to process audience. Please retry.");
+      return; // Stop execution on error
+    }
+
+    setLaunchStep(2); // Step 2: Finalizing setup
     setLaunchStatus(
       isScheduledCampaign
         ? "Scheduling campaign..."
@@ -862,6 +906,8 @@ const handleProceed = async () => {
         campaign_status: statusToSet,
       });
 
+      setLaunchStep(3); // Step 3: Triggering Engine
+
       if (!isScheduledCampaign) {
         setLaunchStatus("Triggering campaign engine...");
         const taskType =
@@ -873,6 +919,7 @@ const handleProceed = async () => {
         });
       }
 
+      setLaunchStep(4); // Step 4: Complete
       setLaunchStatus(
         isScheduledCampaign
           ? "Campaign Scheduled Successfully!"
@@ -926,69 +973,130 @@ const handleProceed = async () => {
 
       <div className="pb-24 w-full px-4 py-8 md:px-6 lg:px-8 bg-background min-h-screen">
         {/* LAUNCH STATUS MODAL */}
+       {/* LAUNCH STATUS MODAL */}
         <Dialog
           open={isLaunchSuccessOpen}
           onOpenChange={(o) => {
-            if (!o && !isLaunchError && !launchStatus.includes("Successfully"))
-              return;
+            if (!o && !isLaunchError && launchStep !== 4) return;
             setIsLaunchSuccessOpen(o);
           }}
         >
           <DialogContent
-            className="sm:max-w-md text-center"
+            className="sm:max-w-md"
             onInteractOutside={(e) => {
-              if (!isLaunchError && !launchStatus.includes("Successfully"))
-                e.preventDefault();
+              if (!isLaunchError && launchStep !== 4) e.preventDefault();
             }}
           >
-            {/* ... Modal Content ... */}
             <DialogHeader>
               <div
                 className={cn(
-                  "mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full transition-colors",
-                  isLaunchError ? "bg-red-100" : "bg-green-100"
+                  "mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full transition-colors",
+                  isLaunchError ? "bg-destructive/10 text-destructive" : launchStep === 4 ? "bg-green-100 text-green-600" : "bg-primary/10 text-primary"
                 )}
               >
                 {isLaunchError ? (
-                  <AlertCircle className="h-6 w-6 text-red-600" />
+                  <AlertCircle className="h-7 w-7" />
+                ) : launchStep === 4 ? (
+                  <Check className="h-7 w-7" />
                 ) : isScheduledCampaign ? (
-                  <CalendarClock className="h-6 w-6 text-green-600" />
+                  <CalendarClock className="h-7 w-7" />
                 ) : (
-                  <Rocket className="h-6 w-6 text-green-600" />
+                  <Rocket className="h-7 w-7" />
                 )}
               </div>
-              <DialogTitle className="text-center">
+              <DialogTitle className="text-center text-xl">
                 {isLaunchError
-                  ? "Error"
-                  : isScheduledCampaign
-                  ? "Scheduling Campaign"
+                  ? "Launch Failed"
+                  : launchStep === 4
+                  ? "Success!"
                   : "Launching Campaign"}
               </DialogTitle>
               <DialogDescription className="text-center">
-                {isLaunchError ? "Something went wrong." : launchStatus}
+                {isLaunchError ? "An error occurred during launch." : "Please do not close this window."}
               </DialogDescription>
             </DialogHeader>
-            <div className="flex justify-center py-4">
-              {isLaunchError ? (
-                <X className="h-10 w-10 text-red-500 animate-in zoom-in" />
-              ) : launchStatus.includes("Successfully") ? (
-                <Check className="h-10 w-10 text-green-500 animate-in zoom-in" />
-              ) : (
-                <RefreshCw className="h-10 w-10 text-primary animate-spin" />
-              )}
+
+            {/* STEP TRACKER */}
+            <div className="py-4 space-y-5 px-6">
+              
+              {/* Step 1: Audience */}
+              <div className="flex items-start gap-4">
+                <div className="mt-0.5 w-6 h-6 flex-shrink-0 flex justify-center items-center">
+                  {launchStep > 1 ? (
+                    <Check className="w-5 h-5 text-green-500" />
+                  ) : launchStep === 1 && !isLaunchError ? (
+                    <RefreshCw className="w-4 h-4 text-primary animate-spin" />
+                  ) : isLaunchError && launchStep === 1 ? (
+                    <X className="w-5 h-5 text-destructive" />
+                  ) : (
+                    <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span className={cn("text-sm font-semibold", launchStep >= 1 ? "text-foreground" : "text-muted-foreground")}>
+                    Process Audience Target
+                  </span>
+                  {launchStep === 1 && <span className="text-xs text-muted-foreground animate-pulse mt-1">{launchStatus}</span>}
+                </div>
+              </div>
+
+              {/* Step 2: Finalize */}
+              <div className="flex items-start gap-4">
+                <div className="mt-0.5 w-6 h-6 flex-shrink-0 flex justify-center items-center">
+                  {launchStep > 2 ? (
+                    <Check className="w-5 h-5 text-green-500" />
+                  ) : launchStep === 2 && !isLaunchError ? (
+                    <RefreshCw className="w-4 h-4 text-primary animate-spin" />
+                  ) : isLaunchError && launchStep === 2 ? (
+                     <X className="w-5 h-5 text-destructive" />
+                  ) : (
+                    <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span className={cn("text-sm font-semibold", launchStep >= 2 ? "text-foreground" : "text-muted-foreground")}>
+                    Finalize Campaign Data
+                  </span>
+                  {launchStep === 2 && <span className="text-xs text-muted-foreground animate-pulse mt-1">{launchStatus}</span>}
+                </div>
+              </div>
+
+              {/* Step 3: Trigger */}
+              <div className="flex items-start gap-4">
+                <div className="mt-0.5 w-6 h-6 flex-shrink-0 flex justify-center items-center">
+                  {launchStep > 3 ? (
+                    <Check className="w-5 h-5 text-green-500" />
+                  ) : launchStep === 3 && !isLaunchError ? (
+                    <RefreshCw className="w-4 h-4 text-primary animate-spin" />
+                  ) : isLaunchError && launchStep === 3 ? (
+                     <X className="w-5 h-5 text-destructive" />
+                  ) : (
+                    <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span className={cn("text-sm font-semibold", launchStep >= 3 ? "text-foreground" : "text-muted-foreground")}>
+                    {isScheduledCampaign ? "Schedule Engine" : "Trigger Engine Tasks"}
+                  </span>
+                  {launchStep === 3 && <span className="text-xs text-muted-foreground animate-pulse mt-1">{launchStatus}</span>}
+                </div>
+              </div>
+
             </div>
-            <DialogFooter className="sm:justify-center">
+
+            <DialogFooter className="sm:justify-center mt-2">
               {isLaunchError ? (
                 <Button
                   variant="outline"
                   onClick={() => setIsLaunchSuccessOpen(false)}
                 >
-                  Close & Retry
+                  Close & Edit
                 </Button>
               ) : (
                 <Button
-                  disabled={!launchStatus.includes("Successfully")}
+                  disabled={launchStep !== 4}
                   onClick={() => router.push("/")}
+                  className="w-full sm:w-auto"
                 >
                   Go to Dashboard
                 </Button>
@@ -1143,7 +1251,7 @@ const handleProceed = async () => {
           </DialogContent>
         </Dialog>
 
-        <AddDataSourceDialog
+     <AddDataSourceDialog
           isOpen={isUploadDialogOpen}
           onClose={() => setIsUploadDialogOpen(false)}
           prefilledData={{
@@ -1152,12 +1260,36 @@ const handleProceed = async () => {
             campaignId: createdCampaignId || undefined,
           }}
           onSave={(dataSource) => {
-            loadAudienceData(1); // Reload page 1 on upload
-            if (dataSource.connectionDetails?.taskId) {
-              setTargetAudience((prev) => [
-                ...prev,
-                dataSource.connectionDetails.taskId,
-              ]);
+            // 1. Keep the view on "upload" card
+            setAudienceSourceType("upload");
+            
+            // 2. Extract the new Task ID
+            const newTaskId = dataSource?.connectionDetails?.taskId || dataSource?.task_id || dataSource?.id;
+            
+            if (newTaskId) {
+              setTargetAudience([newTaskId]);
+              
+              // 3. Set initial details (Size might be 0 initially while backend processes)
+              const initialSize = dataSource?.process_size || dataSource?.total_records || dataSource?.total || 0;
+              setSelectedAudienceDetails({
+                task_id: newTaskId,
+                process_size: initialSize,
+                source_name: dataSource?.source_name || dataSource?.audience_name || "Newly Uploaded Audience",
+              });
+
+              // 4. Ping server after 3 seconds to get the fully processed size
+              setTimeout(async () => {
+                 try {
+                   const res: any = await fetchAudienceTasks(1, 10, "all");
+                   const items = res.items || res.data || res || [];
+                   const updatedTask = items.find((t: any) => t.task_id === newTaskId);
+                   if (updatedTask) {
+                      setSelectedAudienceDetails(updatedTask); // Updates size automatically
+                   }
+                 } catch (e) {
+                   console.error("Failed to refresh uploaded task size", e);
+                 }
+              }, 3000);
             }
           }}
         />
@@ -1460,7 +1592,7 @@ const handleProceed = async () => {
                               <div className="space-y-2">
                                 <Label>Start Date</Label>
                                 <Input
-                                  type="date"
+                                  type="datetime"
                                   value={duration.start}
                                   onChange={(e) =>
                                     setDuration({
@@ -1479,7 +1611,7 @@ const handleProceed = async () => {
                               <div className="space-y-2">
                                 <Label>End Date</Label>
                                 <Input
-                                  type="date"
+                                  type="datetime"
                                   value={duration.end}
                                   onChange={(e) =>
                                     setDuration({
@@ -1655,129 +1787,147 @@ const handleProceed = async () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="audience-select" className="font-semibold">
-                      Select Audience
-                    </Label>
-                    <Select
-                      onValueChange={(val) => {
-                        setTargetAudience([val]);
-                        const task = audienceTasks.find(
-                          (t) => t.task_id === val
-                        );
-                        if (task) setSelectedAudienceDetails(task);
+                  {/* 3 Audience Source Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card
+                      className={cn(
+                        "cursor-pointer hover:border-primary transition-all text-center p-4",
+                        audienceSourceType === "upload" && "border-primary bg-primary/5"
+                      )}
+                      onClick={() => {
+                        setAudienceSourceType("upload");
+                        setIsUploadDialogOpen(true);
                       }}
-                      value={targetAudience[0] || ""}
                     >
-                      <SelectTrigger
-                        id="audience-select"
-                        className="h-12 text-base"
-                      >
-                        <SelectValue placeholder="Choose audience segment" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {isLoadingAudience ? (
-                          <div className="p-4 text-center text-sm text-muted-foreground">
-                            Loading...
-                          </div>
-                        ) : audienceTasks.length > 0 ? (
-                          <>
-                            {audienceTasks.map((task) => (
-                              <SelectItem
-                                key={task.task_id}
-                                value={task.task_id}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">
-                                    {task.source_name ||
-                                      task.audience_name ||
-                                      "Untitled List"}
-                                  </span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {parseInt(
-                                      task.process_size || 0
-                                    ).toLocaleString()}{" "}
-                                    Records
-                                  </Badge>
-                                </div>
-                              </SelectItem>
-                            ))}
-                            {/* Pagination Controls */}
-                            <div
-                              className="flex items-center justify-between p-2 border-t mt-2 bg-slate-50"
-                              onKeyDown={(e) => e.stopPropagation()}
-                            >
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={page <= 1}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  setPage((p) => p - 1);
-                                }}
-                                className="h-8 w-8 p-0"
-                              >
-                                <ChevronLeft className="h-4 w-4" />
-                              </Button>
-                              <span className="text-xs text-muted-foreground font-medium">
-                                Page {page} of {totalPages || 1}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={page >= totalPages}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  setPage((p) => p + 1);
-                                }}
-                                className="h-8 w-8 p-0"
-                              >
-                                <ChevronRight className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="p-2 text-sm text-muted-foreground">
-                            No lists found.
-                          </div>
-                        )}
-                      </SelectContent>
-                    </Select>
+                      <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                      <h4 className="font-semibold text-sm">Upload New Audience</h4>
+                      <p className="text-xs text-muted-foreground mt-1">Upload via CSV/Excel</p>
+                    </Card>
 
-                    {/* Show selected details slightly below if something is picked */}
-                    {targetAudience.length > 0 && (
-                      <div className="mt-2 p-3 bg-secondary/10 rounded-md flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">
-                          Selected Segment ID: {targetAudience[0]}
-                        </span>
-                        <Badge className="bg-primary">Selected</Badge>
+                   <Card
+                      className={cn(
+                        "cursor-pointer hover:border-primary transition-all text-center p-4",
+                        audienceSourceType === "previous" && "border-primary bg-primary/5"
+                      )}
+                      onClick={() => {
+                        setAudienceSourceType("previous");
+                        setTargetAudience([]);
+                        setSelectedAudienceDetails(null);
+                        setPage(1); // Force back to page 1 on switch
+                      }}
+                    >
+                      <Database className="h-8 w-8 mx-auto mb-2 text-primary" />
+                      <h4 className="font-semibold text-sm">Previously Used</h4>
+                      <p className="text-xs text-muted-foreground mt-1">Clone from past campaigns</p>
+                    </Card>
+
+                    <Card
+                      className={cn(
+                        "cursor-pointer hover:border-primary transition-all text-center p-4",
+                        audienceSourceType === "fresh" && "border-primary bg-primary/5"
+                      )}
+                      onClick={() => {
+                        setAudienceSourceType("fresh");
+                        setTargetAudience([]);
+                        setSelectedAudienceDetails(null);
+                        setPage(1); // Force back to page 1 on switch
+                      }}
+                    >
+                      <Users className="h-8 w-8 mx-auto mb-2 text-primary" />
+                      <h4 className="font-semibold text-sm">Unused Fresh Set</h4>
+                      <p className="text-xs text-muted-foreground mt-1">Select unused leads</p>
+                    </Card>
+                  </div>
+{/* Render Uploaded Success State */}
+                  {audienceSourceType === "upload" && targetAudience.length > 0 && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-4">
+                      <div className="p-4 border rounded-md bg-green-50 border-green-200 flex justify-between items-center">
+                        <div>
+                          <h4 className="font-semibold text-green-900 flex items-center gap-2">
+                            <Check className="h-5 w-5 text-green-600" /> Audience Uploaded Successfully
+                          </h4>
+                          <p className="text-sm text-green-700 mt-1">
+                            Selected: {selectedAudienceDetails?.source_name || "Custom Audience"}
+                          </p>
+                          {/* <p className="text-xs text-green-600/80 mt-0.5 font-mono">
+                            ID: {targetAudience[0]}
+                          </p> */}
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                           <Badge className="bg-green-600 hover:bg-green-700">Selected</Badge>
+                           {/* Show a loading indicator if size is 0 while waiting for background refresh */}
+                           {parseInt(selectedAudienceDetails?.process_size || 0) === 0 && (
+                             <span className="text-xs text-muted-foreground flex items-center gap-1 animate-pulse mt-1">
+                               <RefreshCw className="h-3 w-3 animate-spin" /> Processing size...
+                             </span>
+                           )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="relative py-2">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
                     </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-white px-2 text-muted-foreground">
-                        OR
-                      </span>
-                    </div>
-                  </div>
+                  )}
+                  {/* Render Selection Dropdowns Conditionally */}
+                 {(audienceSourceType === "previous" || audienceSourceType === "fresh") && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-4">
+                      <Label htmlFor="audience-select" className="font-semibold">
+                        {audienceSourceType === "previous" ? "Select Previously Used Audience" : "Select Fresh Audience"}
+                      </Label>
+                      <Select
+                        onValueChange={(val) => {
+                          setTargetAudience([val]);
+                          const task = audienceTasks.find((t) => t.task_id === val);
+                          if (task) setSelectedAudienceDetails(task);
+                        }}
+                        value={targetAudience[0] || ""}
+                      >
+                        <SelectTrigger id="audience-select" className="h-12 text-base">
+                          <SelectValue placeholder="Choose audience segment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                     {isLoadingAudience ? (
+                            <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                          ) : (
+                            <>
+                              {audienceTasks.map((task) => ( // <--- Map directly over audienceTasks
+                                <SelectItem key={task.task_id} value={task.task_id}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">
+                                      {task.source_name || task.audience_name || "Untitled List"}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {parseInt(task.process_size || 0).toLocaleString()} Records
+                                    </Badge>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                              
+                              {audienceTasks.length === 0 && (
+                                <div className="p-4 text-center text-sm text-muted-foreground">
+                                  No {audienceSourceType} lists found.
+                                </div>
+                              )}
+                              {/* Standard Pagination Details */}
+                              <div className="flex items-center justify-between p-2 border-t mt-2 bg-slate-50" onKeyDown={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="sm" disabled={page <= 1} onClick={(e) => { e.preventDefault(); setPage((p) => p - 1); }} className="h-8 w-8 p-0">
+                                  <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <span className="text-xs text-muted-foreground font-medium">Page {page} of {totalPages || 1}</span>
+                                <Button variant="ghost" size="sm" disabled={page >= totalPages} onClick={(e) => { e.preventDefault(); setPage((p) => p + 1); }} className="h-8 w-8 p-0">
+                                  <ChevronRight className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
 
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Button
-                      variant="outline"
-                      className="h-12 flex-1 border-dashed border-2 hover:border-primary hover:bg-primary/5"
-                      onClick={() => setIsUploadDialogOpen(true)}
-                    >
-                      <Upload className="mr-2 h-4 w-4" /> Upload New Audience
-                    </Button>
-                    <Button variant="ghost" className="h-12 flex-1">
-                      <Download className="mr-2 h-4 w-4" /> Download Template
-                    </Button>
-                  </div>
+                      {targetAudience.length > 0 && (
+                        <div className="mt-2 p-3 bg-secondary/10 rounded-md flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Selected Segment ID: {targetAudience[0]}</span>
+                          <Badge className="bg-primary">Selected</Badge>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -1892,7 +2042,7 @@ const handleProceed = async () => {
 
                       {/* Total Row */}
                       <div className="p-4 bg-slate-50 flex justify-between items-center font-bold text-lg rounded-b-lg">
-                        <span>Total Credits</span>
+                        <span>Estimated Credits Required </span>
                         <span>{calculateCredits().toLocaleString()}</span>
                       </div>
                     </div>
