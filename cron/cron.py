@@ -1496,18 +1496,6 @@ def get_all_dealerships(pg, channel_filter=None):
         })
 
     return dealerships
-def process_channel_leads(pg,dealership_id, channel, batch_size):
-    leads = fetch_leads(dealership_id, channel, batch_size)
-    mlogger.info(f"[FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
-    if not leads:
-        mlogger.info(f"[EMPTY] No leads for {dealership_id} - {channel}")
-        return
-
-    mlogger.info(f"[PROCESS] Processing {len(leads)} leads for {dealership_id} - {channel}")
-
-    for lead in leads:
-        process_lead(pg,lead, channel)
-
 
 def process_lead(pg,lead, channel):
     # mlogger.info(f"[PROCESS] Processing lead for channel {lead}")
@@ -1532,7 +1520,6 @@ def process_lead(pg,lead, channel):
 
     except Exception as e:
         mlogger.error(f"[FAILED] Lead {lead_id}")
-
 
 def fetch_leads(dealership_id, channel, batch_size):
     with get_pg_connector() as pg:
@@ -1572,46 +1559,43 @@ def fetch_leads(dealership_id, channel, batch_size):
             batch_size
         )
         _leads=pg.fetch_all(query, params)
-        mlogger.info(f"TOTAL LEADS-->{len(_leads)}")
+        mlogger.info(f"[fetch_leads] TOTAL LEADS for dealership_id={dealership_id} and channel={channel} is {len(_leads)}")
         # mlogger.info(f"LEAD_DATA-->{json.dumps(_leads,indent=4)}")
-        return _leads
+        yield _leads
+        # return _leads
 
-def process_dealerships(pg, dealerships, max_threshold, is_voice=False):
-    for dealership in dealerships:
-        dealership_id = dealership["id"]
-        channels = dealership["channels"]
-        #mlogger.info(f"channels--{channels}")
-        for channel in channels:
-            try:
-                if is_voice:
-                    queue_length = get_queue_length(pg, channel, dealership_id)
-                else:
-                    queue_length = get_queue_length(pg, channel)
-
-                mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
-
-                if queue_length <= max_threshold:
-                    process_channel_leads(pg, dealership_id, channel, max_threshold)
-                else:
-                    mlogger.info(f"[SKIP] Queue>{max_threshold} for dealership={dealership_id}, channel={channel}")
-                    continue  
-
-            except Exception as e:
-                mlogger.error(f"[ERROR] Failed for dealership={dealership_id}, channel={channel}")
-
-@gryd.is_a_task(function_name="process_all_dealerships_for_voice")
-def process_all_dealerships_for_voice(voice_batch_size=None):
+@gryd.is_a_task(function_name="process_all_dealerships_for_voice")    
+def process_dealerships_voice(voice_batch_size=None):    
     mlogger.info("-------Process all dealerships for voice phone and trigger campaign next action-------")
-
     max_threshold = voice_batch_size or VOICE_BATCH_SIZE
 
     with get_pg_connector() as pg:
         dealerships = get_all_dealerships(pg, channel_filter=VOICE_CHANNELS)
-
         mlogger.info(f"Total dealerships for channel - voice_phone = {len(dealerships)}")
+        for dealership in dealerships:
+            dealership_id = dealership["id"]
+            channels = dealership["channels"]
+            for channel in channels:
+                mlogger.info("--------------------------------------------")
+                try:
+                    queue_length = get_queue_length(pg, channel, dealership_id)
+                    mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
+                    if queue_length <= max_threshold:
+                        leads = next(fetch_leads(dealership_id, channel, max_threshold))
+                        mlogger.info(f"[FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
+                        if not leads:
+                            mlogger.info(f"[EMPTY] No leads for {dealership_id} - {channel}")
+                            continue
+                        mlogger.info(f"[PROCESS] Processing {len(leads)} leads for {dealership_id} - {channel}")
 
-        process_dealerships(pg,dealerships,max_threshold,is_voice=True)
-        
+                        for lead in leads:
+                            process_lead(pg,lead, channel)
+                    else:
+                        mlogger.info(f"[SKIP] Queue({queue_length})> max_threshold({max_threshold}) for dealership={dealership_id}, channel={channel}")
+                        continue
+                except Exception as e:
+                    mlogger.error(f"[ERROR] Failed for dealership={dealership_id}, channel={channel}")
+                    
 @gryd.is_a_task(function_name="process_dealerships_non_voice")
 def process_dealerships_non_voice(batch_size=None):
     mlogger.info("-------Process all dealerships for non voice channels and trigger campaign next action-------")
@@ -1622,8 +1606,32 @@ def process_dealerships_non_voice(batch_size=None):
         dealerships = get_all_dealerships(pg, channel_filter=NON_VOICE_CHANNELS)
 
         mlogger.info(f"Total dealerships for non voice channels = {len(dealerships)}")
+        
+        for dealership in dealerships:
+            dealership_id = dealership["id"]
+            channels = dealership["channels"]
+            for channel in channels:
+                mlogger.info("--------------------------------------------")
+                
+                try:
+                    queue_length = get_queue_length(pg, channel)
+                    mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
+                    if queue_length <= max_threshold:
+                        leads = next(fetch_leads(dealership_id, channel, max_threshold))
+                        mlogger.info(f"[FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
+                        if not leads:
+                            mlogger.info(f"[EMPTY] No leads for {dealership_id} - {channel}")
+                            continue
+                        mlogger.info(f"[PROCESS] Processing {len(leads)} leads for {dealership_id} - {channel}")
 
-        process_dealerships(pg,dealerships,max_threshold,is_voice=False)
+                        for lead in leads:
+                            process_lead(pg,lead, channel)
+                    else:
+                        mlogger.info(f"[SKIP] Queue>{max_threshold} for dealership={dealership_id}, channel={channel}")
+                        continue
+                except Exception as e:
+                    mlogger.error(f"[ERROR] Failed for dealership={dealership_id}, channel={channel}")
+            
 
 @gryd.is_a_task(function_name="manage_socket_server_load", job_param = 'job', logger_param = 'logger')
 def manage_socket_server_load(
