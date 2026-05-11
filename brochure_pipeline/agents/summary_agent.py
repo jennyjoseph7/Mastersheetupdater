@@ -24,7 +24,7 @@ class VectorIngestionAgent(BaseAgent):
         self.config = kwargs if kwargs else {}
         logger.info("VectorIngestionAgent initialized")
         
-        prompt_path = os.path.join("prompt", "summary_prompt.txt")
+        prompt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "prompt", "summary_prompt.txt")
         try:
             with open(prompt_path, "r", encoding="utf-8") as f:
                 self.system_instruction = f.read().strip()

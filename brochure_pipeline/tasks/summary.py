@@ -9,7 +9,7 @@ if BASE_DIR not in sys.path:
 import copy
 import urllib.parse
 from pathlib import Path
-from bp_utils import get_logger
+from bp_utils import get_logger, fetch_brochure_text_from_api
 from gryd_worker import gryd
 from brochure_pipeline.agents.summary_agent import VectorIngestionAgent
 from dotenv import load_dotenv
@@ -17,26 +17,6 @@ from config import AutocrmModel
 
 load_dotenv()
 logger = get_logger(__name__)
-
-def fetch_brochure_text_from_api(document_id: str) -> str:
-    """Fetches extracted chunks from chunk_saver model and concatenates them."""
-    try:
-        chunk_saver_model = AutocrmModel('chunk_saver')
-        chunks = chunk_saver_model.list(document_id=document_id, page_size=1000)
-        
-        extracted_text = []
-        chunk_list = chunks.get("data", []) if isinstance(chunks, dict) else chunks
-        
-        for chunk in chunk_list:
-            if isinstance(chunk, dict):
-                text = chunk.get("text_content", "")
-                if text:
-                    extracted_text.append(str(text))
-                    
-        return "\n\n".join(extracted_text)
-    except Exception as e:
-        logger.error(f"Failed to fetch brochure text from chunk_saver API for {document_id}: {e}")
-        return ""
 
 def format_for_gryd_vector(llm_data: dict, doc_id_prefix: str) -> list:
     gryd_tasks = []
@@ -108,7 +88,7 @@ def update_autocrm_summaries(db_updates: dict, vehicle_model_id: str, model_year
         except Exception as e:
             logger.error(f"❌ FAILED to update vehicle_model for {vehicle_model_id}. Error: {e}")
     else:
-        logger.warning(f"⚠️ SKIPPED vehicle_model update. Missing ID ({vehicle_model_id}) or TOON text empty.")
+        logger.warning(f"⚠️ SKIPPED vehicle_model update. Missing ID ({vehicle_model_id}) or toon_text is empty/N/A.")
 
     # 3. Update Variants
     variants_to_update = db_updates.get("variants", [])
@@ -163,6 +143,27 @@ def run_summary_dispatcher(document_id: str, job_id: str, vehicle_model_id: str,
 
     job_iterator = gryd.yield_results(worker_payload)
     results = [res for res in job_iterator]
+
+    # --- Wire up vector ingestion ---
+    # Collect all vector tasks produced by the worker(s) and dispatch them.
+    all_vector_tasks = []
+    for res in results:
+        if isinstance(res, dict) and res.get("status") == "success":
+            all_vector_tasks.extend(res.get("vector_tasks_payload", []))
+
+    if all_vector_tasks:
+        logger.info(f"🔗 Dispatching {len(all_vector_tasks)} vector ingestion tasks...")
+        vector_jobs = [{
+            "task": "vector_ingestion_task",
+            "service": "brochure-pipeline",
+            "args": [],
+            "kwargs": {"tasks_payload": all_vector_tasks}
+        }]
+        vector_iterator = gryd.yield_results(vector_jobs)
+        vector_results = [r for r in vector_iterator]
+        logger.info(f"✅ Vector ingestion dispatched. Results: {vector_results}")
+    else:
+        logger.warning("⚠️ No vector tasks were produced by the summary worker.")
 
     return {"status": "completed", "model_year_id": model_year_id, "results": results}
 

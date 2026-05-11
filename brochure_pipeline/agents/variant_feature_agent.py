@@ -68,7 +68,8 @@ class ConverterAgent(BaseAgent):
         super().__init__(config=converter_kwargs)
         logger.info("ConverterAgent initialized")
         
-        batch_prompt_path = os.path.join("prompt", "converter_prompt.txt")
+        _AGENTS_DIR = os.path.dirname(os.path.abspath(__file__))
+        batch_prompt_path = os.path.join(_AGENTS_DIR, "..", "prompt", "converter_prompt.txt")
         try:
             with open(batch_prompt_path, "r", encoding="utf-8") as f:
                 self.system_instruction = f.read().strip()
@@ -76,7 +77,7 @@ class ConverterAgent(BaseAgent):
             logger.error(f"FATAL: Prompt file not found at {batch_prompt_path}")
             self.system_instruction = ""
 
-        correction_prompt_path = os.path.join("prompt", "correction_prompt.txt")
+        correction_prompt_path = os.path.join(_AGENTS_DIR, "..", "prompt", "correction_prompt.txt")
         try:
             with open(correction_prompt_path, "r", encoding="utf-8") as f:
                 self.correction_instruction = f.read().strip()
@@ -144,7 +145,7 @@ class MasterVariantAgent(BaseAgent):
         super().__init__(config=kwargs)
         logger.info("MasterVariantAgent initialized")
         
-        prompt_path = os.path.join("prompt", "master_variant_prompt.txt")
+        prompt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "prompt", "master_variant_prompt.txt")
         try:
             with open(prompt_path, "r", encoding="utf-8") as f:
                 self.system_instruction = f.read().strip()
@@ -189,9 +190,10 @@ class MasterVariantAgent(BaseAgent):
         ]
         
         logger.info("Identifying car model from brochure...")
-        response = llm_service(messages) 
-        
-        car_name = response.strip().replace('"', '').replace("'", "").split('\n')[0]
+        response = llm_service(messages)
+
+        raw_text = self._extract_text(response)
+        car_name = raw_text.strip().replace('"', '').replace("'", "").split('\n')[0]
         return car_name
 
 
@@ -200,14 +202,13 @@ class ValidationAgent(BaseAgent):
         super().__init__(config=kwargs)
         logger.info("ValidationAgent initialized")
         
-        prompt_path = os.path.join("prompt", "validation_prompt.txt")
+        prompt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "prompt", "validation_prompt.txt")
         try:
             with open(prompt_path, "r", encoding="utf-8") as f:
                 self.system_instruction = f.read().strip()
         except FileNotFoundError:
             logger.error(f"FATAL: Prompt file not found at {prompt_path}")
             self.system_instruction = ""
-
     def messages(self, brochure_text: str, json_item_to_validate: dict) -> list:
         item_as_string = json.dumps(json_item_to_validate, indent=2)
         prompt = f"""
