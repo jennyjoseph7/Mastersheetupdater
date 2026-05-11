@@ -8,7 +8,7 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,gryd, hp,AutocrmModel
+from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_VOICE_SERVICE_NAME, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,gryd, hp,AutocrmModel
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
@@ -1458,15 +1458,27 @@ def normalize_channels(raw_channels):
 
     return DEFAULT_CHANNELS
 
-def get_queue_length(pg,channel,dealership_id=None):
+def get_queue_length(channel,dealership_id=None):
+    ql = 0
     mlogger.info(f"Getting queue length for dealership_id={dealership_id} and channel={channel}")
     if channel in ["whatsapp","whatsapp_chat", "rms","email"]:
-        que_length=gryd.get_queue_length(service=AUTOCRM_COMMUNICATION_SERVICE_NAME)
-        print("Queue length for whatsapp_chat",que_length)
-        return que_length
+        ql = gryd.get_queue_length(service=AUTOCRM_COMMUNICATION_SERVICE_NAME)
+        mlogger.info(f"Queue length for whatsapp_chat is {ql}")
+        return ql
     elif channel in ["voice_phone", "voice"]:
-        #TODO: get the function from nikit for each dealership_id 
-        return 0
+        with get_pg_connector() as pg:
+            dealer  = pg.get("dealership", "dealership_id", dealership_id)
+            if not dealer:
+                mlogger.info(f"No dealership found with dealership_id {dealership_id} returning for default..")
+                return gryd.get_queue_length(service=AUTOCRM_VOICE_SERVICE_NAME)
+            if not dealer.get("voice_service_name"):
+                mlogger.info(f"No voice_service_name found for dealership_id {dealership_id} returning for default..")
+                return gryd.get_queue_length(service=AUTOCRM_VOICE_SERVICE_NAME)
+
+            ql = gryd.get_queue_length(service = dealer.get("voice_service_name")) or 0
+            mlogger.info(f"Queue length for dealership_id={dealership_id} and channel={channel} is {ql}")
+            return ql
+
     
 def get_all_dealerships(pg, channel_filter=None):
     # query = """
@@ -1578,7 +1590,7 @@ def process_dealerships_voice(voice_batch_size=None):
             for channel in channels:
                 mlogger.info("--------------------------------------------")
                 try:
-                    queue_length = get_queue_length(pg, channel, dealership_id)
+                    queue_length = get_queue_length(channel, dealership_id)
                     mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
                     if queue_length <= max_threshold:
                         leads = next(fetch_leads(dealership_id, channel, max_threshold))
@@ -1614,7 +1626,7 @@ def process_dealerships_non_voice(batch_size=None):
                 mlogger.info("--------------------------------------------")
                 
                 try:
-                    queue_length = get_queue_length(pg, channel)
+                    queue_length = get_queue_length(channel, dealership_id)
                     mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
                     if queue_length <= max_threshold:
                         leads = next(fetch_leads(dealership_id, channel, max_threshold))
