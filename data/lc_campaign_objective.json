@@ -1,0 +1,338 @@
+{
+  "timezone": "Asia/Kolkata",
+  "name": "lc_campaign_objective",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "campaign_objective_id",
+      "refers": "parents.campaign_objective.campaign_objective_id",
+      "indexed": true,
+      "required" : true
+    },
+    {
+      "name": "campaign_type",
+      "type": "text",
+      "options": ["pre-sales", "post-sales", "dealership"],
+      "ui_element": "select",
+      "indexed": true
+    },
+    {
+      "name": "campaign_sub_type",
+      "type": "text",
+      "option_others": true,
+      "options": [
+        "brand awareness",
+        "service overdue",
+        "product awareness",
+        "event",
+        "lead generation",
+        "lead qualification",
+        "lead nurturing",
+        "lead conversion",
+        "workshop awareness",
+        "offers",
+        "new accessories",
+        "new procedures",
+        "customer retention",
+        "service reminder",
+        "upsell/cross-sell",
+        "review",
+        "feedback",
+        "reminder",
+        "product recall",
+        "software update",
+        "other"
+      ],
+      "ui_element": "select",
+      "indexed": true
+    },
+	    {
+	      "name": "campaign_objective_name",
+	      "type": "text",
+	      "title": "Campaign Objective Name",
+	      "required": true
+	    },
+	    {
+	      "name": "search_term",
+	      "type": "text",
+	      "indexed": true,
+	      "force_update": [
+	        "campaign_type",
+	        "campaign_sub_type",
+	        "campaign_objective_name",
+	        "campaign_objective_description",
+	        "guardrails_guidelines",
+	        "target_audience_tags",
+	        "dealer_name",
+	        "brand_id"
+	      ],
+	      "auto_updater": true,
+	      "default": {
+	        "function": "name_to_id",
+	        "args": [
+	          "campaign_type",
+	          "campaign_sub_type",
+	          "campaign_objective_name",
+	          "campaign_objective_description",
+	          "guardrails_guidelines",
+	          "target_audience_tags",
+	          "dealer_name",
+	          "brand_id"
+	        ],
+	        "kwargs": {
+	          "attribute_join": " ",
+	          "is_unique": true,
+	          "separator": " ",
+	          "skip_empty": true,
+	          "case": "lower"
+	        }
+	      }
+	    },
+	    {
+	      "name": "campaign_objective_description",
+	      "type": "text",
+	      "title": "Objective Description",
+	      "required": true
+	    },
+    {
+      "name": "conversation_tone",
+      "type": "text",
+      "title": "Conversation Tone",
+      "default": "Be on-point, warm, confident, polite, conversational, and very crisp — like a friendly local representative. Avoid being pushy or overly sales oriented. Incorporate natural conversational elements like brief affirmations   to maintain engagement. End every conversation politely, with warmth and gratitude. Speak at a medium pace, easy to follow, with positive, empathetic, and reassuring emotion (not robotic).",
+      "option_others":true,
+      "ui_element": "textarea"
+      
+    },
+    {
+      "name": "custom_campaign_attributes",
+      "type": "object_list",
+      "list_type": "nested_object",
+      "title": "Custom Campaign Attributes",
+      "dict_keys": [
+        "attribute_name",
+        "attribute_value",
+        "attribute_type",
+        "attribute_description"
+      ]
+    },
+    {
+      "name": "audience_attributes",
+      "type": "object_list",
+      "list_type": "nested_object",
+      "title": "Audience Attributes",
+      "dict_keys": [
+        "attribute_name",
+        "attribute_value",
+        "attribute_type",
+        "attribute_description"
+      ]
+    },
+    {
+      "name": "required_attributes",
+      "type": "string_list",
+      "list_type": "text",
+      "title": "Required Attributes",
+      "ui_element": "tags"
+    },
+    {
+      "name": "guardrails_guidelines",
+      "type": "text",
+      "title": "Campaign Guardrails and Guidelines"
+    },
+    {
+      "name": "why_user_should_avail_this",
+      "type": "text",
+      "title": "Why User Should Avail This"
+    },
+    {
+      "name": "reasons_users_may_not_be_interested",
+      "type": "text",
+      "title": "Reasons Users May Not Be Interested"
+    },
+    {
+      "name": "reasons_for_non_applicability",
+      "type": "text",
+      "title": "Reasons for Non-Applicability"
+    },
+    {
+      "name": "other_important_information",
+      "type": "text",
+      "title": "Other Important Information"
+    },
+    {
+      "name": "target_audience_tags",
+      "type": "string_list",
+      "list_type": "text",
+      "title": "Target Audience Tags",
+      "ui_element": "tags"
+    },
+    {
+      "name": "ctas",
+      "type": "string_list",
+      "list_type": "text",
+      "title": "Call to Actions",
+      "ui_element": "tags",
+      "options": [
+        "know-more",
+        "register-to-event",
+        "book-test-drive",
+        "book-showroom-visit",
+        "download-brochure",
+        "book-home-test-drive",
+        "get-onroad-price",
+        "request-callback",
+        "confirm-booking",
+        "book-service",
+        "order-accessory",
+        "renew-insurance",
+        "order-spare-part",
+        "order-extended-warranty",
+        "order-care-package"
+      ],
+      "option_others": true
+    },
+    {
+      "name": "is_custom",
+      "type": "bool",
+      "default": false,
+      "indexed": true
+    },
+    {
+      "name": "icon",
+      "type": "text",
+      "title": "Icon URL or Code",
+      "ui_element": "icon_picker"
+    },
+    {
+      "name": "dealership_id",
+      "refers": "parents.campaign_objective.dealership_id",
+      "indexed": true,
+      "required": false
+    },
+    {
+      "name": "dealer_name",
+      "refers": "parents.campaign_objective.dealer_name",
+      "indexed": true
+    },
+    {
+      "name": "brand_id",
+      "type": "uid",
+      "indexed": true,
+      "required": false,
+      "title": "Brand ID"
+    },
+    {
+      "name" : "language",
+      "type" : "text",
+      "required" : true,
+      "options": [
+        "english",
+        "hindi",
+        "kannada",
+        "telugu",
+        "tamil",
+        "malayalam",
+        "odia",
+        "bengali",
+        "marathi",
+        "gujarati",
+        "bengali",
+        "assamese",
+        "punjabi",
+        "spanish",
+        "arabic"
+      ]
+    },
+    {
+      "name" : "channel",
+      "type" : "text",
+      "required" : true,
+      "indexed" : true,
+      "options": [
+          "rcs",
+          "email",
+          "web_chat",
+          "web_chat_voice",
+          "fb_chat",
+          "insta_chat",
+          "twitter_chat",
+          "voice_phone",
+          "whatsapp_chat",
+          "whatsapp_voice_note",
+          "whatsapp_voice_call",
+          "zoom_bot",
+          "ms_teams"
+        ]
+    },
+    {
+      "name" : "avatar_gender",
+      "type" : "text",
+      "required" : false,
+      "default" : "male"
+    },
+    {
+      "name": "lc_campaign_objective_id",
+      "type": "uid",
+      "id": true,
+      "auto_updater": true,
+      "default": {
+        "function": "name_to_id",
+        "args": ["campaign_objective_id", "language", "channel","avatar_gender"],
+        "kwargs": {
+          "attribute_join": "-",
+          "is_unique": true,
+          "separator": "-",
+          "skip_empty": true,
+          "case": "lower"
+        }
+      }
+    },
+    {
+      "name" : "purpose",
+      "type" : "text",
+      "require" : false
+    },
+    {
+      "name" : "purpose_steps",
+      "type" : "string_list",
+      "require" : false
+    },
+    {
+      "name" : "custom_conversation_start_pattern",
+      "type" : "string_list",
+      "require" : false,
+      "placeholder" : "Custom Conversation Start Pattern Mention what the bot should say in the starting of a conversation and how."
+    },
+    {
+      "name":"doc_data",
+      "default": {
+        "function" : "get_from_model",
+        "args" : [
+          "dealership",
+          "dealership_id",
+          "doc_data"
+        ]
+      },
+      "type" : "text",
+      "required" : false
+    }
+  ],
+  "parents": ["campaign_objective"]
+}
