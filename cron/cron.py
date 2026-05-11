@@ -8,10 +8,11 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_VOICE_SERVICE_NAME, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,gryd, hp,AutocrmModel
+from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_VOICE_SERVICE_NAME, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,VOICE_START_TIME,VOICE_END_TIME,NON_VOICE_START_TIME,NON_VOICE_END_TIME,gryd, hp,AutocrmModel
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
+from campaign.campaign_workflow import CHANNEL_IDENTIFIER_MAP
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 from gryd_worker import gryd,gryd_db_helper as db, beats as cron_worker,gryd_audit_helper
 from communication.connectors.communication_helpers import handle_session_post_process_or_end
@@ -1514,20 +1515,37 @@ def process_lead(pg,lead, channel):
     lead_id=None
     try:
         data, lead_type = lead  
+        if not data:
+            return
         campaign_type=data.get("campaign_type")
         lead_model="pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
         lead_model_id="pre_sales_lead_id" if campaign_type == "pre-sales" else "post_sales_lead_id"
         lead_id=data.get(lead_model_id)
+        c_i=CHANNEL_IDENTIFIER_MAP.get(channel)
+        channel_identifier=data.get(c_i).replace("+","") if c_i and data.get(c_i) else None or None
         mlogger.info("[PROCESS] Processing lead %s for channel %s", lead_id,channel)
-        
-        # TODO: Based on the next_trigger and  next_channel call process_single_lead
-        # TODO: update these attributes in lead_model
+        mlogger.info("[PROCESS] channel identifier %s", channel_identifier)
+        # mlogger.info("[PROCESS] lead data %s", json.dumps(data,indent=4))
+        # TODO: Based on the next_trigger and next_channel call process_single_lead
+        # mlogger.info(f"Calling process_single_lead task for channel: {channel}, channel_identifier: {channel_identifier}, lead_id: {lead_id}, campaign_type: {campaign_type}")
+        # gryd.create_async_task('process_single_lead', AUTOCRM_CAMPAIGN_SERVICE_NAME, args= [
+        #         channel,
+        #         lead,
+        #         campaign_type,
+        #         data.get("campaign_id"),
+        #     ], kwargs = {
+        #         "disposition_tag": data.get('disposition',None),
+        #         "disposition_detail_tag": data.get('disposition_detail',None),
+        #         "channel_identifier":  channel_identifier
+        #     })
+        # # update these attributes in lead_model
         # pg.update(lead_model,lead_model_id,lead_id,{
         #     "next_channel": None,
         #     "next_channel_identifier": None,
         #     "next_schedule_time": None,
         #     "next_trigger": None
         # })
+        
         
 
     except Exception as e:
@@ -1577,10 +1595,18 @@ def fetch_leads(dealership_id, channel, batch_size):
         # return _leads
 
 @gryd.is_a_task(function_name="process_all_dealerships_for_voice")    
-def process_dealerships_voice(voice_batch_size=None):    
+def process_dealerships_voice(voice_batch_size=None,voice_start_time=None,voice_end_time=None):    
     mlogger.info("-------Process all dealerships for voice phone and trigger campaign next action-------")
+    
     max_threshold = voice_batch_size or VOICE_BATCH_SIZE
-
+    start_time = voice_start_time or VOICE_START_TIME
+    end_time = voice_end_time or VOICE_END_TIME
+    current_hour = datetime.now().hour 
+    mlogger.info(f"Current hour is {current_hour}")
+    # Doing an additional check to see if the current hour is within the allowed execution time.
+    if current_hour < start_time or current_hour > end_time:
+        mlogger.info("Outside allowed execution window for channel - voice_phone.So exiting...")
+        return
     with get_pg_connector() as pg:
         dealerships = get_all_dealerships(pg, channel_filter=VOICE_CHANNELS)
         mlogger.info(f"Total dealerships for channel - voice_phone = {len(dealerships)}")
@@ -1609,11 +1635,18 @@ def process_dealerships_voice(voice_batch_size=None):
                     mlogger.error(f"[ERROR] Failed for dealership={dealership_id}, channel={channel}")
                     
 @gryd.is_a_task(function_name="process_dealerships_non_voice")
-def process_dealerships_non_voice(batch_size=None):
+def process_dealerships_non_voice(batch_size=None,non_voice_start_time=None,non_voice_end_time=None):
     mlogger.info("-------Process all dealerships for non voice channels and trigger campaign next action-------")
 
     max_threshold = batch_size or NON_VOICE_BATCH_SIZE
-
+    start_time = non_voice_start_time or NON_VOICE_START_TIME
+    end_time = non_voice_end_time or NON_VOICE_END_TIME
+    current_hour = datetime.now().hour 
+    mlogger.info(f"Current hour is {current_hour}")
+    # Doing an additional check to see if the current hour is within the allowed execution time.
+    if current_hour < start_time or current_hour > end_time:
+        mlogger.info("Outside allowed execution window for channel - non voice.So exiting...")
+        return
     with get_pg_connector() as pg:
         dealerships = get_all_dealerships(pg, channel_filter=NON_VOICE_CHANNELS)
 
