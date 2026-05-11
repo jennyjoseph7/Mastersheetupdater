@@ -405,6 +405,113 @@
       line-height: 1.55;
     }
 
+    .batch-panel {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface2);
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .batch-panel-title {
+      font-family: var(--sans);
+      font-size: 0.8rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    .batch-panel-note {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+      margin-bottom: 0.65rem;
+    }
+
+    .batch-panel-note strong {
+      color: var(--text);
+    }
+
+    .resume-banner {
+      display: none;
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      background: var(--accent-soft);
+      border: 1px solid rgba(167, 139, 250, 0.35);
+      border-radius: 10px;
+      padding: 0.55rem 0.7rem;
+      margin-bottom: 0.65rem;
+      line-height: 1.45;
+    }
+
+    .resume-banner.show {
+      display: block;
+    }
+
+    .resume-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-top: 0.45rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .batch-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.85rem 1.25rem;
+      align-items: flex-end;
+      margin-bottom: 0.5rem;
+    }
+
+    .batch-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .batch-field label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .batch-field input {
+      width: 7rem;
+      padding: 0.45rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+    }
+
+    .batch-hint {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-bottom: 0.45rem;
+      line-height: 1.45;
+    }
+
+    .batch-forget {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+
+    .batch-forget:hover {
+      color: var(--accent);
+    }
+
     .stats {
       display: grid;
       grid-template-columns: repeat(4, minmax(120px, 1fr));
@@ -661,7 +768,7 @@
         <select class="select" id="templateSelect"></select>
         <button type="button" class="btn btn-upload" id="uploadBtn">Upload Sheet</button>
         <button class="btn btn-primary" id="processBtn" onclick="processFile()" disabled>Format File</button>
-        <button class="btn btn-secondary" id="downloadBtn" onclick="downloadOutput()" disabled>Download XLSX</button>
+        <button class="btn btn-secondary" id="downloadBtn" onclick="void downloadOutput()" disabled>Download XLSX</button>
       </div>
 
       <div class="drop-zone" id="dropZone">
@@ -677,6 +784,31 @@
 
       <div class="hint mono" id="mappingHint"></div>
       <div class="status" id="globalStatus"></div>
+
+      <div class="batch-panel" id="batchPanel" aria-live="polite">
+        <div class="batch-panel-title">Batch download</div>
+        <div class="batch-panel-note">
+          Each upload file uses a <strong>header row</strong> plus up to <strong>100 leads</strong> per batch
+          (<strong>101 rows</strong> when a batch is full). Choose where to start and how many batches to download.
+        </div>
+        <div class="resume-banner" id="resumeBanner"></div>
+        <div class="resume-actions" id="resumeActions" style="display:none;">
+          <button type="button" class="btn btn-primary" id="resumeContinueBtn">Continue from saved position</button>
+          <button type="button" class="btn btn-secondary" id="resumeRestartBtn">Start from lead 1</button>
+        </div>
+        <div class="batch-row">
+          <div class="batch-field">
+            <label for="startLeadInput">Start at lead #</label>
+            <input type="number" id="startLeadInput" min="1" value="1" />
+          </div>
+          <div class="batch-field">
+            <label for="numBatchesInput">Batches to download</label>
+            <input type="number" id="numBatchesInput" min="1" value="1" />
+          </div>
+        </div>
+        <div class="batch-hint mono" id="batchHint"></div>
+        <button type="button" class="batch-forget" id="clearBatchMemoryBtn">Forget saved progress for this file</button>
+      </div>
     </section>
 
     <section class="panel">
@@ -795,6 +927,229 @@
 
     let rawFile = null;
     let outputRows = [];
+
+    const AE_LEADS_PER_BATCH = 100;
+    const AE_BATCH_STORAGE_KEY = 'jejo-ae-batch-export-v1';
+
+    let batchFingerprint = '';
+    let batchInputRowCount = 0;
+    let batchTemplateId = '';
+
+    function fileBatchFingerprint(file, inputRowCount) {
+      if (!file) return '';
+      return [file.name || '', String(file.size || 0), String(file.lastModified || 0), String(inputRowCount || 0)].join('|');
+    }
+
+    function readAeBatchStore() {
+      try {
+        return JSON.parse(localStorage.getItem(AE_BATCH_STORAGE_KEY) || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function writeAeBatchStore(store) {
+      try {
+        localStorage.setItem(AE_BATCH_STORAGE_KEY, JSON.stringify(store));
+      } catch (e) {
+        /* quota or private mode */
+      }
+    }
+
+    function getSavedBatchProgress(fp, templateId, inputRowCount) {
+      const store = readAeBatchStore();
+      const rec = store[fp];
+      if (!rec || rec.templateId !== templateId || Number(rec.inputRowCount) !== Number(inputRowCount)) return null;
+      const nextLeadIndex = Number(rec.nextLeadIndex) || 1;
+      return { nextLeadIndex };
+    }
+
+    function saveBatchProgress(fp, templateId, inputRowCount, nextLeadIndex) {
+      const store = readAeBatchStore();
+      store[fp] = { templateId, inputRowCount, nextLeadIndex };
+      writeAeBatchStore(store);
+    }
+
+    function clearBatchProgressForFingerprint(fp) {
+      const store = readAeBatchStore();
+      delete store[fp];
+      writeAeBatchStore(store);
+    }
+
+    function hideBatchPanel() {
+      const panel = document.getElementById('batchPanel');
+      if (panel) panel.style.display = 'none';
+      const resumeBanner = document.getElementById('resumeBanner');
+      const resumeActions = document.getElementById('resumeActions');
+      const continueBtn = document.getElementById('resumeContinueBtn');
+      if (resumeBanner) {
+        resumeBanner.classList.remove('show');
+        resumeBanner.textContent = '';
+      }
+      if (resumeActions) resumeActions.style.display = 'none';
+      if (continueBtn) continueBtn.style.display = '';
+      batchFingerprint = '';
+      batchInputRowCount = 0;
+      batchTemplateId = '';
+    }
+
+    function refreshBatchHint() {
+      const hint = document.getElementById('batchHint');
+      const startEl = document.getElementById('startLeadInput');
+      const numEl = document.getElementById('numBatchesInput');
+      if (!hint || !startEl || !numEl) return;
+      if (!outputRows.length) {
+        hint.textContent = '';
+        return;
+      }
+      const total = outputRows.length;
+      let start = parseInt(startEl.value, 10);
+      if (Number.isNaN(start) || start < 1) start = 1;
+      if (start > total) start = total;
+      let remaining = total - start + 1;
+      if (remaining < 0) remaining = 0;
+      const maxBatches = remaining > 0 ? Math.ceil(remaining / AE_LEADS_PER_BATCH) : 1;
+      let num = parseInt(numEl.value, 10);
+      if (Number.isNaN(num) || num < 1) num = 1;
+      if (num > maxBatches) num = maxBatches;
+      numEl.value = String(Math.max(1, num));
+      startEl.value = String(start);
+
+      const leadsThisRun = Math.min(num * AE_LEADS_PER_BATCH, remaining);
+      const firstDataRows = remaining > 0 ? Math.min(AE_LEADS_PER_BATCH, remaining) : 0;
+      const firstFileRows = remaining > 0 ? 1 + firstDataRows : 1;
+      hint.textContent =
+        total +
+        ' lead(s) formatted. From lead #' +
+        start +
+        ', ' +
+        remaining +
+        ' left. This run: ' +
+        num +
+        ' file(s), up to ' +
+        leadsThisRun +
+        ' lead(s). First file: ' +
+        firstFileRows +
+        ' row(s) (1 header + ' +
+        firstDataRows +
+        ' data' +
+        (firstDataRows === AE_LEADS_PER_BATCH ? ', full batch 101 rows' : '') +
+        ').';
+    }
+
+    function syncResumeBannerAndActions() {
+      const resumeBanner = document.getElementById('resumeBanner');
+      const resumeActions = document.getElementById('resumeActions');
+      const continueBtn = document.getElementById('resumeContinueBtn');
+      const restartBtn = document.getElementById('resumeRestartBtn');
+      const startEl = document.getElementById('startLeadInput');
+      const numEl = document.getElementById('numBatchesInput');
+      if (!resumeBanner || !resumeActions || !continueBtn || !restartBtn || !outputRows.length || !batchFingerprint) {
+        if (resumeBanner) resumeBanner.classList.remove('show');
+        if (resumeActions) resumeActions.style.display = 'none';
+        if (continueBtn) continueBtn.style.display = '';
+        return;
+      }
+
+      const total = outputRows.length;
+      const saved = getSavedBatchProgress(batchFingerprint, batchTemplateId, batchInputRowCount);
+
+      if (!saved || saved.nextLeadIndex <= 1) {
+        resumeBanner.classList.remove('show');
+        resumeBanner.textContent = '';
+        resumeActions.style.display = 'none';
+        continueBtn.style.display = '';
+        return;
+      }
+
+      if (saved.nextLeadIndex <= total) {
+        const lastDone = saved.nextLeadIndex - 1;
+        resumeBanner.textContent =
+          'This browser remembers this file (name + size + date + row count) and template: last time exports ended after lead ' +
+          lastDone +
+          ' of ' +
+          total +
+          '. Next lead is ' +
+          saved.nextLeadIndex +
+          '.';
+        resumeBanner.classList.add('show');
+        resumeActions.style.display = 'flex';
+        continueBtn.style.display = '';
+        continueBtn.textContent = 'Continue from lead ' + saved.nextLeadIndex;
+        restartBtn.textContent = 'Start from lead 1';
+        continueBtn.onclick = function () {
+          startEl.value = String(saved.nextLeadIndex);
+          const rem = total - saved.nextLeadIndex + 1;
+          numEl.value = String(Math.max(1, Math.ceil(rem / AE_LEADS_PER_BATCH)));
+          refreshBatchHint();
+        };
+        restartBtn.onclick = function () {
+          startEl.value = '1';
+          numEl.value = '1';
+          clearBatchProgressForFingerprint(batchFingerprint);
+          syncResumeBannerAndActions();
+          refreshBatchHint();
+        };
+        return;
+      }
+
+      resumeBanner.textContent =
+        'Saved progress is past the end of this file (' +
+        total +
+        ' leads). Reset below or use “Forget saved progress”.';
+      resumeBanner.classList.add('show');
+      resumeActions.style.display = 'flex';
+      continueBtn.style.display = 'none';
+      restartBtn.textContent = 'Start from lead 1 (clear saved position)';
+      restartBtn.onclick = function () {
+        startEl.value = '1';
+        numEl.value = '1';
+        clearBatchProgressForFingerprint(batchFingerprint);
+        continueBtn.style.display = '';
+        restartBtn.textContent = 'Start from lead 1';
+        syncResumeBannerAndActions();
+        refreshBatchHint();
+      };
+    }
+
+    function configureBatchPanelAfterFormat(templateId, inputRowCount) {
+      batchTemplateId = templateId;
+      batchInputRowCount = inputRowCount;
+      batchFingerprint = fileBatchFingerprint(rawFile, inputRowCount);
+
+      const panel = document.getElementById('batchPanel');
+      const startEl = document.getElementById('startLeadInput');
+      const numEl = document.getElementById('numBatchesInput');
+      if (!panel || !startEl || !numEl) return;
+
+      panel.style.display = 'block';
+      startEl.value = '1';
+      numEl.value = '1';
+
+      syncResumeBannerAndActions();
+      refreshBatchHint();
+    }
+
+    function setupBatchExportControls() {
+      const startEl = document.getElementById('startLeadInput');
+      const numEl = document.getElementById('numBatchesInput');
+      const forget = document.getElementById('clearBatchMemoryBtn');
+      if (!startEl || !numEl || !forget || startEl.dataset.bound === '1') return;
+      startEl.dataset.bound = '1';
+      const onChange = function () {
+        refreshBatchHint();
+      };
+      startEl.addEventListener('input', onChange);
+      startEl.addEventListener('change', onChange);
+      numEl.addEventListener('input', onChange);
+      numEl.addEventListener('change', onChange);
+      forget.addEventListener('click', function () {
+        if (batchFingerprint) clearBatchProgressForFingerprint(batchFingerprint);
+        syncResumeBannerAndActions();
+        refreshBatchHint();
+        setStatus('Forgot saved batch progress for this file fingerprint.', 'ok');
+      });
+    }
 
     function canonicalHeader(text) {
       return String(text || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -941,6 +1296,7 @@
       renderPreview([], []);
       renderMappingAudit(null);
       document.getElementById('downloadBtn').disabled = true;
+      hideBatchPanel();
     }
 
     async function processFile() {
@@ -956,6 +1312,7 @@
           renderMappingAudit(null);
           outputRows = [];
           document.getElementById('downloadBtn').disabled = true;
+          hideBatchPanel();
           return;
         }
 
@@ -991,6 +1348,8 @@
         renderMappingAudit(audit);
         setCounts(parsed.data.length, rows.length, mappedCount, defaultCount);
         document.getElementById('downloadBtn').disabled = !rows.length;
+        const templateId = document.getElementById('templateSelect').value;
+        configureBatchPanelAfterFormat(templateId, parsed.data.length);
         setStatus(
           audit.hasWarnings
             ? 'Formatted ' + rows.length + ' row(s). Review mapping audit before download.'
@@ -1012,20 +1371,88 @@
       document.getElementById('tableWrap').style.display = rows.length ? 'block' : 'none';
     }
 
-    function downloadOutput() {
+    async function downloadOutput() {
       if (!outputRows.length) return;
+      refreshBatchHint();
+
+      const total = outputRows.length;
+      const startEl = document.getElementById('startLeadInput');
+      const numEl = document.getElementById('numBatchesInput');
+      let start = parseInt(startEl && startEl.value, 10);
+      if (Number.isNaN(start) || start < 1) start = 1;
+      if (start > total) {
+        setStatus('Start lead must be between 1 and ' + total + '.', 'err');
+        return;
+      }
+      const remaining = total - start + 1;
+      if (remaining < 1) {
+        setStatus('Nothing left to export from this start position.', 'err');
+        return;
+      }
+      const maxBatches = Math.ceil(remaining / AE_LEADS_PER_BATCH);
+      let numBatches = parseInt(numEl && numEl.value, 10);
+      if (Number.isNaN(numBatches) || numBatches < 1) numBatches = 1;
+      if (numBatches > maxBatches) numBatches = maxBatches;
+
       const template = TEMPLATES[document.getElementById('templateSelect').value];
       const headers = template.outputOrder;
-      const aoa = [headers];
-      for (const row of outputRows) aoa.push(headers.map(h => row[h] || ''));
-      const ws = XLSX.utils.aoa_to_sheet(aoa);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'AutoEngage');
       const dateStr = new Date().toISOString().slice(0, 10);
       const safeName = template.label.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
-      const fileName = safeName + '_AutoEngage_' + dateStr + '.xlsx';
-      XLSX.writeFile(wb, fileName);
-      setStatus('Downloaded ' + fileName, 'ok');
+
+      let exported = 0;
+      let filesWritten = 0;
+      for (let b = 0; b < numBatches; b++) {
+        const sliceStartIdx = start - 1 + b * AE_LEADS_PER_BATCH;
+        if (sliceStartIdx >= total) break;
+        const sliceLen = Math.min(AE_LEADS_PER_BATCH, total - sliceStartIdx);
+        const slice = outputRows.slice(sliceStartIdx, sliceStartIdx + sliceLen);
+        const aoa = [headers];
+        for (let i = 0; i < slice.length; i++) {
+          const row = slice[i];
+          aoa.push(headers.map(h => row[h] || ''));
+        }
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'AutoEngage');
+        const part = numBatches > 1 ? '_batch' + (b + 1) : '';
+        const fileName = safeName + '_AutoEngage_' + dateStr + part + '.xlsx';
+        XLSX.writeFile(wb, fileName);
+        exported += sliceLen;
+        filesWritten += 1;
+        if (b < numBatches - 1 && sliceStartIdx + sliceLen < total) {
+          await new Promise(function (resolve) {
+            setTimeout(resolve, 420);
+          });
+        }
+      }
+
+      const nextLeadIndex = start + exported;
+      if (batchFingerprint && batchTemplateId) {
+        saveBatchProgress(batchFingerprint, batchTemplateId, batchInputRowCount, nextLeadIndex);
+      }
+
+      if (nextLeadIndex <= total) {
+        startEl.value = String(nextLeadIndex);
+        const rem = total - nextLeadIndex + 1;
+        numEl.value = String(Math.max(1, Math.ceil(rem / AE_LEADS_PER_BATCH)));
+      } else {
+        startEl.value = '1';
+        numEl.value = '1';
+      }
+
+      syncResumeBannerAndActions();
+      refreshBatchHint();
+
+      setStatus(
+        'Downloaded ' +
+          filesWritten +
+          ' file(s), ' +
+          exported +
+          ' lead(s). Saved next start: lead ' +
+          Math.min(nextLeadIndex, total + 1) +
+          '.',
+        'ok'
+      );
     }
 
     function escapeHtml(value) {
@@ -1111,6 +1538,7 @@
     applyTheme(localStorage.getItem('jejo-theme') || 'dark');
     initTemplates();
     setupDropZone();
+    setupBatchExportControls();
   </script>
 </body>
 
