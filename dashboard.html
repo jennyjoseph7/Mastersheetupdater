@@ -915,6 +915,98 @@
        ═══════════════════════════════════════════════════════════════════════ */
     .metric-audit {
       margin-bottom: 1rem;
+      padding: 0.9rem 1rem;
+    }
+
+    .metric-audit-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.5rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .metric-health-chip {
+      border: 1px solid var(--border-subtle);
+      border-radius: 11px;
+      padding: 0.5rem 0.65rem;
+      background: var(--surface2);
+      min-width: 0;
+    }
+
+    .metric-health-chip.warn {
+      border-color: rgba(230, 164, 86, 0.35);
+      background: var(--warn-soft);
+    }
+
+    .metric-health-chip.err {
+      border-color: rgba(241, 111, 111, 0.3);
+      background: var(--danger-soft);
+    }
+
+    .metric-health-label {
+      color: var(--text-muted);
+      font-size: 0.6rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+    }
+
+    .metric-health-value {
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .metric-audit-summary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.7rem;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 0.55rem;
+    }
+
+    .metric-audit-summary {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .metric-audit-toggle {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.3rem 0.7rem;
+      background: var(--surface2);
+      color: var(--text-dim);
+      font-size: 0.68rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .metric-audit-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .metric-audit-details {
+      display: none;
+      margin-top: 0.55rem;
+      padding-top: 0.55rem;
+      border-top: 1px dashed var(--border-subtle);
+    }
+
+    .metric-audit-details.show {
+      display: block;
     }
 
     .metric-audit-grid {
@@ -1108,6 +1200,9 @@
       .kpi-grid {
         grid-template-columns: 1fr 1fr;
       }
+      .metric-audit-strip {
+        grid-template-columns: 1fr 1fr;
+      }
       .metric-audit-grid {
         grid-template-columns: 1fr 1fr;
       }
@@ -1127,6 +1222,7 @@
       main { padding: 1rem; }
       header { padding: 1rem; position: static; }
       .kpi-grid { grid-template-columns: 1fr; }
+      .metric-audit-strip { grid-template-columns: 1fr; }
       .metric-audit-grid { grid-template-columns: 1fr; }
       .upload-row { grid-template-columns: 1fr; }
       .header-right { width: 100%; justify-content: flex-end; }
@@ -1367,7 +1463,14 @@
     <div id="dashboardContent" style="display:none;">
       <div class="data-panel metric-audit slide-up" id="metricAudit" style="display:none;">
         <div class="panel-title">Metric Audit</div>
-        <div class="metric-audit-grid" id="metricAuditGrid"></div>
+        <div class="metric-audit-strip" id="metricAuditStrip"></div>
+        <div class="metric-audit-summary-row">
+          <div class="metric-audit-summary" id="metricAuditSummary">Column mapping pending</div>
+          <button class="metric-audit-toggle" id="metricAuditToggle" type="button" aria-expanded="false">View full audit</button>
+        </div>
+        <div class="metric-audit-details" id="metricAuditDetails">
+          <div class="metric-audit-grid" id="metricAuditGrid"></div>
+        </div>
       </div>
 
       <!-- KPI Row 1 -->
@@ -1448,6 +1551,19 @@
       document.getElementById('metricAudit').style.display = 'none';
       document.getElementById('btnPrintPDF').style.display = 'none';
       document.getElementById('emptyState').style.display = '';
+      const details = document.getElementById('metricAuditDetails');
+      const toggle = document.getElementById('metricAuditToggle');
+      const summary = document.getElementById('metricAuditSummary');
+      const strip = document.getElementById('metricAuditStrip');
+      const grid = document.getElementById('metricAuditGrid');
+      if (details) details.classList.remove('show');
+      if (toggle) {
+        toggle.textContent = 'View full audit';
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+      if (summary) summary.textContent = 'Column mapping pending';
+      if (strip) strip.innerHTML = '';
+      if (grid) grid.innerHTML = '';
     }
 
     // Keyboard activation (Enter / Space) for drop zone
@@ -1894,8 +2010,12 @@
 
     function renderMetricAudit(audit) {
       const panel = document.getElementById('metricAudit');
+      const strip = document.getElementById('metricAuditStrip');
+      const summary = document.getElementById('metricAuditSummary');
+      const details = document.getElementById('metricAuditDetails');
+      const toggle = document.getElementById('metricAuditToggle');
       const grid = document.getElementById('metricAuditGrid');
-      if (!panel || !grid) return;
+      if (!panel || !strip || !summary || !details || !toggle || !grid) return;
 
       const items = Object.entries(audit.columns).map(([label, value]) => ({
         label,
@@ -1910,6 +2030,52 @@
         { label: 'Unique Phones', value: String(audit.uniquePhones || 0), tone: audit.uniquePhones ? '' : 'warn' },
         { label: 'Duplicate Rows', value: String(audit.duplicatePhones || 0), tone: audit.duplicatePhones ? 'warn' : '' }
       );
+
+      const mappedColumns = Object.values(audit.columns).filter(Boolean).length;
+      const totalColumns = Object.keys(audit.columns).length;
+      const stripItems = [
+        {
+          label: 'Columns Mapped',
+          value: `${mappedColumns}/${totalColumns}`,
+          tone: mappedColumns === totalColumns ? '' : 'warn',
+        },
+        {
+          label: 'Valid Dates',
+          value: `${audit.validDateCount}/${audit.totalRows}`,
+          tone: audit.validDateCount ? '' : 'err',
+        },
+        {
+          label: 'Rejected Dates',
+          value: String(audit.rejectedDateCount),
+          tone: audit.rejectedDateCount ? 'warn' : '',
+        },
+        {
+          label: 'Duplicate Rows',
+          value: String(audit.duplicatePhones || 0),
+          tone: audit.duplicatePhones ? 'warn' : '',
+        }
+      ];
+
+      strip.innerHTML = '';
+      for (const item of stripItems) {
+        const card = document.createElement('div');
+        card.className = 'metric-health-chip' + (item.tone ? ' ' + item.tone : '');
+
+        const label = document.createElement('div');
+        label.className = 'metric-health-label';
+        label.textContent = item.label;
+
+        const value = document.createElement('div');
+        value.className = 'metric-health-value';
+        value.title = item.value;
+        value.textContent = item.value;
+
+        card.appendChild(label);
+        card.appendChild(value);
+        strip.appendChild(card);
+      }
+
+      summary.textContent = `${mappedColumns}/${totalColumns} columns mapped · Parser ${audit.parserLabel} · Unique phones ${audit.uniquePhones || 0}`;
 
       grid.innerHTML = '';
       for (const item of items) {
@@ -1929,6 +2095,14 @@
         card.appendChild(value);
         grid.appendChild(card);
       }
+      details.classList.remove('show');
+      toggle.textContent = 'View full audit';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.onclick = () => {
+        const expanded = details.classList.toggle('show');
+        toggle.textContent = expanded ? 'Hide full audit' : 'View full audit';
+        toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      };
       panel.style.display = 'block';
     }
 
