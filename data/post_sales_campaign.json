@@ -199,6 +199,10 @@
             ]
         },
         {
+            "name": "last_sync_timestamp",
+            "type": "number"
+        },
+        {
             "name": "campaign_objective_id",
             "type": "uid",
             "option_others": true,

@@ -221,6 +221,10 @@
             ]
         },
         {
+            "name": "last_sync_timestamp",
+            "type": "number"
+        },
+        {
             "name": "campaign_objective_id",
             "type": "uid",
             "options": "/options/campaign_objective/campaign_objective_name",

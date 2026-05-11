@@ -177,10 +177,15 @@
                 "bengali",
                 "marathi",
                 "gujarati",
+                "bengali",
                 "assamese",
                 "punjabi",
                 "spanish",
-                "arabic"
+                "arabic",
+                "french",
+                "bahasa_indonesia",
+                "tagalog",
+                "portuguese"
             ]
         },
         {
@@ -585,9 +590,21 @@
             "ui_element": "tags"
         },
         {
-            "name":"voice_service_name",
-            "type":"text",
+            "name": "voice_service_name",
+            "type": "text",
             "default": "autocrm-voice"
+        },
+        {
+            "name": "crm_name",
+            "type": "text"
+        },
+        {
+            "name": "crm_credentials",
+            "type": "nested_object"
+        },
+        {
+            "name": "meta_credentials",
+            "type": "nested_object"
         },
         {
             "name": "dealership_id",
