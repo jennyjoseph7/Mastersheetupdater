@@ -780,6 +780,30 @@
       gap: 0.7rem;
     }
 
+    .hbar-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 0.7rem;
+    }
+
+    .hbar-toggle-btn {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.28rem 0.68rem;
+      background: var(--surface2);
+      color: var(--text-dim);
+      font-size: 0.68rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .hbar-toggle-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
     .hbar-row {
       display: grid;
       grid-template-columns: 80px 1fr 55px;
@@ -2001,6 +2025,11 @@
     function renderVehicleChart(modelCounts) {
       const container = document.getElementById('vehicleChart');
       container.innerHTML = '';
+      const panel = container.closest('.data-panel');
+      if (panel) {
+        const existingActions = panel.querySelector('.hbar-actions');
+        if (existingActions) existingActions.remove();
+      }
 
       const entries = Object.entries(modelCounts).sort((a, b) => b[1] - a[1]);
       if (entries.length === 0) {
@@ -2011,46 +2040,77 @@
       const maxVal = entries[0][1];
       const colors = ['blue', 'purple', 'green', 'amber', 'red', 'teal'];
       const totalModelTaggedCalls = entries.reduce((acc, [, count]) => acc + count, 0);
+      const TOP_MODELS_LIMIT = 12;
+      const shouldCollapse = entries.length > TOP_MODELS_LIMIT;
 
-      const titleEl = container.closest('.data-panel').querySelector('.panel-title');
+      const titleEl = panel.querySelector('.panel-title');
       titleEl.textContent = `Vehicles Contacted (${entries.length} Models)`;
       // Re-add the dot
       const dot = document.createElement('span');
       titleEl.prepend(dot);
 
-      entries.forEach(([model, count], i) => {
-        const row = document.createElement('div');
-        row.className = 'hbar-row';
-        const widthPct = maxVal > 0 ? (count / maxVal * 100) : 0;
-        const colorClass = colors[i % colors.length];
-        const percentage = totalModelTaggedCalls > 0 ? (count / totalModelTaggedCalls * 100).toFixed(1) : '0.0';
+      const collapsedEntries = shouldCollapse
+        ? [
+            ...entries.slice(0, TOP_MODELS_LIMIT),
+            ['Others', entries.slice(TOP_MODELS_LIMIT).reduce((sum, [, c]) => sum + c, 0)],
+          ]
+        : entries;
 
-        // Build DOM elements safely (no innerHTML with user data)
-        const label = document.createElement('span');
-        label.className = 'hbar-label';
-        label.title = model;
-        label.textContent = model;
+      const renderRows = (rowsToRender) => {
+        container.innerHTML = '';
+        rowsToRender.forEach(([model, count], i) => {
+          const row = document.createElement('div');
+          row.className = 'hbar-row';
+          const widthPct = maxVal > 0 ? (count / maxVal * 100) : 0;
+          const colorClass = colors[i % colors.length];
+          const percentage = totalModelTaggedCalls > 0 ? (count / totalModelTaggedCalls * 100).toFixed(1) : '0.0';
 
-        const track = document.createElement('div');
-        track.className = 'hbar-track';
-        const fill = document.createElement('div');
-        fill.className = 'hbar-fill ' + colorClass;
-        fill.style.width = widthPct + '%';
-        track.appendChild(fill);
+          const label = document.createElement('span');
+          label.className = 'hbar-label';
+          label.title = model;
+          label.textContent = model;
 
-        const value = document.createElement('span');
-        value.className = 'hbar-value';
-        value.textContent = numberWithCommas(count);
-        const pctSpan = document.createElement('span');
-        pctSpan.className = 'hbar-pct';
-        pctSpan.textContent = percentage + '%';
-        value.appendChild(pctSpan);
+          const track = document.createElement('div');
+          track.className = 'hbar-track';
+          const fill = document.createElement('div');
+          fill.className = 'hbar-fill ' + colorClass;
+          fill.style.width = widthPct + '%';
+          track.appendChild(fill);
 
-        row.appendChild(label);
-        row.appendChild(track);
-        row.appendChild(value);
-        container.appendChild(row);
-      });
+          const value = document.createElement('span');
+          value.className = 'hbar-value';
+          value.textContent = numberWithCommas(count);
+          const pctSpan = document.createElement('span');
+          pctSpan.className = 'hbar-pct';
+          pctSpan.textContent = percentage + '%';
+          value.appendChild(pctSpan);
+
+          row.appendChild(label);
+          row.appendChild(track);
+          row.appendChild(value);
+          container.appendChild(row);
+        });
+      };
+
+      renderRows(collapsedEntries);
+
+      if (!shouldCollapse) return;
+
+      let expanded = false;
+      const actionRow = document.createElement('div');
+      actionRow.className = 'hbar-actions';
+      const toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.className = 'hbar-toggle-btn';
+      toggleBtn.textContent = `Show all ${entries.length} models`;
+      toggleBtn.onclick = () => {
+        expanded = !expanded;
+        renderRows(expanded ? entries : collapsedEntries);
+        actionRow.appendChild(toggleBtn);
+        toggleBtn.textContent = expanded ? 'Show top models only' : `Show all ${entries.length} models`;
+      };
+      actionRow.appendChild(toggleBtn);
+      panel.appendChild(actionRow);
     }
 
     /* ── Pending & Processed Panel ────────────────────────────────────── */
