@@ -50,8 +50,11 @@ def get_document_data(*args, **kwargs):
     return ""
 
 def get_who_are_you(*args, **kwargs):
-    return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["who_are_you"] 
-
+    who = language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["who_are_you"] 
+    if kwargs.get("gender") and kwargs.get("gender") in["male","female"]:
+        gender = language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["gender"].format(kwargs.get("gender"))
+        who = f"{who}. {gender}"
+    return who
 def get_who_you_represent(*args, **kwargs):
     session_data = kwargs.get("session_data",{})
     campaign_data = kwargs.get("campaign_data",{})
@@ -98,13 +101,6 @@ def get_purpose_and_steps(*args, **kwargs):
     date_time_ref = language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["purpose_and_steps"]["date_time"].format(date_now=date_now)
     # date_time_ref = "\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date.".format(date_now=date_now)
 
-
-
-    purpose_dict = {
-        "test_drive" : ["- Full Name (if not available as 'person_name' in 'Who is the customer section') \n- Interested Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time "],
-        "service" : ["- Full Name (if not available as 'person_name' in 'Who is the customer section')\n- Car Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time \n- Service Type"]
-        }
-    p_steps = ""
     if campaign_data.get("purpose"):
         if campaign_data.get("purpose_steps"):
             flow = campaign_data.get("purpose")
@@ -269,6 +265,7 @@ def setup_primary_prompt(*args, **kwargs):
     - Tone and style
     - Documents
     - output format
+    - conversation history
 
     '''
     
