@@ -600,6 +600,7 @@
         },
         {
             "name": "preferred_contact_window",
+            "type": "nested_object",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -610,15 +611,12 @@
             }
         },
         {
-            "name": "preferred_communication_channel",
-            "default": {
-                "function": "get_from_model",
-                "args": [
-                    "person",
-                    "user_id",
-                    "preferred_communication_channel"
-                ]
-            }
+          "name": "preferred_communication_channel",
+          "type": "nested_object",
+          "default": {
+            "function": "get_from_model",
+            "args": ["person", "user_id", "preferred_communication_channel"]
+          }
         },
         {
             "name": "preferred_language",
@@ -1351,6 +1349,7 @@
                 "engaged",
                 "converted",
                 "failed",
+                "busy",
                 "error"
             ],
             "default": "queued"
