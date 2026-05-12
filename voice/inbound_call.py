@@ -54,7 +54,11 @@ def start_call_from_inbound(*args, **kwargs):
                 session_data["prompt"] = x.get('prompt')
                 break
     
-    credentials = session_data.get("communication_credentials", {})
+    credentials = {}
+    with gryd_tasks.get_pg_connector() as pg:
+        credentials = hp.make_single(pg.list("provider_credentials", {"dealership_id": session_data.get("dealership_id"), "channel": "voice_phone"}))
+        logger.info(f"Provider credentials retrieved in inbound call: {credentials}")
+
     if credentials:
         provider = credentials.get("provider_name", "tatatele").replace("-", "").strip().lower()
         session_data["agent_id"] = credentials.get("bot_name")
@@ -110,11 +114,11 @@ def start_call_from_inbound(*args, **kwargs):
         time.sleep(5)
         logger.info(f"Inbound call is ongoing for {customer_number}, checking status...")
         with gryd_tasks.get_pg_connector() as pg:
-            contact_status = hp.make_single(list[Any](pg.list_order_by("contact_status", {"message_id": session_data["session_id"]}, order_by="created", order="DESC")), force = True)
             if not session_active(session_data["session_id"]):
                 logger.info(f"Session not found or likely to be terminated already....")
                 return {"status": "success", "message": f"Inbound call session ended."}
-
+            
+            contact_status = hp.make_single(list[Any](pg.list_order_by("contact_status", {"message_id": session_data["session_id"]}, order_by="created", order="DESC")), force = True)
             if (contact_status and contact_status.get("provider_status") in ["contacted"]):
                 logger.info(f"Call ended with status {contact_status.get('provider_status')}, terminating session {session_data['session_id']}")
                 return {"status": "success", "message": f"Inbound call session ended with status {contact_status.get('provider_status')}"}
