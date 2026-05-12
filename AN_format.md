@@ -261,7 +261,7 @@ Client shared model name (even if the client shares variants like below, the for
 
 ---
 
-## 7. Perfect Riders Hyryder — Sales / Lead Campaign
+## 7. Fortune Hyryder — Sales / Lead Campaign
 
 ### Client File → AutoEngage Mapping
 
@@ -284,7 +284,7 @@ interested_vehicle_brand_name    ← DEFAULT: "Toyota Kirloskar Motor"
 
 ---
 
-## 8. Perfect Riders Toyota — Post Sales / Lead Campaign
+## 8. Fortune Toyota — Post Sales / Lead Campaign
 
 ### Client File → AutoEngage Mapping
 

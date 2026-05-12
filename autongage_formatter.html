@@ -11,7 +11,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AutoEngage Formatter - JEJO</title>
-  <meta name="description" content="Convert dealership files into AutoEngage upload format using predefined column mappings." />
+  <meta name="description"
+    content="Convert dealership files into AutoEngage upload format using predefined column mappings." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -554,6 +555,7 @@
     }
 
     @media (max-width: 780px) {
+
       header,
       main {
         padding-left: 1rem;
@@ -642,11 +644,15 @@
           </a>
         </div>
         <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-          <svg class="icon-moon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          <svg class="icon-moon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
           </svg>
-          <svg class="icon-sun" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          <svg class="icon-sun" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+            stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
         </button>
       </div>
@@ -656,7 +662,7 @@
   <main>
     <section class="panel">
       <div class="section-title">Step 1 - Template and file</div>
-      <div class="step-note">1) Choose template  2) Click Upload Sheet  3) Click Format File</div>
+      <div class="step-note">1) Choose template 2) Click Upload Sheet 3) Click Format File</div>
       <div class="controls">
         <select class="select" id="templateSelect"></select>
         <button type="button" class="btn btn-upload" id="uploadBtn">Upload Sheet</button>
@@ -682,10 +688,22 @@
     <section class="panel">
       <div class="section-title">Step 2 - Output preview</div>
       <div class="stats">
-        <div class="stat"><div class="stat-label">Input Rows</div><div class="stat-value" id="inputRows">0</div></div>
-        <div class="stat"><div class="stat-label">Output Rows</div><div class="stat-value" id="outputRows">0</div></div>
-        <div class="stat"><div class="stat-label">Mapped Cells</div><div class="stat-value" id="mappedCells">0</div></div>
-        <div class="stat"><div class="stat-label">Default Cells</div><div class="stat-value" id="defaultCells">0</div></div>
+        <div class="stat">
+          <div class="stat-label">Input Rows</div>
+          <div class="stat-value" id="inputRows">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Output Rows</div>
+          <div class="stat-value" id="outputRows">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Mapped Cells</div>
+          <div class="stat-value" id="mappedCells">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Default Cells</div>
+          <div class="stat-value" id="defaultCells">0</div>
+        </div>
       </div>
       <div class="audit-card" id="auditCard">
         <div class="audit-title" id="auditTitle">Mapping audit</div>
@@ -800,8 +818,8 @@
         defaults: { interested_vehicle_brand_name: 'Mahindra' },
         normalizeMahindraModels: true
       },
-      perfect_riders_hyryder_sales: {
-        label: 'Perfect Riders Hyryder - Sales / Lead Campaign',
+      fortune_hyryder_sales: {
+        label: 'Fortune Hyryder - Sales / Lead Campaign',
         sourceToTarget: {
           'Enquiry Name': 'person_name',
           'MODEL': 'interested_vehicle_name',
@@ -819,8 +837,8 @@
           interested_vehicle_brand_name: 'Toyota Kirloskar Motor'
         }
       },
-      perfect_riders_toyota_post: {
-        label: 'Perfect Riders Toyota - Post Sales / Service Reminder',
+      fortune_toyota_post: {
+        label: 'Fortune Toyota - Post Sales / Service Reminder',
         sourceToTarget: {
           'Service Due Date': 'next_service_due',
           'Workshop': 'workshop_code',
@@ -849,7 +867,7 @@
       }
     };
 
-    /** AN_format.md — Perfect Riders Toyota post-sales model names → vehicle_model */
+    /** AN_format.md — Fortune Toyota post-sales model names → vehicle_model */
     function normalizeToyotaVehicleModel(raw) {
       const orig = String(raw || '').trim();
       if (!orig) return '';
@@ -1033,19 +1051,19 @@
       const mappingEntries = Object.entries(targetSources).map(([target, keys]) => ({
         target,
         keys,
-        matchedKeys: keys.filter(function(k) { return headerSet.has(k); }),
+        matchedKeys: keys.filter(function (k) { return headerSet.has(k); }),
       }));
-      const matched = mappingEntries.filter(function(e) { return e.matchedKeys.length; });
-      const missing = mappingEntries.filter(function(e) { return !e.matchedKeys.length; });
+      const matched = mappingEntries.filter(function (e) { return e.matchedKeys.length; });
+      const missing = mappingEntries.filter(function (e) { return !e.matchedKeys.length; });
       const usedSourceKeys = new Set();
-      matched.forEach(function(e) {
-        e.matchedKeys.forEach(function(k) { usedSourceKeys.add(k); });
+      matched.forEach(function (e) {
+        e.matchedKeys.forEach(function (k) { usedSourceKeys.add(k); });
       });
       const defaults = Object.entries(template.defaults || {});
-      const blankColumns = template.outputOrder.filter(function(key) {
-        return rows.every(function(row) { return String(row[key] || '').trim() === ''; });
+      const blankColumns = template.outputOrder.filter(function (key) {
+        return rows.every(function (row) { return String(row[key] || '').trim() === ''; });
       });
-      const ignoredHeaders = parsed.rawHeaders.filter(function(header) {
+      const ignoredHeaders = parsed.rawHeaders.filter(function (header) {
         const key = canonicalHeader(header);
         return key && !usedSourceKeys.has(key);
       });
@@ -1056,21 +1074,21 @@
           {
             title: 'Matched mappings',
             level: matched.length ? 'ok' : 'warn',
-            rows: limitedRows(matched.map(function(e) {
+            rows: limitedRows(matched.map(function (e) {
               return e.target + ' <- ' + e.matchedKeys.join(', ');
             }), 'No template mappings matched uploaded headers.'),
           },
           {
             title: 'Missing source columns',
             level: missing.length ? 'warn' : 'ok',
-            rows: limitedRows(missing.map(function(e) {
+            rows: limitedRows(missing.map(function (e) {
               return e.target + ' (need any of: ' + e.keys.join(', ') + ')';
             }), 'None'),
           },
           {
             title: 'Defaults applied',
             level: defaults.length ? 'info' : 'ok',
-            rows: limitedRows(defaults.map(function(pair) { return pair[0] + ' = ' + pair[1]; }), 'None'),
+            rows: limitedRows(defaults.map(function (pair) { return pair[0] + ' = ' + pair[1]; }), 'None'),
           },
           {
             title: 'Blank output columns',
