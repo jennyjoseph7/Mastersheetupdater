@@ -107,7 +107,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
             task="process_all_dealerships_for_voice",
             service=AUTOCRM_CRON_SERVICE_NAME,
-            schedule = "*/20 9-18 * * *",
+            schedule = "*/20 3-13 * * *", #till 7:10pm it runs..
             add_schedule_to_queue=False
         )
         
@@ -115,7 +115,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
             task="process_dealerships_non_voice",
             service=AUTOCRM_CRON_SERVICE_NAME,
-            schedule = "*/20 9-19 * * *",
+            schedule = "*/20 2-15 * * *", #till 9pm it runs..
             add_schedule_to_queue=False
         )
         
