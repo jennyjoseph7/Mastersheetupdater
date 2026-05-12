@@ -299,6 +299,7 @@ def post_messages_data(*args, **pass_kwargs):
 def setup_session_data_cache(*args, **kwargs):
     logger = kwargs.get("logger",mlogger)
     cache_data = kwargs.get("session_data_cache",{})
+    mlogger.info("setup_session_data_cache called with data == {}".format(kwargs))
     if cache_data:
         return cache_data
     session_id = kwargs.get("session_id")
@@ -325,7 +326,7 @@ def setup_session_data_cache(*args, **kwargs):
         lead_data = pg.get(session_data.get("lead_model"),"{}_id".format(lead_model_name),session_data.get("lead_id")) or {}
         # if language!="english":
         mlogger.info("campaign_objective_id == {}".format(campaign_data.get("campaign_objective_id")))
-        camp_overrides = list(pg.list("lc_campaign_objective",{"campaign_objective_id":campaign_data.get("campaign_objective_id"),"language":language,"channel":kwargs.get("channel",""),"gender":kwargs.get("gender","male")}))
+        camp_overrides = list(pg.list("lc_campaign_objective",{"campaign_objective_id":campaign_data.get("campaign_objective_id"),"language":language,"channel":kwargs.get("channel","whatsapp_chat"),"avatar_gender":kwargs.get("gender","male")}))
         logger.info("camp_overrides == {}".format(camp_overrides))
         if camp_overrides:
             camp_override = camp_overrides[0]
