@@ -1530,7 +1530,7 @@ def process_lead(pg,lead, channel):
         mlogger.info(f"Calling process_single_lead task for channel: {channel}, channel_identifier: {channel_identifier}, lead_id: {lead_id}, campaign_type: {campaign_type}")
         gryd.create_async_task('process_single_lead', AUTOCRM_CAMPAIGN_SERVICE_NAME, args= [
                 channel,
-                lead,
+                lead_id,
                 campaign_type,
                 data.get("campaign_id"),
             ], kwargs = {
