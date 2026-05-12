@@ -1804,12 +1804,25 @@ def calculate_currency_rate(target_currency, logger = None, job = None, auth = N
         "rate": rounded_rate
     }
 
+@gryd.is_a_task(function_name="translate_objective_all")
+def translate_objective_all(campaign_objective_id,force_update = True):
+    target_languages = ["english","tamil","hindi","malayalam","telugu","bangla","marathi","punjabi","odia","gujarati","kannada"]
+    target_channels = ["whatsapp_chat","voice_phone"]
+    genders = ["male","female"]
+    for target_language in target_languages:
+        for target_channel in target_channels:
+            for gender in genders:
+                translate_objective(campaign_objective_id, target_language, target_channel, gender,force_update)
+    return {"status" : "success"}
+
 @gryd.is_a_task(function_name="translate_objective_multiple")
 def translate_objective_multiple(campaign_objective_id, target_languages, target_channels, genders = ["male"],force_update = False):
     for target_language in target_languages:
         for target_channel in target_channels:
             for gender in genders:
-                yield translate_objective(campaign_objective_id, target_language, target_channel, gender,force_update)
+                translate_objective(campaign_objective_id, target_language, target_channel, gender,force_update)
+    return {"status" : "success"}
+
 @gryd.is_a_task(function_name="translate_objective")
 def translate_objective(campaign_objective_id, target_language, target_channel, gender = "male",force_update = False):
 
@@ -2501,4 +2514,7 @@ if __name__ == "__main__":
     #         "alt_phone_number_2": "alt_phone_number_2",
     #         "odometer_reading": "odometer_reading"
     #     })
-    translate_objective("pre-sales-inbound-lead-handling--whatsapp-dave-ai-us-india","hindi","voice_phone","female", True)
+
+    # translate_objective("pre-sales-aircross--confirm-test-drive-for-value-advantage--whatsapp","hindi","voice_phone","female", True)
+
+    translate_objective_all("pre-sales-aircross--confirm-test-drive-for-value-advantage--whatsapp")
