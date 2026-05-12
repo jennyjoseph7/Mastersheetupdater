@@ -447,6 +447,33 @@
       align-items: center;
     }
 
+    .upload-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    .mode-label {
+      font-size: 0.73rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .mode-select {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+      color: var(--text);
+      padding: 0.5rem 0.7rem;
+      font-size: 0.8rem;
+      min-width: 180px;
+      outline: none;
+    }
+
     .drop-zone-dash {
       padding: 1.2rem 1.5rem;
       border: 2px dashed rgba(255, 255, 255, 0.12);
@@ -1421,6 +1448,14 @@
     <!-- Upload Section -->
     <div class="upload-section slide-up" id="uploadSection">
       <div class="section-title">Upload Zoho Master Sheet Export</div>
+      <div class="upload-controls">
+        <span class="mode-label">Dashboard Mode</span>
+        <select id="campaignMode" class="mode-select">
+          <option value="auto">Auto Detect</option>
+          <option value="pre">Pre-Sales</option>
+          <option value="post">Post-Sales</option>
+        </select>
+      </div>
       <div class="upload-row">
         <div class="drop-zone-dash" id="dzDash" onclick="document.getElementById('fileDash').click()" role="button" tabindex="0">
           <div class="dz-icon">
@@ -1539,11 +1574,13 @@
        ═══════════════════════════════════════════════════════════════════════ */
     let dashData = null;
     let uploadedFileExt = '';
+    let resolvedCampaignType = 'pre';
 
     const dzDash = document.getElementById('dzDash');
     const fileDash = document.getElementById('fileDash');
     const stDash = document.getElementById('stDash');
     const btnGenerate = document.getElementById('btnGenerate');
+    const campaignMode = document.getElementById('campaignMode');
 
     function clearDashboardOutput() {
       document.getElementById('campaignBar').style.display = 'none';
@@ -1661,12 +1698,16 @@
 
       const COL_PHONE = find(['phone_number', 'phonenumber', 'phone', 'mobile']);
       const COL_OUTCOME = find(['outcome', 'disposition', 'call_outcome', 'calloutcome']);
+      const COL_STATUS = find(['status', 'call_status', 'session_status']);
       const COL_DATE = find(['call_date', 'calldate']);
       const COL_MODEL = find(['vehicle_model', 'vehiclemodel', 'model', 'model_preference', 'car_model']);
       const COL_DETAIL = find(['disposition_detail', 'dispositiondetail', 'detail', 'disposition_details']);
       const COL_SUMMARY = find(['summary', 'call_summary', 'callsummary']);
       const COL_UPDATED_SUMMARY = find(['updated_summary', 'updatedsummary', 'updated summary']);
       const COL_ATTEMPT = find(['attempt', 'number_of_attempts', 'attempts', 'call_attempt']);
+      const COL_NEXT_SERVICE = find(['next_service_due', 'next_service_date']);
+      const COL_LAST_SERVICE = find(['last_service_date']);
+      const COL_SERVICE_TYPE = find(['service_type', 'next_service_type']);
 
       if (!COL_DATE) {
         stDash.textContent = 'Required column missing: Call_Date.';
@@ -1676,6 +1717,19 @@
 
       const rows = dashData;
       const totalLeads = rows.length;
+      const requestedMode = campaignMode ? campaignMode.value : 'auto';
+      const detectedType = detectCampaignType(rows, {
+        summaryCol: COL_SUMMARY,
+        detailCol: COL_DETAIL,
+        outcomeCol: COL_OUTCOME,
+        statusCol: COL_STATUS,
+        nextServiceCol: COL_NEXT_SERVICE,
+        lastServiceCol: COL_LAST_SERVICE,
+        serviceTypeCol: COL_SERVICE_TYPE,
+      });
+      const isPostSales = requestedMode === 'post' || (requestedMode === 'auto' && detectedType === 'post');
+      resolvedCampaignType = isPostSales ? 'post' : 'pre';
+      const primaryOutcomeCol = COL_OUTCOME || COL_STATUS;
 
       // ── Count outcomes ──
       const norm = (v) => String(v || '').trim().toLowerCase();
@@ -1683,9 +1737,10 @@
       let connected = 0, notConnectedStrict = 0, voicemail = 0;
       let bookings = 0, callsTriggered = 0, invalidLead = 0;
       let incompleteCall = 0, callbackRequestedFromSummary = 0;
+      let feedbackCaptured = 0, escalations = 0, notInterestedPost = 0;
 
       rows.forEach(r => {
-        const out = norm(r[COL_OUTCOME]);
+        const out = norm(r[primaryOutcomeCol]);
         const det = norm(r[COL_DETAIL] || '');
         const sum = norm(r[COL_SUMMARY] || '');
         const updatedSum = norm(COL_UPDATED_SUMMARY ? r[COL_UPDATED_SUMMARY] : '');
@@ -1703,18 +1758,34 @@
           voicemail++;
         }
 
-        if (sum === 'requested callback' || sum === 'received call at wrong time') {
+        if (sum === 'requested callback' || sum === 'received call at wrong time' || sum.includes('callback requested') || sum.includes('call back')) {
           callbackRequestedFromSummary++;
         }
 
-        // Bookings: exact match on SUMMARY; Follow Up Required needs Updated SUMMARY confirmation.
-        const qualifiedFollowUp = (sum === 'follow up required' || sum === 'follow-up required') &&
-          (updatedSum === 'interested' || updatedSum === 'converted');
-        if (sum === 'converted' || sum === 'interested' || sum === 'test drive booked' || qualifiedFollowUp) {
-          bookings++;
+        if (!isPostSales) {
+          // Pre-sales conversions.
+          const qualifiedFollowUp = (sum === 'follow up required' || sum === 'follow-up required') &&
+            (updatedSum === 'interested' || updatedSum === 'converted');
+          if (sum === 'converted' || sum === 'interested' || sum === 'test drive booked' || qualifiedFollowUp) {
+            bookings++;
+          }
+        } else {
+          // Post-sales outcomes.
+          if (hasAny(sum + ' ' + det, ['service booked', 'service appointment booked', 'appointment booked', 'booking confirmed', 'slot booked'])) {
+            bookings++;
+          }
+          if (hasAny(sum + ' ' + det, ['feedback given', 'feedback received', 'feedback completed', 'feedback captured', 'happy customer'])) {
+            feedbackCaptured++;
+          }
+          if (hasAny(sum + ' ' + det, ['complaint', 'escalation', 'negative feedback', 'unhappy', 'dissatisfied'])) {
+            escalations++;
+          }
+          if (hasAny(sum + ' ' + det, ['not interested', 'refused service', 'service not required', 'already serviced'])) {
+            notInterestedPost++;
+          }
         }
 
-        if (sum === 'not interested') {
+        if (sum === 'not interested' || hasAny(sum + ' ' + det, ['wrong number', 'invalid number', 'dnd', 'do not disturb'])) {
           invalidLead++;
         }
 
@@ -1802,6 +1873,9 @@
       document.getElementById('campaignBar').style.display = 'flex';
       document.getElementById('dashboardContent').style.display = 'block';
       document.getElementById('btnPrintPDF').style.display = 'inline-flex';
+      document.getElementById('campaignSubtitle').textContent = isPostSales
+        ? 'Post-Sales Service & Feedback Campaign'
+        : 'Pre-Sales Lead Nurturing Campaign';
 
       // Date range
       if (minDate && maxDate) {
@@ -1815,7 +1889,8 @@
       renderMetricAudit({
         columns: {
           Phone: COL_PHONE,
-          Outcome: COL_OUTCOME,
+          Outcome: primaryOutcomeCol,
+          Status: COL_STATUS,
           Date: COL_DATE,
           Model: COL_MODEL,
           Detail: COL_DETAIL,
@@ -1846,12 +1921,19 @@
       // KPI Row 2
       const kpiRow2 = document.getElementById('kpiRow2');
       kpiRow2.innerHTML = '';
-      const kpis2 = [
-        { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: COL_ATTEMPT ? 'Attempt = 1' : 'No duplicates', color: 'amber', delay: 5 },
-        { label: 'TEST DRIVE BOOKINGS', value: bookings, sub: 'Summary + Updated Summary', color: 'green', delay: 6 },
-        { label: 'CALLBACK REQUESTED', value: callbackRequestedFromSummary, sub: 'Summary based', color: 'teal', delay: 7 },
-        { label: 'INVALID LEAD', value: invalidLead, sub: 'Summary based', color: 'red', delay: 8 },
-      ];
+      const kpis2 = isPostSales
+        ? [
+            { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: COL_ATTEMPT ? 'Attempt = 1' : 'No duplicates', color: 'amber', delay: 5 },
+            { label: 'SERVICE BOOKED', value: bookings, sub: 'Summary/Disposition based', color: 'green', delay: 6 },
+            { label: 'FEEDBACK CAPTURED', value: feedbackCaptured, sub: 'Summary/Disposition based', color: 'teal', delay: 7 },
+            { label: 'ESCALATIONS', value: escalations, sub: 'Complaint/negative feedback', color: 'red', delay: 8 },
+          ]
+        : [
+            { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: COL_ATTEMPT ? 'Attempt = 1' : 'No duplicates', color: 'amber', delay: 5 },
+            { label: 'TEST DRIVE BOOKINGS', value: bookings, sub: 'Summary + Updated Summary', color: 'green', delay: 6 },
+            { label: 'CALLBACK REQUESTED', value: callbackRequestedFromSummary, sub: 'Summary based', color: 'teal', delay: 7 },
+            { label: 'INVALID LEAD', value: invalidLead, sub: 'Summary based', color: 'red', delay: 8 },
+          ];
       kpis2.forEach(k => kpiRow2.appendChild(makeKPI(k)));
 
       // Daily chart
@@ -1862,6 +1944,7 @@
 
       // Pending panel
       renderPendingPanel({
+        isPostSales,
         incompleteCall,
         callbackRequested: callbackRequestedFromSummary,
         notConnected: notConnectedStrict,
@@ -1869,6 +1952,7 @@
         totalLeads,
         dupeCount: dupes.length,
         uniquePhones: phoneSet.size,
+        notInterestedPost,
       });
     }
 
@@ -1979,13 +2063,19 @@
             <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.incompleteCall)}</span>
           </div>
           <div class="pdata-item">
-            <span class="pdata-label">Callback Requested</span>
+            <span class="pdata-label">${data.isPostSales ? 'Callback / Call Later' : 'Callback Requested'}</span>
             <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.callbackRequested)}</span>
           </div>
           <div class="pdata-item">
             <span class="pdata-label">Not Connected (Outcome)</span>
             <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.notConnected)}</span>
           </div>
+          ${data.isPostSales ? `
+          <div class="pdata-item">
+            <span class="pdata-label">Not Interested / Already Serviced</span>
+            <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.notInterestedPost || 0)}</span>
+          </div>
+          ` : ''}
         </div>
 
         <div class="pdata-highlight amber" style="margin-top:0.75rem;">
@@ -2116,6 +2206,26 @@
     function pct(part, whole) {
       if (!whole) return '0%';
       return (part / whole * 100).toFixed(1) + '%';
+    }
+
+    function hasAny(text, terms) {
+      return terms.some(term => text.includes(term));
+    }
+
+    function detectCampaignType(rows, cols) {
+      if (cols.nextServiceCol || cols.lastServiceCol || cols.serviceTypeCol) return 'post';
+      const sample = rows.slice(0, 300);
+      let postScore = 0;
+      let preScore = 0;
+      sample.forEach((row) => {
+        const text = (String(row[cols.summaryCol] || '') + ' ' +
+          String(row[cols.detailCol] || '') + ' ' +
+          String(row[cols.outcomeCol] || '') + ' ' +
+          String(row[cols.statusCol] || '')).toLowerCase();
+        if (hasAny(text, ['service booked', 'service appointment', 'feedback', 'serviced', 'escalation', 'complaint'])) postScore++;
+        if (hasAny(text, ['test drive', 'converted', 'interested', 'vehicle inquiry', 'brochure'])) preScore++;
+      });
+      return postScore > preScore ? 'post' : 'pre';
     }
 
     function buildDateParser(rows, columnName) {
