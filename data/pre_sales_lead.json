@@ -1298,10 +1298,6 @@
             }
         },
         {
-            "name": "lead_timeline",
-            "type": "text"
-        },
-        {
             "name": "lead_tags",
             "options": "/options/campaign_objective/target_audience_tags",
             "ui_element": "multiselect",
@@ -1336,6 +1332,17 @@
         {
             "name": "lead_summary",
             "type": "text"
+        },
+        {
+            "name": "lead_timeline",
+            "type": "text",
+            "auto_updater": true,
+            "default": {
+                "function": "plot_lead_session_history",
+                "args": [
+                    "post_sales_lead_id"
+                ]
+            }
         },
         {
             "name": "disposition",
