@@ -1286,6 +1286,7 @@
         { header: 'INTERESTED', key: 'interested' },
         { header: 'NUMBER OF ATTEMPTS', key: 'number_of_attempts' },
         { header: 'AUTONGAGE', key: 'autongage_disposition' },
+        { header: 'LOCATION', key: 'service_location' },
       ],
       fortune_service: [
         { header: 'PHONE_NUMBER', key: 'phone_number' },
@@ -1648,6 +1649,14 @@
       return ['feedback', 'complaint', 'escalation', 'unhappy', 'dissatisfied', 'negative'].some(term => text.includes(term));
     }
 
+    function extractPerfectRidersLocation(summary) {
+      const text = normalizedText(summary);
+      if (!text) return '';
+      if (text.includes('jayanagar')) return 'JAYANAGAR';
+      if (text.includes('lalbagh')) return 'LALBAGH';
+      return '';
+    }
+
     function sessionScore(row) {
       let score = 0;
       const date = parseAutoEngageDate(detectDate(row));
@@ -1972,6 +1981,9 @@
             interested,
             satisfied,
             autongage_disposition: sess.disposition || '',
+            service_location: dealerKey === 'perfect_riders_service'
+              ? extractPerfectRidersLocation(sess.summary)
+              : '',
             lead_row_id: get(row, ['id', 'lead_id', 'leadid', 'customer_id']),
             exclusion_flag: classification.terminal ? 'YES' : '',
             _matched: Boolean(sess.row),

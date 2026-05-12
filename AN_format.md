@@ -234,3 +234,86 @@ subdivision_name
 alt_phone_number_2
 lead_source
 ```
+
+---
+
+## 7. Perfect Riders Hyryder — Sales / Lead Campaign
+
+### Client File → AutoEngage Mapping
+
+| Client Field | AutoEngage Field |
+|---|---|
+| Enquiry Name, NAMES, CUSTOMER NAME | `person_name` |
+| MODEL | `interested_vehicle_name` |
+| Contact Number, MOBILE NO, MOBILE NUMBER | `phone_number` |
+| Mode, ENQUIRY_MODE_NAME | _(unmapped — add column if needed)_ |
+
+### AutoEngage Output Column Order
+
+```
+showroom_code
+person_name
+phone_number
+interested_vehicle_name    ← DEFAULT: "Urban Cruiser Hyryder"
+interested_vehicle_brand_name    ← DEFAULT: "Toyota Kirloskar Motor"
+```
+
+---
+
+## 8. Perfect Riders Toyota — Post Sales / Lead Campaign
+
+### Client File → AutoEngage Mapping
+
+| Client Field | AutoEngage Field |
+|---|---|
+| Service Due Date | `next_service_due` |
+| Workshop | `workshop_code` |
+| Predicted Service Type | `service_plan_type` |
+| Last CRE | _(unmapped)_ |
+| Customer Name | `person_name` |
+| Contact Number | `phone_number` |
+| Reg No. | `reg_number` |
+| VIN No. | `vin_number` |
+| Model | `vehicle_model` |
+| Sale Date | `purchase_date` |
+| Sold By | _(unmapped)_ |
+
+### AutoEngage Output Column Order
+
+```
+next_service_due
+workshop_code
+service_plan_type
+person_name
+phone_number
+reg_number
+vin_number
+vehicle_model
+purchase_date
+```
+
+vehicle_model name → Client shared model name (even if the client share like this while using formatter it should come as vehicle_model)
+Glanza → GLANZA / TOYOTA GLANZA
+Urban Cruiser Taisor → TAISOR / URBAN CRUISER TAISOR
+Urban Cruiser Hyryder → HYRYDER / URBAN CRUISER HYRYDER
+Urban Cruiser Hyryder Hybrid → HYRYDER / URBAN CRUISER HYRYDER
+Innova Crysta → INNOVA
+Innova Hycross → HYCROSS / INNOVA HYCROSS
+Innova Hycross Hybrid → HYCROSS / INNOVA HYCROSS
+Fortuner → FORTUNER
+Fortuner Legender → FORTUNER
+Hilux → HILUX
+Camry → CAMRY / NEW CAMRY
+Camry Hybrid → CAMRY / NEW CAMRY
+Vellfire → VELLFIRE
+Etios → ETIOS
+Etios Liva → ETIOS LIVA
+Corolla Altis → COROLLA
+Etios Cross → ETIOS CROSS
+Etios Hatchback → ETIOS HB
+Land Cruiser → LAND CRUISER / LC
+Land Cruiser Prado → PRADO
+Qualis → QUALIS
+Rumion → RUMION / TOYOTA RUMION
+Yaris → YARIS  
+

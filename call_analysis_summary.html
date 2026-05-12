@@ -11,7 +11,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Call Analysis Summary - JEJO</title>
-  <meta name="description" content="Import a processed Pre-Sales Sync export and generate the call analysis summary." />
+  <meta name="description" content="Import a processed Pre-Sales or Post-Sales Sync export and generate the call analysis summary." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -388,6 +388,33 @@
       grid-template-columns: 1fr auto;
       gap: 1rem;
       align-items: center;
+    }
+
+    .upload-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    .mode-label {
+      font-size: 0.73rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .mode-select {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+      color: var(--text);
+      padding: 0.5rem 0.7rem;
+      font-size: 0.8rem;
+      min-width: 180px;
+      outline: none;
     }
 
     .drop-zone-dash {
@@ -957,7 +984,7 @@
         <div>
           <div class="header-badge">JEJO OPS</div>
           <h1>Call Analysis Summary</h1>
-          <div class="header-sub">Processed Pre-Sales Sync export · Generate call analysis summary</div>
+          <div class="header-sub">Pre-Sales or Post-Sales sync export · Generate call analysis summary</div>
         </div>
       </div>
       <div class="header-right">
@@ -998,7 +1025,15 @@
 
   <main>
     <div class="upload-section slide-up" id="uploadSection">
-      <div class="section-title">Upload Processed Pre-Sales Sync Export</div>
+      <div class="section-title">Upload Processed Sync Export</div>
+      <div class="upload-controls">
+        <span class="mode-label">Campaign mode</span>
+        <select id="campaignMode" class="mode-select" aria-label="Pre-Sales or Post-Sales">
+          <option value="auto">Auto Detect</option>
+          <option value="pre">Pre-Sales</option>
+          <option value="post">Post-Sales</option>
+        </select>
+      </div>
       <div class="upload-row">
         <div class="drop-zone-dash" id="dropZone" onclick="document.getElementById('fileInput').click()" role="button" tabindex="0">
           <div class="dz-icon">
@@ -1009,7 +1044,7 @@
           </div>
           <div class="dz-text">
             <strong>JEJO_Disposition_Sync (.xlsx / .csv)</strong>
-            <small id="fileMeta">Drop file here or click to browse. The export should contain Outcome, Disposition, SUMMARY, and Call_Date.</small>
+            <small id="fileMeta">Drop file here or click to browse. Pre-Sales: Outcome, Disposition, SUMMARY, Call_Date. Post-Sales: STATUS, DISPOSITION_DETAILS, UPDATED_DISPOSITION, SUMMARY, Call_Date.</small>
           </div>
           <span class="dz-status" id="statusText">No file selected</span>
           <input id="fileInput" type="file" accept=".xlsx,.xls,.csv,.tsv" />
@@ -1027,7 +1062,7 @@
     <div class="campaign-bar slide-up" id="summaryBar" style="display:none;">
       <div class="campaign-info">
         <div class="campaign-name" id="summaryTitle">Call Analysis <span>Summary</span></div>
-        <div class="campaign-subtitle" id="summarySubtitle">Processed Pre-Sales Sync data</div>
+        <div class="campaign-subtitle" id="summarySubtitle">Import sync export data</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
         <div class="date-range-label">IMPORTED ROWS</div>
@@ -1051,7 +1086,7 @@
       <div class="preview-table-wrapper" id="bookingTableWrapper">
         <div class="preview-table-header">
           <div class="preview-title">
-            Test Drive Bookings Preview
+            <span id="bookingPreviewTitle">Test Drive Bookings Preview</span>
             <span class="preview-count" id="bookingPreviewCount">0 rows</span>
           </div>
           <button class="btn" id="btnCopyBookings" type="button" onclick="copyBookingData()">Copy Bookings</button>
@@ -1076,7 +1111,7 @@
       <div class="preview-table-wrapper" id="completedTableWrapper">
         <div class="preview-table-header">
           <div class="preview-title">
-            Test Drive Completed Preview
+            <span id="completedPreviewTitle">Test Drive Completed Preview</span>
             <span class="preview-count" id="completedPreviewCount">0 rows</span>
           </div>
           <button class="btn" id="btnCopyCompleted" type="button" onclick="copyCompletedData()">Copy Completed</button>
@@ -1106,7 +1141,7 @@
         </svg>
       </div>
       <h2>Upload a Processed File to See the Summary</h2>
-      <p>Use the Excel export generated from Pre-Sales Sync. The summary will compute calls triggered, connected, test drive bookings, callbacks, and not connected calls.</p>
+      <p>Use the Excel export from Pre-Sales Sync or Post-Sales Disposition Sync. Choose campaign mode or Auto Detect. The summary KPIs match the logic used on the Dashboard.</p>
     </div>
   </main>
 
@@ -1121,9 +1156,19 @@
     let summaryTitleText = '';
     let bookingPreviewData = [];
     let completedPreviewData = [];
+    let activeCampaignMode = 'pre';
 
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
+    const campaignModeSelect = document.getElementById('campaignMode');
+
+    if (campaignModeSelect) {
+      campaignModeSelect.addEventListener('change', function() {
+        if (importedRows.length) {
+          renderSummary(importedRows);
+        }
+      });
+    }
 
     fileInput.addEventListener('change', function() {
       if (fileInput.files && fileInput.files[0]) {
@@ -1174,12 +1219,12 @@
         importedRows = getWorkbookRows(workbook);
 
         if (!importedRows.length) {
-          throw new Error('No usable rows found. Upload the processed Pre-Sales Sync output file.');
+          throw new Error('No usable rows found. Upload a processed Pre-Sales or Post-Sales sync output file.');
         }
 
         renderSummary(importedRows);
         document.getElementById('rowCount').textContent = importedRows.length;
-        document.getElementById('summarySubtitle').textContent = file.name;
+        document.getElementById('summarySubtitle').textContent = file.name + ' · ' + (activeCampaignMode === 'post' ? 'Post-Sales' : 'Pre-Sales');
         document.getElementById('copyBtn').disabled = false;
         dropZone.classList.add('has-file');
         setStatus(file.name + ' imported.', 'ok');
@@ -1207,14 +1252,34 @@
             full_name: clean(get(['Full_Name', 'Full Name', 'person_name', 'name'])),
             phone: clean(get(['Phone', 'phone_number', 'mobile', 'contact_number'])),
             city: clean(get(['City', 'city'])),
-            model: clean(get(['Model', 'Vehicle_Model', 'Vehicle Model', 'model_preference', 'interested_vehicle_name'])),
-            outcome: clean(get(['Outcome'])),
-            disposition: clean(get(['Disposition'])),
-            summary: clean(get(['SUMMARY', 'Summary', 'disposition_detail', 'call_summary', 'conversation_summary', 'notes'])),
+            model: clean(get(['Model', 'Vehicle_Model', 'Vehicle Model', 'model_preference', 'interested_vehicle_name', 'existing_vehicle_model'])),
+            outcome: clean(get(['Outcome', 'OUTCOME'])),
+            status: clean(get(['STATUS', 'Status', 'session_status', 'Session_Status'])),
+            disposition: clean(get([
+              'Disposition',
+              'DISPOSITION_DETAILS',
+              'Disposition_Details',
+              'disposition_detail',
+              'Disposition Details'
+            ])),
+            updated_disposition: clean(get([
+              'UPDATED_DISPOSITION',
+              'Updated Disposition',
+              'updated_disposition'
+            ])),
+            summary: clean(get(['SUMMARY', 'Summary', 'call_summary', 'conversation_summary', 'notes'])),
             updated_summary: clean(get(['Updated SUMMARY', 'Updated Summary', 'updated_summary'])),
             conversion: clean(get(['Conversion', 'conversion'])),
             session_summary: clean(get(['Session_Summary', 'Session Summary', 'session_summary'])),
-            call_date: clean(get(['Call_Date', 'Call Date', 'created', 'start_time', 'date']))
+            call_date: clean(get(['Call_Date', 'Call Date', 'created', 'start_time', 'date'])),
+            attempts: clean(get([
+              'NUMBER OF ATTEMPTS',
+              'NUMBER_OF_ATTEMPTS',
+              'number_of_attempts',
+              'attempts',
+              'Attempt'
+            ])),
+            next_service_due: clean(get(['NEXT_SERVICE_DUE', 'next_service_due', 'NEXT_SERVICE_DATE', 'next_service_date']))
           };
         });
     }
@@ -1349,11 +1414,178 @@
       return isConnected(row) && s.includes('already booked');
     }
 
+    function hasAny(text, terms) {
+      return terms.some(function(term) { return text.includes(term); });
+    }
+
+    function detectCampaignModeFromRows(rows) {
+      if (!rows.length) return 'pre';
+      let postScore = 0;
+      let preScore = 0;
+      rows.slice(0, 300).forEach(function(row) {
+        if (clean(row.next_service_due)) postScore += 4;
+        const st = lower(row.status || '');
+        const oc = lower(row.outcome || '');
+        if (st.includes('attempted') || st.includes('completed') || st.includes('busy')) postScore += 3;
+        if (oc === 'connected' || oc === 'not connected') preScore += 3;
+        const text = lower(
+          clean(row.summary) + ' ' + clean(row.disposition) + ' ' + clean(row.updated_disposition) + ' ' + clean(row.status)
+        );
+        if (hasAny(text, ['service booked', 'service appointment', 'feedback', 'serviced', 'next service', 'complaint'])) postScore++;
+        if (hasAny(text, ['test drive', 'brochure', 'vehicle inquiry'])) preScore++;
+      });
+      return postScore > preScore ? 'post' : 'pre';
+    }
+
+    function resolveCampaignMode(selectValue, rows) {
+      if (selectValue === 'pre' || selectValue === 'post') return selectValue;
+      return detectCampaignModeFromRows(rows);
+    }
+
+    function isPostConnected(row) {
+      const st = lower(row.status || '');
+      return st.includes('attempted') || st.includes('completed');
+    }
+
+    function isPostNotConnected(row) {
+      return lower(row.status || '').includes('busy');
+    }
+
+    function hasPostVoicemail(row) {
+      const ud = clean(row.updated_disposition);
+      const det = lower(row.disposition || '');
+      if (ud) {
+        const n = lower(ud);
+        return n.includes('voicemail') || n.includes('voice mail');
+      }
+      return det.includes('voicemail') || det.includes('voice mail');
+    }
+
+    function isPostServiceBooked(row) {
+      const ud = clean(row.updated_disposition);
+      const det = lower(row.disposition || '');
+      if (ud) {
+        const n = lower(ud);
+        return n === 'converted' || n === 'follow up required' || n === 'follow-up required';
+      }
+      return det === 'converted' || det === 'follow up required' || det === 'follow-up required';
+    }
+
+    function isPostServiceCompleted(row) {
+      const ud = clean(row.updated_disposition);
+      const det = lower(row.disposition || '');
+      if (ud) {
+        const n = lower(ud);
+        return n.includes('service done') || n.includes('service completed');
+      }
+      return det.includes('service done') || det.includes('service completed');
+    }
+
+    function isPostInvalidLead(row) {
+      const ud = clean(row.updated_disposition);
+      const det = lower(row.disposition || '');
+      if (ud) {
+        const n = lower(ud);
+        return n.includes('not interested') || n.includes('invalid lead');
+      }
+      return det.includes('not interested') || det.includes('invalid lead');
+    }
+
+    function countPostUniqueCalls(data) {
+      const hasAttemptCol = data.some(function(r) { return clean(r.attempts) !== ''; });
+      if (hasAttemptCol) {
+        return data.filter(function(r) {
+          const a = lower(r.attempts || '');
+          return a === '1' || a === '1.0' || a === 'one';
+        }).length;
+      }
+      const seen = new Set();
+      data.forEach(function(r) {
+        const k = phoneKey(r.phone);
+        if (k) seen.add(k);
+      });
+      return seen.size;
+    }
+
+    function detectPostLocation(row) {
+      const text = lower(row.summary || '');
+      if (text.includes('jayanagar')) return 'JAYANAGAR';
+      if (text.includes('lalbagh')) return 'LALBAGH';
+      return '';
+    }
+
     function renderSummary(data) {
       const now = new Date();
       const dateLabel = now.getDate() + ' ' + MONTH_NAMES[now.getMonth()] + ' ' + now.getFullYear();
 
+      const selectedMode = campaignModeSelect ? campaignModeSelect.value : 'auto';
+      const resolvedMode = resolveCampaignMode(selectedMode, data);
+      activeCampaignMode = resolvedMode;
+      if (campaignModeSelect && selectedMode === 'auto') {
+        campaignModeSelect.value = resolvedMode;
+      }
+
+      const modeLabel = resolvedMode === 'post' ? 'Post-Sales' : 'Pre-Sales';
+      summaryTitleText = dateLabel + ' \u2014 Call Analysis Summary (' + modeLabel + ')';
+
       const total = data.length;
+
+      if (resolvedMode === 'post') {
+        const connected = data.filter(isPostConnected).length;
+        const notConnectedCalls = data.filter(isPostNotConnected).length;
+        const voicemail = data.filter(hasPostVoicemail).length;
+        const uniqueCalls = countPostUniqueCalls(data);
+        const serviceBooked = data.filter(isPostServiceBooked).length;
+        const serviceCompleted = data.filter(isPostServiceCompleted).length;
+        const invalidLead = data.filter(isPostInvalidLead).length;
+        const requestedCallbacks = data.filter(function(row) {
+          const d = lower(row.disposition);
+          const s = lower(getEffectiveSummary(row));
+          const ss = lower(row.session_summary);
+          return d.includes('call back') || d.includes('callback') || d.includes('call later') ||
+            s.includes('requested call back') || s.includes('callback requested') || s.includes('requested callback') ||
+            ss.includes('requested call back') || ss.includes('callback requested') || ss.includes('requested callback');
+        }).length;
+
+        summaryItems = [
+          { label: 'Total Calls Triggered', val: total, cls: 'purple', sub: 'Imported records' },
+          { label: 'Connected Calls', val: connected, cls: 'green', sub: 'STATUS: attempted / completed' },
+          { label: 'Not Connected Calls', val: notConnectedCalls, cls: 'red', sub: 'STATUS: busy' },
+          { label: 'Voicemail', val: voicemail, cls: 'amber', sub: 'Updated Disposition, else Disposition Details' },
+          { label: 'Unique Calls', val: uniqueCalls, cls: 'amber', sub: 'Attempt = 1 if column exists, else unique phones' },
+          { label: 'Service Booked', val: serviceBooked, cls: 'green', sub: 'Updated Disposition, else DISPOSITION_DETAILS' },
+          { label: 'Service Completed', val: serviceCompleted, cls: 'teal', sub: 'Updated Disposition, else Disposition Details' },
+          { label: 'Invalid Lead', val: invalidLead, cls: 'red', sub: 'Updated Disposition, else Disposition Details' },
+          { label: 'Requested Call Back', val: requestedCallbacks, cls: 'teal', sub: 'Disposition + summary' }
+        ];
+
+        document.getElementById('summaryTitle').innerHTML = escapeHtml(dateLabel) + ' <span>Call Analysis Summary</span>';
+        document.getElementById('summaryGrid').innerHTML = summaryItems.map(function(item, index) {
+          return '<div class="kpi-card ' + item.cls + ' slide-up stagger-' + Math.min(index + 1, 7) + '">' +
+            '<div><span class="kpi-dot"></span></div>' +
+            '<div class="kpi-value">' + item.val + '</div>' +
+            '<div class="kpi-label">' + escapeHtml(item.label) + '</div>' +
+            '<div class="kpi-sub">' + escapeHtml(item.sub) + '</div>' +
+            '</div>';
+        }).join('');
+
+        document.getElementById('summaryBar').style.display = 'flex';
+        document.getElementById('summaryPanel').classList.add('show');
+        document.getElementById('emptyPanel').style.display = 'none';
+        renderRuleAudit([
+          { label: 'Connected Calls', count: connected, detail: 'STATUS contains attempted or completed (matches Dashboard post-sales).' },
+          { label: 'Not Connected Calls', count: notConnectedCalls, detail: 'STATUS contains busy.' },
+          { label: 'Voicemail', count: voicemail, detail: 'Updated Disposition contains voicemail; if blank, DISPOSITION_DETAILS.' },
+          { label: 'Unique Calls', count: uniqueCalls, detail: 'Same as Dashboard: NUMBER OF ATTEMPTS = 1 when present; otherwise distinct phone numbers.' },
+          { label: 'Service Booked', count: serviceBooked, detail: 'Updated Disposition CONVERTED / FOLLOW UP REQUIRED; if blank, same phrases in DISPOSITION_DETAILS.' },
+          { label: 'Service Completed', count: serviceCompleted, detail: 'SERVICE DONE / SERVICE COMPLETED in Updated Disposition or DISPOSITION_DETAILS.' },
+          { label: 'Invalid Lead', count: invalidLead, detail: 'NOT INTERESTED / INVALID LEAD in Updated Disposition or DISPOSITION_DETAILS.' },
+          { label: 'Requested Call Back', count: requestedCallbacks, detail: 'Callback language in disposition or summaries.' }
+        ]);
+        renderPreviewTables(data);
+        return;
+      }
+
       const connected = data.filter(isConnected).length;
       const bookings = data.filter(isTestDriveBooking).length;
       const followUps = data.filter(function(row) {
@@ -1380,7 +1612,7 @@
       const testDriveCompleted = data.filter(isTestDriveCompleted).length;
       const notConnectedCalls = data.filter(isNotConnected).length;
 
-      summaryTitleText = dateLabel + ' \u2014 Call Analysis Summary';
+      summaryTitleText = dateLabel + ' \u2014 Call Analysis Summary (' + modeLabel + ')';
       summaryItems = [
         { label: 'Total Calls Triggered', val: total, cls: 'purple', sub: 'Imported records' },
         { label: 'Connected Calls', val: connected, cls: 'green', sub: 'Outcome based' },
@@ -1433,10 +1665,26 @@
     function renderPreviewTables(data) {
       renderBookingTable(data);
       renderCompletedTable(data);
+      const bookingTitle = document.getElementById('bookingPreviewTitle');
+      const completedTitle = document.getElementById('completedPreviewTitle');
+      const btnBook = document.getElementById('btnCopyBookings');
+      const btnDone = document.getElementById('btnCopyCompleted');
+      if (activeCampaignMode === 'post') {
+        if (bookingTitle) bookingTitle.textContent = 'Service Booked Preview';
+        if (completedTitle) completedTitle.textContent = 'Service Completed Preview';
+        if (btnBook) btnBook.textContent = 'Copy Service Booked';
+        if (btnDone) btnDone.textContent = 'Copy Service Completed';
+      } else {
+        if (bookingTitle) bookingTitle.textContent = 'Test Drive Bookings Preview';
+        if (completedTitle) completedTitle.textContent = 'Test Drive Completed Preview';
+        if (btnBook) btnBook.textContent = 'Copy Bookings';
+        if (btnDone) btnDone.textContent = 'Copy Completed';
+      }
     }
 
     function renderBookingTable(data) {
-      bookingPreviewData = data.filter(isTestDriveBooking);
+      const isPost = activeCampaignMode === 'post';
+      bookingPreviewData = data.filter(isPost ? isPostServiceBooked : isTestDriveBooking);
       const wrapper = document.getElementById('bookingTableWrapper');
       const tbody = document.getElementById('bookingBody');
       tbody.innerHTML = '';
@@ -1448,7 +1696,7 @@
       }
 
       bookingPreviewData.forEach(function(row) {
-        const cols = getBookingColumns(row);
+        const cols = isPost ? getBookingColumnsPost(row) : getBookingColumns(row);
         const tr = document.createElement('tr');
         tr.innerHTML = '<td class="cell-phone">' + escapeHtml(cols[0]) + '</td>' +
           '<td>' + escapeHtml(cols[1]) + '</td>' +
@@ -1465,7 +1713,8 @@
     }
 
     function renderCompletedTable(data) {
-      completedPreviewData = data.filter(isTestDriveCompleted);
+      const isPost = activeCampaignMode === 'post';
+      completedPreviewData = data.filter(isPost ? isPostServiceCompleted : isTestDriveCompleted);
       const wrapper = document.getElementById('completedTableWrapper');
       const tbody = document.getElementById('completedBody');
       tbody.innerHTML = '';
@@ -1477,7 +1726,7 @@
       }
 
       completedPreviewData.forEach(function(row) {
-        const cols = getCompletedColumns(row);
+        const cols = isPost ? getCompletedColumnsPost(row) : getCompletedColumns(row);
         const tr = document.createElement('tr');
         tr.innerHTML = '<td class="cell-phone">' + escapeHtml(cols[0]) + '</td>' +
           '<td>' + escapeHtml(cols[1]) + '</td>' +
@@ -1521,6 +1770,31 @@
       return disp;
     }
 
+    function getBookingColumnsPost(row) {
+      var disp = clean(row.updated_disposition) || clean(row.disposition);
+      if (lower(disp) === 'converted' || lower(disp).includes('follow up required')) {
+        disp = 'Service Booked';
+      }
+      return [
+        row.phone,
+        row.model,
+        disp,
+        detectPostLocation(row),
+        row.call_date,
+        ''
+      ];
+    }
+
+    function getCompletedColumnsPost(row) {
+      return [
+        row.phone,
+        row.model,
+        row.call_date,
+        clean(row.updated_disposition) || clean(row.disposition),
+        ''
+      ];
+    }
+
     function detectBookingLocation(row) {
       const text = lower(row.session_summary);
       if (text.includes('bannerghatta road') || text.includes('bannerghatta')) return 'Bannerghatta Road';
@@ -1558,12 +1832,16 @@
 
     async function copyBookingData() {
       if (!bookingPreviewData.length) return;
-      await copyPreviewRows(bookingPreviewData.map(getBookingColumns), 'btnCopyBookings', 'Copy Bookings');
+      const colsFn = activeCampaignMode === 'post' ? getBookingColumnsPost : getBookingColumns;
+      const btnLabel = activeCampaignMode === 'post' ? 'Copy Service Booked' : 'Copy Bookings';
+      await copyPreviewRows(bookingPreviewData.map(colsFn), 'btnCopyBookings', btnLabel);
     }
 
     async function copyCompletedData() {
       if (!completedPreviewData.length) return;
-      await copyPreviewRows(completedPreviewData.map(getCompletedColumns), 'btnCopyCompleted', 'Copy Completed');
+      const colsFn = activeCampaignMode === 'post' ? getCompletedColumnsPost : getCompletedColumns;
+      const btnLabel = activeCampaignMode === 'post' ? 'Copy Service Completed' : 'Copy Completed';
+      await copyPreviewRows(completedPreviewData.map(colsFn), 'btnCopyCompleted', btnLabel);
     }
 
     async function copyPreviewRows(rows, buttonId, defaultLabel) {

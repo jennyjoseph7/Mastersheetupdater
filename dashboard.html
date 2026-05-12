@@ -650,6 +650,99 @@
       margin-top: 0.1rem;
     }
 
+    .kpi-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.1rem;
+    }
+
+    .kpi-edit-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-shrink: 0;
+    }
+
+    .kpi-edit-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+
+    .kpi-edit-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .kpi-adjusted-badge {
+      font-size: 0.58rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--warn);
+      white-space: nowrap;
+    }
+
+    .kpi-value-edit-panel {
+      margin: 0.35rem 0 0.15rem;
+    }
+
+    .kpi-value-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.45rem 0.55rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-focus);
+      background: var(--surface2);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .kpi-edit-actions {
+      display: flex;
+      gap: 0.4rem;
+      margin-top: 0.45rem;
+    }
+
+    .kpi-mini-btn {
+      flex: 1;
+      padding: 0.35rem 0.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface3);
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .kpi-mini-btn.kpi-apply {
+      border-color: rgba(99, 214, 163, 0.45);
+      background: var(--success-soft);
+      color: var(--success);
+    }
+
+    .kpi-mini-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
     /* KPI color variants */
     .kpi-card.blue::before { background: var(--accent2); }
     .kpi-card.blue .kpi-dot { background: var(--accent2); box-shadow: 0 0 8px rgba(91, 156, 245, var(--kpi-dot-shadow)); }
@@ -1201,6 +1294,14 @@
       background-image: none !important;
     }
 
+    .pdf-export-mode .kpi-edit-controls,
+    .pdf-export-mode .kpi-value-edit-panel,
+    .pdf-export-mode .kpi-adjusted-badge {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
     .pdf-export-mode .hbar-fill {
       min-width: 1px !important;
     }
@@ -1341,6 +1442,13 @@
       #themeToggle,
       #btnPrintPDF {
         display: none !important;
+      }
+
+      .kpi-edit-controls,
+      .kpi-value-edit-panel,
+      .kpi-adjusted-badge {
+        display: none !important;
+        visibility: hidden !important;
       }
 
       main {
@@ -1728,6 +1836,7 @@
       const COL_DETAIL = find(['disposition_detail', 'dispositiondetail', 'detail', 'disposition_details']);
       const COL_SUMMARY = find(['summary', 'call_summary', 'callsummary']);
       const COL_UPDATED_SUMMARY = find(['updated_summary', 'updatedsummary', 'updated summary']);
+      const COL_UPDATED_DISPOSITION = find(['updated_disposition', 'updated disposition', 'updated_disposition_details', 'updated disposition details']);
       const COL_ATTEMPT = find(['attempt', 'number_of_attempts', 'attempts', 'call_attempt']);
       const COL_NEXT_SERVICE = find(['next_service_due', 'next_service_date']);
       const COL_LAST_SERVICE = find(['last_service_date']);
@@ -1761,24 +1870,38 @@
       let connected = 0, notConnectedStrict = 0, voicemail = 0;
       let bookings = 0, callsTriggered = 0, invalidLead = 0;
       let incompleteCall = 0, callbackRequestedFromSummary = 0;
-      let feedbackCaptured = 0, escalations = 0, notInterestedPost = 0;
+      let serviceCompletedPostSales = 0, invalidLeadPostSales = 0, notInterestedPost = 0;
 
       rows.forEach(r => {
         const out = norm(r[primaryOutcomeCol]);
+        const statusVal = norm(COL_STATUS ? r[COL_STATUS] : '');
         const det = norm(r[COL_DETAIL] || '');
         const sum = norm(r[COL_SUMMARY] || '');
         const updatedSum = norm(COL_UPDATED_SUMMARY ? r[COL_UPDATED_SUMMARY] : '');
+        const updatedDisposition = norm(COL_UPDATED_DISPOSITION ? r[COL_UPDATED_DISPOSITION] : '');
+        const rawUpdatedDisposition = COL_UPDATED_DISPOSITION ? String(r[COL_UPDATED_DISPOSITION] ?? '').trim() : '';
 
         callsTriggered++;
 
-        if (out === 'connected') {
-          connected++;
-        } else if (out.includes('not connected') || out.includes('notconnected') || out.includes('not_connected')) {
-          notConnectedStrict++;
+        if (isPostSales) {
+          if (statusVal.includes('attempted') || statusVal.includes('completed')) {
+            connected++;
+          } else if (statusVal.includes('busy')) {
+            notConnectedStrict++;
+          }
+        } else {
+          if (out === 'connected') {
+            connected++;
+          } else if (out.includes('not connected') || out.includes('notconnected') || out.includes('not_connected')) {
+            notConnectedStrict++;
+          }
         }
 
-        // Voicemail: independent check on SUMMARY column (voicemail rows have Outcome="Connected")
-        if (sum === 'voicemail' || sum === 'voice mail') {
+        // Voicemail KPI: Updated Disposition first; if blank, DISPOSITION_DETAILS
+        const rawUpdatedDispForVm = COL_UPDATED_DISPOSITION ? String(r[COL_UPDATED_DISPOSITION] ?? '').trim() : '';
+        if (rawUpdatedDispForVm && hasVoicemailNorm(norm(rawUpdatedDispForVm))) {
+          voicemail++;
+        } else if (!rawUpdatedDispForVm && hasVoicemailNorm(det)) {
           voicemail++;
         }
 
@@ -1795,21 +1918,39 @@
           }
         } else {
           // Post-sales outcomes.
-          if (hasAny(sum + ' ' + det, ['service booked', 'service appointment booked', 'appointment booked', 'booking confirmed', 'slot booked'])) {
+          let serviceBooked = false;
+          if (updatedDisposition) {
+            serviceBooked = updatedDisposition === 'converted' ||
+              updatedDisposition === 'follow up required' ||
+              updatedDisposition === 'follow-up required';
+          } else {
+            serviceBooked = det === 'converted' ||
+              det === 'follow up required' ||
+              det === 'follow-up required';
+          }
+          if (serviceBooked) {
             bookings++;
           }
-          if (hasAny(sum + ' ' + det, ['feedback given', 'feedback received', 'feedback completed', 'feedback captured', 'happy customer'])) {
-            feedbackCaptured++;
+          if (rawUpdatedDisposition) {
+            if (hasServiceCompletedDispositionNorm(norm(rawUpdatedDisposition))) {
+              serviceCompletedPostSales++;
+            }
+          } else if (hasServiceCompletedDispositionNorm(det)) {
+            serviceCompletedPostSales++;
           }
-          if (hasAny(sum + ' ' + det, ['complaint', 'escalation', 'negative feedback', 'unhappy', 'dissatisfied'])) {
-            escalations++;
+          if (rawUpdatedDisposition) {
+            if (hasInvalidLeadDispositionNorm(norm(rawUpdatedDisposition))) {
+              invalidLeadPostSales++;
+            }
+          } else if (hasInvalidLeadDispositionNorm(det)) {
+            invalidLeadPostSales++;
           }
           if (hasAny(sum + ' ' + det, ['not interested', 'refused service', 'service not required', 'already serviced'])) {
             notInterestedPost++;
           }
         }
 
-        if (sum === 'not interested' || hasAny(sum + ' ' + det, ['wrong number', 'invalid number', 'dnd', 'do not disturb'])) {
+        if (!isPostSales && (sum === 'not interested' || hasAny(sum + ' ' + det, ['wrong number', 'invalid number', 'dnd', 'do not disturb']))) {
           invalidLead++;
         }
 
@@ -1920,6 +2061,7 @@
           Detail: COL_DETAIL,
           Summary: COL_SUMMARY,
           'Updated Summary': COL_UPDATED_SUMMARY,
+          'Updated Disposition': COL_UPDATED_DISPOSITION,
           Attempts: COL_ATTEMPT,
         },
         parserLabel,
@@ -1938,7 +2080,7 @@
         { label: 'CALLS TRIGGERED', value: callsTriggered, sub: 'Total row count', color: 'purple', delay: 1 },
         { label: 'CONNECTED', value: connected, sub: 'Outcome based', color: 'green', delay: 2 },
         { label: 'NOT CONNECTED', value: notConnectedStrict, sub: 'Outcome based', color: 'red', delay: 3 },
-        { label: 'VOICEMAIL', value: voicemail, sub: 'Summary based', color: 'amber', delay: 4 },
+        { label: 'VOICEMAIL', value: voicemail, sub: 'Updated Disposition, else Disposition Details', color: 'amber', delay: 4 },
       ];
       kpis1.forEach(k => kpiRow1.appendChild(makeKPI(k)));
 
@@ -1949,8 +2091,8 @@
         ? [
             { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: COL_ATTEMPT ? 'Attempt = 1' : 'No duplicates', color: 'amber', delay: 5 },
             { label: 'SERVICE BOOKED', value: bookings, sub: 'Summary/Disposition based', color: 'green', delay: 6 },
-            { label: 'FEEDBACK CAPTURED', value: feedbackCaptured, sub: 'Summary/Disposition based', color: 'teal', delay: 7 },
-            { label: 'ESCALATIONS', value: escalations, sub: 'Complaint/negative feedback', color: 'red', delay: 8 },
+            { label: 'SERVICE COMPLETED', value: serviceCompletedPostSales, sub: 'Updated Disposition, else Disposition Details', color: 'teal', delay: 7 },
+            { label: 'INVALID LEAD', value: invalidLeadPostSales, sub: 'Updated Disposition, else Disposition Details', color: 'red', delay: 8 },
           ]
         : [
             { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: COL_ATTEMPT ? 'Attempt = 1' : 'No duplicates', color: 'amber', delay: 5 },
@@ -1978,18 +2120,166 @@
         uniquePhones: phoneSet.size,
         notInterestedPost,
       });
+
+      if (campaignMode && campaignMode.value === 'auto') {
+        campaignMode.value = resolvedCampaignType === 'post' ? 'post' : 'pre';
+      }
     }
 
-    /* ── KPI Card Builder ─────────────────────────────────────────────── */
+    /* ── KPI Card Builder (editable counts; controls hidden in print / PDF) ── */
+    function parseKpiInput(str) {
+      const n = parseInt(String(str || '').replace(/[^\d]/g, ''), 10);
+      return Number.isNaN(n) ? 0 : Math.max(0, n);
+    }
+
+    function finishKpiEdit(card, save) {
+      const input = card.querySelector('.kpi-value-input');
+      const valueEl = card.querySelector('.kpi-value-display');
+      const panel = card.querySelector('.kpi-value-edit-panel');
+      const badge = card.querySelector('.kpi-adjusted-badge');
+      if (!valueEl || !panel) return;
+      if (save && input) {
+        const n = parseKpiInput(input.value);
+        card.dataset.kpiNumeric = String(n);
+        valueEl.textContent = numberWithCommas(n);
+        if (badge) {
+          const orig = parseInt(card.dataset.kpiOriginal, 10) || 0;
+          badge.hidden = (n === orig);
+        }
+      }
+      card.classList.remove('kpi-is-editing');
+      panel.hidden = true;
+      valueEl.style.display = '';
+      if (input) input.value = '';
+    }
+
+    function startKpiEdit(card) {
+      const input = card.querySelector('.kpi-value-input');
+      const valueEl = card.querySelector('.kpi-value-display');
+      const panel = card.querySelector('.kpi-value-edit-panel');
+      if (!input || !valueEl || !panel) return;
+      input.value = card.dataset.kpiNumeric || '0';
+      card.classList.add('kpi-is-editing');
+      panel.hidden = false;
+      valueEl.style.display = 'none';
+      input.focus();
+      input.select();
+    }
+
+    function flushOpenKpiEdits(commit) {
+      document.querySelectorAll('.kpi-card.kpi-is-editing').forEach(function(card) {
+        finishKpiEdit(card, commit !== false);
+      });
+    }
+
     function makeKPI({ label, value, sub, color, delay }) {
+      let num = Number(value);
+      if (!Number.isFinite(num)) num = 0;
+      const n = Math.max(0, Math.floor(num));
       const card = document.createElement('div');
       card.className = `kpi-card ${color} slide-up stagger-${delay}`;
-      card.innerHTML = `
-        <div><span class="kpi-dot"></span></div>
-        <div class="kpi-value">${numberWithCommas(value)}</div>
-        <div class="kpi-label">${label}</div>
-        <div class="kpi-sub">${sub}</div>
-      `;
+      card.dataset.kpiOriginal = String(n);
+      card.dataset.kpiNumeric = String(n);
+
+      const top = document.createElement('div');
+      top.className = 'kpi-card-top';
+
+      const dotWrap = document.createElement('div');
+      const dot = document.createElement('span');
+      dot.className = 'kpi-dot';
+      dotWrap.appendChild(dot);
+
+      const controls = document.createElement('div');
+      controls.className = 'kpi-edit-controls';
+
+      const btnEdit = document.createElement('button');
+      btnEdit.type = 'button';
+      btnEdit.className = 'kpi-edit-btn';
+      btnEdit.title = 'Adjust KPI value';
+      btnEdit.setAttribute('aria-label', 'Adjust KPI value');
+      btnEdit.innerHTML = '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>';
+
+      const badge = document.createElement('span');
+      badge.className = 'kpi-adjusted-badge';
+      badge.textContent = 'Adjusted';
+      badge.hidden = true;
+
+      controls.appendChild(btnEdit);
+      controls.appendChild(badge);
+
+      top.appendChild(dotWrap);
+      top.appendChild(controls);
+
+      const valueEl = document.createElement('div');
+      valueEl.className = 'kpi-value kpi-value-display';
+      valueEl.textContent = numberWithCommas(n);
+
+      const panel = document.createElement('div');
+      panel.className = 'kpi-value-edit-panel';
+      panel.hidden = true;
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'kpi-value-input';
+      input.setAttribute('inputmode', 'numeric');
+      input.setAttribute('autocomplete', 'off');
+      input.setAttribute('aria-label', 'KPI value');
+
+      const actions = document.createElement('div');
+      actions.className = 'kpi-edit-actions';
+
+      const btnApply = document.createElement('button');
+      btnApply.type = 'button';
+      btnApply.className = 'kpi-mini-btn kpi-apply';
+      btnApply.textContent = 'Apply';
+
+      const btnCancel = document.createElement('button');
+      btnCancel.type = 'button';
+      btnCancel.className = 'kpi-mini-btn';
+      btnCancel.textContent = 'Cancel';
+
+      actions.appendChild(btnApply);
+      actions.appendChild(btnCancel);
+      panel.appendChild(input);
+      panel.appendChild(actions);
+
+      const labelEl = document.createElement('div');
+      labelEl.className = 'kpi-label';
+      labelEl.textContent = label;
+
+      const subEl = document.createElement('div');
+      subEl.className = 'kpi-sub';
+      subEl.textContent = sub;
+
+      btnEdit.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (card.classList.contains('kpi-is-editing')) return;
+        startKpiEdit(card);
+      });
+      btnApply.addEventListener('click', function(e) {
+        e.preventDefault();
+        finishKpiEdit(card, true);
+      });
+      btnCancel.addEventListener('click', function(e) {
+        e.preventDefault();
+        finishKpiEdit(card, false);
+      });
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          finishKpiEdit(card, true);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          finishKpiEdit(card, false);
+        }
+      });
+
+      card.appendChild(top);
+      card.appendChild(valueEl);
+      card.appendChild(panel);
+      card.appendChild(labelEl);
+      card.appendChild(subEl);
+
       return card;
     }
 
@@ -2272,6 +2562,21 @@
       return terms.some(term => text.includes(term));
     }
 
+    function hasVoicemailNorm(n) {
+      if (!n) return false;
+      return n.includes('voicemail') || n.includes('voice mail');
+    }
+
+    function hasInvalidLeadDispositionNorm(n) {
+      if (!n) return false;
+      return n.includes('not interested') || n.includes('invalid lead');
+    }
+
+    function hasServiceCompletedDispositionNorm(n) {
+      if (!n) return false;
+      return n.includes('service done') || n.includes('service completed');
+    }
+
     function detectCampaignType(rows, cols) {
       if (cols.nextServiceCol || cols.lastServiceCol || cols.serviceTypeCol) return 'post';
       const sample = rows.slice(0, 300);
@@ -2429,6 +2734,7 @@
       }
 
       try {
+        flushOpenKpiEdits(true);
         if (btn) btn.disabled = true;
         if (btn) btn.style.visibility = 'hidden';
         if (uploadSection) uploadSection.style.display = 'none';
@@ -2550,6 +2856,9 @@
     }
 
     window.addEventListener('afterprint', clearDynamicPrintScale);
+    window.addEventListener('beforeprint', function() {
+      flushOpenKpiEdits(true);
+    });
   </script>
 
 </body>
