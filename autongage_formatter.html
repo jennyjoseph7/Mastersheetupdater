@@ -793,10 +793,12 @@
           'Product Family': 'interested_vehicle_name'
         },
         multiSource: {
-          phone_number: ['Customer Mobile', 'Mobile', 'Phone', 'Mobile Number']
+          phone_number: ['Customer Mobile', 'Mobile', 'Phone', 'Mobile Number'],
+          interested_vehicle_name: ['Vehicle Model', 'MODEL', 'Product', 'Interested Vehicle', 'VARIANT']
         },
         outputOrder: ['showroom_code', 'region_name', 'dealership_id', 'person_name', 'phone_number', 'interested_vehicle_name', 'interested_vehicle_brand_name', 'seating_capacity_preference', 'city', 'pincode', 'subdivision_name', 'alt_phone_number_2', 'lead_source'],
-        defaults: { interested_vehicle_brand_name: 'Mahindra' }
+        defaults: { interested_vehicle_brand_name: 'Mahindra' },
+        normalizeMahindraModels: true
       },
       perfect_riders_hyryder_sales: {
         label: 'Perfect Riders Hyryder - Sales / Lead Campaign',
@@ -876,6 +878,41 @@
         ['glanza', 'GLANZA / TOYOTA GLANZA'],
         ['qualis', 'QUALIS'],
         ['yaris', 'YARIS']
+      ];
+      for (let i = 0; i < rules.length; i++) {
+        const needle = rules[i][0];
+        if (s === needle || s.includes(needle)) return rules[i][1];
+      }
+      return orig;
+    }
+
+    /** AN_format.md §6 — Anant Cars Product Family → interested_vehicle_name */
+    function normalizeMahindraVehicleName(raw) {
+      const orig = String(raw || '').trim();
+      if (!orig) return '';
+      const s = orig.toLowerCase().replace(/\s+/g, ' ');
+      const rules = [
+        ['xuv 3xo ev', 'XUV3XO EV'],
+        ['xuv3xo ev', 'XUV3XO EV'],
+        ['xev 9s', 'XEV 9S'],
+        ['xev9s', 'XEV 9S'],
+        ['xev 9e', 'XEV 9E'],
+        ['xev9e', 'XEV 9E'],
+        ['be 6', 'BE 6'],
+        ['be6', 'BE 6'],
+        ['thar roxx', 'THAR ROXX'],
+        ['bolero neo', 'BOLERO NEO'],
+        ['scorpio n', 'SCORPIO-N / NEW SCORPIO'],
+        ['scorpio classic', 'NEW SCORPIO'],
+        ['xuv400 ev', 'UDO'],
+        ['xuv700', 'XUV 7XO'],
+        ['xuv 7xo', 'XUV 7XO'],
+        ['xuv300', 'XUV3XO'],
+        ['xuv 3xo', 'XUV3XO'],
+        ['marazzo', 'Not Available'],
+        ['bolero', 'BOLERO'],
+        ['thar', 'NEW THAR'],
+        ['udo', 'UDO']
       ];
       for (let i = 0; i < rules.length; i++) {
         const needle = rules[i][0];
@@ -1116,6 +1153,9 @@
           }
           if (template.normalizeToyotaModels && out.vehicle_model) {
             out.vehicle_model = normalizeToyotaVehicleModel(out.vehicle_model);
+          }
+          if (template.normalizeMahindraModels && out.interested_vehicle_name) {
+            out.interested_vehicle_name = normalizeMahindraVehicleName(out.interested_vehicle_name);
           }
           rows.push(out);
         }

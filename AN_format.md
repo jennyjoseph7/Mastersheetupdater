@@ -235,6 +235,30 @@ alt_phone_number_2
 lead_source
 ```
 
+### Product Family → `interested_vehicle_name` (formatter normalization)
+
+Client shared model name (even if the client shares variants like below, the formatter normalizes `interested_vehicle_name`):
+
+| Client-style name | Output |
+|---|---|
+| Bolero | BOLERO |
+| Scorpio N | SCORPIO-N / NEW SCORPIO |
+| Thar | NEW THAR |
+| XUV700 | XUV 7XO |
+| Scorpio Classic | NEW SCORPIO |
+| XUV400 EV | UDO |
+| Marazzo | Not Available |
+| XUV300 | XUV3XO |
+| Bolero Neo | BOLERO NEO |
+| XUV 3XO | XUV3XO |
+| XUV 7XO | XUV 7XO |
+| Thar ROXX | THAR ROXX |
+| XEV 9e | XEV 9E |
+| BE 6 | BE 6 |
+| XUV 3XO EV | XUV3XO EV |
+| XEV 9S | XEV 9S |
+| UDO | UDO |
+
 ---
 
 ## 7. Perfect Riders Hyryder — Sales / Lead Campaign
