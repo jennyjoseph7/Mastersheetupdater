@@ -56,7 +56,7 @@ def start_call_from_inbound(*args, **kwargs):
     
     credentials = None
     with gryd_tasks.get_pg_connector() as pg:
-        credentials = list(pg.list("provider_credentials", {"dealership_id": session_data.get("dealership_id"), "channel": "voice_phone"}))
+        credentials = list(pg.list("communication_credential", {"dealership_id": session_data.get("dealership_id"), "channel": "voice_phone"}))
         credentials = hp.make_single(credentials, force=True)
         logger.info(f"Provider credentials retrieved in inbound call: {credentials}")
 
