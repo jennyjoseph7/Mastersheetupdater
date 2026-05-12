@@ -32,7 +32,7 @@ def inbound_call(*args, **kwargs):
             caller_id = "91" + str(caller_id)
         data["caller_id_number"] = caller_id
         logger.info(f"Processing inbound call for {data.get('caller_id_number')}")
-
+        
         gryd.create_async_task('start_call_from_inbound',config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME , args=[], kwargs={"user_data":data})
         
         return jsonify({"status": "success", "message": "Inbound call session created."})
