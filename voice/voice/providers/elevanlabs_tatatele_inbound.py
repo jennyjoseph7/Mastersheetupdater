@@ -74,6 +74,33 @@ def inbound_call(*args, **kwargs):
 
         logger.info(f"[webhook-/smartflo/webhook/inbound] Time taken to update session with recording URL and duration: {time.time() - t:.2f} seconds")
         gryd_tasks.post_contact_status_voice(session_id = session["session_id"], message_id = session["session_id"],  **{"status": "contacted"})
+    
+    elif data.get("call_status") in ["busy", "failed", "no-answer"]:
+        t = time.time()
+        import gryd_tasks
+        with gryd_tasks.get_pg_connector() as pg:
+            filters = {
+                "phone_number": data.get("customer_no_with_prefix") ,
+                "channel": "voice_phone"
+            }
+
+            logger.info(f"Session filters for call status {data.get('call_status')}: {filters}")
+            sessions =  list[Any](
+                    pg.list_order_by("session", 
+                    filters,
+                    order_by="created", order="DESC")
+                )
+            
+            logger.info(f"Sessions found for call status {data.get('call_status')}: {len(sessions)}")
+
+            if not sessions:
+                logger.info(f"No sessions found for call status {data.get('call_status')}")
+                return jsonify({"status": "error", "message": f"No session found for call status {data.get('call_status')}"})
+
+            session = hp.make_single( sessions,  force = True)
+            logger.info(f"Latest session found for call status {data.get('call_status')}: {session}")
+        logger.info(f"[webhook-/smartflo/webhook/inbound] Time taken to find session for call status {data.get('call_status')}: {time.time() - t:.2f} seconds")
+        gryd_tasks.post_contact_status_voice(session_id = session["session_id"], message_id = session["session_id"],  **{"status": data.get("call_status")})
 
     return jsonify({"status": "success", "message": "Inbound call received and processed.", "data": data})
 

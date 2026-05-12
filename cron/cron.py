@@ -1527,24 +1527,24 @@ def process_lead(pg,lead, channel):
         mlogger.info("[PROCESS] channel identifier %s", channel_identifier)
         # mlogger.info("[PROCESS] lead data %s", json.dumps(data,indent=4))
         # TODO: Based on the next_trigger and next_channel call process_single_lead
-        # mlogger.info(f"Calling process_single_lead task for channel: {channel}, channel_identifier: {channel_identifier}, lead_id: {lead_id}, campaign_type: {campaign_type}")
-        # gryd.create_async_task('process_single_lead', AUTOCRM_CAMPAIGN_SERVICE_NAME, args= [
-        #         channel,
-        #         lead,
-        #         campaign_type,
-        #         data.get("campaign_id"),
-        #     ], kwargs = {
-        #         "disposition_tag": data.get('disposition',None),
-        #         "disposition_detail_tag": data.get('disposition_detail',None),
-        #         "channel_identifier":  channel_identifier
-        #     })
+        mlogger.info(f"Calling process_single_lead task for channel: {channel}, channel_identifier: {channel_identifier}, lead_id: {lead_id}, campaign_type: {campaign_type}")
+        gryd.create_async_task('process_single_lead', AUTOCRM_CAMPAIGN_SERVICE_NAME, args= [
+                channel,
+                lead_id,
+                campaign_type,
+                data.get("campaign_id"),
+            ], kwargs = {
+                "disposition_tag": data.get('disposition',None),
+                "disposition_detail_tag": data.get('disposition_detail',None),
+                "channel_identifier":  channel_identifier
+            })
         # # update these attributes in lead_model
-        # pg.update(lead_model,lead_model_id,lead_id,{
-        #     "next_channel": None,
-        #     "next_channel_identifier": None,
-        #     "next_schedule_time": None,
-        #     "next_trigger": None
-        # })
+        pg.update(lead_model,lead_model_id,lead_id,{
+            "next_channel": None,
+            "next_channel_identifier": None,
+            "next_schedule_time": None,
+            "next_trigger": None
+        })
         
         
 

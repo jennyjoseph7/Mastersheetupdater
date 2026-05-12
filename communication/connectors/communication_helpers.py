@@ -619,7 +619,8 @@ Returns:
                 {
                     "campaign_objective_name": "Inbound Lead Handling" if channel == "voice_phone" else "Inbound Lead Handling- Whatsapp",
                     "dealership_id": dealership_id,
-                    "campaign_type": campaign_type
+                    "campaign_type": campaign_type,
+                    "channel": channel
                 }
             ))
 
