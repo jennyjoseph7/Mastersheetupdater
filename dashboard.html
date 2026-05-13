@@ -2623,8 +2623,30 @@
 
     function extractCallDateText(val) {
       if (val === null || val === undefined) return '';
-      if (val instanceof Date) return '';
-      if (typeof val === 'number') return '';
+
+      // JS Date object (cellDates:true mode — unlikely but handle it)
+      if (val instanceof Date) {
+        if (isNaN(val.getTime())) return '';
+        return String(val.getDate()).padStart(2, '0') + '/' +
+               String(val.getMonth() + 1).padStart(2, '0') + '/' +
+               val.getFullYear();
+      }
+
+      // Excel serial number (raw:true mode — dates come in as numbers like 45789)
+      // Valid Excel serials roughly cover 1-Jan-1900 (1) to 31-Dec-9999 (2958465)
+      if (typeof val === 'number') {
+        if (val > 1 && val < 2958466) {
+          // Convert Excel serial → UTC date
+          const d = new Date(Math.round((val - 25569) * 86400000));
+          if (!isNaN(d.getTime())) {
+            return String(d.getUTCDate()).padStart(2, '0') + '/' +
+                   String(d.getUTCMonth() + 1).padStart(2, '0') + '/' +
+                   d.getUTCFullYear();
+          }
+        }
+        return '';
+      }
+
       return String(val).trim();
     }
 
