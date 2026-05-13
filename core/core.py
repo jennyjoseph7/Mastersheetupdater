@@ -1416,10 +1416,10 @@ def gryd_task_import_leads_from_csv(
     enterprise_id = kwargs.get("enterprise_id") or AUTOCRM_APP_ENTERPRISE_ID
     mapping = kwargs.get("mapping", {})
     workshop_id = kwargs.get("workshop_id")
-    if workshop_id and not isinstance(workshop_id):
+    if workshop_id and not isinstance(workshop_id, str):
         workshop_id = str(workshop_id)
     showroom_id = kwargs.get("showroom_id")
-    if showroom_id and not isinstance(showroom_id):
+    if showroom_id and not isinstance(showroom_id, str):
         showroom_id = str(showroom_id)
     rooftop_type = "workshop" if workshop_id else "showroom" if showroom_id else "dealership"
     rooftop_id = workshop_id if rooftop_type == 'workshop' else showroom_id if rooftop_type == 'showroom' else dealership_id
@@ -2498,7 +2498,7 @@ class VATCalculator:
 if __name__ == "__main__":
 
     #gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-south-india", "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/485b7cbc-55d5-44d2-b5b9-0e6d6e405f4c-692977e5_afinallead.csv", campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943", workshop_id = 12)    
-    gryd_task_import_leads_from_csv.execute("pre-sales", "dave-ai-india", "/Users/ggananth/Downloads/Stellantis_sample.csv", campaign_id = "b14c86d0-1434-3119-9d1e-2e0257da00f3", showroom_id = 'dave-ai-india')    
+    #gryd_task_import_leads_from_csv.execute("pre-sales", "dave-ai-india", "/Users/ggananth/Downloads/Stellantis_sample.csv", campaign_id = "b14c86d0-1434-3119-9d1e-2e0257da00f3", showroom_id = 'dave-ai-india')    
     #for out in gryd_task_import_leads_from_csv(
     #        "pre-sales", 
     #        "sales-dealership1-india", 
@@ -2523,4 +2523,5 @@ if __name__ == "__main__":
     # translate_objective("pre-sales-aircross--confirm-test-drive-for-value-advantage--whatsapp","hindi","voice_phone","female", True)
     for i in translate_objective_multiple("pre-sales-test-drive-booking",target_languages=["telugu","marathi"],target_channels=["whatsapp_chat","voice_phone"],genders=["male"],force_update = True):
         logger.info(i)
+
     # translate_objective_all("pre-sales-aircross--confirm-test-drive-for-value-advantage--whatsapp")
