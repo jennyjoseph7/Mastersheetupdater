@@ -926,7 +926,7 @@
           'Product Family': 'interested_vehicle_name'
         },
         multiSource: {
-          phone_number: ['Customer Mobile', 'Mobile', 'Phone', 'Mobile Number'],
+          phone_number: ['Customer Mobile', 'Mobile', 'Phone', 'Mobile Number', 'PHONE NUMBER', 'PHONE NO', 'CONTACT NUMBER', 'CONTACT NO'],
           interested_vehicle_name: ['Vehicle Model', 'MODEL', 'Product', 'Interested Vehicle', 'VARIANT']
         },
         outputOrder: ['showroom_code', 'region_name', 'dealership_id', 'person_name', 'phone_number', 'interested_vehicle_name', 'interested_vehicle_brand_name', 'seating_capacity_preference', 'city', 'pincode', 'subdivision_name', 'alt_phone_number_2', 'lead_source'],
@@ -1025,26 +1025,30 @@
       if (!orig) return '';
       const s = orig.toLowerCase().replace(/\s+/g, ' ');
       const rules = [
-        ['xuv 3xo ev', 'XUV3XO EV'],
-        ['xuv3xo ev', 'XUV3XO EV'],
+        ['xuv 3xo ev', 'XUV 3XO EV'],
+        ['xuv3xo ev', 'XUV 3XO EV'],
         ['xev 9s', 'XEV 9S'],
         ['xev9s', 'XEV 9S'],
-        ['xev 9e', 'XEV 9E'],
-        ['xev9e', 'XEV 9E'],
+        ['xev 9e', 'XEV 9e'],
+        ['xev9e', 'XEV 9e'],
         ['be 6', 'BE 6'],
         ['be6', 'BE 6'],
-        ['thar roxx', 'THAR ROXX'],
-        ['bolero neo', 'BOLERO NEO'],
-        ['scorpio n', 'SCORPIO-N / NEW SCORPIO'],
-        ['scorpio classic', 'NEW SCORPIO'],
-        ['xuv400 ev', 'UDO'],
-        ['xuv700', 'XUV 7XO'],
+        ['thar roxx', 'Thar ROXX'],
+        ['bolero neo', 'Bolero Neo'],
+        ['scorpio n', 'Scorpio-N'],
+        ['scorpio-n', 'Scorpio-N'],
+        ['scorpio classic', 'Scorpio Classic'],
+        ['xuv400 ev', 'XUV400 EV'],
+        ['xuv700', 'XUV700'],
+        ['xuv 700', 'XUV700'],
         ['xuv 7xo', 'XUV 7XO'],
-        ['xuv300', 'XUV3XO'],
-        ['xuv 3xo', 'XUV3XO'],
-        ['marazzo', 'Not Available'],
-        ['bolero', 'BOLERO'],
-        ['thar', 'NEW THAR'],
+        ['xuv300', 'XUV300'],
+        ['xuv 300', 'XUV300'],
+        ['xuv 3xo', 'XUV 3XO'],
+        ['xuv3xo', 'XUV 3XO'],
+        ['marazzo', 'Marazzo'],
+        ['bolero', 'Bolero'],
+        ['thar', 'Thar'],
         ['udo', 'UDO']
       ];
       for (let i = 0; i < rules.length; i++) {

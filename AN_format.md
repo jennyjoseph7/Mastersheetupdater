@@ -239,23 +239,23 @@ lead_source
 
 Client shared model name (even if the client shares variants like below, the formatter normalizes `interested_vehicle_name`):
 
-| Client-style name | Output |
+| Output | Client-style name |
 |---|---|
-| Bolero | BOLERO |
-| Scorpio N | SCORPIO-N / NEW SCORPIO |
-| Thar | NEW THAR |
-| XUV700 | XUV 7XO |
-| Scorpio Classic | NEW SCORPIO |
-| XUV400 EV | UDO |
-| Marazzo | Not Available |
-| XUV300 | XUV3XO |
-| Bolero Neo | BOLERO NEO |
-| XUV 3XO | XUV3XO |
+| BOLERO | Bolero |
+| SCORPIO-N / NEW SCORPIO | Scorpio N |
+| NEW THAR | Thar |
+| XUV700 / XUV 700 | XUV700 |
+| SCORPIO CLASSIC | Scorpio Classic |
+| XUV400 EV | XUV400 EV |
+| Not Available | Marazzo |
+| XUV300 / XUV 300 | XUV300 |
+| BOLERO NEO | Bolero Neo |
+| XUV 3XO / XUV3XO | XUV 3XO |
 | XUV 7XO | XUV 7XO |
-| Thar ROXX | THAR ROXX |
-| XEV 9e | XEV 9E |
+| THAR ROXX | Thar ROXX |
+| XEV 9E | XEV 9e |
 | BE 6 | BE 6 |
-| XUV 3XO EV | XUV3XO EV |
+| XUV3XO EV | XUV 3XO EV |
 | XEV 9S | XEV 9S |
 | UDO | UDO |
 
