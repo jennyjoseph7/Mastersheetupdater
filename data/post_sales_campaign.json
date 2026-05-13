@@ -445,6 +445,32 @@
             "ui_element": "multiselect"
         },
         {
+            "name": "channel_sequence",
+            "type": "list",
+            "default": [
+                "voice_phone",
+                "whatsapp_chat",
+                "rcs",
+                "email"
+            ],
+            "options": [
+                "rcs",
+                "email",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "voice_phone",
+                "whatsapp_chat",
+                "whatsapp_voice_note",
+                "whatsapp_voice_call",
+                "zoom_bot",
+                "ms_teams"
+            ],
+            "ui_element": "multiselect"
+        },
+        {
             "name": "languages",
             "default": "english",
             "type": "string_list",

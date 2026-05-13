@@ -611,12 +611,16 @@
             }
         },
         {
-          "name": "preferred_communication_channel",
-          "type": "nested_object",
-          "default": {
-            "function": "get_from_model",
-            "args": ["person", "user_id", "preferred_communication_channel"]
-          }
+            "name": "preferred_communication_channel",
+            "type": "nested_object",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "person",
+                    "user_id",
+                    "preferred_communication_channel"
+                ]
+            }
         },
         {
             "name": "preferred_language",
@@ -1423,8 +1427,9 @@
                     "model_year_id"
                 ],
                 "kwargs": {
-                    "vehicle_model_name": "~{interested_vehicle_name}",
+                    "vehicle_model_generic_name": "~{interested_vehicle_name}",
                     "brand_name": "~{interested_vehicle_brand_name}",
+                    "region_id": "{region_id}",
                     "_sort_by": "year",
                     "_sort_reverse": true
                 }
