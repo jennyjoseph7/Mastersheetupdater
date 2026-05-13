@@ -33,7 +33,7 @@ function main() {
 export BRANCH=${1:-"master"}
 
 if [ "$BRANCH" == "master" ];then
-	export TAG="latest"
+	export TAG="master"
 else
 	export TAG=$BRANCH
 fi
