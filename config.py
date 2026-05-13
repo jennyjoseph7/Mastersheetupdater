@@ -47,6 +47,28 @@ AUTOCRM_CHEAPEST_CHANNELS = [
     "rcs",
     "whatsapp_voice_call",
 ]
+AUTOCRM_SUPPORTED_LANGUAGES = [
+    "english",
+    "hindi",
+    "kannada",
+    "telugu",
+    "tamil",
+    "malayalam",
+    "odia",
+    "bengali",
+    "marathi",
+    "gujarati",
+    "bengali",
+    "assamese",
+    "punjabi",
+    "spanish",
+    "arabic",
+    "french",
+    "bahasa_indonesia",
+    "tagalog",
+    "portuguese"
+]
+
 AUTOCRM_CALL_CONNECTED_PRICE = float(os.environ.get("AUTOCRM_CALL_CONNECTED_PRICE", 2))
 AUTOCRM_CALL_CONNECTED_ITEM = "call_connected"
 AUTOCRM_CALL_CONNECTED_UNITS = "count"

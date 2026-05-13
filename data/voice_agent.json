@@ -81,6 +81,11 @@
             "type": "text"
         },
         {
+            "name": "language_code_map",
+            "type": "nested_object",
+            "refers": "parents.voice_provider.language_code_map"
+        },
+        {
             "name": "royalty_per_second",
             "type": "number",
             "default": 0
