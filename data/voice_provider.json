@@ -41,6 +41,31 @@
             "name": "cost_currency",
             "default": "USD",
             "type": "text"
+        },
+        {
+            "name": "language_code_map",
+            "type": "nested_object",
+            "dict_keys": [
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujarati",
+                "bengali",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic",
+                "french",
+                "bahasa_indonesia",
+                "tagalog",
+                "portuguese"
+            ]
         }
     ]
 }
