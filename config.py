@@ -456,6 +456,24 @@ def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, 
         logger.error(f"File: {filename_csv} or {filename_json} not found")
         raise FileNotFoundError(f"Seed file for : {data_name} not found")
 
+def get_phone_code_from_dealership(dealership_id, with_plus = True):
+    dm = AutocrmModel('dealership')
+    d = dm.get(dealership_id)
+    addp = '+' if with_plus else ''
+    if not d.get('region_id'):
+        return f'{addp}91'
+    rm = AutocrmModel('region')
+    r = rm.get(d.get('region_id'))
+    c = r.get('country_phone_code')
+    if not c:
+        return f'{addp}91'
+    if with_plus and not c.startswith('+'):
+        return f'+{c}'
+    if not with_plus and c.startswith('+'):
+        return c.strip('+')
+    return c
+
+
 AUTOCRM_VOICE_SERVICE_NAME_1 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_1", "autocrm-voice-1")
 AUTOCRM_VOICE_SERVICE_NAME_2 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_2", "autocrm-voice-2")
 AUTOCRM_VOICE_SERVICE_NAME_3 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_3", "autocrm-voice-3")
