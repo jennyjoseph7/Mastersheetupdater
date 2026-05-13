@@ -40,7 +40,7 @@ try:
 except ImportError:
     pass  # uvloop not available, use default event loop
 
-logger = utils.get_logger(__name__)
+logger = hp.get_logger(__name__)
 
 # Set ENABLE_BRIDGE_TIMING=1 to log monotonic latency milestones to the logger (TataTele ↔ ElevenLabs).
 # Append one JSON object per call to this path (JSON Lines) for offline stats. Creates parent dirs on first write.
@@ -148,20 +148,12 @@ def session_active(call_id, return_session = False):
             return True
         return False
 
-def _schedule_websocket_close(
-    ws,
-    bridge_loop: Optional[asyncio.AbstractEventLoop],
-    call_id: str,
-    socket_name: str,
-) -> None:
-    """Close a websockets connection; ``close()`` may be async in newer websockets versions."""
+def _schedule_websocket_close(ws, bridge_loop: Optional[asyncio.AbstractEventLoop], call_id: str, socket_name: str,) -> None:
     if ws is None or getattr(ws, "closed", False):
         return
     if bridge_loop is None or not bridge_loop.is_running():
         logger.warning(
-            "[%s] Cannot close %s: bridge loop missing or not running",
-            call_id,
-            socket_name,
+            f"[{call_id}] Cannot close {socket_name}: bridge loop missing or not running"
         )
         return
 
@@ -185,10 +177,7 @@ def _schedule_websocket_close(
             fut.result(timeout=15.0)
         except Exception as e:
             logger.warning(
-                "[%s] Thread-safe close failed for %s: %s",
-                call_id,
-                socket_name,
-                e,
+                f"[{call_id}] Thread-safe close failed for {socket_name}: {e}"
             )
 
 
@@ -837,14 +826,6 @@ class CallSession:
             logger.exception(f"[{self.call_id}] Main error: %s", e)
         finally:
             self.processed_agent_responses.clear()
-            # try:
-            #     if self.dave_ws:
-            #         ## TODO send ws.send FLAG TO CLOSE. to say lets close all connections from the room
-            #         await self.dave_ws.close()
-            #         self.dave_ws = None
-            # except Exception as e:
-            #     logger.warning(f"[{self.call_id}] Error closing ElevenLabs WebSocket: {e}")
-
             # Hang up the TataTele phone call so the user isn't left on a dead line
             await self.hangup_tatatele_call()
 
@@ -919,7 +900,7 @@ class CallSession:
             self.external_ws = None
             self.dave_ws = None
             self.bridge_started = False
-            logger.info(f"[{self.call_id}] external websocket closed")
+            logger.info(f"[{self.call_id}] Done With session cleanup")
 
 
 # ---------- Helper functions ----------

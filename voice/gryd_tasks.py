@@ -20,9 +20,6 @@ from communication.connectors.connector_whatsapp import post_contact_status
 
 from autocrm_db_helper import get_pg_connector
 
-from voice.providers.elevanlabs_tatatele import  session_active
-
-
 logger = hp.get_logger(__name__)
 
 
@@ -239,17 +236,6 @@ def trigger_voice_call(*args, **kwargs):
         session_data["agent_number"] = credentials.get("sender") 
     else:
         logger.warning(f"No credentials found for dealership_id {user_data.get('dealership_id')}, channel voice_phone")  
-    # else:
-    #     #temporary provider selection logic
-    #     provider = "tatatele"
-    #     logger.info(f"Using dealership_id: {user_data.get('dealership_id')} for provider mapping. {list(dealership_provider_map.keys())}")
-    #     if user_data.get("dealership_id") in list(dealership_provider_map.keys()):
-    #         provider = dealership_provider_map[user_data.get("dealership_id")][0]
-    #         session_data["agent_id"] = dealership_provider_map[user_data.get("dealership_id")][1]
-    #     #----------end-----------
-
-        #provider = user_data.get("provider_name", provider).replace("-", "").strip().lower()
-
 
     logger.info(f"Session for Voice Call: {session_data}")
 
@@ -278,12 +264,6 @@ def trigger_voice_call(*args, **kwargs):
     while time.time() < timeout:
         time.sleep(5)
 
-        if not session_active(session_data["session_id"]):
-            logger.info(f"Session not found or likely to be terminated already....")
-            return {"status": "success", "message": f"Call session ended."}
-        else:
-            logger.info(f"Call session is still active for session_id: {session_data['session_id']}: time elapsed: {time.time() - (timeout - 600):.2f} seconds")
-        
         with get_pg_connector() as pg:
             statuses = list(pg.list_order_by("contact_status", {"message_id": session_data["session_id"]}, order_by="created"))
             if not statuses:
