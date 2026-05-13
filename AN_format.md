@@ -317,27 +317,20 @@ purchase_date
 ```
 
 vehicle_model name → Client shared model name (even if the client share like this while using formatter it should come as vehicle_model)
-Glanza → GLANZA / TOYOTA GLANZA
-Urban Cruiser Taisor → TAISOR / URBAN CRUISER TAISOR
-Urban Cruiser Hyryder → HYRYDER / URBAN CRUISER HYRYDER
-Urban Cruiser Hyryder Hybrid → HYRYDER / URBAN CRUISER HYRYDER
-Innova Crysta → INNOVA
-Innova Hycross → HYCROSS / INNOVA HYCROSS
-Innova Hycross Hybrid → HYCROSS / INNOVA HYCROSS
-Fortuner → FORTUNER
-Fortuner Legender → FORTUNER
-Hilux → HILUX
-Camry → CAMRY / NEW CAMRY
-Camry Hybrid → CAMRY / NEW CAMRY
-Vellfire → VELLFIRE
-Etios → ETIOS
-Etios Liva → ETIOS LIVA
-Corolla Altis → COROLLA
-Etios Cross → ETIOS CROSS
-Etios Hatchback → ETIOS HB
-Land Cruiser → LAND CRUISER / LC
-Land Cruiser Prado → PRADO
-Qualis → QUALIS
-Rumion → RUMION / TOYOTA RUMION
-Yaris → YARIS  
+Glanza → Glanza
+Urban Cruiser Taisor → Urban Cruiser Taisor
+Urban Cruiser Hyryder → Urban Cruiser Hyryder
+Urban Cruiser Hyryder Hybrid → Urban Cruiser Hyryder Hybrid
+Innova Crysta → Innova Crysta
+Innova Hycross → Innova Hycross
+Innova Hycross Hybrid → Innova Hycross Hybrid
+Fortuner → Fortuner
+Fortuner Legender → Fortuner Legender
+Hilux → Hilux
+Camry → Camry
+Camry Hybrid → Camry Hybrid
+Vellfire → Vellfire
+Etios → Etios
+Etios Liva → Etios Liva
+Corolla Altis → Corolla Altis
 
