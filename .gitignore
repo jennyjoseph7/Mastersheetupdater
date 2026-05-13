@@ -79,3 +79,5 @@ frontend/app/campaign/create/page copy 2.tsx
 
 frontend/csvtojson.html
 frontend/objective.html
+pyrightconfig.json
+frontend/test.html
