@@ -1314,8 +1314,7 @@
       return String(text).toLowerCase().replace(/[\s._-]+/g, '').replace(/[^a-z0-9]/g, '').trim();
     }
 
-    // alias — used throughout mapping logic
-    const normalizeHeader = canonicalHeader;
+
 
     function cellToString(value) {
       if (value === undefined || value === null || value === '') return '';
