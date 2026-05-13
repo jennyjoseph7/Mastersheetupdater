@@ -13,7 +13,7 @@ import math
 from datetime import datetime
 json = hp.json
 import autocrm_validator
-
+from ai_service.translation_helpers import translation_wrappers
 CHARACTER_COUNT_TO_CREDIT = 500
 PER_TOKEN_COST = 1
 TOKEN_COST_CURRENCY = "credits"
@@ -310,7 +310,16 @@ def setup_session_data_cache(*args, **kwargs):
             session_data = pg.get("session","session_id",session_id)
             mlogger.info("session_data fetched == {}".format(session_data))
             person_data = pg.get("person","user_id",session_data.get("user_id"))
-            language = person_data.get("preferred_language",AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE).lower()
+            language = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
+            if person_data.get("preferred_language") and isinstance(person_data.get("preferred_language"),str):
+                language = person_data.get("preferred_language",AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE).lower()
+            if person_data.get("preferred_language") and isinstance(person_data.get("preferred_language"),list):
+                language = person_data.get("preferred_language",[])[0].lower()
+                if language in translation_wrappers.LANGUAGE_CODES:
+                    language = translation_wrappers.get_canonical_language_name(language).lower()
+                if language not in translation_wrappers.LANGUAGE_MAP:
+                    language = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
+            mlogger.info("language == {}".format(language))
     with get_pg_connector() as pg:
         session_data_cache = pg.get("session_data_cache","session_id",session_id) or {}
         mlogger.info("session_data_cache fetched == {}".format(session_data)) 
