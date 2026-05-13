@@ -110,6 +110,26 @@ def template_summary():
         return rows
 
 
+@gryd.is_a_task(function_name="daily_dealership_summary")
+def daily_dealership_summary():
+    from analytics.loader import load_stored_procedures
+    mlogger.info("Loading stored procedures for analytics...")
+    load_stored_procedures()
+    mlogger.info("Running daily dealership summary...")
+    with get_pg_connector() as pg:
+        pg.execute_write(
+            "CALL update_daily_dealership_summary();",
+            _fetch=False
+        )
+        rows = list(
+            pg.yield_results(
+                "SELECT COUNT(*) FROM daily_dealership_summary;"
+            )
+        )
+        mlogger.info(f"[CRON] daily_dealership_summary updated. Total rows: {rows[0][0]}")
+        return rows
+
+
 def fetch_campaigns(pg, run_started_at_ms, batch_size=50, from_time_ms=None):
     return list(pg.yield_results("""
         WITH last_run AS (
