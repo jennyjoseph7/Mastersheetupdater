@@ -112,9 +112,9 @@ def template_summary():
 
 @gryd.is_a_task(function_name="daily_dealership_summary")
 def daily_dealership_summary():
-    from analytics.loader import load_stored_procedures
+    # from analytics.loader import load_stored_procedures
     mlogger.info("Loading stored procedures for analytics...")
-    load_stored_procedures()
+    # load_stored_procedures()
     mlogger.info("Running daily dealership summary...")
     with get_pg_connector() as pg:
         pg.execute_write(
