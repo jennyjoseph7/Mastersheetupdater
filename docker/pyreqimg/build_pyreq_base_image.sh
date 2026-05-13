@@ -21,7 +21,10 @@ function main() {
 		return
 	fi
 	cp ../../requirements.txt ./
-    cp ../../spark/requirements.txt ./spark_requirements.txt
+    	cp ../../spark/requirements.txt ./spark_requirements.txt
+	
+	sed -i "s/<baseimage_tag>/$TAG/g" Dockerfile
+
 	docker build -t autobot_pyreq_baseimage:$TAG .	
 	docker tag autobot_pyreq_baseimage:$TAG asia-south1-docker.pkg.dev/dave-70c8e/autobot-pyreq-baseimage/autobot-pyreq-baseimage:$TAG
 	docker push asia-south1-docker.pkg.dev/dave-70c8e/autobot-pyreq-baseimage/autobot-pyreq-baseimage:$TAG

@@ -474,7 +474,8 @@ def get_websocket_base_url(room=None):
         "_sort_by": "active_connections",
         "_page_size": 1,
         "last_uptime_ping": (required_uptime_ping,None),
-        "_filter_attributes": ["socket_server_url", "rooms"]
+        "_filter_attributes": ["socket_server_url", "rooms"],
+        "rooms": room
     }
     base_socket_urls = ssm.list(**kwargs)
     if room and not base_socket_urls:

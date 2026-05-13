@@ -11,7 +11,9 @@ import {
   Loader2,
   CheckCircle2,
   FileJson,
+  FileSpreadsheet,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { cn } from "@/lib/utils";
 import type { DataSourceFormData } from "../add-data-source-dialog";
 import { 
@@ -165,9 +167,36 @@ export function EnterConnectionDetails({
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) handleUploadFile(file);
+    if (!file) return;
+
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    
+    if (fileExtension === 'xls' || fileExtension === 'xlsx') {
+      setStatus("uploading");
+      setStatusMessage("Converting Excel to CSV...");
+      try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const csvContent = XLSX.utils.sheet_to_csv(worksheet);
+        
+        // Create a new File object from the CSV content
+        const csvBlob = new Blob([csvContent], { type: 'text/csv' });
+        const csvFileName = file.name.replace(/\.(xls|xlsx)$/i, '.csv');
+        const csvFile = new File([csvBlob], csvFileName, { type: 'text/csv' });
+        
+        handleUploadFile(csvFile);
+      } catch (error: any) {
+        console.error("Excel conversion error:", error);
+        setStatus("error");
+        setStatusMessage("Failed to convert Excel file.");
+      }
+    } else {
+      handleUploadFile(file);
+    }
+    
     e.target.value = "";
   };
 
@@ -189,7 +218,7 @@ export function EnterConnectionDetails({
       <div>
         <h3 className="text-lg font-semibold mb-2">Upload Data Source</h3>
         <p className="text-sm text-muted-foreground">
-          Upload your CSV file. We will analyze the headers for mapping.
+          Upload your CSV or Excel file. We will analyze the headers for mapping.
         </p>
       </div>
 
@@ -205,7 +234,7 @@ export function EnterConnectionDetails({
         </div>
 
         <div className="space-y-2">
-            <Label htmlFor="file">Upload CSV File *</Label>
+            <Label htmlFor="file">Upload CSV or Excel File *</Label>
             {status === "idle" || status === "error" ? (
               <div className="space-y-2">
                 <Card
@@ -216,8 +245,8 @@ export function EnterConnectionDetails({
                       <div className={cn("rounded-full p-4 mb-3 transition-colors", "bg-muted")}>
                         <Upload className="h-6 w-6 text-muted-foreground" />
                       </div>
-                      <p className="text-sm font-medium mb-1">Click to upload CSV</p>
-                      <input id="file" ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+                      <p className="text-sm font-medium mb-1">Click to upload CSV or Excel</p>
+                      <input id="file" ref={fileInputRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileChange} />
                     </label>
                   </CardContent>
                 </Card>
@@ -244,7 +273,7 @@ export function EnterConnectionDetails({
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         {status !== "success" && (
                            <span className="flex items-center gap-1 text-primary">
-                             <FileJson className="w-3 h-3" /> {statusMessage}
+                             <FileSpreadsheet className="w-3 h-3" /> {statusMessage}
                            </span>
                         )}
                         {status === "success" && (
