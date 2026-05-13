@@ -485,6 +485,8 @@ def delete_extra_status(campaign_ids):
 if __name__ == "__main__":
     data = {'_is_testing': False,
     'ctas': ['book-test-drive'],
+    'mobile_number': '8850988794',
+
     'created': 1778671948.890422,
     'purpose': 'Book Test drive',
     'updated': 1778673652.450776,
@@ -571,7 +573,6 @@ if __name__ == "__main__":
     'provider_name': 'tata-tele',
     'template_message': None,
     'lead_id': 'vandana-shah-8401586512-vandana@iamdave.ai-dave-ai-india-00a0c150-b21f-328c-87f4-6d045edfcdf3',
-    'mobile_number': '8401586512',
     'customer_name': 'Vandana shah',
     'email': None,
     'lead_model': 'pre_sales_lead',
@@ -580,4 +581,11 @@ if __name__ == "__main__":
     'template_details': None}
 
 
-    list(trigger_voice_call(**{"user_data": data}))
+    gryd.create_async_task(
+        "trigger_voice_call",
+        config.AUTOCRM_VOICE_SERVICE_NAME,
+        args = [],
+        kwargs = {
+            "user_data": data
+        }
+    )
