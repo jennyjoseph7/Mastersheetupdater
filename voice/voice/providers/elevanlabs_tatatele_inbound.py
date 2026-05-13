@@ -24,8 +24,6 @@ def inbound_call(*args, **kwargs):
     }
     logger.info(f"Received inbound call data: {json.dumps(data, indent=4)}")
   
-
-    # Note: call connected for inbound billing is pending.
     if data.get("call_type", "").lower() in ["inbound"]:
         caller_id = data.get("caller_id_number", "")
         if caller_id and not str(caller_id).startswith("91"):
