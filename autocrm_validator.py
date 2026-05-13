@@ -60,19 +60,18 @@ def resolve_and_search_in_model_func(ins,_default=None,**kwargs):
 
 def plot_lead_session_history_func(ins, lead_attribute, **kwargs):
     model_name = kwargs.pop('model_name', 'session')
-    lead_id = ins.get(lead_attribute)
     
     if not model_name:
         raise ValueError("model_name is required for plot_lead_session_history")
 
-    if _get_lead_id and not lead_id:
-        lead_id = ins.get(f"{model_name}_id")
+    # if not lead_id:
+    #     lead_id = ins.get(f"{model_name}_id")
         
-    if not lead_id:
+    if not lead_attribute:
         return ""
 
     sm = AutocrmModel("session")
-    sessions = sm.list(lead_id=lead_id, _sort_by="updated", _as_option = True)
+    sessions = sm.list(lead_id=lead_attribute, _sort_by="updated", _as_option = True)
     
     if not sessions:
         return ""
