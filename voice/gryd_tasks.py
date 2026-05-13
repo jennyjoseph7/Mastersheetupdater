@@ -20,6 +20,9 @@ from communication.connectors.connector_whatsapp import post_contact_status
 
 from autocrm_db_helper import get_pg_connector
 
+from voice.providers.elevanlabs_tatatele import  session_active
+
+
 logger = hp.get_logger(__name__)
 
 
@@ -274,6 +277,13 @@ def trigger_voice_call(*args, **kwargs):
 
     while time.time() < timeout:
         time.sleep(5)
+
+        if not session_active(session_data["session_id"]):
+            logger.info(f"Session not found or likely to be terminated already....")
+            return {"status": "success", "message": f"Call session ended."}
+        else:
+            logger.info(f"Call session is still active for session_id: {session_data['session_id']}: time elapsed: {time.time() - (timeout - 600):.2f} seconds")
+        
         with get_pg_connector() as pg:
             statuses = list(pg.list_order_by("contact_status", {"message_id": session_data["session_id"]}, order_by="created"))
             if not statuses:
