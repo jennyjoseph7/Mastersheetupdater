@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ChevronLeft, ChevronRight, Upload, X, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
+import * as XLSX from "xlsx"
 
 interface UploadAudienceDialogProps {
   isOpen: boolean
@@ -61,17 +62,35 @@ export function UploadAudienceDialog({ isOpen, onClose, onSave }: UploadAudience
     setFormData((prev) => ({ ...prev, ...updates }))
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      // Simulate contact count (in real app, parse CSV)
-      const mockContactCount = Math.floor(Math.random() * 5000) + 100
-      updateFormData({
-        file,
-        fileName: file.name,
-        contactCount: mockContactCount,
-      })
+    if (!file) return;
+
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    let finalFile = file;
+
+    if (fileExtension === 'xls' || fileExtension === 'xlsx') {
+      try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const csvContent = XLSX.utils.sheet_to_csv(worksheet);
+        
+        const csvBlob = new Blob([csvContent], { type: 'text/csv' });
+        const csvFileName = file.name.replace(/\.(xls|xlsx)$/i, '.csv');
+        finalFile = new File([csvBlob], csvFileName, { type: 'text/csv' });
+      } catch (error) {
+        console.error("Excel conversion error:", error);
+      }
     }
+
+    // Simulate contact count (in real app, parse CSV)
+    const mockContactCount = Math.floor(Math.random() * 5000) + 100
+    updateFormData({
+      file: finalFile,
+      fileName: finalFile.name,
+      contactCount: mockContactCount,
+    })
   }
 
   const handleNext = () => {
@@ -134,7 +153,7 @@ export function UploadAudienceDialog({ isOpen, onClose, onSave }: UploadAudience
               <DialogTitle>Upload Audience – Step {currentStep} of 4</DialogTitle>
               <DialogDescription className="mt-1">
                 {currentStep === 1 && "Add your audience data to target specific customers."}
-                {currentStep === 2 && "Map your CSV columns to the required fields."}
+                {currentStep === 2 && "Map your CSV or Excel columns to the required fields."}
                 {currentStep === 3 && "Name and categorize your audience."}
                 {currentStep === 4 && "Review your audience configuration."}
               </DialogDescription>
@@ -170,9 +189,9 @@ export function UploadAudienceDialog({ isOpen, onClose, onSave }: UploadAudience
             <div className="space-y-4">
               <div className="border-2 border-dashed rounded-lg p-12 text-center hover:border-primary/50 transition-colors">
                 <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-sm font-medium mb-2">Upload CSV File</p>
+                <p className="text-sm font-medium mb-2">Upload CSV or Excel File</p>
                 <p className="text-xs text-muted-foreground mb-4">Drag and drop or click to upload (Max 10MB)</p>
-                <Input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="csv-upload" />
+                <Input type="file" accept=".csv,.xls,.xlsx" onChange={handleFileUpload} className="hidden" id="csv-upload" />
                 <Button variant="outline" size="sm" onClick={() => document.getElementById("csv-upload")?.click()}>
                   Choose File
                 </Button>

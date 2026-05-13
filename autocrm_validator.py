@@ -2,9 +2,16 @@ from models import validators as val
 import json, os, sys
 import requests
 import datetime, time
+BASE_PATH = os.path.dirname(os.path.dirname(__file__))
+if BASE_PATH not in sys.path:
+    sys.path.append(BASE_PATH)
 
 from gryd_worker import gryd, gryd_helpers as hp
-from config import AUTOCRM_APP_ENTERPRISE_ID
+from config import (
+    AUTOCRM_APP_ENTERPRISE_ID, 
+    AutocrmModel,
+)
+
 def calulate_total_billing_func(ins, model, attribute, action, **kwargs):
   
     filter = ''
@@ -19,6 +26,7 @@ def calulate_total_billing_func(ins, model, attribute, action, **kwargs):
         filter = filter + ins.get('end_date')
 
     #TODO:  complete this
+
 
 def generate_billing_invoice_func(ins, mode, *args, **kwagrs):
     pass
@@ -50,6 +58,34 @@ def resolve_and_search_in_model_func(ins,_default=None,**kwargs):
         return r.get(attribute_name, _default)
     return r or _default
 
+def plot_lead_session_history_func(ins, lead_attribute, **kwargs):
+    model_name = kwargs.pop('model_name', 'session')
+    lead_id = ins.get(lead_attribute)
+    
+    if not model_name:
+        raise ValueError("model_name is required for plot_lead_session_history")
+
+    if _get_lead_id and not lead_id:
+        lead_id = ins.get(f"{model_name}_id")
+        
+    if not lead_id:
+        return ""
+
+    sm = AutocrmModel("session")
+    sessions = sm.list(lead_id=lead_id, _sort_by="updated", _as_option = True)
+    
+    if not sessions:
+        return ""
+        
+    history = []
+    for s in sessions:
+        channel = s.get('channel', 'unknown')
+        disposition = s.get('disposition', 'unknown')
+        if channel and disposition:
+            history.append(f"{channel}({disposition})")
+            
+    return " -> ".join(history)
+
 val.make_function(
     calulate_total_billing_func,
     "calulate_total_billing_amount",
@@ -64,6 +100,14 @@ val.make_function(
     given_args="instance",
     is_idempotent=False, 
     help_string = "Resolve model and attribute dynamically, then search and return the first matching result or attribute value."
+)
+
+val.make_function(
+    plot_lead_session_history_func,
+    "plot_lead_session_history",
+    given_args="instance",
+    is_idempotent=False, 
+    help_string = "Plot all sessions of a lead in the format channel-disposition -> channel-disposition"
 )
 val.make_function(
     generate_billing_invoice_func,
