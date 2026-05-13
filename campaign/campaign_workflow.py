@@ -127,7 +127,7 @@ CAMPAIGN_WORKFLOW = {
     "failed": {
         "retries": 10,
         "delay_type": "exponential",
-        "delay": 60,
+        "delay": 600,
         "trigger": "switch_to_next_credential"
     },
     "error": {
@@ -135,8 +135,9 @@ CAMPAIGN_WORKFLOW = {
         "trigger": "switch_to_next_credential"
     },
     "attempted": {
-        "retries": 3,
-        "delay": 300,
+        "retries": 10,
+        "delay_type": "exponential",
+        "delay": 600,
         "trigger": "switch_to_next_credential"
     },
     "reached": {
@@ -188,15 +189,19 @@ def get_model_and_attrs(campaign_type: str, enterprise_id: str = None):
         raise ValueError(f"Invalid campaign type: {campaign_type}")
     return campaign_model, lead_model, user_model, user_id_attr, lead_id_attr
 
-def get_cheapest_channel(channels: list):
-    for c in AUTOCRM_CHEAPEST_CHANNELS:
+def get_cheapest_channel(channels: list, channel_sequence = None):
+    channel_sequence = channel_sequence or AUTOCRM_CHEAPEST_CHANNELS
+    for c in channel_sequence:
         if c in channels:
             return c
     return channels[0]
 
-def sort_channel_by_cheapest(channels: list, current_channel: str = None):
-    rlist = sorted(channels, key=lambda x: AUTOCRM_CHEAPEST_CHANNELS.index(x))
-    if current_channel:
+def sort_channel_by_cheapest(channels: list, current_channel: str = None, channel_sequence = None, last_contacted_channel = None):
+    channel_sequence = channel_sequence or AUTOCRM_CHEAPEST_CHANNELS
+    rlist = sorted(channels, key=lambda x: channel_sequence.index(x))
+    if last_contacted_channel in rlist:
+        rlist.insert(0, rlist.pop(rlist.index(last_contacted_channel)))
+    if current_channel and current_channel in rlist:
         rlist = rlist[rlist.index(current_channel):]
     return rlist
 
@@ -219,7 +224,7 @@ def get_next_delay(status: str, attempts: int, workflow_stage: dict, timezone: s
     next_delay_type = workflow_stage.get('delay_type', 'linear')
     next_delay = workflow_stage.get('delay', 1) or 1
     if next_delay_type == "exponential":
-        next_delay = next_delay * 2 ** (attempts - 1)
+        next_delay = next_delay * (2 ** (attempts - 1))
     elif next_delay_type == "linear":
         next_delay = next_delay * attempts
     #TODO: Make sure the delay falls in the calling/messaging timeslot according to the timezone
@@ -315,7 +320,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
         timezone = hp.make_single(region.get('timezones'), default = "Asia/Kolkata", force = True)
     current_channel = current_channel or lead.get('last_contacted_channel')
     logger.info(f"Current channel: {current_channel}")
-    channels = sort_channel_by_cheapest(channels, current_channel=current_channel)
+    channels = sort_channel_by_cheapest(channels, current_channel=current_channel, channel_sequence = campaign_details.get('channel_sequence'), last_contacted_channel = lead.get('last_contacted_channel'))
     logger.info(f"Checking for channels: {channels} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
     for channel in channels:
         channel_type = CHANNEL_IDENTIFIER_MAP.get(channel)
