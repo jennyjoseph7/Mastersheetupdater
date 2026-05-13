@@ -40,12 +40,16 @@
         "type": "number"
       },
       {
-        "name": "total_connected_converted",
+        "name": "total_converted",
+        "type": "number"
+      },
+       {
+        "name": "total_connected",
         "type": "number"
       },
       {
-        "name": "total_leads_channel_wise",
-        "type": "nested_object"
+        "name": "channel",
+        "type": "text"
       },
       {
         "name": "daily_dealership_summary_id",
@@ -53,7 +57,7 @@
         "id": true,
         "default": {
           "function": "make_uuid3",
-          "args": ["dealership_id", "activity_date"]
+          "args": ["dealership_id", "activity_date", "channel"]
         }
       }
     ]

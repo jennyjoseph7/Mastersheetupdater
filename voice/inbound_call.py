@@ -104,13 +104,13 @@ def start_call_from_inbound(*args, **kwargs):
 
     s = start_session(session_data.get('session_id'))
 
+    #updating session status, contact status to answered and posting billing for call connected.
+    gryd_tasks.post_billing_object("reached", session_id = session_data["session_id"])
     with gryd_tasks.get_pg_connector() as pg:
         pg.update("session", "session_id", session_data.get('session_id'), {"status": "answered"})
-
     gryd_tasks.post_contact_status_voice(session_id = session_data['session_id'], message_id = session_data['session_id'],  **{"status": "answered"})
     
     timeout = time.time() + float(session_data.get("call_timeout", 600))  # 10 minutes
-
     while time.time() < timeout:
         time.sleep(5)
         logger.info(f"Inbound call is ongoing for {customer_number}, checking status...")

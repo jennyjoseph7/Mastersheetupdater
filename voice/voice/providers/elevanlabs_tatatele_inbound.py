@@ -24,15 +24,13 @@ def inbound_call(*args, **kwargs):
     }
     logger.info(f"Received inbound call data: {json.dumps(data, indent=4)}")
   
-
-    # Note: call connected for inbound billing is pending.
     if data.get("call_type", "").lower() in ["inbound"]:
         caller_id = data.get("caller_id_number", "")
         if caller_id and not str(caller_id).startswith("91"):
             caller_id = "91" + str(caller_id)
         data["caller_id_number"] = caller_id
         logger.info(f"Processing inbound call for {data.get('caller_id_number')}")
-
+        
         gryd.create_async_task('start_call_from_inbound',config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME , args=[], kwargs={"user_data":data})
         
         return jsonify({"status": "success", "message": "Inbound call session created."})
