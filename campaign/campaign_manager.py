@@ -31,7 +31,7 @@ from communication.connectors.email_communication import communication_sender
 from communication.connectors.connector_rcs import gryd_send_rcs
 from conversation.lead_post_processing import update_error_in_lead_and_session
 from communication.common_functions import get_communication_credential,generate_uid
-from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME, SERVICE,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
+from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME, SERVICE,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,get_phone_code_from_dealership,AutocrmModel
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
@@ -223,10 +223,12 @@ class BaseCampaignCreater:
         )
         patch_user_data={}
         if channel in ["whatsapp", "whatsapp_chat"]:
-            mobile_number = self._format_mobile_number(
-                mobile_number,
-                country_code=campaign_user_data.get("country_code", "91") or "91"
-            )
+            country_code=get_phone_code_from_dealership(campaign_details.get("dealership_id"),False)
+            mobile_number = f"{country_code}{mobile_number}"
+            # mobile_number = self._format_mobile_number(
+            #     mobile_number,
+            #     country_code=campaign_user_data.get("country_code", "91") or "91"
+            # )
             patch_user_data = {"mobile_number":mobile_number,"template_message":campaign_details.get("template_message",'').format(**campaign_user_data)}
             # logger.info(f"Campaign Message patch_user_data: {patch_user_data}")
             send_data = self.create_campaign_payload(
@@ -405,8 +407,10 @@ class BaseCustomCampaignManager:
             logger.info(f"USER----------{user}")
             logger.info(f"CHANNEL ---{channel}")
             if channel.upper()=="WHATSAPP_CHAT":
-                mobile_number = BaseCampaignCreater()._format_mobile_number(mobile_number,user.get("country_code","91"))
-                
+                # mobile_number = BaseCampaignCreater()._format_mobile_number(mobile_number,user.get("country_code","91"))
+                country_code=get_phone_code_from_dealership(campaign_data.get("dealership_id"),False)
+                mobile_number = f"{country_code}{mobile_number}"
+                logger.info(f"mobile_number after formatting-----{ mobile_number}")
             if not mobile_number:
                 logger.warning(f"[{count}] User record missing mobile_number: {user}")
                 continue
@@ -747,7 +751,7 @@ def trigger_campaign(*args, **kwargs):
         
         logger.info(f"Queueing task for lead_id={lead.get(lead_table_id)}")
         # list(process_single_lead(None, lead, campaign_type, campaign_id))
-        person = get_or_create_person(lead.get("phone_number"))
+        person = get_or_create_person(lead.get("phone_number"),lead.get("dealership_id"))
         pg.update(lead_table, lead_table_id,lead.get(lead_table_id), {"user_id": person.get("user_id")})
         list(determine_campaign_next_action(campaign_type,lead.get(lead_table_id),call_process_single_lead=True))
         
@@ -1269,6 +1273,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         "campaign_user_source": {
             "source_type": "default",
             "campaign_users": [campaign_user],
+            "country_code": lead_data.get("region_id"),
             "field_mapping": {
                 "lead_id": "lead_id",
                 "mobile_number": "mobile_number",
