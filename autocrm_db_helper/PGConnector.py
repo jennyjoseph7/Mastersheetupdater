@@ -31,6 +31,7 @@ class AutoCRMPGConnector(db.GrydPGConnector):
     #     order_clause = f"ORDER BY (dict->>'{order_by}') {order}"
     #     return super().list(table_name, f"{where_clause} {order_clause}")
     
+    # TODO: add a limit .
     def list_order_by(self, table_name, where, order_by="created", order="DESC"):
         conditions = []
 

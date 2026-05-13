@@ -45,7 +45,7 @@ from conversation.lead_post_processing import update_lead_disposition_and_post_b
 _communication_dir = dirname(dirname(abspath(__file__)))
 if _communication_dir not in sys.path:
     sys.path.insert(0, _communication_dir)
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_COMMUNICATION_SERVICE_NAME
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_COMMUNICATION_SERVICE_NAME,get_phone_code_from_dealership
 from gryd_worker import gryd, gryd_helpers as hp,gryd_db_helper as db
 logger=gryd.logger
 
@@ -92,9 +92,19 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
                 "campaign_model":"pre_sales_campaign"
             }
         )
-
+    with get_pg_connector() as pg:
+    # get the dealership_id
+        _f={"sender": from_number,"channel":channel}
+        _f = {k: v for k, v in _f.items() if v is not None}
+        creds = list(pg.list("communication_credential", _f ))
+        if creds:
+            logger.info(f"In handle_session_logic communication creds: {creds[0]}")
+            session["communication_credentials"] = creds[0]
+            dealership_id = creds[0].get("dealership_id")
+            payload["dealership_id"] = dealership_id
+            
     # 1. PERSON
-    person = get_or_create_person(phone_number)
+    person = get_or_create_person(phone_number,dealership_id)
     if person:
         payload.update({
             "phone_number": phone_number,
@@ -119,16 +129,9 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
             return {**session}
 
         logger.info(f"TEST phone_number: {phone_number}")
-        # get the dealership_id
-        _f={"sender": from_number,"channel":channel}
-        _f = {k: v for k, v in _f.items() if v is not None}
-        creds = list(pg.list("communication_credential", _f ))
-        if creds:
-            logger.info(f"In handle_session_logic communication creds: {creds[0]}")
-            session["communication_credentials"] = creds[0]
-            dealership_id = creds[0].get("dealership_id")
-            payload["dealership_id"] = dealership_id
+        
         # 3. CONTACT STATUS
+        # get the list of channels for dealership if not use default channels
         contact_list = list(
             pg.list_order_by("contact_status", {
                 "phone_number": phone_number,"channel":channel,"dealership_id":dealership_id
@@ -789,10 +792,13 @@ def check_and_create_inbound_lead_object(**kwargs):
             logger.info(f"Pre-sales lead data created -- {lead_d[0].get('pre_sales_lead_id')}")
             return lead_d[0]
         
-def get_or_create_person(phone_number):
+def get_or_create_person(phone_number,dealership_id=None):
     """Return person object; create if not exists."""
     logger.info(f"Getting or creating person for phone_number: {phone_number}")
     
+    country_code=get_phone_code_from_dealership(dealership_id,False)
+    phone_number=f"{country_code}{phone_number}"
+    logger.info(f"Get or create person for phone_number: {phone_number}")
     with get_pg_connector() as pg:
         # filters={"phone_number":phone_number,"_sort_by": "updated", "_sort_reverse": True}
         person_list = list(pg.list_order_by(

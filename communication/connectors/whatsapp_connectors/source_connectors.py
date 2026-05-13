@@ -705,7 +705,7 @@ class BaseWebhookConverter:
         template_id = kwargs.get("template_id")
         mobile_number = kwargs.get("mobile_number")
         otp = kwargs.get("otp")
-
+        
         if not template_id or not mobile_number or not otp:
             logger.error("template_id or mobile_number or otp missing")
             return
