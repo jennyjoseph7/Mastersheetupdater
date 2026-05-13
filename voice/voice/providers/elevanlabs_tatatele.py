@@ -148,16 +148,62 @@ def session_active(call_id, return_session = False):
             return True
         return False
 
+def _schedule_websocket_close(
+    ws,
+    bridge_loop: Optional[asyncio.AbstractEventLoop],
+    call_id: str,
+    socket_name: str,
+) -> None:
+    """Close a websockets connection; ``close()`` may be async in newer websockets versions."""
+    if ws is None or getattr(ws, "closed", False):
+        return
+    if bridge_loop is None or not bridge_loop.is_running():
+        logger.warning(
+            "[%s] Cannot close %s: bridge loop missing or not running",
+            call_id,
+            socket_name,
+        )
+        return
+
+    async def _close() -> None:
+        try:
+            await ws.close()
+            logger.info(f"[{call_id}] Closed {socket_name}")
+        except Exception as e:
+            logger.warning(f"[{call_id}] Error closing {socket_name}: {e}")
+
+    try:
+        running = asyncio.get_running_loop()
+    except RuntimeError:
+        running = None
+
+    if running is bridge_loop:
+        bridge_loop.create_task(_close())
+    else:
+        try:
+            fut = asyncio.run_coroutine_threadsafe(_close(), bridge_loop)
+            fut.result(timeout=15.0)
+        except Exception as e:
+            logger.warning(
+                "[%s] Thread-safe close failed for %s: %s",
+                call_id,
+                socket_name,
+                e,
+            )
+
+
 def terminate_session(call_id: str):
     with session_lock:
         if call_id in call_sessions:
             session = call_sessions[call_id]
+            bridge_loop = getattr(session, "_bridge_loop", None)
             for socket_name in ["dave_ws", "external_ws"]:
                 logger.info(f"[{call_id}] Checking {socket_name} for termination")
                 socket_obj = getattr(session, socket_name, None)
                 if socket_obj and not getattr(socket_obj, "closed", False):
-                    socket_obj.close()
-                    logger.info(f"[{call_id}] Closed {socket_name}")
+                    _schedule_websocket_close(
+                        socket_obj, bridge_loop, call_id, socket_name
+                    )
             session.stop_event.set()
             del call_sessions[call_id]
             logger.info(f"[{call_id}] Session terminated")
@@ -195,6 +241,7 @@ class CallSession:
         self.call_id = call_id
         self.bridge_started = False
         self.dave_ws: Optional[websockets.WebSocketClientProtocol] = ws
+        self._bridge_loop: Optional[asyncio.AbstractEventLoop] = None
         self.stream_sid: Optional[str] = None
         self.media_buffer = []
         self.processed_agent_responses = set()
@@ -823,6 +870,7 @@ class CallSession:
 
     async def connect_external_websocket(self, url: str):
         """Connect to external websocket for this call session."""
+        self._bridge_loop = asyncio.get_running_loop()
         t = time()
         ws = None
         try:
@@ -1097,17 +1145,6 @@ def make_call_tatatele(session_data, *args, **kwargs):
         logger.info(f"Tatatele originate response: {response}")
         call_id = response.get('ref_id')
         
-        # Store TataTele ref_id so we can hang up the call later for hangup call
-        # if call_id:
-        #     session_data['tatatele_ref_id'] = call_id
-        #     # Also set directly on the session object in call_sessions,
-        #     # in case session.session_data is a different dict (e.g. session already existed)
-        #     with session_lock:
-        #         session_key = session_id or call_id
-        #         existing_session = call_sessions.get(session_key)
-        #         if existing_session:
-        #             existing_session.session_data['tatatele_ref_id'] = call_id
-
         if call_id and not session_started:
             logger.info(f"No session id provider starting session with call_id: {call_id}")
             start_session(call_id)
