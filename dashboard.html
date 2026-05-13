@@ -1587,6 +1587,12 @@
           <option value="pre">Pre-Sales</option>
           <option value="post">Post-Sales</option>
         </select>
+        <span class="mode-label" style="margin-left:0.75rem;">Date Format</span>
+        <select id="dateFormatMode" class="mode-select">
+          <option value="auto">Auto Detect</option>
+          <option value="DMY">DD/MM/YYYY</option>
+          <option value="MDY">MM/DD/YYYY</option>
+        </select>
       </div>
       <div class="upload-row">
         <div class="drop-zone-dash" id="dzDash" onclick="document.getElementById('fileDash').click()" role="button" tabindex="0">
@@ -1987,7 +1993,9 @@
       }
 
       // ── Date range ──
-      const dateParserInfo = buildDateParser(rows, COL_DATE);
+      const dateFormatMode = document.getElementById('dateFormatMode');
+      const forcedDateOrder = dateFormatMode && dateFormatMode.value !== 'auto' ? dateFormatMode.value : null;
+      const dateParserInfo = buildDateParser(rows, COL_DATE, forcedDateOrder);
       const dateParser = dateParserInfo.parse;
       let validDateCount = 0;
       let rejectedDateCount = 0;
@@ -2050,7 +2058,8 @@
         document.getElementById('dateRange').textContent = 'All records';
       }
       const parserLabel = dateParserInfo.order === 'MDY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY';
-      document.getElementById('dateParserNote').textContent = `Source: ${COL_DATE} · Parser: ${parserLabel} · Valid: ${validDateCount}/${rows.length} · Rejected: ${rejectedDateCount}`;
+      const parserMode = dateParserInfo.forced ? 'Manual' : 'Auto';
+      document.getElementById('dateParserNote').textContent = `Source: ${COL_DATE} · Format: ${parserLabel} (${parserMode}) · Valid: ${validDateCount}/${rows.length} · Rejected: ${rejectedDateCount}`;
       renderMetricAudit({
         columns: {
           Phone: COL_PHONE,
@@ -2593,7 +2602,17 @@
       return postScore > preScore ? 'post' : 'pre';
     }
 
-    function buildDateParser(rows, columnName) {
+    function buildDateParser(rows, columnName, forceOrder) {
+      // If user has manually selected a format, skip auto-detection entirely
+      if (forceOrder === 'DMY' || forceOrder === 'MDY') {
+        return {
+          order: forceOrder,
+          parse: (val) => parseDateStrictText(val, forceOrder),
+          forced: true,
+        };
+      }
+
+      // Auto-detect by scanning up to 250 rows for an unambiguous date
       let inferredOrder = null;
       const sampleLimit = Math.min(rows.length, 250);
       for (let i = 0; i < sampleLimit; i++) {
@@ -2604,20 +2623,15 @@
         if (!m) continue;
         const a = Number(m[1]);
         const b = Number(m[2]);
-        if (a > 12 && b <= 12) {
-          inferredOrder = 'DMY';
-          break;
-        }
-        if (b > 12 && a <= 12) {
-          inferredOrder = 'MDY';
-          break;
-        }
+        if (a > 12 && b <= 12) { inferredOrder = 'DMY'; break; }
+        if (b > 12 && a <= 12) { inferredOrder = 'MDY'; break; }
       }
-      if (!inferredOrder) inferredOrder = 'DMY';
+      if (!inferredOrder) inferredOrder = 'DMY'; // default to DD/MM/YYYY
 
       return {
         order: inferredOrder,
         parse: (val) => parseDateStrictText(val, inferredOrder),
+        forced: false,
       };
     }
 
