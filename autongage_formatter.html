@@ -667,7 +667,12 @@
         <select class="select" id="templateSelect"></select>
         <button type="button" class="btn btn-upload" id="uploadBtn">Upload Sheet</button>
         <button class="btn btn-primary" id="processBtn" onclick="processFile()" disabled>Format File</button>
-        <button class="btn btn-secondary" id="downloadBtn" onclick="downloadOutput()" disabled>Download XLSX</button>
+        <div style="display: flex; gap: 0.5rem; align-items: center; background: rgba(0,0,0,0.1); padding: 0.5rem; border-radius: 12px; border: 1px solid var(--border);">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-dim); margin-left: 0.5rem;">Batch Size:</div>
+          <input type="number" id="batchSize" class="select" style="min-width: 80px; max-width: 100px; flex: 0; background: var(--surface);" value="100" min="1" />
+          <button class="btn btn-secondary" id="downloadBtn" onclick="downloadOutput()" disabled>Single XLSX</button>
+          <button class="btn btn-secondary" id="downloadBatchesBtn" onclick="downloadBatches()" disabled>Batches (CSV)</button>
+        </div>
       </div>
 
       <div class="drop-zone" id="dropZone">
@@ -828,7 +833,7 @@
         multiSource: {
           showroom_code: ['Showroom', 'SHOWROOM', 'Branch', 'BRANCH CODE', 'Location Name', 'DEALER CODE'],
           person_name: ['NAMES', 'CUSTOMER NAME', 'CUSTOMERNAME', 'CUSTOMER_NAME', 'ENQUIRY NAME'],
-          phone_number: ['MOBILE NO', 'MOBILE NUMBER', 'MOBILENUMBER', 'MOBILE', 'PHONE NUMBER'],
+          phone_number: ['MOBILE NO', 'MOBILE NUMBER', 'MOBILENUMBER', 'MOBILE', 'PHONE NUMBER', 'CONTACT NUMBER', 'CONTACT NO'],
           interested_vehicle_name: ['Model', 'VEHICLE MODEL', 'INTERESTED VEHICLE', 'MODEL NAME']
         },
         outputOrder: ['showroom_code', 'person_name', 'phone_number', 'interested_vehicle_name', 'interested_vehicle_brand_name'],
@@ -853,13 +858,13 @@
         multiSource: {
           next_service_due: ['Service Due', 'Next Service Date', 'NEXT_SERVICE_DUE', 'SERVICE DUE DATE'],
           workshop_code: ['Workshop Code', 'BRANCH', 'Dealer Code', 'WORKSHOP'],
-          service_plan_type: ['Predicted Service Type', 'Service Plan Type', 'SERVICE_PLAN_TYPE', 'SERVICE TYPE'],
-          phone_number: ['Mobile No', 'Mobile Number', 'MOBILE', 'Phone', 'Customer Mobile'],
+          service_plan_type: ['Predicted Service Type', 'Service Plan Type', 'SERVICE_PLAN_TYPE', 'SERVICE TYPE', 'PREDICTED SERVICE TYPE'],
+          phone_number: ['Mobile No', 'Mobile Number', 'MOBILE', 'Phone', 'Customer Mobile', 'CONTACT NUMBER', 'CONTACT NO'],
           reg_number: ['Reg No', 'Registration No', 'Registration Number', 'REG NUMBER', 'VEHICLE NUMBER'],
-          vin_number: ['VIN', 'VIN Number', 'Chassis No', 'Chassis Number', 'Frame #', 'CHASSIS NO'],
+          vin_number: ['VIN', 'VIN Number', 'Chassis No', 'Chassis Number', 'Frame #', 'CHASSIS NO', 'VIN NO'],
           vehicle_model: ['MODEL', 'Vehicle Model', 'Model Name', 'VEHICLE MODEL'],
           purchase_date: ['Purchase Date', 'Sales Date', 'SALE DATE'],
-          person_name: ['Customer Name', 'CUST NAME', 'CLIENT NAME']
+          person_name: ['Customer Name', 'CUST NAME', 'CLIENT NAME', 'CUSTOMER NAME']
         },
         outputOrder: ['next_service_due', 'workshop_code', 'service_plan_type', 'person_name', 'phone_number', 'reg_number', 'vin_number', 'vehicle_model', 'purchase_date'],
         defaults: {},
@@ -942,7 +947,7 @@
     function buildTargetSources(template) {
       const m = {};
       function add(target, sourceLabel) {
-        const ck = canonicalHeader(sourceLabel);
+        const ck = normalizeHeader(sourceLabel);
         if (!ck) return;
         if (!m[target]) m[target] = [];
         if (m[target].indexOf(ck) === -1) m[target].push(ck);
@@ -971,8 +976,13 @@
     let rawFile = null;
     let outputRows = [];
 
-    function canonicalHeader(text) {
-      return String(text || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+    function normalizeHeader(header) {
+      if (!header) return '';
+      return String(header)
+        .toLowerCase()
+        .replace(/[\s._-]+/g, '')
+        .replace(/[^a-z0-9]/g, '')
+        .trim();
     }
 
     function cellToString(value) {
@@ -1006,19 +1016,64 @@
       });
     }
 
-    function parseSheet(ab) {
+    function parseSheet(ab, template) {
       const wb = XLSX.read(ab, { type: 'array', raw: true, cellText: false, cellDates: false });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
-      if (rows.length < 2) return [];
-      const rawHeaders = rows[0].map(cellToString);
-      const headers = rawHeaders.map(canonicalHeader);
+      const targetSources = buildTargetSources(template);
+      const allTargetKeys = new Set();
+      for (const keys of Object.values(targetSources)) {
+        keys.forEach(k => allTargetKeys.add(k));
+      }
+
+      let bestSheet = null;
+      let bestRows = [];
+      let bestHeaderIndex = 0;
+      let maxMatches = -1;
+
+      for (const sheetName of wb.SheetNames) {
+        const ws = wb.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+        if (rows.length < 1) continue;
+
+        for (let i = 0; i < Math.min(rows.length, 25); i++) {
+          const candidateHeaders = rows[i].map(cellToString).map(normalizeHeader);
+          const matches = candidateHeaders.filter(h => h && allTargetKeys.has(h)).length;
+          if (matches > maxMatches) {
+            maxMatches = matches;
+            bestSheet = sheetName;
+            bestRows = rows;
+            bestHeaderIndex = i;
+          }
+        }
+        if (maxMatches >= 3) break;
+      }
+
+      if (!bestRows.length || maxMatches === 0) {
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+        if (rows.length < 2) return { data: [], rawHeaders: [] };
+        const rawHeaders = rows[0].map(cellToString);
+        const headers = rawHeaders.map(normalizeHeader);
+        const data = [];
+        for (let i = 1; i < rows.length; i++) {
+          const raw = rows[i];
+          if (!raw || raw.every(cell => cellToString(cell) === '')) continue;
+          const obj = {};
+          for (let j = 0; j < headers.length; j++) obj[headers[j]] = cellToString(raw[j]);
+          data.push(obj);
+        }
+        return { data, rawHeaders };
+      }
+
+      const rawHeaders = bestRows[bestHeaderIndex].map(cellToString);
+      const headers = rawHeaders.map(normalizeHeader);
       const data = [];
-      for (let i = 1; i < rows.length; i++) {
-        const raw = rows[i];
+      for (let i = bestHeaderIndex + 1; i < bestRows.length; i++) {
+        const raw = bestRows[i];
         if (!raw || raw.every(cell => cellToString(cell) === '')) continue;
         const obj = {};
-        for (let j = 0; j < headers.length; j++) obj[headers[j]] = cellToString(raw[j]);
+        for (let j = 0; j < headers.length; j++) {
+          if (headers[j]) obj[headers[j]] = cellToString(raw[j]);
+        }
         data.push(obj);
       }
       return { data, rawHeaders };
@@ -1046,7 +1101,7 @@
     }
 
     function buildMappingAudit(template, parsed, rows) {
-      const headerSet = new Set(parsed.rawHeaders.map(canonicalHeader).filter(Boolean));
+      const headerSet = new Set(parsed.rawHeaders.map(normalizeHeader).filter(Boolean));
       const targetSources = buildTargetSources(template);
       const mappingEntries = Object.entries(targetSources).map(([target, keys]) => ({
         target,
@@ -1064,7 +1119,7 @@
         return rows.every(function (row) { return String(row[key] || '').trim() === ''; });
       });
       const ignoredHeaders = parsed.rawHeaders.filter(function (header) {
-        const key = canonicalHeader(header);
+        const key = normalizeHeader(header);
         return key && !usedSourceKeys.has(key);
       });
 
@@ -1130,6 +1185,7 @@
       renderPreview([], []);
       renderMappingAudit(null);
       document.getElementById('downloadBtn').disabled = true;
+      document.getElementById('downloadBatchesBtn').disabled = true;
     }
 
     async function processFile() {
@@ -1138,7 +1194,7 @@
       try {
         const template = TEMPLATES[document.getElementById('templateSelect').value];
         const ab = await readFileAsArrayBuffer(rawFile);
-        const parsed = parseSheet(ab);
+        const parsed = parseSheet(ab, template);
         if (!parsed.data.length) {
           setStatus('No data rows found in file.', 'err');
           setCounts(0, 0, 0, 0);
@@ -1184,6 +1240,7 @@
         renderMappingAudit(audit);
         setCounts(parsed.data.length, rows.length, mappedCount, defaultCount);
         document.getElementById('downloadBtn').disabled = !rows.length;
+        document.getElementById('downloadBatchesBtn').disabled = !rows.length;
         setStatus(
           audit.hasWarnings
             ? 'Formatted ' + rows.length + ' row(s). Review mapping audit before download.'
@@ -1216,9 +1273,62 @@
       XLSX.utils.book_append_sheet(wb, ws, 'AutoEngage');
       const dateStr = new Date().toISOString().slice(0, 10);
       const safeName = template.label.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
-      const fileName = safeName + '_AutoEngage_' + dateStr + '.xlsx';
+      const fileName = safeName + '_Full_AutoEngage_' + dateStr + '.xlsx';
       XLSX.writeFile(wb, fileName);
       setStatus('Downloaded ' + fileName, 'ok');
+    }
+
+    async function downloadBatches() {
+      if (!outputRows.length) return;
+      
+      const batchInput = document.getElementById('batchSize');
+      const bSize = parseInt(batchInput.value) || 100;
+      const totalLeads = outputRows.length;
+      
+      const numBatches = Math.ceil(totalLeads / bSize);
+      if (numBatches > 10) {
+        if (!confirm(`This will download ${numBatches} separate CSV files. Continue?`)) return;
+      }
+
+      const template = TEMPLATES[document.getElementById('templateSelect').value];
+      const headers = template.outputOrder;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const safeName = template.label.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
+      
+      setStatus(`Generating ${numBatches} batches...`, '');
+      
+      for (let i = 0; i < totalLeads; i += bSize) {
+        const currentBatchNum = Math.floor(i / bSize) + 1;
+        const chunk = outputRows.slice(i, i + bSize);
+        
+        // Exact 100 leads + 1 header logic
+        const aoa = [headers];
+        for (let j = 0; j < chunk.length; j++) {
+          const lead = chunk[j];
+          aoa.push(headers.map(h => lead[h] || ''));
+        }
+        
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        const csv = XLSX.utils.sheet_to_csv(ws);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        
+        const fileName = `${safeName}_Batch_${currentBatchNum}_AutoEngage_${dateStr}.csv`;
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setStatus(`Downloaded batch ${currentBatchNum} of ${numBatches}...`, '');
+        
+        if (i + bSize < totalLeads) {
+          // Delay to ensure browser processes each download
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      setStatus(`Success: Downloaded ${numBatches} files (${totalLeads} total leads).`, 'ok');
     }
 
     function escapeHtml(value) {
