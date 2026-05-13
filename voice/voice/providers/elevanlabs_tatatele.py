@@ -133,6 +133,7 @@ app = Blueprint("tatatelli", __name__)
 
 # Session manager for concurrent calls
 call_sessions: Dict[str, 'CallSession'] = {}
+
 # Thread lock for session management 
 session_lock = threading.Lock()
 
@@ -151,6 +152,12 @@ def terminate_session(call_id: str):
     with session_lock:
         if call_id in call_sessions:
             session = call_sessions[call_id]
+            for socket_name in ["dave_ws", "external_ws"]:
+                logger.info(f"[{call_id}] Checking {socket_name} for termination")
+                socket_obj = getattr(session, socket_name, None)
+                if socket_obj and not getattr(socket_obj, "closed", False):
+                    socket_obj.close()
+                    logger.info(f"[{call_id}] Closed {socket_name}")
             session.stop_event.set()
             del call_sessions[call_id]
             logger.info(f"[{call_id}] Session terminated")
