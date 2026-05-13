@@ -1820,8 +1820,12 @@ def translate_objective_multiple(campaign_objective_id, target_languages, target
     for target_language in target_languages:
         for target_channel in target_channels:
             for gender in genders:
-                translate_objective(campaign_objective_id, target_language, target_channel, gender,force_update)
-    return {"status" : "success"}
+                try:
+                    translate_objective(campaign_objective_id, target_language, target_channel, gender,force_update)
+                except Exception as e:
+                    logger.error(f"Error translating objective: {e}")
+                    yield {"status" : "error", "message" : f"Error translating objective: {target_channel} {target_language} {gender}"}
+    yield {"status" : "success"}
 
 @gryd.is_a_task(function_name="translate_objective")
 def translate_objective(campaign_objective_id, target_language, target_channel, gender = "male",force_update = False):
@@ -2516,5 +2520,6 @@ if __name__ == "__main__":
     #     })
 
     # translate_objective("pre-sales-aircross--confirm-test-drive-for-value-advantage--whatsapp","hindi","voice_phone","female", True)
-
-    translate_objective_all("pre-sales-aircross--confirm-test-drive-for-value-advantage--whatsapp")
+    for i in translate_objective_multiple("pre-sales-test-drive-booking",target_languages=["telugu","marathi"],target_channels=["whatsapp_chat","voice_phone"],genders=["male"],force_update = True):
+        logger.info(i)
+    # translate_objective_all("pre-sales-aircross--confirm-test-drive-for-value-advantage--whatsapp")
