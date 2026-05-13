@@ -1600,7 +1600,7 @@ def process_dealerships_voice(voice_batch_size=None,voice_start_time=None,voice_
     start_time = voice_start_time or VOICE_START_TIME
     end_time = voice_end_time or VOICE_END_TIME
     current_hour = hp.now(tz='Asia/Kolkata').hour  #TODO:later update tz according to the region
-    mlogger.info(f"Current hour is {current_hour}")
+    mlogger.info(f"Current hour for channel - voice_phone is {current_hour}")
     # Doing an additional check to see if the current hour is within the allowed execution time.
     if current_hour < start_time or current_hour > end_time:
         mlogger.info("Outside allowed execution window for channel - voice_phone.So exiting...")
@@ -1640,7 +1640,7 @@ def process_dealerships_non_voice(batch_size=None,non_voice_start_time=None,non_
     start_time = non_voice_start_time or NON_VOICE_START_TIME
     end_time = non_voice_end_time or NON_VOICE_END_TIME
     current_hour = hp.now(tz='Asia/Kolkata').hour #TODO:later update tz according to the region
-    mlogger.info(f"Current hour is {current_hour}")
+    mlogger.info(f"Current hour for channel - non voice is {current_hour}")
     # Doing an additional check to see if the current hour is within the allowed execution time.
     if current_hour < start_time or current_hour > end_time:
         mlogger.info("Outside allowed execution window for channel - non voice.So exiting...")

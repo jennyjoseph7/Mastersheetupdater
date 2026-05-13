@@ -20,7 +20,7 @@ if _root not in sys.path:
 # from communication.connectors.communication_configs import DB_TIMEZONE,WA_TO_DISPOSITION
 # ---
 from communication.connectors.base_connector_communication import *
-from campaign_workflow import determine_campaign_next_action,CHANNEL_IDENTIFIER_MAP
+from campaign.campaign_workflow import determine_campaign_next_action,CHANNEL_IDENTIFIER_MAP
 from communication.connectors.communication_helpers import _wait_for_next_minute,get_or_create_person
 
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
