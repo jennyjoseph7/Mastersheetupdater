@@ -47,6 +47,10 @@
         "name": "total_connected",
         "type": "number"
       },
+       {
+         "name": "total_failed",
+         "type": "number"
+       },
       {
         "name": "channel",
         "type": "text"
