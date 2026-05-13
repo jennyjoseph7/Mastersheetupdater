@@ -305,22 +305,19 @@ def setup_session_data_cache(*args, **kwargs):
     session_id = kwargs.get("session_id")
     language = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
     with get_pg_connector() as pg:
-        session_data = kwargs.get("session_data")
-        if not session_data:
-            session_data = pg.get("session","session_id",session_id)
-            mlogger.info("session_data fetched == {}".format(session_data))
-            person_data = pg.get("person","user_id",session_data.get("user_id"))
-            language = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
-            if person_data.get("preferred_language") and isinstance(person_data.get("preferred_language"),str):
-                language = person_data.get("preferred_language",AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE).lower()
-            if person_data.get("preferred_language") and isinstance(person_data.get("preferred_language"),list):
-                language = person_data.get("preferred_language",[])[0].lower()
-                if language in translation_wrappers.LANGUAGE_CODES:
-                    language = translation_wrappers.get_canonical_language_name(language).lower()
-                if language not in translation_wrappers.LANGUAGE_MAP:
-                    language = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
-            mlogger.info("language == {}".format(language))
-    with get_pg_connector() as pg:
+        session_data = pg.get("session","session_id",session_id)
+        mlogger.info("session_data fetched == {}".format(session_data))
+        person_data = pg.get("person","user_id",session_data.get("user_id"))
+        language = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
+        if person_data.get("preferred_language") and isinstance(person_data.get("preferred_language"),str):
+            language = person_data.get("preferred_language",AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE).lower()
+        if person_data.get("preferred_language") and isinstance(person_data.get("preferred_language"),list):
+            language = person_data.get("preferred_language",[])[0].lower()
+            if language in translation_wrappers.LANGUAGE_CODES:
+                language = translation_wrappers.get_canonical_language_name(language).lower()
+            if language not in translation_wrappers.LANGUAGE_MAP:
+                language = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
+        mlogger.info("language == {}".format(language))
         session_data_cache = pg.get("session_data_cache","session_id",session_id) or {}
         mlogger.info("session_data_cache fetched == {}".format(session_data)) 
         # if not session_data_cache or not session_data_cache.get("data",{}).get("campaign_data") or not session_data_cache.get("data",{}).get("user_data"):
