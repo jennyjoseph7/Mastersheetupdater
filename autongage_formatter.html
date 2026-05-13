@@ -16,24 +16,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root,
     [data-theme="dark"] {
       --bg: #080b10;
-      --bg-gradient: radial-gradient(ellipse at 15% -5%, rgba(230, 164, 86, 0.12), transparent 38rem),
-        radial-gradient(ellipse at 85% 5%, rgba(91, 156, 245, 0.10), transparent 32rem),
-        linear-gradient(180deg, #070a0f 0%, #0b1017 42%, #080c12 100%);
       --surface: #10151d;
       --surface2: #151c27;
+      --surface3: #1a1a1a;
       --border: rgba(218, 230, 242, 0.09);
       --accent: #a78bfa;
       --accent-dim: #7c3aed;
       --accent-soft: rgba(167, 139, 250, 0.14);
       --success: #63d6a3;
       --success-soft: rgba(99, 214, 163, 0.12);
+      --warn: #ffc857;
+      --warn-soft: rgba(255, 200, 87, 0.12);
       --danger: #f16f6f;
       --text: #f4f0e8;
       --text-dim: #aeb8c3;
@@ -41,31 +41,31 @@
       --mono: 'IBM Plex Mono', monospace;
       --sans: 'Manrope', 'Inter', sans-serif;
       --body: 'Inter', sans-serif;
-      --shadow-card: 0 18px 60px rgba(0, 0, 0, 0.26);
-      --grid-line: rgba(255, 255, 255, 0.022);
-      --thead-bg: #111820;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 16px;
     }
 
     [data-theme="light"] {
       --bg: #f3f5f8;
-      --bg-gradient: radial-gradient(ellipse at 15% -5%, rgba(230, 164, 86, 0.08), transparent 38rem),
-        radial-gradient(ellipse at 85% 5%, rgba(91, 156, 245, 0.06), transparent 32rem),
-        linear-gradient(180deg, #f3f5f8 0%, #eef1f5 42%, #f3f5f8 100%);
       --surface: #ffffff;
       --surface2: #f7f8fa;
+      --surface3: #eef0f4;
       --border: rgba(0, 20, 50, 0.08);
       --accent: #7c3aed;
       --accent-dim: #6d28d9;
       --accent-soft: rgba(124, 58, 237, 0.12);
       --success: #1a9960;
       --success-soft: rgba(26, 153, 96, 0.08);
+      --warn: #c89520;
+      --warn-soft: rgba(200, 149, 32, 0.08);
       --danger: #d63636;
       --text: #1a1e26;
       --text-dim: #4a5568;
       --text-muted: #8896a6;
-      --shadow-card: 0 8px 32px rgba(0, 30, 80, 0.06);
-      --grid-line: rgba(0, 0, 0, 0.03);
-      --thead-bg: #f0f2f6;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 16px;
     }
 
     * {
@@ -75,47 +75,29 @@
     }
 
     body {
-      background: var(--bg-gradient);
+      background: var(--bg);
       color: var(--text);
       font-family: var(--body);
       min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
     }
 
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      pointer-events: none;
-      background:
-        linear-gradient(var(--grid-line) 1px, transparent 1px),
-        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-      background-size: 52px 52px;
-      -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 65%);
-      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 65%);
-    }
+
 
     header {
-      padding: 1.35rem 2rem 1.15rem;
+      padding: 1.75rem 2rem 1.5rem;
       border-bottom: 1px solid var(--border);
-      background: rgba(8, 11, 16, 0.78);
-      backdrop-filter: blur(18px);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    [data-theme="light"] header {
-      background: rgba(255, 255, 255, 0.85);
+      background: var(--surface);
     }
 
     .header-inner {
-      max-width: 1320px;
+      max-width: 1400px;
       margin: 0 auto;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 1.1rem;
+      gap: 1rem;
       flex-wrap: wrap;
     }
 
@@ -132,100 +114,96 @@
     }
 
     .brand-mark {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      display: grid;
-      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, var(--accent), #c4b5fd);
       color: #15100a;
       text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-family: var(--sans);
+      font-size: 1.15rem;
       font-weight: 800;
-      background: linear-gradient(135deg, #c4b5fd, #a78bfa, #7c3aed);
+      box-shadow: 0 8px 26px rgba(167, 139, 250, 0.2);
     }
 
     .header-badge {
-      font-size: 0.65rem;
+      display: inline-flex;
+      background: var(--accent-soft);
+      border: 1px solid rgba(167, 139, 250, 0.3);
+      border-radius: 999px;
+      padding: 0.25rem 0.7rem;
+      font-size: 0.68rem;
+      font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--text-dim);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 0.2rem 0.6rem;
-      display: inline-flex;
-      margin-bottom: 0.12rem;
+      color: var(--accent);
     }
 
     h1 {
       font-family: var(--sans);
-      font-size: clamp(1.3rem, 1.8vw, 1.75rem);
+      font-size: 1.5rem;
       font-weight: 800;
-      line-height: 1.08;
-      margin: 0;
+      letter-spacing: -0.02em;
     }
 
     .header-sub {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      line-height: 1.35;
-      margin-top: 0.05rem;
+      color: var(--text-dim);
+      font-size: 0.82rem;
     }
 
-    .header-right {
+    .header-right,
+    .header-nav {
       display: flex;
       align-items: center;
       gap: 0.75rem;
       flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-
-    .header-nav {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      flex-wrap: wrap;
-      row-gap: 0.5rem;
     }
 
     .nav-link,
     .theme-toggle {
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
       background: var(--surface2);
       color: var(--text-dim);
       text-decoration: none;
       font-size: 0.75rem;
       font-weight: 700;
-      transition: all 0.2s;
-    }
-
-    [data-theme="light"] .nav-link,
-    [data-theme="light"] .theme-toggle {
-      background: rgba(0, 0, 0, 0.04);
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
     }
 
     .nav-link {
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      padding: 0.5rem 0.8rem;
+      padding: 0.45rem 0.75rem;
     }
 
     .theme-toggle {
       width: 38px;
       height: 38px;
+      border: 1px solid var(--border);
       border-radius: 50%;
-      display: grid;
-      place-items: center;
+      background: var(--surface2);
+      color: var(--text-dim);
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .nav-link:hover,
-    .nav-link.active,
-    .theme-toggle:hover {
+    .nav-link.active {
       border-color: var(--accent);
       color: var(--accent);
       background: var(--accent-soft);
+    }
+
+    .theme-toggle:hover {
+      color: var(--accent);
+      border-color: var(--accent);
     }
 
     [data-theme="dark"] .icon-sun {
@@ -237,18 +215,17 @@
     }
 
     main {
-      max-width: 1320px;
+      max-width: 1400px;
       margin: 0 auto;
-      padding: 1.7rem 2rem 2.1rem;
+      padding: 1.75rem 2rem 3rem;
     }
 
     .panel {
       border: 1px solid var(--border);
-      border-radius: 18px;
+      border-radius: var(--radius-lg);
       background: var(--surface);
-      box-shadow: var(--shadow-card);
       padding: 1.25rem;
-      margin-bottom: 1.1rem;
+      margin-bottom: 1.25rem;
     }
 
     .section-title {
@@ -267,7 +244,7 @@
       width: 3px;
       height: calc(100% - 0.3rem);
       border-radius: 999px;
-      background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+      background: linear-gradient(180deg, var(--accent), #c4b5fd);
     }
 
     .controls {
@@ -291,7 +268,6 @@
     .select {
       background: var(--surface2);
       color: var(--text);
-      min-width: 260px;
       flex: 1 1 280px;
     }
 
@@ -302,8 +278,13 @@
 
     .btn-primary {
       border: 0;
-      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      background: linear-gradient(135deg, var(--accent), #c4b5fd);
       color: #1a0e00;
+      box-shadow: 0 4px 16px rgba(167, 139, 250, 0.2);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
     }
 
     .btn-secondary {
@@ -312,9 +293,9 @@
     }
 
     .btn-upload {
-      border: 1px solid rgba(167, 139, 250, 0.45);
-      background: linear-gradient(135deg, #ddd6fe, var(--accent));
-      color: #22123d;
+      border: 1px solid var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
     }
 
     .btn:disabled {
@@ -323,18 +304,13 @@
     }
 
     .drop-zone {
-      border: 1.4px dashed rgba(255, 255, 255, 0.15);
-      border-radius: 14px;
-      padding: 1rem;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
       cursor: pointer;
-      background: rgba(255, 255, 255, 0.02);
-      transition: all 0.2s;
+      background: var(--surface2);
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
       margin-bottom: 0.9rem;
-    }
-
-    [data-theme="light"] .drop-zone {
-      border-color: var(--border);
-      background: rgba(0, 0, 0, 0.01);
     }
 
     .drop-zone:hover,
@@ -409,10 +385,10 @@
     .batch-panel {
       display: none;
       border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--surface2);
-      padding: 0.85rem 1rem;
-      margin-bottom: 0.9rem;
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
     }
 
     .batch-panel-title {
@@ -514,31 +490,33 @@
     }
 
     .stats {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(120px, 1fr));
-      gap: 0.6rem;
-      margin-bottom: 0.85rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
     }
 
     .stat {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 0.65rem;
+      flex: 1;
+      min-width: 140px;
       background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
     }
 
     .stat-label {
+      font-size: 0.65rem;
       color: var(--text-muted);
-      font-size: 0.64rem;
       text-transform: uppercase;
-      letter-spacing: 0.07em;
-      font-weight: 700;
+      letter-spacing: 0.08em;
+      font-weight: 800;
     }
 
     .stat-value {
-      font-family: var(--mono);
-      font-size: 1.35rem;
+      font-size: 1.55rem;
       font-weight: 700;
+      font-family: var(--mono);
       margin-top: 0.15rem;
     }
 
@@ -600,7 +578,7 @@
 
     .table-wrap {
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: var(--radius-lg);
       overflow: hidden;
       display: none;
     }
@@ -621,7 +599,6 @@
       position: sticky;
       top: 0;
       z-index: 2;
-      background: var(--thead-bg);
     }
 
     th,
@@ -635,16 +612,22 @@
       text-overflow: ellipsis;
     }
 
-    th {
-      color: var(--text-muted);
+    thead th {
+      background: var(--surface);
+      color: var(--text-dim);
+      font-weight: 700;
+      text-align: left;
+      padding: 0.55rem 0.7rem;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border);
       font-size: 0.65rem;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
     }
 
     footer {
       text-align: center;
-      padding: 1.25rem 2rem;
+      padding: 1.5rem 2rem;
       color: var(--text-muted);
       font-size: 0.7rem;
       border-top: 1px solid var(--border);
@@ -679,7 +662,7 @@
       }
 
       .stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        flex-direction: column;
       }
 
       .audit-grid {
@@ -774,8 +757,7 @@
         <select class="select" id="templateSelect"></select>
         <button type="button" class="btn btn-upload" id="uploadBtn">Upload Sheet</button>
         <button class="btn btn-primary" id="processBtn" onclick="processFile()" disabled>Format File</button>
-        <button class="btn btn-secondary" id="downloadBtn" onclick="void downloadOutput()" disabled>Download
-          XLSX</button>
+        <button class="btn btn-secondary" id="downloadBtn" onclick="void downloadOutput()" disabled>Export Batches</button>
       </div>
 
       <div class="drop-zone" id="dropZone">
@@ -1327,8 +1309,9 @@
       });
     }
 
-    function canonicalHeader(text) {
-      return String(text || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+    function normalizeHeader(text) {
+      if (!text) return '';
+      return String(text).toLowerCase().replace(/[\s._-]+/g, '').replace(/[^a-z0-9]/g, '').trim();
     }
 
     // alias — used throughout mapping logic
@@ -1695,59 +1678,6 @@
         '.',
         'ok'
       );
-    }
-
-    async function downloadBatches() {
-      if (!outputRows.length) return;
-
-      const batchInput = document.getElementById('batchSize');
-      const bSize = parseInt(batchInput.value) || 100;
-      const totalLeads = outputRows.length;
-
-      const numBatches = Math.ceil(totalLeads / bSize);
-      if (numBatches > 10) {
-        if (!confirm(`This will download ${numBatches} separate CSV files. Continue?`)) return;
-      }
-
-      const template = TEMPLATES[document.getElementById('templateSelect').value];
-      const headers = template.outputOrder;
-      const dateStr = new Date().toISOString().slice(0, 10);
-      const safeName = template.label.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
-
-      setStatus(`Generating ${numBatches} batches...`, '');
-
-      for (let i = 0; i < totalLeads; i += bSize) {
-        const currentBatchNum = Math.floor(i / bSize) + 1;
-        const chunk = outputRows.slice(i, i + bSize);
-
-        // Exact 100 leads + 1 header logic
-        const aoa = [headers];
-        for (let j = 0; j < chunk.length; j++) {
-          const lead = chunk[j];
-          aoa.push(headers.map(h => lead[h] || ''));
-        }
-
-        const ws = XLSX.utils.aoa_to_sheet(aoa);
-        const csv = XLSX.utils.sheet_to_csv(ws);
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-
-        const fileName = `${safeName}_Batch_${currentBatchNum}_AutoEngage_${dateStr}.csv`;
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        setStatus(`Downloaded batch ${currentBatchNum} of ${numBatches}...`, '');
-
-        if (i + bSize < totalLeads) {
-          // Delay to ensure browser processes each download
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-      setStatus(`Success: Downloaded ${numBatches} files (${totalLeads} total leads).`, 'ok');
     }
 
     function escapeHtml(value) {
