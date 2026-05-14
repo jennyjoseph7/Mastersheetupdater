@@ -153,7 +153,7 @@ def manage_hashtags(campaign_hashtags: typing.Union[list[str], str], previous_ha
 
 
 @gryd.is_a_task(function_name="create_campaign_image", job_param='job', logger_param='logger')
-def create_campaign_image(rooftop_type: str, template_id: str, base_png: str, campaign_title: str, campaign_hook: str, campaign_message: str, campaign_hashtags: typing.Union[list[str], str], campaign_caption: str, offer: dict = None, debug: bool = False, job: dict = None, logger: hp.logging.Logger = None):
+def create_campaign_image(rooftop_type: str, template_id: str, base_png: str, campaign_title: str = None, campaign_hook: str = None, campaign_message: str = None, campaign_hashtags: typing.Union[list[str], str] = None, campaign_caption: str = None, offer: dict = None, debug: bool = False, job: dict = None, logger: hp.logging.Logger = None):
     """
     # Generate a JSON payload template for the `create_campaign_image` task, including the args, kwargs, and help text.
     # This can be used to drive API docs, CLIs, or visual tools.
@@ -182,11 +182,11 @@ def create_campaign_image(rooftop_type: str, template_id: str, base_png: str, ca
     - rooftop_type (str): Type of rooftop, e.g., 'showroom', 'workshop', or 'buyback_center'.
     - template_id (str): The ID of the template to use for image generation.
     - base_png (str): URL or path to the base PNG image.
-    - campaign_title (str): Title of the campaign.
-    - campaign_hook (str): Campaign hook or tagline.
-    - campaign_message (str): Campaign message content.
-    - campaign_hashtags (str or list[str]): Hashtags to use for the campaign, as comma/pipe/space/semicolon separated string or list.
-    - campaign_caption (str): Caption to appear with the campaign image.
+    - campaign_title (str): (Optional) Title of the campaign.
+    - campaign_hook (str): (Optional) Campaign hook or tagline.
+    - campaign_message (str): (Optional) Campaign message content.
+    - campaign_hashtags (str or list[str]): (Optional) Hashtags to use for the campaign, as comma/pipe/space/semicolon separated string or list.
+    - campaign_caption (str): (Optional) Caption to appear with the campaign image.
 
     Optional Keyword Arguments:
     - offer (dict): (Optional) Offer information for the campaign.
@@ -229,11 +229,11 @@ def create_campaign_image(rooftop_type: str, template_id: str, base_png: str, ca
     campaign_hashtags = manage_hashtags(brand.get('hashtags') or [], previous_hashtags=campaign_hashtags)
     campaign_hashtags = manage_hashtags(rooftop.get('hashtags') or [], previous_hashtags=campaign_hashtags)
     campaign_details = {
-        "title": campaign_title,
-        "hook": campaign_hook,
-        "message": campaign_message,
+        "title": campaign_title or "",
+        "hook": campaign_hook or "",
+        "message": campaign_message or "",
         "hashtags": campaign_hashtags,
-        "caption": campaign_caption
+        "caption": campaign_caption or ""
     }
     return do_the_merge(template_id, base_png, template, brand, rooftop=rooftop, dealership=dealership, campaign_details=campaign_details, offer=offer, debug=debug, logger=logger)
 
@@ -1302,9 +1302,14 @@ if __name__ == "__main__":
     parser.add_argument("--kwargs", type=str, required=True, help="kwargs to pass to the function")
     args = parser.parse_args()
     kwargs = {}
+    prev = ""
     for a in args.kwargs.split(','):
+        if '=' not in a:
+            prev += a
+            continue
         k = a.strip().split('=')
-        kwargs[k[0]] = k[1]
+        kwargs[k[0]] = prev + k[1]
+        prev = ""
     print(f"kwargs: {kwargs}")
     if args.function == "testing_deepak":
         print(optimize_prompt(**kwargs))
