@@ -1177,7 +1177,7 @@
         name: 'Icare',
         workflow: 'Post-Sales Feedback Reminder',
         mode: 'post-sales',
-        leadColumns: ['campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'reg_number', 'vin_number'],
+        leadColumns: ['campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'reg_number', 'vin_number', 'showroom_code'],
         sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail']
       },
       pressana_post_service_feedback: {
@@ -1205,7 +1205,7 @@
         name: 'Suryabala Honda',
         workflow: 'Post-Sales Service Reminder',
         mode: 'post-sales',
-        leadColumns: ['reg_number', 'campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'next_service_due', 'last_service_type'],
+        leadColumns: ['reg_number', 'campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'next_service_due', 'last_service_type', 'vin_number'],
         sessionColumns: ['status', 'summary', 'duration', 'start_time', 'call_recording', 'sentiment_score', 'disposition_detail']
       },
 
@@ -1309,6 +1309,7 @@
         { header: 'PERSON_NAME', key: 'person_name' },
         { header: 'PHONE_NUMBER', key: 'phone_number' },
         { header: 'ID', key: 'lead_tags' },
+        { header: 'SHOWROOM_CODE', key: 'showroom_code' },
         { header: 'SUMMARY', key: 'summary' },
         { header: 'STATUS', key: 'session_status' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition' },
@@ -1350,6 +1351,7 @@
         { header: 'PHONE_NUMBER', key: 'phone_number' },
         { header: 'VEHICLE_MODEL', key: 'vehicle_model' },
         { header: 'REG_NUMBER', key: 'reg_number' },
+        { header: 'VIN_NUMBER', key: 'vin_number' },
         { header: 'SUMMARY', key: 'summary' },
         { header: 'STATUS', key: 'session_status' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition' },

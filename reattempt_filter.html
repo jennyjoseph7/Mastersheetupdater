@@ -1205,7 +1205,12 @@
           <span class="control-label">Dealership</span>
           <div class="select-wrapper">
             <select class="custom-select" id="dealershipSelect">
-              <option value="anant_cars">Anant Cars (Mahindra)</option>
+              <optgroup label="Pre-Sales">
+                <option value="anant_cars">Anant Cars (Mahindra)</option>
+              </optgroup>
+              <optgroup label="Post-Sales">
+                <option value="post_sales_generic">Post-Sales (Service Reminder / Feedback)</option>
+              </optgroup>
             </select>
           </div>
         </div>
@@ -1292,26 +1297,13 @@
       <!-- Included Table (Re-Attempt List) -->
       <div class="table-wrapper" id="includedTableWrapper">
         <div class="table-header">
-          <div class="table-title included">Re-Attempt List (AutoEngage Format)</div>
+          <div class="table-title included">Re-Attempt List</div>
           <div class="table-caption" id="includedCaption">0 leads</div>
         </div>
         <div class="table-scroll">
           <table id="includedTable">
-            <thead>
-              <tr>
-                <th>showroom_code</th>
-                <th>region_name</th>
-                <th>dealership_id</th>
-                <th>person_name</th>
-                <th>phone_number</th>
-                <th>interested_vehicle_name</th>
-                <th>interested_vehicle_brand_name</th>
-                <th>seating_capacity_preference</th>
-                <th>city</th>
-                <th>pincode</th>
-                <th>subdivision_name</th>
-                <th>alt_phone_number_2</th>
-              </tr>
+            <thead id="includedHead">
+              <tr id="includedHeadRow"></tr>
             </thead>
             <tbody id="includedBody"></tbody>
           </table>
@@ -1369,13 +1361,22 @@
     const DEALERSHIPS = {
       anant_cars: {
         name: 'Anant Cars',
+        type: 'pre-sales',
         showroom_code: '',
         region_name: 'India',
         dealership_id: 'anant-cars-india',
         brand: 'Mahindra',
         subdivision_name: '',
       },
-      // Future dealerships can be added here
+      post_sales_generic: {
+        name: 'Post-Sales (Generic)',
+        type: 'post-sales',
+        showroom_code: '',
+        region_name: '',
+        dealership_id: '',
+        brand: '',
+        subdivision_name: '',
+      },
     };
 
     // ─── DISPOSITION LOGIC ───────────────────────────────────────────────────────
@@ -1491,7 +1492,7 @@
     }
 
     function detectDisposition(row) {
-      return findCol(row, ['disposition', 'call_disposition']);
+      return findCol(row, ['disposition', 'call_disposition', 'disposition_details', 'updated_disposition']);
     }
 
     function detectSummary(row) {
@@ -1503,7 +1504,7 @@
     }
 
     function detectModel(row) {
-      return findCol(row, ['model', 'model_preference', 'interested_vehicle_name', 'vehicle']);
+      return findCol(row, ['model', 'model_preference', 'interested_vehicle_name', 'vehicle', 'vehicle_model']);
     }
 
     function detectSeating(row) {
@@ -1727,6 +1728,8 @@
               subdivision_name: dealership.subdivision_name,
               source_date: formatRankDate(bestRow),
               reattempt_reason: hasReattemptableConnected ? detectSummary(reattemptableConnectedRow) : '',
+              // store original row for post-sales export
+              _row: bestRow,
             });
           }
         }
@@ -1805,31 +1808,78 @@
       summary.classList.add('slide-up');
     }
 
+    // ─── OUTPUT SCHEMAS ─────────────────────────────────────────────────────────
+    function getOutputSchema(dealershipKey) {
+      const dealership = DEALERSHIPS[dealershipKey];
+      if (dealership.type === 'post-sales') {
+        return {
+          headers: [
+            'phone_number', 'vehicle_model', 'status', 'summary',
+            'disposition_details', 'updated_disposition', 'call_date', 'campaign_id', 'sentiment_score',
+            'recordings', 'duration', 'session_id', 'interested', 'number_of_attempts'
+          ],
+          mapRow: function (r) {
+            const row = r._row || {};
+            return [
+              r.phone,
+              detectModel(row),
+              detectOutcome(row),
+              detectSummary(row),
+              detectDisposition(row),
+              findCol(row, ['updated_disposition']),
+              detectCallDate(row),
+              findCol(row, ['campaign_id']),
+              findCol(row, ['sentiment_score', 'sentiment']),
+              findCol(row, ['recordings', 'call_recording']),
+              findCol(row, ['duration', 'recording_duration']),
+              findCol(row, ['session_id', 'last_session_id']),
+              findCol(row, ['interested']),
+              detectAttempts(row),
+            ];
+          }
+        };
+      }
+      // Default: pre-sales
+      return {
+        headers: [
+          'showroom_code', 'region_name', 'dealership_id', 'person_name',
+          'phone_number', 'interested_vehicle_name', 'interested_vehicle_brand_name',
+          'seating_capacity_preference', 'city', 'pincode', 'subdivision_name', 'alt_phone_number_2'
+        ],
+        mapRow: function (r) {
+          return [
+            r.showroom_code, r.region_name, r.dealership_id, r.full_name,
+            r.phone, r.model, r.brand, r.seating, r.city, r.pincode,
+            r.subdivision_name, ''
+          ];
+        }
+      };
+    }
+
     // ─── RENDER INCLUDED TABLE ────────────────────────────────────────────────────
     const PREVIEW_LIMIT = 200;
 
     function renderIncludedTable(data) {
+      const dealershipKey = document.getElementById('dealershipSelect').value;
+      const schema = getOutputSchema(dealershipKey);
+
+      // render headers
+      const headRow = document.getElementById('includedHeadRow');
+      headRow.innerHTML = schema.headers.map(h => '<th>' + esc(h) + '</th>').join('');
+
+      // render body
       const tbody = document.getElementById('includedBody');
       tbody.innerHTML = '';
+      const phoneIdx = schema.headers.indexOf('phone_number');
 
       const preview = data.slice(0, PREVIEW_LIMIT);
       for (const r of preview) {
         const tr = document.createElement('tr');
-        tr.title = `Selected from ${r.source_date || 'date unavailable'} across ${r.daysSeen} row(s)`;
-        tr.innerHTML = `
-          <td>${esc(r.showroom_code)}</td>
-          <td>${esc(r.region_name)}</td>
-          <td>${esc(r.dealership_id)}</td>
-          <td>${esc(r.full_name)}</td>
-          <td class="cell-phone">${esc(r.phone)}</td>
-          <td>${esc(r.model)}</td>
-          <td>${esc(r.brand)}</td>
-          <td>${esc(r.seating)}</td>
-          <td>${esc(r.city)}</td>
-          <td>${esc(r.pincode)}</td>
-          <td>${esc(r.subdivision_name)}</td>
-          <td></td>
-        `;
+        const cells = schema.mapRow(r);
+        tr.innerHTML = cells.map((v, i) => {
+          const cls = i === phoneIdx ? ' class="cell-phone"' : '';
+          return '<td' + cls + '>' + esc(String(v ?? '')) + '</td>';
+        }).join('');
         tbody.appendChild(tr);
       }
 
@@ -1876,36 +1926,19 @@
     function exportAutoEngage() {
       if (!includedLeads.length) return;
 
-      const headers = [
-        'showroom_code', 'region_name', 'dealership_id', 'person_name',
-        'phone_number', 'interested_vehicle_name', 'interested_vehicle_brand_name',
-        'seating_capacity_preference', 'city', 'pincode', 'subdivision_name', 'alt_phone_number_2'
-      ];
+      const dealershipKey = document.getElementById('dealershipSelect').value;
+      const schema = getOutputSchema(dealershipKey);
+      const dealership = DEALERSHIPS[dealershipKey];
 
-      const dataRows = [headers];
+      const dataRows = [schema.headers];
       for (const r of includedLeads) {
-        dataRows.push([
-          r.showroom_code,
-          r.region_name,
-          r.dealership_id,
-          r.full_name,
-          r.phone,
-          r.model,
-          r.brand,
-          r.seating,
-          r.city,
-          r.pincode,
-          r.subdivision_name,
-          '',   // alt_phone_number_2
-        ]);
+        dataRows.push(schema.mapRow(r));
       }
 
       const ws = XLSX.utils.aoa_to_sheet(dataRows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Re-Attempt List');
 
-      const dealershipKey = document.getElementById('dealershipSelect').value;
-      const dealership = DEALERSHIPS[dealershipKey];
       const dateStr = new Date().toISOString().slice(0, 10);
       const filename = `${dealership.name.replace(/\s+/g, '_')}_ReAttempt_${dateStr}.xlsx`;
 
@@ -1918,19 +1951,12 @@
     async function copyOutputData() {
       if (!includedLeads.length) return;
 
-      const headers = [
-        'showroom_code', 'region_name', 'dealership_id', 'person_name',
-        'phone_number', 'interested_vehicle_name', 'interested_vehicle_brand_name',
-        'seating_capacity_preference', 'city', 'pincode', 'subdivision_name', 'alt_phone_number_2'
-      ];
+      const dealershipKey = document.getElementById('dealershipSelect').value;
+      const schema = getOutputSchema(dealershipKey);
 
-      const lines = [headers.join('\t')];
+      const lines = [schema.headers.join('\t')];
       for (const r of includedLeads) {
-        const cols = [
-          r.showroom_code, r.region_name, r.dealership_id, r.full_name,
-          r.phone, r.model, r.brand, r.seating, r.city, r.pincode,
-          r.subdivision_name, '',
-        ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '));
+        const cols = schema.mapRow(r).map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '));
         lines.push(cols.join('\t'));
       }
       const tsv = lines.join('\n');
