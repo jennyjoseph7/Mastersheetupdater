@@ -52,6 +52,20 @@
             }
         },
         {
+            "name": "gender",
+            "type": "text",
+            "indexed": true,
+            "force_update": "default_agent_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "voice_agent",
+                    "default_agent_id",
+                    "gender"
+                ]
+            }
+        },
+        {
             "name": "languages",
             "type": "list",
             "list_type": "text",
@@ -93,7 +107,7 @@
             }
         },
         {
-            "name": "agent_id",
+            "name": "provider_agent_id",
             "type": "text",
             "indexed": true,
             "force_update": "default_agent_id",
@@ -102,7 +116,7 @@
                 "args": [
                     "voice_agent",
                     "default_agent_id",
-                    "agent_id"
+                    "provider_agent_id"
                 ]
             }
         },

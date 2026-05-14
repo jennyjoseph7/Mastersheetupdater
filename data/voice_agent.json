@@ -21,6 +21,12 @@
             "indexed": true
         },
         {
+            "name": "gender",
+            "type": "text",
+            "required": true,
+            "indexed": true
+        },
+        {
             "name": "languages",
             "type": "list",
             "list_type": "text",
@@ -96,7 +102,7 @@
             "default": "INR"
         },
         {
-            "name": "agent_id",
+            "name": "provider_agent_id",
             "type": "text",
             "indexed": true
         },

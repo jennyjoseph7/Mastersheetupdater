@@ -499,7 +499,7 @@ def get_valid_value(row, key):
     value = row.get(key)
     if not is_valid_value(row, key):
         return None
-    return value
+    return value.strip()
 
 def process_common_row(campaign_type, row, models, missing_reason = None, dealership_id = None, campaign_id = None, campaign_objective_id = None, audience_name = None, rooftop_type = None, rooftop_id = None, logger = None):
     logger = logger or mlogger
