@@ -10,6 +10,128 @@
             "name": "default_agent_id",
             "type": "text",
             "indexed": true
+        },
+        {
+            "name": "voice_provider_id",
+            "indexed": true,
+            "force_update": "default_agent_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "voice_agent",
+                    "default_agent_id",
+                    "voice_provider_id"
+                ]
+            }
+        },
+        {
+            "name": "voice_provider_name",
+            "indexed": true,
+            "force_update": "default_agent_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "voice_agent",
+                    "default_agent_id",
+                    "voice_provider_name"
+                ]
+            }
+        },
+        {
+            "name": "name",
+            "type": "text",
+            "indexed": true,
+            "force_update": "default_agent_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "voice_agent",
+                    "default_agent_id",
+                    "name"
+                ]
+            }
+        },
+        {
+            "name": "gender",
+            "type": "text",
+            "indexed": true,
+            "force_update": "default_agent_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "voice_agent",
+                    "default_agent_id",
+                    "gender"
+                ]
+            }
+        },
+        {
+            "name": "languages",
+            "type": "list",
+            "list_type": "text",
+            "indexed": true,
+            "force_update": "default_agent_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "voice_agent",
+                    "default_agent_id",
+                    "languages"
+                ]
+            }
+        },
+        {
+            "name": "default_language",
+            "type": "text",
+            "force_update": "default_agent_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "voice_agent",
+                    "default_agent_id",
+                    "default_language"
+                ]
+            }
+        },
+        {
+            "name": "accent",
+            "type": "text",
+            "force_update": "default_agent_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "voice_agent",
+                    "default_agent_id",
+                    "accent"
+                ]
+            }
+        },
+        {
+            "name": "provider_agent_id",
+            "type": "text",
+            "indexed": true,
+            "force_update": "default_agent_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "voice_agent",
+                    "default_agent_id",
+                    "provider_agent_id"
+                ]
+            }
+        },
+        {
+            "name": "language_code_map",
+            "type": "nested_object",
+            "force_update": "default_agent_id",
+            "default": {
+                "function": "get_from_model",
+                "args": [
+                    "voice_agent",
+                    "default_agent_id",
+                    "language_code_map"
+                ]
+            }
         }
     ]
 }

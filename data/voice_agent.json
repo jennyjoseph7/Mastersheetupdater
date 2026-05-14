@@ -21,6 +21,12 @@
             "indexed": true
         },
         {
+            "name": "gender",
+            "type": "text",
+            "required": true,
+            "indexed": true
+        },
+        {
             "name": "languages",
             "type": "list",
             "list_type": "text",
@@ -81,6 +87,11 @@
             "type": "text"
         },
         {
+            "name": "language_code_map",
+            "type": "nested_object",
+            "refers": "parents.voice_provider.language_code_map"
+        },
+        {
             "name": "royalty_per_second",
             "type": "number",
             "default": 0
@@ -91,7 +102,7 @@
             "default": "INR"
         },
         {
-            "name": "agent_id",
+            "name": "provider_agent_id",
             "type": "text",
             "indexed": true
         },

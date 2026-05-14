@@ -491,7 +491,11 @@
                 "assamese",
                 "punjabi",
                 "spanish",
-                "arabic"
+                "arabic",
+                "french",
+                "bahasa_indonesia",
+                "tagalog",
+                "portuguese"
             ]
         },
         {
@@ -644,43 +648,6 @@
             }
         },
         {
-            "name": "voice_id",
-            "type": "text",
-            "default": {
-                "function": "set_if_condition",
-                "args": [
-                    {
-                        "function": "get_from_model",
-                        "args": [
-                            "region_subdivision",
-                            "region_subdivision_id",
-                            "voice_id"
-                        ]
-                    },
-                    {
-                        "function": "set_if_condition",
-                        "args": [
-                            {
-                                "function": "get_from_model",
-                                "args": [
-                                    "region",
-                                    "region_id",
-                                    "voice_id"
-                                ]
-                            },
-                            null
-                        ],
-                        "kwargs": {
-                            "region_id": "~null"
-                        }
-                    }
-                ],
-                "kwargs": {
-                    "subdivision_id": "~null"
-                }
-            }
-        },
-        {
             "name": "voice_start_language",
             "type": "text",
             "default": {
@@ -717,39 +684,25 @@
                 }
             },
             "options": [
-                "Arabic",
-                "Bulgarian",
-                "Chinese",
-                "Croatian",
-                "Czech",
-                "Danish",
-                "Dutch",
-                "English",
-                "Filipino",
-                "Finnish",
-                "French",
-                "German",
-                "Greek",
-                "Hindi",
-                "Hungarian",
-                "Indonesian",
-                "Italian",
-                "Japanese",
-                "Korean",
-                "Malay",
-                "Norwegian",
-                "Polish",
-                "Portuguese (Brazil)",
-                "Portuguese",
-                "Romanian",
-                "Russian",
-                "Slovak",
-                "Spanish",
-                "Swedish",
-                "Tamil",
-                "Turkish",
-                "Ukrainian",
-                "Vietnamese"
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujarati",
+                "bengali",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic",
+                "french",
+                "bahasa_indonesia",
+                "tagalog",
+                "portuguese"
             ],
             "option_others": true
         },

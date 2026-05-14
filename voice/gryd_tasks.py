@@ -20,9 +20,6 @@ from communication.connectors.connector_whatsapp import post_contact_status
 
 from autocrm_db_helper import get_pg_connector
 
-from voice.providers.elevanlabs_tatatele import  session_active
-
-
 logger = hp.get_logger(__name__)
 
 
@@ -239,17 +236,6 @@ def trigger_voice_call(*args, **kwargs):
         session_data["agent_number"] = credentials.get("sender") 
     else:
         logger.warning(f"No credentials found for dealership_id {user_data.get('dealership_id')}, channel voice_phone")  
-    # else:
-    #     #temporary provider selection logic
-    #     provider = "tatatele"
-    #     logger.info(f"Using dealership_id: {user_data.get('dealership_id')} for provider mapping. {list(dealership_provider_map.keys())}")
-    #     if user_data.get("dealership_id") in list(dealership_provider_map.keys()):
-    #         provider = dealership_provider_map[user_data.get("dealership_id")][0]
-    #         session_data["agent_id"] = dealership_provider_map[user_data.get("dealership_id")][1]
-    #     #----------end-----------
-
-        #provider = user_data.get("provider_name", provider).replace("-", "").strip().lower()
-
 
     logger.info(f"Session for Voice Call: {session_data}")
 
@@ -278,12 +264,6 @@ def trigger_voice_call(*args, **kwargs):
     while time.time() < timeout:
         time.sleep(5)
 
-        if not session_active(session_data["session_id"]):
-            logger.info(f"Session not found or likely to be terminated already....")
-            return {"status": "success", "message": f"Call session ended."}
-        else:
-            logger.info(f"Call session is still active for session_id: {session_data['session_id']}: time elapsed: {time.time() - (timeout - 600):.2f} seconds")
-        
         with get_pg_connector() as pg:
             statuses = list(pg.list_order_by("contact_status", {"message_id": session_data["session_id"]}, order_by="created"))
             if not statuses:
@@ -485,6 +465,8 @@ def delete_extra_status(campaign_ids):
 if __name__ == "__main__":
     data = {'_is_testing': False,
     'ctas': ['book-test-drive'],
+    'mobile_number': '8850988794',
+
     'created': 1778671948.890422,
     'purpose': 'Book Test drive',
     'updated': 1778673652.450776,
@@ -571,7 +553,6 @@ if __name__ == "__main__":
     'provider_name': 'tata-tele',
     'template_message': None,
     'lead_id': 'vandana-shah-8401586512-vandana@iamdave.ai-dave-ai-india-00a0c150-b21f-328c-87f4-6d045edfcdf3',
-    'mobile_number': '8401586512',
     'customer_name': 'Vandana shah',
     'email': None,
     'lead_model': 'pre_sales_lead',
@@ -580,4 +561,11 @@ if __name__ == "__main__":
     'template_details': None}
 
 
-    list(trigger_voice_call(**{"user_data": data}))
+    gryd.create_async_task(
+        "trigger_voice_call",
+        config.AUTOCRM_VOICE_SERVICE_NAME,
+        args = [],
+        kwargs = {
+            "user_data": data
+        }
+    )
