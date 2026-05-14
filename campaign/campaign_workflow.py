@@ -626,7 +626,7 @@ def determine_campaign_next_action(
             "disposition_tag": disposition,
             "disposition_detail_tag": lead.get('disposition_detail'),
             "channel_identifier": channel_identifier
-        }, delay = delay)
+        })
         lead_model.update(lead_id, {
             "next_channel": None,
             "next_channel_identifier": None,
