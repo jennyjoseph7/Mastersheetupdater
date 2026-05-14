@@ -1167,11 +1167,11 @@
         sessionColumns: ['status', 'summary', 'duration', 'start_time', 'call_recording', 'sentiment_score', 'disposition_detail']
       },
       fortune_service: {
-        name: 'Fortune',
+        name: 'Fortune Toyota',
         workflow: 'Post-Sales Service Reminder',
         mode: 'post-sales',
         leadColumns: ['campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'reg_number', 'vin_number', 'next_service_due'],
-        sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail']
+        sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail', 'service_type']
       },
       icare_feedback: {
         name: 'Icare',
@@ -1289,21 +1289,25 @@
         { header: 'LOCATION', key: 'service_location' },
       ],
       fortune_service: [
+        { header: 'PERSON_NAME', key: 'person_name' },
         { header: 'PHONE_NUMBER', key: 'phone_number' },
         { header: 'VEHICLE_MODEL', key: 'vehicle_model' },
+        { header: 'REG_NUMBER', key: 'reg_number' },
+        { header: 'VIN_NUMBER', key: 'vin_number' },
         { header: 'SUMMARY', key: 'summary' },
         { header: 'STATUS', key: 'session_status' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition_detail' },
-        { header: 'DURATION', key: 'duration' },
+        { header: 'MANUAL_DISPOSITION', key: 'manual_disposition' },
         { header: 'CALL_DATE', key: 'call_date' },
         { header: 'SENTIMENT', key: 'sentiment_score' },
         { header: 'RECORDINGS', key: 'call_recording' },
         { header: 'DURATION', key: 'duration' },
         { header: 'CAMPAIGN_ID', key: 'campaign_id' },
-        { header: 'LAST_SESSION_ID', key: 'last_session_id' },
+        { header: 'SESSION_ID', key: 'last_session_id' },
         { header: 'INTERESTED', key: 'interested' },
-        { header: 'NUMBER_OF_ATTEMPTS', key: 'number_of_attempts' },
-        { header: 'AUTONGAGE_DISPOSITION', key: 'autongage_disposition' },
+        { header: 'SERVICE_TYPE', key: 'service_type' },
+        { header: 'NEXT_SERVICE_DATE', key: 'next_service_due' },
+        { header: 'NUMBER OF ATTEMPTS', key: 'number_of_attempts' },
       ],
       icare_feedback: [
         { header: 'PERSON_NAME', key: 'person_name' },
@@ -1698,7 +1702,8 @@
           sentiment: get(best, ['sentiment_score', 'sentiment', 'sentiment_label', 'score']),
           // duration must come from Sessions (File 2). Some exports only have a generic "duration".
           recordingDuration: get(best, ['duration', 'call_duration', 'recording_length', 'recording_time', 'audio_duration', 'duration', 'call_duration']),
-          lastSessionId: get(best, ['last_session_id', 'session_id', 'sessionid', 'id', 'call_id'])
+          lastSessionId: get(best, ['last_session_id', 'session_id', 'sessionid', 'id', 'call_id']),
+          serviceType: get(best, ['service_type', 'service_type_session'])
         };
       }
       return { map, groups };
@@ -1986,6 +1991,7 @@
             service_location: dealerKey === 'perfect_riders_service'
               ? extractPerfectRidersLocation(sess.summary)
               : '',
+            service_type: sess.serviceType || '',
             lead_row_id: get(row, ['id', 'lead_id', 'leadid', 'customer_id']),
             exclusion_flag: classification.terminal ? 'YES' : '',
             _matched: Boolean(sess.row),
