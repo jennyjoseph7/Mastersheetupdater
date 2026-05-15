@@ -54,12 +54,16 @@ def start_call_from_inbound(*args, **kwargs):
                 session_data["prompt"] = x.get('prompt')
                 break
     
-    credentials = None
+    credentials = {}
     with gryd_tasks.get_pg_connector() as pg:
-        credentials = list(pg.list("communication_credential", {"dealership_id": session_data.get("dealership_id"), "channel": "voice_phone"}))
-        credentials = hp.make_single(credentials, force=True)
+        campaign_data = hp.make_single(list(pg.list(session_data.get("campaign_model"), {"campaign_id": session_data.get("campaign_id")})), force=True)
+        logger.info(f"Campaign data retrieved in inbound call: {campaign_data.get('campaign_id')}, voice_agent_id: {campaign_data.get('voice_agent_id')}")
+        credentials = hp.make_single(list(pg.list("communication_credential", {"dealership_id": session_data.get("dealership_id"), "channel": "voice_phone"})), force=True)
+        credentials["bot_name"] = campaign_data.get("voice_agent_id") or credentials["bot_name"] if credentials else None
         logger.info(f"Provider credentials retrieved in inbound call: {credentials}")
+    #NOTE: get agent id from campaign data
 
+    
     if credentials:
         provider = credentials.get("provider_name", "tatatele").replace("-", "").strip().lower()
         session_data["agent_id"] = credentials.get("bot_name")
@@ -71,6 +75,8 @@ def start_call_from_inbound(*args, **kwargs):
         session_data["agent_number"] = credentials.get("sender") 
     else:
         logger.warning(f"No credentials found for dealership_id {session_data.get('dealership_id')}, channel voice_phone")  
+        return {"status": "error", "message": "No provider credentials found for this dealership and channel."}
+
 
 
     terminated = terminate_sessions_for_phone(customer_number, agent_number, exclude_session_id=session_data["session_id"])
