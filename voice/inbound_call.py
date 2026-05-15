@@ -56,9 +56,9 @@ def start_call_from_inbound(*args, **kwargs):
     
     credentials = {}
     with gryd_tasks.get_pg_connector() as pg:
-        campaign_data = hp.make_single(pg.list(session_data.get("campaign_model"), {"campaign_id": session_data.get("campaign_id")}), force=True)
-        logger.info(f"Campaign data retrieved in inbound call: {campaign_data.get("campaign_id")}, voice_agent_id: {campaign_data.get('voice_agent_id')}")
-        credentials = hp.make_single(pg.list("communication_credential", {"dealership_id": session_data.get("dealership_id"), "channel": "voice_phone"}), force=True)
+        campaign_data = hp.make_single(list(pg.list(session_data.get("campaign_model"), {"campaign_id": session_data.get("campaign_id")})), force=True)
+        logger.info(f"Campaign data retrieved in inbound call: {campaign_data.get('campaign_id')}, voice_agent_id: {campaign_data.get('voice_agent_id')}")
+        credentials = hp.make_single(list(pg.list("communication_credential", {"dealership_id": session_data.get("dealership_id"), "channel": "voice_phone"})), force=True)
         credentials["bot_name"] = campaign_data.get("voice_agent_id") or credentials["bot_name"] if credentials else None
         logger.info(f"Provider credentials retrieved in inbound call: {credentials}")
     #NOTE: get agent id from campaign data
