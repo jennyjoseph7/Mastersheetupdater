@@ -1628,6 +1628,19 @@
       return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
     }
 
+    function convertEpochToIST(val) {
+      if (!val) return '';
+      var num = typeof val === 'number' ? val : Number(String(val).trim());
+      if (!Number.isFinite(num) || num < 1000000000) return String(val).trim();
+      var ts = num < 10000000000000 ? num * 1000 : num;
+      var d = new Date(ts);
+      if (isNaN(d.getTime())) return String(val).trim();
+      var dd = String(d.getDate()).padStart(2, '0');
+      var mm = String(d.getMonth() + 1).padStart(2, '0');
+      var yyyy = d.getFullYear();
+      return dd + '/' + mm + '/' + yyyy;
+    }
+
     function normalizedText(value) {
       return clean(value).toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
     }
@@ -1960,17 +1973,29 @@
             dealer_code: get(row, ['workshop_code', 'workshop', 'location_code', 'dealer_code', 'dealer']),
             lead_tags: get(row, ['lead_tags', 'lead_tag', 'tags', 'tag', 'id', 'lead_id', 'leadid', 'customer_id']),
             next_service_due: get(row, ['next_service_due', 'service_due_date', 'next_due_date']),
-            last_service_date: get(row, [
-              'last_service_date',
-              'last_service_dt',
-              'last_service_done_date',
-              'last_service_done',
-              'last_service_on',
-              'last_service',
-              'service_date',
-              'service_done_date',
-              'service_completed_date'
-            ]),
+            last_service_date: dealerKey === 'perfect_riders_service'
+              ? convertEpochToIST(get(row, [
+                  'last_service_date',
+                  'last_service_dt',
+                  'last_service_done_date',
+                  'last_service_done',
+                  'last_service_on',
+                  'last_service',
+                  'service_date',
+                  'service_done_date',
+                  'service_completed_date'
+                ]))
+              : get(row, [
+                  'last_service_date',
+                  'last_service_dt',
+                  'last_service_done_date',
+                  'last_service_done',
+                  'last_service_on',
+                  'last_service',
+                  'service_date',
+                  'service_done_date',
+                  'service_completed_date'
+                ]),
             customer_score: get(row, ['customer_score', 'score']),
             odometer_reading: get(row, ['odometer_reading', 'odometer', 'kms']),
             last_service_type: get(row, ['last_service_type', 'service_type']),
