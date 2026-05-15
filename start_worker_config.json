@@ -40,7 +40,7 @@
             "name": "cron",
             "entry_point": "cron.py",
             "gryd_service": "AUTOCRM_CRON_SERVICE_NAME",
-            "parallel_threads": 1,
+            "parallel_threads": 3,
             "shutdown_time": 0
         },
         {

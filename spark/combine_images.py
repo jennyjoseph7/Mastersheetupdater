@@ -242,6 +242,8 @@ def replace_svg_text_by_id(svg_path: str, text_to_ids: dict, logger: hp.logging.
         else:
             text_to_replace = ""
         el = soup.find(id=id_)
+        if not el:
+            el = soup.find(attrs={"data-name": id_})
         if el:
             while len(list(el.children)) > 0:
                 cel = list(el.children)[0]

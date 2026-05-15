@@ -8,7 +8,7 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_VOICE_SERVICE_NAME, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,VOICE_START_TIME,VOICE_END_TIME,NON_VOICE_START_TIME,NON_VOICE_END_TIME,gryd, hp,AutocrmModel
+from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_VOICE_SERVICE_NAME, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,VOICE_START_TIME,VOICE_END_TIME,NON_VOICE_START_TIME,NON_VOICE_END_TIME,VOICE_MAX_QUEUE_LENGTH,NON_VOICE_MAX_QUEUE_LENGTH,gryd, hp,AutocrmModel
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
@@ -1613,10 +1613,11 @@ def fetch_leads(dealership_id, channel, batch_size):
         # return _leads
 
 @gryd.is_a_task(function_name="process_all_dealerships_for_voice")    
-def process_dealerships_voice(voice_batch_size=None,voice_start_time=None,voice_end_time=None):    
+def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,voice_start_time=None,voice_end_time=None):    
     mlogger.info("-------Process all dealerships for voice phone and trigger campaign next action-------")
     
-    max_threshold = voice_batch_size or VOICE_BATCH_SIZE
+    max_threshold= voice_max_queue_size or VOICE_MAX_QUEUE_LENGTH
+    batch_size = voice_batch_size or VOICE_BATCH_SIZE
     start_time = voice_start_time or VOICE_START_TIME
     end_time = voice_end_time or VOICE_END_TIME
     current_hour = hp.now(tz='Asia/Kolkata').hour  #TODO:later update tz according to the region
@@ -1637,8 +1638,9 @@ def process_dealerships_voice(voice_batch_size=None,voice_start_time=None,voice_
                     queue_length = get_queue_length(channel, dealership_id)
                     mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
                     if queue_length <= max_threshold:
-                        leads = next(fetch_leads(dealership_id, channel, max_threshold))
+                        leads = next(fetch_leads(dealership_id, channel, batch_size))
                         mlogger.info(f"[FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
+                        # mlogger.info(f"[FETCH] LEAD_DATA-->{json.dumps(leads,indent=4)}")
                         if not leads:
                             mlogger.info(f"[EMPTY] No leads for {dealership_id} - {channel}")
                             continue
@@ -1653,10 +1655,11 @@ def process_dealerships_voice(voice_batch_size=None,voice_start_time=None,voice_
                     mlogger.error(f"[ERROR] Failed for dealership={dealership_id}, channel={channel}")
                     
 @gryd.is_a_task(function_name="process_dealerships_non_voice")
-def process_dealerships_non_voice(batch_size=None,non_voice_start_time=None,non_voice_end_time=None):
+def process_dealerships_non_voice(batch_size=None,non_voice_max_queue_size=None,non_voice_start_time=None,non_voice_end_time=None):
     mlogger.info("-------Process all dealerships for non voice channels and trigger campaign next action-------")
 
-    max_threshold = batch_size or NON_VOICE_BATCH_SIZE
+    max_threshold= non_voice_max_queue_size or NON_VOICE_MAX_QUEUE_LENGTH
+    b_z = batch_size or NON_VOICE_BATCH_SIZE
     start_time = non_voice_start_time or NON_VOICE_START_TIME
     end_time = non_voice_end_time or NON_VOICE_END_TIME
     current_hour = hp.now(tz='Asia/Kolkata').hour #TODO:later update tz according to the region
@@ -1680,7 +1683,7 @@ def process_dealerships_non_voice(batch_size=None,non_voice_start_time=None,non_
                     queue_length = get_queue_length(channel, dealership_id)
                     mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
                     if queue_length <= max_threshold:
-                        leads = next(fetch_leads(dealership_id, channel, max_threshold))
+                        leads = next(fetch_leads(dealership_id, channel, b_z))
                         mlogger.info(f"[FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
                         if not leads:
                             mlogger.info(f"[EMPTY] No leads for {dealership_id} - {channel}")

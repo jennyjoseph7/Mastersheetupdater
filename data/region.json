@@ -1,166 +1,147 @@
 {
-  "timezone": "Asia/Kolkata",
-  "name": "region",
-  "model_type": "default",
-  "attributes": [
-    {
-      "name": "created",
-      "type": "number",
-      "auto_updater": true,
-      "default": {
-        "function": "now_ctime"
-      }
-    },
-    {
-      "name": "updated",
-      "type": "number",
-      "auto_updater": true,
-      "force_update": true,
-      "default": {
-        "function": "now_ctime"
-      }
-    },
-    {
-      "name": "region_name",
-      "type": "text",
-      "indexed": true
-    },
-    {
-      "name": "languages",
-      "type": "list",
-      "list_type": "text",
-      "option_others": true,
-      "ui_element": "tags",
-      "options": [
-        "english",
-        "hindi",
-        "kannada",
-        "telugu",
-        "tamil",
-        "malayalam",
-        "odia",
-        "bengali",
-        "marathi",
-        "gujarati",
-        "bengali",
-        "assamese",
-        "punjabi",
-        "spanish",
-        "arabic",
-        "french",
-        "bahasa_indonesia",
-        "tagalog",
-        "portuguese"
-      ]
-    },
-    {
-      "name": "country_name",
-      "type": "text"
-    },
-    {
-      "name": "currency",
-      "type": "text"
-    },
-    {
-      "name": "country_phone_code",
-      "type": "text",
-      "default": "+91"
-    },
-    {
-      "name": "region_level_guidelines",
-      "type": "text"
-    },
-    {
-      "name": "region_level_guardrails",
-      "type": "text"
-    },
-    {
-      "name": "timezones",
-      "type": "text"
-    },
-    {
-      "name": "date_format",
-      "type": "text",
-      "default": "%d-%m-%Y"
-    },
-    {
+    "timezone": "Asia/Kolkata",
+    "name": "region",
+    "model_type": "default",
+    "attributes": [
+        {
+            "name": "created",
+            "type": "number",
+            "auto_updater": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "updated",
+            "type": "number",
+            "auto_updater": true,
+            "force_update": true,
+            "default": {
+                "function": "now_ctime"
+            }
+        },
+        {
+            "name": "region_name",
+            "type": "text",
+            "indexed": true
+        },
+        {
+            "name": "languages",
+            "type": "list",
+            "list_type": "text",
+            "option_others": true,
+            "ui_element": "tags",
+            "options": [
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujarati",
+                "bengali",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic",
+                "french",
+                "bahasa_indonesia",
+                "tagalog",
+                "portuguese"
+            ]
+        },
+        {
+            "name": "country_name",
+            "type": "text"
+        },
+        {
+            "name": "currency",
+            "type": "text"
+        },
+        {
+            "name": "country_phone_code",
+            "type": "text",
+            "default": "+91"
+        },
+        {
+            "name": "region_level_guidelines",
+            "type": "text"
+        },
+        {
+            "name": "region_level_guardrails",
+            "type": "text"
+        },
+        {
+            "name": "timezones",
+            "type": "text"
+        },
+        {
+            "name": "date_format",
+            "type": "text",
+            "default": "%d-%m-%Y"
+        },
+        {
             "name": "discount_percentage",
             "type": "number",
             "default": 0
-    },
-    {
-      "auto_updater": true,
-      "default": {
-        "args": [
-          "region_name"
-        ],
-        "function": "name_to_id",
-        "kwargs": {
-          "attribute_join": "-",
-          "is_unique": true,
-          "separator": "-",
-          "case": "lower",
-          "skip_empty": true
+        },
+        {
+            "auto_updater": true,
+            "default": {
+                "args": [
+                    "region_name"
+                ],
+                "function": "name_to_id",
+                "kwargs": {
+                    "attribute_join": "-",
+                    "is_unique": true,
+                    "separator": "-",
+                    "case": "lower",
+                    "skip_empty": true
+                }
+            },
+            "name": "region_id",
+            "type": "uid",
+            "id": true
+        },
+        {
+            "name": "voice_agent_id",
+            "type": "text",
+            "required": false
+        },
+        {
+            "name": "voice_start_language",
+            "type": "text",
+            "default": "english",
+            "options": [
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujarati",
+                "bengali",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic",
+                "french",
+                "bahasa_indonesia",
+                "tagalog",
+                "portuguese"
+            ]
+        },
+        {
+            "name": "voice_first_message",
+            "type": "text",
+            "required": false
         }
-      },
-      "name": "region_id",
-      "type": "uid",
-      "id": true
-    },
-    {
-      "name" : "voice_agent_id",
-      "type" : "text",
-      "required":false
-    },
-    {
-      "name" : "voice_id",
-      "type" : "text",
-      "required":false
-    },
-    {
-      "name" : "voice_start_language",
-      "type" : "text",
-      "default":"English",
-      "options" : [
-          "Arabic",
-          "Bulgarian",
-          "Chinese",
-          "Croatian",
-          "Czech",
-          "Danish",
-          "Dutch",
-          "English",
-          "Filipino",
-          "Finnish",
-          "French",
-          "German",
-          "Greek",
-          "Hindi",
-          "Hungarian",
-          "Indonesian",
-          "Italian",
-          "Japanese",
-          "Korean",
-          "Malay",
-          "Norwegian",
-          "Polish",
-          "Portuguese (Brazil)",
-          "Portuguese",
-          "Romanian",
-          "Russian",
-          "Slovak",
-          "Spanish",
-          "Swedish",
-          "Tamil",
-          "Turkish",
-          "Ukrainian",
-          "Vietnamese"
-      ]
-    },
-    {
-      "name" : "voice_first_message",
-      "type" : "text",
-      "required":false
-    }
-  ]
+    ]
 }
