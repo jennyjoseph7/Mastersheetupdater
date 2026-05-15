@@ -48,7 +48,7 @@ function print_worker_git_info() {
 
         IFS="|" read sha author date message <<< "$commit"
 
-	echo -e "SHA: $sha\nAUTHOR: $author\nDATE: $date\nMESSAGE: $message" > "$worker/commit.txt"
+	echo -e "SHA: $sha\nAUTHOR: $author\nDATE: $date\nMESSAGE: $message" > "$worker/version.sha"
 
         echo "$date|$worker|$sha|$author|$message"
 
