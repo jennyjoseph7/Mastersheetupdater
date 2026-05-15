@@ -1663,6 +1663,17 @@
           Process Both Files
         </button>
         <div class="control-group">
+          <span class="control-label">Dealership</span>
+          <div class="lang-select-wrapper">
+            <select class="lang-select" id="dealerSelect" onchange="handleDealerChange()">
+              <option value="anant_cars">Anant Cars</option>
+              <option value="chennai_ev">ChennaiEV</option>
+              <option value="fortune_hyryder">Fortune Hyryder</option>
+              <option value="fortune_honda">Fortune Honda</option>
+            </select>
+          </div>
+        </div>
+        <div class="control-group">
           <span class="control-label">Lead ID</span>
           <input type="number" class="lead-id-input" id="leadIdStart" placeholder="e.g. 8173" min="1">
         </div>
@@ -1775,34 +1786,10 @@
           <div class="table-caption" id="tableCaption">0 rows</div>
         </div>
         <div class="table-scroll">
-          <table id="outputTable">
-            <thead>
-              <tr>
-                <th>Lead_ID</th>
-                <th class="th-sortable" data-sort-key="full_name" onclick="toggleSort('full_name')">Full_Name</th>
-                <th class="th-sortable" data-sort-key="phone" onclick="toggleSort('phone')">Phone</th>
-                <th>City</th>
-                <th>Pincode</th>
-                <th>Language</th>
-                <th>Lead_Source</th>
-                <th>Cohort</th>
-                <th>Campaign_ID</th>
-                <th>Last_Session_ID</th>
-                <th>Call Triggered</th>
-                <th>Outcome</th>
-                <th class="th-sortable" data-sort-key="disposition" onclick="toggleSort('disposition')">Disposition</th>
-                <th>SUMMARY</th>
-                <th>Updated SUMMARY</th>
-                <th>Conversion</th>
-                <th>Call_Date</th>
-                <th>No. of Attempts</th>
-                <th>SENTIMENT</th>
-                <th>Recordings</th>
-                <th>Model</th>
-                <th>Seating</th>
-                <th>Exclusion_Flag</th>
-              </tr>
-            </thead>
+            <table id="outputTable">
+              <thead>
+                <tr id="outputHead"></tr>
+              </thead>
             <tbody id="outputBody"></tbody>
           </table>
         </div>
@@ -1824,7 +1811,6 @@
                 <th>DISPOSITION_DETAILS</th>
                 <th>LOCATION</th>
                 <th>CALL_DATE</th>
-                <th>ANANTCARS CRE REMARKS</th>
               </tr>
             </thead>
             <tbody id="convertedBody"></tbody>
@@ -1847,7 +1833,6 @@
                 <th>VEHICLE_MODEL</th>
                 <th>CALL_DATE</th>
                 <th>DISPOSITION_DETAILS</th>
-                <th>ANANTCARS CRE REMARKS</th>
               </tr>
             </thead>
             <tbody id="testDriveBody"></tbody>
@@ -1917,6 +1902,7 @@
           { label: 'Campaign ID', candidates: ['campaign_id'] },
           { label: 'Lead source', candidates: ['lead_source'] },
           { label: 'Summary detail', candidates: ['disposition_detail'] },
+          { label: 'Lead summary', candidates: ['lead_summary'] },
           { label: 'Model', candidates: ['model_preference', 'interested_vehicle_name'] },
           { label: 'Cohort', candidates: ['campaign_objective_name'] },
           { label: 'Last Session ID', candidates: ['last_session_id'] },
@@ -1934,6 +1920,66 @@
     const TERMINAL_THRESHOLD = BUSINESS_CONFIG.terminalThreshold;
     const CONNECTED_SET = new Set(BUSINESS_CONFIG.connectedDispositions);
     const NOT_CONNECTED_SET = new Set(BUSINESS_CONFIG.notConnectedDispositions);
+
+    // ─── DEALER CONFIGS ────────────────────────────────────────────────────────────
+    const COMMON_COLUMNS = [
+      { header: 'Lead_Id', key: 'lead_id' },
+      { header: 'Full_Name', key: 'full_name' },
+      { header: 'Phone', key: 'phone' },
+      { header: 'City', key: 'city' },
+      { header: 'PIncode', key: 'pincode' },
+      { header: 'Language', key: 'language' },
+      { header: 'Lead_Source', key: 'lead_source' },
+      { header: 'Cohort', key: 'cohort' },
+      { header: 'Campaign_ID', key: 'campaign_id' },
+      { header: 'Last_session_id', key: 'last_session_id' },
+      { header: 'Call_Triggered', key: 'call_triggered' },
+      { header: 'Outcome', key: 'outcome' },
+      { header: 'Disposition', key: 'disposition' },
+      { header: 'Summary', key: 'summary' },
+      { header: 'Disposition_detail', key: 'disposition_detail' },
+      { header: 'Manual_Disposition_detail', key: 'manual_disposition_detail' },
+      { header: 'Call_Date', key: 'call_date' },
+      { header: 'Number_of_attempts', key: 'num_attempts' },
+      { header: 'Sentiment', key: 'sentiment' },
+      { header: 'Recordings', key: 'recordings' },
+      { header: 'Model', key: 'model' },
+      { header: 'Seating', key: 'seating' },
+    ];
+
+    const DEALER_CONFIGS = {
+      anant_cars:      { name: 'Anant Cars',      summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
+      chennai_ev:      { name: 'ChennaiEV',        summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
+      fortune_hyryder: { name: 'Fortune Hyryder',  summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
+      fortune_honda:   { name: 'Fortune Honda',    summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
+      default:         { name: 'Default',          summarySource: 'disposition_detail', columns: COMMON_COLUMNS },
+    };
+
+    function getActiveDealerConfig() {
+      var key = document.getElementById('dealerSelect').value;
+      return DEALER_CONFIGS[key] || DEALER_CONFIGS.default;
+    }
+
+    function handleDealerChange() {
+      var cfg = getActiveDealerConfig();
+      document.getElementById('leadCols').textContent = cfg.summarySource === 'lead_summary'
+        ? 'person_name · phone_number · lead_summary · campaign_id · disposition · disposition_detail · updated'
+        : 'person_name · phone_number · campaign_id · disposition · disposition_detail · updated';
+      setStatus('globalStatus', cfg.name + ' selected.', '');
+      renderTableHeader();
+      if (processedData.length) renderTable(processedData);
+    }
+
+    function renderTableHeader() {
+      var cfg = getActiveDealerConfig();
+      var head = document.getElementById('outputHead');
+      head.innerHTML = cfg.columns.map(function(col) {
+        if (col.key === 'full_name') return '<th class="th-sortable" data-sort-key="full_name" onclick="toggleSort(\'full_name\')">' + esc(col.header) + '</th>';
+        if (col.key === 'phone') return '<th class="th-sortable" data-sort-key="phone" onclick="toggleSort(\'phone\')">' + esc(col.header) + '</th>';
+        if (col.key === 'disposition') return '<th class="th-sortable" data-sort-key="disposition" onclick="toggleSort(\'disposition\')">' + esc(col.header) + '</th>';
+        return '<th>' + esc(col.header) + '</th>';
+      }).join('');
+    }
 
     function getDispositionPriority(d) {
       if (!d) return 1;
@@ -2498,10 +2544,10 @@
             console.warn(`[Pre-Sales Sync] Unknown disposition "${disp}" for phone ${phone} — mapped to "Unknown". Check for typos or add to DISPOSITION_PRIORITY / CONNECTED_SET / NOT_CONNECTED_SET.`);
           }
 
-          const exclusion = priority >= TERMINAL_THRESHOLD ? 'YES' : '';
-
-          let summary = row['disposition_detail'] || '';
-          if (!summary.trim()) summary = 'No Response';
+          var dealerCfg = getActiveDealerConfig();
+          var summarySrc = row[dealerCfg.summarySource] || row['disposition_detail'] || '';
+          var summary = summarySrc.trim() || 'No Response';
+          var dispositionDetail = row['disposition_detail'] || '';
 
           const callDateRaw = row['updated'] || '';
           const callDateObj = parseAutoEngageDate(callDateRaw);
@@ -2512,11 +2558,11 @@
           const seating = deriveSeating(seatingRaw, model);
 
           const sess = sessionMap[phone] || {};
-          const connectedSummary = outcome === 'Connected' ? String(summary || '').trim() : '';
 
           const leadId = startId > 0 ? `L-${startId + output.length}` : '';
           const formulaRow = startId > 0 ? startId + output.length : 2 + output.length;
 
+          var dispositionText = (row['disposition_detail'] || '').toLowerCase();
           output.push({
             lead_id: leadId,
             full_name: row['person_name'] || '',
@@ -2531,17 +2577,18 @@
             call_triggered: callTriggered,
             outcome,
             disposition: disp,
-            summary,
-            updated_summary: connectedSummary,
-            conversion: summary.toLowerCase().includes('converted') ? 'Yes' : '',
+            summary: summary,
+            disposition_detail: dispositionDetail,
+            manual_disposition_detail: '',
             call_date: callDate,
             num_attempts: `=COUNTIF(C:C;C${formulaRow})`,
             sentiment: sess.sentiment || '',
             recordings: sess.recording || '',
             model,
             seating,
-            exclusion_flag: exclusion,
-            session_summary: sess.summary || ''
+            exclusion_flag: priority >= TERMINAL_THRESHOLD ? 'YES' : '',
+            session_summary: sess.summary || '',
+            conversion: dispositionText.includes('converted') ? 'Yes' : ''
           });
         }
 
@@ -2629,48 +2676,48 @@
     const PREVIEW_LIMIT = 200;
     function renderTable(data) {
       data = getSortedData(data);
-      const tbody = document.getElementById('outputBody');
+      var cfg = getActiveDealerConfig();
+      var tbody = document.getElementById('outputBody');
       tbody.innerHTML = '';
-      const preview = data.slice(0, PREVIEW_LIMIT);
+      var preview = data.slice(0, PREVIEW_LIMIT);
 
-      for (const r of preview) {
-        const tr = document.createElement('tr');
-        const sentNum = parseFloat(r.sentiment);
-        const sentClass = isNaN(sentNum) ? '' :
-          sentNum >= 0.6 ? 'cell-sentiment-high' :
-            sentNum >= 0.3 ? 'cell-sentiment-mid' : 'cell-sentiment-low';
-
-        tr.innerHTML = `
-          <td>${esc(r.lead_id)}</td>
-          <td>${esc(r.full_name)}</td>
-          <td class="cell-phone">${esc(r.phone)}</td>
-          <td>${esc(r.city)}</td>
-          <td>${esc(r.pincode)}</td>
-          <td>${esc(r.language)}</td>
-          <td>${esc(r.lead_source)}</td>
-          <td>${esc(r.cohort)}</td>
-          <td>${esc(r.campaign_id)}</td>
-          <td>${esc(r.last_session_id)}</td>
-          <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${esc(r.call_triggered)}</td>
-          <td class="${r.outcome === 'Connected' ? 'cell-connected' : r.outcome === 'Unknown' ? 'cell-unknown' : 'cell-not-connected'}">${esc(r.outcome)}</td>
-          <td class="${getPrioClass(r.disposition)}">${esc(r.disposition)}</td>
-          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(r.summary)}</td>
-          <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${esc(r.updated_summary || '')}</td>
-          <td>${esc(r.conversion)}</td>
-          <td>${esc(r.call_date)}</td>
-          <td>${esc(String(r.num_attempts))}</td>
-          <td class="${sentClass}">${esc(r.sentiment)}</td>
-          <td>${r.recordings ? `<a class="cell-url" href="${esc(String(r.recordings).startsWith('http') || String(r.recordings).startsWith('s3:') ? r.recordings : 'https://' + r.recordings)}" target="_blank" title="${esc(r.recordings)}">Recording</a>` : ''}</td>
-          <td>${esc(r.model)}</td>
-          <td>${esc(r.seating)}</td>
-          <td class="${r.exclusion_flag ? 'cell-terminal' : ''}">${esc(r.exclusion_flag)}</td>
-        `;
+      for (var ri = 0; ri < preview.length; ri++) {
+        var r = preview[ri];
+        var tr = document.createElement('tr');
+        var colsHtml = '';
+        for (var ci = 0; ci < cfg.columns.length; ci++) {
+          var col = cfg.columns[ci];
+          var val = r[col.key];
+          if (col.key === 'phone') {
+            colsHtml += '<td class="cell-phone">' + esc(val) + '</td>';
+          } else if (col.key === 'call_recording' || col.key === 'recordings') {
+            var recording = val;
+            if (recording) {
+              var href = String(recording).startsWith('http') || String(recording).startsWith('s3:') ? recording : 'https://' + recording;
+              colsHtml += '<td><a class="cell-url" href="' + esc(href) + '" target="_blank" title="' + esc(recording) + '">Recording</a></td>';
+            } else {
+              colsHtml += '<td></td>';
+            }
+          } else if (col.key === 'outcome') {
+            var oc = r.outcome === 'Connected' ? 'cell-connected' : r.outcome === 'Unknown' ? 'cell-unknown' : 'cell-not-connected';
+            colsHtml += '<td class="' + oc + '">' + esc(r.outcome) + '</td>';
+          } else if (col.key === 'disposition') {
+            colsHtml += '<td class="' + getPrioClass(r.disposition) + '">' + esc(r.disposition) + '</td>';
+          } else if (col.key === 'sentiment') {
+            var sn = parseFloat(r.sentiment);
+            var sc = isNaN(sn) ? '' : sn >= 0.6 ? 'cell-sentiment-high' : sn >= 0.3 ? 'cell-sentiment-mid' : 'cell-sentiment-low';
+            colsHtml += '<td class="' + sc + '">' + esc(r.sentiment) + '</td>';
+          } else {
+            colsHtml += '<td>' + esc(val) + '</td>';
+          }
+        }
+        tr.innerHTML = colsHtml;
         tbody.appendChild(tr);
       }
 
-      const cap = data.length > PREVIEW_LIMIT
-        ? `Showing first ${PREVIEW_LIMIT} of ${data.length} rows`
-        : `${data.length} rows`;
+      var cap = data.length > PREVIEW_LIMIT
+        ? 'Showing first ' + PREVIEW_LIMIT + ' of ' + data.length + ' rows'
+        : data.length + ' rows';
       document.getElementById('tableCaption').textContent = cap;
       document.getElementById('tableWrapper').style.display = 'block';
       document.getElementById('tableWrapper').classList.add('fade-in');
@@ -2710,7 +2757,6 @@
           <td>${esc(disp)}</td>
           <td>${esc(loc)}</td>
           <td>${esc(r.call_date)}</td>
-          <td></td>
         `;
         tbody.appendChild(tr);
       }
@@ -2737,7 +2783,7 @@
         }
 
         const cols = [
-          r.phone, r.model, disp, loc, r.call_date, ''
+          r.phone, r.model, disp, loc, r.call_date
         ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '));
         lines.push(cols.join('\t'));
       }
@@ -2758,7 +2804,7 @@
 
     function renderTestDriveTable(data) {
       testDriveData = data.filter(r => {
-        const s = (r.summary || '').toLowerCase();
+        var s = (r.disposition_detail || r.summary || '').toLowerCase();
         return s.includes('purchased elsewhere') || s.includes('already purchased');
       });
 
@@ -2777,7 +2823,6 @@
           <td>${esc(r.model)}</td>
           <td>${esc(r.call_date)}</td>
           <td>${esc(r.summary)}</td>
-          <td></td>
         `;
         tbody.appendChild(tr);
       }
@@ -2791,7 +2836,7 @@
 
       for (const r of testDriveData) {
         const cols = [
-          r.phone, r.model, r.call_date, r.summary, ''
+          r.phone, r.model, r.call_date, r.summary
         ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '));
         lines.push(cols.join('\t'));
       }
@@ -2894,57 +2939,52 @@
       }
     }
 
-    // ─── EXPORT TO EXCEL ──────────────────────────────────────────────────────────
-    const HEADERS_TSV = ['Lead_ID', 'Full_Name', 'Phone', 'City', 'Pincode', 'Language', 'Lead_Source', 'Cohort', 'Campaign_ID',
-      'Last_Session_ID', 'Call Triggered', 'Outcome', 'Disposition', 'SUMMARY', 'Updated SUMMARY', 'Conversion', 'Call_Date',
-      'Number of attempts', 'SENTIMENT', 'Recordings', 'Model', 'Seating', 'Exclusion_Flag'];
+    function getDataRows(data, includeHeader) {
+      var cfg = getActiveDealerConfig();
+      var keys = cfg.columns.map(function(c) { return c.key; });
+      var rows = includeHeader !== false ? [cfg.columns.map(function(c) { return c.header; })] : [];
+      for (var ri = 0; ri < data.length; ri++) {
+        var r = data[ri];
+        var row = [];
+        for (var ki = 0; ki < keys.length; ki++) {
+          row.push(typeof r[keys[ki]] === 'string' ? r[keys[ki]].trim() : (r[keys[ki]] ?? ''));
+        }
+        rows.push(row);
+      }
+      return rows;
+    }
 
+    // ─── EXPORT TO EXCEL ──────────────────────────────────────────────────────────
     async function exportToExcel() {
       if (!processedData.length) return;
 
-      // ── DATA ROWS ────────────────────────────────────────────────────────────
-      const dataRows = [HEADERS_TSV];
-      for (const r of getSortedData(processedData)) {
-        dataRows.push([
-          r.lead_id, r.full_name, r.phone, r.city, r.pincode, r.language,
-          r.lead_source, r.cohort, r.campaign_id, r.last_session_id, r.call_triggered,
-          r.outcome, r.disposition, r.summary, r.updated_summary || '', r.conversion, r.call_date,
-          r.num_attempts, r.sentiment, r.recordings, r.model, r.seating, r.exclusion_flag,
-        ].map(v => typeof v === 'string' ? v.trim() : v));
-      }
-
-      const ws = XLSX.utils.aoa_to_sheet(dataRows);
-      const wb = XLSX.utils.book_new();
+      var dataRows = getDataRows(getSortedData(processedData), true);
+      var ws = XLSX.utils.aoa_to_sheet(dataRows);
+      var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Processed Leads");
-      const summaryRows = [[
-        'Full_Name', 'Phone', 'Outcome', 'Disposition', 'SUMMARY', 'Updated SUMMARY', 'Call_Date', 'Session_Summary'
+      var summaryRows = [[
+        'Full_Name', 'Phone', 'Outcome', 'Disposition', 'Disposition_detail', 'Manual_Disposition_detail', 'Summary', 'Call_Date', 'Session_Summary'
       ]];
-      for (const r of getSortedData(processedData)) {
+      for (var ri = 0; ri < processedData.length; ri++) {
+        var r = processedData[ri];
         summaryRows.push([
-          r.full_name, r.phone, r.outcome, r.disposition, r.summary, r.updated_summary || '', r.call_date, r.session_summary || ''
-        ].map(v => typeof v === 'string' ? v.trim() : v));
+          r.full_name, r.phone, r.outcome, r.disposition, r.disposition_detail || '', r.manual_disposition_detail || '', r.summary, r.call_date, r.session_summary || ''
+        ].map(function(v) { return typeof v === 'string' ? v.trim() : v; }));
       }
-      const summaryWs = XLSX.utils.aoa_to_sheet(summaryRows);
+      var summaryWs = XLSX.utils.aoa_to_sheet(summaryRows);
       XLSX.utils.book_append_sheet(wb, summaryWs, "Summary Source");
       wb.Workbook = wb.Workbook || {};
-      wb.Workbook.Sheets = wb.SheetNames.map((name, index) => ({ name, Hidden: index === 1 ? 1 : 0 }));
+      wb.Workbook.Sheets = wb.SheetNames.map(function(name, index) { return { name: name, Hidden: index === 1 ? 1 : 0 }; });
       XLSX.writeFile(wb, "JEJO_Disposition_Sync.xlsx");
     }
 
     // ─── COPY TO CLIPBOARD ────────────────────────────────────────────────────────
     async function copyData() {
       if (!processedData.length) return;
-      const lines = [];
-      for (const r of getSortedData(processedData)) {
-        const cols = [
-          r.lead_id, r.full_name, r.phone, r.city, r.pincode, r.language,
-          r.lead_source, r.cohort, r.campaign_id, r.last_session_id, r.call_triggered,
-          r.outcome, r.disposition, r.summary, r.updated_summary || '', r.conversion, r.call_date,
-          r.num_attempts, r.sentiment, r.recordings, r.model, r.seating, r.exclusion_flag,
-        ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '));
-        lines.push(cols.join('\t'));
-      }
-      const tsv = lines.join('\n');
+      var dataRows = getDataRows(getSortedData(processedData), false);
+      var tsv = dataRows.map(function(row) {
+        return row.map(function(v) { return String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '); }).join('\t');
+      }).join('\n');
 
       try {
         await navigator.clipboard.writeText(tsv);
@@ -3145,6 +3185,7 @@
       applyTheme(cur === 'dark' ? 'light' : 'dark');
     }
     applyTheme(localStorage.getItem('jejo-theme') || 'dark');
+    renderTableHeader();
   </script>
 </body>
 
