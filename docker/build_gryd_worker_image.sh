@@ -6,7 +6,6 @@ if [ -z $BUILD_CONF_FILE ];then
 else
     echo "Sourcing $BUILD_CONF_FILE"
     source $BUILD_CONF_FILE
-    # printenv
 fi
 
 WORKER_NAME=${WORKER_NAME:-0}
@@ -28,7 +27,6 @@ WORKING_DIR=$(pwd)
 WORKER_DIR=$(realpath ../)
 
 dir_status=-1
-create_sha_status=-1
 SHA=0
 
 
@@ -246,23 +244,6 @@ function main() {
         fi
 
         push_image_to_registry
-    fi
-
-    echo "Saving current image full path..."
-
-    if [ $WORKER_DOCKER_IMAGE_TAG == 0 ]; then
-        WORKER_DOCKER_IMAGE_TAG=$SHA
-    fi
-
-    FULL_IMAGE_NAME="$REGISTRY_LINK_PREFIX/$WORKER_NAME:$WORKER_DOCKER_IMAGE_TAG"
-
-    echo $FULL_IMAGE_NAME > /home/dave/autobot/current_image_tag.txt
-
-    if [ $? -ne 0 ]; then
-        echo "Failed to save image name"
-        exit 1
-    else
-        echo "Image saved: $FULL_IMAGE_NAME"
     fi
 }
 
