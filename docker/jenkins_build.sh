@@ -28,6 +28,38 @@ WORKER_DIR=$(realpath ../)
 dir_status=-1
 SHA=0
 
+
+# ===================== ADDED FUNCTION (AS REQUESTED) =====================
+function print_worker_git_info() {
+
+    printf "%-20s %-10s %-18s %-12s %s\n" "WORKER" "SHA" "AUTHOR" "DATE" "MESSAGE"
+    echo "-----------------------------------------------------------------------------------------------"
+
+    grep '"name"' start_worker_config.json \
+    | sed 's/.*"\(.*\)".*/\1/' \
+    | sort -u \
+    | while read worker; do
+
+        commit=$(git log -1 --date=short --pretty=format:"%H|%an|%ad|%s" -- "$worker")
+
+        [ -z "$commit" ] && continue
+
+        IFS="|" read sha author date message <<< "$commit"
+
+        echo "$(git log -1 --pretty=format:"%H - %an, %ad : %s" -- "$worker")" > "$worker/version.sha"
+
+        echo "$date|$worker|$sha|$author|$message"
+
+    done | sort -r | while IFS="|" read date worker sha author message; do
+
+        printf "%-20s %-10s %-18s %-12s %s\n" \
+            "$worker" "$sha" "$author" "$date" "$message"
+
+    done
+}
+# ========================================================================
+
+
 function validate_directory() {
     dir_name=$1
     echo "Validating directory $1"
@@ -52,6 +84,7 @@ function create_sha_file() {
         gbsha=`git log -1 --pretty=format:"%H:%aI"`
         echo $gbsha > version.sha
         export SHA=$sha
+	print_worker_git_info
     popd
 }
 
