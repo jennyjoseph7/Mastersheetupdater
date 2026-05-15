@@ -541,6 +541,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Post autocrm models and setup the environment')
     parser.add_argument('--post-models', type=str, help='Model to post, comma separated')
     parser.add_argument('--post-data', type=str, help='Data to post, comma separated')
+    parser.add_argument('--list-services', action="store_true", help = "Get a list of services", default=False)
     parser.add_argument('--reseed', action='store_true', help='Reseed the data', default=False)
     parser.add_argument('--start-from', type=int, help='Start from', default=0)
     parser.add_argument('--limit', type=int, help='Limit', default=None)
@@ -588,6 +589,16 @@ if __name__ == "__main__":
     if args.post_data:
         for data in list(map(lambda x: x.strip(), args.post_data.split(','))):
             post_autocrm_data(data, reseed = args.reseed, start_from = args.start_from, limit = args.limit)
+    if args.list_services:
+        from tabulate import tabulate
+        environment = gryd.get_environment()
+        c = gryd.get_service_connection()
+        headers = ["Service", "Version", "Build", "Worker count", "Thread count", "Queue Length"]
+        table = list(map(
+            lambda x: (x.get(k) for k in ('service', 'version', 'build', 'worker_count', 'worker_job_count', 'queue_length')),
+            sorted(c.list_services(environment), key = lambda x: x.get('service'))
+        ))
+        print(tabulate(table, headers = headers, tablefmt='grid'))
 
   
 
