@@ -1803,16 +1803,18 @@
             style="padding: 0.25rem 0.6rem; font-size: 0.75rem; height: auto;">Copy Converted</button>
         </div>
         <div class="table-scroll">
-          <table id="convertedTable">
-            <thead>
-              <tr>
-                <th>PHONE_NUMBER</th>
-                <th>VEHICLE_MODEL</th>
-                <th>DISPOSITION_DETAILS</th>
-                <th>LOCATION</th>
-                <th>CALL_DATE</th>
-              </tr>
-            </thead>
+           <table id="convertedTable">
+              <thead>
+                <tr>
+                  <th>PERSON_NAME</th>
+                  <th>PHONE_NUMBER</th>
+                  <th>VEHICLE_MODEL</th>
+                  <th>DISPOSITION_DETAILS</th>
+                  <th>SUMMARY</th>
+                  <th>CALL_DATE</th>
+                  <th>LOCATION</th>
+                </tr>
+              </thead>
             <tbody id="convertedBody"></tbody>
           </table>
         </div>
@@ -2745,18 +2747,15 @@
         else if (lowerSumm.includes('marathahalli')) loc = 'Marathahalli';
         else if (lowerSumm.includes('kr puram') || lowerSumm.includes('k r puram')) loc = 'KR Puram';
 
-        let disp = r.disposition || '';
-        if (disp.toLowerCase().includes('converted')) {
-          disp = 'Test Drive Booked';
-        }
-
         const tr = document.createElement('tr');
         tr.innerHTML = `
+          <td>${esc(r.full_name)}</td>
           <td class="cell-phone">${esc(r.phone)}</td>
           <td>${esc(r.model)}</td>
-          <td>${esc(disp)}</td>
-          <td>${esc(loc)}</td>
+          <td>${esc(r.disposition_detail || r.disposition)}</td>
+          <td>${esc(r.summary)}</td>
           <td>${esc(r.call_date)}</td>
+          <td>${esc(loc)}</td>
         `;
         tbody.appendChild(tr);
       }
@@ -2777,13 +2776,8 @@
         else if (lowerSumm.includes('marathahalli')) loc = 'Marathahalli';
         else if (lowerSumm.includes('kr puram') || lowerSumm.includes('k r puram')) loc = 'KR Puram';
 
-        let disp = r.disposition || '';
-        if (disp.toLowerCase().includes('converted')) {
-          disp = 'Test Drive Booked';
-        }
-
         const cols = [
-          r.phone, r.model, disp, loc, r.call_date
+          r.full_name, r.phone, r.model, r.disposition_detail || r.disposition, r.summary, r.call_date, loc
         ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\n/g, ' '));
         lines.push(cols.join('\t'));
       }
