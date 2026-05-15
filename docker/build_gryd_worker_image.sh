@@ -248,7 +248,6 @@ function main() {
         push_image_to_registry
     fi
 
-    # ===================== ADDED BLOCK (AS REQUESTED) =====================
     echo "Saving current image full path..."
 
     if [ $WORKER_DOCKER_IMAGE_TAG == 0 ]; then
@@ -265,7 +264,6 @@ function main() {
     else
         echo "Image saved: $FULL_IMAGE_NAME"
     fi
-    # =====================================================================
 }
 
 main
