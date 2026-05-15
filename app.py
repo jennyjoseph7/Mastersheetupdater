@@ -127,7 +127,23 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             schedule = "*/20 2-15 * * *", #till 9pm it runs..
             add_schedule_to_queue=False
         )
-        
+
+@app.route("/list-services", methods = ["GET"])
+@app.route("/list-services/<frmt>", methods = ["GET"])
+def get_worker_versions(frmt = None):
+    from tabulate import tabulate
+    environment = gryd.get_environment()
+    c = gryd.get_service_connection()
+    headers = ["Service", "Version", "Build", "Worker count", "Thread count", "Queue Length"]
+    table = list(map(
+        lambda x: (x.get(k) for k in ('service', 'version', 'build', 'worker_count', 'worker_job_count', 'queue_length')),
+        sorted(c.list_services(environment), key = lambda x: x.get('service'))
+    ))
+    if not frmt:
+        user_agent = request.headers.get('User-Agent', '').lower()
+        frmt = 'html' if any(b in user_agent for b in ('mozilla', 'chrome', 'safari', 'firefox', 'edge')) else 'github'
+    return tabulate(table, headers = headers, tablefmt=frmt), 200, {"Access-Control-Allow-Origin": "*"}
+
         
 @app.route("/webhook/<channel>/<channel_provider>", methods = ["GET","POST"])
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>", methods = ["GET","POST"])

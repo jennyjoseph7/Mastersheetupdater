@@ -48,7 +48,7 @@ function print_worker_git_info() {
 
         IFS="|" read sha author date message <<< "$commit"
 
-	echo -e "SHA: $sha\nAUTHOR: $author\nDATE: $date\nMESSAGE: $message" > "$worker/version.sha"
+        echo "$(git log -1 --pretty=format:"%H - %an, %ad : %s" -- "$worker")" > "$worker/version.sha"
 
         echo "$date|$worker|$sha|$author|$message"
 
@@ -82,11 +82,12 @@ function create_sha_file() {
             sha="latest"
         fi
 
-        echo $sha > $(basename $dir_path).sha
+        echo $sha > $(basename $dir_name).sha
         gbsha=`git log -1 --pretty=format:"%H:%aI"`
         echo $gbsha > version.sha
         export SHA=$sha
-	print_worker_git_info
+
+        print_worker_git_info
     popd
 }
 
@@ -124,7 +125,7 @@ function zip_repo() {
         fi
 
         zip -r --exclude=*frontend* --exclude=*creds* --exclude=*recordings* --exclude=*config.sh* --exclude=*local* --exclude=*results* --exclude=*.pid* --exclude=*stats* --exclude=*.whl* --exclude=*.zip* --exclude=*.log* --exclude=*.git* --exclude=*docker* --exclude=*venv* --exclude=*pyenv* --exclude=*logs* --exclude=*keys* --exclude=*__pycache__* --exclude=*py.swp* $zip_name ./
-    
+
         cp $zip_name $WORKING_DIR
     popd
 }
@@ -246,9 +247,23 @@ function main() {
 
         push_image_to_registry
     fi
+
+    echo "Saving current image full path..."
+
+    if [ $WORKER_DOCKER_IMAGE_TAG == 0 ]; then
+        WORKER_DOCKER_IMAGE_TAG=$SHA
+    fi
+
+    FULL_IMAGE_NAME="$REGISTRY_LINK_PREFIX/$WORKER_NAME:$WORKER_DOCKER_IMAGE_TAG"
+
+    echo $FULL_IMAGE_NAME > /home/dave/autobot/current_image_tag.txt
+
+    if [ $? -ne 0 ]; then
+        echo "Failed to save image name"
+        exit 1
+    else
+        echo "Image saved: $FULL_IMAGE_NAME"
+    fi
 }
 
 main
-
-
-
