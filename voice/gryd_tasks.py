@@ -11,6 +11,7 @@ from ai_service import ai_service_app
 import config
 import datetime
 import pytz
+import json
 import time
 
 from conversation import converse
@@ -87,10 +88,8 @@ def trigger_voice_call(*args, **kwargs):
     """
     
    
-    #TODO: Get agent number from dealership model and add in session_data in agent_number
-    # logger.info(f"Received request to trigger voice call with args: {args}, kwargs: {json.dumps(kwargs,indent=4)}")
     user_data = kwargs.get("user_data", {})
-    logger.info(f"Triggering voice call with user data: {user_data}")
+    logger.info(f"Triggering voice call with user data: {json.dumps(user_data, indent=4)}")
 
     if not all (k in user_data for k in ("campaign_id", "campaign_type", "mobile_number")):
         logger.error("Missing required user data fields: 'campaign_id', 'campaign_type', 'mobile_number'")
@@ -203,25 +202,16 @@ def trigger_voice_call(*args, **kwargs):
     if not user_data.get("generate_prompt") and user_data.get("prompt"):
         session_data["prompt"] = user_data.get("prompt", "How may I help you?")
 
-    
     user_data.update(session_data)
     
-    # credentials_model = gryd.base_model.Model("communication_credential", config.AUTOCRM_APP_ENTERPRISE_ID)
-
-    # credentials = credentials_model.list(**{
-    #     "dealership_id": user_data.get("dealership_id"),
-    #     "channel": "voice_phone"
-    # }).get("data", [])
-
-    # voice_id = user_data.get("voice_id",None)
-    voice_start_language= user_data.get("voice_start_language","en")
-    voice_agent_id= user_data.get("voice_agent_id",None)
+    #NOTE: Agent config/creds has to be do in better way with newly added models..
+    voice_start_language = user_data.get("voice_start_language","en")
+    voice_agent_id = user_data.get("voice_agent_id",None)
     voice_first_message = user_data.get("voice_first_message")
     logger.info(f"Received Voice_agent_id from user data (i.e from campaign model): {voice_agent_id}")
     credentials = get_communication_credential(dealership_id = user_data.get("dealership_id"), channel = "voice_phone")
 
     logger.info(f"Credentials found for dealership_id {user_data.get('dealership_id')}: {credentials}")
-    logger.info(f"Voice start language---{voice_start_language}")
 
     if credentials:
         provider = credentials.get("provider_name", "tatatele").replace("-", "").strip().lower()
