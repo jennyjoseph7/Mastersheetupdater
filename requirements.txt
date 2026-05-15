@@ -1,17 +1,16 @@
-pdfkit==1.0.0
 db_routes @ https://general-iamdave-mumbai.s3.ap-south-1.amazonaws.com/dave-python-libs/i2ce_routes/db_routes-0.0.2-py3-none-any.whl 
-razorpay
-twilio
-dotenv
-pydub
+razorpay==2.0.1
+twilio==9.10.5
+dotenv==0.9.9
+pydub==0.25.1
 fastapi
-elevenlabs
+elevenlabs==2.45.0
 elevenlabs[pyaudio]
-aiohttp>=3.9.0
 uvloop>=0.19.0; sys_platform != "win32"
-orjson
+tabulate==0.10.0
 
 #spark
+pdfkit==1.0.0
 google-auth>=2.38.0
 google-cloud-aiplatform==1.71.1
 opencv-python==4.12.0.88
