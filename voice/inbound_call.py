@@ -60,12 +60,13 @@ def start_call_from_inbound(*args, **kwargs):
         logger.info(f"Campaign data retrieved in inbound call: {campaign_data.get('campaign_id')}, voice_agent_id: {campaign_data.get('voice_agent_id')}")
         credentials = hp.make_single(list(pg.list("communication_credential", {"dealership_id": session_data.get("dealership_id"), "channel": "voice_phone"})), force=True)
         credentials["bot_name"] = campaign_data.get("voice_agent_id") or credentials["bot_name"] if credentials else None
+        credentials["voice_start_language"] = campaign_data.get("voice_start_language") or "en"
         logger.info(f"Provider credentials retrieved in inbound call: {credentials}")
     
     if credentials:
         provider = credentials.get("provider_name", "tatatele").replace("-", "").strip().lower()
         session_data["agent_id"] = credentials.get("bot_name")
-        session_data["language"] = "en"
+        session_data["language"] = credentials.get("voice_start_language")
         session_data["provider_credentials"] = {
             "tatatele_phone_number_api_key": credentials.get("auth_token")
         }
