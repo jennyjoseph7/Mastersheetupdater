@@ -1,9 +1,6 @@
 from asyncio.subprocess import create_subprocess_shell
 from time import time, monotonic
 import os, sys
-from gryd_worker import gryd_helpers as hp
-
-import pytz
 _root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 if _root not in sys.path:
     sys.path.insert(0, _root)
@@ -22,7 +19,6 @@ import base64
 import asyncio
 import logging
 import threading
-from ai_service import ai_service
 import aiohttp  # Async HTTP - much faster than requests
 import websockets
 from dotenv import load_dotenv
@@ -180,7 +176,7 @@ def _schedule_websocket_close(ws, bridge_loop: Optional[asyncio.AbstractEventLoo
                 f"[{call_id}] Thread-safe close failed for {socket_name}: {e}"
             )
 
-
+            
 def terminate_session(call_id: str):
     with session_lock:
         if call_id in call_sessions:
@@ -228,7 +224,6 @@ class CallSession:
 
     def __init__(self, call_id: str, ws=None):
         self.call_id = call_id
-        self.bridge_started = False
         self.dave_ws: Optional[websockets.WebSocketClientProtocol] = ws
         self._bridge_loop: Optional[asyncio.AbstractEventLoop] = None
         self.stream_sid: Optional[str] = None
@@ -853,14 +848,11 @@ class CallSession:
         """Connect to external websocket for this call session."""
         self._bridge_loop = asyncio.get_running_loop()
         t = time()
-        ws = None
         try:
             logger.info(f"[{self.call_id}] connecting to {url}")
             try:
-                ws = await websockets.connect(url)
-                self.external_ws = ws
+                self.external_ws = await websockets.connect(url)
                 logger.info(f"[{self.call_id}] connected to {url}")
-                self.bridge_started = True
                 logger.info(f"[{self.call_id}] Time taken to connect to external WebSocket: {time() - t:.2f} seconds")
             except Exception as conn_error:
                 logger.error(f"[{self.call_id}] Failed to establish WebSocket connection to {url}: {conn_error}")
@@ -868,9 +860,9 @@ class CallSession:
 
             while not self.stop_event.is_set():
                 try:
-                    msg = await ws.recv()
+                    msg = await self.external_ws.recv()
                     logger.info(f"[{self.call_id}] received: {msg}")
-                    await self.outbound_media_stream(ws)
+                    await self.outbound_media_stream(self.external_ws)
                 except Exception as e:
                     logger.error(f"[{self.call_id}] recv error: %s", e)
                     break
@@ -878,8 +870,6 @@ class CallSession:
             logger.exception(f"[{self.call_id}] connection failed: %s", e)
         finally:
             sockets_to_close = []
-            if ws:
-                sockets_to_close.append(("local_ws", ws))
             if getattr(self, "external_ws", None):
                 sockets_to_close.append(("external_ws", self.external_ws))
             if getattr(self, "dave_ws", None):
@@ -899,7 +889,6 @@ class CallSession:
 
             self.external_ws = None
             self.dave_ws = None
-            self.bridge_started = False
             logger.info(f"[{self.call_id}] Done With session cleanup")
 
 
