@@ -42,13 +42,13 @@ function print_worker_git_info() {
     | sort -u \
     | while read worker; do
 
-        commit=$(git log -1 --date=short --pretty=format:"%h|%an|%ad|%s" -- "$worker")
+        commit=$(git log -1 --date=short --pretty=format:"%H|%an|%ad|%s" -- "$worker")
 
         [ -z "$commit" ] && continue
 
         IFS="|" read sha author date message <<< "$commit"
 
-	echo "$commit" > "$worker/commit.txt"
+	echo -e "SHA: $sha\nAUTHOR: $author\nDATE: $date\nMESSAGE: $message" > "$worker/commit.txt"
 
         echo "$date|$worker|$sha|$author|$message"
 
