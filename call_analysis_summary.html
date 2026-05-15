@@ -1037,7 +1037,6 @@
                 <th>DISPOSITION_DETAILS</th>
                 <th>LOCATION</th>
                 <th>CALL_DATE</th>
-                <th>ANANTCARS CRE REMARKS</th>
               </tr>
             </thead>
             <tbody id="bookingBody"></tbody>
@@ -1061,7 +1060,6 @@
                 <th>VEHICLE_MODEL</th>
                 <th>CALL_DATE</th>
                 <th>DISPOSITION_DETAILS</th>
-                <th>ANANTCARS CRE REMARKS</th>
               </tr>
             </thead>
             <tbody id="completedBody"></tbody>
@@ -1206,6 +1204,18 @@
             ])),
             summary: clean(get(['SUMMARY', 'Summary', 'call_summary', 'conversation_summary', 'notes'])),
             updated_summary: clean(get(['Updated SUMMARY', 'Updated Summary', 'updated_summary'])),
+            disposition_detail: clean(get([
+              'Disposition_detail',
+              'disposition_detail',
+              'DISPOSITION_DETAILS',
+              'Disposition_Details',
+              'Disposition Details'
+            ])),
+            manual_disposition_detail: clean(get([
+              'Manual_Disposition_detail',
+              'manual_disposition_detail',
+              'MANUAL_DISPOSITION_DETAIL'
+            ])),
             conversion: clean(get(['Conversion', 'conversion'])),
             session_summary: clean(get(['Session_Summary', 'Session Summary', 'session_summary'])),
             call_date: clean(get(['Call_Date', 'Call Date', 'created', 'start_time', 'date'])),
@@ -1323,8 +1333,12 @@
     }
 
     function getEffectiveSummary(row) {
-      const updated = clean(row.updated_summary);
-      if (updated) return updated;
+      var md = clean(row.manual_disposition_detail);
+      if (md) return md;
+      var dd = clean(row.disposition_detail);
+      if (dd) return dd;
+      var us = clean(row.updated_summary);
+      if (us) return us;
       return clean(row.summary);
     }
 
@@ -1526,12 +1540,10 @@
       const connected = data.filter(isConnected).length;
       const bookings = data.filter(isTestDriveBooking).length;
       const followUps = data.filter(function(row) {
-        const u = lower(row.updated_summary || '');
-        if (u.includes('interested') && !u.includes('not interested')) return true;
-        if (u.includes('follow up')) return true;
-        
-        const s = lower(row.summary || '');
-        return s.includes('follow up');
+        var s = lower(getEffectiveSummary(row));
+        if (s.includes('interested') && !s.includes('not interested')) return true;
+        if (s.includes('follow up')) return true;
+        return s.includes('converted');
       }).length;
       const requestedCallbacks = data.filter(function(row) {
         const d = lower(row.disposition);
@@ -1639,8 +1651,7 @@
           '<td>' + escapeHtml(cols[1]) + '</td>' +
           '<td class="cell-detail">' + escapeHtml(cols[2]) + '</td>' +
           '<td>' + escapeHtml(cols[3]) + '</td>' +
-          '<td>' + escapeHtml(cols[4]) + '</td>' +
-          '<td>' + escapeHtml(cols[5]) + '</td>';
+          '<td>' + escapeHtml(cols[4]) + '</td>';
         tbody.appendChild(tr);
       });
 
@@ -1668,8 +1679,7 @@
         tr.innerHTML = '<td class="cell-phone">' + escapeHtml(cols[0]) + '</td>' +
           '<td>' + escapeHtml(cols[1]) + '</td>' +
           '<td>' + escapeHtml(cols[2]) + '</td>' +
-          '<td class="cell-detail">' + escapeHtml(cols[3]) + '</td>' +
-          '<td>' + escapeHtml(cols[4]) + '</td>';
+          '<td class="cell-detail">' + escapeHtml(cols[3]) + '</td>';
         tbody.appendChild(tr);
       });
 
@@ -1684,8 +1694,7 @@
         row.model,
         getBookingDisposition(row),
         detectBookingLocation(row),
-        row.call_date,
-        ''
+        row.call_date
       ];
     }
 
@@ -1694,8 +1703,7 @@
         row.phone,
         row.model,
         row.call_date,
-        getEffectiveSummary(row),
-        ''
+        getEffectiveSummary(row)
       ];
     }
 
@@ -1717,8 +1725,7 @@
         row.model,
         disp,
         detectPostLocation(row),
-        row.call_date,
-        ''
+        row.call_date
       ];
     }
 
@@ -1727,8 +1734,7 @@
         row.phone,
         row.model,
         row.call_date,
-        clean(row.updated_disposition) || clean(row.disposition),
-        ''
+        clean(row.updated_disposition) || clean(row.disposition)
       ];
     }
 
