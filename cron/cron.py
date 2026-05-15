@@ -1558,7 +1558,7 @@ def process_lead(pg,lead, channel):
                 "disposition_detail_tag": data.get('disposition_detail',None),
                 "channel_identifier":  channel_identifier
             })
-        # # update these attributes in lead_model
+        # update these attributes in lead_model
         pg.update(lead_model,lead_model_id,lead_id,{
             "next_channel": None,
             "next_channel_identifier": None,
@@ -1612,6 +1612,34 @@ def fetch_leads(dealership_id, channel, batch_size):
         yield _leads
         # return _leads
 
+@gryd.is_a_task(function_name="test_campaign_workflow")
+def test_campaign_workflow(*args, **kwargs):
+    dealership_id = kwargs.get("dealership_id")
+    channel = kwargs.get("channel")
+    batch_size = kwargs.get("batch_size") or VOICE_BATCH_SIZE
+
+    try:
+        leads = next(fetch_leads(dealership_id, channel, batch_size))
+    except StopIteration:
+        leads = []
+
+    mlogger.info(f"TEST [FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
+
+    if not leads:
+        mlogger.info(f"TEST [EMPTY] No leads for {dealership_id} - {channel}")
+        return
+
+    mlogger.info(f"[PROCESS] Processing {len(leads)} leads for {dealership_id} - {channel}")
+
+    with get_pg_connector() as pg:
+        for lead in leads:
+            process_lead(pg, lead, channel)
+            
+    return {
+        "status": "success",
+        "message": f"Leads processed successfully for dealership_id={dealership_id} and channel={channel}",
+        "count": len(leads)
+    }
 @gryd.is_a_task(function_name="process_all_dealerships_for_voice")    
 def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,voice_start_time=None,voice_end_time=None):    
     mlogger.info("-------Process all dealerships for voice phone and trigger campaign next action-------")
@@ -1653,7 +1681,9 @@ def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,vo
                         continue
                 except Exception as e:
                     mlogger.error(f"[ERROR] Failed for dealership={dealership_id}, channel={channel}")
-                    
+
+
+                
 @gryd.is_a_task(function_name="process_dealerships_non_voice")
 def process_dealerships_non_voice(batch_size=None,non_voice_max_queue_size=None,non_voice_start_time=None,non_voice_end_time=None):
     mlogger.info("-------Process all dealerships for non voice channels and trigger campaign next action-------")
