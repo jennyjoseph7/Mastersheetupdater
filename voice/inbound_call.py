@@ -61,8 +61,6 @@ def start_call_from_inbound(*args, **kwargs):
         credentials = hp.make_single(list(pg.list("communication_credential", {"dealership_id": session_data.get("dealership_id"), "channel": "voice_phone"})), force=True)
         credentials["bot_name"] = campaign_data.get("voice_agent_id") or credentials["bot_name"] if credentials else None
         logger.info(f"Provider credentials retrieved in inbound call: {credentials}")
-    #NOTE: get agent id from campaign data
-
     
     if credentials:
         provider = credentials.get("provider_name", "tatatele").replace("-", "").strip().lower()
