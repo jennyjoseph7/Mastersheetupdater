@@ -1670,6 +1670,7 @@
               <option value="chennai_ev">ChennaiEV</option>
               <option value="fortune_hyryder">Fortune Hyryder</option>
               <option value="fortune_honda">Fortune Honda</option>
+              <option value="stellantis_wa">Stellantis WA</option>
             </select>
           </div>
         </div>
@@ -1907,7 +1908,7 @@
           { label: 'Lead summary', candidates: ['lead_summary'] },
           { label: 'Model', candidates: ['model_preference', 'interested_vehicle_name'] },
           { label: 'Cohort', candidates: ['campaign_objective_name'] },
-          { label: 'Last Session ID', candidates: ['last_session_id'] },
+          { label: 'Session ID', candidates: ['last_session_id', 'session_id'] },
         ],
         file2RecommendedGroups: [
           { label: 'Phone', candidates: ['phone_number', 'phone', 'mobile', 'contact', 'contact_number'] },
@@ -1915,6 +1916,8 @@
           { label: 'Summary', candidates: ['summary', 'call_summary', 'conversation_summary', 'notes'] },
           { label: 'Recording', candidates: ['call_recording', 'recording', 'recording_url', 'call_url', 'audio_url'] },
           { label: 'Sentiment', candidates: ['sentiment_score', 'sentiment', 'score'] },
+          { label: 'Channel', candidates: ['channel', 'call_channel', 'communication_channel'] },
+          { label: 'Duration', candidates: ['duration', 'call_duration', 'recording_duration', 'talk_time'] },
         ],
       },
     };
@@ -1949,11 +1952,38 @@
       { header: 'Seating', key: 'seating' },
     ];
 
+    const STELLANTIS_COLUMNS = [
+      { header: 'Lead_ID+A1', key: 'lead_id' },
+      { header: 'Full_Name', key: 'full_name' },
+      { header: 'Phone', key: 'phone' },
+      { header: 'City', key: 'city' },
+      { header: 'PIncode', key: 'pincode' },
+      { header: 'Language', key: 'language' },
+      { header: 'Source', key: 'lead_source' },
+      { header: 'Cohort', key: 'cohort' },
+      { header: 'Campaign_ID', key: 'campaign_id' },
+      { header: 'Call Triggered', key: 'call_triggered' },
+      { header: 'Outcome', key: 'outcome' },
+      { header: 'Disposition', key: 'disposition' },
+      { header: 'Disposition_Detail', key: 'disposition_detail' },
+      { header: 'Conversions', key: 'conversion' },
+      { header: 'SUMMARY', key: 'summary' },
+      { header: 'Call_Date', key: 'call_date' },
+      { header: 'Number of atempts', key: 'num_attempts' },
+      { header: 'SENTIMENT', key: 'sentiment' },
+      { header: 'Session_id', key: 'last_session_id' },
+      { header: 'Call_Duration', key: 'call_duration' },
+      { header: 'Channel', key: 'channel' },
+      { header: 'Model', key: 'model' },
+      { header: 'Seating', key: 'seating' },
+    ];
+
     const DEALER_CONFIGS = {
       anant_cars:      { name: 'Anant Cars',      summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
       chennai_ev:      { name: 'ChennaiEV',        summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
       fortune_hyryder: { name: 'Fortune Hyryder',  summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
       fortune_honda:   { name: 'Fortune Honda',    summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
+      stellantis_wa:   { name: 'Stellantis WA',    summarySource: 'lead_summary',      columns: STELLANTIS_COLUMNS },
       default:         { name: 'Default',          summarySource: 'disposition_detail', columns: COMMON_COLUMNS },
     };
 
@@ -2238,6 +2268,38 @@
       return '';
     }
 
+    function detectChannel(obj) {
+      const candidates = ['channel', 'call_channel', 'communication_channel'];
+      for (const c of candidates) {
+        if (obj[c] !== undefined && obj[c] !== '') return String(obj[c]).trim();
+      }
+      return '';
+    }
+
+    function detectDuration(obj) {
+      const candidates = ['duration', 'call_duration', 'recording_duration', 'talk_time'];
+      for (const c of candidates) {
+        if (obj[c] !== undefined && obj[c] !== '') return String(obj[c]).trim();
+      }
+      return '';
+    }
+
+    function detectSessionId(obj) {
+      const candidates = ['session_id', 'id', 'last_session_id'];
+      for (const c of candidates) {
+        if (obj[c] !== undefined && obj[c] !== '') return String(obj[c]).trim();
+      }
+      return '';
+    }
+
+    function detectSessionDisposition(obj) {
+      const candidates = ['disposition_detail', 'disposition', 'call_disposition'];
+      for (const c of candidates) {
+        if (obj[c] !== undefined && obj[c] !== '') return String(obj[c]).trim();
+      }
+      return '';
+    }
+
     // ─── SEATING DERIVATION ───────────────────────────────────────────────────────
     function deriveSeating(seating, model) {
       if (seating && seating.trim() !== '') return seating.trim();
@@ -2505,6 +2567,10 @@
             sentiment: detectSentiment(best),
             dateStr: detectDate(best),
             startTime: best['start_time'] || '',
+            channel: detectChannel(best),
+            duration: detectDuration(best),
+            session_id: detectSessionId(best),
+            session_disposition: detectSessionDisposition(best),
           };
         }
 
@@ -2560,6 +2626,7 @@
           const seating = deriveSeating(seatingRaw, model);
 
           const sess = sessionMap[phone] || {};
+          const isStellantis = getActiveDealerConfig().name === 'Stellantis WA';
 
           const leadId = startId > 0 ? `L-${startId + output.length}` : '';
           const formulaRow = startId > 0 ? startId + output.length : 2 + output.length;
@@ -2575,12 +2642,12 @@
             lead_source: row['lead_source'] || '',
             cohort: row['campaign_objective_name'] || '',
             campaign_id: row['campaign_id'] || '',
-            last_session_id: row['last_session_id'] || '',
+            last_session_id: isStellantis ? (sess.session_id || '') : (row['last_session_id'] || row['session_id'] || ''),
             call_triggered: callTriggered,
             outcome,
             disposition: disp,
-            summary: summary,
-            disposition_detail: dispositionDetail,
+            summary: isStellantis ? (sess.summary || 'No Response') : summary,
+            disposition_detail: isStellantis ? (sess.session_disposition || '') : dispositionDetail,
             manual_disposition_detail: '',
             call_date: callDate,
             num_attempts: `=COUNTIF(C:C;C${formulaRow})`,
@@ -2590,13 +2657,16 @@
             seating,
             exclusion_flag: priority >= TERMINAL_THRESHOLD ? 'YES' : '',
             session_summary: sess.summary || '',
-            conversion: dispositionText.includes('converted') ? 'Yes' : ''
+            conversion: dispositionText.includes('converted') ? 'Yes' : '',
+            channel: sess.channel || '',
+            call_duration: sess.duration || '',
           });
         }
 
         processedData = output;
         qualityReport = buildQualityReport(rows1, rows2, allLeads, sessionGroups, sessionMap, output, callTriggered);
 
+        renderTableHeader();
         renderTable(output);
         updateSortIndicators();
         renderConvertedTable(output);
@@ -2957,12 +3027,12 @@
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Processed Leads");
       var summaryRows = [[
-        'Full_Name', 'Phone', 'Outcome', 'Disposition', 'Disposition_detail', 'Manual_Disposition_detail', 'Summary', 'Call_Date', 'Session_Summary'
+        'Full_Name', 'Phone', 'Outcome', 'Disposition', 'Disposition_detail', 'Manual_Disposition_detail', 'Summary', 'Call_Date', 'Session_Summary', 'Call_Duration', 'Channel'
       ]];
       for (var ri = 0; ri < processedData.length; ri++) {
         var r = processedData[ri];
         summaryRows.push([
-          r.full_name, r.phone, r.outcome, r.disposition, r.disposition_detail || '', r.manual_disposition_detail || '', r.summary, r.call_date, r.session_summary || ''
+          r.full_name, r.phone, r.outcome, r.disposition, r.disposition_detail || '', r.manual_disposition_detail || '', r.summary, r.call_date, r.session_summary || '', r.call_duration || '', r.channel || ''
         ].map(function(v) { return typeof v === 'string' ? v.trim() : v; }));
       }
       var summaryWs = XLSX.utils.aoa_to_sheet(summaryRows);
@@ -3107,7 +3177,7 @@
         const ab = await readFileAsArrayBuffer(rawFile1);
         const rows = parseSheet(ab);
         if (rows.length) {
-          const idCandidates = ['last_session_id'];
+          const idCandidates = ['last_session_id', 'session_id'];
           let idCol = null;
           for (const c of idCandidates) {
             if (rows[0].hasOwnProperty(c)) { idCol = c; break; }
