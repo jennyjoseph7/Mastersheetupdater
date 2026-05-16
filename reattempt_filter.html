@@ -1079,6 +1079,126 @@
     [data-theme="light"] tr:nth-child(even) {
       background: rgba(0, 0, 0, 0.02);
     }
+
+    /* ── BATCH PANEL ──────────────────────────────────────────────────── */
+    .batch-panel {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .batch-panel-title {
+      font-family: var(--sans);
+      font-size: 0.8rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    .batch-panel-note {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+      margin-bottom: 0.65rem;
+    }
+
+    .batch-panel-note strong {
+      color: var(--text);
+    }
+
+    .resume-banner {
+      display: none;
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      background: var(--accent-soft);
+      border: 1px solid rgba(167, 139, 250, 0.35);
+      border-radius: 10px;
+      padding: 0.55rem 0.7rem;
+      margin-bottom: 0.65rem;
+      line-height: 1.45;
+    }
+
+    .resume-banner.show {
+      display: block;
+    }
+
+    .resume-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-top: 0.45rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .batch-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.85rem 1.25rem;
+      align-items: flex-end;
+      margin-bottom: 0.5rem;
+    }
+
+    .batch-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .batch-field label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .batch-field input {
+      width: 7rem;
+      padding: 0.45rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+    }
+
+    .batch-hint {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-bottom: 0.45rem;
+      line-height: 1.45;
+    }
+
+    .batch-forget {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+
+    .batch-forget:hover {
+      color: var(--accent);
+    }
+
+    [data-theme="light"] .batch-panel {
+      background: var(--surface2);
+    }
+
+    [data-theme="light"] .batch-field input {
+      background: #fff;
+    }
+
+    [data-theme="light"] .resume-banner {
+      background: var(--accent-soft);
+    }
   </style>
 </head>
 
@@ -1209,7 +1329,7 @@
                 <option value="anant_cars">Anant Cars (Mahindra)</option>
               </optgroup>
               <optgroup label="Post-Sales">
-                <option value="post_sales_generic">Post-Sales (Service Reminder / Feedback)</option>
+                <option value="perfect_riders">Perfect Riders (Service Reminder)</option>
               </optgroup>
             </select>
           </div>
@@ -1220,11 +1340,11 @@
           <label for="chkExcludeTerminal">Exclude terminal dispositions</label>
         </div>
 
-        <button class="btn btn-success" id="btnExport" disabled onclick="exportAutoEngage()" style="display:none">
+        <button class="btn btn-success" id="btnExport" disabled onclick="downloadOutput()" style="display:none">
           <svg fill="currentColor" width="14" height="14" viewBox="0 0 24 24">
             <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
           </svg>
-          Download AutoEngage CSV
+          Export Batches
         </button>
 
         <button class="btn btn-secondary" id="btnCopyOutput" disabled onclick="copyOutputData()" style="display:none">
@@ -1240,6 +1360,32 @@
         <span class="status-msg" id="globalStatus"></span>
       </div>
     </section>
+
+    <!-- Batch Download Panel -->
+    <div class="batch-panel" id="batchPanel" aria-live="polite">
+      <div class="batch-panel-title">Batch download</div>
+      <div class="batch-panel-note">
+        Each upload file uses a <strong>header row</strong> plus up to <strong>100 leads</strong> per batch
+        (<strong>101 rows</strong> when a batch is full). Choose where to start and how many batches to download.
+      </div>
+      <div class="resume-banner" id="resumeBanner"></div>
+      <div class="resume-actions" id="resumeActions" style="display:none;">
+        <button type="button" class="btn btn-primary" id="resumeContinueBtn">Continue from saved position</button>
+        <button type="button" class="btn btn-secondary" id="resumeRestartBtn">Start from lead 1</button>
+      </div>
+      <div class="batch-row">
+        <div class="batch-field">
+          <label for="startLeadInput">Start at lead #</label>
+          <input type="number" id="startLeadInput" min="1" value="1" />
+        </div>
+        <div class="batch-field">
+          <label for="numBatchesInput">Batches to download</label>
+          <input type="number" id="numBatchesInput" min="1" value="1" />
+        </div>
+      </div>
+      <div class="batch-hint mono" id="batchHint"></div>
+      <button type="button" class="batch-forget" id="clearBatchMemoryBtn">Forget saved progress for this file</button>
+    </div>
 
     <section class="panel results-panel">
       <div class="section-head">
@@ -1357,6 +1503,12 @@
     let includedLeads = [];     // Re-attempt list (AutoEngage format)
     let excludedLeads = [];     // Excluded leads with reasons
 
+    const AE_LEADS_PER_BATCH = 100;
+    const AE_BATCH_STORAGE_KEY = 'jejo-ae-batch-export-v1';
+    let batchFingerprint = '';
+    let batchInputRowCount = 0;
+    let batchTemplateId = '';
+
     // ─── DEALERSHIP CONFIGS ──────────────────────────────────────────────────────
     const DEALERSHIPS = {
       anant_cars: {
@@ -1368,14 +1520,15 @@
         brand: 'Mahindra',
         subdivision_name: '',
       },
-      post_sales_generic: {
-        name: 'Post-Sales (Generic)',
+      perfect_riders: {
+        name: 'Perfect Riders',
         type: 'post-sales',
         showroom_code: '',
-        region_name: '',
-        dealership_id: '',
+        region_name: 'India',
+        dealership_id: 'perfect-riders-india',
         brand: '',
         subdivision_name: '',
+        workshop_code: '',
       },
     };
 
@@ -1760,6 +1913,9 @@
         document.getElementById('btnCopyOutput').disabled = !included.length;
         document.getElementById('btnReset').style.display = '';
 
+        // Configure batch panel
+        configureBatchPanelAfterFormat(dealershipKey, rows.length);
+
       } catch (e) {
         hideOverlay();
         setStatus('globalStatus', `Error: ${e.message}`, 'err');
@@ -1808,38 +1964,47 @@
       summary.classList.add('slide-up');
     }
 
+    function formatSerialDate(val) {
+      const num = Number(val);
+      if (!Number.isFinite(num) || num < 20000 || num > 80000) return String(val ?? '');
+      const d = new Date(Date.UTC(1899, 11, 30) + num * 86400000);
+      return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+    }
+
     // ─── OUTPUT SCHEMAS ─────────────────────────────────────────────────────────
     function getOutputSchema(dealershipKey) {
       const dealership = DEALERSHIPS[dealershipKey];
-      if (dealership.type === 'post-sales') {
+
+      if (dealershipKey === 'perfect_riders') {
         return {
           headers: [
-            'phone_number', 'vehicle_model', 'status', 'summary',
-            'disposition_details', 'updated_disposition', 'call_date', 'campaign_id', 'sentiment_score',
-            'recordings', 'duration', 'session_id', 'interested', 'number_of_attempts'
+            'region_name', 'dealership_id', 'workshop_code', 'next_service_due',
+            'person_name', 'vehicle_model', 'reg_number', 'phone_number',
+            'alt_phone_number_2', 'odometer_reading', 'last_service_date',
+            'purchase_date', 'last_service_type',
           ],
           mapRow: function (r) {
             const row = r._row || {};
             return [
+              r.region_name,
+              r.dealership_id,
+              findCol(row, ['workshop_code']),
+              formatSerialDate(findCol(row, ['next_service_date', 'next_service_due'])),
+              r.full_name,
+              r.model,
+              findCol(row, ['reg_number', 'registration_number']),
               r.phone,
-              detectModel(row),
-              detectOutcome(row),
-              detectSummary(row),
-              detectDisposition(row),
-              findCol(row, ['updated_disposition']),
-              detectCallDate(row),
-              findCol(row, ['campaign_id']),
-              findCol(row, ['sentiment_score', 'sentiment']),
-              findCol(row, ['recordings', 'call_recording']),
-              findCol(row, ['duration', 'recording_duration']),
-              findCol(row, ['session_id', 'last_session_id']),
-              findCol(row, ['interested']),
-              detectAttempts(row),
+              '',
+              '',
+              formatSerialDate(findCol(row, ['last_service_date'])),
+              '',
+              '',
             ];
           }
         };
       }
-      // Default: pre-sales
+
+      // Default: pre-sales (anant_cars)
       return {
         headers: [
           'showroom_code', 'region_name', 'dealership_id', 'person_name',
@@ -1922,29 +2087,306 @@
       wrapper.classList.add('slide-up');
     }
 
-    // ─── EXPORT AUTOENGAGE CSV ────────────────────────────────────────────────────
-    function exportAutoEngage() {
+    // ─── BATCH DOWNLOAD ───────────────────────────────────────────────────────────
+    function fileBatchFingerprint(file, inputRowCount) {
+      if (!file) return '';
+      return [file.name || '', String(file.size || 0), String(file.lastModified || 0), String(inputRowCount || 0)].join('|');
+    }
+
+    function readAeBatchStore() {
+      try {
+        return JSON.parse(localStorage.getItem(AE_BATCH_STORAGE_KEY) || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function writeAeBatchStore(store) {
+      try {
+        localStorage.setItem(AE_BATCH_STORAGE_KEY, JSON.stringify(store));
+      } catch (e) { /* quota or private mode */ }
+    }
+
+    function getSavedBatchProgress(fp, templateId, inputRowCount) {
+      const store = readAeBatchStore();
+      const rec = store[fp];
+      if (!rec || rec.templateId !== templateId || Number(rec.inputRowCount) !== Number(inputRowCount)) return null;
+      const nextLeadIndex = Number(rec.nextLeadIndex) || 1;
+      return { nextLeadIndex };
+    }
+
+    function saveBatchProgress(fp, templateId, inputRowCount, nextLeadIndex) {
+      const store = readAeBatchStore();
+      store[fp] = { templateId, inputRowCount, nextLeadIndex };
+      writeAeBatchStore(store);
+    }
+
+    function clearBatchProgressForFingerprint(fp) {
+      const store = readAeBatchStore();
+      delete store[fp];
+      writeAeBatchStore(store);
+    }
+
+    function hideBatchPanel() {
+      const panel = document.getElementById('batchPanel');
+      if (panel) panel.style.display = 'none';
+      const resumeBanner = document.getElementById('resumeBanner');
+      const resumeActions = document.getElementById('resumeActions');
+      const continueBtn = document.getElementById('resumeContinueBtn');
+      if (resumeBanner) {
+        resumeBanner.classList.remove('show');
+        resumeBanner.textContent = '';
+      }
+      if (resumeActions) resumeActions.style.display = 'none';
+      if (continueBtn) continueBtn.style.display = '';
+      batchFingerprint = '';
+      batchInputRowCount = 0;
+      batchTemplateId = '';
+    }
+
+    function refreshBatchHint() {
+      const hint = document.getElementById('batchHint');
+      const startEl = document.getElementById('startLeadInput');
+      const numEl = document.getElementById('numBatchesInput');
+      if (!hint || !startEl || !numEl) return;
+      if (!includedLeads.length) {
+        hint.textContent = '';
+        return;
+      }
+      const total = includedLeads.length;
+      let start = parseInt(startEl.value, 10);
+      if (Number.isNaN(start) || start < 1) start = 1;
+      if (start > total) start = total;
+      let remaining = total - start + 1;
+      if (remaining < 0) remaining = 0;
+      const maxBatches = remaining > 0 ? Math.ceil(remaining / AE_LEADS_PER_BATCH) : 1;
+      let num = parseInt(numEl.value, 10);
+      if (Number.isNaN(num) || num < 1) num = 1;
+      if (num > maxBatches) num = maxBatches;
+      numEl.value = String(Math.max(1, num));
+      startEl.value = String(start);
+
+      const leadsThisRun = Math.min(num * AE_LEADS_PER_BATCH, remaining);
+      const firstDataRows = remaining > 0 ? Math.min(AE_LEADS_PER_BATCH, remaining) : 0;
+      const firstFileRows = remaining > 0 ? 1 + firstDataRows : 1;
+      hint.textContent =
+        total +
+        ' lead(s) formatted. From lead #' +
+        start +
+        ', ' +
+        remaining +
+        ' left. This run: ' +
+        num +
+        ' file(s), up to ' +
+        leadsThisRun +
+        ' lead(s). First file: ' +
+        firstFileRows +
+        ' row(s) (1 header + ' +
+        firstDataRows +
+        ' data' +
+        (firstDataRows === AE_LEADS_PER_BATCH ? ', full batch 101 rows' : '') +
+        ').';
+    }
+
+    function syncResumeBannerAndActions() {
+      const resumeBanner = document.getElementById('resumeBanner');
+      const resumeActions = document.getElementById('resumeActions');
+      const continueBtn = document.getElementById('resumeContinueBtn');
+      const restartBtn = document.getElementById('resumeRestartBtn');
+      const startEl = document.getElementById('startLeadInput');
+      const numEl = document.getElementById('numBatchesInput');
+      if (!resumeBanner || !resumeActions || !continueBtn || !restartBtn || !includedLeads.length || !batchFingerprint) {
+        if (resumeBanner) resumeBanner.classList.remove('show');
+        if (resumeActions) resumeActions.style.display = 'none';
+        if (continueBtn) continueBtn.style.display = '';
+        return;
+      }
+
+      const total = includedLeads.length;
+      const saved = getSavedBatchProgress(batchFingerprint, batchTemplateId, batchInputRowCount);
+
+      if (!saved || saved.nextLeadIndex <= 1) {
+        resumeBanner.classList.remove('show');
+        resumeBanner.textContent = '';
+        resumeActions.style.display = 'none';
+        continueBtn.style.display = '';
+        return;
+      }
+
+      if (saved.nextLeadIndex <= total) {
+        const lastDone = saved.nextLeadIndex - 1;
+        resumeBanner.textContent =
+          'This browser remembers this file (name + size + date + row count) and template: last time exports ended after lead ' +
+          lastDone +
+          ' of ' +
+          total +
+          '. Next lead is ' +
+          saved.nextLeadIndex +
+          '.';
+        resumeBanner.classList.add('show');
+        resumeActions.style.display = 'flex';
+        continueBtn.style.display = '';
+        continueBtn.textContent = 'Continue from lead ' + saved.nextLeadIndex;
+        restartBtn.textContent = 'Start from lead 1';
+        continueBtn.onclick = function () {
+          startEl.value = String(saved.nextLeadIndex);
+          const rem = total - saved.nextLeadIndex + 1;
+          numEl.value = String(Math.max(1, Math.ceil(rem / AE_LEADS_PER_BATCH)));
+          refreshBatchHint();
+        };
+        restartBtn.onclick = function () {
+          startEl.value = '1';
+          numEl.value = '1';
+          clearBatchProgressForFingerprint(batchFingerprint);
+          syncResumeBannerAndActions();
+          refreshBatchHint();
+        };
+        return;
+      }
+
+      resumeBanner.textContent =
+        'Saved progress is past the end of this file (' +
+        total +
+        ' leads). Reset below or use \u201cForget saved progress\u201d.';
+      resumeBanner.classList.add('show');
+      resumeActions.style.display = 'flex';
+      continueBtn.style.display = 'none';
+      restartBtn.textContent = 'Start from lead 1 (clear saved position)';
+      restartBtn.onclick = function () {
+        startEl.value = '1';
+        numEl.value = '1';
+        clearBatchProgressForFingerprint(batchFingerprint);
+        continueBtn.style.display = '';
+        restartBtn.textContent = 'Start from lead 1';
+        syncResumeBannerAndActions();
+        refreshBatchHint();
+      };
+    }
+
+    function configureBatchPanelAfterFormat(templateId, inputRowCount) {
+      batchTemplateId = templateId;
+      batchInputRowCount = inputRowCount;
+      batchFingerprint = fileBatchFingerprint(rawFile, inputRowCount);
+
+      const panel = document.getElementById('batchPanel');
+      const startEl = document.getElementById('startLeadInput');
+      const numEl = document.getElementById('numBatchesInput');
+      if (!panel || !startEl || !numEl) return;
+
+      panel.style.display = 'block';
+      startEl.value = '1';
+      numEl.value = '1';
+
+      syncResumeBannerAndActions();
+      refreshBatchHint();
+    }
+
+    function setupBatchExportControls() {
+      const startEl = document.getElementById('startLeadInput');
+      const numEl = document.getElementById('numBatchesInput');
+      const forget = document.getElementById('clearBatchMemoryBtn');
+      if (!startEl || !numEl || !forget || startEl.dataset.bound === '1') return;
+      startEl.dataset.bound = '1';
+      const onChange = function () { refreshBatchHint(); };
+      startEl.addEventListener('input', onChange);
+      startEl.addEventListener('change', onChange);
+      numEl.addEventListener('input', onChange);
+      numEl.addEventListener('change', onChange);
+      forget.addEventListener('click', function () {
+        if (batchFingerprint) clearBatchProgressForFingerprint(batchFingerprint);
+        syncResumeBannerAndActions();
+        refreshBatchHint();
+        setStatus('globalStatus', 'Forgot saved batch progress for this file fingerprint.', 'ok');
+      });
+    }
+
+    async function downloadOutput() {
       if (!includedLeads.length) return;
+      refreshBatchHint();
 
       const dealershipKey = document.getElementById('dealershipSelect').value;
       const schema = getOutputSchema(dealershipKey);
       const dealership = DEALERSHIPS[dealershipKey];
+      const total = includedLeads.length;
+      const startEl = document.getElementById('startLeadInput');
+      const numEl = document.getElementById('numBatchesInput');
 
-      const dataRows = [schema.headers];
-      for (const r of includedLeads) {
-        dataRows.push(schema.mapRow(r));
+      let start = parseInt(startEl && startEl.value, 10);
+      if (Number.isNaN(start) || start < 1) start = 1;
+      if (start > total) {
+        setStatus('globalStatus', 'Start lead must be between 1 and ' + total + '.', 'err');
+        return;
       }
-
-      const ws = XLSX.utils.aoa_to_sheet(dataRows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Re-Attempt List');
+      const remaining = total - start + 1;
+      if (remaining < 1) {
+        setStatus('globalStatus', 'Nothing left to export from this start position.', 'err');
+        return;
+      }
+      const maxBatches = Math.ceil(remaining / AE_LEADS_PER_BATCH);
+      let numBatches = parseInt(numEl && numEl.value, 10);
+      if (Number.isNaN(numBatches) || numBatches < 1) numBatches = 1;
+      if (numBatches > maxBatches) numBatches = maxBatches;
 
       const dateStr = new Date().toISOString().slice(0, 10);
-      const filename = `${dealership.name.replace(/\s+/g, '_')}_ReAttempt_${dateStr}.xlsx`;
+      const safeName = dealership.name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
 
-      XLSX.writeFile(wb, filename);
+      let exported = 0;
+      let filesWritten = 0;
+      for (let b = 0; b < numBatches; b++) {
+        const sliceStartIdx = start - 1 + b * AE_LEADS_PER_BATCH;
+        if (sliceStartIdx >= total) break;
+        const sliceLen = Math.min(AE_LEADS_PER_BATCH, total - sliceStartIdx);
+        const slice = includedLeads.slice(sliceStartIdx, sliceStartIdx + sliceLen);
+        const aoa = [schema.headers];
+        for (const r of slice) aoa.push(schema.mapRow(r));
+        const part = numBatches > 1 ? '_batch' + (b + 1) : '';
+        const fileName = safeName + '_ReAttempt_' + dateStr + part + '.csv';
 
-      setStatus('globalStatus', `✓ Downloaded ${filename}`, 'ok');
+        // Build CSV with UTF-8 BOM
+        const csvRows = aoa.map(function (row) {
+          return row.map(function (cell) {
+            var s = String(cell ?? '');
+            if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+              return '"' + s.replace(/"/g, '""') + '"';
+            }
+            return s;
+          }).join(',');
+        });
+        var bom = '\uFEFF';
+        var blob = new Blob([bom + csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        exported += sliceLen;
+        filesWritten += 1;
+      }
+
+      const nextLeadIndex = start + exported;
+      if (batchFingerprint && batchTemplateId) {
+        saveBatchProgress(batchFingerprint, batchTemplateId, batchInputRowCount, nextLeadIndex);
+      }
+
+      if (nextLeadIndex <= total) {
+        startEl.value = String(nextLeadIndex);
+        const rem = total - nextLeadIndex + 1;
+        numEl.value = String(Math.max(1, Math.ceil(rem / AE_LEADS_PER_BATCH)));
+      } else {
+        startEl.value = '1';
+        numEl.value = '1';
+      }
+
+      syncResumeBannerAndActions();
+      refreshBatchHint();
+
+      setStatus('globalStatus',
+        'Downloaded ' + filesWritten + ' file(s), ' + exported + ' lead(s). Saved next start: lead ' +
+        Math.min(nextLeadIndex, total + 1) + '.', 'ok');
     }
 
     // ─── COPY TSV ─────────────────────────────────────────────────────────────────
@@ -2023,6 +2465,8 @@
       document.getElementById('btnProcess').disabled = true;
       document.getElementById('btnProcess').classList.remove('ready');
 
+      hideBatchPanel();
+
       setStatus('globalStatus', '', '');
     }
 
@@ -2088,6 +2532,9 @@
         if (e.key === 'Enter' || e.key === ' ') fi.click();
       });
     })();
+
+    // Initialize batch export controls
+    setupBatchExportControls();
   </script>
 
   <script>
