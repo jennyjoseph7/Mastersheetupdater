@@ -6,7 +6,6 @@ if [ -z $BUILD_CONF_FILE ];then
 else
     echo "Sourcing $BUILD_CONF_FILE"
     source $BUILD_CONF_FILE
-    # printenv
 fi
 
 WORKER_NAME=${WORKER_NAME:-0}
@@ -28,7 +27,6 @@ WORKING_DIR=$(pwd)
 WORKER_DIR=$(realpath ../)
 
 dir_status=-1
-create_sha_status=-1
 SHA=0
 
 
@@ -48,7 +46,7 @@ function print_worker_git_info() {
 
         IFS="|" read sha author date message <<< "$commit"
 
-	echo "$(git log -1 --pretty=format:"%H - %an, %ad : %s" -- "$worker")" > "$worker/version.sha"
+        echo "$(git log -1 --pretty=format:"%H - %an, %ad : %s" -- "$worker")" > "$worker/version.sha"
 
         echo "$date|$worker|$sha|$author|$message"
 
@@ -82,11 +80,12 @@ function create_sha_file() {
             sha="latest"
         fi
 
-        echo $sha > $(basename $dir_path).sha
+        echo $sha > $(basename $dir_name).sha
         gbsha=`git log -1 --pretty=format:"%H:%aI"`
         echo $gbsha > version.sha
         export SHA=$sha
-	print_worker_git_info
+
+        print_worker_git_info
     popd
 }
 
@@ -124,7 +123,7 @@ function zip_repo() {
         fi
 
         zip -r --exclude=*frontend* --exclude=*creds* --exclude=*recordings* --exclude=*config.sh* --exclude=*local* --exclude=*results* --exclude=*.pid* --exclude=*stats* --exclude=*.whl* --exclude=*.zip* --exclude=*.log* --exclude=*.git* --exclude=*docker* --exclude=*venv* --exclude=*pyenv* --exclude=*logs* --exclude=*keys* --exclude=*__pycache__* --exclude=*py.swp* $zip_name ./
-    
+
         cp $zip_name $WORKING_DIR
     popd
 }
@@ -249,6 +248,3 @@ function main() {
 }
 
 main
-
-
-
