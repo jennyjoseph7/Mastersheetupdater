@@ -138,7 +138,8 @@ def post_lead_and_trigger_campaign(*args, **kwargs):
         #     kwargs={}
         # )
         lead_table_id="pre_sales_lead_id" if campaign_type == "pre-sales" else "post_sales_lead_id"
-        person = get_or_create_person(lead.get("phone_number"))
+        person = get_or_create_person(lead.get("phone_number"),lead.get("dealership_id"))
+        
         lead_model.patch(lead.get(lead_table_id), {"user_id": person.get("user_id")})
         list(determine_campaign_next_action(campaign_type,lead.get(lead_table_id),call_process_single_lead=True))
 
@@ -161,11 +162,18 @@ def test_run_campaign(*args,**kwargs):
         logger.error(f"Missing required kwargs. Got: {a}")
         return jsonify({"error": f"Missing required kwargs. Got: {a}"}), 400
     
-    m=load_and_create_campaign_data(payload)
+    m=load_and_create_campaign_data(kwargs)
     return jsonify({"status": f"campaign {m} triggered."}), 200
     
     
 
 
-
+# if __name__ == "__main__":
+#     test_run_campaign(**{
+#     "campaign_objective_id":"pre-sales-test-drive-booking",
+#     "dealership_id":"dave-ai-india",
+#     "phone_number":"9113687241",
+#     "channels":["voice_phone"],
+#     "languages":["english"]
+# })
 
