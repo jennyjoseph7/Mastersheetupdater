@@ -10,7 +10,7 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pre-Sales Sync - JEJO</title>
+  <title>Pre-Sales Sync - AutoNage</title>
   <meta name="description"
     content="Merges AutoEngage Audience & Leads + Sessions exports and produces a Zoho Master Sheet-ready table." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1535,7 +1535,7 @@
       <div class="header-left">
         <a class="brand-mark" href="index.html" aria-label="Go to home">J</a>
         <div>
-          <div class="header-badge">JEJO OPS</div>
+          <div class="header-badge">AutoNage</div>
           <h1>Pre-Sales Sync</h1>
           <div class="header-sub">AutoEngage → Zoho Master Sheet · No backend · No installation</div>
         </div>
@@ -1851,7 +1851,7 @@
       <div
         style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,#f5c97a,var(--accent));color:#15100a;font-family:var(--sans);font-weight:800;font-size:0.7rem;">
         J</div>
-      <span style="color:var(--text-dim);font-weight:600;">JEJO Ops</span>
+      <span style="color:var(--text-dim);font-weight:600;">AutoNage</span>
       <span style="color:var(--border);">·</span>
       <span>Pre-Sales Sync v2</span>
       <span style="color:var(--border);">·</span>
@@ -3039,7 +3039,7 @@
       XLSX.utils.book_append_sheet(wb, summaryWs, "Summary Source");
       wb.Workbook = wb.Workbook || {};
       wb.Workbook.Sheets = wb.SheetNames.map(function(name, index) { return { name: name, Hidden: index === 1 ? 1 : 0 }; });
-      XLSX.writeFile(wb, "JEJO_Disposition_Sync.xlsx");
+      XLSX.writeFile(wb, "AutoNage_Disposition_Sync.xlsx");
     }
 
     // ─── COPY TO CLIPBOARD ────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Recording Renamer - JEJO</title>
+  <title>Recording Renamer - AutoNage</title>
   <meta name="description" content="Rename local call recordings from a processed Pre-Sales Sync export." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -666,7 +666,7 @@
       <div class="header-left">
         <a class="brand-mark" href="index.html" aria-label="Go to home">J</a>
         <div>
-          <div class="header-badge">JEJO OPS</div>
+          <div class="header-badge">AutoNage</div>
           <h1>Recording Renamer</h1>
           <div class="header-sub">Processed Pre-Sales Sync export · Download & rename recordings</div>
         </div>
@@ -817,7 +817,7 @@
     </section>
   </main>
 
-  <footer>JEJO — Recording Renamer · Lead Operations Automation · <span>No backend · No install</span></footer>
+  <footer>AutoNage — Recording Renamer · Lead Operations Automation · <span>No backend · No install</span></footer>
 
   <script>
     const OUTPUT_HEADERS = [
@@ -1273,7 +1273,7 @@
 
         const blob = await zip.generateAsync({ type: 'blob' });
         const dateToken = getZipDateToken();
-        triggerDownload(blob, `JEJO_Recordings_${dateToken}.zip`);
+        triggerDownload(blob, `AutoNage_Recordings_${dateToken}.zip`);
         renderResults(resultRows, getUrlCount(resultRows));
         setStatus(`ZIP downloaded with ${downloaded} recording(s). ${failed} failed.`, failed ? 'warn' : 'ok');
       } catch (error) {
@@ -1325,7 +1325,7 @@
     function downloadReport() {
       if (!resultRows.length) return;
       const blob = new Blob([reportCsv || makeReportCsv(resultRows)], { type: 'text/csv;charset=utf-8' });
-      triggerDownload(blob, `JEJO_Recording_Rename_Report_${getZipDateToken()}.csv`);
+      triggerDownload(blob, `AutoNage_Recording_Rename_Report_${getZipDateToken()}.csv`);
     }
 
     function getZipDateToken() {

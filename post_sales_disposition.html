@@ -10,7 +10,7 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Post-Sales Disposition Sync - JEJO</title>
+  <title>Post-Sales Disposition Sync - AutoNage</title>
   <meta name="description"
     content="Merges post-sales AutoEngage lead and session exports into a dealership-specific Zoho Master Sheet-ready output." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -841,7 +841,7 @@
       <div class="header-left">
         <a class="brand-mark" href="index.html" aria-label="Go to home">J</a>
         <div>
-          <div class="header-badge">JEJO OPS</div>
+          <div class="header-badge">AutoNage</div>
           <h1>Post-Sales Disposition Sync</h1>
           <div class="header-sub">AutoEngage post-sales exports to dealership-wise Zoho Master Sheet rows</div>
         </div>
@@ -1141,7 +1141,7 @@
     </section>
   </main>
 
-  <footer>JEJO Ops - Post-Sales Disposition Sync - AutoEngage to Zoho Master Sheet</footer>
+  <footer>AutoNage - Post-Sales Disposition Sync - AutoEngage to Zoho Master Sheet</footer>
 
   <script>
     let rawFile1 = null;
@@ -2260,7 +2260,7 @@
 
       const dealer = getSelectedDealer();
       const safeName = dealer.name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
-      XLSX.writeFile(wb, `JEJO_Post_Sales_${safeName}.xlsx`);
+      XLSX.writeFile(wb, `AutoNage_Post_Sales_${safeName}.xlsx`);
     }
 
     function resetAll() {
