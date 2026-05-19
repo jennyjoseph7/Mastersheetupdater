@@ -21,7 +21,7 @@ function main() {
 		return
 	fi
 	cp ../../requirements.txt ./
-    	cp ../../spark/requirements.txt ./spark_requirements.txt
+    cp ../../spark/requirements.txt ./spark_requirements.txt
 	
 	sed -i "s/<baseimage_tag>/$TAG/g" Dockerfile
 
