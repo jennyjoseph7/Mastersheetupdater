@@ -6,7 +6,6 @@ if [ -z $BUILD_CONF_FILE ];then
 else
     echo "Sourcing $BUILD_CONF_FILE"
     source $BUILD_CONF_FILE
-    # printenv
 fi
 
 WORKER_NAME=${WORKER_NAME:-0}
@@ -21,14 +20,43 @@ ONLY_PUSH=${ONLY_PUSH:-0}
 PUSH_TO_REGISTRY=${PUSH_TO_REGISTRY:-0}
 BUILD_ENVIRONMENT=${BUILD_ENVIRONMENT:-0}
 GCP_CREDS_DIR=${GCP_CREDS_DIR:-0}
+DOCKER_BASE_IMG_TAG=${DOCKER_BASE_IMG_TAG:-lastest}
 
 export GCP_CREDS_PATH=0
 WORKING_DIR=$(pwd)
 WORKER_DIR=$(realpath ../)
 
 dir_status=-1
-create_sha_status=-1
 SHA=0
+
+
+function print_worker_git_info() {
+
+    printf "%-20s %-10s %-18s %-12s %s\n" "WORKER" "SHA" "AUTHOR" "DATE" "MESSAGE"
+    echo "-----------------------------------------------------------------------------------------------"
+
+    grep '"name"' start_worker_config.json \
+    | sed 's/.*"\(.*\)".*/\1/' \
+    | sort -u \
+    | while read worker; do
+
+        commit=$(git log -1 --date=short --pretty=format:"%H|%an|%ad|%s" -- "$worker")
+
+        [ -z "$commit" ] && continue
+
+        IFS="|" read sha author date message <<< "$commit"
+
+        echo "$(git log -1 --pretty=format:"%H - %an, %ad : %s" -- "$worker")" > "$worker/version.sha"
+
+        echo "$date|$worker|$sha|$author|$message"
+
+    done | sort -r | while IFS="|" read date worker sha author message; do
+
+        printf "%-20s %-10s %-18s %-12s %s\n" \
+            "$worker" "$sha" "$author" "$date" "$message"
+
+    done
+}
 
 function validate_directory() {
     dir_name=$1
@@ -45,17 +73,19 @@ function create_sha_file() {
 
     pushd $dir_name
         sha=`git log -1 --pretty=format:%h`
-	    sha_status=$?
+        sha_status=$?
 
-	    if [ $sha_status -ne 0 ];then
-	    	echo "Unable to get SHA assuming latest"
-	    	sha="latest"
-	    fi
+        if [ $sha_status -ne 0 ];then
+            echo "Unable to get SHA assuming latest"
+            sha="latest"
+        fi
 
-	    echo $sha > $(basename $dir_path).sha
-            gbsha=`git log -1 --pretty=format:"%H:%aI"`
-	    echo $gbsha > version.sha
+        echo $sha > $(basename $dir_name).sha
+        gbsha=`git log -1 --pretty=format:"%H:%aI"`
+        echo $gbsha > version.sha
         export SHA=$sha
+
+        print_worker_git_info
     popd
 }
 
@@ -89,12 +119,11 @@ function zip_repo() {
     pushd $dir_path
 
         if [ -f $zip_name ];then
-	        rm -rf $zip_name  
+            rm -rf $zip_name  
         fi
 
-	    zip -r --exclude=*frontend* --exclude=*creds* --exclude=*recordings* --exclude=*config.sh* --exclude=*local* --exclude=*results* --exclude=*.pid* --exclude=*stats* --exclude=*.whl* --exclude=*.zip* --exclude=*.log* --exclude=*.git* --exclude=*docker* --exclude=*venv* --exclude=*pyenv* --exclude=*logs* --exclude=*keys* --exclude=*__pycache__* --exclude=*py.swp* $zip_name ./
-    
-	    cp $zip_name $WORKING_DIR
+        zip -r --exclude=*frontend* --exclude=*creds* --exclude=*recordings* --exclude=*config.sh* --exclude=*local* --exclude=*results* --exclude=*.pid* --exclude=*stats* --exclude=*.whl* --exclude=*.zip* --exclude=*.log* --exclude=*.git* --exclude=*docker* --exclude=*venv* --exclude=*pyenv* --exclude=*logs* --exclude=*keys* --exclude=*__pycache__* --exclude=*py.swp* $zip_name ./
+        cp $zip_name $WORKING_DIR
     popd
 }
 
@@ -107,19 +136,18 @@ function build_docker_image() {
     export WORKER_DOCKER_IMAGE_NAME=$WORKER_NAME:$WORKER_DOCKER_IMAGE_TAG
 
     if [ $GCP_CREDS_PATH != 0 ];then
-    	cp -v $GCP_CREDS_PATH ./
+        cp -v $GCP_CREDS_PATH ./
     fi
 
     docker build -t $WORKER_DOCKER_IMAGE_NAME .
     image_build_status=$?
 
     if [ "$image_build_status" != 0 ];then
-	    echo "Build Failed."
-	    exit 1
+        echo "Build Failed."
+        exit 1
     else
-    	echo "Docker build completed."
+        echo "Docker build completed."
     fi
-
 }
 
 function do_registry_authentication() {
@@ -149,9 +177,9 @@ function push_image_to_registry() {
         exit 1
     fi
 
-	rname=$REGISTRY_LINK_PREFIX"/"$WORKER_NAME
-	imagePushTag=$rname:$WORKER_DOCKER_IMAGE_TAG
-	echo "Pushing the docker image $imagePushTag, to $DOCKER_REGISTRY"
+    rname=$REGISTRY_LINK_PREFIX"/"$WORKER_NAME
+    imagePushTag=$rname:$WORKER_DOCKER_IMAGE_TAG
+    echo "Pushing the docker image $imagePushTag, to $DOCKER_REGISTRY"
 
     do_registry_authentication $DOCKER_REGISTRY
 
@@ -165,10 +193,9 @@ function push_image_to_registry() {
 
     if [ $PUSH_AS_LATEST == 1 ];then
         echo "Adding latest tag to this image and pushing."
-	    docker tag $imagePushTag $rname:latest
-	    docker push $rname:latest
+        docker tag $imagePushTag $rname:latest
+        docker push $rname:latest
     fi
-
 }
 
 function main() {
@@ -181,12 +208,12 @@ function main() {
     fi
 
     if [ $GCP_CREDS_DIR == 0 ];then
-	    echo "GCP Creds dir not set."
+        echo "GCP Creds dir not set."
     else
-    	export GCP_CREDS_PATH="$GCP_CREDS_DIR/$BUILD_ENVIRONMENT/credentials.json"
-    	if [[ ! -f $GCP_CREDS_PATH ]];then
-    	    echo "GCP Creds Not Found in $GCP_CREDS_PATH."
-    	fi
+        export GCP_CREDS_PATH="$GCP_CREDS_DIR/$BUILD_ENVIRONMENT/credentials.json"
+        if [[ ! -f $GCP_CREDS_PATH ]];then
+            echo "GCP Creds Not Found in $GCP_CREDS_PATH."
+        fi
     fi
 
     if [ $WORKER_NAME == 0 ];then
@@ -196,11 +223,15 @@ function main() {
         echo "Worker name is empty."
         exit 1
     fi
-	
+
+    echo "Patching base image tag."
+    sed -i "s/<DOCKER_BASE_IMG_TAG>/$DOCKER_BASE_IMG_TAG/g" Dockerfile.wk
+
     if [ $ONLY_PUSH == 0 ];then
-	echo "Patching zipname."
-    	sed "s/<zipname>/$WORKER_NAME/g" Dockerfile.wk > Dockerfile
+        echo "Patching zipname."
+        sed "s/<zipname>/$WORKER_NAME/g" Dockerfile.wk > Dockerfile
         zip_repo $WORKER_DIR $WORKER_NAME.zip
+    
         build_docker_image
     fi
 
@@ -216,3 +247,6 @@ function main() {
 }
 
 main
+
+
+

@@ -1,5 +1,10 @@
 import os
 import json
+import sys
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 from bp_utils import get_logger
 from ai_service import ai_service_app
 from brochure_pipeline.agents.base_agent import BaseAgent
@@ -19,7 +24,7 @@ class VectorIngestionAgent(BaseAgent):
         self.config = kwargs if kwargs else {}
         logger.info("VectorIngestionAgent initialized")
         
-        prompt_path = os.path.join("prompt", "summary_prompt.txt")
+        prompt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "prompt", "summary_prompt.txt")
         try:
             with open(prompt_path, "r", encoding="utf-8") as f:
                 self.system_instruction = f.read().strip()

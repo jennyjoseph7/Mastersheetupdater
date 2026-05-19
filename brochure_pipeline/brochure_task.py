@@ -1,7 +1,7 @@
 import os
 import sys
 from os.path import dirname, abspath, join as joinpath
-BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
+BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 from gryd_worker import gryd
@@ -9,8 +9,8 @@ from bp_utils import GRYD_SERVICE, get_logger
 
 logger = get_logger(__name__)
 
-from tasks.summary import run_summary_dispatcher, run_summary_worker, run_vector_ingestion
-from tasks.variant_feature import process_brochure_chunk, run_brochure_orchestrator
+from brochure_pipeline.tasks.summary import run_summary_dispatcher, run_summary_worker, run_vector_ingestion
+from brochure_pipeline.tasks.variant_feature import process_brochure_chunk, run_brochure_orchestrator
 
 gryd.SERVICE = GRYD_SERVICE 
 gryd.set_queue_manager()

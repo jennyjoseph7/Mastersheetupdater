@@ -20,8 +20,8 @@ if _root not in sys.path:
 # from communication.connectors.communication_configs import DB_TIMEZONE,WA_TO_DISPOSITION
 # ---
 from communication.connectors.base_connector_communication import *
-
-from communication.connectors.communication_helpers import _wait_for_next_minute
+from campaign.campaign_workflow import determine_campaign_next_action,CHANNEL_IDENTIFIER_MAP
+from communication.connectors.communication_helpers import _wait_for_next_minute,get_or_create_person
 
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 from agents.get_whatsapp_template_agent import get_whatsapp_template
@@ -31,7 +31,7 @@ from communication.connectors.email_communication import communication_sender
 from communication.connectors.connector_rcs import gryd_send_rcs
 from conversation.lead_post_processing import update_error_in_lead_and_session
 from communication.common_functions import get_communication_credential,generate_uid
-from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME, SERVICE,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AutocrmModel
+from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME, SERVICE,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,get_phone_code_from_dealership,AutocrmModel
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
@@ -223,10 +223,12 @@ class BaseCampaignCreater:
         )
         patch_user_data={}
         if channel in ["whatsapp", "whatsapp_chat"]:
-            mobile_number = self._format_mobile_number(
-                mobile_number,
-                country_code=campaign_user_data.get("country_code", "91") or "91"
-            )
+            country_code=get_phone_code_from_dealership(campaign_details.get("dealership_id"),False)
+            mobile_number = f"{country_code}{mobile_number}"
+            # mobile_number = self._format_mobile_number(
+            #     mobile_number,
+            #     country_code=campaign_user_data.get("country_code", "91") or "91"
+            # )
             patch_user_data = {"mobile_number":mobile_number,"template_message":campaign_details.get("template_message",'').format(**campaign_user_data)}
             # logger.info(f"Campaign Message patch_user_data: {patch_user_data}")
             send_data = self.create_campaign_payload(
@@ -403,9 +405,12 @@ class BaseCustomCampaignManager:
             mobile_number = clean_phone_number(user.get("mobile_number", "")) if channel.upper() == "WHATSAPP_CHAT" else user.get("mobile_number", "")
             logger.info(f"mobile_number-----{ mobile_number}")
             logger.info(f"USER----------{user}")
+            logger.info(f"CHANNEL ---{channel}")
             if channel.upper()=="WHATSAPP_CHAT":
-                mobile_number = BaseCampaignCreater()._format_mobile_number(mobile_number,user.get("country_code","91"))
-                
+                # mobile_number = BaseCampaignCreater()._format_mobile_number(mobile_number,user.get("country_code","91"))
+                country_code=get_phone_code_from_dealership(campaign_data.get("dealership_id"),False)
+                mobile_number = f"{country_code}{mobile_number}"
+                logger.info(f"mobile_number after formatting-----{ mobile_number}")
             if not mobile_number:
                 logger.warning(f"[{count}] User record missing mobile_number: {user}")
                 continue
@@ -457,10 +462,11 @@ class BaseCustomCampaignManager:
                     ],enterprise_id=enterprise_id)
             elif channel.upper()=="VOICE_PHONE":
                 logger.info("Sending Voice campaign---")
-                logger.info(f"[{count}] Sent {channel} message for phone_number:{campaign_data.get('mobile_number')}, campaign_id:{campaign_data.get('campaign_id')}, lead_id:{user.get('lead_id')}")
                 # logger.info(f"[voice_channel] campaign_data--{json.dumps(campaign_data,indent=4)}, campaign_users--{json.dumps(campaign_users[0],indent=4)}")
-                d={**campaign_data,**campaign_users[0]}                
-                logger.info(f"Voice call payload--{json.dumps(d,indent=4)}")
+                d={**campaign_data,**campaign_users[0]}  
+                logger.info(f"[{count}] Sent {channel} message for phone_number:{d.get('mobile_number')}, campaign_id:{d.get('campaign_id')}, lead_id:{d.get('lead_id')}")
+                              
+                # logger.info(f"Voice call payload--{json.dumps(d,indent=4)}")
 
                 voice_service_name = campaign_data.get("voice_service_name") or AUTOCRM_VOICE_SERVICE_NAME
 
@@ -713,6 +719,7 @@ def trigger_campaign(*args, **kwargs):
     campaign_id=kwargs.get("campaign_id")
     campaign_type=kwargs.get("campaign_type")
     lead_table = "pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
+    lead_table_id="pre_sales_lead_id" if campaign_type == "pre-sales" else "post_sales_lead_id"
     filters = {k: v for k, v in kwargs.items() if v is not None}
     logger.info(f"Filters: {filters}")
     with get_pg_connector() as pg:
@@ -741,15 +748,13 @@ def trigger_campaign(*args, **kwargs):
     logger.info(f"Valid leads to process: {len(valid_leads)}")
 
     for lead in valid_leads:
-        # logger.info(f"Queueing task for lead_id={lead.get('lead_id')}")
-        list(process_single_lead(None, lead, campaign_type, campaign_id))
-        # gryd.create_async_task(
-        #     "process_single_lead",
-        #     AUTOCRM_CAMPAIGN_SERVICE_NAME,
-        #     args=[None, lead, campaign_type, campaign_id],
-        #     kwargs={}
-        # )
-
+        
+        logger.info(f"Queueing task for lead_id={lead.get(lead_table_id)}")
+        # list(process_single_lead(None, lead, campaign_type, campaign_id))
+        person = get_or_create_person(lead.get("phone_number"),lead.get("dealership_id"))
+        pg.update(lead_table, lead_table_id,lead.get(lead_table_id), {"user_id": person.get("user_id")})
+        list(determine_campaign_next_action(campaign_type,lead.get(lead_table_id),call_process_single_lead=True))
+        
     logger.info("All valid leads queued successfully.")
 
 @gryd.is_a_task(function_name="trigger_queued_campaigns")
@@ -848,6 +853,7 @@ def manual_register_pre_sales(name, phone_number, email, *args, **kwargs):
     dealership_id = kwargs.get("dealership_id")
     campaign_type = kwargs.get("campaign_type", "pre-sales")
     campaign_objective_id = kwargs.get("campaign_objective_id")
+
     
     # Validation check to ensure required params are present
     if not all([campaign_id, dealership_id, campaign_objective_id]):
@@ -867,34 +873,26 @@ def manual_register_pre_sales(name, phone_number, email, *args, **kwargs):
         "email": email,
         "campaign_id": campaign_id,
         "dealership_id": dealership_id,
-        "campaign_objective_id": campaign_objective_id
+        "campaign_objective_id": campaign_objective_id,
+        **kwargs
     }
-
-    # Data container for the final post
-    data = {}
-
-    # Logic from process_pre_sales_lead_row: Simple string fields
-    for k in [
+    logger.info(f"Constructed row for manual registration: {row}")
+    # 4. Construct Final Data Payload
+    allowed_keys = [
         "phone_number", "email", "person_name", "campaign_id", "dealership_id", 
-        "last_contacted_whatsapp_number", "last_contacted_email", "last_contacted_phone_number"
-    ]:
-        data[k] = row.get(k) if row.get(k) else None
-
-    # Logic from process_pre_sales_lead_row: List/Preference fields
-    for k in [
-        "brand_preference", "model_preference", "variant_preference", "color_preference",
-        "engine_type_preference", "transmission_preference", "range_preference",
-        "feature_preferences", "segment_preference", "competitor_brands",
-        "competitor_models", "emotions", "engagement_events",
-        "previous_interaction_ids", "lead_tags", "interested_vehicle_competitor_vehicles"
-    ]:
-        val = row.get(k)
-        if val and isinstance(val, str):
-            data[k] = val.split(',')
-        else:
-            data[k] = None
+        "campaign_objective_id", "last_contacted_whatsapp_number", "last_contacted_email", 
+        "last_contacted_phone_number", "brand_preference", "model_preference", 
+        "variant_preference", "color_preference", "engine_type_preference", 
+        "transmission_preference", "range_preference", "feature_preferences", 
+        "segment_preference", "competitor_brands", "competitor_models", "emotions", 
+        "engagement_events", "previous_interaction_ids", "lead_tags", 
+        "interested_vehicle_competitor_vehicles"
+    ]
+    
+    data = {k: row.get(k) for k in allowed_keys if row.get(k) is not None}
 
     try:
+        logger.info(f"Posting {data}")
         # 1. Post the lead to the model
         lead = lead_model.post(data)
         
@@ -1060,7 +1058,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     if not campaign_details:
         yield {"status": "Error", "error_description": f"No campaign found for campaign_id={campaign_id}"}
         return
-
+    
     # campaign_details = campaign_details[0]
     campaign_objective_name=campaign_details.get("campaign_objective_name") 
     logger.info(f"campaign_objective_name: {campaign_objective_name}")
@@ -1087,7 +1085,9 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         return
 
     logger.info(f"Lead found for lead_id={lead_id}")
-
+    if channel_identifier:
+        logger.info(f"CHANNEL_IDENTIFIER-----{channel_identifier} for lead_id={lead_id}")
+        lead_data["channel_identifier"] = channel_identifier
     if not channel:
         channel = get_channel(lead_data, campaign_details)
 
@@ -1127,7 +1127,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
             return
         
         template_data = template_data[0]
-        logger.info(f"Template ID for email={lead_data.get('email')}: {template_data.get('template_id')}")
+        logger.info(f"Template ID for email={channel_identifier}: {template_data.get('template_id')}")
         
         template_vars = template_data.get("template_variables", [])
 
@@ -1201,8 +1201,6 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 sender_name=_d.get("sender")
                 
             logger.info(f"Communication Credential found for dealership_id: {lead_data.get('dealership_id')}, channel: {channel} and sender phone_number: {sender_name}")
-            
-            
         else:
             with get_pg_connector() as pg:
                 template_details=pg.get("template","template_id",templateID)
@@ -1216,8 +1214,9 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         yield {"status": "Error", "error_description": f"Unsupported channel: {channel}"}
         return
 
-    mobile = lead_data.get("phone_number") 
-    logger.info(f"Campaign ID: {campaign_id}, Original Mobile: {mobile}")
+    mobile = lead_data.get("channel_identifier") or lead_data.get("phone_number")
+    
+    # logger.info(f"Campaign ID: {campaign_id}, Original Mobile: {mobile}")
     customer_name = "Dear NADA Visitor" if campaign_id == "4c99d5ea-4441-3ce6-841f-de5d7585b3b7" and lead_data.get("person_name") is None else lead_data.get("person_name")
     lead_data['person_name']=customer_name
     logger.info(f"Customer Name: {customer_name}")
@@ -1227,7 +1226,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         "lead_id": lead_id,
         "mobile_number": mobile,
         "customer_name": customer_name,
-        "email": lead_data.get("email",None),
+        "email": lead_data.get("channel_identifier") if channel == "email" else None,
         "lead_model": lead_table,
         "contact_channel": channel,
         "template_id": template_data.get("template_id") if template_data else None,
@@ -1235,23 +1234,31 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         **variable_mapping
     }
 
-    if template_data and channel in ("whatsapp_chat", "sms"):
-        buttons = template_data.pop("buttons", None)
-        template_vars = template_data.get("template_variables", [])
-        render_data = {v: variable_mapping.get(v, "") for v in template_vars}
-        logger.info(f"Render Data: {render_data}")
-        template_str = template_data.get("template_message", "")
-        template_str = template_str.replace("{{", "{").replace("}}", "}")
-        template_message = template_str.format(**render_data)
+    buttons = None
+    template_message = None
 
-    if template_data and channel == "rcs":
+    if template_data:
         template_vars = template_data.get("template_variables", [])
         render_data = {v: variable_mapping.get(v, "") for v in template_vars}
-        template_message = template_data.get("init_message", "").format(**render_data)
+
+        if channel in ("whatsapp_chat", "sms"):
+            buttons = template_data.get("buttons")
+
+            template_str = template_data.get("template_message", "")
+            template_str = template_str.replace("{{", "{").replace("}}", "}")
+            template_message = template_str.format(**render_data)
+
+        elif channel == "rcs":
+            template_message = template_data.get("init_message", "").format(**render_data)
+
     logger.info(f"Template Message: {template_message}")
+
     if channel == "web_chat":
-        yield {"placeholder": template_message, "buttons": buttons}
-        return
+        yield {
+            "placeholder": template_message,
+            "buttons": buttons
+        }
+        return    
 
     final_payload = {
         **(template_data or {}),
@@ -1266,6 +1273,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         "campaign_user_source": {
             "source_type": "default",
             "campaign_users": [campaign_user],
+            "country_code": lead_data.get("region_id"),
             "field_mapping": {
                 "lead_id": "lead_id",
                 "mobile_number": "mobile_number",
@@ -1473,8 +1481,7 @@ if  __name__ == "__main__":
         kwargs={
           
             "campaign_type": "pre-sales",
-            "start": 1777036302,
-            "end":  1777420689
+            "start": 1776885055
         }
    )
 

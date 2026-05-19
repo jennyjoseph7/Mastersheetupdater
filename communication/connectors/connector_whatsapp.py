@@ -20,7 +20,8 @@ from connectors.communication_helpers import format_box_log,safe_orjson_dumps
 from connectors.communication_configs import DB_TIMEZONE
 from communication.common_functions import generate_uid
 from config import *
-from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappReceiverConnector
+from campaign.campaign_workflow import CHANNEL_IDENTIFIER_MAP
+from connectors.whatsapp_connectors.source_connectors import WhatsappMessangerConnector,WhatsappReceiverConnector,BaseWebhookConverter
 import json
 import functools
 from autocrm_db_helper import get_pg_connector
@@ -272,7 +273,7 @@ def post_contact_status(*args, **data):
     logger.info(f"[post_contact_status] Processing message_id={message_id} with incoming_status={incoming_status}")
     raw_channel = data.get("channel")
     channel = raw_channel.strip() if isinstance(raw_channel, str) else None
-
+    channel_identifier=CHANNEL_IDENTIFIER_MAP.get(channel)
     with get_pg_connector() as pg:
         user_id = None
         should_bill = None
@@ -317,6 +318,9 @@ def post_contact_status(*args, **data):
                 args=[incoming_status],
                 kwargs={"user_id": user_id , **data},
             )
+            logger.info(f"[post_contact_status] New contact_status created for incoming_status={incoming_status}.Also calling next determine_campaign_next_action--{json.dumps(data,indent=4)}")
+            
+            call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get(channel_identifier),incoming_status,pg=pg)
             # update_lead_disposition(pg, incoming_status,user_id=user_id, **data) 
             return
         
@@ -355,6 +359,9 @@ def post_contact_status(*args, **data):
                 contact_status_id,
                 payload
             )
+            logger.info(f"[post_contact_status] contact_status created with incoming_status={incoming_status} and contact_status_id={contact_status_id}. Also calling next determine_campaign_next_action in--{json.dumps(data,indent=4)}")
+            call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get(channel_identifier),incoming_status,pg=pg)
+            
 
         # post billing obj
         should_bill = (channel in ["whatsapp_chat"]
@@ -377,12 +384,40 @@ def post_contact_status(*args, **data):
     return 
 
 
+def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,channel_identifier,disposition,pg=None):
+    logger.info(f"In the campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+    if not campaign_id:
+        logger.error(f"campaign_id is required for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+        return
+    campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
+    def _do_db_work(pg_conn):
+        a=list(pg_conn.list(campaign_model, {"campaign_status": "Active"}))
+        if not a:
+            logger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
+            return
+        # TODO:before calling ananth task check the campaign status and then call.. 
+        logger.info(f"Calling next campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+        gryd.create_async_task(
+            "determine_campaign_next_action",
+            AUTOCRM_CAMPAIGN_SERVICE_NAME,
+            args=[campaign_type,lead_id,channel,channel_identifier,disposition],
+            kwargs={"enterprise_id": AUTOCRM_APP_ENTERPRISE_ID},
+        )
+        # determine_campaign_next_action(campaign_type,lead_id,channel,channel_identifier,disposition,pg_conn)
 
+    if pg:
+        _do_db_work(pg)
+    else:
+        with get_pg_connector() as pg_conn:
+            _do_db_work(pg_conn)
+  
 # @gryd.is_a_task(function_name="check_or_create_session")
 # def check_or_create_session(phone_number, campaign_details, from_web_chat): 
 #     return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
 
-
+@gryd.is_a_task(function_name="send_media_template")
+def send_media_template(*args, **kwargs):
+    return BaseWebhookConverter().send_media_template(*args, **kwargs)
     
 if __name__=="__main__":
     # for airtel 

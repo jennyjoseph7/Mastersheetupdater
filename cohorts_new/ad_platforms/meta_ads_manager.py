@@ -58,56 +58,10 @@ def check_valid_values(_check_value_for : str) -> Union[list[str], Dict[str, lis
     _valid_values = value_map.get(_check_value_for)
     return _valid_values
 
-CAMPAIGN_FIELDS = [
-    "id",
-    "name",
-    "status",
-    "objective",
-    "created_time",
-    "updated_time",
-    "start_time",
-    "stop_time",
-    "daily_budget",
-    "lifetime_budget",
-    "buying_type",
-    "special_ad_categories",
-    "objective"
-]
-
-ADSET_FIELDS = [
-    "id",
-    "name",
-    "status",
-    "campaign_id",
-    "daily_budget",
-    "lifetime_budget",
-    "billing_event",
-    "optimization_goal",
-    "targeting",
-    "start_time",
-    "end_time"
-]
-
-AD_FIELDS = [
-    "id",
-    "name",
-    "status",
-    "adset_id",
-    "creative",
-    "created_time",
-    "updated_time"
-]
-
-CREATIVE_FIELDS = [
-    "id",
-    "name",
-    "object_story_spec",
-    "image_url",
-    "thumbnail_url",
-    "body",
-    "title"
-]
-
+CAMPAIGN_FIELDS = default_meta_values.get("CAMPAIGN_FIELDS", [])
+ADSET_FIELDS = default_meta_values.get("ADSET_FIELDS", [])
+AD_FIELDS = default_meta_values.get("AD_FIELDS", [])
+CREATIVE_FIELDS = default_meta_values.get("CREATIVE_FIELDS", [])
 
 class MetaGraphAPIException(Exception):
     def __init__(self, error_message, *args, **kwargs):
@@ -166,25 +120,29 @@ class MetaAdsManager:
         self.app_id =  app_id 
         self.app_secret =  app_secret 
         self.access_token = access_token 
-        if not ad_account_id.startswith("act_"):
+
+        if ad_account_id is not None and isinstance(ad_account_id, str) and not ad_account_id.startswith("act_"):
             ad_account_id = f"act_{ad_account_id}"
         self.ad_account_id = ad_account_id
 
         self.page_id = page_id
         self.api_version = api_version
 
-        if not all([self.app_id, self.app_secret, self.access_token, self.ad_account_id]):
-            raise ValueError("Missing Meta credentials. Please configure environment variables.")
+        # if not all([self.app_id, self.app_secret, self.access_token, self.ad_account_id]):
+        #     raise ValueError("Missing Meta credentials. Please configure environment variables.")
 
-        FacebookAdsApi.init(
-            app_id          = self.app_id,
-            app_secret      = self.app_secret,
-            access_token    = self.access_token,
-            api_version     = self.api_version
-        )
+        try:
+            FacebookAdsApi.init(
+                app_id          = self.app_id,
+                app_secret      = self.app_secret,
+                access_token    = self.access_token,
+                api_version     = self.api_version
+            )
 
-        self.ad_account = AdAccount(self.ad_account_id)
-        logger.info(f"Meta Ads API initialized for account {self.ad_account_id}")
+            self.ad_account = AdAccount(self.ad_account_id)
+            logger.info(f"Meta Ads API initialized for account {self.ad_account_id}")
+        except:
+            pass 
 
 
     def _helper(self):
@@ -232,109 +190,71 @@ class MetaAdsManager:
         logger.info(f"Page ID set to {self.page_id}")
         return self.page_id
         
-
-    def list_all_campaigns(self):
-        # all_fields = list(Campaign.Field.__dict__.values())
-        # all_fields = [f for f in all_fields if f is not None]
-        # logger.info(f"Fields: {all_fields}")
-        result = self.ad_account.get_campaigns(fields=CAMPAIGN_FIELDS)
-        return self.cursor_to_json(result)
+    def get_campaigns(self, fields: list | None = None, effective_status: list | None = None):
+        fields = fields or [
+            Campaign.Field.id,
+            Campaign.Field.name,
+            Campaign.Field.status,
+            Campaign.Field.objective,
+            Campaign.Field.effective_status,
+            Campaign.Field.created_time,
+        ]
+        params = {}
+        if effective_status:
+            params["effective_status"] = effective_status
+        campaigns = self.ad_account.get_campaigns(fields=fields, params=params)
+        results = [c.export_all_data() for c in campaigns]
+        return results
     
-    def get_campaign_by_name(self, name):
-        campaigns = self.ad_account.get_campaigns(fields=["name", "id"])
-        for c in campaigns:
-            if c["name"] == name:
-                return c
-        return None
+    def get_adsets(self, campaign_id: str | None = None, fields: list | None = None):
+        fields = fields or [
+            AdSet.Field.id,
+            AdSet.Field.name,
+            AdSet.Field.status,
+            AdSet.Field.campaign_id,
+            AdSet.Field.daily_budget,
+            AdSet.Field.billing_event,
+            AdSet.Field.optimization_goal,
+            AdSet.Field.effective_status,
+        ]
 
-    def get_ad_sets_in_campaign(self, campaign_id: str):
-        campaign = Campaign(campaign_id)
-        result = campaign.get_ad_sets(fields=ADSET_FIELDS)
-        return self.cursor_to_json(result)
+        params = {}
+        if campaign_id:
+            params["campaign_id"] = campaign_id
 
+        adsets = self.ad_account.get_ad_sets(fields=fields, params=params)
+        results = [a.export_all_data() for a in adsets]
+        return results
+    
+    def get_ads(self, adset_id: str | None = None, campaign_id: str | None = None, fields: list | None = None):
+        fields = fields or [
+            Ad.Field.id,
+            Ad.Field.name,
+            Ad.Field.status,
+            Ad.Field.adset_id,
+            Ad.Field.campaign_id,
+            Ad.Field.creative,
+            Ad.Field.effective_status,
+        ]
 
-    def get_ads_in_adset(self, ad_set_id: str):
-        adset = AdSet(ad_set_id)
-        result = adset.get_ads(fields=AD_FIELDS)
-        return self.cursor_to_json(result)
+        params = {}
+        if adset_id:
+            params["adset_id"] = adset_id
+        if campaign_id:
+            params["campaign_id"] = campaign_id
+
+        ads = self.ad_account.get_ads(fields=fields, params=params)
+        results = [ad.export_all_data() for ad in ads]
+        return results
 
 
     def get_creative(self, creative_id: str):
         creative = AdCreative(creative_id)
         result = creative.api_get(fields=CREATIVE_FIELDS)
         object_story_spec = result["object_story_spec"]
-
         logger.info(f"Object Story Spec: {object_story_spec}")
-
         result["object_story_spec"] = {key :val for key, val in object_story_spec.items()}
-
         return dict(result)
-    
-
-    # _______________________________________________________________________________
-    def test_connection(self):
-        """Test Meta Ads API connection and permissions.  Prints basic account, page and campaign info."""
-        logger.info("----- META API TEST START -----")
-        try:
-            # 1. Test Ad Account Access
-            logger.info("Checking Ad Account access...")
-            account = self.ad_account.api_get(fields=["id","name","account_status","currency","timezone_name"])
-            # account = self.ad_account.api_get()
-            logger.info("Ad Account Details:")
-            logger.info(json.dumps(account.export_all_data(), indent=4, default=str))
-        except Exception as e:
-            raise Exception(f"Ad Account access failed: {e}")
-
-        try:
-            # 2. Test Campaign Fetch
-            logger.info("\nFetching campaigns...")
-            campaigns = self.ad_account.get_campaigns(
-                fields=[
-                    "id",
-                    "name",
-                    "status",
-                    "objective"
-                ],
-                params={"limit": 5}
-            )
-
-            # campaigns = self.ad_account.get_campaigns(params={"limit": 5})
-
-            campaign_list = list(campaigns)
-                
-            if campaign_list:
-                logger.info("Campaigns found:")
-                for c in campaign_list:
-                    logger.info(c.export_all_data())
-            else:
-                logger.info("No campaigns found")
-
-        except Exception as e:
-            raise Exception(f"Campaign access failed: {e}")
-
-
-        try:
-            # 3. Test Page Access
-            print("\nChecking Page access...")
-
-            
-
-            page = Page(self.page_id)
-            page_info = page.api_get(fields=[
-                "id",
-                "name",
-                "fan_count"
-            ])
-
-            print("Page Details:")
-            print(page_info)
-
-        except Exception as e:
-            print("Page access failed")
-            print(e)
-
-
-        print("\n----- META API TEST COMPLETE -----")
 
     def list_pages(self):
         me = User("me")
@@ -637,7 +557,7 @@ class MetaAdsManager:
     
     def preview_creative(self, creative_id: str, ad_format: str = "DESKTOP_FEED_STANDARD"):
         """Get rendered HTML preview of an ad creative for a specific placement. Same preview as shown in Meta Ads Manager."""
-
+        valid_preview_formats = default_meta_values.get("valid_preview_formats")
         if ad_format not in valid_preview_formats:
             raise ValueError(f"Invalid ad format: {ad_format}. Supported formats: {valid_preview_formats}")
         creative = AdCreative(creative_id)
@@ -1024,6 +944,16 @@ if __name__ == "__main__":
         page_id         =   page_id
     )
 
+
+    results = manager.get_campaigns()
+    logger.info(f"All Campaigns: {json.dumps(results, indent=4, default=str)}")
+
+    results = manager.get_adsets()
+    logger.info(f"All Adsets: {json.dumps(results, indent=4, default=str)}")
+
+    results = manager.get_ads()
+    logger.info(f"All Ads: {json.dumps(results, indent=4, default=str)}")
+    assert False
 
     # ---------------- TARGETING (broad India desktop/mobile example) ----------------
     targeting = {

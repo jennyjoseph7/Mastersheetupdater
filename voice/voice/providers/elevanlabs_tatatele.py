@@ -1,8 +1,6 @@
+from asyncio.subprocess import create_subprocess_shell
 from time import time, monotonic
 import os, sys
-from gryd_worker import gryd_helpers as hp
-
-import pytz
 _root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 if _root not in sys.path:
     sys.path.insert(0, _root)
@@ -21,7 +19,6 @@ import base64
 import asyncio
 import logging
 import threading
-from ai_service import ai_service
 import aiohttp  # Async HTTP - much faster than requests
 import websockets
 from dotenv import load_dotenv
@@ -39,7 +36,7 @@ try:
 except ImportError:
     pass  # uvloop not available, use default event loop
 
-logger = utils.get_logger(__name__)
+logger = hp.get_logger(__name__)
 
 # Set ENABLE_BRIDGE_TIMING=1 to log monotonic latency milestones to the logger (TataTele ↔ ElevenLabs).
 # Append one JSON object per call to this path (JSON Lines) for offline stats. Creates parent dirs on first write.
@@ -120,7 +117,7 @@ def _build_bridge_timing_record(
 # ---- Config / env ----
 load_dotenv()
 API_KEY = os.environ.get("EXTERNAL_LLM_API_KEY", "sk_e232d2802c87154961d0fcdf71f5b418735282cc9a61a179")
-AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_5701ka8618cbfxcbdp4wg6xb3x23")
+AGENT_ID = os.environ.get("DEFAULT_AGENT_ID", "agent_4501kp8jfafdfj297zej22s890y8")
 TATATELE_PHONE_NUMBER = os.environ.get("TATATELE_PHONE_NUMBER", "918065251305")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID", "phnum_8201k1anbf9wet6v915q8arr1vmz")
 
@@ -132,16 +129,66 @@ app = Blueprint("tatatelli", __name__)
 
 # Session manager for concurrent calls
 call_sessions: Dict[str, 'CallSession'] = {}
+
 # Thread lock for session management 
 session_lock = threading.Lock()
 
 
 # ---------- CallSession Class ----------
 
+def session_active(call_id, return_session = False):
+    with session_lock:
+        if call_id  in call_sessions:
+            if return_session:
+                return call_sessions[call_id]
+            return True
+        return False
+
+def _schedule_websocket_close(ws, bridge_loop: Optional[asyncio.AbstractEventLoop], call_id: str, socket_name: str,) -> None:
+    if ws is None or getattr(ws, "closed", False):
+        return
+    if bridge_loop is None or not bridge_loop.is_running():
+        logger.warning(
+            f"[{call_id}] Cannot close {socket_name}: bridge loop missing or not running"
+        )
+        return
+
+    async def _close() -> None:
+        try:
+            await ws.close()
+            logger.info(f"[{call_id}] Closed {socket_name}")
+        except Exception as e:
+            logger.warning(f"[{call_id}] Error closing {socket_name}: {e}")
+
+    try:
+        running = asyncio.get_running_loop()
+    except RuntimeError:
+        running = None
+
+    if running is bridge_loop:
+        bridge_loop.create_task(_close())
+    else:
+        try:
+            fut = asyncio.run_coroutine_threadsafe(_close(), bridge_loop)
+            fut.result(timeout=15.0)
+        except Exception as e:
+            logger.warning(
+                f"[{call_id}] Thread-safe close failed for {socket_name}: {e}"
+            )
+
+            
 def terminate_session(call_id: str):
     with session_lock:
         if call_id in call_sessions:
             session = call_sessions[call_id]
+            bridge_loop = getattr(session, "_bridge_loop", None)
+            for socket_name in ["dave_ws", "external_ws"]:
+                logger.info(f"[{call_id}] Checking {socket_name} for termination")
+                socket_obj = getattr(session, socket_name, None)
+                if socket_obj and not getattr(socket_obj, "closed", False):
+                    _schedule_websocket_close(
+                        socket_obj, bridge_loop, call_id, socket_name
+                    )
             session.stop_event.set()
             del call_sessions[call_id]
             logger.info(f"[{call_id}] Session terminated")
@@ -177,8 +224,8 @@ class CallSession:
 
     def __init__(self, call_id: str, ws=None):
         self.call_id = call_id
-        self.bridge_started = False
         self.dave_ws: Optional[websockets.WebSocketClientProtocol] = ws
+        self._bridge_loop: Optional[asyncio.AbstractEventLoop] = None
         self.stream_sid: Optional[str] = None
         self.media_buffer = []
         self.processed_agent_responses = set()
@@ -546,6 +593,7 @@ class CallSession:
                 if tool_name in ("end_call", "hang_up", "hangup", "end_conversation", "disconnect"):
                     logger.info(f"[{self.call_id}] Agent requested call end via tool: {tool_name} - triggering hangup")
                     self.stop_event.set() 
+                    return
 
             #  VAD (Voice Activity Detection) 
             elif msg_type == "vad_score":
@@ -565,6 +613,7 @@ class CallSession:
                 error_message = error_event.get("message", str(error_event))
                 logger.error(f"[{self.call_id}] ElevenLabs ERROR: code={error_code}, message={error_message} - triggering call hangup")
                 self.stop_event.set()
+                return
 
             #  CONVERSATION END 
             elif msg_type == "conversation_end":
@@ -572,6 +621,7 @@ class CallSession:
                 reason = end_event.get("reason", "unknown")
                 logger.info(f"[{self.call_id}] ElevenLabs conversation ended: {reason} - triggering call hangup")
                 self.stop_event.set()
+                return
 
             #  UNKNOWN EVENT 
             else:
@@ -705,6 +755,7 @@ class CallSession:
 
                         elif ev == "stop":
                             logger.info(f"[{self.call_id}] Call ended by platform")
+                            self.stop_event.set()
                             break
 
                         elif ev == "mark":
@@ -717,6 +768,7 @@ class CallSession:
                         raise  # Re-raise to properly exit
                     except Exception as e:
                         logger.error(f"[{self.call_id}] Tatatele reader error: %s", e)
+                        self.stop_event.set()
                         break
 
             async def dave_reader():
@@ -769,14 +821,6 @@ class CallSession:
             logger.exception(f"[{self.call_id}] Main error: %s", e)
         finally:
             self.processed_agent_responses.clear()
-            try:
-                if self.dave_ws:
-                    ## TODO send ws.send FLAG TO CLOSE. to say lets close all connections from the room
-                    await self.dave_ws.close()
-                    self.dave_ws = None
-            except Exception as e:
-                logger.warning(f"[{self.call_id}] Error closing ElevenLabs WebSocket: {e}")
-
             # Hang up the TataTele phone call so the user isn't left on a dead line
             await self.hangup_tatatele_call()
 
@@ -802,15 +846,13 @@ class CallSession:
 
     async def connect_external_websocket(self, url: str):
         """Connect to external websocket for this call session."""
+        self._bridge_loop = asyncio.get_running_loop()
         t = time()
-        ws = None
         try:
             logger.info(f"[{self.call_id}] connecting to {url}")
             try:
-                ws = await websockets.connect(url)
-                self.external_ws = ws
+                self.external_ws = await websockets.connect(url)
                 logger.info(f"[{self.call_id}] connected to {url}")
-                self.bridge_started = True
                 logger.info(f"[{self.call_id}] Time taken to connect to external WebSocket: {time() - t:.2f} seconds")
             except Exception as conn_error:
                 logger.error(f"[{self.call_id}] Failed to establish WebSocket connection to {url}: {conn_error}")
@@ -818,22 +860,36 @@ class CallSession:
 
             while not self.stop_event.is_set():
                 try:
-                    msg = await ws.recv()
+                    msg = await self.external_ws.recv()
                     logger.info(f"[{self.call_id}] received: {msg}")
-                    await self.outbound_media_stream(ws)
+                    await self.outbound_media_stream(self.external_ws)
                 except Exception as e:
                     logger.error(f"[{self.call_id}] recv error: %s", e)
                     break
         except Exception as e:
             logger.exception(f"[{self.call_id}] connection failed: %s", e)
         finally:
-            try:
-                if ws:
-                    await ws.close()
-            except Exception as e:
-                logger.warning(f"[{self.call_id}] Error closing external WebSocket: {e}")
-            self.bridge_started = False
-            logger.info(f"[{self.call_id}] external websocket closed")
+            sockets_to_close = []
+            if getattr(self, "external_ws", None):
+                sockets_to_close.append(("external_ws", self.external_ws))
+            if getattr(self, "dave_ws", None):
+                sockets_to_close.append(("dave_ws", self.dave_ws))
+
+            closed_ids = set()
+            for socket_name, socket_obj in sockets_to_close:
+                if id(socket_obj) in closed_ids:
+                    continue
+                closed_ids.add(id(socket_obj))
+                try:
+                    if not getattr(socket_obj, "closed", False):
+                        await socket_obj.close()
+                        logger.info(f"[{self.call_id}] Closed {socket_name}")
+                except Exception as e:
+                    logger.warning(f"[{self.call_id}] Error closing {socket_name}: {e}")
+
+            self.external_ws = None
+            self.dave_ws = None
+            logger.info(f"[{self.call_id}] Done With session cleanup")
 
 
 # ---------- Helper functions ----------
@@ -1059,17 +1115,6 @@ def make_call_tatatele(session_data, *args, **kwargs):
         logger.info(f"Tatatele originate response: {response}")
         call_id = response.get('ref_id')
         
-        # Store TataTele ref_id so we can hang up the call later for hangup call
-        # if call_id:
-        #     session_data['tatatele_ref_id'] = call_id
-        #     # Also set directly on the session object in call_sessions,
-        #     # in case session.session_data is a different dict (e.g. session already existed)
-        #     with session_lock:
-        #         session_key = session_id or call_id
-        #         existing_session = call_sessions.get(session_key)
-        #         if existing_session:
-        #             existing_session.session_data['tatatele_ref_id'] = call_id
-
         if call_id and not session_started:
             logger.info(f"No session id provider starting session with call_id: {call_id}")
             start_session(call_id)

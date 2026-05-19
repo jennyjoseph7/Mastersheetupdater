@@ -45,7 +45,7 @@ from conversation.lead_post_processing import update_lead_disposition_and_post_b
 _communication_dir = dirname(dirname(abspath(__file__)))
 if _communication_dir not in sys.path:
     sys.path.insert(0, _communication_dir)
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_COMMUNICATION_SERVICE_NAME,get_phone_code_from_dealership
 from gryd_worker import gryd, gryd_helpers as hp,gryd_db_helper as db
 logger=gryd.logger
 
@@ -67,11 +67,44 @@ NullEmptyCheck=[None, "", "null", "None"]
 # common functions
 
 def handle_session_logic(phone_number,from_number=None,channel=None,engaged=False,campaign_details=None, from_web_chat=False, profile_name=None):
+    
+    """
+    Handles the session logic for a user. Checks and creates the user first and then session.
+    
+    Parameters:
+        phone_number: The phone number of the user.
+        from_number (optional): The number from which the message was sent.
+        channel (optional): The channel through which the message was sent.
+        engaged (optional): A boolean flag indicating whether the user is engaged. For inbound scenario send as True.
+        campaign_details (optional): Details about the campaign.
+        from_web_chat (optional): A boolean flag indicating whether the message was sent from a web chat.
+        profile_name (optional): The name of the user's profile.
+    """
+    
     payload = {}
     dealership_id = None
+    session = {}
 
+    if engaged:
+        payload.update(
+            {
+                "lead_model":"pre_sales_lead",
+                "campaign_model":"pre_sales_campaign"
+            }
+        )
+    with get_pg_connector() as pg:
+    # get the dealership_id
+        _f={"sender": from_number,"channel":channel}
+        _f = {k: v for k, v in _f.items() if v is not None}
+        creds = list(pg.list("communication_credential", _f ))
+        if creds:
+            logger.info(f"In handle_session_logic communication creds: {creds[0]}")
+            session["communication_credentials"] = creds[0]
+            dealership_id = creds[0].get("dealership_id")
+            payload["dealership_id"] = dealership_id
+            
     # 1. PERSON
-    person = get_or_create_person(phone_number)
+    person = get_or_create_person(phone_number,dealership_id)
     if person:
         payload.update({
             "phone_number": phone_number,
@@ -91,29 +124,26 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
                 "lead_id": campaign_details.get("lead_id"),
             })
             session = get_or_create_session(payload,channel,engaged)
+            if session is None:
+                return {"error": "Failed to create or retrieve session"}
             return {**session}
 
         logger.info(f"TEST phone_number: {phone_number}")
-        # get the dealership_id
-        _f={"sender": from_number,"channel":channel}
-        _f = {k: v for k, v in _f.items() if v is not None}
-        creds = list(pg.list("communication_credential", _f ))
-        if creds:
-            logger.info(f"In handle_session_logic communication creds: {creds[0]}")
-            dealership_id = creds[0].get("dealership_id")
-            payload["dealership_id"] = dealership_id
+        
         # 3. CONTACT STATUS
+        # get the list of channels for dealership if not use default channels
         contact_list = list(
             pg.list_order_by("contact_status", {
                 "phone_number": phone_number,"channel":channel,"dealership_id":dealership_id
             },order_by="created", order="DESC")
         )
         logger.info(f"TEST contact_list present: {len(contact_list)}")
-        
+
         campaign_id = campaign_type = campaign_model = lead_id = None
 
+        #we found campaign for this user
         if contact_list and campaign_details is None:
-            
+            engaged = False if channel == "voice_phone" else engaged
             contact = contact_list[0]
             logger.info(f"Contact found: {contact}")
 
@@ -184,7 +214,9 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
                     _ = list(pg.list("communication_credential", {"dealership_id": dealership_id}))
 
             logger.info(f"TEST BEFORE SESSION FINAL PAYLOAD: {payload}")
-            session = get_or_create_session(payload,channel,engaged)
+            session = get_or_create_session(payload,channel,engaged,from_number)
+            if session is None:
+                return {"error": "Failed to create or retrieve session"}
             return {**session, "dealership_id": dealership_id}
 
         # 5. NON-CAMPAIGN FLOW
@@ -196,7 +228,10 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
         #     dealership_id = creds[0].get("dealership_id")
         #     payload["dealership_id"] = dealership_id
 
-        session = get_or_create_session(payload,channel,engaged)
+        new_session = get_or_create_session(payload, channel, engaged,from_number)
+        if new_session is None:
+            return {"error": "Failed to create or retrieve session"}
+        session.update(new_session)
         return {**session, "dealership_id": dealership_id}
 
 def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None,campaign_id=None):
@@ -230,17 +265,23 @@ def apply_filters(session_id=None, user_id=None, channel=None, session_live=None
     condition = "Where " + " AND ".join(conditions)
     return condition, params
 
-def get_or_create_session(data,channel=None,engaged=False):
+def get_or_create_session(data,channel=None,engaged=False,from_number=None):
     """
     Find active session or create new one.
-    session_live=True AND status != completed
+    data: This is a dictionary that contains the data needed to create or find a session. It is expected to have the following keys:
+            session_id: The ID of the session.
+            user_id: The ID of the user.
+            dealership_id: The ID of the dealership.
+            campaign_id: The ID of the campaign.
+            campaign_type: The type of the campaign.
+    channel (optional): The channel of the session.
+    engaged (optional): This is a boolean flag that indicates whether the user is engaged with the session. It is set to False by default.
     """
     logger.info(f"In create or get session function. User id: {data.get('user_id')}, data: {data} and engaged flag:{engaged}")
     
     filters = {
         "session_id":data.get("session_id"),
         "user_id":data.get("user_id"),
-        # TODO: have a dealership_id also as a filter. 
         "dealership_id":data.get("dealership_id"),
         # "campaign_id":data.get("campaign_id"),
         # "channel": channel or "whatsapp_chat" if data.get("campaign_type")=="post-sales" else None, 
@@ -287,7 +328,7 @@ def get_or_create_session(data,channel=None,engaged=False):
                 )
                 # TODO: call it as a function end_session_and_post_process(**{"session_id":sessions[0].get("session_id"),"pg":pg})
                 # create new session
-                s=create_new_session(data,channel,engaged)
+                s=create_new_session(data,channel,engaged,from_number)
                 return s
             else:
                 logger.info("Session has exisiting campaign_id. So we are returning the existing session.")
@@ -329,7 +370,7 @@ def get_or_create_session(data,channel=None,engaged=False):
         logger.info(f"No Existing session found. Creating a new one..")
         logger.info(f"CREATE NEW SESSION CHECKING engaged--{engaged}")
         # Create new session
-        s=create_new_session(data,channel,engaged)
+        s=create_new_session(data,channel,engaged,from_number)
         
         return s
     
@@ -406,7 +447,7 @@ def update_history_in_session(session_data):
 def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_post_process,inactive_cutoff_epoch):
     """
     Handles post session process or end session based on session end date and history update.
-
+    
     If the end date is reached and there is no new history, the session is ended.
     If the end date is reached but there is new history, the post session process is triggered.
     If there is new history and can_call_post_process is True, the post session process is triggered.
@@ -521,7 +562,34 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
 #         return s 
 
 
-def create_new_session(data, channel=None, engaged=False):
+def create_new_session(data, channel=None, engaged=False,from_number=None):
+    """
+Create a new session based on the provided data, channel, and engaged flag.
+
+Parameters:
+    data (dict): A dictionary containing the data needed to create the session.
+        It should have the following keys:
+            - session_id (str): The ID of the session.
+            - user_id (str): The ID of the user.
+            - dealership_id (str): The ID of the dealership.
+            - campaign_type (str, optional): The type of the campaign. Defaults to "pre-sales".
+            - campaign_id (str, optional): The ID of the campaign.
+            - phone_number (str, optional): The phone number associated with the session.
+            - person_name (str, optional): The name of the person associated with the session.
+            - email (str, optional): The email associated with the session.
+    channel (str, optional): The channel through which the session is accessed.
+        It can have the following values:
+            - "whatsapp_chat": The session is accessed through a WhatsApp chat.
+            - "rcs": The session is accessed through a Rich Communication Services (RCS) chat.
+            - "email": The session is accessed through an email.
+        Defaults to "whatsapp_chat".
+    engaged (bool, optional): A flag indicating whether the user is engaged with the session. ( Inbound scenario )
+        Defaults to False.
+
+    When it is an inbound scenario, the session is created with the "Inbound Lead Handling" campaign. And also respective lead objects are created.
+Returns:
+    dict: The newly created session.
+"""
     logger.info(f"Creating new session for user_id: {data.get('user_id')} and data: {json.dumps(data,indent=4)}")
     
     user_id = data.get("user_id")
@@ -540,20 +608,22 @@ def create_new_session(data, channel=None, engaged=False):
 
         # Handling engaged (inbound) scenario
         if engaged:
-            logger.info("User initiated conversation → inbound session")
+            logger.info("User initiated conversation → inbound session. NEW USER..")
 
             campaign_model = (
                 "pre_sales_campaign"
                 if campaign_type == "pre-sales"
                 else "post_sales_campaign"
             )
-
+            
+                
             campaigns = list(pg.list(
                 campaign_model,
                 {
-                    "campaign_objective_name": "Inbound Lead Handling",
+                    "campaign_objective_name": "Inbound Lead Handling" if channel == "voice_phone" else "Inbound Lead Handling- Whatsapp",
                     "dealership_id": dealership_id,
-                    "campaign_type": campaign_type
+                    "campaign_type": campaign_type,
+                    "channel": channel
                 }
             ))
 
@@ -566,13 +636,21 @@ def create_new_session(data, channel=None, engaged=False):
 
             campaign_data = campaigns[0]
             
-            logger.info(f"Found inbound campaign: {json.dumps(campaign_data,indent=4)}")
+            logger.info(f"Found inbound campaign for channel: {channel} and data: {json.dumps(campaign_data,indent=4)}")
             # creating a lead for this inbound user
             _final_payload={
                 **campaign_data,
                 **_additional_attributes}
-            d=check_and_create_inbound_lead_object(_final_payload)
-            data["lead_id"] = d.get("lead_id")
+            
+            
+            d=check_and_create_inbound_lead_object(**_final_payload)
+            logger.info(f"Created inbound lead for user_id: {user_id} and data: {json.dumps(d,indent=4)}")
+            data["lead_id"] = d.get("pre_sales_lead_id")
+            
+            #post contact_status object with status as "incoming"
+            if channel in ["whatsapp","whatsapp_chat","rms","email"]:
+                build_data_for_post_contact_status(channel,**d)
+                
         new_session = {
             **data,
             "session_live": True,
@@ -599,12 +677,13 @@ def create_new_session(data, channel=None, engaged=False):
 
         session = pg.update("session", "session_id", session_id, new_session)
 
+        logger.info(f"session_data for new session: {json.dumps(session,indent=4)}")
         logger.info(f"Session created for user_id: {user_id} → session_id: {session_id}")
         # updating lead last_session_channel 
         lead_id = session.get("lead_id")
         if not lead_id:
             logger.error(f"No lead_id found for session_id: {session_id}")
-            return
+            return session
         if campaign_type == "pre-sales":
             pg.update(
                 "pre_sales_lead",
@@ -628,7 +707,31 @@ def create_new_session(data, channel=None, engaged=False):
         # TODO:update last_contacted_whatsapp_number,last_contacted_email,last_contacted_phone_number in person model ( refer post_sales_lead)
 
         return session
-
+def build_data_for_post_contact_status(channel,**kwargs):
+    logger.info(f"Creating post contact status for Inbound and with provider status : 'answered' for channel: {channel}.")
+    lead_table_id="pre_sales_lead_id" if kwargs.get("campaign_type")=="pre-sales" else "post_sales_lead"
+    
+    provider_details=get_communication_credential(kwargs.get("dealership_id"),channel)
+    logger.info(f"provider_details for channel: {kwargs.get('channel')} and data: {json.dumps(provider_details,indent=4)}")
+    _d={
+        "channel": "whatsapp_chat",
+        "lead_id": kwargs.get(lead_table_id),
+        # "user_id": kwargs.get("user_id"),
+        "campaign_id": kwargs.get("campaign_id"),
+        "phone_number": kwargs.get("phone_number"),
+        "campaign_type": kwargs.get("campaign_type"),
+        "dealership_id": kwargs.get("dealership_id"),
+        "provider_status": "answered",
+        "channel_provider": provider_details.get("provider_name").lower()
+    }
+    
+    logger.info(f"post_contact_status for channel: {channel} and data: {json.dumps(_d,indent=4)}")
+    gryd.create_async_task(
+        "post_contact_status", 
+        AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+        kwargs={**_d}
+    )
+    
 def check_and_create_inbound_lead_object(**kwargs):
     dealership_id=kwargs.get("dealership_id")
     campaign_id=kwargs.get("campaign_id")
@@ -638,7 +741,7 @@ def check_and_create_inbound_lead_object(**kwargs):
         existing_leads=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
         if existing_leads:
             logger.info(f"Inbound Lead already exists for campaign_id={campaign_id}, user_id={user_id}")
-            return existing_leads[0].get("pre_sales_lead_id")
+            return existing_leads[0]
         logger.info(f"TEST USER ID--{user_id} and campaign_id--{campaign_id}")
         lead_data={
             "ctas": kwargs.get("ctas"),
@@ -659,7 +762,7 @@ def check_and_create_inbound_lead_object(**kwargs):
             "urgency_hook": urgency_hook,
             # "audience_name": "us test",
             "campaign_name": kwargs.get("campaign_name"),
-            "campaign_type": kwargs.get("pre-sales"),
+            "campaign_type": kwargs.get("campaign_type") or "pre-sales",
             "campaign_offer": kwargs.get("campaign_offer"),
             "finance_required": False,
             "supported_brands": kwargs.get("supported_brands"),
@@ -687,12 +790,15 @@ def check_and_create_inbound_lead_object(**kwargs):
             lead_d=list(pg.list("pre_sales_lead",{"campaign_id":campaign_id,"user_id":user_id}))
             # logger.info(f"Lead created: {json.dumps(lead_d,indent=4)} with user_id={user_id} and campaign_id={campaign_id}")
             logger.info(f"Pre-sales lead data created -- {lead_d[0].get('pre_sales_lead_id')}")
-            return lead_d[0].get("pre_sales_lead_id")
+            return lead_d[0]
         
-def get_or_create_person(phone_number):
+def get_or_create_person(phone_number,dealership_id=None):
     """Return person object; create if not exists."""
     logger.info(f"Getting or creating person for phone_number: {phone_number}")
     
+    country_code=get_phone_code_from_dealership(dealership_id,False)
+    phone_number=f"{country_code}{phone_number}"
+    logger.info(f"Get or create person for phone_number: {phone_number}")
     with get_pg_connector() as pg:
         # filters={"phone_number":phone_number,"_sort_by": "updated", "_sort_reverse": True}
         person_list = list(pg.list_order_by(

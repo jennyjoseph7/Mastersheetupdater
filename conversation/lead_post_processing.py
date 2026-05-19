@@ -459,7 +459,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         update_payload.pop("dealership_id", None)
         # mlogger.info(f"[post_contact_status] update_payload for lead_id={lead_id}: {update_payload}")
         if update_payload:
-            # mlogger.info(f"update_payload for lead_id={lead_id}: {update_payload}")
+            mlogger.info(f"update_payload for lead_id={lead_id}: {update_payload}")
             pg.update(
                 lead_table,
                 lead_pk,

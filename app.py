@@ -17,7 +17,9 @@ from ai_service import ai_service_app
 from db_routes import db_routes, ai_service_app
 from voice.voice.providers.twilio import app as twilio_routes
 from voice.voice.providers.elevanlabs_tatatele import app as elevanlabs_tatatele_routes
+from voice.voice.providers.elevanlabs_tatatele_inbound import app as elevanlabs_tatatele_inbound_routes
 from voice.voice.providers.elevanlab import app as elevanlab_routes
+from trigger_and_run_campaign import app as campaign_test_routes
 from core.razorpay_service import razorpay_webhook_handler
 from core.core import generate_otp, dealership_signup, reset_password
 from cohorts_new.routes.routes import cohort_bp, gryd_orchestration_bp
@@ -94,6 +96,14 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
               add_schedule_to_queue=False
         )
         
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="daily_dealership_summary",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+             schedule = "*/10 * * * *",
+              add_schedule_to_queue=False
+        )
+        
         # cron_worker.add_cron_job(
         #     enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
         #       task="set_worker_count",
@@ -102,12 +112,45 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
         #       add_schedule_to_queue=False
         # )
         
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+            task="process_all_dealerships_for_voice",
+            service=AUTOCRM_CRON_SERVICE_NAME,
+            schedule = "*/20 3-13 * * *", #till 7:10pm it runs..
+            add_schedule_to_queue=False
+        )
+        
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+            task="process_dealerships_non_voice",
+            service=AUTOCRM_CRON_SERVICE_NAME,
+            schedule = "*/20 2-15 * * *", #till 9pm it runs..
+            add_schedule_to_queue=False
+        )
+
+@app.route("/list-services", methods = ["GET"])
+@app.route("/list-services/<frmt>", methods = ["GET"])
+def get_worker_versions(frmt = None):
+    from tabulate import tabulate
+    environment = gryd.get_environment()
+    c = gryd.get_service_connection()
+    headers = ["Service", "Version", "Build", "Worker count", "Thread count", "Queue Length"]
+    table = list(map(
+        lambda x: (x.get(k) for k in ('service', 'version', 'build', 'worker_count', 'worker_job_count', 'queue_length')),
+        sorted(c.list_services(environment), key = lambda x: x.get('service'))
+    ))
+    if not frmt:
+        user_agent = request.headers.get('User-Agent', '').lower()
+        frmt = 'html' if any(b in user_agent for b in ('mozilla', 'chrome', 'safari', 'firefox', 'edge')) else 'github'
+    return tabulate(table, headers = headers, tablefmt=frmt), 200, {"Access-Control-Allow-Origin": "*"}
+
         
 @app.route("/webhook/<channel>/<channel_provider>", methods = ["GET","POST"])
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>", methods = ["GET","POST"])
 @app.route("/webhook/<channel>/<channel_provider>/<enterprise_id>/<conversation_id>", methods = ["GET","POST"])
 def webhook(channel, channel_provider, enterprise_id = AUTOCRM_APP_ENTERPRISE_ID, conversation_id = None):
     # payload = request.get_json(silent=True) or hp.parse_forms_dict(request.values.to_dict(flat=False))
+    
     payload = request.get_json(silent=True) or request.form.to_dict() or request.data.decode()
     language = payload.get("language", "english")
 
@@ -212,12 +255,12 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
 app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
 app.register_blueprint(elevanlabs_tatatele_routes)
+app.register_blueprint(elevanlabs_tatatele_inbound_routes)
 app.register_blueprint(twilio_routes)
 app.register_blueprint(elevanlab_routes)
-
-
 app.register_blueprint(cohort_bp)
 app.register_blueprint(gryd_orchestration_bp)
+app.register_blueprint(campaign_test_routes)
 
 
 def verify_webhook_signature(payload_body: bytes, signature: str, secret: str) -> bool:

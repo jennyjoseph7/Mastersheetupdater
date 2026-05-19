@@ -1,5 +1,6 @@
 import types
 from connectors.whatsapp_connectors.source_connectors import *
+# from config import get_phone_code_from_dealership
 class AirtelWebhookConverter(BaseWebhookConverter):
     logger.info("AirtelWebhookConverter initialized")
     def __init__(self,whatsapp_provider,*args,**kwargs)-> None:
@@ -404,6 +405,7 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
             payload["mediaAttachment"] = response_data.get(
                 "media_attachment", {}
             ) or self.interactive_media_payload(response_data).get("mediaAttachment", {})
+        
         
         return payload
 

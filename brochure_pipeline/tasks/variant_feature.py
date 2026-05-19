@@ -1,15 +1,18 @@
 import os
-import sys
 import json
 import uuid
 import time
 import pandas as pd
-
+import sys
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 import concurrent.futures
 from pathlib import Path
 from filelock import FileLock
 from gryd_worker import gryd
-from bp_utils import get_logger
+from bp_utils import get_logger, fetch_brochure_text_from_api
 import re
 from dotenv import load_dotenv
 
@@ -20,10 +23,6 @@ from brochure_pipeline.agents.variant_feature_agent import (
     generate_bulk_questions
 )
 from brochure_pipeline.agents.postProcessing import process_batch_extraction, finalize_results_json
-from os.path import dirname, abspath, join as joinpath
-BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
-if BASE_DIR not in sys.path:
-    sys.path.append(BASE_DIR)
 
 from config import AutocrmModel
 
@@ -49,28 +48,6 @@ RETRY_DELAY = 10
 
 
 # DB & API HELPER FUNCTIONS
-
-def fetch_brochure_text_from_api(document_id: str) -> str:
-    """Fetches extracted chunks using AutocrmModel and concatenates them."""
-    try:
-        chunk_saver_model = AutocrmModel('chunk_saver')
-        # Assuming .list() returns the data list directly based on your config.py
-        chunks = chunk_saver_model.list(document_id=document_id, page_size=1000)
-        
-        extracted_text = []
-        # Handle both dict responses (if wrapped in 'data') or direct lists
-        chunk_list = chunks.get("data", []) if isinstance(chunks, dict) else chunks
-        
-        for chunk in chunk_list:
-            if isinstance(chunk, dict):
-                text = chunk.get("text_content", "")
-                if text:
-                    extracted_text.append(str(text))
-                    
-        return "\n\n".join(extracted_text)
-    except Exception as e:
-        logger.error(f"Failed to fetch brochure data from chunk_saver API for {document_id}: {e}")
-        return ""
 
 def generate_feature_id(entry):
     fields = [entry.get("feature_category"), entry.get("feature_name"), entry.get("value_type"), entry.get("unit")]
@@ -369,7 +346,9 @@ def process_single_feature(row_data, car_name, brochure_text, document_id, maste
             success = True 
         except Exception as e:
             attempt_count += 1
-            if attempt_count < max_retries: time.sleep(5) 
+            logger.error(f"❌ [process_single_feature] Attempt {attempt_count}/{max_retries} failed for feature '{feature_name}': {e}")
+            if attempt_count < max_retries:
+                time.sleep(5)
 
     return local_structured, local_validation, local_raw
 
@@ -417,7 +396,7 @@ def process_brochure_chunk(document_id: str, features_chunk: list, cached_text: 
         
         try:
             logger.info(f"Initiating streaming upload for {len(all_structured_entries)} EXPANDED entries...")
-            stream_upload_chunk(all_structured_entries) # We don't need car_name here anymore!
+            stream_upload_chunk(all_structured_entries, document_id)
         except Exception as e:
             logger.error(f"Failed to execute streaming upload: {e}")
 

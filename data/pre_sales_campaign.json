@@ -221,6 +221,10 @@
             ]
         },
         {
+            "name": "last_sync_timestamp",
+            "type": "number"
+        },
+        {
             "name": "campaign_objective_id",
             "type": "uid",
             "options": "/options/campaign_objective/campaign_objective_name",
@@ -411,6 +415,32 @@
             "ui_element": "multiselect"
         },
         {
+            "name": "channel_sequence",
+            "type": "list",
+            "default": [
+                "voice_phone",
+                "whatsapp_chat",
+                "rcs",
+                "email"
+            ],
+            "options": [
+                "rcs",
+                "email",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "voice_phone",
+                "whatsapp_chat",
+                "whatsapp_voice_note",
+                "whatsapp_voice_call",
+                "zoom_bot",
+                "ms_teams"
+            ],
+            "ui_element": "multiselect"
+        },
+        {
             "name": "vehicle_category",
             "type": "text",
             "required": false,
@@ -453,7 +483,11 @@
                 "assamese",
                 "punjabi",
                 "spanish",
-                "arabic"
+                "arabic",
+                "french",
+                "bahasa_indonesia",
+                "tagalog",
+                "portuguese"
             ]
         },
         {
@@ -586,43 +620,6 @@
                                     "region",
                                     "region_id",
                                     "voice_agent_id"
-                                ]
-                            },
-                            null
-                        ],
-                        "kwargs": {
-                            "region_id": "~null"
-                        }
-                    }
-                ],
-                "kwargs": {
-                    "subdivision_id": "~null"
-                }
-            }
-        },
-        {
-            "name": "voice_id",
-            "type": "text",
-            "default": {
-                "function": "set_if_condition",
-                "args": [
-                    {
-                        "function": "get_from_model",
-                        "args": [
-                            "region_subdivision",
-                            "region_subdivision_id",
-                            "voice_id"
-                        ]
-                    },
-                    {
-                        "function": "set_if_condition",
-                        "args": [
-                            {
-                                "function": "get_from_model",
-                                "args": [
-                                    "region",
-                                    "region_id",
-                                    "voice_id"
                                 ]
                             },
                             null

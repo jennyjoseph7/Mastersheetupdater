@@ -11,8 +11,10 @@ AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME = os.environ.get("AUTOCRM_CONVERS
 AUTOCRM_AGENT_SERVICE_NAME = os.environ.get("AUTOCRM_AGENT_SERVICE_NAME", "autocrm-agent")
 AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME = os.environ.get("AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME", "autocrm-short-run-agent")
 AUTOCRM_VOICE_SERVICE_NAME = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME", "autocrm-voice")
+AUTOCRM_VOICE_INBOUND_SERVICE_NAME = os.environ.get("AUTOCRM_VOICE_INBOUND_SERVICE_NAME", "autocrm-voice-inbound")
 AUTOCRM_COMMUNICATION_SERVICE_NAME = os.environ.get("AUTOCRM_COMMUNICATION_SERVICE_NAME", "autocrm-communication")
 AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME = os.environ.get("AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME", "autocrm-cohort-campaign") # For Cohort Generation, Classification, Affinity Mapping Service.
+AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE = os.environ.get("AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE", "english")
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
 AUTOCRM_CORE_SERVICE_NAME = os.environ.get("AUTOCRM_CORE_SERVICE_NAME", "autocrm-core")
 AUTOCRM_CAMPAIGN_SERVICE_NAME = os.environ.get("AUTOCRM_CAMPAIGN_SERVICE_NAME", "autocrm-campaign")
@@ -45,6 +47,28 @@ AUTOCRM_CHEAPEST_CHANNELS = [
     "rcs",
     "whatsapp_voice_call",
 ]
+AUTOCRM_SUPPORTED_LANGUAGES = [
+    "english",
+    "hindi",
+    "kannada",
+    "telugu",
+    "tamil",
+    "malayalam",
+    "odia",
+    "bengali",
+    "marathi",
+    "gujarati",
+    "bengali",
+    "assamese",
+    "punjabi",
+    "spanish",
+    "arabic",
+    "french",
+    "bahasa_indonesia",
+    "tagalog",
+    "portuguese"
+]
+
 AUTOCRM_CALL_CONNECTED_PRICE = float(os.environ.get("AUTOCRM_CALL_CONNECTED_PRICE", 2))
 AUTOCRM_CALL_CONNECTED_ITEM = "call_connected"
 AUTOCRM_CALL_CONNECTED_UNITS = "count"
@@ -77,6 +101,18 @@ ALLOWED_COUNTRY_CODES = list(map(str.strip, os.environ.get("ALLOWED_COUNTRY_CODE
 OTP_TEMPLATE_ID = os.environ.get("OTP_TEMPLATE_ID", "01kckk7efvtft7gqwg3cfwfsqe")
 EXCHANGE_RATE_HOST_API_KEY = os.environ.get("EXCHANGE_RATE_HOST_API_KEY","b6e93843fe72674909722d79859d7c4c")
 EXCHANGE_RATE_HOST_BASE_URL = os.environ.get("EXCHANGE_RATE_HOST_BASE_URL", "https://api.exchangerate.host")
+
+DEFAULT_CHANNELS = ["whatsapp_chat", "voice_phone"]
+VOICE_MAX_QUEUE_LENGTH= 60
+NON_VOICE_MAX_QUEUE_LENGTH= 100
+VOICE_BATCH_SIZE=20
+NON_VOICE_BATCH_SIZE=100
+VOICE_START_TIME=9
+VOICE_END_TIME=19
+NON_VOICE_START_TIME=9
+NON_VOICE_END_TIME=20
+VOICE_CHANNELS = ["voice_phone", "voice"]
+NON_VOICE_CHANNELS = ["whatsapp", "whatsapp_chat", "rms", "email"]
 
 WHATSAPP_PRICING_INR = {
     "airtel": {
@@ -118,7 +154,10 @@ AUTOCRM_SPARK_COMFY_SERVICE_NAME = os.environ.get('AUTOCRM_SPARK_COMFY_SERVICE_N
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1.5")
 OPENAI_IMAGE_SIZE = os.environ.get("OPENAI_IMAGE_SIZE", "1024x1536")
+GEMINI_IMAGE_ASPECT_RATIO = os.environ.get("GEMINI_IMAGE_ASPECT_RATIO", "16:9")
+GEMINI_IMAGE_MODEL = os.environ.get("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
 VALIDATE_PROMPT_MODEL = os.environ.get("VALIDATE_PROMPT_MODEL", "azure-gpt-4o-mini")
+ANALYZE_IMAGE_MODEL = os.environ.get("ANALYZE_IMAGE_MODEL", "gcp-gemini-2.5-flash")
 try:
     OPENAI_INPUT_TEXT_TOKEN_PRICE = float(os.environ.get("OPENAI_INPUT_TEXT_TOKEN_PRICE", 5.0/1_000_000))
     OPENAI_OUTPUT_TEXT_TOKEN_PRICE = float(os.environ.get("OPENAI_OUTPUT_TEXT_TOKEN_PRICE", 10.0/1_000_000))
@@ -441,6 +480,24 @@ def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, 
         logger.error(f"File: {filename_csv} or {filename_json} not found")
         raise FileNotFoundError(f"Seed file for : {data_name} not found")
 
+def get_phone_code_from_dealership(dealership_id, with_plus = True):
+    dm = AutocrmModel('dealership')
+    d = dm.get(dealership_id)
+    addp = '+' if with_plus else ''
+    if not d.get('region_id'):
+        return f'{addp}91'
+    rm = AutocrmModel('region')
+    r = rm.get(d.get('region_id'))
+    c = r.get('country_phone_code')
+    if not c:
+        return f'{addp}91'
+    if with_plus and not c.startswith('+'):
+        return f'+{c}'
+    if not with_plus and c.startswith('+'):
+        return c.strip('+')
+    return c
+
+
 AUTOCRM_VOICE_SERVICE_NAME_1 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_1", "autocrm-voice-1")
 AUTOCRM_VOICE_SERVICE_NAME_2 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_2", "autocrm-voice-2")
 AUTOCRM_VOICE_SERVICE_NAME_3 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_3", "autocrm-voice-3")
@@ -449,13 +506,33 @@ AUTOCRM_VOICE_SERVICE_NAME_5 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_5", "a
 
 
 
-def get_websocket_base_url(seed=None):
-    import random
-    base_ws_url = AUTOCRM_WEBSOCKET_BASE_URL
-    base_ws_url = list(map(lambda x: x.strip(), base_ws_url.split(',')))
-    rng = random.Random(int(seed) if seed is not None else None)
-    return rng.choice(base_ws_url)
-
+def get_websocket_base_url(room=None):
+    ssm = AutocrmModel('socket_server')
+    required_uptime_ping = hp.epoch() - 120
+    environment = os.environ.get('ENVIRONMENT', 'local')
+    kwargs = {
+        "_as_option": True,
+        "environment": environment,
+        "_sort_by": "active_connections",
+        "_page_size": 1,
+        "last_uptime_ping": (required_uptime_ping,None),
+        "_filter_attributes": ["socket_server_url", "rooms"],
+        "rooms": room
+    }
+    base_socket_urls = ssm.list(**kwargs)
+    if room and not base_socket_urls:
+        kwargs.pop("rooms", None)
+        base_socket_urls = ssm.list(**kwargs)
+    if not base_socket_urls:
+        msg = f"Did not get any free socket server with uptime ping later {required_uptime_ping} in environment {environment}"
+        base_ws_url = AUTOCRM_WEBSOCKET_BASE_URL
+        if not base_ws_url:
+            raise hp.GrydError(msg)
+        clogger.warning(msg)
+        base_ws_url = list(map(lambda x: x.strip(), base_ws_url.split(',')))
+        rng = hp.random.Random(int(room) if room is not None else None)
+        return rng.choice(base_ws_url)
+    return hp.make_single(base_socket_urls).get('socket_server_url')
 
 
 if __name__ == "__main__":
@@ -464,6 +541,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Post autocrm models and setup the environment')
     parser.add_argument('--post-models', type=str, help='Model to post, comma separated')
     parser.add_argument('--post-data', type=str, help='Data to post, comma separated')
+    parser.add_argument('--list-services', action="store_true", help = "Get a list of services", default=False)
     parser.add_argument('--reseed', action='store_true', help='Reseed the data', default=False)
     parser.add_argument('--start-from', type=int, help='Start from', default=0)
     parser.add_argument('--limit', type=int, help='Limit', default=None)
@@ -511,6 +589,16 @@ if __name__ == "__main__":
     if args.post_data:
         for data in list(map(lambda x: x.strip(), args.post_data.split(','))):
             post_autocrm_data(data, reseed = args.reseed, start_from = args.start_from, limit = args.limit)
+    if args.list_services:
+        from tabulate import tabulate
+        environment = gryd.get_environment()
+        c = gryd.get_service_connection()
+        headers = ["Service", "Version", "Build", "Worker count", "Thread count", "Queue Length"]
+        table = list(map(
+            lambda x: (x.get(k) for k in ('service', 'version', 'build', 'worker_count', 'worker_job_count', 'queue_length')),
+            sorted(c.list_services(environment), key = lambda x: x.get('service'))
+        ))
+        print(tabulate(table, headers = headers, tablefmt='grid'))
 
   
 

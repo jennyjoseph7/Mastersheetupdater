@@ -125,7 +125,9 @@ class RCSMessengerConnector:
         
         converse_kwargs = {
             "customer_response" : message_dict.get("text"),
-            "channel":"whatsapp_chat",
+            "channel":"rcs",
+            # TODO: send gender ( if not sent by default it is female ) Discuss with ananth.
+            "gender":"male", #for now sending it as male
             "temporary_data": {"channel_response_task":{"service":AUTOCRM_COMMUNICATION_SERVICE_NAME,"task":"receive_converse_response_rcs","kwargs":temporary_data}},
             "response_length":"agent",
             "communication_data":{

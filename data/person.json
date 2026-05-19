@@ -39,7 +39,7 @@
             "title": "Phone Number",
             "type": "text",
             "constraint": {
-                "function": "phone_validator"  
+                "function": "phone_validator"
             },
             "ui_element": "tel",
             "indexed": true
@@ -118,7 +118,7 @@
             "type": "text",
             "constraint": {
                 "function": "phone_validator"
-            },      
+            },
             "ui_element": "tel"
         },
         {
@@ -163,31 +163,25 @@
             "type": "text",
             "ui_element": "select",
             "options": [
-                "Spanish (Mexico)",
-                "Spanish",
-                "Spanish (Argentina)",
-                "Spanish (South America)",
-                "Arabic (Qatar)",
-                "Arabic (UAE)",
-                "Arabic (KSA)",
-                "Arabic (Oman)",
-                "Arabic (Kuwait)",
-                "English (India)",
-                "English (USA)",
-                "English (UK)",
-                "English (Australia)",
-                "Assamese",
-                "Hindi",
-                "Tamil",
-                "Telugu",
-                "Kannada",
-                "Malayalam",
-                "Marathi",
-                "Bengali",
-                "Gujarati",
-                "Punjabi",
-                "Odia",
-                "Other"
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujarati",
+                "bengali",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic",
+                "french",
+                "bahasa_indonesia",
+                "tagalog",
+                "portuguese"
             ],
             "option_others": true
         },
@@ -197,31 +191,25 @@
             "type": "string_list",
             "ui_element": "multiselect",
             "options": [
-                "Spanish (Mexico)",
-                "Spanish",
-                "Spanish (Argentina)",
-                "Spanish (South America)",
-                "Arabic (Qatar)",
-                "Arabic (UAE)",
-                "Arabic (KSA)",
-                "Arabic (Oman)",
-                "Arabic (Kuwait)",
-                "English (India)",
-                "English (USA)",
-                "English (UK)",
-                "English (Australia)",
-                "Assamese",
-                "Hindi",
-                "Tamil",
-                "Telugu",
-                "Kannada",
-                "Malayalam",
-                "Marathi",
-                "Bengali",
-                "Gujarati",
-                "Punjabi",
-                "Odia",
-                "Other"
+                "english",
+                "hindi",
+                "kannada",
+                "telugu",
+                "tamil",
+                "malayalam",
+                "odia",
+                "bengali",
+                "marathi",
+                "gujarati",
+                "bengali",
+                "assamese",
+                "punjabi",
+                "spanish",
+                "arabic",
+                "french",
+                "bahasa_indonesia",
+                "tagalog",
+                "portuguese"
             ],
             "option_others": true
         },
@@ -246,7 +234,7 @@
             "option_others": true
         },
         {
-            "name":"previous_contact_channel",
+            "name": "previous_contact_channel",
             "type": "text",
             "options": [
                 "rcs",
@@ -291,7 +279,7 @@
         {
             "name": "vehicles_owned",
             "title": "Vehicles Owned",
-            "type": "nested_object", 
+            "type": "nested_object",
             "dict_keys": [
                 "vehicle_id",
                 "brand",
@@ -440,7 +428,7 @@
             "name": "fleet_owner",
             "title": "Fleet Owner",
             "type": "bool",
-            "ui_element": "switch", 
+            "ui_element": "switch",
             "default": false
         },
         {

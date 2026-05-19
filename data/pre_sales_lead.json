@@ -600,6 +600,7 @@
         },
         {
             "name": "preferred_contact_window",
+            "type": "nested_object",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -611,6 +612,7 @@
         },
         {
             "name": "preferred_communication_channel",
+            "type": "nested_object",
             "default": {
                 "function": "get_from_model",
                 "args": [
@@ -1300,10 +1302,6 @@
             }
         },
         {
-            "name": "lead_timeline",
-            "type": "text"
-        },
-        {
             "name": "lead_tags",
             "options": "/options/campaign_objective/target_audience_tags",
             "ui_element": "multiselect",
@@ -1340,6 +1338,17 @@
             "type": "text"
         },
         {
+            "name": "lead_timeline",
+            "type": "text",
+            "auto_updater": true,
+            "default": {
+                "function": "plot_lead_session_history",
+                "args": [
+                    "post_sales_lead_id"
+                ]
+            }
+        },
+        {
             "name": "disposition",
             "type": "text",
             "indexed": true,
@@ -1351,6 +1360,7 @@
                 "engaged",
                 "converted",
                 "failed",
+                "busy",
                 "error"
             ],
             "default": "queued"
@@ -1417,8 +1427,9 @@
                     "model_year_id"
                 ],
                 "kwargs": {
-                    "vehicle_model_name": "~{interested_vehicle_name}",
+                    "vehicle_model_generic_name": "~{interested_vehicle_name}",
                     "brand_name": "~{interested_vehicle_brand_name}",
+                    "region_id": "{region_id}",
                     "_sort_by": "year",
                     "_sort_reverse": true
                 }

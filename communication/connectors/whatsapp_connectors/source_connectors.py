@@ -613,6 +613,8 @@ class BaseWebhookConverter:
         converse_kwargs = {
             "customer_response" : message_text,
             "channel":"whatsapp_chat",
+            # TODO: send gender ( if not sent by default it is female ) Discuss with ananth.
+            "gender":"male", #for now sending it as male
             "temporary_data": {"channel_response_task":{"service":AUTOCRM_COMMUNICATION_SERVICE_NAME,"task":"receive_converse_response","kwargs":temporary_data}},
             "response_length":"agent",
             "communication_data":{
@@ -703,7 +705,7 @@ class BaseWebhookConverter:
         template_id = kwargs.get("template_id")
         mobile_number = kwargs.get("mobile_number")
         otp = kwargs.get("otp")
-
+        
         if not template_id or not mobile_number or not otp:
             logger.error("template_id or mobile_number or otp missing")
             return
@@ -739,6 +741,44 @@ class BaseWebhookConverter:
         provider.handle_custom_template(**t_data)
 
         return
+    
+    def send_media_template(*args, **kwargs):
+        logger.info("Send Custom template CALLED")
+
+        template_id = kwargs.get("template_id")
+        mobile_number = kwargs.get("mobile_number")
+        
+
+        if not template_id or not mobile_number:
+            logger.error("template_id or mobile_number")
+            return
+
+        a=get_communication_credential(kwargs.get("dealership_id"),kwargs.get("channel"))
+        # logger.info(f"[Send template] Template details: {a}")
+        provider_name = a.get("provider_name")
+        sender = a.get("sender")
+        
+        t_data = {
+            "mobile_number": mobile_number,
+            "template_id": template_id,   
+            "sender": sender        
+        }
+        headers = BaseWebhookConverter().get_headers(sender, "")
+        logger.info(f"Headers: {headers}")
+        config = PROVIDER_CONFIG.get(provider_name.lower(), {})
+
+        t_data.update({
+            "headers": headers,
+            "base_url": config.get("base_url", ""),
+        })
+        d={**t_data,**kwargs}
+        logger.info(f"[Send template] Template details data: {d}")
+        provider = WhatsappMessangerConnector.whatsapp(
+            provider_name, *args, **kwargs
+        )
+        provider.handle_custom_template(**d)
+
+        return {"status": "initiated"}
     
     def send_custom_message(*args, **kwargs):
         logger.info("Send custom message called")
