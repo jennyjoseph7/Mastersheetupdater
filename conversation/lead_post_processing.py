@@ -140,8 +140,6 @@ def post_messages_for_voice_session(session_id, session_history):
     mlogger.info(f"Calling task post_all_messages_for_session with history: {history}")
     converse.post_all_messages_for_session(history=history)
 
-
-
 @gryd.is_a_task()
 def post_session_process(*args, **kwargs):
     """
@@ -1244,9 +1242,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
 
                 "TEST DRIVE COMPLETED": "Use this category when the customer confirms that they have already completed a test drive for the discussed vehicle prior to or during the conversation.",
 
-                "ENQUIRED FOR OTHERS": "Use this category when the customer asks for additional information, services, or details that do not fit into any of the predefined enquiry-related categories.",
-
-                "OTHERS": "Use this category only for conversation outcomes or customer intents that do not clearly fit into any of the predefined disposition categories or subcategories."
+                "ENQUIRED FOR OTHERS": "Use this category when the customer asks for additional information, services, or details that do not fit into any of the predefined enquiry-related categories."
             },
 
             "NEGATIVE": {
@@ -1320,9 +1316,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
 
                     "TEST DRIVE COMPLETED": "Use this category when the customer confirms that they have already completed a test drive for the discussed vehicle prior to or during the conversation.",
 
-                    "ENQUIRED FOR OTHERS": "Use this category when the customer asks for additional information, services, or details that do not fit into any of the predefined enquiry-related categories.",
-
-                    "OTHERS": "Use this category only for conversation outcomes or customer intents that do not clearly fit into any of the predefined disposition categories or subcategories."
+                    "ENQUIRED FOR OTHERS": "Use this category when the customer asks for additional information, services, or details that do not fit into any of the predefined enquiry-related categories."
                 },
 
                 "NEGATIVE": {
