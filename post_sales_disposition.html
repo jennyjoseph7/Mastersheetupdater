@@ -116,19 +116,22 @@
     }
 
     .brand-mark {
-      width: 42px;
+      width: 168px;
       height: 42px;
       border-radius: 13px;
-      background: linear-gradient(135deg, var(--accent), #98f3ff);
-      color: #08181b;
       text-decoration: none;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: var(--sans);
-      font-size: 1.15rem;
-      font-weight: 800;
       box-shadow: 0 8px 26px rgba(77, 208, 225, 0.2);
+      overflow: hidden;
+    }
+    .brand-mark img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
     }
 
     .header-badge {
@@ -839,11 +842,10 @@
   <header>
     <div class="header-inner">
       <div class="header-left">
-        <a class="brand-mark" href="index.html" aria-label="Go to home">J</a>
+        <a class="brand-mark" href="index.html" aria-label="Go to home"><img src="AN Dark.png" data-light-logo="AN.png" data-dark-logo="AN Dark.png" alt="AutoNage"></a>
         <div>
-          <div class="header-badge">AutoNage</div>
           <h1>Post-Sales Disposition Sync</h1>
-          <div class="header-sub">AutoEngage post-sales exports to dealership-wise Zoho Master Sheet rows</div>
+          <div class="header-sub">AutoEngage → Zoho Master Sheet</div>
         </div>
       </div>
       <div class="header-right">
@@ -2366,9 +2368,16 @@
       });
     }
 
+    function syncBrandLogo(t) {
+      document.querySelectorAll('.brand-mark img').forEach(img => {
+        img.src = t === 'dark' ? img.dataset.darkLogo : img.dataset.lightLogo;
+      });
+    }
+
     function applyTheme(t) {
       document.documentElement.setAttribute('data-theme', t);
       localStorage.setItem('jejo-theme', t);
+      syncBrandLogo(t);
     }
 
     function toggleTheme() {
@@ -2376,6 +2385,7 @@
       applyTheme(current === 'dark' ? 'light' : 'dark');
     }
 
+    applyTheme(localStorage.getItem('jejo-theme') || 'dark');
     setupDragDrop('dz1', 'f1');
     setupDragDrop('dz2', 'f2');
     handleDealerChange();

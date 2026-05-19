@@ -740,11 +740,11 @@
 
     /* POLISH PASS: UI ONLY */
     [data-theme="dark"] {
-      --bg: #080b10;
-      --surface: #10151d;
-      --surface2: #151c27;
-      --surface3: #1c2633;
-      --border: rgba(218, 230, 242, 0.09);
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #1a1a1a;
+      --surface3: #222222;
+      --border: rgba(255, 255, 255, 0.08);
       --border-focus: rgba(255, 173, 58, 0.5);
       --accent: #ffad3a;
       --accent-dim: #e79400;
@@ -755,9 +755,9 @@
       --warn-soft: rgba(242, 196, 100, 0.12);
       --danger: #f16f6f;
       --danger-soft: rgba(241, 111, 111, 0.12);
-      --text: #f4f0e8;
-      --text-dim: #aeb8c3;
-      --text-muted: #6f7b88;
+      --text: #f5f5f5;
+      --text-dim: #adaaaa;
+      --text-muted: #6b6b6b;
       --radius: 12px;
       --radius-sm: 8px;
       --radius-lg: 16px;
@@ -869,20 +869,23 @@
     }
 
     .brand-mark {
-      width: 42px;
+      width: 168px;
       height: 42px;
       border-radius: 13px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #15100a;
       text-decoration: none;
-      font-family: var(--sans);
-      font-weight: 800;
-      font-size: 1.15rem;
-      background: linear-gradient(135deg, var(--accent), #f5c97a);
       box-shadow: 0 8px 26px rgba(255, 173, 58, 0.2);
       flex-shrink: 0;
+      overflow: hidden;
+    }
+    .brand-mark img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
     }
 
     .header-badge {
@@ -1298,7 +1301,7 @@
     }
 
     thead th {
-      background: #111820;
+      background: #182025;
     }
 
     tbody tr:hover {
@@ -1533,11 +1536,10 @@
   <header>
     <div class="header-inner">
       <div class="header-left">
-        <a class="brand-mark" href="index.html" aria-label="Go to home">J</a>
+        <a class="brand-mark" href="index.html" aria-label="Go to home"><img src="AN Dark.png" data-light-logo="AN.png" data-dark-logo="AN Dark.png" alt="AutoNage"></a>
         <div>
-          <div class="header-badge">AutoNage</div>
           <h1>Pre-Sales Sync</h1>
-          <div class="header-sub">AutoEngage → Zoho Master Sheet · No backend · No installation</div>
+          <div class="header-sub">AutoEngage → Zoho Master Sheet </div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
@@ -1598,12 +1600,6 @@
               d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
           </svg>
         </button>
-        <div class="header-steps" id="stepPills">
-          <div class="step-pill" id="pill1"><span class="num">1</span> Upload Audience &amp; Leads</div>
-          <div class="step-pill" id="pill2"><span class="num">2</span> Upload Sessions</div>
-          <div class="step-pill" id="pill3"><span class="num">3</span> Process Both Files</div>
-          <div class="step-pill" id="pill4"><span class="num">4</span> Copy &#8594; Paste in Zoho</div>
-        </div>
       </div>
     </div>
   </header>
@@ -3240,9 +3236,15 @@
     setupDragDrop('dz2', 'f2');
 
     /* ── THEME ────────────────────────────────────────────────────────── */
+    function syncBrandLogo(t) {
+      document.querySelectorAll('.brand-mark img').forEach(img => {
+        img.src = t === 'dark' ? img.dataset.darkLogo : img.dataset.lightLogo;
+      });
+    }
     function applyTheme(t) {
       document.documentElement.setAttribute('data-theme', t);
       localStorage.setItem('jejo-theme', t);
+      syncBrandLogo(t);
     }
     function toggleTheme() {
       const cur = document.documentElement.getAttribute('data-theme');

@@ -23,11 +23,11 @@
     /* ── DESIGN TOKENS ─────────────────────────────────────────────────── */
     :root {
       /* combined dark/light */
-      --bg: #080b10;
-      --surface: #10151d;
-      --surface2: #151c27;
-      --surface3: #1c2633;
-      --border: rgba(218, 230, 242, 0.09);
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #1a1a1a;
+      --surface3: #222222;
+      --border: rgba(255, 255, 255, 0.08);
       --border-focus: rgba(86, 164, 230, 0.58);
       --accent: #5b9cf5;
       --accent-soft: rgba(91, 156, 245, 0.13);
@@ -37,9 +37,9 @@
       --warn-soft: rgba(242, 196, 100, 0.12);
       --danger: #f16f6f;
       --danger-soft: rgba(241, 111, 111, 0.12);
-      --text: #f4f0e8;
-      --text-dim: #aeb8c3;
-      --text-muted: #6f7b88;
+      --text: #f5f5f5;
+      --text-dim: #adaaaa;
+      --text-muted: #6b6b6b;
       --mono: 'IBM Plex Mono', monospace;
       --sans: 'Manrope', 'Inter', sans-serif;
       --body: 'Inter', sans-serif;
@@ -93,19 +93,22 @@
     }
 
     .brand-mark {
-      width: 42px;
+      width: 168px;
       height: 42px;
       border-radius: 13px;
-      background: linear-gradient(135deg, #8bb8f8, var(--accent));
-      color: #0a1628;
       text-decoration: none;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: var(--sans);
-      font-size: 1.15rem;
-      font-weight: 800;
       box-shadow: 0 8px 26px rgba(91, 156, 245, 0.2);
+      overflow: hidden;
+    }
+    .brand-mark img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
     }
 
     .header-badge {
@@ -554,7 +557,7 @@
       flex: 1;
       min-width: 130px;
       border-radius: 18px;
-      background: rgba(16, 21, 29, 0.92);
+      background: var(--surface);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
       border: 1px solid var(--border);
       padding: 1rem;
@@ -645,7 +648,7 @@
     /* ── DEDUP LOG TABLE ──────────────────────────────────────────────── */
     .dedup-summary {
       border-radius: 18px;
-      background: rgba(16, 21, 29, 0.92);
+      background: var(--surface);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
       border: 1px solid var(--border);
       padding: 1.15rem;
@@ -725,7 +728,7 @@
     /* ── TABLE ─────────────────────────────────────────────────────────── */
     .table-wrapper {
       border-radius: 18px;
-      background: rgba(16, 21, 29, 0.92);
+      background: var(--surface);
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
       border: 1px solid var(--border);
       overflow: hidden;
@@ -797,7 +800,7 @@
     }
 
     thead th {
-      background: #111820;
+      background: #182025;
       color: var(--text-dim);
       font-weight: 600;
       text-align: left;
@@ -1216,11 +1219,10 @@
   <header>
     <div class="header-inner">
       <div class="header-left">
-        <a class="brand-mark" href="index.html" aria-label="Go to home">J</a>
+        <a class="brand-mark" href="index.html" aria-label="Go to home"><img src="AN Dark.png" data-light-logo="AN.png" data-dark-logo="AN Dark.png" alt="AutoNage"></a>
         <div>
-          <div class="header-badge">AutoNage</div>
           <h1>Re-Attempt Filter</h1>
-          <div class="header-sub">Zoho Master Sheet → Smart Re-Attempt Filter → AutoEngage Upload</div>
+          <div class="header-sub">Smart Re-Attempt Filter → AutoEngage Upload</div>
         </div>
       </div>
       <div class="header-nav">
@@ -2539,9 +2541,15 @@
 
   <script>
     /* ── THEME TOGGLE ── */
+    function syncBrandLogo(t) {
+      document.querySelectorAll('.brand-mark img').forEach(img => {
+        img.src = t === 'dark' ? img.dataset.darkLogo : img.dataset.lightLogo;
+      });
+    }
     function applyTheme(t) {
       document.documentElement.setAttribute('data-theme', t);
       localStorage.setItem('jejo-theme', t);
+      syncBrandLogo(t);
     }
     function toggleTheme() {
       var cur = document.documentElement.getAttribute('data-theme');
