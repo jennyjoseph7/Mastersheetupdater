@@ -869,7 +869,7 @@
     }
 
     .brand-mark {
-      width: 168px;
+      width: 210px;
       height: 42px;
       border-radius: 13px;
       display: flex;
@@ -910,21 +910,9 @@
       background: var(--surface2);
     }
 
-    .step-pill {
-      border-radius: var(--radius-sm);
-      border-color: transparent;
-      background: transparent;
-      padding: 0.38rem 0.72rem;
-    }
-
     .step-pill.active {
       background: var(--accent-soft);
       color: var(--accent);
-    }
-
-    .step-pill .num {
-      background: var(--accent-soft);
-      border-color: var(--border);
     }
 
     .step-pill.active .num {
@@ -933,6 +921,12 @@
       color: var(--accent);
     }
 
+    .pill-strip {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin: 1rem 0 0.5rem;
+    }
     main {
       padding: 1.75rem 2rem 3rem;
     }
@@ -1650,6 +1644,12 @@
         </div>
       </div>
 
+      <div class="pill-strip">
+        <div class="step-pill" id="pill1"><span class="num">1</span> Leads uploaded</div>
+        <div class="step-pill" id="pill2"><span class="num">2</span> Sessions uploaded</div>
+        <div class="step-pill" id="pill3"><span class="num">3</span> Ready to process</div>
+        <div class="step-pill" id="pill4"><span class="num">4</span> Results ready</div>
+      </div>
       <!-- Action Bar -->
       <div class="action-bar">
         <button class="btn btn-primary" id="btnProcess" disabled onclick="processFiles()">
@@ -3134,6 +3134,7 @@
 
     function updateProcessBtn() {
       document.getElementById('btnProcess').disabled = !(rawFile1 && rawFile2);
+      updateStepPills();
     }
 
     function setFileStatus(id, filename) {
@@ -3238,7 +3239,7 @@
     /* ── THEME ────────────────────────────────────────────────────────── */
     function syncBrandLogo(t) {
       document.querySelectorAll('.brand-mark img').forEach(img => {
-        img.src = t === 'dark' ? img.dataset.darkLogo : img.dataset.lightLogo;
+        if (img.dataset.darkLogo) img.src = t === 'dark' ? img.dataset.darkLogo : img.dataset.lightLogo;
       });
     }
     function applyTheme(t) {
