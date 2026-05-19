@@ -1632,12 +1632,24 @@
           const row = slice[i];
           aoa.push(headers.map(h => row[h] || ''));
         }
-        const ws = XLSX.utils.aoa_to_sheet(aoa);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'AutoEngage');
         const part = numBatches > 1 ? '_batch' + (b + 1) : '';
-        const fileName = safeName + '_AutoEngage_' + dateStr + part + '.xlsx';
-        XLSX.writeFile(wb, fileName);
+        const fileName = safeName + '_AutoEngage_' + dateStr + part + '.csv';
+        const csvRows = aoa.map(row =>
+          row.map(cell => {
+            const s = String(cell || '');
+            return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+          }).join(',')
+        );
+        const bom = '\uFEFF';
+        const blob = new Blob([bom + csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
         exported += sliceLen;
         filesWritten += 1;
         if (b < numBatches - 1 && sliceStartIdx + sliceLen < total) {
