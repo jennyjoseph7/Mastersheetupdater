@@ -102,13 +102,10 @@ Send a temporary data to conversation :
 
 Update history in person_session model every 10 mins.
 
-### 🔸 Auto Close After 24 Hours
-If a session stays inactive for a full **day (24 hours)**:
-
-- Automatically close the session  
-- Mark it as complete  
-- Stop all further messages  
-
+a)in case of voice_calls - whenever call ends we call it 
+    b) in case of whatsapp - session will get whenever a new campaign is triggered or 
+                            the same template is triggered or 
+                            when the campaign end date is over. Untill then it will be active . 
 ---
 
 ## ✅ 5. Message Performance Tracking
@@ -209,3 +206,17 @@ We are using API from nikit.
 
 We have mail_connectors which has AWS_SES_MAIL and SMTP_MAIL.
 
+# IMP FUNCTIONS ---
+
+1. post_contact_status - whenever any new status webhooks received we are posting the data to contact status model . 
+     Only for templates ( whatsapp) and calls 
+     
+2. update_lead_disposition_and_post_billing - updates the different disposition and post billing object only when the template is reached, delivered,contacted or read.
+
+3. update_channel_identifier - udpate last_contacted_whatsapp_number,last_contacted_email, last_contacted_phone_number depending on the channel to person model
+
+4.end_session_and_post_process - updates the final disposition , lead_summary, emotional analysics etc..
+    a)in case of voice_calls - whenever call ends we call it 
+    b) in case of whatsapp - session will get whenever a new campaign is triggered or 
+                                the same template is triggered or 
+                                when the campaign end date is over. Untill then it will be active . 
