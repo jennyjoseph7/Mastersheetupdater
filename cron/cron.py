@@ -499,15 +499,19 @@ def schedule_campaign_trigger(*args, **kwargs):
             campaigns = list(pg.list(table, where_clause))
 
             mlogger.info(f"Found {len(campaigns)} campaigns to trigger in {table}")
-
-            # for campaign in campaigns:
+            
+            for campaign in campaigns:
+                mlogger.info(f"Triggering campaign for- campaign_id: {campaign.get('campaign_id')} , campaign_type: {campaign.get('campaign_type')} , delearship_id: {campaign.get('dealership_id')}")
+                
             #     pg.update(
             #         table,
             #         "campaign_id",
             #         campaign.get("campaign_id"),
             #         {"campaign_status": "Active"},
             #     )
-                # call ananth's task
+                # call trigger task
+                
+                
                 
 
 @gryd.is_a_task(function_name="end_campaigns")
@@ -1509,7 +1513,9 @@ def get_all_dealerships(pg, channel_filter=None):
     #     FROM dealership
     #     ORDER BY dict->>'dealership_id'
     # """
+    # result = list(pg.list("dealership", {"dealer_status": "active"}))
     result = list(pg.list("dealership", {}))
+    
     dealerships = []
 
     for row in result:
@@ -1530,6 +1536,52 @@ def get_all_dealerships(pg, channel_filter=None):
 
     return dealerships
 
+@gryd.is_a_task(function_name="mark_inactive_dealerships")
+def mark_inactive_dealerships(*args,**kwargs):
+    with get_pg_connector() as pg:
+        INACTIVE_DAYS=kwargs.get("inactive_days",14)
+        inactivity_days=time.time()-(INACTIVE_DAYS * 24 * 60 * 60)
+
+        query = f"""
+        WITH latest_contact AS (
+            SELECT DISTINCT ON (dict->>'dealership_id')
+                dict->>'dealership_id' AS dealership_id,
+                CAST(dict->>'created' AS FLOAT) AS created
+            FROM contact_status
+            ORDER BY
+                dict->>'dealership_id',
+                CAST(dict->>'created' AS FLOAT) DESC
+        )
+
+        SELECT
+            d.dict->>'dealership_id',
+            lc.created
+        FROM dealership d
+        LEFT JOIN latest_contact lc
+            ON d.dict->>'dealership_id' = lc.dealership_id
+        WHERE
+            lc.created IS NULL
+            OR lc.created < {inactivity_days}
+        """
+
+        result = pg.fetch_all(query)
+        dealership_ids = [row[0] for row in result]
+
+        mlogger.info(
+            f"Inactive dealership count: {len(result)}"
+        )
+
+        for dealership_id, created in result:
+            mlogger.info(
+                f"Dealership={dealership_id}, last_contact={created}"
+            )
+            
+            # pg.update("dealership", "dealership_id", dealership_id, {"dealer_status": "inactive"})
+            
+        return {
+            "count": len(result),
+            "dealership_ids": dealership_ids
+        }
 def process_lead(pg,lead, channel):
     # mlogger.info(f"[PROCESS] Processing lead for channel {lead}")
     lead_id=None
@@ -1640,6 +1692,7 @@ def test_campaign_workflow(*args, **kwargs):
         "message": f"Leads processed successfully for dealership_id={dealership_id} and channel={channel}",
         "count": len(leads)
     }
+
 @gryd.is_a_task(function_name="process_all_dealerships_for_voice")    
 def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,voice_start_time=None,voice_end_time=None):    
     mlogger.info("-------Process all dealerships for voice phone and trigger campaign next action-------")
@@ -1681,7 +1734,6 @@ def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,vo
                         continue
                 except Exception as e:
                     mlogger.error(f"[ERROR] Failed for dealership={dealership_id}, channel={channel}")
-
 
                 
 @gryd.is_a_task(function_name="process_dealerships_non_voice")
