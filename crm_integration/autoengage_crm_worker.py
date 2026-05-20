@@ -200,7 +200,7 @@ def update_lead_in_crm(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CALLBACK TASK — called by Aryan's system after a call ends
+# CALLBACK TASK — called by  system after a call ends
 # ─────────────────────────────────────────────────────────────────────────────
 
 @gryd.is_a_task(
@@ -215,7 +215,7 @@ def update_lead_in_sheet(
     **kwargs
 ):
     """
-    Called by Aryan's system at the END of a voice/whatsapp session.
+    Called by system at the END of a voice/whatsapp session.
 
     Aryan sends us:
         sheet_name   (str)  — Google Sheet name, e.g. "Ambal Sanganur Post-sales"
@@ -234,7 +234,7 @@ def update_lead_in_sheet(
              - If the column does NOT exist  → create the header then update the cell
         4. Returns how many rows were updated and which columns were added
 
-    Format Aryan must use when calling this task:
+    Format sahib must use when calling this task:
         gryd.create_async_task(
             "update_lead_in_sheet",
             "autoengage-crm",
