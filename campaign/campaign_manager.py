@@ -901,13 +901,10 @@ def check_or_create_campaign(payload):
     return payload
     
 
-@gryd.is_a_task(function_name="manual_register_pre_sales", job_param='job', auth_param='auth', logger_param='logger')
-def manual_register_pre_sales(name, phone_number, email=None, *args, **kwargs):
-    """
-    Manually register a pre-sales lead using process_pre_sales_lead_row logic
-    and trigger the campaign immediately.
-    """
-    logger.info("------ Manual Register Pre Sales ------")
+@gryd.is_a_task(function_name="manual_register_and_trigger_lead", job_param='job', auth_param='auth', logger_param='logger')
+def manual_register_and_trigger_lead(name, phone_number, email=None, *args, **kwargs):
+    
+    logger.info("------ Manual Register And Trigger Lead ------")
     # 1. Extract Details from kwargs with fallbacks (optional)
     campaign_id = kwargs.get("campaign_id",None)
     dealership_id = kwargs.get("dealership_id")
@@ -969,6 +966,8 @@ def manual_register_pre_sales(name, phone_number, email=None, *args, **kwargs):
             lead['lead_id'] = lead.get('pre_sales_lead_id') or lead.get('id')
 
         actual_id = lead.get('lead_id')
+        lead_table = "pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
+        lead_table_id="pre_sales_lead_id" if campaign_type == "pre-sales" else "post_sales_lead_id"
         logger.info(f"Triggering campaign for lead_id: {actual_id}, campaign_id:{campaign_id}, person: {name}")
 
         # 3. Trigger Campaign
@@ -982,6 +981,14 @@ def manual_register_pre_sales(name, phone_number, email=None, *args, **kwargs):
                 "image_url":kwargs.get("url",None)
             }
         )
+        
+        # with get_pg_connector() as pg:
+        #     person = get_or_create_person(lead.get("phone_number"),lead.get("dealership_id"))
+        #     pg.update(lead_table, lead_table_id,lead.get(lead_table_id), {"user_id": person.get("user_id")})
+        
+        
+        # logger.info(f"kwargs--{kwargs.get('template_id')}")
+        # list(determine_campaign_next_action(campaign_type,lead.get(lead_table_id),channel[0],phone_number,call_process_single_lead=True,templateID=kwargs.get("template_id",None),image_url=kwargs.get("url",None)))
 
         yield {"_result": {
             "status": "success",
