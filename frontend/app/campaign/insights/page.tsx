@@ -332,6 +332,10 @@ function CampaignInsightsContent() {
   const [sessionPageSize, setSessionPageSize] = useState(10);
   const [sessionCurrentPage, setSessionCurrentPage] = useState(1);
 
+  // Counts states for dynamic "All" page size
+  const [leadsCount, setLeadsCount] = useState(0);
+  const [sessionsCount, setSessionsCount] = useState(0);
+
   // --- Persistence Logic ---
   useEffect(() => {
     if (!campaignId) return;
@@ -459,7 +463,7 @@ function CampaignInsightsContent() {
           campaignId,
           campaignType || "",
           currentPage,
-          pageSize,
+          pageSize === -1 ? (leadsCount || 10) : pageSize,
           sortConfig?.key,
           sortConfig?.direction,
           dispositionFilter,
@@ -480,7 +484,8 @@ function CampaignInsightsContent() {
 
   const serverLeads = leadsDataRaw?.items || [];
   const totalRecords = leadsDataRaw?.total_number || 0;
-  const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+  const effectivePageSize = pageSize === -1 ? Math.max(totalRecords, 1) : pageSize;
+  const totalPages = Math.ceil(totalRecords / effectivePageSize) || 1;
 
   // 4. Conditional Fetch Sessions
   const {
@@ -494,7 +499,7 @@ function CampaignInsightsContent() {
           "campaign-sessions",
           campaignId,
           sessionCurrentPage,
-          sessionPageSize,
+          sessionPageSize === -1 ? (sessionsCount || 10) : sessionPageSize,
           sessionSortConfig.key,
           sessionSortConfig.direction,
           "all",
@@ -523,8 +528,21 @@ function CampaignInsightsContent() {
   };
   const serverSessions = sessionsDataRaw?.items || [];
   const totalSessionRecords = sessionsDataRaw?.total_number || 0;
+  const effectiveSessionPageSize = sessionPageSize === -1 ? Math.max(totalSessionRecords, 1) : sessionPageSize;
   const totalSessionPages =
-    Math.ceil(totalSessionRecords / sessionPageSize) || 1;
+    Math.ceil(totalSessionRecords / effectiveSessionPageSize) || 1;
+
+  useEffect(() => {
+    if (leadsDataRaw?.total_number !== undefined) {
+      setLeadsCount(leadsDataRaw.total_number);
+    }
+  }, [leadsDataRaw?.total_number]);
+
+  useEffect(() => {
+    if (sessionsDataRaw?.total_number !== undefined) {
+      setSessionsCount(sessionsDataRaw.total_number);
+    }
+  }, [sessionsDataRaw?.total_number]);
 
   // --- Handlers & Helpers ---
 
@@ -1140,9 +1158,14 @@ function CampaignInsightsContent() {
 
                   <select
                     className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
-                    value={pageSize}
+                    value={[10, 25, 50, 100, -1].includes(pageSize) ? pageSize : "custom"}
                     onChange={(e) => {
-                      setPageSize(Number(e.target.value));
+                      const val = e.target.value;
+                      if (val === "custom") {
+                        setPageSize(15);
+                      } else {
+                        setPageSize(Number(val));
+                      }
                       setCurrentPage(1);
                     }}
                   >
@@ -1150,7 +1173,27 @@ function CampaignInsightsContent() {
                     <option value={25}>25 per page</option>
                     <option value={50}>50 per page</option>
                     <option value={100}>100 per page</option>
+                    <option value={-1}>All ({totalRecords})</option>
+                    <option value="custom">Custom...</option>
                   </select>
+
+                  {![10, 25, 50, 100, -1].includes(pageSize) && (
+                    <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2 duration-200">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10000}
+                        className="h-9 w-20 text-center bg-white px-2 py-1 text-sm shadow-sm border border-slate-200 rounded-md"
+                        value={pageSize}
+                        onChange={(e) => {
+                          const val = Math.max(1, Number(e.target.value));
+                          setPageSize(val);
+                          setCurrentPage(1);
+                        }}
+                      />
+                      <span className="text-xs text-slate-500 whitespace-nowrap">per page</span>
+                    </div>
+                  )}
 
                   <Button
                     variant="outline"
@@ -1356,8 +1399,8 @@ function CampaignInsightsContent() {
                         Showing{" "}
                         {totalRecords === 0
                           ? 0
-                          : (currentPage - 1) * pageSize + 1}{" "}
-                        to {Math.min(currentPage * pageSize, totalRecords)} of{" "}
+                          : (currentPage - 1) * effectivePageSize + 1}{" "}
+                        to {Math.min(currentPage * effectivePageSize, totalRecords)} of{" "}
                         {totalRecords} entries
                       </div>
                       <div className="flex items-center space-x-2">
@@ -1457,9 +1500,14 @@ function CampaignInsightsContent() {
                   {/* SERVER Page Size */}
                   <select
                     className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
-                    value={sessionPageSize}
+                    value={[10, 20, 50, 100, -1].includes(sessionPageSize) ? sessionPageSize : "custom"}
                     onChange={(e) => {
-                      setSessionPageSize(Number(e.target.value));
+                      const val = e.target.value;
+                      if (val === "custom") {
+                        setSessionPageSize(15);
+                      } else {
+                        setSessionPageSize(Number(val));
+                      }
                       setSessionCurrentPage(1);
                     }}
                   >
@@ -1467,7 +1515,27 @@ function CampaignInsightsContent() {
                     <option value={20}>20 per page</option>
                     <option value={50}>50 per page</option>
                     <option value={100}>100 per page</option>
+                    <option value={-1}>All ({totalSessionRecords})</option>
+                    <option value="custom">Custom...</option>
                   </select>
+
+                  {![10, 20, 50, 100, -1].includes(sessionPageSize) && (
+                    <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2 duration-200">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10000}
+                        className="h-9 w-20 text-center bg-white px-2 py-1 text-sm shadow-sm border border-slate-200 rounded-md"
+                        value={sessionPageSize}
+                        onChange={(e) => {
+                          const val = Math.max(1, Number(e.target.value));
+                          setSessionPageSize(val);
+                          setSessionCurrentPage(1);
+                        }}
+                      />
+                      <span className="text-xs text-slate-500 whitespace-nowrap">per page</span>
+                    </div>
+                  )}
 
                   <Button
                     variant="outline"

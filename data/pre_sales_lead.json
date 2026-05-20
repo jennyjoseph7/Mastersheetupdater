@@ -1485,6 +1485,10 @@
             "name": "next_trigger",
             "type": "text",
             "indexed": true
+        },
+        {
+            "name": "audience_task_id",
+            "type": "text"
         }
     ]
 }
