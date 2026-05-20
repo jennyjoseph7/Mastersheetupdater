@@ -22,6 +22,7 @@ AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm
 
 gryd.SERVICE = AUTOCRM_CRON_SERVICE_NAME
 gryd.set_queue_manager()
+__version__ = "0.0.1"
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
 mlogger.info(f"SERVICE --{gryd.SERVICE}")

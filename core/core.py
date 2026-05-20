@@ -43,6 +43,7 @@ gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME
 THREADS_PER_SESSION = 0.25
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(SERVICE)
+__version__ = "0.0.1"
 logger = mlogger
 MIME_TYPES = {
     'aac': 'audio/aac',
