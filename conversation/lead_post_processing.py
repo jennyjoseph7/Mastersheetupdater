@@ -140,7 +140,6 @@ def post_messages_for_voice_session(session_id, session_history):
     mlogger.info(f"Calling task post_all_messages_for_session with history: {history}")
     converse.post_all_messages_for_session(history=history)
 
-
 @gryd.is_a_task()
 def post_session_process(*args, **kwargs):
     """
@@ -1175,7 +1174,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     message_history = []
     has_user_message = False
     for message in messages:
-        mlogger.info("message in get_disposition -  {}".format(message))
+        # mlogger.info("message in get_disposition -  {}".format(message))
         if not message:
             continue
         if "intent" in message and message.get("intent") == "llm_response":
@@ -1196,103 +1195,164 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
         "prioritization_category" : "COMPLETE or HOT or WARM or COOL or COLD or INACTIVE"
     }"""
     disp_details_options = {
-                        "CONVERTED": {
-                            "CONVERTED": "The customer completes the purpose of the campaign and provides the necessary information."
-                        },
-                        "POSITIVE": {
-                            "ENQUIRED FOR TEST DRIVE": "the customer by themselves asked for a test drive of the vehicle.",
-                            "SHOWROOM VISIT PLANNED": "the customer Already booked a showroom visit.",
-                            "WILL DECIDE LATER, WILL PURCHASE WITHIN 15 DAYS": "the customer said they would decide to buy the vehicle within 15 days.",
-                            "WILL DECIDE LATER, WILL PURCHASE WITHIN 1 TO 3 MONTHS": "the customer said they would decide to buy the vehicle within 1 to 3 months.",
-                            "ENQUIRED FOR PRICING": "the customer by themselves asked for the price of the vehicle.",
-                            "ENQUIRED FOR SPECIFICATIONS": "the customer by themselves asked for the specifications of the vehicle.",
-                            "ENQUIRED FOR SHOWROOM VISIT": "the customer by themselves asked for a showroom visit of the vehicle.",
-                            "ENQUIRED FOR BROCHURE": "the customer by themselves asked for a brochure of the vehicle.",
-                            "ENQUIRED FOR DEALERSHIP DETAILS": "the customer by themselves asked for dealership details.",
-                            "INTERESTED IN ANOTHER CAR SAME DEALERSHIP": "If user mentions for a different car but from the same dealer",
-                            "FOLLOW UP REQUIRED": "the customer Needs a follow up to convince them to complete the campaign objective.",
-                            "REQUESTED CALLBACK": "the customer Asked to call back at a later date and or time."
-                        },
-                        "NEUTRAL": {
-                            "WILL DECIDE LATER, EXPLORING OPTIONS": "the customer said they will decide on the purchase of the vehicle at a later time and are only exploring all their options now.",
-                            "JUST EXPLORING": "This will only happen if the customer has actually asked about the car or related features but shows no interest in the purpose of the call.",
-                            "WILL CALL SHOWROOM/WORKSHOP THEMSELVES": "The customer will contact the dealership, showroom or workshop themselves.",
-                            "GENERAL INQUIRY": "the customer is Asking generic questions not specific to the purpose of the campaign or the vehicle.",
-                            "COMPARING WITH ANOTHER BRAND": "The customer by themselves is comparing the vehicle with another brand.",
-                            "LANGUAGE BARRIER": "If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
-                            "AUDIO ISSUE": "There was issues with hearing the customer or the agent for either party.",
-                            "TEST DRIVE COMPLETED": "the customer Already completed a test drive.",
-                            "ENQUIRED FOR OTHERS": "the customer by themselves asked for other details not listed above.",
-                            "OTHERS": "All other disposition details not listed above."
-                        },
-                        "NEGATIVE": {
-                            "NO RESPONSE": "This category applies only if the user role is completely empty with no text at all from the start to the end of the call. If there is any text or any automated prompt in the user messages then it cannot be marked as No Response.",
-                            "CALL DISCONNECTED": "This category applies if a human conversation was established such as the user saying hello or yes or oh yeah but the user then stopped responding or the line went silent after an agent query. It must not be used if an automated recording prompt was detected.",
-                            "VOICEMAIL": "This must be selected if any user message contains automated system text such as record your message or beeping. The presence of any automated phrasing in the user role overrides all other categories.",
-                            "NOT INTERESTED": "the customer Specifically said they are not interested in the vehicle.",
-                            "NO BUYING INTENT": "the customer said they Do not want to purchase a car. Neither are the interested in the car.",
-                            "PURCHASED ELSEWHERE": "the customer Already purchased a vehicle elsewhere.",
-                            "LOST TO COMPETITION": "the customer Bought a competitor brands vehicle.",
-                            "PURCHASE POSTPONED": "the customer indicates that the Purchase has been postponed",
-                            "INVALID LEAD": "the customer Not a valid lead.",
-                            "TALK TO HUMAN": "The customer request for talking with human."
-                        }
-                    }
+            "CONVERTED": {
+                "CONVERTED": "Use this category when the customer successfully completes the campaign objective during the conversation and provides all required information or confirmation needed to finalize the lead, booking, inquiry, or conversion action."
+            },
+
+            "POSITIVE": {
+                "ENQUIRED FOR TEST DRIVE": "Use this category when the customer independently asks for a test drive, expresses interest in experiencing the vehicle firsthand, or requests details about scheduling a test drive.",
+                
+                "SHOWROOM VISIT PLANNED": "Use this category when the customer has already agreed to, scheduled, or confirmed a showroom visit, test drive, or in-person appointment. This includes cases where a specific date, time, or intent to visit has been clearly established.",
+
+                "WILL DECIDE LATER, WILL PURCHASE WITHIN 15 DAYS": "Use this category when the customer indicates a strong purchase intent and mentions they are likely to make a buying decision within approximately 15 days.",
+
+                "WILL DECIDE LATER, WILL PURCHASE WITHIN 1 TO 3 MONTHS": "Use this category when the customer expresses interest in purchasing the vehicle but indicates that the buying decision or purchase timeline is expected within the next 1 to 3 months.",
+
+                "ENQUIRED FOR PRICING": "Use this category when the customer independently asks for the vehicle price, on-road cost, offers, discounts, financing details, EMI information, or any pricing-related information.",
+
+                "ENQUIRED FOR SPECIFICATIONS": "Use this category when the customer independently asks about the vehicle specifications, features, mileage, variants, engine details, safety features, dimensions, technology, or performance-related information.",
+
+                "ENQUIRED FOR SHOWROOM VISIT": "Use this category when the customer independently asks about visiting the showroom, requests showroom timings or location details, or expresses intent to visit the dealership.",
+
+                "ENQUIRED FOR BROCHURE": "Use this category when the customer independently requests a brochure, catalog, specification sheet, PDF, or any official informational material related to the vehicle.",
+
+                "ENQUIRED FOR DEALERSHIP DETAILS": "Use this category when the customer independently asks for dealership contact details, address, branch location, showroom information, or dealer-related assistance.",
+
+                "INTERESTED IN ANOTHER CAR SAME DEALERSHIP": "Use this category when the customer shows interest in a different vehicle model offered by the same dealership or brand instead of the originally discussed vehicle.",
+
+                "FOLLOW UP REQUIRED": "Use this category when the customer shows interest in the offering but does not complete the campaign objective during the current conversation. The customer may need additional persuasion, information, clarification, or future engagement before converting.",
+
+                "REQUESTED CALLBACK": "Use this category when the customer explicitly asks the agent to call again at a later date or time. This includes requests such as asking for a callback tomorrow, later in the day, after work hours, or at any specified future time."
+            },
+
+            "NEUTRAL": {
+                "WILL DECIDE LATER, EXPLORING OPTIONS": "Use this category when the customer indicates that they are currently evaluating multiple options and are not ready to make an immediate purchase decision.",
+
+                "JUST EXPLORING": "Use this category when the customer asks questions or seeks information about the vehicle but does not show any clear buying intent or commitment toward the campaign objective.",
+
+                "WILL CALL SHOWROOM/WORKSHOP THEMSELVES": "Use this category when the customer states that they will directly contact or visit the dealership, showroom, service center, or workshop on their own without further assistance from the agent.",
+
+                "GENERAL INQUIRY": "Use this category when the customer asks generic or broad questions that are not directly related to the campaign objective, purchase decision, or a specific vehicle requirement.",
+
+                "COMPARING WITH ANOTHER BRAND": "Use this category when the customer compares the discussed vehicle with vehicles from competing brands or asks comparative questions involving another manufacturer.",
+
+                "LANGUAGE BARRIER": "Use this category when the conversation cannot proceed effectively because the customer prefers another language, cannot understand the agent, or communication fails due to language mismatch.",
+
+                "AUDIO ISSUE": "Use this category when the conversation cannot continue properly due to technical audio problems affecting either the customer or the agent. Examples include poor network quality, inability to hear the other party, excessive noise, microphone issues, echo, or broken audio.",
+
+                "TEST DRIVE COMPLETED": "Use this category when the customer confirms that they have already completed a test drive for the discussed vehicle prior to or during the conversation.",
+
+                "ENQUIRED FOR OTHERS": "Use this category when the customer asks for additional information, services, or details that do not fit into any of the predefined enquiry-related categories."
+            },
+
+            "NEGATIVE": {
+                "NO RESPONSE": "Use this category only when there is absolutely no customer response or input throughout the entire conversation. The user role must be completely empty from start to finish. If there is any speech, text, automated prompt, or voicemail detection, this category must not be used.",
+
+                "CALL DISCONNECTED": "Use this category when a live human interaction was established (for example, the customer responded with greetings or acknowledgements such as 'hello', 'yes', or similar), but the conversation ended unexpectedly due to silence, dropped connection, or the customer stopping responses after the interaction began. Do not use this category if an automated voicemail or recording system was detected.",
+
+                "VOICEMAIL": "Use this category when the call reaches an automated voicemail system or recorded prompt instead of a live customer. Indicators include phrases such as 'please leave a message', 'record your message after the beep', voicemail greetings, or audible beeps. If any automated system prompt is detected, this category overrides all other categories.",
+
+                "NOT INTERESTED": "Use this category when the customer explicitly states that they are not interested in the vehicle, the offer, or continuing the conversation regarding the campaign objective.",
+
+                "NO BUYING INTENT": "Use this category when the customer clearly indicates that they do not intend to purchase any vehicle and have no interest in buying a car at present.",
+
+                "PURCHASED ELSEWHERE": "Use this category when the customer explicitly states that they have already purchased the product or vehicle from another dealer, brand, platform, or competitor, making the current campaign no longer relevant.",
+
+                "LOST TO COMPETITION": "Use this category when the customer confirms that they purchased or finalized a vehicle from a competing automotive brand instead of the discussed brand.",
+
+                "PURCHASE POSTPONED": "Use this category when the customer states that their vehicle purchase plan has been postponed indefinitely or delayed significantly due to personal, financial, or situational reasons.",
+
+                "INVALID LEAD": "Use this category when the contacted person is not a valid or relevant lead for the campaign. Examples include wrong numbers, unrelated individuals, duplicate leads, customers outside the target audience, or cases where the customer clearly states they are not interested or not eligible.",
+
+                "TALK TO HUMAN": "Use this category when the customer explicitly requests to speak with a human representative, sales executive, advisor, or dealership staff instead of continuing with the AI agent or automated system."
+            }
+            }
     if campaign_type == "post-sales":
         disp_details_options = {
                 "CONVERTED": {
-                    "CONVERTED": "The customer completes the purpose of the campaign and provides the necessary information."
+                    "CONVERTED": "Use this category when the customer successfully completes the campaign objective during the conversation and provides all required information or confirmation needed to finalize the lead, booking, inquiry, or conversion action."
                 },
+
                 "POSITIVE": {
-                    "WILL DECIDE TOMORROW": "The customer said they would decide to service the vehicle tomorrow.",
-                    "WILL DECIDE WITHIN 1 TO 3 DAYS": "The customer said they would decide to service the vehicle within 1 to 3 days.",
-                    "WILL DECIDE WITHIN 4 TO 7 DAYS": "The customer said they would decide to service the vehicle within 4 to 7 days.",
-                    "WILL DECIDE WITHIN 8 TO 14 DAYS": "The customer said they would decide to service the vehicle within 8 to 14 days.",
-                    "WILL DECIDE WITHIN 15 TO 30 DAYS": "The customer said they would decide to service the vehicle within 15 to 30 days.",
-                    "WILL DECIDE WITHIN 31 TO 60 DAYS": "The customer said they would decide to service the vehicle within 31 to 60 days.",
-                    "WILL DECIDE WITHIN 61 TO 90 DAYS": "The customer said they would decide to service the vehicle within 61 to 90 days.",
-                    "WILL DECIDE AFTER 90 DAYS": "The customer said they would decide to service the vehicle after 90 days.",
-                    "PRICE INQUIRY": "The customer is interested in the price of the service.",
-                    "LOOKING FOR A DISCOUNT": "The customer is looking for a discount on the campaign purpose.",
-                    "REQUESTED CALLBACK": "The customer asked the agent to call back at a later date and or time."
+                    "ENQUIRED FOR TEST DRIVE": "Use this category when the customer independently asks for a test drive, expresses interest in experiencing the vehicle firsthand, or requests details about scheduling a test drive.",
+
+                    "SHOWROOM VISIT PLANNED": "Use this category when the customer has already agreed to, scheduled, or confirmed a showroom visit, test drive, or in-person appointment. This includes cases where a specific date, time, or intent to visit has been clearly established.",
+
+                    "WILL DECIDE LATER, WILL PURCHASE WITHIN 15 DAYS": "Use this category when the customer indicates a strong purchase intent and mentions they are likely to make a buying decision within approximately 15 days.",
+
+                    "WILL DECIDE LATER, WILL PURCHASE WITHIN 1 TO 3 MONTHS": "Use this category when the customer expresses interest in purchasing the vehicle but indicates that the buying decision or purchase timeline is expected within the next 1 to 3 months.",
+
+                    "ENQUIRED FOR PRICING": "Use this category when the customer independently asks for the vehicle price, on-road cost, offers, discounts, financing details, EMI information, or any pricing-related information.",
+
+                    "ENQUIRED FOR SPECIFICATIONS": "Use this category when the customer independently asks about the vehicle specifications, features, mileage, variants, engine details, safety features, dimensions, technology, or performance-related information.",
+
+                    "ENQUIRED FOR SHOWROOM VISIT": "Use this category when the customer independently asks about visiting the showroom, requests showroom timings or location details, or expresses intent to visit the dealership.",
+
+                    "ENQUIRED FOR BROCHURE": "Use this category when the customer independently requests a brochure, catalog, specification sheet, PDF, or any official informational material related to the vehicle.",
+
+                    "ENQUIRED FOR DEALERSHIP DETAILS": "Use this category when the customer independently asks for dealership contact details, address, branch location, showroom information, or dealer-related assistance.",
+
+                    "INTERESTED IN ANOTHER CAR SAME DEALERSHIP": "Use this category when the customer shows interest in a different vehicle model offered by the same dealership or brand instead of the originally discussed vehicle.",
+
+                    "FOLLOW UP REQUIRED": "Use this category when the customer shows interest in the offering but does not complete the campaign objective during the current conversation. The customer may need additional persuasion, information, clarification, or future engagement before converting.",
+
+                    "REQUESTED CALLBACK": "Use this category when the customer explicitly asks the agent to call again at a later date or time. This includes requests such as asking for a callback tomorrow, later in the day, after work hours, or at any specified future time."
                 },
+
                 "NEUTRAL": {
-                    "CUSTOMER BUSY": "The customer was busy.",
-                    "WILL CALL WORKSHOP THEMSELVES": "The customer will contact the workshop themselves.",
-                    "LANGUAGE BARRIER": "The customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
-                    "AUDIO ISSUE": "There was issues with hearing the customer or the agent for either party.",
-                    "CALL QUALITY ISSUE": "There was issues with the quality of the call.",
-                    "CONNECTION ISSUE": "There was issues with the connection between the customer and the agent.",
-                    "REQUIRES SPECIAL SPARE PARTS": "The vehicle requires special spare parts for repair.",
-                    "OTHERS": "All other disposition details not listed above.",
-                    "CANNOT MAKE DECISION ON SERVICING": "The customer the agent has called is not the right person to make the decision."
+                    "WILL DECIDE LATER, EXPLORING OPTIONS": "Use this category when the customer indicates that they are currently evaluating multiple options and are not ready to make an immediate purchase decision.",
+
+                    "JUST EXPLORING": "Use this category when the customer asks questions or seeks information about the vehicle but does not show any clear buying intent or commitment toward the campaign objective.",
+
+                    "WILL CALL SHOWROOM/WORKSHOP THEMSELVES": "Use this category when the customer states that they will directly contact or visit the dealership, showroom, service center, or workshop on their own without further assistance from the agent.",
+
+                    "GENERAL INQUIRY": "Use this category when the customer asks generic or broad questions that are not directly related to the campaign objective, purchase decision, or a specific vehicle requirement.",
+
+                    "COMPARING WITH ANOTHER BRAND": "Use this category when the customer compares the discussed vehicle with vehicles from competing brands or asks comparative questions involving another manufacturer.",
+
+                    "LANGUAGE BARRIER": "Use this category when the conversation cannot proceed effectively because the customer prefers another language, cannot understand the agent, or communication fails due to language mismatch.",
+
+                    "AUDIO ISSUE": "Use this category when the conversation cannot continue properly due to technical audio problems affecting either the customer or the agent. Examples include poor network quality, inability to hear the other party, excessive noise, microphone issues, echo, or broken audio.",
+
+                    "TEST DRIVE COMPLETED": "Use this category when the customer confirms that they have already completed a test drive for the discussed vehicle prior to or during the conversation.",
+
+                    "ENQUIRED FOR OTHERS": "Use this category when the customer asks for additional information, services, or details that do not fit into any of the predefined enquiry-related categories."
                 },
+
                 "NEGATIVE": {
-                    "VEHICLE IS COMMERCIAL OR PART OF A FLEET": "The vehicle is a commercial vehicle and not applicable for the campaign purpose.",
-                    "HAS SOLD OR GIVEN AWAY THE CAR": "The customer has sold or given away the vehicle.",
-                    "VEHICLE IS NOT BEING RUN": "Vehicle is unused and not being run.",
-                    "HAS MOVED TO ANOTHER LOCATION": "The customer has moved to another location.",
-                    "WRONG CONTACT NUMBER": "Customer tells the agent they have the wrong person or number that was contacted",
-                    "NO RESPONSE": "This category applies only if the user role is completely empty with no text at all from the start to the end of the call.",
-                    "CALL DISCONNECTED": "Human conversation was established but the user stopped responding or the line went silent. Not for automated prompts.",
-                    "VOICEMAIL": "Selected if any user message contains automated system text (recording prompts, beeps). Overrides all other categories.",
-                    "UNSUBSCRIBED": "The customer asked to unsubscribed from the campaign.",
-                    "CONTACT FATIGUE": "customer implied they were being contacted too many times by the agent.",
-                    "NOT INTERESTED": "The customer specifically said they are not interested (Inferred from general context).",
-                    "PURCHASE POSTPONED": "They decided or implied they will postpone the service.",
-                    "HAS SERVICED CAR IN ANOTHER DEALERSHIP": "The customer has serviced the vehicle in another dealership.",
-                    "EXISTING DEALER CONTACT": "The customer already did the campaign objective from an existing dealership.",
-                    "LOST TO COMPETITION": "the customer already did the campaign objective from a competitors workshop",
-                    "TALK TO HUMAN": "The customer requested for talking with human.",
-                    "INVALID LEAD": "Not a valid lead."
+                    "NO RESPONSE": "Use this category only when there is absolutely no customer response or input throughout the entire conversation. The user role must be completely empty from start to finish. If there is any speech, text, automated prompt, or voicemail detection, this category must not be used.",
+
+                    "CALL DISCONNECTED": "Use this category when a live human interaction was established (for example, the customer responded with greetings or acknowledgements such as 'hello', 'yes', or similar), but the conversation ended unexpectedly due to silence, dropped connection, or the customer stopping responses after the interaction began. Do not use this category if an automated voicemail or recording system was detected.",
+
+                    "VOICEMAIL": "Use this category when the call reaches an automated voicemail system or recorded prompt instead of a live customer. Indicators include phrases such as 'please leave a message', 'record your message after the beep', voicemail greetings, or audible beeps. If any automated system prompt is detected, this category overrides all other categories.",
+
+                    "NOT INTERESTED": "Use this category when the customer explicitly states that they are not interested in the vehicle, the offer, or continuing the conversation regarding the campaign objective.",
+
+                    "NO BUYING INTENT": "Use this category when the customer clearly indicates that they do not intend to purchase any vehicle and have no interest in buying a car at present.",
+
+                    "PURCHASED ELSEWHERE": "Use this category when the customer explicitly states that they have already purchased the product or vehicle from another dealer, brand, platform, or competitor, making the current campaign no longer relevant.",
+
+                    "LOST TO COMPETITION": "Use this category when the customer confirms that they purchased or finalized a vehicle from a competing automotive brand instead of the discussed brand.",
+
+                    "PURCHASE POSTPONED": "Use this category when the customer states that their vehicle purchase plan has been postponed indefinitely or delayed significantly due to personal, financial, or situational reasons.",
+
+                    "INVALID LEAD": "Use this category when the contacted person is not a valid or relevant lead for the campaign. Examples include wrong numbers, unrelated individuals, duplicate leads, customers outside the target audience, or cases where the customer clearly states they are not interested or not eligible.",
+
+                    "TALK TO HUMAN": "Use this category when the customer explicitly requests to speak with a human representative, sales executive, advisor, or dealership staff instead of continuing with the AI agent or automated system."
                 }
-            }
+                }
 
     prompt = f"""
     # You are a analyst bot that has the single purpose of looking at the conversation summary provided below about my customer and my agent and check if they completed the objective of my campaign. 
     # I am running a campaign with the objective of {campaign_purpose if campaign_purpose else campaign_objective}.
     # These are some details of the campaign - {campaign_description}.
+    
+    # The campaign can be in different langauages so LOOK AT THE CONVERSATION HISTORY TO UNDERSTAND THE LANGUAGE and THE CONTEXT of the conversation before coming to a conclusion.
+    
+    # Following are the list of languages in which the conversation can happen - Englis, Hindi, Tamil, Telugu, Kannada, Malayalam.
+    
     {purpose_steps}
+    
     # I want to know if the purpose of the campaign was met by the customer.
     For example:
         If campaign is about booking a test drive check if the customer booked a test drive.
@@ -1307,6 +1367,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     If the objective was met the disposition should be converted.
     In all other cases it should be engaged.
     If the disposition is converted the prioritization score should be 100 and prioritization category should be COMPLETE. Other wise determine the interest the have shown during the call and put a score and pick from the categories for prioritization.
+    
     # Possible values and description to qualify for disposition_detail are:
     \n{disp_details_options[sentiment.upper()]}\n
     Only pick ONE value from this above list for disposition details.
@@ -1316,16 +1377,74 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     # Special Cases:-
     - if the user has asked for a callback or requested to speak with a human or a phone call in any way without completing the objective of the campaign then the Disposition Detail would be = 'Requested Callback'.
     - if the user has not completed the objective of the campaign and has suggested they do not understand the language i am speaking or asked me to switch to a different language, the Disposition Detail would be = 'Language barrier'.
-    # Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
-    # Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
-    # Do NOT prepend labels (like "json"). Output only valid JSON.
-    # Your response should be in the following JSON format:
+    
+    CRITICAL RULES:
+    - Your response must be ONLY the JSON object string that i can convert to json using json.loads.
+    - Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
+    - Use ONLY the exact labels provided below.
+    - NEVER create new labels.
+    - NEVER summarize the conversation.
+    - NEVER explain reasoning.
+    - NEVER output anything outside the allowed values.
+    - If uncertain, choose the closest valid label.
+    - Do NOT prepend labels (like "json"). Output only valid JSON.
+
+    ALLOWED VALUES for disposition_detail based on sentiment category are as follows:
+
+    {{
+        "CONVERTED": [
+            "CONVERTED"
+        ],
+
+        "POSITIVE": [
+            "ENQUIRED FOR TEST DRIVE",
+            "SHOWROOM VISIT PLANNED",
+            "WILL DECIDE LATER, WILL PURCHASE WITHIN 15 DAYS",
+            "WILL DECIDE LATER, WILL PURCHASE WITHIN 1 TO 3 MONTHS",
+            "ENQUIRED FOR PRICING",
+            "ENQUIRED FOR SPECIFICATIONS",
+            "ENQUIRED FOR SHOWROOM VISIT",
+            "ENQUIRED FOR BROCHURE",
+            "ENQUIRED FOR DEALERSHIP DETAILS",
+            "INTERESTED IN ANOTHER CAR SAME DEALERSHIP",
+            "FOLLOW UP REQUIRED",
+            "REQUESTED CALLBACK"
+        ],
+
+        "NEUTRAL": [
+            "WILL DECIDE LATER, EXPLORING OPTIONS",
+            "JUST EXPLORING",
+            "WILL CALL SHOWROOM/WORKSHOP THEMSELVES",
+            "GENERAL INQUIRY",
+            "COMPARING WITH ANOTHER BRAND",
+            "LANGUAGE BARRIER",
+            "AUDIO ISSUE",
+            "TEST DRIVE COMPLETED",
+            "ENQUIRED FOR OTHERS",
+            "OTHERS"
+        ],
+
+        "NEGATIVE": [
+            "NO RESPONSE",
+            "CALL DISCONNECTED",
+            "VOICEMAIL",
+            "NOT INTERESTED",
+            "NO BUYING INTENT",
+            "PURCHASED ELSEWHERE",
+            "LOST TO COMPETITION",
+            "PURCHASE POSTPONED",
+            "INVALID LEAD",
+            "TALK TO HUMAN"
+        ]
+    }}
+
+     # Your response should be in the following JSON format:
     {example_disposition_response}
     """
 
     mlogger.info("prompt == {}".format(prompt))
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
-    mlogger.info("disposition prompt response ======= {}".format(resp))
+    # mlogger.info("disposition prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
 def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data):
@@ -1834,12 +1953,12 @@ def get_disposition_classification(query = None, session_id = None, session_data
     POSITIVE (Customer is interested but hasn't committed/converted yet)
      - Reasoning: The user rejects the current timing or specific detail but maintains a conversational bridge. This indicates high intent with a logistical friction point rather than a lack of interest.
      - Example 1: [{{'role': 'user', 'message': 'Not at this time'}}, {{'role': 'agent', 'message': 'When would be a better time?'}}] -> Customer is open to future contact.
-     - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 02:01:03 PM +0000'}}, {{'role': 'user', 'message': 'Yeah', 'timestamp': '2026-03-03 02:01:09 PM +0000'}}, {{'role': 'agent', 'message': 'Uh, thank you for considering the Citroen Aircross, A Many buyers, you know, focus on smooth ride quality, cabin calmness, and everyday driving ease Is comfort one of your top priorities?', 'timestamp': '2026-03-03 02:01:10 PM +0000'}}, {{'role': 'user', 'message': 'Yes, yes', 'timestamp': '2026-03-03 02:01:24 PM +0000'}}, {{'role': 'agent', 'message': 'Absolutely Uh, the Citroen Aircross is really designed for comfort, especially, you know, for daily driving It has this Magic Carpet ride with Frequency Selective Damping suspension that's tuned for Indian roads This really helps absorb bumps and reduces fatigue, whether you're in the city or on longer journeys', 'timestamp': '2026-03-03 02:01:26 PM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-03 02:01:46 PM +0000'}}, {{'role': 'agent', 'message': 'And, uh, it als', 'timestamp': '2026-03-03 02:01:48 PM +0000'}}, {{'role': 'user', 'message': 'So I had a question Hello?', 'timestamp': '2026-03-03 02:01:48 PM +0000'}}, {{'role': 'agent', 'message': 'Yes, A, I'm here Please go ahead with your question', 'timestamp': '2026-03-03 02:01:56 PM +0000'}}, {{'role': 'user', 'message': 'Yeah, so actually I had a 2024 vehicle from Andhra So I need to check whether that 2024 aircraft's manual top-end model is having the six airbags or not', 'timestamp': '2026-03-03 02:02:00 PM +0000'}}, {{'role': 'agent', 'message': 'Got it You're asking about the 2024 C3 Aircross manual top-end model and if it has six airbags Let me just check that for you\n', 'timestamp': '2026-03-03 02:02:15 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 02:02:17 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 02:02:24 PM +0000'}}]
+     - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 02:01:03 PM +0000'}}, {{'role': 'user', 'message': 'Yeah', 'timestamp': '2026-03-03 02:01:09 PM +0000'}}, {{'role': 'agent', 'message': 'Uh, thank you for considering the Citroen Aircross, A Many buyers, you know, focus on smooth ride quality, cabin calmness, and everyday driving ease Is comfort one of your top priorities?', 'timestamp': '2026-03-03 02:01:10 PM +0000'}}, {{'role': 'user', 'message': 'Yes, yes', 'timestamp': '2026-03-03 02:01:24 PM +0000'}}, {{'role': 'agent', 'message': 'Absolutely Uh, the Citroen Aircross is really designed for comfort, especially, you know, for daily driving It has this Magic Carpet ride with Frequency Selective Damping suspension that's tuned for Indian roads This really helps absorb bumps and reduces fatigue, whether you're in the city or on longer journeys', 'timestamp': '2026-03-03 02:01:26 PM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-03 02:01:46 PM +0000'}}, {{'role': 'agent', 'message': 'And, uh, it als', 'timestamp': '2026-03-03 02:01:48 PM +0000'}}, {{'role': 'user', 'message': 'So I had a question Hello?', 'timestamp': '2026-03-03 02:01:48 PM +0000'}}, {{'role': 'agent', 'message': 'Yes, A, I m here Please go ahead with your question', 'timestamp': '2026-03-03 02:01:56 PM +0000'}}, {{'role': 'user', 'message': 'Yeah, so actually I had a 2024 vehicle from Andhra So I need to check whether that 2024 aircrafts manual top-end model is having the six airbags or not', 'timestamp': '2026-03-03 02:02:00 PM +0000'}}, {{'role': 'agent', 'message': 'Got it You are asking about the 2024 C3 Aircross manual top-end model and if it has six airbags Let me just check that for you\n', 'timestamp': '2026-03-03 02:02:15 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 02:02:17 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 02:02:24 PM +0000'}}]
     
     NEGATIVE (Customer explicitly declines the objective)
      - Reasoning: The user provides a definitive 'No' or a contextual rejection that closes the loop on the specific goal. No alternative or future opening is provided.
      - Example 1: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 01:22:23 PM +0000'}}, {{'role': 'agent', 'message': 'Would you be interested in booking a test drive?'}}, {{'role': 'user', 'message': "No, I'm at a state by state"}}] -> Objective rejected.
-     - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 01:22:23 PM +0000'}}, {{'role': 'user', 'message': 'Yeah', 'timestamp': '2026-03-03 01:22:29 PM +0000'}}, {{'role': 'agent', 'message': 'Thanks for considering the Citroen Aircross, Aarun Gaur Are there any specific questions you have about service support or ownership experience in India?', 'timestamp': '2026-03-03 01:22:31 PM +0000'}}, {{'role': 'user', 'message': 'No, madam No', 'timestamp': '2026-03-03 01:22:40 PM +0000'}}, {{'role': 'agent', 'message': 'Got it So, um, Aarun Gaur, are you interested in booking a test drive for the Citroen C3 Aircross?', 'timestamp': '2026-03-03 01:22:43 PM +0000'}}, {{'role': 'user', 'message': '[car engine] <|unintellig', 'timestamp': '2026-03-03 01:22:51 PM +0000'}}, {{'role': 'agent', 'message': 'Sorry, I couldn't hear what you said Could', 'timestamp': '2026-03-03 01:22:55 PM +0000'}}, {{'role': 'user', 'message': 'Uh, already madam le-le-le-le li hai madam already trial Gaadi aayi thi aapki Toh hum dekh liya, chala ke drive kar liya', 'timestamp': '2026-03-03 01:22:58 PM +0000'}}, {{'role': 'agent', 'message': 'Ah, got it So, you've already taken a test drive of the Citroen C3 Aircross That makes sense\n\nUhm,', 'timestamp': '2026-03-03 01:23:08 PM +0000'}}, {{'role': 'user', 'message': 'Yeah Yeah', 'timestamp': '2026-03-03 01:23:14 PM +0000'}}, {{'role': 'agent', 'message': 'Okay So, um, Aarun Gaur, since you've already had a test drive, is there anything else I can help you with regarding the Citroen C3 Aircross, or perhaps any other Citroen or Jeep models?', 'timestamp': '2026-03-03 01:23:16 PM +0000'}}, {{'role': 'user', 'message': 'No, thank you', 'timestamp': '2026-03-03 01:23:29 PM +0000'}}, {{'role': 'agent', 'message': 'Alright, Aarun Gaur Thanks for your time I really appreciate it Have a great day!', 'timestamp': '2026-03-03 01:23:31 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 01:23:31 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 01:23:37 PM +0000'}}]
+     - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 01:22:23 PM +0000'}}, {{'role': 'user', 'message': 'Yeah', 'timestamp': '2026-03-03 01:22:29 PM +0000'}}, {{'role': 'agent', 'message': 'Thanks for considering the Citroen Aircross, Aarun Gaur Are there any specific questions you have about service support or ownership experience in India?', 'timestamp': '2026-03-03 01:22:31 PM +0000'}}, {{'role': 'user', 'message': 'No, madam No', 'timestamp': '2026-03-03 01:22:40 PM +0000'}}, {{'role': 'agent', 'message': 'Got it So, um, Aarun Gaur, are you interested in booking a test drive for the Citroen C3 Aircross?', 'timestamp': '2026-03-03 01:22:43 PM +0000'}}, {{'role': 'user', 'message': '[car engine] <|unintellig', 'timestamp': '2026-03-03 01:22:51 PM +0000'}}, {{'role': 'agent', 'message': 'Sorry, I couldnt hear what you said Could', 'timestamp': '2026-03-03 01:22:55 PM +0000'}}, {{'role': 'user', 'message': 'Uh, already madam le-le-le-le li hai madam already trial Gaadi aayi thi aapki Toh hum dekh liya, chala ke drive kar liya', 'timestamp': '2026-03-03 01:22:58 PM +0000'}}, {{'role': 'agent', 'message': 'Ah, got it So, you have already taken a test drive of the Citroen C3 Aircross That makes sense\n\nUhm,', 'timestamp': '2026-03-03 01:23:08 PM +0000'}}, {{'role': 'user', 'message': 'Yeah Yeah', 'timestamp': '2026-03-03 01:23:14 PM +0000'}}, {{'role': 'agent', 'message': 'Okay So, um, Aarun Gaur, since you have already had a test drive, is there anything else I can help you with regarding the Citroen C3 Aircross, or perhaps any other Citroen or Jeep models?', 'timestamp': '2026-03-03 01:23:16 PM +0000'}}, {{'role': 'user', 'message': 'No, thank you', 'timestamp': '2026-03-03 01:23:29 PM +0000'}}, {{'role': 'agent', 'message': 'Alright, Aarun Gaur Thanks for your time I really appreciate it Have a great day!', 'timestamp': '2026-03-03 01:23:31 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 01:23:31 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 01:23:37 PM +0000'}}]
      
     NEUTRAL (Inconclusive, language barrier, or no clear progress)
      - Reasoning: The input is semantically "noise" relative to the objective. It contains no discernible intent (positive or negative) or suggests a communication barrier that prevents state progression.

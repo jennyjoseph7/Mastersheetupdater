@@ -123,7 +123,6 @@ function zip_repo() {
         fi
 
         zip -r --exclude=*frontend* --exclude=*creds* --exclude=*recordings* --exclude=*config.sh* --exclude=*local* --exclude=*results* --exclude=*.pid* --exclude=*stats* --exclude=*.whl* --exclude=*.zip* --exclude=*.log* --exclude=*.git* --exclude=*docker* --exclude=*venv* --exclude=*pyenv* --exclude=*logs* --exclude=*keys* --exclude=*__pycache__* --exclude=*py.swp* $zip_name ./
-
         cp $zip_name $WORKING_DIR
     popd
 }
@@ -248,3 +247,6 @@ function main() {
 }
 
 main
+
+
+
