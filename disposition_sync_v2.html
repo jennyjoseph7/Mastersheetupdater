@@ -698,6 +698,29 @@
       color: var(--danger);
     }
 
+    /* ── AI STATUS BADGES ──────────────────────────────────────────────────── */
+    .ai-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.12rem 0.35rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      letter-spacing: 0.03em;
+    }
+    .ai-badge.verified {
+      color: var(--success);
+      background: var(--success-soft);
+    }
+    .ai-badge.corrected {
+      color: var(--warn);
+      background: var(--warn-soft);
+    }
+    .ai-badge.pending {
+      color: var(--text-muted);
+      background: transparent;
+    }
+
     /* ── FOOTER ────────────────────────────────────────────────────────── */
     footer {
       text-align: center;
@@ -2140,34 +2163,8 @@
       "Audio Issue": "There was issues with hearing the customer or the agent for either party.",
       "Showroom Visit Planned": "the customer Already booked a showroom visit.",
       "Converted": "The customer completes the purpose of the campaign and provides the necessary information.",
-      // ── Post-Sales ──
-      "Vehicle is commercial or part of a fleet": "The vehicle is a commercial vehicle and not applicable for the campaign purpose.",
-      "Vehicle is not being run": "Vehicle is unused and not being run.",
-      "Requires special spare parts": "The vehicle requires special spare parts for repair.",
-      "Wrong contact number": "Customer tells the agent they have the wrong person or number that was contacted",
-      "Has sold/given away the car": "The customer has sold or given away the vehicle.",
-      "Has moved to another location": "The customer has moved to another location.",
-      "Cannot make decision on servicing": "The customer the agent has called is not the right person to make the decision.",
-      "Will call workshop themselves": "The customer will contact the workshop themselves.",
-      "Looking for a discount": "The customer is looking for a discount on the campaign purpose.",
-      "Has serviced car in another dealership": "The customer has serviced the vehicle in another dealership.",
-      "Will decide tomorrow": "The customer said they would decide to service the vehicle tomorrow.",
-      "Will decide within 1 to 3 days": "The customer said they would decide to service the vehicle within 1 to 3 days.",
-      "Will decide within 4 to 7 days": "The customer said they would decide to service the vehicle within 4 to 7 days.",
-      "Will decide within 8 to 14 days": "The customer said they would decide to service the vehicle within 8 to 14 days.",
-      "Will decide within 15 to 30 days": "The customer said they would decide to service the vehicle within 15 to 30 days.",
-      "Will decide within 31 to 60 days": "The customer said they would decide to service the vehicle within 31 to 60 days.",
-      "Will decide within 61 to 90 days": "The customer said they would decide to service the vehicle within 61 to 90 days.",
-      "Will decide after 90 days": "The customer said they would decide to service the vehicle after 90 days.",
-      "Unsubscribed": "The customer asked to unsubscribed from the campaign.",
-      "Call Quality Issue": "There was issues with the quality of the call.",
-      "Connection Issue": "There was issues with the connection between the customer and the agent.",
-      "Customer Busy": "The customer was busy.",
-      "Price Inquiry": "The customer is interested in the price of the service.",
-      "Existing Dealer Contact": "The customer already did the campaign objective from an existing dealership.",
-      "Contact Fatigue": "customer implied they were being contacted too many times by the agent.",
       // ── Additional ──
-      "Talk to Human": "The customer asked to speak to a human agent instead of the digital assistant.",
+      "Talk to Human": "The customer asked to speak to a human agent or customer executive instead of the digital assistant.",
       "Interested in another car same dealership": "The customer is interested in a different vehicle model from the same dealership."
     };
 
@@ -2901,7 +2898,7 @@
         var summ = (r.session_summary || '').trim();
         var disp = (r.disposition_detail || '').trim();
         if (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.' && disp) {
-          candidates.push({ index: i, summary: summ, currentDisp: disp });
+          candidates.push({ index: i, summary: summ, currentDisp: disp, model: r.model || '', outcome: r.outcome || '', callDuration: r.call_duration || '', leadSource: r.lead_source || '' });
         }
       }
 
@@ -2917,7 +2914,7 @@
       var correctedResults = {};
 
       // Check cache first — build a combined hash
-      var cacheInput = candidates.map(function(c) { return c.summary + '||' + c.currentDisp; }).join('|');
+      var cacheInput = candidates.map(function(c) { return c.summary + '||' + c.currentDisp + '||' + c.model + '||' + c.outcome + '||' + c.callDuration + '||' + c.leadSource; }).join('|');
       var cacheKey = 'disp-validate-v2-' + hashStr(cacheInput);
       var cached = localStorage.getItem(cacheKey);
       if (cached) {
@@ -2937,10 +2934,15 @@
         for (var batchStart = 0; batchStart < candidates.length; batchStart += BATCH_SIZE) {
           var batch = candidates.slice(batchStart, batchStart + BATCH_SIZE);
           var promptLines = batch.map(function(c, idx) {
-            return 'Row ' + idx + ': Session Transcript="' + c.summary.slice(0, 500) + '" | Current Disposition="' + c.currentDisp + '"';
+            var line = 'Row ' + idx + ': Session Transcript="' + c.summary + '" | Current Disposition="' + c.currentDisp + '"';
+            if (c.model) line += ' | Vehicle Model="' + c.model + '"';
+            if (c.outcome) line += ' | Call Outcome="' + c.outcome + '"';
+            if (c.callDuration) line += ' | Call Duration="' + c.callDuration + '"';
+            if (c.leadSource) line += ' | Lead Source="' + c.leadSource + '"';
+            return line;
           }).join('\n\n');
 
-          var prompt = 'You are a strict disposition auditor for an automotive campaign. Your job is to CRITICALLY evaluate whether the "Current Disposition" accurately describes the call "Session Transcript". Do NOT default to "correct" — scrutinize each match carefully.\n\nVALID DISPOSITIONS:\n' + dispDefs + '\n\nEXAMPLES (learn from these patterns):\n- Transcript: "Customer said they would think about it and call back next week" | Current: "Not Interested" → isCorrect: false, correctedDisposition: "Will decide later, exploring options". Reason: Customer did not say no — they deferred. Not Interested means explicit refusal.\n\n- Transcript: "Customer asked about financing options and EMI plans" | Current: "General Inquiry" → isCorrect: false, correctedDisposition: "Enquired for Pricing". Reason: Asking about pricing/financing is Enquired for Pricing, not generic.\n\n- Transcript: "Customer said the vehicle is too expensive and they will look at other brands" | Current: "Rejected" → isCorrect: false, correctedDisposition: "Comparing with another brand". Reason: Still in market, just price-shopping — not a hard rejection.\n\n- Transcript: "Call dropped mid-conversation while discussing test drive" | Current: "Follow Up Required" → isCorrect: false, correctedDisposition: "Call Disconnected". Reason: Call physically dropped. Follow Up Required is for completed conversations needing callback.\n\n- Transcript: "Customer said they already own this model and do not need another" | Current: "Not Interested" → isCorrect: false, correctedDisposition: "No buying intent". Reason: No buying intent is for customers who do not want to purchase a car at all.\n\n- Transcript: "Customer asked to be called back after 5pm" | Current: "Call Disconnected" → isCorrect: false, correctedDisposition: "Requested Callback". Reason: Customer explicitly requested a callback — not a disconnect.\n\n- Transcript: "Customer kept asking about the vehicle but would not give their details" | Current: "No buying intent" → isCorrect: false, correctedDisposition: "Just Exploring". Reason: Just Exploring means they want info without buying intent.\n\n- Transcript: "Customer said they already booked a test drive at another dealership" | Current: "Converted" → isCorrect: false, correctedDisposition: "Lost to Competition". Reason: Converted elsewhere = competitive loss, not a campaign conversion.\n\nNow evaluate these rows. For EACH row, respond with ONE JSON object:\n{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confidence":"high","reason":"The summary clearly matches the disposition."}\n\nRows:\n' + promptLines + '\n\nRespond as a JSON array of objects, one per row in the same order. ONLY valid JSON.';
+          var prompt = 'You are a strict disposition auditor for an automotive campaign. Your job is to CRITICALLY evaluate whether the "Current Disposition" accurately describes the call "Session Transcript". Additional context (Vehicle Model, Call Outcome, Call Duration, Lead Source) is provided for each row — use it to rule out impossible dispositions. Do NOT default to "correct" — scrutinize each match carefully.\n\nVALID DISPOSITIONS:\n' + dispDefs + '\n\nEXAMPLES (learn from these patterns):\n- Transcript: "Customer said they would think about it and call back next week" | Current: "Not Interested" → isCorrect: false, correctedDisposition: "Will decide later, exploring options". Reason: Customer did not say no — they deferred. Not Interested means explicit refusal.\n\n- Transcript: "Customer asked about financing options and EMI plans" | Current: "General Inquiry" → isCorrect: false, correctedDisposition: "Enquired for Pricing". Reason: Asking about pricing/financing is Enquired for Pricing, not generic.\n\n- Transcript: "Customer said the vehicle is too expensive and they will look at other brands" | Current: "Rejected" → isCorrect: false, correctedDisposition: "Comparing with another brand". Reason: Still in market, just price-shopping — not a hard rejection.\n\n- Transcript: "Call dropped mid-conversation while discussing test drive" | Current: "Follow Up Required" → isCorrect: false, correctedDisposition: "Call Disconnected". Reason: Call physically dropped. Follow Up Required is for completed conversations needing callback.\n\n- Transcript: "Customer said they already own this model and do not need another" | Current: "Not Interested" → isCorrect: false, correctedDisposition: "No buying intent". Reason: No buying intent is for customers who do not want to purchase a car at all.\n\n- Transcript: "Customer asked to be called back after 5pm" | Current: "Call Disconnected" → isCorrect: false, correctedDisposition: "Requested Callback". Reason: Customer explicitly requested a callback — not a disconnect.\n\n- Transcript: "Customer kept asking about the vehicle but would not give their details" | Current: "No buying intent" → isCorrect: false, correctedDisposition: "Just Exploring". Reason: Just Exploring means they want info without buying intent.\n\n- Transcript: "Customer said they already booked a test drive at another dealership" | Current: "Converted" → isCorrect: false, correctedDisposition: "Lost to Competition". Reason: Converted elsewhere = competitive loss, not a campaign conversion.\n\nNow evaluate these rows. For EACH row, respond with ONE JSON object:\n{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confidence":"high","reason":"The summary clearly matches the disposition."}\n\nRows:\n' + promptLines + '\n\nRespond as a JSON array of objects, one per row in the same order. ONLY valid JSON.';
 
           var result = null;
           try {
@@ -3008,12 +3010,19 @@
         try { localStorage.setItem(cacheKey, JSON.stringify(cacheArray)); } catch(e) {}
       }
 
-      // Apply corrections to processedData
+      // Apply corrections + mark validation status
       var correctedIndices = Object.keys(correctedResults);
       for (var k = 0; k < correctedIndices.length; k++) {
         var rowIdx = parseInt(correctedIndices[k]);
         if (processedData[rowIdx]) {
           processedData[rowIdx].manual_disposition_detail = correctedResults[rowIdx];
+          processedData[rowIdx]._ai_status = 'corrected';
+        }
+      }
+      for (var ci = 0; ci < candidates.length; ci++) {
+        var cand = candidates[ci];
+        if (processedData[cand.index] && !processedData[cand.index]._ai_status) {
+          processedData[cand.index]._ai_status = 'verified';
         }
       }
 
@@ -3114,6 +3123,12 @@
             var sn = parseFloat(r.sentiment);
             var sc = isNaN(sn) ? '' : sn >= 0.6 ? 'cell-sentiment-high' : sn >= 0.3 ? 'cell-sentiment-mid' : 'cell-sentiment-low';
             colsHtml += '<td class="' + sc + '">' + esc(r.sentiment) + '</td>';
+          } else if (col.key === 'manual_disposition_detail') {
+            var status = r._ai_status || '';
+            var badge = '<span class="ai-badge pending">—</span>';
+            if (status === 'corrected') badge = '<span class="ai-badge corrected" title="AI suggested a correction">✎</span> ';
+            else if (status === 'verified') badge = '<span class="ai-badge verified" title="AI verified this disposition is correct">✓</span> ';
+            colsHtml += '<td>' + badge + esc(val) + '</td>';
           } else {
             colsHtml += '<td>' + esc(val) + '</td>';
           }
