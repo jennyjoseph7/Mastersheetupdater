@@ -1,0 +1,5 @@
+set_key_temp.txt
+.chrome-profile/
+*.log
+.DS_Store
+Thumbs.db

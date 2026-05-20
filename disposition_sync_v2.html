@@ -302,6 +302,69 @@
       margin-bottom: 1.25rem;
     }
 
+    /* ── API KEY CONTROL ──────────────────────────────────────────────────── */
+    .ai-key-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      padding: 0.35rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+    }
+
+    .api-key-input {
+      width: 200px;
+      max-width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      padding: 0.45rem 0.6rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      outline: none;
+    }
+
+    .api-key-input:focus {
+      border-color: var(--border-focus);
+    }
+
+    .api-key-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface3);
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 0.43rem 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .api-key-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .api-key-btn.subtle {
+      background: transparent;
+    }
+
+    .api-key-status {
+      min-width: 78px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .api-key-status.ok { color: var(--success); }
+    .api-key-status.warn { color: var(--warn); }
+    .api-key-status.err { color: var(--danger); }
+
     .btn {
       display: inline-flex;
       align-items: center;
@@ -1685,6 +1748,13 @@
             </select>
           </div>
         </div>
+        <div class="ai-key-control" title="Paste your OpenRouter API key for AI disposition validation.">
+          <span class="control-label" style="font-size:0.72rem;font-weight:700;color:var(--text-dim);">AI Key</span>
+          <input id="openRouterApiKey" class="api-key-input" type="password" placeholder="OpenRouter API key" autocomplete="off" spellcheck="false">
+          <button type="button" class="api-key-btn" onclick="saveOpenRouterApiKey()">Save</button>
+          <button type="button" class="api-key-btn subtle" onclick="clearOpenRouterApiKey()">Clear</button>
+          <span class="api-key-status" id="apiKeyStatus">Required</span>
+        </div>
         <button class="btn btn-success" id="btnCopy" disabled onclick="copyData()" style="display:none">
           <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path
@@ -1698,6 +1768,12 @@
               d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 9l-2 3-2-3H6.5l3.25 4.5L6.5 20h2.5l2-3 2 3h2.5l-3.25-4.5L16 11h-3zm4 9H6V4h7v5h5v11z" />
           </svg>
           Export Excel
+        </button>
+        <button class="btn btn-secondary" id="btnValidateAI" disabled onclick="validateDispositionsWithLLM()" style="display:none">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          Validate with AI
         </button>
         <button class="btn btn-secondary" id="btnReset" onclick="resetAll()" style="display:none">Reset</button>
         <span class="status-msg" id="globalStatus"></span>
@@ -1981,6 +2057,118 @@
       fortune_honda:   { name: 'Fortune Honda',    summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
       stellantis_wa:   { name: 'Stellantis WA',    summarySource: 'lead_summary',      columns: STELLANTIS_COLUMNS },
       default:         { name: 'Default',          summarySource: 'disposition_detail', columns: COMMON_COLUMNS },
+    };
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       LLM VALIDATION — PRESALES DISPOSITIONS
+       ═══════════════════════════════════════════════════════════════════════ */
+    var OPENROUTER_MODEL = 'deepseek/deepseek-v4-flash';
+    var OPENROUTER_KEY_STORAGE = 'llm-api-key';
+
+    function getApiKey() {
+      return (localStorage.getItem(OPENROUTER_KEY_STORAGE) || '').trim();
+    }
+
+    function syncApiKeyControl(message, tone) {
+      var input = document.getElementById('openRouterApiKey');
+      var status = document.getElementById('apiKeyStatus');
+      var hasSavedKey = !!(localStorage.getItem(OPENROUTER_KEY_STORAGE) || '').trim();
+      if (input) {
+        input.value = '';
+        input.placeholder = hasSavedKey ? 'Key saved in browser' : 'OpenRouter API key';
+      }
+      if (status) {
+        status.textContent = message || (hasSavedKey ? 'Saved locally' : 'Required');
+        status.className = 'api-key-status ' + (tone || (hasSavedKey ? 'ok' : ''));
+      }
+    }
+
+    function saveOpenRouterApiKey() {
+      var input = document.getElementById('openRouterApiKey');
+      var key = input ? input.value.trim() : '';
+      if (!key) {
+        syncApiKeyControl(getApiKey() ? 'Already saved' : 'Paste key first', 'warn');
+        return;
+      }
+      localStorage.setItem(OPENROUTER_KEY_STORAGE, key);
+      syncApiKeyControl('Saved locally', 'ok');
+    }
+
+    function clearOpenRouterApiKey() {
+      localStorage.removeItem(OPENROUTER_KEY_STORAGE);
+      syncApiKeyControl('Cleared', 'warn');
+    }
+
+    function hashStr(str) {
+      var h = 0;
+      for (var i = 0; i < str.length; i++) { h = ((h << 5) - h) + str.charCodeAt(i); h |= 0; }
+      return 'h' + Math.abs(h).toString(36);
+    }
+
+    var ALL_DISPOSITIONS = {
+      // ── Pre-Sales ──
+      "Voicemail": "If the customer has asked to leave a message or voicemail.",
+      "Rejected": "If the customer has rejected the offer or to even speak with the agent.",
+      "Language barrier": "If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
+      "Is not decision maker": "the customer said they are not the right person to speak to about this in their family.",
+      "Will decide later, will purchase within 15 days": "The customer said they would decide to buy the vehicle within 15 days.",
+      "Will decide later, will purchase within 1 to 3 months": "The customer said they would decide to buy the vehicle within 1 to 3 months.",
+      "Will decide later, exploring options": "The customer said they will decide on the purchase of the vehicle at a later time and are only exploring all their options now.",
+      "No buying intent": "the customer Do not want to purchase a car. Neither are the interested in the car.",
+      "Just Exploring": "the customer Only want to know about the vehicle but do not show intent to buy.",
+      "Will call showroom themselves": "the customer will contact the dealership or showroom themselves.",
+      "Requested Callback": "the customer Asked to call back at a later date and or time.",
+      "Purchased elsewhere": "the customer Already purchased a vehicle elsewhere.",
+      "Enquired for Pricing": "the customer by themselves asked for the price of the vehicle.",
+      "Enquired for Specifications": "the customer by themselves asked for the specifications of the vehicle.",
+      "Enquired for Test Drive": "the customer by themselves asked for a test drive of the vehicle.",
+      "Enquired for Showroom Visit": "the customer by themselves asked for a showroom visit of the vehicle.",
+      "Enquired for Brochure": "the customer by themselves asked for a brochure of the vehicle.",
+      "Enquired for Dealership Details": "the customer by themselves asked for dealership details.",
+      "Enquired for Others": "the customer by themselves asked for other details not listed above.",
+      "Comparing with another brand": "The customer by themselves is comparing the vehicle with another brand.",
+      "Call Disconnected": "The customer by themselves has disconnected the call.",
+      "Others": "All other disposition details not listed above.",
+      "General Inquiry": "the customer is Asking generic questions not specific to the purpose of the campaign or the vehicle.",
+      "Not Interested": "the customer Specifically said they are not interested in the vehicle.",
+      "Follow Up Required": "the customer Needs a follow up to convince them to complete the campaign objective.",
+      "No Response": "the customer did not say anything at all.",
+      "Lost to Competition": "the customer Bought a competitor brands vehicle.",
+      "Test Drive Completed": "the customer Already completed a test drive.",
+      "Invalid Lead": "the customer Not a valid lead.",
+      "Purchase Postponed": "the customer indicates that the Purchase has been postponed",
+      "Audio Issue": "There was issues with hearing the customer or the agent for either party.",
+      "Showroom Visit Planned": "the customer Already booked a showroom visit.",
+      "Converted": "The customer completes the purpose of the campaign and provides the necessary information.",
+      // ── Post-Sales ──
+      "Vehicle is commercial or part of a fleet": "The vehicle is a commercial vehicle and not applicable for the campaign purpose.",
+      "Vehicle is not being run": "Vehicle is unused and not being run.",
+      "Requires special spare parts": "The vehicle requires special spare parts for repair.",
+      "Wrong contact number": "Customer tells the agent they have the wrong person or number that was contacted",
+      "Has sold/given away the car": "The customer has sold or given away the vehicle.",
+      "Has moved to another location": "The customer has moved to another location.",
+      "Cannot make decision on servicing": "The customer the agent has called is not the right person to make the decision.",
+      "Will call workshop themselves": "The customer will contact the workshop themselves.",
+      "Looking for a discount": "The customer is looking for a discount on the campaign purpose.",
+      "Has serviced car in another dealership": "The customer has serviced the vehicle in another dealership.",
+      "Will decide tomorrow": "The customer said they would decide to service the vehicle tomorrow.",
+      "Will decide within 1 to 3 days": "The customer said they would decide to service the vehicle within 1 to 3 days.",
+      "Will decide within 4 to 7 days": "The customer said they would decide to service the vehicle within 4 to 7 days.",
+      "Will decide within 8 to 14 days": "The customer said they would decide to service the vehicle within 8 to 14 days.",
+      "Will decide within 15 to 30 days": "The customer said they would decide to service the vehicle within 15 to 30 days.",
+      "Will decide within 31 to 60 days": "The customer said they would decide to service the vehicle within 31 to 60 days.",
+      "Will decide within 61 to 90 days": "The customer said they would decide to service the vehicle within 61 to 90 days.",
+      "Will decide after 90 days": "The customer said they would decide to service the vehicle after 90 days.",
+      "Unsubscribed": "The customer asked to unsubscribed from the campaign.",
+      "Call Quality Issue": "There was issues with the quality of the call.",
+      "Connection Issue": "There was issues with the connection between the customer and the agent.",
+      "Customer Busy": "The customer was busy.",
+      "Price Inquiry": "The customer is interested in the price of the service.",
+      "Existing Dealer Contact": "The customer already did the campaign objective from an existing dealership.",
+      "Contact Fatigue": "customer implied they were being contacted too many times by the agent.",
+      // ── Additional ──
+      "Talk to Human": "The customer asked to speak to a human agent instead of the digital assistant.",
+      "Interested in another car same dealership": "The customer is interested in a different vehicle model from the same dealership."
     };
 
     function getActiveDealerConfig() {
@@ -2638,7 +2826,7 @@
             lead_source: row['lead_source'] || '',
             cohort: row['campaign_objective_name'] || '',
             campaign_id: row['campaign_id'] || '',
-            last_session_id: isStellantis ? (sess.session_id || '') : (row['last_session_id'] || row['session_id'] || ''),
+            last_session_id: isStellantis ? (sess.session_id || '') : (sess.session_id || row['last_session_id'] || row['session_id'] || ''),
             call_triggered: callTriggered,
             outcome,
             disposition: disp,
@@ -2679,12 +2867,163 @@
         document.getElementById('btnCopy').disabled = false;
         document.getElementById('btnExport').style.display = '';
         document.getElementById('btnExport').disabled = false;
+        document.getElementById('btnValidateAI').style.display = '';
+        document.getElementById('btnValidateAI').disabled = false;
         document.getElementById('btnReset').style.display = '';
 
       } catch (e) {
         hideOverlay();
         setStatus('globalStatus', `Error: ${e.message}`, 'err');
         console.error(e);
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       LLM DISPOSITION VALIDATION
+       ═══════════════════════════════════════════════════════════════════════ */
+    async function validateDispositionsWithLLM() {
+      if (!processedData || processedData.length === 0) return;
+
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        setStatus('globalStatus', 'AI key required. Paste your key above and click Save.', 'err');
+        return;
+      }
+
+      // Build list of valid dispositions
+      const dispKeys = Object.keys(ALL_DISPOSITIONS);
+      const dispDefs = dispKeys.map(k => `- "${k}": ${ALL_DISPOSITIONS[k]}`).join('\n');
+
+      // Filter rows that have a meaningful session_summary AND any disposition_detail
+      const candidates = [];
+      for (var i = 0; i < processedData.length; i++) {
+        var r = processedData[i];
+        var summ = (r.session_summary || '').trim();
+        var disp = (r.disposition_detail || '').trim();
+        if (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.' && disp) {
+          candidates.push({ index: i, summary: summ, currentDisp: disp });
+        }
+      }
+
+      if (candidates.length === 0) {
+        setStatus('globalStatus', 'No rows with session summaries to validate.', 'warn');
+        return;
+      }
+
+      showOverlay('AI validating ' + candidates.length + ' dispositions…');
+
+      var corrected = 0;
+      var BATCH_SIZE = 20;
+      var correctedResults = {};
+
+      // Check cache first — build a combined hash
+      var cacheInput = candidates.map(function(c) { return c.summary + '||' + c.currentDisp; }).join('|');
+      var cacheKey = 'disp-validate-v2-' + hashStr(cacheInput);
+      var cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          var parsed = JSON.parse(cached);
+          for (var ci = 0; ci < parsed.length; ci++) {
+            var item = parsed[ci];
+            if (item.isCorrect === false && item.correctedDisposition) {
+              correctedResults[item.rowIndex] = item.correctedDisposition;
+            }
+          }
+          corrected = Object.keys(correctedResults).length;
+        } catch(e) { cached = null; }
+      }
+
+      if (!cached) {
+        for (var batchStart = 0; batchStart < candidates.length; batchStart += BATCH_SIZE) {
+          var batch = candidates.slice(batchStart, batchStart + BATCH_SIZE);
+          var promptLines = batch.map(function(c, idx) {
+            return 'Row ' + idx + ': Session Transcript="' + c.summary.slice(0, 500) + '" | Current Disposition="' + c.currentDisp + '"';
+          }).join('\n\n');
+
+          var prompt = 'You are a strict disposition auditor for an automotive campaign. Your job is to CRITICALLY evaluate whether the "Current Disposition" accurately describes the call "Session Transcript". Do NOT default to "correct" — scrutinize each match carefully.\n\nVALID DISPOSITIONS:\n' + dispDefs + '\n\nEXAMPLES (learn from these patterns):\n- Transcript: "Customer said they would think about it and call back next week" | Current: "Not Interested" → isCorrect: false, correctedDisposition: "Will decide later, exploring options". Reason: Customer did not say no — they deferred. Not Interested means explicit refusal.\n\n- Transcript: "Customer asked about financing options and EMI plans" | Current: "General Inquiry" → isCorrect: false, correctedDisposition: "Enquired for Pricing". Reason: Asking about pricing/financing is Enquired for Pricing, not generic.\n\n- Transcript: "Customer said the vehicle is too expensive and they will look at other brands" | Current: "Rejected" → isCorrect: false, correctedDisposition: "Comparing with another brand". Reason: Still in market, just price-shopping — not a hard rejection.\n\n- Transcript: "Call dropped mid-conversation while discussing test drive" | Current: "Follow Up Required" → isCorrect: false, correctedDisposition: "Call Disconnected". Reason: Call physically dropped. Follow Up Required is for completed conversations needing callback.\n\n- Transcript: "Customer said they already own this model and do not need another" | Current: "Not Interested" → isCorrect: false, correctedDisposition: "No buying intent". Reason: No buying intent is for customers who do not want to purchase a car at all.\n\n- Transcript: "Customer asked to be called back after 5pm" | Current: "Call Disconnected" → isCorrect: false, correctedDisposition: "Requested Callback". Reason: Customer explicitly requested a callback — not a disconnect.\n\n- Transcript: "Customer kept asking about the vehicle but would not give their details" | Current: "No buying intent" → isCorrect: false, correctedDisposition: "Just Exploring". Reason: Just Exploring means they want info without buying intent.\n\n- Transcript: "Customer said they already booked a test drive at another dealership" | Current: "Converted" → isCorrect: false, correctedDisposition: "Lost to Competition". Reason: Converted elsewhere = competitive loss, not a campaign conversion.\n\nNow evaluate these rows. For EACH row, respond with ONE JSON object:\n{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confidence":"high","reason":"The summary clearly matches the disposition."}\n\nRows:\n' + promptLines + '\n\nRespond as a JSON array of objects, one per row in the same order. ONLY valid JSON.';
+
+          var result = null;
+          try {
+            var response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + apiKey,
+                'HTTP-Referer': window.location.origin,
+                'X-Title': 'AutoNage Pre-Sales Sync'
+              },
+              body: JSON.stringify({
+                model: OPENROUTER_MODEL,
+                messages: [
+                  { role: 'system', content: 'You are a strict disposition auditor for an automotive campaign. Validate each row critically and respond ONLY with the requested JSON array. Do NOT default to "correct".' },
+                  { role: 'user', content: prompt }
+                ],
+                temperature: 0.3,
+                max_tokens: 3000
+              })
+            });
+            if (response.ok) {
+              var data = await response.json();
+              var text = data.choices[0].message.content;
+              var cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+              var match = cleaned.match(/\[[\s\S]*\]/);
+              if (match) {
+                result = JSON.parse(match[0]);
+              }
+            }
+          } catch(e) {
+            console.warn('Batch validate failed:', e);
+          }
+
+          if (result && result.length === batch.length) {
+            for (var j = 0; j < result.length; j++) {
+              var candidate = batch[j];
+              var decision = result[j];
+              if (decision.isCorrect === false && decision.correctedDisposition) {
+                correctedResults[candidate.index] = decision.correctedDisposition;
+              }
+            }
+          }
+
+          // Update overlay
+          var done = Math.min(batchStart + BATCH_SIZE, candidates.length);
+          showOverlay('AI validating… ' + done + '/' + candidates.length);
+
+          // Delay between batches
+          if (batchStart + BATCH_SIZE < candidates.length) {
+            await new Promise(function(resolve) { setTimeout(resolve, 2000); });
+          }
+        }
+
+        // Cache results
+        var cacheArray = [];
+        for (var idx = 0; idx < candidates.length; idx++) {
+          var c = candidates[idx];
+          if (correctedResults[c.index] !== undefined) {
+            cacheArray.push({ rowIndex: c.index, isCorrect: false, correctedDisposition: correctedResults[c.index] });
+          } else {
+            cacheArray.push({ rowIndex: c.index, isCorrect: true, correctedDisposition: null });
+          }
+        }
+        try { localStorage.setItem(cacheKey, JSON.stringify(cacheArray)); } catch(e) {}
+      }
+
+      // Apply corrections to processedData
+      var correctedIndices = Object.keys(correctedResults);
+      for (var k = 0; k < correctedIndices.length; k++) {
+        var rowIdx = parseInt(correctedIndices[k]);
+        if (processedData[rowIdx]) {
+          processedData[rowIdx].manual_disposition_detail = correctedResults[rowIdx];
+        }
+      }
+
+      hideOverlay();
+
+      if (correctedIndices.length > 0) {
+        renderTable(processedData);
+        setStatus('globalStatus', 'AI validated ' + candidates.length + ' rows, corrected ' + correctedIndices.length + ' dispositions. Check Manual_Disposition_detail column.', 'ok');
+      } else {
+        setStatus('globalStatus', 'AI validated ' + candidates.length + ' rows — all dispositions appear correct.', 'ok');
       }
     }
 
@@ -3103,6 +3442,7 @@
       document.getElementById('qualityCard').style.display = 'none';
       document.getElementById('btnCopy').style.display = 'none';
       document.getElementById('btnExport').style.display = 'none';
+      document.getElementById('btnValidateAI').style.display = 'none';
       document.getElementById('btnReset').style.display = 'none';
       document.getElementById('btnCopyQuality').textContent = 'Copy Report';
       document.getElementById('btnProcess').disabled = true;

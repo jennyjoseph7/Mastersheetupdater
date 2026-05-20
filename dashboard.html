@@ -443,6 +443,68 @@
       outline: none;
     }
 
+    .ai-key-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      padding: 0.35rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+    }
+
+    .api-key-input {
+      width: 220px;
+      max-width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      padding: 0.45rem 0.6rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      outline: none;
+    }
+
+    .api-key-input:focus {
+      border-color: var(--border-focus);
+    }
+
+    .api-key-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface3);
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 0.43rem 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .api-key-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .api-key-btn.subtle {
+      background: transparent;
+    }
+
+    .api-key-status {
+      min-width: 78px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .api-key-status.ok { color: var(--success); }
+    .api-key-status.warn { color: var(--warn); }
+    .api-key-status.err { color: var(--danger); }
+
     .drop-zone-dash {
       padding: 1.2rem 1.5rem;
       border: 2px dashed rgba(255, 255, 255, 0.12);
@@ -1558,6 +1620,8 @@
       .metric-audit-strip { grid-template-columns: 1fr; }
       .metric-audit-grid { grid-template-columns: 1fr; }
       .upload-row { grid-template-columns: 1fr; }
+      .ai-key-control { width: 100%; }
+      .api-key-input { flex: 1; min-width: 0; }
       .header-right { width: 100%; justify-content: flex-end; }
     }
 
@@ -2276,6 +2340,32 @@
       border-radius: 6px;
     }
 
+    /* ── VOICE SUMMARY ─────────────────────────────────────────────────── */
+    .voice-summary {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 0.9rem;
+      background: linear-gradient(135deg, var(--accent3-soft), var(--surface2));
+      border: 1px solid var(--accent3);
+      border-left: 4px solid var(--accent3);
+      font-size: 0.78rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .voice-summary strong {
+      color: var(--accent3);
+    }
+    .voice-action {
+      font-size: 0.68rem;
+      color: var(--accent);
+      font-weight: 600;
+      padding: 0.25rem 0.4rem;
+      margin-top: 0.35rem;
+      background: var(--surface-card-hover);
+      border-radius: 6px;
+      border-left: 2px solid var(--accent);
+    }
+
     /* ── RECOMMENDATION CARDS ──────────────────────────────────────────── */
     #recsPanel .rec-card {
       padding: 0.8rem 1rem;
@@ -2327,6 +2417,69 @@
       color: var(--text-muted);
     }
     .rec-impact strong { color: var(--accent); }
+
+    /* ── AI-POWERED RECOMMENDATIONS ────────────────────────────────────── */
+    #llmRecsPanel .rec-card {
+      padding: 0.8rem 1rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--accent-soft);
+      background: linear-gradient(135deg, var(--surface2), var(--surface));
+      margin-bottom: 0.5rem;
+      border-left: 3px solid var(--accent);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    #llmRecsPanel .rec-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-subtle);
+    }
+    #llmRecsPanel .rec-action {
+      font-family: var(--sans);
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--accent);
+      margin-bottom: 0.3rem;
+    }
+    #llmRecsPanel .rec-reason {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+      margin-bottom: 0.25rem;
+    }
+    #llmRecsPanel .rec-impact {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    .llm-badge {
+      display: inline-block;
+      font-size: 0.55rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      background: var(--accent3-soft);
+      color: var(--accent3);
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+    .llm-loading {
+      text-align: center;
+      padding: 1.5rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+    .llm-loading::after {
+      content: '';
+      display: inline-block;
+      width: 0.7rem;
+      height: 0.7rem;
+      margin-left: 0.5rem;
+      border: 2px solid var(--text-muted);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── AGENT PERFORMANCE TABLE (restored) ────────────────────────────── */
     .agent-table-wrap {
@@ -2461,6 +2614,13 @@
           <option value="DMY">DD/MM/YYYY</option>
           <option value="MDY">MM/DD/YYYY</option>
         </select>
+        <div class="ai-key-control" title="When saved, call summaries are sent to OpenRouter for DeepSeek classification.">
+          <span class="mode-label">AI Key</span>
+          <input id="openRouterApiKey" class="api-key-input" type="password" placeholder="OpenRouter API key" autocomplete="off" spellcheck="false">
+          <button type="button" class="api-key-btn" onclick="saveOpenRouterApiKey()">Save</button>
+          <button type="button" class="api-key-btn subtle" onclick="clearOpenRouterApiKey()">Clear</button>
+          <span class="api-key-status" id="apiKeyStatus">Optional</span>
+        </div>
       </div>
       <div class="upload-row">
         <div class="drop-zone-dash" id="dzDash" onclick="document.getElementById('fileDash').click()" role="button" tabindex="0">
@@ -2516,6 +2676,19 @@
       </div>
 
       <!-- Executive Summary Banner -->
+      <!-- AI Status Bar -->
+      <div id="aiStatus" class="upload-section" style="display:none;padding:0.6rem 1rem;margin-bottom:0.75rem;">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <div style="flex:1;">
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:0.25rem;" id="aiStatusText">Analyzing with DeepSeek...</div>
+            <div style="height:4px;border-radius:4px;background:var(--surface3);overflow:hidden;">
+              <div id="aiStatusBar" style="height:100%;width:0%;border-radius:4px;background:var(--accent);transition:width 0.3s;"></div>
+            </div>
+          </div>
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;" id="aiStatusDot"></div>
+        </div>
+      </div>
+
       <!-- Executive Story Banner -->
       <div class="intel-banner slide-up" id="execSummary" style="display:none;">
         <div class="health-ring-wrap">
@@ -2531,7 +2704,7 @@
           <div class="exec-detail" id="execNarrative"></div>
           <div class="anomaly-chips" id="insightStrip"></div>
         </div>
-        <div class="intel-banner-badge">AI-GENERATED ANALYSIS</div>
+        <div class="intel-banner-badge" id="analysisEngineBadge">AI-GENERATED ANALYSIS</div>
       </div>
 
       <!-- KPI Row 1 -->
@@ -2546,6 +2719,7 @@
         <p style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.75rem;line-height:1.5;">
           These themes are extracted directly from call transcripts. Each card shows how many customers exhibited this behavior, along with actual excerpts from the conversations.
         </p>
+        <div id="voiceSummary" class="voice-summary" style="display:none;"></div>
         <div class="voice-grid" id="customerVoiceSection"></div>
       </div>
 
@@ -2630,6 +2804,14 @@
       <div class="insight-panel slide-up" id="recsPanel" style="display:none;">
         <div class="insight-section-title">Recommended Next Steps</div>
         <div id="recsList"></div>
+      </div>
+
+      <!-- AI-Powered Recommendations -->
+      <div class="insight-panel slide-up" id="llmRecsPanel" style="display:none;">
+        <div class="insight-section-title">
+          AI-Powered Recommendations <span class="llm-badge">DEEPSEEK</span>
+        </div>
+        <div id="llmRecsContent"></div>
       </div>
 
       <!-- Three-column data panels -->
@@ -2962,11 +3144,407 @@
     }
 
     /* ═══════════════════════════════════════════════════════════════════════
+       LLM CONFIG — OpenRouter / DeepSeek (free)
+       ═══════════════════════════════════════════════════════════════════════ */
+    const OPENROUTER_MODEL = 'deepseek/deepseek-v4-flash';
+    const LLM_BATCH_SIZE = 20;
+    const LLM_MAX_CONCURRENT = 2;
+    const LLM_REQUEST_TIMEOUT_MS = 45000;
+    const LLM_CACHE_VERSION = 'deepseek-dispo-v2';
+    const OPENROUTER_KEY_STORAGE = 'llm-api-key';
+
+    function getApiKey() {
+      const input = document.getElementById('openRouterApiKey');
+      const typedKey = input ? input.value.trim() : '';
+      return typedKey || (localStorage.getItem(OPENROUTER_KEY_STORAGE) || '').trim();
+    }
+
+    function syncApiKeyControl(message, tone) {
+      const input = document.getElementById('openRouterApiKey');
+      const status = document.getElementById('apiKeyStatus');
+      const hasSavedKey = !!(localStorage.getItem(OPENROUTER_KEY_STORAGE) || '').trim();
+      if (input) {
+        input.value = '';
+        input.placeholder = hasSavedKey ? 'OpenRouter key saved' : 'OpenRouter API key';
+      }
+      if (status) {
+        status.textContent = message || (hasSavedKey ? 'Saved locally' : 'Required');
+        status.className = 'api-key-status ' + (tone || (hasSavedKey ? 'ok' : ''));
+      }
+    }
+
+    function saveOpenRouterApiKey() {
+      const input = document.getElementById('openRouterApiKey');
+      const key = input ? input.value.trim() : '';
+      if (!key) {
+        syncApiKeyControl(getApiKey() ? 'Already saved' : 'Paste key first', 'warn');
+        return;
+      }
+      localStorage.setItem(OPENROUTER_KEY_STORAGE, key);
+      syncApiKeyControl('Saved locally', 'ok');
+    }
+
+    function useTypedApiKeyForRun() {
+      const input = document.getElementById('openRouterApiKey');
+      const key = input ? input.value.trim() : '';
+      if (!key) return false;
+      localStorage.setItem(OPENROUTER_KEY_STORAGE, key);
+      syncApiKeyControl('Saved locally', 'ok');
+      return true;
+    }
+
+    function clearOpenRouterApiKey() {
+      localStorage.removeItem(OPENROUTER_KEY_STORAGE);
+      syncApiKeyControl('Cleared', 'warn');
+    }
+
+    function hashStr(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) {
+        h = ((h << 5) - h) + str.charCodeAt(i);
+        h |= 0;
+      }
+      return 'llm-' + Math.abs(h).toString(36);
+    }
+
+    function showAiNotice(msg, isError) {
+      updateAiStatus(1, 1, msg, !!isError);
+      window.setTimeout(function() {
+        const txt = document.getElementById('aiStatusText');
+        if (txt && txt.textContent === msg) updateAiStatus(0, 0, '');
+      }, 3500);
+    }
+
+    function updateAiStatus(current, total, msg, isError) {
+      const bar = document.getElementById('aiStatusBar');
+      const txt = document.getElementById('aiStatusText');
+      const con = document.getElementById('aiStatus');
+      const dot = document.getElementById('aiStatusDot');
+      if (!con) return;
+      if (total > 0) {
+        con.style.display = '';
+        if (bar) {
+          bar.style.width = (current / total * 100) + '%';
+          bar.style.background = isError ? 'var(--danger)' : 'var(--accent)';
+        }
+        if (txt) txt.textContent = msg || 'Analyzing with DeepSeek... ' + current + '/' + total;
+        if (dot) dot.style.background = isError ? 'var(--danger)' : 'var(--accent)';
+      } else {
+        con.style.display = 'none';
+      }
+    }
+
+    syncApiKeyControl();
+
+    function buildPromptForBatch(summaries, systemPrompt) {
+      return summaries.map(s => 'Row ' + s.rowIndex + ': "' + s.text + '"').join('\n');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       LLM SYSTEM PROMPT — Zoho disposition classification
+       ═══════════════════════════════════════════════════════════════════════ */
+    function buildLlmSystemPrompt(isPostSales) {
+      var disps;
+      if (isPostSales) {
+        disps = '"Voicemail":"If the customer has asked to leave a message or voicemail."\n"Rejected":"If the customer has rejected the offer or to even speak with the agent. repeated rejection."\n"Language barrier":"If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign."\n"Vehicle is commercial or part of a fleet":"The vehicle is a commercial vehicle and not applicable for the campaign purpose."\n"Vehicle is not being run":"Vehicle is unused and not being run."\n"Requires special spare parts":"The vehicle requires special spare parts for repair."\n"Others":"All other disposition details not listed above."\n"Wrong contact number":"Customer tells the agent they have the wrong person or number that was contacted"\n"Has sold/given away the car":"The customer has sold or given away the vehicle."\n"Has moved to another location":"The customer has moved to another location."\n"Cannot make decision on servicing":"The customer the agent has called is not the right person to make the decision."\n"Will call workshop themselves":"The customer will contact the workshop themselves."\n"Requested Callback":"The customer asked the agent to call back at a later date and or time."\n"Looking for a discount":"The customer is looking for a discount on the campaign purpose."\n"Has serviced car in another dealership":"The customer has serviced the vehicle in another dealership."\n"Will decide tomorrow":"The customer said they would decide to service the vehicle tomorrow."\n"Will decide within 1 to 3 days":"The customer said they would decide to service the vehicle within 1 to 3 days."\n"Will decide within 4 to 7 days":"The customer said they would decide to service the vehicle within 4 to 7 days."\n"Will decide within 8 to 14 days":"The customer said they would decide to service the vehicle within 8 to 14 days."\n"Will decide within 15 to 30 days":"The customer said they would decide to service the vehicle within 15 to 30 days."\n"Will decide within 31 to 60 days":"The customer said they would decide to service the vehicle within 31 to 60 days."\n"Will decide within 61 to 90 days":"The customer said they would decide to service the vehicle within 61 to 90 days."\n"Will decide after 90 days":"The customer said they would decide to service the vehicle after 90 days."\n"Unsubscribed":"The customer asked to unsubscribed from the campaign."\n"Call Disconnected":"The call ended abruptly without completing the campaign objective."\n"Audio Issue":"There was issues with hearing the customer or the agent for either party."\n"Call Quality Issue":"There was issues with the quality of the call."\n"Connection Issue":"There was issues with the connection between the customer and the agent."\n"Customer Busy":"The customer was busy."\n"No Response":"The customer did not say anything at all."\n"Price Inquiry":"The customer is interested in the price of the service."\n"Lost to Competition":"the customer already did the campaign objective from a competitors workshop"\n"Invalid Lead":"Not a valid lead."\n"Purchase Postponed":"They decided or implied they will postpone the service."\n"Showroom Visit Planned":"Already booked a showroom visit."\n"Existing Dealer Contact":"The customer already did the campaign objective from an existing dealership."\n"Contact Fatigue":"customer implied they were being contacted too many times by the agent."\n"Converted":"The customer completes the purpose of the campaign and provides the necessary information."';
+      } else {
+        disps = '"Voicemail":"If the customer has asked to leave a message or voicemail."\n"Rejected":"If the customer has rejected the offer or to even speak with the agent."\n"Language barrier":"If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign."\n"Is not decision maker":"the customer said they are not the right person to speak to about this in their family."\n"Will decide later, will purchase within 15 days":"The customer said they would decide to buy the vehicle within 15 days."\n"Will decide later, will purchase within 1 to 3 months":"The customer said they would decide to buy the vehicle within 1 to 3 months."\n"Will decide later, exploring options":"The customer said they will decide on the purchase of the vehicle at a later time and are only exploring all their options now."\n"No buying intent":"the customer Do not want to purchase a car. Neither are the interested in the car."\n"Just Exploring":"the customer Only want to know about the vehicle but do not show intent to buy."\n"Will call showroom themselves":"the customer will contact the dealership or showroom themselves."\n"Requested Callback":"the customer Asked to call back at a later date and or time."\n"Purchased elsewhere":"the customer Already purchased a vehicle elsewhere."\n"Enquired for Pricing":"the customer by themselves asked for the price of the vehicle."\n"Enquired for Specifications":"the customer by themselves asked for the specifications of the vehicle."\n"Enquired for Test Drive":"the customer by themselves asked for a test drive of the vehicle."\n"Enquired for Showroom Visit":"the customer by themselves asked for a showroom visit of the vehicle."\n"Enquired for Brochure":"the customer by themselves asked for a brochure of the vehicle."\n"Enquired for Dealership Details":"the customer by themselves asked for dealership details."\n"Enquired for Others":"the customer by themselves asked for other details not listed above."\n"Comparing with another brand":"The customer by themselves is comparing the vehicle with another brand."\n"Call Disconnected":"The customer by themselves has disconnected the call."\n"Others":"All other disposition details not listed above."\n"General Inquiry":"the customer is Asking generic questions not specific to the purpose of the campaign or the vehicle."\n"Not Interested":"the customer Specifically said they are not interested in the vehicle."\n"Follow Up Required":"the customer Needs a follow up to convince them to complete the campaign objective."\n"No Response":"the customer did not say anything at all."\n"Lost to Competition":"the customer Bought a competitor brands vehicle."\n"Test Drive Completed":"the customer Already completed a test drive."\n"Invalid Lead":"the customer Not a valid lead."\n"Purchase Postponed":"the customer indicates that the Purchase has been postponed"\n"Audio Issue":"There was issues with hearing the customer or the agent for either party."\n"Showroom Visit Planned":"the customer Already booked a showroom visit."\n"Converted":"The customer completes the purpose of the campaign and provides the necessary information."';
+      }
+      var modeLabel = isPostSales ? 'post-sales' : 'pre-sales';
+      return 'You classify ' + modeLabel + ' vehicle campaign call summaries into Zoho dispositions.\n\nRules:\n- Use only the supplied summary text. Do not infer from row order or campaign context.\n- Return exactly one JSON item for every input row, preserving the original rowIndex.\n- Use only exact disposition names from the list below.\n- Choose the best disposition. Use up to 2 dispositions only when both are clearly present.\n- If the evidence is weak, generic, or no listed disposition fits, return an empty dispositions array.\n- Do not explain your reasoning.\n\nRespond ONLY with a valid JSON array. No markdown, no comments, no wrapper object.\n\nDISPOSITIONS:\n' + disps + '\n\nADDITIONAL:\n"Talk to Human"\n"Interested in another car same dealership"\n\nReturn format: [{"rowIndex":0,"dispositions":["Disposition Name"]},{"rowIndex":1,"dispositions":[]}]';
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       ZOHO DISPOSITION → INTERNAL THEME MAPPING
+       ═══════════════════════════════════════════════════════════════════════ */
+    var DISPO_TO_THEME = {
+      'voicemail': 'voicemail',
+      'rejected': 'not_interested',
+      'language barrier': 'language_barrier',
+      'is not decision maker': 'wrong_person',
+      'will decide later, will purchase within 15 days': 'deferred',
+      'will decide later, will purchase within 1 to 3 months': 'deferred',
+      'will decide later, exploring options': 'deferred',
+      'no buying intent': 'not_interested',
+      'just exploring': 'not_interested',
+      'will call showroom themselves': 'not_interested',
+      'requested callback': 'callback_requested',
+      'purchased elsewhere': 'already_serviced',
+      'call disconnected': 'customer_busy',
+      'not interested': 'not_interested',
+      'follow up required': 'service_booked',
+      'no response': 'customer_busy',
+      'lost to competition': 'already_serviced',
+      'test drive completed': 'service_booked',
+      'invalid lead': 'not_interested',
+      'purchase postponed': 'deferred',
+      'audio issue': 'audio_issue',
+      'showroom visit planned': 'service_booked',
+      'converted': 'service_booked',
+      'vehicle is commercial or part of a fleet': 'not_interested',
+      'vehicle is not being run': 'sold_vehicle',
+      'requires special spare parts': 'not_interested',
+      'wrong contact number': 'wrong_person',
+      'has sold/given away the car': 'sold_vehicle',
+      'has moved to another location': 'wrong_person',
+      'cannot make decision on servicing': 'wrong_person',
+      'will call workshop themselves': 'not_interested',
+      'looking for a discount': 'not_interested',
+      'has serviced car in another dealership': 'already_serviced',
+      'will decide tomorrow': 'deferred',
+      'will decide within 1 to 3 days': 'deferred',
+      'will decide within 4 to 7 days': 'deferred',
+      'will decide within 8 to 14 days': 'deferred',
+      'will decide within 15 to 30 days': 'deferred',
+      'will decide within 31 to 60 days': 'deferred',
+      'will decide within 61 to 90 days': 'deferred',
+      'will decide after 90 days': 'deferred',
+      'unsubscribed': 'not_interested',
+      'call quality issue': 'audio_issue',
+      'connection issue': 'audio_issue',
+      'customer busy': 'customer_busy',
+      'price inquiry': 'service_booked',
+      'service postponed': 'deferred',
+      'existing dealer contact': 'already_serviced',
+      'contact fatigue': 'not_interested',
+      'talk to human': 'service_booked',
+      'interested in another car same dealership': 'service_booked',
+      'dissatisfied': 'dissatisfied',
+      'complaint': 'dissatisfied'
+    };
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       DEEPSEEK BATCH CLASSIFICATION
+       ═══════════════════════════════════════════════════════════════════════ */
+    function buildOpenRouterHeaders(apiKey) {
+      var headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey,
+        'X-Title': 'AutoNage Dashboard'
+      };
+      var origin = (window.location && window.location.origin) ? window.location.origin : '';
+      if (/^https?:\/\//i.test(origin)) headers['HTTP-Referer'] = origin;
+      return headers;
+    }
+
+    function getChoiceText(data) {
+      if (!data || !data.choices || !data.choices.length) return '';
+      var msg = data.choices[0].message || {};
+      if (typeof msg.content === 'string') return msg.content;
+      if (Array.isArray(msg.content)) {
+        return msg.content.map(function(part) {
+          return typeof part === 'string' ? part : (part && part.text ? part.text : '');
+        }).join('');
+      }
+      return '';
+    }
+
+    function isRetryableOpenRouterError(status) {
+      return status === 408 || status === 409 || status === 425 || status === 429 ||
+        status === 500 || status === 502 || status === 503 || status === 504;
+    }
+
+    function isNonRetryableOpenRouterErrorMessage(message) {
+      var m = String(message || '').match(/^OpenRouter\s+(\d+)/);
+      if (!m) return false;
+      var status = Number(m[1]);
+      return status >= 400 && status < 500 && !isRetryableOpenRouterError(status);
+    }
+
+    function normalizeLlmResults(parsed, summaries) {
+      var arr = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.results) ? parsed.results : null);
+      if (!arr) throw new Error('LLM JSON was not an array');
+
+      var allowedRows = {};
+      var byRow = {};
+      summaries.forEach(function(s) {
+        allowedRows[String(s.rowIndex)] = true;
+        byRow[String(s.rowIndex)] = { rowIndex: s.rowIndex, dispositions: [] };
+      });
+
+      arr.forEach(function(item) {
+        if (!item || item.rowIndex === undefined || item.rowIndex === null) return;
+        var idxText = String(item.rowIndex);
+        var cleanedIdx = idxText.replace(/[^\d-]/g, '');
+        if (!cleanedIdx) return;
+        var idx = Number(cleanedIdx);
+        if (!Number.isFinite(idx) || !allowedRows[String(idx)]) return;
+
+        var rawDisps = [];
+        if (Array.isArray(item.dispositions)) rawDisps = item.dispositions;
+        else if (typeof item.dispositions === 'string') rawDisps = [item.dispositions];
+        else if (typeof item.disposition === 'string') rawDisps = [item.disposition];
+
+        var target = byRow[String(idx)].dispositions;
+        rawDisps.forEach(function(d) {
+          var val = String(d || '').trim();
+          if (val && target.indexOf(val) === -1) target.push(val);
+        });
+      });
+
+      return summaries.map(function(s) {
+        return byRow[String(s.rowIndex)];
+      });
+    }
+
+    function parseLlmJsonResults(text, summaries) {
+      var cleaned = String(text || '')
+        .replace(/```(?:json)?\s*/gi, '')
+        .replace(/\s*```/g, '')
+        .replace(/"rowIndex":\s*#/g, '"rowIndex":')
+        .trim();
+
+      try {
+        return normalizeLlmResults(JSON.parse(cleaned), summaries);
+      } catch (firstErr) {
+        var start = cleaned.indexOf('[');
+        var end = cleaned.lastIndexOf(']');
+        if (start === -1 || end === -1 || end <= start) throw firstErr;
+        return normalizeLlmResults(JSON.parse(cleaned.slice(start, end + 1)), summaries);
+      }
+    }
+
+    async function callDeepSeekBatch(systemPrompt, summaries, apiKey) {
+      var rowsPrompt = summaries.map(function(s) {
+        return 'Row ' + s.rowIndex + ': "' + s.text + '"';
+      }).join('\n');
+
+      var lastErr;
+      for (var attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) await new Promise(function(r) { setTimeout(r, 1200 * attempt); });
+        var controller = window.AbortController ? new AbortController() : null;
+        var timeoutId = controller ? window.setTimeout(function() { controller.abort(); }, LLM_REQUEST_TIMEOUT_MS) : null;
+        try {
+          var response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: buildOpenRouterHeaders(apiKey),
+            signal: controller ? controller.signal : undefined,
+            body: JSON.stringify({
+              model: OPENROUTER_MODEL,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: 'Classify these ' + summaries.length + ' call summaries:\n\n' + rowsPrompt }
+              ],
+              temperature: 0.1,
+              max_completion_tokens: 4096
+            })
+          });
+          if (timeoutId) window.clearTimeout(timeoutId);
+          if (isRetryableOpenRouterError(response.status) && attempt < 2) continue;
+          if (!response.ok) {
+            var errText = await response.text();
+            throw new Error('OpenRouter ' + response.status + ': ' + errText.slice(0, 240));
+          }
+          var data = await response.json();
+          var text = getChoiceText(data);
+          if (!text) throw new Error('Null response from DeepSeek');
+          return parseLlmJsonResults(text, summaries);
+        } catch (e) {
+          if (timeoutId) window.clearTimeout(timeoutId);
+          lastErr = e;
+          if (attempt < 2 && !isNonRetryableOpenRouterErrorMessage(e.message)) continue;
+          throw e;
+        }
+      }
+      throw lastErr || new Error('Max retries exceeded');
+    }
+
+    async function classifyWithDeepSeek(allSummaries, isPostSales, apiKey) {
+      var systemPrompt = buildLlmSystemPrompt(isPostSales);
+      var batches = [];
+      for (var i = 0; i < allSummaries.length; i += LLM_BATCH_SIZE) {
+        batches.push(allSummaries.slice(i, i + LLM_BATCH_SIZE));
+      }
+
+      // Fallback: keyword-classify a single summary
+      function keywordFallback(summary) {
+        var lc = summary.text.toLowerCase();
+        var disp = [];
+        if (lc.includes('already serviced') || lc.includes('already done') || lc.includes('already completed') || lc.includes('serviced elsewhere') || lc.includes('bike was recently serviced') || lc.includes('bike had already been serviced') || lc.includes('service had already been')) disp.push('Has serviced car in another dealership');
+        else if (lc.includes('do not speak english') || lc.includes('only hindi') || lc.includes('requested hindi') || lc.includes('language barrier') || lc.includes('speak in a different language')) disp.push('Language barrier');
+        else if (lc.includes('voicemail') || lc.includes('at the tone') || lc.includes('record your message') || lc.includes('automated voicemail')) disp.push('Voicemail');
+        else if (lc.includes('requested a callback') || lc.includes('call back later') || lc.includes('will call back') || lc.includes('asked to call back') || lc.includes('callback requested')) disp.push('Requested Callback');
+        else if (lc.includes('deferred') || lc.includes('will decide') || lc.includes('out of station') || lc.includes('out of town') || lc.includes('not ready')) disp.push('Will decide later, exploring options');
+        else if (lc.includes('declined') || lc.includes('not interested') || lc.includes('not required') || lc.includes('refused') || lc.includes('repeatedly declined')) disp.push('Not Interested');
+        else if (lc.includes('driving') || lc.includes('in a meeting') || lc.includes('was busy') || lc.includes('unavailable to speak') || lc.includes('not a good time')) disp.push('Customer Busy');
+        else if (lc.includes('not the right person') || lc.includes('not the decision maker') || lc.includes('not the owner') || lc.includes('not the correct person')) disp.push('Is not decision maker');
+        else if (lc.includes('audio issue') || lc.includes('unclear audio') || lc.includes('could not hear') || lc.includes('difficulty hearing') || lc.includes('poor voice')) disp.push('Audio Issue');
+        else if (lc.includes('sold the bike') || lc.includes('no longer own') || lc.includes('given away') || lc.includes('sold it') || lc.includes('no longer have')) disp.push('Has sold/given away the car');
+        else if (lc.includes('appointment was successfully booked') || lc.includes('service confirmed') || lc.includes('booking confirmed') || lc.includes('successfully confirmed')) disp.push('Converted');
+        else if (lc.includes('dissatisfied') || lc.includes('complaint') || lc.includes('unhappy') || lc.includes('negative feedback') || lc.includes('poor service') || lc.includes('bad experience')) disp.push('Complaint');
+        return { rowIndex: summary.rowIndex, dispositions: disp };
+      }
+
+      // batchResults[b] = { ok: true, data: [...] } or { ok: false, reason: '...' }
+      var batchResults = [];
+      var completed = 0;
+
+      updateAiStatus(0, batches.length, 'Starting DeepSeek classification...');
+
+      // ── Pass 1: Process all batches with a small concurrency cap ──
+      var nextBatch = 0;
+      async function runNextBatch() {
+        while (nextBatch < batches.length) {
+          var b = nextBatch++;
+          var batch = batches[b];
+          try {
+            var res = await callDeepSeekBatch(systemPrompt, batch, apiKey);
+            batchResults[b] = { ok: true, data: res };
+          } catch (err) {
+            console.warn('DeepSeek pass 1, batch ' + (b + 1) + ' failed, will retry:', err);
+            batchResults[b] = { ok: false, reason: err.message || String(err) };
+          }
+          completed++;
+          updateAiStatus(completed, batches.length, 'DeepSeek: ' + completed + '/' + batches.length + ' batches');
+        }
+      }
+      var workers = [];
+      var workerCount = Math.min(LLM_MAX_CONCURRENT, batches.length);
+      for (var w = 0; w < workerCount; w++) workers.push(runNextBatch());
+      await Promise.all(workers);
+
+      // ── Pass 2: Retry any failed batches ──
+      var failed = [];
+      for (var f = 0; f < batchResults.length; f++) {
+        if (!batchResults[f].ok) failed.push(f);
+      }
+
+      if (failed.length > 0) {
+        var failedCompleted = 0;
+        updateAiStatus(failedCompleted, failed.length, 'Retrying ' + failed.length + ' failed batch(es) with DeepSeek...', true);
+        for (var r = 0; r < failed.length; r++) {
+          var idx = failed[r];
+          try {
+            var retryRes = await callDeepSeekBatch(systemPrompt, batches[idx], apiKey);
+            batchResults[idx] = { ok: true, data: retryRes };
+          } catch (err) {
+            console.warn('DeepSeek pass 2, batch ' + (idx + 1) + ' still failed, using keywords:', err);
+            batchResults[idx] = { ok: true, data: batches[idx].map(keywordFallback) };
+          }
+          failedCompleted++;
+          updateAiStatus(failedCompleted, failed.length, 'Retry: ' + failedCompleted + '/' + failed.length + ' failed batches');
+          if (r < failed.length - 1) await new Promise(function(r2) { setTimeout(r2, 3000); });
+        }
+      }
+
+      // Flatten results
+      var results = [];
+      for (var j = 0; j < batchResults.length; j++) {
+        if (batchResults[j].ok && batchResults[j].data) {
+          results = results.concat(batchResults[j].data);
+        }
+      }
+
+      updateAiStatus(0, 0, '');
+      return results;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
        STORYTELLING ENGINE — SUMMARY text mining, narrative generation
        ═══════════════════════════════════════════════════════════════════════ */
 
-    function mineCustomerThemes(rows, colMap) {
-      const themes = {
+    function mineCustomerThemesKeyword(rows, colMap) {
+      var themes = {
         already_serviced: { id: 'already_serviced', label: 'Already Serviced Elsewhere', count: 0, excerpts: [], competitorNames: [], sentiment: 'negative', explanation: 'Customer completed the service elsewhere — lost to competition', interpretation: 'Indicates competitive gap in service quality, pricing, or convenience. Each lost customer reduces pipeline and damages retention.' },
         language_barrier: { id: 'language_barrier', label: 'Language Preference Mismatch', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Customer preferred a language the system does not support', interpretation: 'Leads to abandoned conversations and missed opportunities. A systemic gap that reduces effective reach by the percentage of non-English/Kannada speakers.' },
         voicemail: { id: 'voicemail', label: 'Voicemail — No Connection', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Call reached voicemail instead of the customer', interpretation: 'Reduces connect rate directly. May indicate outdated numbers or suboptimal dialing windows. Should be tracked separately from "Not Connected".' },
@@ -2980,15 +3558,15 @@
         service_booked: { id: 'service_booked', label: 'Service Booked', count: 0, excerpts: [], sentiment: 'positive', explanation: 'Customer successfully booked a service appointment', interpretation: 'The primary conversion event. Track booking rate relative to connected calls to measure campaign effectiveness.' },
         dissatisfied: { id: 'dissatisfied', label: 'Customer Dissatisfied', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Customer expressed dissatisfaction with service', interpretation: 'Risk to brand reputation and repeat business. Escalate and investigate root cause — may require service recovery.' }
       };
-      const lower = (s) => String(s || '').toLowerCase();
-      if (!colMap.summary) return { themes: [], total: 0, topTheme: null };
+      var lower = function(s) { return String(s || '').toLowerCase(); };
+      if (!colMap.summary) return { themes: [], total: 0, topTheme: null, engine: 'keyword' };
 
-      rows.forEach(r => {
-        const text = String(r[colMap.summary] || '').trim();
+      rows.forEach(function(r) {
+        var text = String(r[colMap.summary] || '').trim();
         if (!text || text === "Summary couldn't be generated for this call.") return;
-        const lc = lower(text);
-        const excerpt = text.length > 150 ? text.slice(0, 147) + '...' : text;
-        const parsed = parseSummary(text);
+        var lc = lower(text);
+        var excerpt = text.length > 150 ? text.slice(0, 147) + '...' : text;
+        var parsed = parseSummary(text);
 
         if (lc.includes('already serviced') || lc.includes('already done') || lc.includes('already completed') || lc.includes('already serviced elsewhere') || lc.includes('bike was recently serviced') || lc.includes('bike had already been serviced') || lc.includes('service had already been')) {
           themes.already_serviced.count++;
@@ -3015,7 +3593,7 @@
         if (lc.includes('deferred') || lc.includes('will decide') || lc.includes('out of station') || lc.includes('out of town') || (lc.includes('next week') && !lc.includes('booked')) || (lc.includes('next month') && !lc.includes('booked')) || lc.includes('will come next') || lc.includes('can\'t confirm') || lc.includes('not ready')) {
           themes.deferred.count++;
           if (themes.deferred.excerpts.length < 5) themes.deferred.excerpts.push(excerpt);
-          const timeMatch = (text.match(/\b(today|tomorrow|next week|next month|this week|after\s+\d+\s+days|after\s+\w+)\b/i) || [])[0];
+          var timeMatch = (text.match(/\b(today|tomorrow|next week|next month|this week|after\s+\d+\s+days|after\s+\w+)\b/i) || [])[0];
           if (timeMatch && !themes.deferred.timeframes.includes(timeMatch.toLowerCase())) themes.deferred.timeframes.push(timeMatch.toLowerCase());
           return;
         }
@@ -3056,10 +3634,182 @@
         }
       });
 
-      const themeList = Object.values(themes).filter(t => t.count > 0).sort((a, b) => b.count - a.count);
-      const total = themeList.reduce((s, t) => s + t.count, 0);
-      const topTheme = themeList.length > 0 ? themeList[0] : null;
-      return { themes: themeList, total, topTheme };
+      var themeList = Object.values(themes).filter(function(t) { return t.count > 0; }).sort(function(a, b) { return b.count - a.count; });
+      var total = themeList.reduce(function(s, t) { return s + t.count; }, 0);
+      var topTheme = themeList.length > 0 ? themeList[0] : null;
+      return { themes: themeList, total: total, topTheme: topTheme, engine: 'keyword' };
+    }
+
+    async function mineCustomerThemes(rows, colMap, isPostSales) {
+      var themes = {
+        already_serviced: { id: 'already_serviced', label: 'Already Serviced Elsewhere', count: 0, excerpts: [], competitorNames: [], sentiment: 'negative', explanation: 'Customer completed the service elsewhere — lost to competition', interpretation: 'Indicates competitive gap in service quality, pricing, or convenience. Each lost customer reduces pipeline and damages retention.' },
+        language_barrier: { id: 'language_barrier', label: 'Language Preference Mismatch', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Customer preferred a language the system does not support', interpretation: 'Leads to abandoned conversations and missed opportunities. A systemic gap that reduces effective reach by the percentage of non-English/Kannada speakers.' },
+        voicemail: { id: 'voicemail', label: 'Voicemail — No Connection', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Call reached voicemail instead of the customer', interpretation: 'Reduces connect rate directly. May indicate outdated numbers or suboptimal dialing windows. Should be tracked separately from "Not Connected".' },
+        callback_requested: { id: 'callback_requested', label: 'Customer Requested Follow-Up', count: 0, excerpts: [], callbackTimes: [], sentiment: 'positive', explanation: 'Customer asked to be contacted later', interpretation: 'Positive intent signal — they are open to the offer but timing is wrong. Rapid callback execution directly impacts conversion.' },
+        deferred: { id: 'deferred', label: 'Deferred Decision', count: 0, excerpts: [], timeframes: [], sentiment: 'neutral', explanation: 'Customer postponed decision to a later time', interpretation: 'High potential pipeline — these leads need structured re-engagement within their stated timeframe before interest fades.' },
+        not_interested: { id: 'not_interested', label: 'Not Interested', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Customer explicitly declined the offer', interpretation: 'May indicate weak targeting, poor offer alignment, or message fatigue. Cluster analysis of why may reveal fixable campaign issues.' },
+        customer_busy: { id: 'customer_busy', label: 'Customer Unavailable', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Customer was driving, in a meeting, or otherwise occupied', interpretation: 'Timing issue rather than disinterest. Adjusting call windows based on busy patterns may improve future connect rate.' },
+        wrong_person: { id: 'wrong_person', label: 'Wrong Contact / Not Decision Maker', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Person reached is not the owner or decision maker', interpretation: 'Indicates lead data quality issue. The CRM contact may be outdated or incorrect — verify and update records.' },
+        audio_issue: { id: 'audio_issue', label: 'Audio / Connection Issue', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Call quality prevented conversation', interpretation: 'Technical barrier that wastes agent time and reduces effective capacity. May indicate network or device issues on either end.' },
+        sold_vehicle: { id: 'sold_vehicle', label: 'Vehicle Sold or Transferred', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Customer no longer owns the vehicle', interpretation: 'Lead has zero conversion potential. Flagging these quickly saves agent effort and improves pipeline accuracy.' },
+        service_booked: { id: 'service_booked', label: 'Service Booked', count: 0, excerpts: [], sentiment: 'positive', explanation: 'Customer successfully booked a service appointment', interpretation: 'The primary conversion event. Track booking rate relative to connected calls to measure campaign effectiveness.' },
+        dissatisfied: { id: 'dissatisfied', label: 'Customer Dissatisfied', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Customer expressed dissatisfaction with service', interpretation: 'Risk to brand reputation and repeat business. Escalate and investigate root cause — may require service recovery.' }
+      };
+      var lower = function(s) { return String(s || '').toLowerCase(); };
+      if (!colMap.summary) return { themes: [], total: 0, topTheme: null, engine: 'keyword' };
+
+      // Collect valid summaries
+      var summaries = [];
+      for (var i = 0; i < rows.length; i++) {
+        var text = String(rows[i][colMap.summary] || '').trim();
+        if (text && text !== "Summary couldn't be generated for this call.") {
+          summaries.push({ rowIndex: i, text: text });
+        }
+      }
+      if (summaries.length === 0) return { themes: [], total: 0, topTheme: null, engine: 'keyword' };
+
+      // Try LLM with cache
+      var apiKey = getApiKey();
+      var cacheKey = hashStr(LLM_CACHE_VERSION + '|' + OPENROUTER_MODEL + '|' + summaries.map(function(s) { return s.text; }).join('|') + (isPostSales ? '|post' : '|pre'));
+      var cached = localStorage.getItem(cacheKey);
+      var llmResults = null;
+      var analysisEngine = 'keyword';
+      if (apiKey) useTypedApiKeyForRun();
+
+      if (cached) {
+        try {
+          llmResults = JSON.parse(cached);
+          analysisEngine = 'cache';
+          showAiNotice('Using cached DeepSeek analysis.', false);
+        } catch(e) {
+          localStorage.removeItem(cacheKey);
+        }
+      }
+
+      if (!llmResults) {
+        if (!apiKey) {
+          showAiNotice('OpenRouter key missing. Using local keyword analysis.', true);
+          return mineCustomerThemesKeyword(rows, colMap);
+        }
+        try {
+          llmResults = await classifyWithDeepSeek(summaries, isPostSales, apiKey);
+          analysisEngine = 'openrouter';
+          // Flatten: combine results for same row if multiple batches returned dups
+          var flat = {};
+          for (var k = 0; k < llmResults.length; k++) {
+            var item = llmResults[k];
+            if (!flat[item.rowIndex]) flat[item.rowIndex] = [];
+            (item.dispositions || []).forEach(function(d) {
+              if (flat[item.rowIndex].indexOf(d) === -1) flat[item.rowIndex].push(d);
+            });
+          }
+          llmResults = Object.keys(flat).map(function(idx) {
+            return { rowIndex: +idx, dispositions: flat[idx] };
+          });
+          try { localStorage.setItem(cacheKey, JSON.stringify(llmResults)); } catch(cacheErr) {}
+        } catch(e) {
+          console.warn('LLM failed, falling back to keywords:', e);
+          showAiNotice('DeepSeek failed. Using local keyword analysis.', true);
+          llmResults = null;
+        }
+      }
+
+      if (llmResults) {
+        // Build lookup
+        var llmLookup = {};
+        for (var l = 0; l < llmResults.length; l++) {
+          llmLookup[llmResults[l].rowIndex] = llmResults[l].dispositions || [];
+        }
+
+        // Apply LLM classifications
+        for (var m = 0; m < summaries.length; m++) {
+          var s = summaries[m];
+          var dispo = llmLookup[s.rowIndex] || [];
+          if (dispo.length === 0) continue;
+          var text = s.text;
+          var excerpt = text.length > 150 ? text.slice(0, 147) + '...' : text;
+          var parsed = parseSummary(text);
+          var seenThemes = {};
+
+          for (var d = 0; d < dispo.length; d++) {
+            var key = dispo[d].toLowerCase().trim();
+            var themeId = DISPO_TO_THEME[key] || null;
+            if (themeId && themes[themeId] && !seenThemes[themeId]) {
+              seenThemes[themeId] = true;
+              themes[themeId].count++;
+              if (themes[themeId].excerpts.length < 5) themes[themeId].excerpts.push(excerpt);
+              if (themeId === 'already_serviced' && parsed.competitorLocation && themes.already_serviced.competitorNames.indexOf(parsed.competitorLocation) === -1)
+                themes.already_serviced.competitorNames.push(parsed.competitorLocation);
+              if (themeId === 'callback_requested' && parsed.callbackTime && themes.callback_requested.callbackTimes.indexOf(parsed.callbackTime) === -1)
+                themes.callback_requested.callbackTimes.push(parsed.callbackTime);
+              if (themeId === 'deferred') {
+                var tm = (text.match(/\b(today|tomorrow|next week|next month|this week|after\s+\d+\s+days|after\s+\w+)\b/i) || [])[0];
+                if (tm && themes.deferred.timeframes.indexOf(tm.toLowerCase()) === -1) themes.deferred.timeframes.push(tm.toLowerCase());
+              }
+            }
+          }
+        }
+      } else {
+        // Fallback to keywords
+        return mineCustomerThemesKeyword(rows, colMap);
+      }
+
+      var themeList = Object.values(themes).filter(function(t) { return t.count > 0; }).sort(function(a, b) { return b.count - a.count; });
+      var total = themeList.reduce(function(s, t) { return s + t.count; }, 0);
+      var topTheme = themeList.length > 0 ? themeList[0] : null;
+      return { themes: themeList, total: total, topTheme: topTheme, engine: analysisEngine };
+    }
+
+    /* ── VOICE INSIGHTS (LLM summary + per-theme actions) ──────────────── */
+    async function generateVoiceInsights(themes) {
+      const apiKey = getApiKey();
+      if (!apiKey || themes.themes.length === 0) return null;
+
+      const themeLines = themes.themes.slice(0, 8).map(t =>
+        `- "${t.label}": ${t.count} customers (${themes.total > 0 ? (t.count / themes.total * 100).toFixed(0) : 0}%). ${t.explanation} Interpretation: ${t.interpretation}`
+      ).join('\n');
+
+      const prompt = `Analyze these customer themes from a service campaign and return:\n1. "summary": 2-3 sentence synthesis — what is the #1 pattern, any surprising contradiction, and where to focus.\n2. "actions": an object where each key is a theme label (exact match) and value is a one-line recommended action (what to do, not generic).\n\nThemes:\n${themeLines}\n\nRespond ONLY valid JSON: {"summary":"...","actions":{"Theme Label":"action text",...}}`;
+
+      const cacheKey = 'voice-insights-' + hashStr(prompt);
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try { return JSON.parse(cached); } catch(e) {}
+      }
+
+      try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + apiKey,
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'AutoNage Dashboard'
+          },
+          body: JSON.stringify({
+            model: OPENROUTER_MODEL,
+            messages: [
+              { role: 'system', content: 'You are a campaign analyst. Analyze customer themes and return a concise summary and per-theme recommended actions. Output ONLY valid JSON.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.3,
+            max_tokens: 1000
+          })
+        });
+
+        if (!response.ok) return null;
+        const data = await response.json();
+        const text = data.choices[0].message.content;
+        const cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (!match) return null;
+        const result = JSON.parse(match[0]);
+        localStorage.setItem(cacheKey, JSON.stringify(result));
+        return result;
+      } catch(e) {
+        console.warn('Voice insights failed:', e);
+        return null;
+      }
     }
 
     function generateStoryHeadline(themes, funnel, healthScore) {
@@ -3091,13 +3841,13 @@
       // Competitive insight
       if (competitors.total > 0) {
         const topComp = competitors.competitors[0];
-        parts.push(`Competitive loss is a material issue — <strong>${competitors.total}</strong> customers were already serviced elsewhere${topComp ? ', led by ' + topComp[0] + ' (' + topComp[1] + ')' : ''}. This is the single largest source of lost conversion.`);
+        parts.push(`Competitive loss is a material issue — <strong>${competitors.total}</strong> customers were already serviced elsewhere${topComp ? ', led by ' + esc(topComp[0]) + ' (' + topComp[1] + ')' : ''}. This is the single largest source of lost conversion.`);
       }
 
       // Deferred pipeline
       const deferredTheme = themes.themes.find(t => t.id === 'deferred');
       if (deferredTheme && deferredTheme.count > 0) {
-        const times = deferredTheme.timeframes.slice(0, 3).join(', ');
+        const times = deferredTheme.timeframes.slice(0, 3).map(esc).join(', ');
         parts.push(`A further <strong>${deferredTheme.count}</strong> customers deferred their decision${times ? ', with timeframes including ' + times : ''}. These represent active pipeline that requires structured re-engagement.`);
       }
 
@@ -3458,20 +4208,33 @@
 
     /* ── STORYTELLING RENDER FUNCTIONS ───────────────────────────────────── */
 
-    function renderCustomerVoice(themes) {
+    function renderCustomerVoice(themes, voiceAI) {
       const container = document.getElementById('customerVoiceSection');
       const panel = document.getElementById('customerVoicePanel');
       if (!container || !panel) return;
       if (themes.themes.length === 0) { panel.style.display = 'none'; return; }
       panel.style.display = 'block';
+
+      // Voice summary banner
+      const summaryEl = document.getElementById('voiceSummary');
+      if (summaryEl && voiceAI && voiceAI.summary) {
+        summaryEl.style.display = 'block';
+        summaryEl.textContent = voiceAI.summary;
+      } else if (summaryEl) {
+        summaryEl.style.display = 'none';
+      }
+
       const sentimentColors = { positive: 'good', negative: 'crit', neutral: 'warn' };
       container.innerHTML = themes.themes.slice(0, 8).map(t => {
         const cls = sentimentColors[t.sentiment] || 'warn';
         const excerpts = t.excerpts.slice(0, 1).map(e => `<div class="voice-excerpt">"${esc(e)}"</div>`).join('');
         const extras = [];
-        if (t.competitorNames && t.competitorNames.length) extras.push(`<div class="voice-extras">Competitors identified: ${t.competitorNames.join(', ')}</div>`);
-        if (t.callbackTimes && t.callbackTimes.length) extras.push(`<div class="voice-extras">Callback timing preferences: ${t.callbackTimes.join(', ')}</div>`);
-        if (t.timeframes && t.timeframes.length) extras.push(`<div class="voice-extras">Decision timeframes: ${t.timeframes.join(', ')}</div>`);
+        if (t.competitorNames && t.competitorNames.length) extras.push(`<div class="voice-extras">Competitors identified: ${t.competitorNames.map(esc).join(', ')}</div>`);
+        if (t.callbackTimes && t.callbackTimes.length) extras.push(`<div class="voice-extras">Callback timing preferences: ${t.callbackTimes.map(esc).join(', ')}</div>`);
+        if (t.timeframes && t.timeframes.length) extras.push(`<div class="voice-extras">Decision timeframes: ${t.timeframes.map(esc).join(', ')}</div>`);
+        // Per-theme LLM action
+        const action = voiceAI && voiceAI.actions && voiceAI.actions[t.label] ? esc(voiceAI.actions[t.label]) : null;
+        const actionHtml = action ? `<div class="voice-action">${action}</div>` : '';
         return `
           <div class="voice-card ${cls}">
             <div class="voice-header">
@@ -3483,6 +4246,7 @@
             ${excerpts}
             <div class="voice-interp">${t.interpretation}</div>
             ${extras.join('')}
+            ${actionHtml}
           </div>
         `;
       }).join('');
@@ -3499,10 +4263,81 @@
         <div class="rec-card ${priorityColors[r.priority] || 'blue'}">
           <div class="rec-top">
             <span class="rec-priority ${r.priority}">${r.priority.toUpperCase()}</span>
-            <span class="rec-action">${r.action}</span>
+            <span class="rec-action">${esc(r.action)}</span>
           </div>
-          <div class="rec-reason">${r.reason}</div>
-          <div class="rec-impact"><strong>Expected impact:</strong> ${r.impact}</div>
+          <div class="rec-reason">${esc(r.reason)}</div>
+          <div class="rec-impact"><strong>Expected impact:</strong> ${esc(r.impact)}</div>
+        </div>
+      `).join('');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       LLM-POWERED RECOMMENDATIONS
+       ═══════════════════════════════════════════════════════════════════════ */
+    async function generateLlmRecommendations(themes, funnel, competitors, callbacks, agents, trends, rows, colMap) {
+      const apiKey = getApiKey();
+      if (!apiKey) return null;
+
+      const topThemes = themes.themes.slice(0, 5).map(t => `${esc(t.label)}: ${t.count}`).join(', ');
+      const mode = document.getElementById('campaignMode');
+      const campaignMode = (mode && mode.value === 'post') ? 'Post-Sales' : 'Pre-Sales';
+      const connPct = funnel.connected > 0 ? (funnel.booked / funnel.connected * 100).toFixed(1) : '0';
+      const summary = `Campaign: ${campaignMode}. Total leads: ${funnel.total}, Connected: ${funnel.connected}, Booked: ${funnel.booked} (${connPct}% conversion). Top themes: ${topThemes}. Competitors mentioned: ${competitors.total}. Callbacks pending: ${callbacks.total}.`;
+
+      const prompt = `As a senior campaign analyst, generate 3-5 specific, actionable recommendations based on this data. For each: specify what to do, why (with data support), and estimated impact. Be specific — mention customer segments, vehicle models, locations, or timeframes if applicable.\n\n${summary}\n\nRespond ONLY with a valid JSON array: [{"action":"...","reason":"...","impact":"..."}]`;
+
+      const cacheKey = 'llm-recs-' + hashStr(prompt);
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try { return JSON.parse(cached); } catch(e) {}
+      }
+
+      try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + apiKey,
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'AutoNage Dashboard'
+          },
+          body: JSON.stringify({
+            model: OPENROUTER_MODEL,
+            messages: [
+              { role: 'system', content: 'You are a campaign analyst. Generate 3-5 specific, actionable recommendations. Each must include: action (what to do), reason (why, data-backed), and impact (estimated improvement). Be specific — mention locations, vehicle models, customer segments, or timeframes. Output ONLY valid JSON array.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.3,
+            max_tokens: 1200
+          })
+        });
+
+        if (!response.ok) return null;
+        const data = await response.json();
+        const text = data.choices[0].message.content;
+        const cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+        const match = cleaned.match(/\[[\s\S]*\]/);
+        if (!match) return null;
+        const result = JSON.parse(match[0]);
+        localStorage.setItem(cacheKey, JSON.stringify(result));
+        return result;
+      } catch(e) {
+        console.warn('LLM recommendations failed:', e);
+        return null;
+      }
+    }
+
+    function renderLlmRecommendations(recs) {
+      const panel = document.getElementById('llmRecsPanel');
+      const content = document.getElementById('llmRecsContent');
+      if (!panel || !content) return;
+      if (!recs || recs.length === 0) { panel.style.display = 'none'; return; }
+      panel.style.display = 'block';
+      content.innerHTML = recs.map(r => `
+        <div class="rec-card">
+          <div class="rec-action">${esc(r.action)}</div>
+          <div class="rec-reason">${esc(r.reason)}</div>
+          <div class="rec-impact">${esc(r.impact)}</div>
         </div>
       `).join('');
     }
@@ -3582,13 +4417,16 @@
       if (summary) summary.textContent = 'Column mapping pending';
       if (strip) strip.innerHTML = '';
       if (grid) grid.innerHTML = '';
-      // Clear BI sections
+      // Clear AI status & BI sections
+      updateAiStatus(0, 0, '');
       ['execSummary','conversionFunnelPanel','dispositionPanel','pipelinePanel',
        'leadQualityPanel','anomalySection','competitivePanel','languagePanel','sourceQualityPanel','blockersPanel',
-       'customerVoicePanel','agentTablePanel','recsPanel','phasePanel']
+       'customerVoicePanel','agentTablePanel','recsPanel','llmRecsPanel','phasePanel']
         .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
       const insightStrip = document.getElementById('insightStrip');
       if (insightStrip) { insightStrip.innerHTML = ''; insightStrip.style.display = 'none'; }
+      const analysisBadge = document.getElementById('analysisEngineBadge');
+      if (analysisBadge) analysisBadge.textContent = 'AI-GENERATED ANALYSIS';
       const trendEl = document.getElementById('trendIndicator');
       if (trendEl) { trendEl.innerHTML = ''; trendEl.style.display = 'none'; }
     }
@@ -3666,7 +4504,7 @@
     /* ═══════════════════════════════════════════════════════════════════════
        DASHBOARD GENERATION
        ═══════════════════════════════════════════════════════════════════════ */
-    function generateDashboard() {
+    async function generateDashboard() {
       if (!dashData || dashData.length === 0) return;
 
       // ── Find column names (case-insensitive, exact-first then substring) ──
@@ -4068,11 +4906,12 @@
       const healthClass = healthScore >= 75 ? 'healthy' : healthScore >= 50 ? 'warning' : 'critical';
 
       // ── STORYTELLING ENGINE ─────────────────────────────────────────────────
-      const themes = mineCustomerThemes(rows, colMap);
+      const themes = await mineCustomerThemes(rows, colMap, isPostSales);
       const agents = analyzeAgentPerformance(rows, colMap);
       const headline = generateStoryHeadline(themes, funnel, healthScore);
       const execNarrative = generateExecutiveNarrative(themes, funnel, trends, healthScore, competitors, callbacks, agents);
       const recs = generateRecommendations(themes, funnel, competitors, callbacks, trends);
+      const llmRecs = await generateLlmRecommendations(themes, funnel, competitors, callbacks, agents, trends, rows, colMap);
 
       const connPct = rows.length > 0 ? (funnel.connected / rows.length * 100).toFixed(0) : '0';
 
@@ -4080,6 +4919,14 @@
       // Executive Story Banner
       const execEl = document.getElementById('execSummary');
       if (execEl) { execEl.style.display = ''; execEl.className = 'intel-banner slide-up ' + healthClass; }
+      const analysisBadge = document.getElementById('analysisEngineBadge');
+      if (analysisBadge) {
+        analysisBadge.textContent = themes.engine === 'openrouter'
+          ? 'DEEPSEEK AI ANALYSIS'
+          : themes.engine === 'cache'
+            ? 'CACHED DEEPSEEK ANALYSIS'
+            : 'LOCAL KEYWORD ANALYSIS';
+      }
       document.getElementById('storyHeadline').textContent = headline;
       document.getElementById('execNarrative').innerHTML = execNarrative;
       const hsEl = document.getElementById('healthScore');
@@ -4109,7 +4956,8 @@
       }
 
       // Customer Voice
-      renderCustomerVoice(themes);
+      const voiceAI = await generateVoiceInsights(themes);
+      renderCustomerVoice(themes, voiceAI);
 
       // Conversion Funnel
       renderConversionFunnel(funnel);
@@ -4146,6 +4994,9 @@
 
       // Recommended Actions
       renderRecommendations(recs);
+
+      // AI-Powered Recommendations
+      renderLlmRecommendations(llmRecs);
 
       // Trend indicator
       renderTrendIndicators(trends);
