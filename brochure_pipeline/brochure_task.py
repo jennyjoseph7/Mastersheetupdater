@@ -14,6 +14,8 @@ from brochure_pipeline.tasks.variant_feature import process_brochure_chunk, run_
 
 gryd.SERVICE = GRYD_SERVICE 
 gryd.set_queue_manager()
+THREADS_PER_SESSION = 1
+__version__ = "0.0.1"
 
 
 @gryd.is_a_task()

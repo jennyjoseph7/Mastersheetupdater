@@ -12,6 +12,7 @@ try:
 except ImportError:
     from base_agent import BaseAgent, gryd
 THREADS_PER_SESSION = 0.1
+__version__ = "0.0.1"
 import whatsapp_template_creator_agent
 import get_whatsapp_template_agent
 import get_rcs_template_agent

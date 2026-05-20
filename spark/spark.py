@@ -48,6 +48,7 @@ from prompt_formatter import convert_prompt as _convert_prompt
 SERVICE = 'spark'
 gryd.SERVICE = SERVICE
 THREADS_PER_SESSION = 0.3
+__version__ = "0.0.1"
 gryd.set_queue_manager()
 FIREFLY_API_BASE = "https://firefly-api.adobe.io"
 FIREFLY_IMS_TOKEN_URL = "https://ims-na1.adobelogin.com/ims/token/v3"
