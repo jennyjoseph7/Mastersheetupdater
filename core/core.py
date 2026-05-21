@@ -372,8 +372,7 @@ def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = 
             data[k] = row.get(k).split(',')
         else:
             data[k] = None
-    lead = models['lead_model'].post(data)
-    return lead, ""
+    return data, ""
 
 def process_dealership_lead_row(row, models, missing_reason = None, rooftop_id = None, logger = None):
     logger = logger or mlogger
@@ -1437,9 +1436,14 @@ def gryd_task_import_leads_from_csv(
         campaign = validate_campaign_or_campaign_objective_id(campaign_id, audience_name, campaign_objective_id, models, campaign_type, logger = logger)
         campaign_id = campaign.get('campaign_id')
         campaign_objective_id = campaign.get('campaign_objective_id')
+        num_lines = 0
         total = 0
         error = 0
         processed = 0
+        with open(csv_path, encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                num_lines += 1
         with open(csv_path, encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             headers = reader.fieldnames
@@ -1481,20 +1485,21 @@ def gryd_task_import_leads_from_csv(
                         else:
                             logger.info(f"Finished posted lead row: {row}")
                             processed += 1
-                    percent = int(100.0 * total / (reader.line_num or (total + error)))
-                    yield {"_status": f"{percent}% completed"}
+                    percent = int((100.0 * total) / num_lines)
+                    yield {"_status": f"{total}({percent}%) rows processed"}
                     if error > MAX_AUDIENCE_ERRORS:
                         # too many errors, stop the task
                         logger.error(f"Too many errors, stopping the task")
                         yield {"_result": f"Too many errors, stopping the task"}
                         break
-            yield {"_status": "100% completed"}
+            yield {"_status": f"{total}(100%) rows processed"}
             # Write error CSV
+            unique_rows = models['lead_model'].count(**{f"campaign_id": campaign_id})
             if error > 0:
                 url = func_gryd_file_system(error_csv_path, logger = logger)
-                yield {"_result":  {'error_csv_url': url, 'total': total, 'error': error, 'processed': processed}}
+                yield {"_result":  {'error_csv_url': url, 'total': total, 'error': error, 'processed': processed, 'unique': unique_rows}}
             else:
-                yield {"_result": {'total': total, 'error': error, 'processed': processed}}
+                yield {"_result": {'total': total, 'error': error, 'processed': processed, 'unique': unique_rows}}
     except Exception as e:
         raise ValueError(f"Failed to create temporary files: {str(e)}") from e
     finally:
@@ -2498,17 +2503,16 @@ class VATCalculator:
 
 if __name__ == "__main__":
 
-    #gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-south-india", "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/485b7cbc-55d5-44d2-b5b9-0e6d6e405f4c-692977e5_afinallead.csv", campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943", workshop_id = 12)    
-    #gryd_task_import_leads_from_csv.execute("pre-sales", "dave-ai-india", "/Users/ggananth/Downloads/Stellantis_sample.csv", campaign_id = "b14c86d0-1434-3119-9d1e-2e0257da00f3", showroom_id = 'dave-ai-india')    
-    #for out in gryd_task_import_leads_from_csv(
-    #        "pre-sales", 
-    #        "sales-dealership1-india", 
-    #        "/Users/ggananth/Downloads/stellantis.csv", 
-    #        #campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
-    #        audience_name = "Stellantis - test data",
-    #        campaign_objective_id = "pre-sales-test-drive-booking"
-    #    ):    
-    #    print(hp.json.dumps(out, hp.json.OPT_INDENT_2))
+    gryd_task_import_leads_from_csv.execute("pre-sales", "dave-ai-india", "/Users/ggananth/Downloads/Stellantis_sample.csv", campaign_id = "b14c86d0-1434-3119-9d1e-2e0257da00f3", showroom_id = 'dave-ai-india')    
+    for out in gryd_task_import_leads_from_csv(
+            "pre-sales", 
+            "sales-dealership1-india", 
+            "/Users/ggananth/Downloads/stellantis.csv", 
+            #campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
+            audience_name = "Stellantis - test data",
+            campaign_objective_id = "pre-sales-test-drive-booking"
+        ):    
+        print(hp.json.dumps(out, hp.json.OPT_INDENT_2))
     # gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-india", "/Users/ggananth/Downloads/ambal_sample.csv", campaign_objective_id = "post-sales-service-overdue", audience_name = "Ambal Sample", mapping = {
     #         "region_name": "region_name",
     #         "vin_number": "vin_number",
@@ -2522,7 +2526,7 @@ if __name__ == "__main__":
     #     })
 
     # translate_objective("pre-sales-aircross--confirm-test-drive-for-value-advantage--whatsapp","hindi","voice_phone","female", True)
-    for i in translate_objective_multiple("pre-sales-test-drive-booking",target_languages=["telugu","marathi"],target_channels=["whatsapp_chat","voice_phone"],genders=["male"],force_update = True):
-        logger.info(i)
+    #for i in translate_objective_multiple("pre-sales-test-drive-booking",target_languages=["telugu","marathi"],target_channels=["whatsapp_chat","voice_phone"],genders=["male"],force_update = True):
+    #    logger.info(i)
 
     # translate_objective_all("pre-sales-aircross--confirm-test-drive-for-value-advantage--whatsapp")

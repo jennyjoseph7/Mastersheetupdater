@@ -81,3 +81,5 @@ frontend/csvtojson.html
 frontend/objective.html
 pyrightconfig.json
 frontend/test.html
+crm_integration/local.sh
+crm_integration/.gitignore
