@@ -865,7 +865,52 @@ def gryd_task_assign_audience_to_campaign(
 
     logger.info("------ Task Finished ------")
 
+@gryd.is_a_task(
+    function_name="dealership_update_status",
+    job_param='job',
+    auth_param='auth',
+    logger_param='logger'
+)
+def dealership_update_status(
+    dealership_id: str,
+    logger=None,
+    job=None,
+    auth=None,
+    **kwargs
+):
+    try:
+        # Extract dealer_status from kwargs
+        dealer_status = kwargs.get("dealer_status")
 
+        if not dealer_status:
+            raise ValueError("dealer_status is required in kwargs")
+
+        # Example update logic (replace with your DB/service call)
+        update_payload = {
+            "dealership_id": dealership_id,
+            "dealer_status": dealer_status
+        }
+
+        if logger:
+            logger.info(f"Updating dealership status: {update_payload}")
+
+        # TODO: Replace this with actual update call
+        # e.g. db.update_dealership_status(dealership_id, dealer_status)
+
+        return {
+            "success": True,
+            "message": "Dealership status updated successfully",
+            "data": update_payload
+        }
+
+    except Exception as e:
+        if logger:
+            logger.error(f"Error updating dealership status: {str(e)}")
+
+        return {
+            "success": False,
+            "message": str(e)
+        }
 
 
 @gryd.is_a_task(function_name="reset_password", job_param='job', logger_param='logger', auth_param='auth')
