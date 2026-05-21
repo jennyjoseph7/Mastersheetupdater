@@ -18,6 +18,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet" />
+  <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     /* ── DESIGN TOKENS ─────────────────────────────────────────────────── */
@@ -359,11 +360,26 @@
       font-size: 0.68rem;
       font-weight: 700;
       color: var(--text-muted);
+      transition: all 0.3s ease;
     }
 
     .api-key-status.ok { color: var(--success); }
     .api-key-status.warn { color: var(--warn); }
     .api-key-status.err { color: var(--danger); }
+
+    .api-key-status.active-proxy {
+      background: rgba(46, 213, 115, 0.15);
+      color: #2ed573 !important;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      border: 1px solid rgba(46, 213, 115, 0.3);
+      text-shadow: 0 0 8px rgba(46, 213, 115, 0.3);
+    }
+    @keyframes pulse-proxy {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(0.98); }
+    }
 
     .btn {
       display: inline-flex;
@@ -2085,24 +2101,76 @@
     /* ═══════════════════════════════════════════════════════════════════════
        LLM VALIDATION — PRESALES DISPOSITIONS
        ═══════════════════════════════════════════════════════════════════════ */
-    var OPENROUTER_MODEL = 'deepseek/deepseek-v4-flash';
+    var OPENROUTER_MODEL = (window.JEJO_CONFIG && window.JEJO_CONFIG.openRouterModel) 
+      ? window.JEJO_CONFIG.openRouterModel 
+      : 'deepseek/deepseek-v4-flash';
     var OPENROUTER_KEY_STORAGE = 'llm-api-key';
 
+    function getApiEndpoint() {
+      if (window.JEJO_CONFIG && window.JEJO_CONFIG.apiEndpoint) {
+        var url = window.JEJO_CONFIG.apiEndpoint.trim();
+        if (url && url !== 'YOUR_PROXY_URL_HERE') return url;
+      }
+      return 'https://openrouter.ai/api/v1/chat/completions';
+    }
+
     function getApiKey() {
+      if (getApiEndpoint() !== 'https://openrouter.ai/api/v1/chat/completions') {
+        return 'PROXY_ACTIVE';
+      }
+      if (window.JEJO_CONFIG && window.JEJO_CONFIG.openRouterApiKey) {
+        var key = window.JEJO_CONFIG.openRouterApiKey.trim();
+        if (key && key !== 'YOUR_OPENROUTER_API_KEY_HERE') return key;
+      }
       return (localStorage.getItem(OPENROUTER_KEY_STORAGE) || '').trim();
     }
 
     function syncApiKeyControl(message, tone) {
+      var container = document.querySelector('.ai-key-control');
       var input = document.getElementById('openRouterApiKey');
       var status = document.getElementById('apiKeyStatus');
-      var hasSavedKey = !!(localStorage.getItem(OPENROUTER_KEY_STORAGE) || '').trim();
-      if (input) {
-        input.value = '';
-        input.placeholder = hasSavedKey ? 'Key saved in browser' : 'OpenRouter API key';
-      }
-      if (status) {
-        status.textContent = message || (hasSavedKey ? 'Saved locally' : 'Required');
-        status.className = 'api-key-status ' + (tone || (hasSavedKey ? 'ok' : ''));
+      var saveBtn = container ? container.querySelector('button:not(.subtle)') : null;
+      var clearBtn = container ? container.querySelector('button.subtle') : null;
+
+      var endpoint = getApiEndpoint();
+      var isProxy = endpoint !== 'https://openrouter.ai/api/v1/chat/completions';
+      
+      var keyFromConfig = window.JEJO_CONFIG && window.JEJO_CONFIG.openRouterApiKey && 
+                           window.JEJO_CONFIG.openRouterApiKey !== 'YOUR_OPENROUTER_API_KEY_HERE' && 
+                           window.JEJO_CONFIG.openRouterApiKey.trim();
+      
+      var isAutoConfigured = isProxy || keyFromConfig;
+
+      if (isAutoConfigured) {
+        if (input) input.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'none';
+        
+        if (status) {
+          if (isProxy) {
+            status.textContent = '✓ AI Active (Secure Proxy)';
+            status.className = 'api-key-status ok active-proxy';
+            status.style.animation = 'pulse-proxy 2s infinite ease-in-out';
+          } else {
+            status.textContent = '✓ AI Active (Configured)';
+            status.className = 'api-key-status ok';
+          }
+        }
+      } else {
+        if (input) input.style.display = '';
+        if (saveBtn) saveBtn.style.display = '';
+        if (clearBtn) clearBtn.style.display = '';
+        
+        var hasSavedKey = !!(localStorage.getItem(OPENROUTER_KEY_STORAGE) || '').trim();
+        if (input) {
+          input.value = '';
+          input.placeholder = hasSavedKey ? 'Key saved in browser' : 'OpenRouter API key';
+        }
+        if (status) {
+          status.textContent = message || (hasSavedKey ? 'Saved locally' : 'Required');
+          status.className = 'api-key-status ' + (tone || (hasSavedKey ? 'ok' : ''));
+          status.style.animation = '';
+        }
       }
     }
 
@@ -2121,6 +2189,7 @@
       localStorage.removeItem(OPENROUTER_KEY_STORAGE);
       syncApiKeyControl('Cleared', 'warn');
     }
+
 
     function hashStr(str) {
       var h = 0;
@@ -2150,6 +2219,7 @@
       "Enquired for Dealership Details": "the customer by themselves asked for dealership details.",
       "Enquired for Others": "the customer by themselves asked for other details not listed above.",
       "Comparing with another brand": "The customer by themselves is comparing the vehicle with another brand.",
+      "Customer Busy": "The customer was busy and could not speak at that moment.",
       "Call Disconnected": "The customer by themselves has disconnected the call.",
       "Others": "All other disposition details not listed above.",
       "General Inquiry": "the customer is Asking generic questions not specific to the purpose of the campaign or the vehicle.",
@@ -2878,8 +2948,12 @@
     /* ═══════════════════════════════════════════════════════════════════════
        LLM DISPOSITION VALIDATION
        ═══════════════════════════════════════════════════════════════════════ */
-    async function validateDispositionsWithLLM() {
+    async function validateDispositionsWithLLM(force) {
       if (!processedData || processedData.length === 0) return;
+
+      // Reset button to default state at start of each run
+      document.getElementById('btnValidateAI').textContent = 'Validate with AI';
+      document.getElementById('btnValidateAI').onclick = function() { validateDispositionsWithLLM(); };
 
       const apiKey = getApiKey();
       if (!apiKey) {
@@ -2916,7 +2990,7 @@
       // Check cache first — build a combined hash
       var cacheInput = candidates.map(function(c) { return c.summary + '||' + c.currentDisp + '||' + c.model + '||' + c.outcome + '||' + c.callDuration + '||' + c.leadSource; }).join('|');
       var cacheKey = 'disp-validate-v2-' + hashStr(cacheInput);
-      var cached = localStorage.getItem(cacheKey);
+      var cached = force ? null : localStorage.getItem(cacheKey);
       if (cached) {
         try {
           var parsed = JSON.parse(cached);
@@ -2942,18 +3016,27 @@
             return line;
           }).join('\n\n');
 
-          var prompt = 'You are a strict disposition auditor for an automotive campaign. Your job is to CRITICALLY evaluate whether the "Current Disposition" accurately describes the call "Session Transcript". Additional context (Vehicle Model, Call Outcome, Call Duration, Lead Source) is provided for each row — use it to rule out impossible dispositions. Do NOT default to "correct" — scrutinize each match carefully.\n\nVALID DISPOSITIONS:\n' + dispDefs + '\n\nEXAMPLES (learn from these patterns):\n- Transcript: "Customer said they would think about it and call back next week" | Current: "Not Interested" → isCorrect: false, correctedDisposition: "Will decide later, exploring options". Reason: Customer did not say no — they deferred. Not Interested means explicit refusal.\n\n- Transcript: "Customer asked about financing options and EMI plans" | Current: "General Inquiry" → isCorrect: false, correctedDisposition: "Enquired for Pricing". Reason: Asking about pricing/financing is Enquired for Pricing, not generic.\n\n- Transcript: "Customer said the vehicle is too expensive and they will look at other brands" | Current: "Rejected" → isCorrect: false, correctedDisposition: "Comparing with another brand". Reason: Still in market, just price-shopping — not a hard rejection.\n\n- Transcript: "Call dropped mid-conversation while discussing test drive" | Current: "Follow Up Required" → isCorrect: false, correctedDisposition: "Call Disconnected". Reason: Call physically dropped. Follow Up Required is for completed conversations needing callback.\n\n- Transcript: "Customer said they already own this model and do not need another" | Current: "Not Interested" → isCorrect: false, correctedDisposition: "No buying intent". Reason: No buying intent is for customers who do not want to purchase a car at all.\n\n- Transcript: "Customer asked to be called back after 5pm" | Current: "Call Disconnected" → isCorrect: false, correctedDisposition: "Requested Callback". Reason: Customer explicitly requested a callback — not a disconnect.\n\n- Transcript: "Customer kept asking about the vehicle but would not give their details" | Current: "No buying intent" → isCorrect: false, correctedDisposition: "Just Exploring". Reason: Just Exploring means they want info without buying intent.\n\n- Transcript: "Customer said they already booked a test drive at another dealership" | Current: "Converted" → isCorrect: false, correctedDisposition: "Lost to Competition". Reason: Converted elsewhere = competitive loss, not a campaign conversion.\n\nNow evaluate these rows. For EACH row, respond with ONE JSON object:\n{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confidence":"high","reason":"The summary clearly matches the disposition."}\n\nRows:\n' + promptLines + '\n\nRespond as a JSON array of objects, one per row in the same order. ONLY valid JSON.';
+          var prompt = 'You are a strict disposition auditor for an automotive campaign. Your job is to CRITICALLY evaluate whether the "Current Disposition" accurately describes the call "Session Transcript". Additional context (Vehicle Model, Call Outcome, Call Duration, Lead Source) is provided for each row — use it to rule out impossible dispositions. Do NOT default to "correct" — scrutinize each match carefully.\n\nVALID DISPOSITIONS:\n' + dispDefs + '\n\nEXAMPLES (learn from these patterns):\n- Transcript: "Customer said they would think about it and call back next week" | Current: "Not Interested" → isCorrect: false, correctedDisposition: "Will decide later, exploring options". Reason: Customer did not say no — they deferred. Not Interested means explicit refusal.\n\n- Transcript: "Customer asked about financing options and EMI plans" | Current: "General Inquiry" → isCorrect: false, correctedDisposition: "Enquired for Pricing". Reason: Asking about pricing/financing is Enquired for Pricing, not generic.\n\n- Transcript: "Customer said the vehicle is too expensive and they will look at other brands" | Current: "Rejected" → isCorrect: false, correctedDisposition: "Comparing with another brand". Reason: Still in market, just price-shopping — not a hard rejection.\n\n- Transcript: "Call dropped mid-conversation while discussing test drive" | Current: "Follow Up Required" → isCorrect: false, correctedDisposition: "Call Disconnected". Reason: Call physically dropped. Follow Up Required is for completed conversations needing callback.\n\n- Transcript: "Customer said they already own this model and do not need another" | Current: "Not Interested" → isCorrect: false, correctedDisposition: "No buying intent". Reason: No buying intent is for customers who do not want to purchase a car at all.\n\n- Transcript: "Customer asked to be called back after 5pm" | Current: "Call Disconnected" → isCorrect: false, correctedDisposition: "Requested Callback". Reason: Customer explicitly requested a callback — not a disconnect.\n\n- Transcript: "Customer kept asking about the vehicle but would not give their details" | Current: "No buying intent" → isCorrect: false, correctedDisposition: "Just Exploring". Reason: Just Exploring means they want info without buying intent.\n\n- Transcript: "Customer said they already booked a test drive at another dealership" | Current: "Converted" → isCorrect: false, correctedDisposition: "Lost to Competition". Reason: Converted elsewhere = competitive loss, not a campaign conversion.\n\n- Transcript: "The customer declined the call, stating they were busy." | Current: "Rejected" → isCorrect: false, correctedDisposition: "Customer Busy". Reason: "Rejected" means explicit refusal of the offer. Saying "I am busy" means the customer was not available — they did not reject the product.\n\nNow evaluate these rows. For EACH row, respond with ONE JSON object:\n{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confidence":"high","reason":"The summary clearly matches the disposition."}\n\nRows:\n' + promptLines + '\n\nRespond as a JSON array of objects, one per row in the same order. ONLY valid JSON.';
 
           var result = null;
           try {
-            var response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            var endpoint = getApiEndpoint();
+            var isProxy = endpoint !== 'https://openrouter.ai/api/v1/chat/completions';
+            var headers = { 'Content-Type': 'application/json' };
+            if (isProxy) {
+              var handshake = (window.JEJO_CONFIG && window.JEJO_CONFIG.proxyHandshakeToken) 
+                ? window.JEJO_CONFIG.proxyHandshakeToken 
+                : 'jejo-presales-secure-handshake';
+              headers['X-Handshake-Token'] = handshake;
+            } else {
+              headers['Authorization'] = 'Bearer ' + apiKey;
+              headers['HTTP-Referer'] = window.location.origin;
+              headers['X-Title'] = 'AutoNage Pre-Sales Sync';
+            }
+
+            var response = await fetch(endpoint, {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + apiKey,
-                'HTTP-Referer': window.location.origin,
-                'X-Title': 'AutoNage Pre-Sales Sync'
-              },
+              headers: headers,
               body: JSON.stringify({
                 model: OPENROUTER_MODEL,
                 messages: [
@@ -3034,6 +3117,10 @@
       } else {
         setStatus('globalStatus', 'AI validated ' + candidates.length + ' rows — all dispositions appear correct.', 'ok');
       }
+
+      // Switch button to re-run mode
+      document.getElementById('btnValidateAI').textContent = '↻ Re-run AI';
+      document.getElementById('btnValidateAI').onclick = function() { validateDispositionsWithLLM(true); };
     }
 
     // ─── RENDER TABLE ─────────────────────────────────────────────────────────────
@@ -3608,6 +3695,7 @@
     }
     applyTheme(localStorage.getItem('jejo-theme') || 'dark');
     renderTableHeader();
+    syncApiKeyControl();
   </script>
 </body>
 
