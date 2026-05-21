@@ -1564,28 +1564,28 @@ def mark_inactive_dealerships(*args,**kwargs):
         LEFT JOIN latest_contact lc
             ON d.dict->>'dealership_id' = lc.dealership_id
         WHERE
-            lc.created IS NULL
-            OR lc.created < {inactivity_days}
+            COALESCE(d.dict->>'dealer_status','') != 'inactive'
+            AND (
+                lc.created IS NULL
+                OR lc.created < {inactivity_days}
+            )
         """
 
         result = pg.fetch_all(query)
         dealership_ids = [row[0] for row in result]
 
-        mlogger.info(
-            f"Inactive dealership count: {len(result)}"
-        )
+        mlogger.info(f"Inactive dealership count: {len(result)}")
 
         for dealership_id, created in result:
-            mlogger.info(
-                f"Dealership={dealership_id}, last_contact={created}"
-            )
+            mlogger.info(f"Dealership={dealership_id}, last_contact={created}")
             
-            # pg.update("dealership", "dealership_id", dealership_id, {"dealer_status": "inactive"})
+            pg.update("dealership", "dealership_id", dealership_id, {"dealer_status": "inactive"})
             
         return {
             "count": len(result),
             "dealership_ids": dealership_ids
         }
+
 def process_lead(pg,lead, channel):
     # mlogger.info(f"[PROCESS] Processing lead for channel {lead}")
     lead_id=None
