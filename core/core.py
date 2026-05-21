@@ -885,22 +885,23 @@ def dealership_update_status(
         if not dealer_status:
             raise ValueError("dealer_status is required in kwargs")
 
-        # Example update logic (replace with your DB/service call)
         update_payload = {
-            "dealership_id": dealership_id,
             "dealer_status": dealer_status
         }
 
         if logger:
-            logger.info(f"Updating dealership status: {update_payload}")
+            logger.info(f"Updating dealership status for {dealership_id}: {update_payload}")
 
-        # TODO: Replace this with actual update call
-        # e.g. db.update_dealership_status(dealership_id, dealer_status)
+        dealership_model = gryd.base_model.Model('dealership', AUTOCRM_APP_ENTERPRISE_ID)
+        dealership_model.update(dealership_id, update_payload)
 
         return {
             "success": True,
             "message": "Dealership status updated successfully",
-            "data": update_payload
+            "data": {
+                "dealership_id": dealership_id,
+                "dealer_status": dealer_status
+            }
         }
 
     except Exception as e:
