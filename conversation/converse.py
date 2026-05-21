@@ -309,16 +309,16 @@ def setup_session_data_cache(*args, **kwargs):
         mlogger.info("session_data fetched == {}".format(session_data))
         person_data = pg.get("person","user_id",session_data.get("user_id"))
         language = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
-        '''##UNCOMMENT FOR MULTI LANGUAGE SUPPORT
-        if person_data.get("preferred_language") and isinstance(person_data.get("preferred_language"),str):
-            language = person_data.get("preferred_language",AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE).lower()
-        if person_data.get("preferred_language") and isinstance(person_data.get("preferred_language"),list):
-            language = person_data.get("preferred_language",[])[0].lower()
-        if language in translation_wrappers.LANGUAGE_CODES:
-            language = translation_wrappers.get_canonical_language_name(language).lower()
-        if language not in translation_wrappers.LANGUAGE_MAP:
-            language = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
-        '''
+        ##UNCOMMENT FOR MULTI LANGUAGE SUPPORT
+        # if person_data.get("preferred_language") and isinstance(person_data.get("preferred_language"),str):
+        #     language = person_data.get("preferred_language",AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE).lower()
+        # if person_data.get("preferred_language") and isinstance(person_data.get("preferred_language"),list):
+        #     language = person_data.get("preferred_language",[])[0].lower()
+        # if language in translation_wrappers.LANGUAGE_CODES:
+        #     language = translation_wrappers.get_canonical_language_name(language).lower()
+        # if language not in translation_wrappers.LANGUAGE_MAP:
+        #     language = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
+        
         mlogger.info("language == {}".format(language))
         session_data_cache = pg.get("session_data_cache","session_id",session_id) or {}
         mlogger.info("session_data_cache fetched == {}".format(session_data)) 
@@ -334,20 +334,20 @@ def setup_session_data_cache(*args, **kwargs):
         lead_data = pg.get(session_data.get("lead_model"),"{}_id".format(lead_model_name),session_data.get("lead_id")) or {}
         # if language!="english":
         mlogger.info("campaign_objective_id == {}".format(campaign_data.get("campaign_objective_id")))
-        #####UNCOMMENT FOR MULTI LANGUAGE SUPPORT
-        # camp_overrides = list(pg.list("lc_campaign_objective",{"campaign_objective_id":campaign_data.get("campaign_objective_id"),"language":language,"channel":kwargs.get("channel","whatsapp_chat"),"avatar_gender":kwargs.get("gender","male")}))
-        # logger.info("camp_overrides == {}".format(camp_overrides))
-        # if camp_overrides:
-        #     camp_override = camp_overrides[0]
-        #     camp_updated = {}
-        #     if campaign_data.get("campaign_custom_attributes"):
-        #         for k,v in camp_override.items():
-        #             for custom_attr in campaign_data.get("campaign_custom_attributes"):
-        #                 if isinstance(v,str):
-        #                     v.replace("{{"+custom_attr.get("attribute_name")+"}}",custom_attr.get("attribute_value"))
-        #             camp_updated[k] = v
-        #     camp_override.update(camp_updated)
-        #     campaign_data.update(camp_override)
+        ####UNCOMMENT FOR MULTI LANGUAGE SUPPORT
+        camp_overrides = list(pg.list("lc_campaign_objective",{"campaign_objective_id":campaign_data.get("campaign_objective_id"),"language":language,"channel":kwargs.get("channel","whatsapp_chat"),"avatar_gender":kwargs.get("gender","male")}))
+        logger.info("camp_overrides == {}".format(camp_overrides))
+        if camp_overrides:
+            camp_override = camp_overrides[0]
+            camp_updated = {}
+            if campaign_data.get("campaign_custom_attributes"):
+                for k,v in camp_override.items():
+                    for custom_attr in campaign_data.get("campaign_custom_attributes"):
+                        if isinstance(v,str):
+                            v.replace("{{"+custom_attr.get("attribute_name")+"}}",custom_attr.get("attribute_value"))
+                    camp_updated[k] = v
+            camp_override.update(camp_updated)
+            campaign_data.update(camp_override)
         current_data = session_data_cache.get("data",{})
         current_data["campaign_data"] = campaign_data
         current_data["user_data"] = lead_data
