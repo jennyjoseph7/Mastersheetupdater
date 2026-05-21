@@ -370,10 +370,12 @@ def manage_active_sessions(*args, **kwargs):
             if last_response_epoch:
                 inactive_cutoff_epoch = last_response_epoch + INACTIVITY_TIMEOUT_SECONDS 
             
+            
             last_ts = None
             existing_history = session.get("history", []) or []
             # checking and updating history only when the last_response_time is newer than the last updated history_time...
-            if (last_response_epoch and ( last_history_epoch is None or last_response_epoch > last_history_epoch)):
+            # if (last_response_epoch and ( last_history_epoch is None or last_response_epoch > last_history_epoch)):
+            if (last_history_epoch is None or (last_response_epoch and last_response_epoch > last_history_epoch )):
                 mlogger.info(f"Just updating history for session {session_id}")
                 history_rows = list(
                     # pg.list_order_by("message", {"session_id": session_id},order_by="created",order="ASC")
@@ -427,7 +429,8 @@ def manage_active_sessions(*args, **kwargs):
                     )
 
             # we are calling post_process only when there is a new response (new data to process) or if it's been more than POST_PROCESS_INTERVAL_SECONDS seconds since last post_process_time.
-            can_call_post_process = (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS)
+            # can_call_post_process = (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS)
+            can_call_post_process = (last_response_epoch and (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS))
             mlogger.info("can_call_post_process : {} and has history_updated : {}".format(can_call_post_process, has_unprocessed_history))
             if can_call_post_process and has_unprocessed_history:
                 handle_session_post_process_or_end(
