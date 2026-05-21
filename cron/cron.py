@@ -1514,8 +1514,8 @@ def get_all_dealerships(pg, channel_filter=None):
     #     FROM dealership
     #     ORDER BY dict->>'dealership_id'
     # """
-    # result = list(pg.list("dealership", {"dealer_status": "active"}))
-    result = list(pg.list("dealership", {}))
+    result = list(pg.list("dealership", {"dealer_status": "active"}))
+    # result = list(pg.list("dealership", {}))
     
     dealerships = []
 
