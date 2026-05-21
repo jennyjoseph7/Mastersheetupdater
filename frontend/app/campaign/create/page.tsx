@@ -5,7 +5,7 @@ import { useRouter, useSearchParams ,usePathname} from "next/navigation";
 
 // Imports
 import { fetchAudienceTasks ,getDealershipId,executeTaskWithPolling,cloneLeadsTask,assignAudienceTask} from "@/utils/api";
-import { api } from "@/lib/api";
+import { api, dealershipUpdateDetails } from "@/lib/api";
 
 import {
   Card,
@@ -905,6 +905,30 @@ const handleProceed = async () => {
         budget_allocated: budget,
         campaign_status: statusToSet,
       });
+
+      try {
+        const storedDetailsStr = localStorage.getItem("dealership_details");
+        if (storedDetailsStr) {
+          const detailsObj = JSON.parse(storedDetailsStr);
+          const currentStatus = detailsObj.dealer_status;
+          
+          if (currentStatus !== "active" && currentStatus !== "suspended") {
+            const coreServiceName = process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
+            await executeTaskWithPolling(
+              coreServiceName,
+              "dealership_update_status",
+              {
+                args: [getDealershipId()],
+                kwargs: { dealer_status: "active" }
+              }
+            );
+            detailsObj.dealer_status = "active";
+            localStorage.setItem("dealership_details", JSON.stringify(detailsObj));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to update dealership status", err);
+      }
 
       setLaunchStep(3); // Step 3: Triggering Engine
 
