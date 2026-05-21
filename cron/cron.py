@@ -1574,7 +1574,7 @@ def mark_inactive_dealerships(*args,**kwargs):
         result = pg.fetch_all(query)
         dealership_ids = [row[0] for row in result]
 
-        mlogger.info(f"Inactive dealership count: {len(result)}")
+        mlogger.info(f"Inactive dealership count: {len(result)} for inactive days = {INACTIVE_DAYS} days")
 
         for dealership_id, created in result:
             mlogger.info(f"Dealership={dealership_id}, last_contact={created}")

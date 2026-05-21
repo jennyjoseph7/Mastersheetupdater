@@ -93,6 +93,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
               task="reset_auth_creds",
               service=AUTOCRM_CRON_SERVICE_NAME,
               schedule = "*/45 * * * *",
+              kwargs={"channel":"whatsapp_chat","provider_name":"Rml"},
               add_schedule_to_queue=False
         )
         
@@ -132,7 +133,8 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="mark_inactive_dealerships",
               service=AUTOCRM_CRON_SERVICE_NAME,
-             schedule = "*/10 * * * *",
+              schedule = "*/10 * * * *",
+              kwargs={"inactive_days": 14},
               add_schedule_to_queue=False
         )
 
