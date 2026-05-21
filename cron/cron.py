@@ -1514,8 +1514,8 @@ def get_all_dealerships(pg, channel_filter=None):
     #     FROM dealership
     #     ORDER BY dict->>'dealership_id'
     # """
-    # result = list(pg.list("dealership", {"dealer_status": "active"}))
-    result = list(pg.list("dealership", {}))
+    result = list(pg.list("dealership", {"dealer_status": "active"}))
+    # result = list(pg.list("dealership", {}))
     
     dealerships = []
 
@@ -1845,4 +1845,128 @@ def manage_socket_server_load(
         ssm.delete(k)
     return False
 
+def get_active_crm_campaigns():
 
+    campaigns = []
+
+    campaign_list = [
+        "pre_sales_campaign",
+        "post_sales_campaign"
+    ]
+
+    for campaign_model in campaign_list:
+
+        query = f"""
+        SELECT *,
+               '{campaign_model}' AS campaign_model
+        FROM {campaign_model}
+        WHERE dict->>'campaign_status'=%s
+        AND (dict->>'last_sync_timestamp')::DOUBLE PRECISION
+            <= EXTRACT(EPOCH FROM NOW())
+        """
+
+        results = pg.fetch_all(
+            query,
+            ("Continuous",)
+        )
+
+        mlogger.info(
+            f"Found {len(results)} campaigns "
+            f"in model {campaign_model}"
+        )
+
+        campaigns.extend(results)
+
+    return campaigns
+
+@gryd.is_a_task(function_name="process_crm_campaigns")
+def process_crm_campaigns(batch_size=None, queue_length=None):
+    # Get all the active campaign where te campaign_Status is Continuous and last_sync_timestamp <= current time
+    # For each  campaigns we get the channel check the queu length and if the queu length is <= max_thresold we proceed and get leads
+    
+    logger = logger or mlogger
+
+    campaigns = get_active_crm_campaigns()
+
+    if not campaigns:
+        logger.info("No campaigns")
+        return
+
+    logger.info(f"Current queue={queue_length}")
+
+    for campaign in campaigns:
+        campaign_id = campaign.get("campaign_id")
+        dealership_id = campaign.get("dealership_id")
+        channels = campaign.get("channels", [])
+        crm_details = campaign.get("crm_source_details", {})
+
+        logger.info(f"Processing campaign_id={campaign_id}")
+
+        try:
+            sheet_url = crm_details.get("sheet_url")
+
+            if not sheet_url:
+                logger.warning(f"No sheet_url for campaign={campaign.get('_id')}")
+                continue
+
+            crm_batch_size = crm_details.get("batch_size")
+
+            for channel in channels:
+
+                is_voice = channel == VOICE_CHANNELS
+
+                max_queue_threshold = (
+                    queue_length
+                    if queue_length is not None
+                    else (
+                        VOICE_MAX_QUEUE_LENGTH
+                        if is_voice
+                        else NON_VOICE_MAX_QUEUE_LENGTH
+                    )
+                )
+
+                max_batch_size = (
+                    batch_size
+                    if batch_size is not None
+                    else (
+                        VOICE_BATCH_SIZE
+                        if is_voice
+                        else NON_VOICE_BATCH_SIZE
+                    )
+                )
+
+                current_queue = get_queue_length(
+                    channel,
+                    dealership_id
+                )
+
+                if current_queue >= max_queue_threshold:
+                    logger.info(f"Queue threshold reached for {channel}")
+                    continue
+
+                effective_batch_size = (crm_batch_size or max_batch_size)
+
+                remaining_capacity = (max_queue_threshold - current_queue)
+
+                leads_to_fetch = min(effective_batch_size,remaining_capacity)
+
+                if leads_to_fetch <= 0:
+                    continue
+
+                # TODO: leads = get_leads_from_sheet(
+                #     sheet_url=sheet_url,
+                #     batch_size=leads_to_fetch
+                # )
+
+                # TODO: process leads
+
+                # processed = len(leads)
+                # current_queue += processed
+
+                # TODO:
+                # update_last_sync_timestamp(campaign["_id"])
+
+        except Exception:
+            logger.exception(
+                f"Campaign error: {campaign.get('_id')}"
+            )
