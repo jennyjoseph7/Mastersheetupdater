@@ -361,7 +361,7 @@ def post_contact_status(*args, **data):
             )
             logger.info(f"[post_contact_status] contact_status created with incoming_status={incoming_status} and contact_status_id={contact_status_id}. Also calling next determine_campaign_next_action in--{json.dumps(data,indent=4)}")
             # logger.info(f"Skip workflow value: {data.get('skip_workflow')}")
-            call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get(channel_identifier),incoming_status,pg=pg,skip_workflow=data.get("skip_workflow", False))
+            call_next_campaign_workflow_task(payload.get("campaign_id"),payload.get("campaign_type"),payload.get("lead_id"),payload.get("channel"),payload.get(channel_identifier),incoming_status,pg=pg,skip_workflow=data.get("skip_workflow", False))
 
         # post billing obj
         should_bill = (channel in ["whatsapp_chat"]
