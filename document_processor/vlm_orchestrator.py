@@ -101,6 +101,7 @@ def _process_page(
 
     updated_hierarchy = parsed.get("updated_hierarchy", hierarchy)
     rag_objects       = parsed.get("rag_objects", [])
+    logger.info(f"rag_objects that the VLM returned: {rag_objects}")
     is_toc_index      = parsed.get("_it_is_toc_index", False)
 
     logger.info(
