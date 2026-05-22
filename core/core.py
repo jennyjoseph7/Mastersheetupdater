@@ -1012,48 +1012,6 @@ def extract_phone_number_from_csv(csv_file_link: str, kwargs: dict = None, job =
             wind_up(csv_path)
             logger.info("Temporary workspace closed and unlinked safely.")
 
-def dealership_update_status(
-    dealership_id: str,
-    logger=None,
-    job=None,
-    auth=None,
-    **kwargs
-):
-    try:
-        # Extract dealer_status from kwargs
-        dealer_status = kwargs.get("dealer_status")
-
-        if not dealer_status:
-            raise ValueError("dealer_status is required in kwargs")
-
-        update_payload = {
-            "dealer_status": dealer_status
-        }
-
-        if logger:
-            logger.info(f"Updating dealership status for {dealership_id}: {update_payload}")
-
-        dealership_model = gryd.base_model.Model('dealership', AUTOCRM_APP_ENTERPRISE_ID)
-        dealership_model.update(dealership_id, update_payload)
-
-        return {
-            "success": True,
-            "message": "Dealership status updated successfully",
-            "data": {
-                "dealership_id": dealership_id,
-                "dealer_status": dealer_status
-            }
-        }
-
-    except Exception as e:
-        if logger:
-            logger.error(f"Error updating dealership status: {str(e)}")
-
-        return {
-            "success": False,
-            "message": str(e)
-        }
-
 
 @gryd.is_a_task(function_name="reset_password", job_param='job', logger_param='logger', auth_param='auth')
 def reset_password(phone_number_or_email:str, channel:str, new_password:str, confirm_password:str, token:str, otp:str, logger = None, job = None, auth = None):
