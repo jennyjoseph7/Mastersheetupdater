@@ -43,7 +43,6 @@ gryd.SERVICE = AUTOCRM_CORE_SERVICE_NAME
 THREADS_PER_SESSION = 0.25
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(SERVICE)
-__version__ = "0.0.1"
 logger = mlogger
 MIME_TYPES = {
     'aac': 'audio/aac',
@@ -372,7 +371,8 @@ def process_pre_sales_lead_row(row, models, missing_reason = None, rooftop_id = 
             data[k] = row.get(k).split(',')
         else:
             data[k] = None
-    return data, ""
+    lead = models['lead_model'].post(data)
+    return lead, ""
 
 def process_dealership_lead_row(row, models, missing_reason = None, rooftop_id = None, logger = None):
     logger = logger or mlogger
@@ -865,152 +865,6 @@ def gryd_task_assign_audience_to_campaign(
 
     logger.info("------ Task Finished ------")
 
-@gryd.is_a_task(
-    function_name="dealership_update_status",
-    job_param='job',
-    auth_param='auth',
-    logger_param='logger'
-)
-def dealership_update_status(
-    dealership_id: str,
-    logger=None,
-    job=None,
-    auth=None,
-    **kwargs
-):
-    try:
-        # Extract dealer_status from kwargs
-        dealer_status = kwargs.get("dealer_status")
-
-        if not dealer_status:
-            raise ValueError("dealer_status is required in kwargs")
-
-        update_payload = {
-            "dealer_status": dealer_status
-        }
-
-        if logger:
-            logger.info(f"Updating dealership status for {dealership_id}: {update_payload}")
-
-        dealership_model = gryd.base_model.Model('dealership', AUTOCRM_APP_ENTERPRISE_ID)
-        dealership_model.update(dealership_id, update_payload)
-
-        return {
-            "success": True,
-            "message": "Dealership status updated successfully",
-            "data": {
-                "dealership_id": dealership_id,
-                "dealer_status": dealer_status
-            }
-        }
-
-    except Exception as e:
-        if logger:
-            logger.error(f"Error updating dealership status: {str(e)}")
-
-        return {
-            "success": False,
-            "message": str(e)
-        }
-
-
-@gryd.is_a_task(function_name="extract_phone_number_from_csv", job_param='job', logger_param='logger')
-def extract_phone_number_from_csv(csv_file_link: str, kwargs: dict = None, job = None, logger = None):
-    """
-    Gryd task to process an incoming CSV file and extract a structured list 
-    of participant names and their associated phone numbers.
-
-    Args:
-        csv_file_link (str): Remote URL or path to the target CSV file.
-        kwargs (dict): Optional metadata parameters containing mapping properties.
-            - mapping (dict): Key-value pairs to map irregular CSV headers to system requirements.
-                              e.g., {"Customer Name": "name", "Mobile": "phone_number"}
-    Returns:
-        dict: Summary block containing list of extracted records and processing metrics.
-    """
-    logger = logger or mlogger
-    kwargs = kwargs or {}
-    mapping = kwargs.get("mapping", {})
-    
-    logger.info(f"------ Task: Extracting Phone Numbers from CSV: {csv_file_link} ------")
-    
-    csv_path = None
-    extracted_records = []
-    total_processed = 0
-    failed_rows = 0
-
-    try:
-        # 1. Download or copy file into safe local temporary workspace
-        csv_path = create_csv_path(csv_file_link, logger=logger)
-        
-        with open(csv_path, encoding="utf-8-sig") as f:
-            reader = csv.DictReader(f)
-            original_headers = reader.fieldnames
-            
-            if not original_headers:
-                raise ValueError("The provided CSV file contains no readable headers.")
-            
-            # 2. Normalize headers based on provided user mappings
-            # Converts all variations down to lowercase, stripped snake_case properties
-            normalized_headers = [
-                mapping.get(h, h).lower().strip().replace(' ', '_').replace('-', '_') 
-                for h in original_headers
-            ]
-            
-            # Determine column positions for extracting information
-            name_fields = ["name", "person_name", "first_owner_name", "primary_contact_name"]
-            phone_fields = ["phone_number", "mobile", "primary_contact_phone"]
-            
-            name_col = next((original_headers[i] for i, h in enumerate(normalized_headers) if h in name_fields), None)
-            phone_col = next((original_headers[i] for i, h in enumerate(normalized_headers) if h in phone_fields), None)
-            
-            if not phone_col:
-                raise ValueError(f"Could not identify a valid phone number column. Normalized headers checked: {normalized_headers}")
-            
-            logger.info(f"Targeting columns -> Name: '{name_col}', Phone Number: '{phone_col}'")
-
-            # 3. Process records
-            for i, row in enumerate(reader, 2):
-                total_processed += 1
-                
-                # Check value health using your existing workspace validation functions
-                if not is_valid_value(row, phone_col):
-                    logger.warning(f"Line {i}: Missing or invalid phone data layout. Skipping row.")
-                    failed_rows += 1
-                    continue
-                
-                raw_phone = row.get(phone_col).strip()
-                raw_name = row.get(name_col).strip() if (name_col and is_valid_value(row, name_col)) else "N/A"
-                
-                extracted_records.append({
-                    "person_name": raw_name,
-                    "phone_number": raw_phone
-                })
-
-            logger.info(f"Extraction successful. Retrieved {len(extracted_records)} total contact rows.")
-            
-            return {
-                "success": True,
-                "metrics": {
-                    "total_rows_evaluated": total_processed,
-                    "successfully_extracted": len(extracted_records),
-                    "skipped_rows": failed_rows
-                },
-                "data": extracted_records
-            }
-
-    except Exception as e:
-        logger.error(f"Critical failure inside extract_phone_number_from_csv task: {str(e)}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
-        
-    finally:
-        # Enforce environmental cleanup and dismantle temporary operational files
-        if csv_path:
-            wind_up(csv_path)
-            logger.info("Temporary workspace closed and unlinked safely.")
 
 def dealership_update_status(
     dealership_id: str,
@@ -1590,7 +1444,6 @@ def gryd_task_import_leads_from_csv(
             - workshop_id
             - lead_tags
             - campaign_objective_id
-            - next_schedule_time
             - etc.
     Yields:
         - {"_error": ...} for errors
@@ -1624,14 +1477,9 @@ def gryd_task_import_leads_from_csv(
         campaign = validate_campaign_or_campaign_objective_id(campaign_id, audience_name, campaign_objective_id, models, campaign_type, logger = logger)
         campaign_id = campaign.get('campaign_id')
         campaign_objective_id = campaign.get('campaign_objective_id')
-        num_lines = 0
         total = 0
         error = 0
         processed = 0
-        with open(csv_path, encoding="utf-8-sig") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                num_lines += 1
         with open(csv_path, encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             headers = reader.fieldnames
@@ -1673,21 +1521,20 @@ def gryd_task_import_leads_from_csv(
                         else:
                             logger.info(f"Finished posted lead row: {row}")
                             processed += 1
-                    percent = int((100.0 * total) / num_lines)
-                    yield {"_status": f"{total}({percent}%) rows processed"}
+                    percent = int(100.0 * total / (reader.line_num or (total + error)))
+                    yield {"_status": f"{percent}% completed"}
                     if error > MAX_AUDIENCE_ERRORS:
                         # too many errors, stop the task
                         logger.error(f"Too many errors, stopping the task")
                         yield {"_result": f"Too many errors, stopping the task"}
                         break
-            yield {"_status": f"{total}(100%) rows processed"}
+            yield {"_status": "100% completed"}
             # Write error CSV
-            unique_rows = models['lead_model'].count(**{f"campaign_id": campaign_id})
             if error > 0:
                 url = func_gryd_file_system(error_csv_path, logger = logger)
-                yield {"_result":  {'error_csv_url': url, 'total': total, 'error': error, 'processed': processed, 'unique': unique_rows}}
+                yield {"_result":  {'error_csv_url': url, 'total': total, 'error': error, 'processed': processed}}
             else:
-                yield {"_result": {'total': total, 'error': error, 'processed': processed, 'unique': unique_rows}}
+                yield {"_result": {'total': total, 'error': error, 'processed': processed}}
     except Exception as e:
         raise ValueError(f"Failed to create temporary files: {str(e)}") from e
     finally:
@@ -2691,14 +2538,17 @@ class VATCalculator:
 
 if __name__ == "__main__":
 
+    #gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-south-india", "https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/document/485b7cbc-55d5-44d2-b5b9-0e6d6e405f4c-692977e5_afinallead.csv", campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943", workshop_id = 12)    
     #gryd_task_import_leads_from_csv.execute("pre-sales", "dave-ai-india", "/Users/ggananth/Downloads/Stellantis_sample.csv", campaign_id = "b14c86d0-1434-3119-9d1e-2e0257da00f3", showroom_id = 'dave-ai-india')    
-    for out in gryd_task_import_leads_from_csv(
-            "pre-sales", 
-            "dave-ai-india", 
-            "/Users/ggananth/Downloads/Aircross_RT_Set_1.csv", 
-            campaign_id = "ff7fb7b2-a158-3a95-b0ef-214040222c03",
-        ):    
-        print(hp.json.dumps(out, hp.json.OPT_INDENT_2))
+    #for out in gryd_task_import_leads_from_csv(
+    #        "pre-sales", 
+    #        "sales-dealership1-india", 
+    #        "/Users/ggananth/Downloads/stellantis.csv", 
+    #        #campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
+    #        audience_name = "Stellantis - test data",
+    #        campaign_objective_id = "pre-sales-test-drive-booking"
+    #    ):    
+    #    print(hp.json.dumps(out, hp.json.OPT_INDENT_2))
     # gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-india", "/Users/ggananth/Downloads/ambal_sample.csv", campaign_objective_id = "post-sales-service-overdue", audience_name = "Ambal Sample", mapping = {
     #         "region_name": "region_name",
     #         "vin_number": "vin_number",
@@ -2712,7 +2562,7 @@ if __name__ == "__main__":
     #     })
 
     # translate_objective("pre-sales-aircross--confirm-test-drive-for-value-advantage--whatsapp","hindi","voice_phone","female", True)
-    #for i in translate_objective_multiple("pre-sales-test-drive-booking",target_languages=["telugu","marathi"],target_channels=["whatsapp_chat","voice_phone"],genders=["male"],force_update = True):
-    #    logger.info(i)
+    for i in translate_objective_multiple("pre-sales-test-drive-booking",target_languages=["telugu","marathi"],target_channels=["whatsapp_chat","voice_phone"],genders=["male"],force_update = True):
+        logger.info(i)
 
     # translate_objective_all("pre-sales-aircross--confirm-test-drive-for-value-advantage--whatsapp")
