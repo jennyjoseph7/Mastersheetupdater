@@ -13,7 +13,7 @@ from config import AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME,AUTOCRM_APP_
 logger = hp.get_logger(__name__)
 gryd.SERVICE = AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME
 gryd.set_queue_manager(config={"broker_type": "sqs", "timeout": 5})
-
+__version__="0.0.1"
 
 model_wrapper = ModelWrapper(
     model_name="chunk_saver",
