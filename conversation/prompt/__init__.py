@@ -30,13 +30,13 @@ def execute_orchestrator(*args, **kwargs):
     pass
 
 
-def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], **kwargs):
+def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], temperature=0.1, **kwargs):
     request_data = kwargs.get("request_data",{})
     resp = ""
     if messages:
-        resp = ai_service_app.get_llm_response(messages=messages,audit_params={"session_id":request_data.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{ }).get("model_identifier","gcp-gemini-3.1-flash-lite-preview")})
+        resp = ai_service_app.get_llm_response(messages=messages,audit_params={"session_id":request_data.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{ }).get("model_identifier","gcp-gemini-3.1-flash-lite-preview"), "temperature": temperature})
     else:
-        resp = ai_service_app.get_llm_response(user_query=user_query,system_prompt=system_prompt,history=history,audit_params={"session_id":kwargs.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{}).get("model_identifier","gcp-gemini-3.1-flash-lite-preview")})
+        resp = ai_service_app.get_llm_response(user_query=user_query,system_prompt=system_prompt,history=history,audit_params={"session_id":kwargs.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{}).get("model_identifier","gcp-gemini-3.1-flash-lite-preview"), "temperature": temperature})
     
     ###TODO write valid json detector and retry if not valid
     return resp
