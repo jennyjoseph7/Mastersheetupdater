@@ -29,4 +29,4 @@ pillow==11.1.0
 plotly==6.5.2
 # streamlit_chat
 chardet==5.2.0
-docling==2.66.0
+PyMuPDF==1.27.2.3
