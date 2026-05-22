@@ -105,17 +105,17 @@ def get_purpose_and_steps(*args, **kwargs):
         if campaign_data.get("purpose_steps"):
             flow = campaign_data.get("purpose")
             steps = ', \n'.join(campaign_data.get("purpose_steps"))
-            # return "The overall purpose of your conversation with the user is to help the customer {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}.Here are the steps you should go through to complete the purpose {flow}  :- \n{steps}\n\nRun through the flow one time. and in the sequence specified. Once complete continue assist the user with other questions.\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow and has not completed the purpose yet, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}".format(flow=flow,steps=steps,date_time_ref=date_time_ref,offer=offer,flow=flow,urgency_hooks=urgency_hooks)
+            # return "The overall purpose of your conversation with the user is to help the customer {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}.Here are the steps you should go through to complete the purpose {flow}  :- \n{steps}\n\nRun through the flow one time. and in the sequence specified. Once complete continue assist the user with other questions.\n You should help answer any and all questions that the customer asks about vehicles that are related to the dealer. If the user is not already in the middle of the purpose flow and has not completed the purpose yet, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}".format(flow=flow,steps=steps,date_time_ref=date_time_ref,offer=offer,flow=flow,urgency_hooks=urgency_hooks)
             return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["purpose_and_steps"]["custom_purpose"].format(flow=flow,steps=steps,date_time_ref=date_time_ref,offer=offer,urgency_hooks=urgency_hooks)
     if flow == "service":
-        steps = ["- Full Name \n- Car Model \n- Date & Time \n- Service Type"]
+        steps = ["- Full Name \n- Vehicle Model \n- Date & Time \n- Service Type"]
     else:
         steps = ["- Full Name \n- Interested Model\n- Date & Time "]
     if campaign_type == "inbound":
         return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["purpose_and_steps"]["inbound"].format(date_time_ref=date_time_ref)
-        # return f"Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy.{date_time_ref}"
+        # return f"Your overall purpose is to help the customer with the information about vehicles that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a vehicle they like or require, their budget if applicable. Do not be pushy.{date_time_ref}"
     return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["purpose_and_steps"]["purpose_else"].format(flow=flow,steps=steps,date_time_ref=date_time_ref,offer=offer,urgency_hooks=urgency_hooks)
-    # return f"The overall purpose of your conversation with the user is to help the customer book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
+    # return f"The overall purpose of your conversation with the user is to help the customer book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about vehicles that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
 def get_cta_options(*args, **kwargs):
     ctas = kwargs.get("campaign_data").get("ctas")
     if not ctas:
@@ -144,14 +144,6 @@ def get_cta_options(*args, **kwargs):
 
 def get_example_states_and_solutions(*args, **kwargs):
     cta_options = get_cta_options(*args, **kwargs)
-    # examples = [
-    #     "- If the customer shows displeasure in the dealer or their services or cars, be polite and if they are reasonable, you should ask them for why they feel the way they do. if they provide the details of the complaint, you can then try and urge them to go ahead with your purpose if the arent already in the purpose flow.",
-    #     "\n- If a purpose flow is completed, you should provide a confirmation message to the user with the details of the booking.",
-    #     "\n- After the purpose is completed already in this conversation, do not urge them again.",
-    #     "\n- If you have the name of the user in the 'Who is the customer section', you should always use it and do not ask them for their name again.",
-    #     "\n- If the customer provides you a date and time you should always check against the current date time and validate. also you should always provide the DD-MM-YYYY format for the date you want to mention. Do not say today or tomorrow or other such references to date.",
-    #     "\n- If the customer requests a callback or requests to speak with a human or a phone call in any way, you should say - 'Someone will be with you soon'.",
-    # ]
     examples = language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["example_states_and_solutions"]["default"]
     if cta_options:
         examples.extend(cta_options)
@@ -208,7 +200,7 @@ def prune_user_data(user_data, channel):
             n_text = "{} {}".format(n_text,t)
         return n_text
     rephraser = ["reg_number", "vin_number","workshop_pincode","showroom_pincode","pincode","phone_number","existing_odometer_reading"]
-    popable = ["campaign_guardrails_guidelines","conversation_tone","created","updated","region_id","vehicle_id","campaign_id","workshop_id","phone_number","audience_name","campaign_name","campaign_type","dealership_id","purchase_date","persons_involved","campaign_sub_type","custom_attributes","alt_phone_number_2","alt_phone_number_3","alt_phone_number_4","alt_phone_number_4","post_sales_lead_id","campaign_objective_id","supported_brand_names","loyalty_contact_number","campaign_objective_name","campaign_objective_type","region_level_guardrails","region_level_guidelines","supported_brands_guidelines","reasons_users_may_not_be_interested"]
+    popable = ["reasons_for_non_applicability","search_term","campaign_offer","supported_brands","pre_sales_lead_id","campaign_description","campaign_custom_attributes","why_user_should_avail_this","other_important_information","reasons_for_non_applicability","campaign_objective_description","campaign_guardrails_guidelines","conversation_tone","created","updated","region_id","vehicle_id","campaign_id","workshop_id","phone_number","audience_name","campaign_name","campaign_type","dealership_id","purchase_date","persons_involved","campaign_sub_type","custom_attributes","alt_phone_number_2","alt_phone_number_3","alt_phone_number_4","alt_phone_number_4","post_sales_lead_id","campaign_objective_id","supported_brand_names","loyalty_contact_number","campaign_objective_name","campaign_objective_type","region_level_guardrails","region_level_guidelines","supported_brands_guidelines","reasons_users_may_not_be_interested"]
     for p in popable:
         user_data.pop(p, None)
     if channel in ["voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
@@ -280,7 +272,7 @@ def setup_primary_prompt(*args, **kwargs):
     campaign_name = campaign_data.get("campaign_name")
     campaign_objective = campaign_data.get("campaign_objective")
     dealer_name = campaign_data.get("workshop_name",campaign_data.get("dealer_name"))
-    dealer_description = "{dealer_name} is a dealer who sells cars from their showrooms".format(dealer_name=dealer_name) if campaign_type == "pre-sales" else "{dealer_name} has a service center.".format(dealer_name=dealer_name)
+    dealer_description = "{dealer_name} is a dealer who sells vehicles from their showrooms".format(dealer_name=dealer_name) if campaign_type == "pre-sales" else "{dealer_name} has a service center.".format(dealer_name=dealer_name)
     shop_id = campaign_data.get("workshop_id")
     showroom_workshop_desc = ""
     kwargs["language"] = session_data_cache_data.get("preferred_language","english")
@@ -407,7 +399,7 @@ def setup_primary_prompt(*args, **kwargs):
         primary_prompt = f"""
         Who you are -
         You are a ai sales assistant for AutoNgage.
-        Your customers are representatives of car dealerships.
+        Your customers are representatives of vehicle dealerships.
 
         You can answer basic questions about AutoNgage the product. 
         

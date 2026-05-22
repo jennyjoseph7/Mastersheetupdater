@@ -370,10 +370,12 @@ def manage_active_sessions(*args, **kwargs):
             if last_response_epoch:
                 inactive_cutoff_epoch = last_response_epoch + INACTIVITY_TIMEOUT_SECONDS 
             
+            
             last_ts = None
             existing_history = session.get("history", []) or []
             # checking and updating history only when the last_response_time is newer than the last updated history_time...
-            if (last_response_epoch and ( last_history_epoch is None or last_response_epoch > last_history_epoch)):
+            # if (last_response_epoch and ( last_history_epoch is None or last_response_epoch > last_history_epoch)):
+            if (last_history_epoch is None or (last_response_epoch and last_response_epoch > last_history_epoch )):
                 mlogger.info(f"Just updating history for session {session_id}")
                 history_rows = list(
                     # pg.list_order_by("message", {"session_id": session_id},order_by="created",order="ASC")
@@ -427,7 +429,8 @@ def manage_active_sessions(*args, **kwargs):
                     )
 
             # we are calling post_process only when there is a new response (new data to process) or if it's been more than POST_PROCESS_INTERVAL_SECONDS seconds since last post_process_time.
-            can_call_post_process = (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS)
+            # can_call_post_process = (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS)
+            can_call_post_process = (last_response_epoch and (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS))
             mlogger.info("can_call_post_process : {} and has history_updated : {}".format(can_call_post_process, has_unprocessed_history))
             if can_call_post_process and has_unprocessed_history:
                 handle_session_post_process_or_end(
@@ -1425,6 +1428,60 @@ def rml_auth_login(user_name, password, max_retries=10, backoff=2):
 
 @gryd.is_a_task(function_name="reset_auth_creds")
 def reset_auth_creds(*args, **kwargs):
+    """
+    Refresh and reset authentication credentials for communication providers.
+
+    This function retrieves communication credential records using the
+    provided filters, authenticates with supported providers, and updates
+    authorization headers with newly generated authentication tokens.
+
+    Currently, only the RML provider is supported.
+
+    Args:
+        *args:
+            Unused positional arguments.
+
+        **kwargs:
+            Optional filters used to fetch communication credentials.
+            Any keyword argument with a non-None value is included in
+            the database query.
+
+            Example:
+                provider_name="Rml"
+                sender="9876543210"
+
+    Workflow:
+        1. Build query filters from kwargs.
+        2. Fetch matching communication credentials.
+        3. Validate presence of authentication credentials.
+        4. Authenticate against supported providers.
+        5. Extract authentication token from response.
+        6. Update auth headers in database.
+        7. Log successes, unsupported providers, and failures.
+
+    Supported Providers:
+        - RML / rml
+
+    Returns:
+        str:
+            "Completed!" after processing all matching credentials.
+
+    Notes:
+        - Credentials without `auth_creds` are skipped.
+        - Unsupported providers are logged and ignored.
+        - Errors during authentication are caught and logged so
+          processing continues for remaining records.
+        - Existing auth headers are preserved and merged with
+          refreshed authorization values.
+
+    Example:
+        reset_auth_creds(provider_name="Rml")
+
+        reset_auth_creds(
+            sender="9876543210",
+            provider_name="Rml"
+        )
+    """
     filters = {k: v for k, v in kwargs.items() if v is not None}
     mlogger.info(f"Filters for resetting auth creds: {filters}")
     mlogger.info("Resetting Auth credentials...")
@@ -1539,6 +1596,45 @@ def get_all_dealerships(pg, channel_filter=None):
 
 @gryd.is_a_task(function_name="mark_inactive_dealerships")
 def mark_inactive_dealerships(*args,**kwargs):
+    """
+    Mark dealerships as inactive if they have not had any contact activity
+    within the specified inactivity period.
+
+    This function retrieves the latest contact timestamp for each dealership
+    from the `contact_status` table and compares it against an inactivity
+    threshold. Any dealership whose most recent contact is older than the
+    configured number of inactive days (or has no contact history at all)
+    is marked with `dealer_status = 'inactive'`.
+
+    Args:
+        *args:
+            Unused positional arguments.
+
+        **kwargs:
+            inactive_days (int, optional):
+                Number of days of inactivity before a dealership is marked
+                inactive. Defaults to 14 days.
+
+    Workflow:
+        1. Calculate inactivity threshold timestamp.
+        2. Fetch latest contact timestamp per dealership.
+        3. Identify dealerships:
+            - not already inactive
+            - with no contact history OR
+            - whose latest contact is older than the threshold
+        4. Update dealership status to "inactive".
+        5. Log dealership details and summary count.
+
+    Returns:
+        dict:
+            {
+                "count": int,
+                    Number of dealerships marked inactive.
+
+                "dealership_ids": list[str],
+                    List of dealership IDs updated.
+            }
+    """
     with get_pg_connector() as pg:
         INACTIVE_DAYS=kwargs.get("inactive_days",14)
         inactivity_days=time.time()-(INACTIVE_DAYS * 24 * 60 * 60)
@@ -1561,29 +1657,39 @@ def mark_inactive_dealerships(*args,**kwargs):
         LEFT JOIN latest_contact lc
             ON d.dict->>'dealership_id' = lc.dealership_id
         WHERE
-            lc.created IS NULL
-            OR lc.created < {inactivity_days}
+            COALESCE(d.dict->>'dealer_status','') != 'inactive'
+            AND (
+                lc.created IS NULL
+                OR lc.created < {inactivity_days}
+            )
         """
 
         result = pg.fetch_all(query)
         dealership_ids = [row[0] for row in result]
 
-        mlogger.info(
-            f"Inactive dealership count: {len(result)}"
-        )
+        mlogger.info(f"Inactive dealership count: {len(result)} for inactive days = {INACTIVE_DAYS} days")
 
         for dealership_id, created in result:
-            mlogger.info(
-                f"Dealership={dealership_id}, last_contact={created}"
-            )
+            mlogger.info(f"Dealership={dealership_id}, last_contact={created}")
             
-            # pg.update("dealership", "dealership_id", dealership_id, {"dealer_status": "inactive"})
+            pg.update("dealership", "dealership_id", dealership_id, {"dealer_status": "inactive"})
             
         return {
             "count": len(result),
             "dealership_ids": dealership_ids
         }
+
 def process_lead(pg,lead, channel):
+    """
+    Process a lead for a given communication channel and schedule an
+    asynchronous task for lead handling.
+
+    This function extracts lead information, determines the corresponding
+    lead model based on campaign type, resolves the channel identifier,
+    and triggers the `process_single_lead` async task. After scheduling
+    the task, it clears the lead's next scheduled processing fields to
+    avoid duplicate execution.
+    """
     # mlogger.info(f"[PROCESS] Processing lead for channel {lead}")
     lead_id=None
     try:
@@ -1695,7 +1801,15 @@ def test_campaign_workflow(*args, **kwargs):
     }
 
 @gryd.is_a_task(function_name="process_all_dealerships_for_voice")    
-def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,voice_start_time=None,voice_end_time=None):    
+def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,voice_start_time=None,voice_end_time=None):  
+    
+    """
+    First get all the dealerships with the channel filter voice_phone and dealer_status is active.
+    for each dealerships and channels we are checking the queue_length and if the queue_lengh is less than the max_thresold 
+    then we fetch all the leads for that dealership where we have the next_channel and next_schedule_time < = now time and 
+    then process each lead by calling process_single_lead function.
+    """
+    
     mlogger.info("-------Process all dealerships for voice phone and trigger campaign next action-------")
     
     max_threshold= voice_max_queue_size or VOICE_MAX_QUEUE_LENGTH
@@ -1739,6 +1853,14 @@ def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,vo
                 
 @gryd.is_a_task(function_name="process_dealerships_non_voice")
 def process_dealerships_non_voice(batch_size=None,non_voice_max_queue_size=None,non_voice_start_time=None,non_voice_end_time=None):
+    
+    """
+    First get all the dealerships with the channel filter non voice_phone(whatsapp_chat,email,rcs etc..) and dealer_status is active.
+    for each dealerships and channels we are checking the queue_length and if the queue_lengh is less than the max_thresold 
+    then we fetch all the leads for that dealership where we have the next_channel and next_schedule_time < = now time and 
+    then process each lead by calling process_single_lead function.
+    """
+    
     mlogger.info("-------Process all dealerships for non voice channels and trigger campaign next action-------")
 
     max_threshold= non_voice_max_queue_size or NON_VOICE_MAX_QUEUE_LENGTH
