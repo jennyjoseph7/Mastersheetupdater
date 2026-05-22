@@ -327,7 +327,8 @@ class BaseCampaignCreater:
                     "message_template_type": campaign_details.get("message_template_type"),
                     "channel_provider":provider_name,
                     "channel":patch_user_data.get("channel") or channel,
-                    "template_message":campaign_details.get("template_message")
+                    "template_message":campaign_details.get("template_message"),
+                    "skip_workflow": campaign_details.get("skip_workflow", False)
                 }
             
             logger.info(f"Calling post_contact_status with data from campaign: {data}")
@@ -431,7 +432,7 @@ class BaseCustomCampaignManager:
                 logger.info("Checking and creating a session for channel: {channel} and user: {mobile_number}")
                 campaign_d={**campaign_data,**user}
                 session_data=handle_session_logic(mobile_number,None,channel.lower(),False,campaign_d)
-                logger.info(f"Session logic result in campaign : {json.dumps(session_data,indent=4)}")
+                # logger.info(f"Session logic result in campaign : {json.dumps(session_data,indent=4)}")
                 if not session_data:
                     logger.error(f"Failed to create session for channel: {channel} and user: {mobile_number}")
                     continue
@@ -978,7 +979,9 @@ def manual_register_and_trigger_lead(name, phone_number, email=None, *args, **kw
             args=[channel[0], lead, campaign_type, campaign_id],
             kwargs={
                 "templateID": kwargs.get("template_id",None),
-                "image_url":kwargs.get("url",None)
+                "image_url":kwargs.get("url",None),
+                "custom_template_variables": kwargs.get("custom_template_variables", None),
+                "skip_workflow": kwargs.get("skip_workflow", False)
             }
         )
         
@@ -1079,7 +1082,7 @@ def check_and_create_lead_object(**kwargs):
         
  
 @gryd.is_a_task(function_name="process_single_lead")
-def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=None, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None,image_url=None):
+def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=None, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None,image_url=None, custom_template_variables=None,skip_workflow=False):
     
     """
     Process a single lead and send campaign messages for each user.
@@ -1295,7 +1298,11 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     customer_name = "Dear NADA Visitor" if campaign_id == "4c99d5ea-4441-3ce6-841f-de5d7585b3b7" and lead_data.get("person_name") is None else lead_data.get("person_name")
     lead_data['person_name']=customer_name
     logger.info(f"Customer Name: {customer_name}")
-    variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data) if template_data else {}
+    if custom_template_variables:
+        logger.info(f"Custom Template Variables: {custom_template_variables} being sent in the params.So using it.")
+        variable_mapping = get_variable_values(template_data.get("template_variables", []), custom_template_variables) if template_data else {}
+    else:
+        variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data) if template_data else {}
     logger.info(f"Variable Mapping: {variable_mapping}")
     campaign_user = {
         "lead_id": lead_id,
@@ -1313,7 +1320,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     template_message = None
 
     if template_data:
-        template_vars = template_data.get("template_variables", [])
+        template_vars = custom_template_variables if custom_template_variables else template_data.get("template_variables", [])
         render_data = {v: variable_mapping.get(v, "") for v in template_vars}
         template_data["media_url"]= image_url or None
         
@@ -1335,7 +1342,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
             "buttons": buttons
         }
         return    
-    logger.info(f"TEMPLATE DATA in : {json.dumps(template_data, indent=4)}")
+    # logger.info(f"TEMPLATE DATA in : {json.dumps(template_data, indent=4)}")
+    
     final_payload = {
         **(template_data or {}),
         **campaign_details,
@@ -1346,6 +1354,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         "sender": sender_name or (template_data.get("sender") if template_data else None),
         "provider_name": provider_name or (template_data.get("provider_name").lower() if template_data else None),
         "template_message": template_message,
+        "skip_workflow": skip_workflow ,
         "campaign_user_source": {
             "source_type": "default",
             "campaign_users": [campaign_user],
@@ -1368,7 +1377,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     }
     run_async = campaign_details.get("run_async", False)
     is_testing = campaign_details.get("_is_testing", False)
-    logger.info(f"Final payload prepared for campaign_id={campaign_id} and lead_id={lead_id}: {json.dumps(final_payload, indent=4)}")
+    # logger.info(f"Final payload prepared for campaign_id={campaign_id} and lead_id={lead_id}: {json.dumps(final_payload, indent=4)}")
     if not run_async:
         logger.info("Running campaign in SYNC mode")
         BaseCustomCampaignManager().run_custom_campaign(
