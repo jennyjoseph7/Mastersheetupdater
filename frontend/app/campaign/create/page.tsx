@@ -1,16 +1,10 @@
 "use client";
 
 import { useState, useEffect, Suspense, useMemo, useRef } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter, useSearchParams ,usePathname} from "next/navigation";
 
 // Imports
-import {
-  fetchAudienceTasks,
-  getDealershipId,
-  executeTaskWithPolling,
-  cloneLeadsTask,
-  assignAudienceTask,
-} from "@/utils/api";
+import { fetchAudienceTasks ,getDealershipId,executeTaskWithPolling,cloneLeadsTask,assignAudienceTask} from "@/utils/api";
 import { api, dealershipUpdateDetails } from "@/lib/api";
 
 import {
@@ -90,7 +84,13 @@ import { AILoader } from "@/components/ui/ai-loader";
 import { Separator } from "@/components/ui/separator";
 
 // --- HELPERS & CONSTANTS ---
-const STELLANTIS_AGENT_MAP: Record<string, string> = {};
+const STELLANTIS_AGENT_MAP: Record<string, string> = {
+  en: "agent_1301kkm22wztfbyac2w5fxtbbmtz",
+  hi: "agent_1701kkm201ywftfbykgntjc0yb8n",
+  ta: "agent_8601kkm1zjtfeabs38fwjdt0dg5q",
+  ml: "agent_2801kkm1z1gyfrhs15v3k0k2rv13",
+
+};
 const getObjectiveIcon = (objectiveId: string, title: string) => {
   const id = objectiveId?.toLowerCase() || "";
   const titleLower = title?.toLowerCase() || "";
@@ -241,94 +241,87 @@ function CampaignCreateContent() {
   const [voiceStartLanguage, setVoiceStartLanguage] = useState("en");
   const [voiceAgentId, setVoiceAgentId] = useState("");
   const pathname = usePathname();
-  const [totalNumber, setTotalNumber] = useState(0);
-  const [isLastPage, setIsLastPage] = useState(false);
+const [totalNumber, setTotalNumber] = useState(0);
+const [isLastPage, setIsLastPage] = useState(false);
+ 
+const [activeTab, setActiveTab] = useState("generic"); // Default to Generic
+const [genericObjectives, setGenericObjectives] = useState<any[]>([]);
+const [customObjectives, setCustomObjectives] = useState<any[]>([]);
+const [previousObjectives, setPreviousObjectives] = useState<any[]>([]);
 
-  const [activeTab, setActiveTab] = useState("generic"); // Default to Generic
-  const [genericObjectives, setGenericObjectives] = useState<any[]>([]);
-  const [customObjectives, setCustomObjectives] = useState<any[]>([]);
-  const [previousObjectives, setPreviousObjectives] = useState<any[]>([]);
 
-  const prefillFromExistingCampaign = (data: any) => {
-    // 1. Format today's date (DD-MM-YYYY)
-    const today = new Date();
-    const dateSuffix = today
-      .toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-      .replace(/\//g, "-");
 
-    // 2. Basic Details - Appending the date
-    const baseName = data.campaign_name || "PreviousUsed";
-    const basetitle =
-      data.campaign_tagline || data.campaign_title || "Previous Campaign";
-    setCampaignName(`${baseName} - ${dateSuffix}`);
+const prefillFromExistingCampaign = (data: any) => {
+  // 1. Format today's date (DD-MM-YYYY)
+  const today = new Date();
+  const dateSuffix = today.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).replace(/\//g, '-');
 
-    setCampaignDescription(data.campaign_description || "");
-    setCampaignTitle(
-      data.campaign_tagline ||
-        data.campaign_title ||
-        `${basetitle} - ${dateSuffix}`,
-    );
-    setTone(data.campaign_tone || "");
-    setUrgencyHook(data.urgency_hook || "");
+  // 2. Basic Details - Appending the date
+  const baseName = data.campaign_name || "PreviousUsed";
+  const basetitle = data.campaign_tagline || data.campaign_title || "Previous Campaign";
+  setCampaignName(`${baseName} - ${dateSuffix}`);
+  
+  setCampaignDescription(data.campaign_description || "");
+  setCampaignTitle(data.campaign_tagline || data.campaign_title || `${basetitle} - ${dateSuffix}`);
+  setTone(data.campaign_tone || "");
+  setUrgencyHook(data.urgency_hook || "");
+  
+  // 3. CTAs and Languages
+  if (data.ctas && data.ctas.length > 0) setCallToAction(data.ctas[0]);
+  
+  if (data.languages && data.languages.length > 0) {
+    const langLabel = data.languages[0].toLowerCase();
+    const langEntry = languageOptions.find(l => l.label.toLowerCase() === langLabel);
+    setLanguage(langEntry ? langEntry.value : "en");
+  }
 
-    // 3. CTAs and Languages
-    if (data.ctas && data.ctas.length > 0) setCallToAction(data.ctas[0]);
-
-    if (data.languages && data.languages.length > 0) {
-      const langLabel = data.languages[0].toLowerCase();
-      const langEntry = languageOptions.find(
-        (l) => l.label.toLowerCase() === langLabel,
-      );
-      setLanguage(langEntry ? langEntry.value : "en");
-    }
-
-    // 4. Channels Mapping
-    if (data.channels) {
-      const channelMap: Record<string, string> = {
-        whatsapp_chat: "whatsapp",
-        email: "email",
-        voice_phone: "voice",
-        rcs_message: "rcs",
-        sms_message: "sms",
-      };
-      setSelectedChannels(data.channels.map((c: string) => channelMap[c] || c));
-    }
-
-    // 5. Voice Config
-    if (data.voice_start_language)
-      setVoiceStartLanguage(data.voice_start_language);
-    if (data.voice_agent_id) setVoiceAgentId(data.voice_agent_id);
-
-    // 6. Reset Dates to "Starting Today"
-    const nextWeek = new Date(today);
-    nextWeek.setDate(today.getDate() + 7);
-    const formatDate = (d: Date) => {
-      const offset = d.getTimezoneOffset();
-      const local = new Date(d.getTime() - offset * 60 * 1000);
-      return local.toISOString().split("T")[0];
+  // 4. Channels Mapping
+  if (data.channels) {
+    const channelMap: Record<string, string> = {
+      whatsapp_chat: "whatsapp",
+      email: "email",
+      voice_phone: "voice",
+      rcs_message: "rcs",
+      sms_message: "sms",
     };
+    setSelectedChannels(data.channels.map((c: string) => channelMap[c] || c));
+  }
 
-    setDuration({
-      start: formatDate(today),
-      end: formatDate(nextWeek),
-    });
+  // 5. Voice Config
+  if (data.voice_start_language) setVoiceStartLanguage(data.voice_start_language);
+  if (data.voice_agent_id) setVoiceAgentId(data.voice_agent_id);
 
-    // Trigger Section Visibility
-    setCampaignData({
-      isExisting: true,
-      campaignOffer: data.campaign_offer || data.campaign_description,
-    });
+  // 6. Reset Dates to "Starting Today"
+  const nextWeek = new Date(today);
+  nextWeek.setDate(today.getDate() + 7);
+  const formatDate = (d: Date) => {
+    const offset = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - offset * 60 * 1000);
+    return local.toISOString().split("T")[0];
   };
 
-  // Pagination & Search
-  const currentPage = Number(searchParams.get("page")) || 1;
-  const searchQuery = searchParams.get("q") || "";
-  // Auto-fill voice agent ID for stellantis-india
+  setDuration({ 
+    start: formatDate(today), 
+    end: formatDate(nextWeek) 
+  });
 
+  // Trigger Section Visibility
+  setCampaignData({ 
+    isExisting: true,
+    campaignOffer: data.campaign_offer || data.campaign_description 
+  });
+};
+
+
+// Pagination & Search
+const currentPage = Number(searchParams.get("page")) || 1;
+const searchQuery = searchParams.get("q") || "";
+// Auto-fill voice agent ID for stellantis-india
+ 
   // Redirect if dealership setup is not complete
   useEffect(() => {
     if (isDealershipSetupComplete === false) {
@@ -349,8 +342,7 @@ function CampaignCreateContent() {
                     Profile Verification Required
                   </p>
                   <p className="text-sm text-amber-800 dark:text-amber-200">
-                    To run a campaign, please verify and complete your
-                    dealership profile.
+                    To run a campaign, please verify and complete your dealership profile.
                   </p>
                 </div>
                 <Button
@@ -370,10 +362,10 @@ function CampaignCreateContent() {
 
   // Steps & Data
   const [creationStep, setCreationStep] = useState<"details" | "audience">(
-    "details",
+    "details"
   );
   const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(
-    null,
+    null
   );
   const [campaignType, setCampaignType] = useState<
     "presales" | "postsales" | ""
@@ -390,9 +382,9 @@ function CampaignCreateContent() {
 
   const detailsRef = useRef<HTMLDivElement | null>(null);
 
-  // Campaign Details
+// Campaign Details
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationStatusMsg, setGenerationStatusMsg] = useState("");
+  const [generationStatusMsg, setGenerationStatusMsg] = useState(""); 
   const [isPostingCampaign, setIsPostingCampaign] = useState(false);
 
   const [campaignData, setCampaignData] = useState<any>(null);
@@ -408,12 +400,13 @@ function CampaignCreateContent() {
 
   // Audience Data
   const [targetAudience, setTargetAudience] = useState<string[]>([]);
-  const [selectedAudienceDetails, setSelectedAudienceDetails] =
-    useState<any>(null);
+  const [selectedAudienceDetails, setSelectedAudienceDetails] = useState<any>(
+    null
+  ); 
   const [audienceTasks, setAudienceTasks] = useState<any[]>([]);
   const [isLoadingAudience, setIsLoadingAudience] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-  // const [audienceSourceType, setAudienceSourceType] = useState<"upload" | "previous" | "fresh" | null>(null);
+// const [audienceSourceType, setAudienceSourceType] = useState<"upload" | "previous" | "fresh" | null>(null);
 
   // Filter fetched audiences based on presence of campaign_id
   // const usedAudiences = audienceTasks.filter((t) => !!t.campaign_id);
@@ -434,7 +427,7 @@ function CampaignCreateContent() {
   const [isLaunchSuccessOpen, setIsLaunchSuccessOpen] = useState(false);
   const [launchStatus, setLaunchStatus] = useState("");
   const [isLaunchError, setIsLaunchError] = useState(false);
-  const [launchStep, setLaunchStep] = useState(0);
+const [launchStep, setLaunchStep] = useState(0);
   // --- Computed State for Scheduling ---
   const isScheduledCampaign = useMemo(() => {
     if (!duration.start) return false;
@@ -447,12 +440,9 @@ function CampaignCreateContent() {
   }, [duration.start]);
 
   // --- Initialization ---
-  useEffect(() => {
+ useEffect(() => {
     const dealershipId = getDealershipId();
-    if (
-      dealershipId === "stellantis-india" &&
-      selectedChannels.includes("voice")
-    ) {
+    if (dealershipId === "stellantis-india" && selectedChannels.includes("voice")) {
       setVoiceAgentId(STELLANTIS_AGENT_MAP[voiceStartLanguage] || "");
     }
   }, [voiceStartLanguage, selectedChannels]);
@@ -478,43 +468,39 @@ function CampaignCreateContent() {
     setSelectedAudienceDetails(null);
   }, [campaignType]);
 
-  // 1. Keep your state
-  const [audienceSourceType, setAudienceSourceType] = useState<
-    "upload" | "previous" | "fresh" | null
-  >(null);
+// 1. Keep your state
+  const [audienceSourceType, setAudienceSourceType] = useState<"upload" | "previous" | "fresh" | null>(null);
 
-  // 2. Remove the client-side `usedAudiences` and `freshAudiences` filter variables.
+  // 2. Remove the client-side `usedAudiences` and `freshAudiences` filter variables. 
   // We will just use `audienceTasks` directly since the server is filtering it now.
 
   // 3. Update loadAudienceData to accept and pass the filter type
-  const loadAudienceData = async (
-    currentPage = 1,
-    type = audienceSourceType,
-  ) => {
+  const loadAudienceData = async (currentPage = 1, type = audienceSourceType) => {
     // Don't fetch if they selected upload or haven't selected yet
-    if (!type || type === "upload") return;
+    if (!type || type === "upload") return; 
 
     setIsLoadingAudience(true);
-    const fetchcount = 10;
+    const fetchcount = 10; 
     try {
       // Pass the type down to the API
       const res: any = await fetchAudienceTasks(currentPage, fetchcount, type);
-
+      
       let items = [];
       let total = 0;
 
       if (res.items && Array.isArray(res.items)) {
-        items = res.items;
-        total = res.total || 0;
+         items = res.items;
+         total = res.total || 0; 
       } else if (res.data && Array.isArray(res.data)) {
-        items = res.data;
-        total = res.total || 0;
+         items = res.data;
+         total = res.total || 0;
       } else if (Array.isArray(res)) {
-        items = res;
+         items = res;
       }
-
+      
       setAudienceTasks(items);
       setTotalPages(Math.ceil(total / fetchcount));
+      
     } catch (e) {
       console.error("Failed to fetch audience", e);
     } finally {
@@ -529,136 +515,118 @@ function CampaignCreateContent() {
     }
   }, [creationStep, page, audienceSourceType]);
   // Fetch Objectives
-  const [displayObjectives, setDisplayObjectives] = useState<any[]>([]);
+const [displayObjectives, setDisplayObjectives] = useState<any[]>([]);
 
-  useEffect(() => {
-    const fetchObjectives = async () => {
-      if (!campaignType) return;
-
-      // Clear the list immediately to stop the "piling up" glitch
-      setIsLoadingObjectives(true);
-      setDisplayObjectives([]);
-
-      try {
-        const dealershipId = getDealershipId();
-        const typeParam =
-          campaignType === "presales" ? "pre-sales" : "post-sales";
-        // Ensure page_size is strictly 9 to keep the grid consistent
-        const apiParams = `&page_number=${currentPage}&page_size=9&sort_by=created&sort_reverse=true&search_term=~${searchQuery}`;
-
-        let endpoint = "";
-        if (activeTab === "generic") {
-          endpoint = `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}&dealership_id=null${apiParams}`;
-        } else if (activeTab === "custom") {
-          endpoint = `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}&dealership_id=${dealershipId}${apiParams}`;
-        } else if (activeTab === "previous") {
-          const model =
-            campaignType === "presales"
-              ? "pre_sales_campaign"
-              : "post_sales_campaign";
-          endpoint = `/gryd/db/objects/${model}?dealership_id=${dealershipId}${apiParams}`;
-        }
-
-        const res: any = await api(endpoint, "GET");
-        const rawData = res.data || [];
-
-        setTotalNumber(res.total_number || 0);
-        setIsLastPage(res.is_last);
-
-        const mapped = rawData.map((obj: any) => {
-          // IMPORTANT: For Previous Used, use the actual campaign ID as the unique identifier
-          // Campaigns have their own 'id' or 'campaign_id', objectives have 'campaign_objective_id'
-          const uniqueId =
-            obj.id || obj.campaign_id || obj.campaign_objective_id;
-          const objectiveId = obj.campaign_objective_id || uniqueId;
-          const title =
-            obj.campaign_name ||
-            obj.campaign_objective_name ||
-            obj.title ||
-            "Untitled";
-
-          return {
-            id: uniqueId,
-            objectiveId: objectiveId,
-            title: title,
-            campaignSubType: obj.campaign_sub_type || "other",
-            icon: getObjectiveIcon(
-              obj.campaign_objective_id || uniqueId,
-              title,
-            ),
-            fullData: obj,
-          };
-        });
-
-        if (activeTab === "custom" && currentPage === 1 && !searchQuery) {
-          mapped.unshift({
-            id: "custom",
-            objectiveId: "custom",
-            title: "Create New Objective",
-            campaignSubType: "Flexible",
-            icon: <Edit3 className="h-6 w-6" />,
-            fullData: null,
-          });
-        }
-
-        setDisplayObjectives(mapped);
-      } catch (e) {
-        console.error("Fetch failed", e);
-      } finally {
-        setIsLoadingObjectives(false);
+useEffect(() => {
+  const fetchObjectives = async () => {
+    if (!campaignType) return;
+    
+    // Clear the list immediately to stop the "piling up" glitch
+    setIsLoadingObjectives(true);
+    setDisplayObjectives([]); 
+    
+    try {
+      const dealershipId = getDealershipId();
+      const typeParam = campaignType === "presales" ? "pre-sales" : "post-sales";
+      // Ensure page_size is strictly 9 to keep the grid consistent
+      const apiParams = `&page_number=${currentPage}&page_size=9&sort_by=created&sort_reverse=true&search_term=~${searchQuery}`;
+      
+      let endpoint = "";
+      if (activeTab === "generic") {
+        endpoint = `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}&dealership_id=null${apiParams}`;
+      } else if (activeTab === "custom") {
+        endpoint = `/gryd/db/objects/campaign_objective?campaign_type=${typeParam}&dealership_id=${dealershipId}${apiParams}`;
+      } else if (activeTab === "previous") {
+        const model = campaignType === "presales" ? "pre_sales_campaign" : "post_sales_campaign";
+        endpoint = `/gryd/db/objects/${model}?dealership_id=${dealershipId}${apiParams}`;
       }
-    };
 
-    fetchObjectives();
-  }, [campaignType, activeTab, currentPage, searchQuery]);
+      const res: any = await api(endpoint, "GET");
+      const rawData = res.data || [];
+      
+      setTotalNumber(res.total_number || 0);
+      setIsLastPage(res.is_last);
+
+      const mapped = rawData.map((obj: any) => {
+        // IMPORTANT: For Previous Used, use the actual campaign ID as the unique identifier
+        // Campaigns have their own 'id' or 'campaign_id', objectives have 'campaign_objective_id'
+        const uniqueId = obj.id || obj.campaign_id || obj.campaign_objective_id;
+        const objectiveId = obj.campaign_objective_id || uniqueId;
+        const title = obj.campaign_name || obj.campaign_objective_name || obj.title || "Untitled";
+        
+        return {
+          id: uniqueId, 
+          objectiveId: objectiveId,
+          title: title,
+          campaignSubType: obj.campaign_sub_type || "other",
+          icon: getObjectiveIcon(obj.campaign_objective_id || uniqueId, title),
+          fullData: obj,
+        };
+      });
+
+      if (activeTab === "custom" && currentPage === 1 && !searchQuery) {
+        mapped.unshift({
+          id: "custom",
+          objectiveId: "custom",
+          title: "Create New Objective",
+          campaignSubType: "Flexible",
+          icon: <Edit3 className="h-6 w-6" />,
+          fullData: null,
+        });
+      }
+
+      setDisplayObjectives(mapped);
+    } catch (e) {
+      console.error("Fetch failed", e);
+    } finally {
+      setIsLoadingObjectives(false);
+    }
+  };
+
+  fetchObjectives();
+}, [campaignType, activeTab, currentPage, searchQuery]);
   // --- Logic ---
 
-  const handleGenerateCampaign = async () => {
-    setTimeout(() => {
-      window.scrollTo({
-        top: document.documentElement.scrollHeight,
-        behavior: "smooth",
-      });
-    }, 100);
-    setIsGenerating(true);
-
+const handleGenerateCampaign = async () => {
+  setTimeout(() => {
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: "smooth"
+    });
+  }, 100);
+  setIsGenerating(true);
+    
     setGenerationStatusMsg("Initializing...");
 
     try {
+      
       // Setup payload variables
       // const objectivesList = campaignType === "presales" ? preSalesObjectives : fetchedPostSalesObjectives;
-      // const objectiveText = selectedObjective === "custom"
-      //   ? customObjective
+      // const objectiveText = selectedObjective === "custom" 
+      //   ? customObjective 
       //   : objectivesList.find((o) => o.id === selectedObjective)?.title || "";
 
       // let enhancedText = objectiveText;
-      const objectiveItem = displayObjectives.find(
-        (o) => o.id === selectedObjective,
-      );
+      const objectiveItem = displayObjectives.find((o) => o.id === selectedObjective);
+    
+    // Determine the text to send to the AI
+    const objectiveText = selectedObjective === "custom" 
+      ? customObjective 
+      : objectiveItem?.title || "";
 
-      // Determine the text to send to the AI
-      const objectiveText =
-        selectedObjective === "custom"
-          ? customObjective
-          : objectiveItem?.title || "";
+    if (!objectiveText) {
+      alert("Please select an objective or enter a custom one.");
+      setIsGenerating(false);
+      return;
+    }
 
-      if (!objectiveText) {
-        alert("Please select an objective or enter a custom one.");
-        setIsGenerating(false);
-        return;
-      }
-
-      let enhancedText = objectiveText;
-      if (carModel && selectedObjective.includes("launch"))
-        enhancedText += ` for ${carModel}`;
+    let enhancedText = objectiveText;
+      if (carModel && selectedObjective.includes("launch")) enhancedText += ` for ${carModel}`;
 
       const customObjects: Record<string, any> = {};
-      selectedObjectiveData?.custom_campaign_attributes?.forEach(
-        (attr: any) => {
-          if (attr.attribute_name && attr.attribute_value)
-            customObjects[attr.attribute_name] = attr.attribute_value;
-        },
-      );
+      selectedObjectiveData?.custom_campaign_attributes?.forEach((attr: any) => {
+        if (attr.attribute_name && attr.attribute_value) customObjects[attr.attribute_name] = attr.attribute_value;
+      });
       if (carModel) customObjects["Car Model"] = carModel;
       if (launchDate) customObjects["Launch Date"] = launchDate;
 
@@ -671,26 +639,23 @@ function CampaignCreateContent() {
         kwargs: {
           dealership_idea: {
             languages: [
-              languageOptions.find((l) => l.value === language)?.label ||
-                "English",
+              languageOptions.find((l) => l.value === language)?.label || "English",
             ],
             campaign_offer: campaignDescription,
             custom_objects: customObjects,
           },
         },
-        runtime_limit: 3600,
+         runtime_limit: 3600,
         cancellable: true,
       };
-      const servicename =
-        process.env.NEXT_PUBLIC_AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME ||
-        "autocrm-short-run-agent";
+    const  servicename=process.env.NEXT_PUBLIC_AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME || "autocrm-short-run-agent";
       // Call our new global polling function
       const resultData = await executeTaskWithPolling(
         servicename,
         "generate_campaign_idea",
         payload,
         (statusMessage: string) => setGenerationStatusMsg(statusMessage), // UI Callback
-        { maxRetries: 90 }, // Optional: 3 minutes max timeout for this specific heavy task
+        { maxRetries: 90 } // Optional: 3 minutes max timeout for this specific heavy task
       );
 
       // Calculate dates for the UI
@@ -705,10 +670,9 @@ function CampaignCreateContent() {
 
       // Match language code
       const returnedLangLabel = resultData.languages?.[0];
-      const matchedLang =
-        languageOptions.find(
-          (l) => l.label.toLowerCase() === returnedLangLabel?.toLowerCase(),
-        )?.value || "en";
+      const matchedLang = languageOptions.find(
+        (l) => l.label.toLowerCase() === returnedLangLabel?.toLowerCase()
+      )?.value || "en";
 
       // Set Component States
       setCampaignData({
@@ -731,11 +695,10 @@ function CampaignCreateContent() {
       setLanguage(matchedLang);
       setDuration({ start: formatDate(today), end: formatDate(nextWeek) });
       setSelectedChannels(["voice", "whatsapp", "email"]);
+
     } catch (error: any) {
       console.error(error);
-      alert(
-        `Failed to generate campaign: ${error.message || "Check console for details."}`,
-      );
+      alert(`Failed to generate campaign: ${error.message || "Check console for details."}`);
     } finally {
       setIsGenerating(false);
       setGenerationStatusMsg("");
@@ -771,7 +734,7 @@ function CampaignCreateContent() {
     }
 
     const selectedTasks = audienceTasks.filter((task) =>
-      targetAudience.includes(task.task_id),
+      targetAudience.includes(task.task_id)
     );
     if (selectedTasks.length === 0) return "No Audience Selected";
     if (selectedTasks.length === 1)
@@ -791,7 +754,7 @@ function CampaignCreateContent() {
       return sum + totalAudience * (channelDef?.costPerUnit || 0);
     }, 0);
   };
-  const handleProceed = async () => {
+const handleProceed = async () => {
     if (!campaignName || !duration.start || !duration.end) {
       alert("Please fill in Campaign Name and Duration.");
       return;
@@ -822,12 +785,12 @@ function CampaignCreateContent() {
       // campaign_objective_id:
       //   selectedObjective === "custom"? customObjective
       //     : selectedObjectiveData?.title || selectedObjective,
-      campaign_objective_id:
-        selectedObjective === "custom" ? customObjective : selectedObjective,
+      campaign_objective_id: selectedObjective === "custom" 
+      ? customObjective 
+      : selectedObjective,
       campaign_sub_type: selectedObjectiveData?.campaignSubType || "other",
       campaign_user_source: "file",
-      campaign_custom_attributes:
-        selectedObjectiveData?.custom_campaign_attributes || [],
+      campaign_custom_attributes: selectedObjectiveData?.custom_campaign_attributes || [],
     };
 
     // NEW LOGIC: Append Voice configs if voice is selected
@@ -837,6 +800,7 @@ function CampaignCreateContent() {
     }
 
     try {
+      
       let endpoint = "";
       let finalPayload = {};
       const dealershipId = getDealershipId();
@@ -879,7 +843,7 @@ function CampaignCreateContent() {
     }
   };
 
-  const handleLaunch = async () => {
+ const handleLaunch = async () => {
     if (!createdCampaignId) {
       alert("Error: Campaign ID missing.");
       return;
@@ -898,19 +862,17 @@ function CampaignCreateContent() {
           selectedAudienceDetails.campaign_id,
           createdCampaignId,
           getDealershipId(),
-          ((msg: string) => setLaunchStatus(msg)) as any,
+          ((msg: string) => setLaunchStatus(msg)) as any
         );
       } else if (audienceSourceType === "fresh" && selectedAudienceDetails) {
         setLaunchStatus("Assigning fresh audience to campaign...");
         await assignAudienceTask(
           campaignType === "presales" ? "pre-sales" : "post-sales",
           createdCampaignId,
-          selectedAudienceDetails.campaign_objective_id ||
-            selectedAudienceDetails.objective_id ||
-            selectedObjective,
+          selectedAudienceDetails.campaign_objective_id || selectedAudienceDetails.objective_id || selectedObjective,
           getDealershipId(),
           {},
-          ((msg: string) => setLaunchStatus(msg)) as any,
+          ((msg: string) => setLaunchStatus(msg)) as any
         );
       }
     } catch (err) {
@@ -924,7 +886,7 @@ function CampaignCreateContent() {
     setLaunchStatus(
       isScheduledCampaign
         ? "Scheduling campaign..."
-        : "Finalizing audience data...",
+        : "Finalizing audience data..."
     );
 
     try {
@@ -949,24 +911,19 @@ function CampaignCreateContent() {
         if (storedDetailsStr) {
           const detailsObj = JSON.parse(storedDetailsStr);
           const currentStatus = detailsObj.dealer_status;
-
+          
           if (currentStatus !== "active" && currentStatus !== "suspended") {
-            const coreServiceName =
-              process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME ||
-              "autocrm-core";
+            const coreServiceName = process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
             await executeTaskWithPolling(
               coreServiceName,
               "dealership_update_status",
               {
                 args: [getDealershipId()],
-                kwargs: { dealer_status: "active" },
-              },
+                kwargs: { dealer_status: "active" }
+              }
             );
             detailsObj.dealer_status = "active";
-            localStorage.setItem(
-              "dealership_details",
-              JSON.stringify(detailsObj),
-            );
+            localStorage.setItem("dealership_details", JSON.stringify(detailsObj));
           }
         }
       } catch (err) {
@@ -979,9 +936,7 @@ function CampaignCreateContent() {
         setLaunchStatus("Triggering campaign engine...");
         const taskType =
           campaignType === "presales" ? "pre-sales" : "post-sales";
-        const serviceName =
-          process.env.NEXT_PUBLIC_AUTOCRM_CAMPAIGN_TRIGGER_SERVICE_NAME ||
-          "autocrm-campaign";
+        const serviceName = process.env.NEXT_PUBLIC_AUTOCRM_CAMPAIGN_TRIGGER_SERVICE_NAME || "autocrm-campaign";
         await api(`/gryd/task/${serviceName}/trigger_campaign`, "POST", {
           args: [],
           kwargs: { campaign_type: taskType, campaign_id: createdCampaignId },
@@ -992,7 +947,7 @@ function CampaignCreateContent() {
       setLaunchStatus(
         isScheduledCampaign
           ? "Campaign Scheduled Successfully!"
-          : "Campaign Launched Successfully!",
+          : "Campaign Launched Successfully!"
       );
       setTimeout(() => localStorage.removeItem("campaignFormData"), 1000);
     } catch (err) {
@@ -1042,7 +997,7 @@ function CampaignCreateContent() {
 
       <div className="pb-24 w-full px-4 py-8 md:px-6 lg:px-8 bg-background min-h-screen">
         {/* LAUNCH STATUS MODAL */}
-        {/* LAUNCH STATUS MODAL */}
+       {/* LAUNCH STATUS MODAL */}
         <Dialog
           open={isLaunchSuccessOpen}
           onOpenChange={(o) => {
@@ -1060,11 +1015,7 @@ function CampaignCreateContent() {
               <div
                 className={cn(
                   "mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full transition-colors",
-                  isLaunchError
-                    ? "bg-destructive/10 text-destructive"
-                    : launchStep === 4
-                      ? "bg-green-100 text-green-600"
-                      : "bg-primary/10 text-primary",
+                  isLaunchError ? "bg-destructive/10 text-destructive" : launchStep === 4 ? "bg-green-100 text-green-600" : "bg-primary/10 text-primary"
                 )}
               >
                 {isLaunchError ? (
@@ -1081,18 +1032,17 @@ function CampaignCreateContent() {
                 {isLaunchError
                   ? "Launch Failed"
                   : launchStep === 4
-                    ? "Success!"
-                    : "Launching Campaign"}
+                  ? "Success!"
+                  : "Launching Campaign"}
               </DialogTitle>
               <DialogDescription className="text-center">
-                {isLaunchError
-                  ? "An error occurred during launch."
-                  : "Please do not close this window."}
+                {isLaunchError ? "An error occurred during launch." : "Please do not close this window."}
               </DialogDescription>
             </DialogHeader>
 
             {/* STEP TRACKER */}
             <div className="py-4 space-y-5 px-6">
+              
               {/* Step 1: Audience */}
               <div className="flex items-start gap-4">
                 <div className="mt-0.5 w-6 h-6 flex-shrink-0 flex justify-center items-center">
@@ -1107,21 +1057,10 @@ function CampaignCreateContent() {
                   )}
                 </div>
                 <div className="flex flex-col">
-                  <span
-                    className={cn(
-                      "text-sm font-semibold",
-                      launchStep >= 1
-                        ? "text-foreground"
-                        : "text-muted-foreground",
-                    )}
-                  >
+                  <span className={cn("text-sm font-semibold", launchStep >= 1 ? "text-foreground" : "text-muted-foreground")}>
                     Process Audience Target
                   </span>
-                  {launchStep === 1 && (
-                    <span className="text-xs text-muted-foreground animate-pulse mt-1">
-                      {launchStatus}
-                    </span>
-                  )}
+                  {launchStep === 1 && <span className="text-xs text-muted-foreground animate-pulse mt-1">{launchStatus}</span>}
                 </div>
               </div>
 
@@ -1133,27 +1072,16 @@ function CampaignCreateContent() {
                   ) : launchStep === 2 && !isLaunchError ? (
                     <RefreshCw className="w-4 h-4 text-primary animate-spin" />
                   ) : isLaunchError && launchStep === 2 ? (
-                    <X className="w-5 h-5 text-destructive" />
+                     <X className="w-5 h-5 text-destructive" />
                   ) : (
                     <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
                   )}
                 </div>
                 <div className="flex flex-col">
-                  <span
-                    className={cn(
-                      "text-sm font-semibold",
-                      launchStep >= 2
-                        ? "text-foreground"
-                        : "text-muted-foreground",
-                    )}
-                  >
+                  <span className={cn("text-sm font-semibold", launchStep >= 2 ? "text-foreground" : "text-muted-foreground")}>
                     Finalize Campaign Data
                   </span>
-                  {launchStep === 2 && (
-                    <span className="text-xs text-muted-foreground animate-pulse mt-1">
-                      {launchStatus}
-                    </span>
-                  )}
+                  {launchStep === 2 && <span className="text-xs text-muted-foreground animate-pulse mt-1">{launchStatus}</span>}
                 </div>
               </div>
 
@@ -1165,31 +1093,19 @@ function CampaignCreateContent() {
                   ) : launchStep === 3 && !isLaunchError ? (
                     <RefreshCw className="w-4 h-4 text-primary animate-spin" />
                   ) : isLaunchError && launchStep === 3 ? (
-                    <X className="w-5 h-5 text-destructive" />
+                     <X className="w-5 h-5 text-destructive" />
                   ) : (
                     <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
                   )}
                 </div>
                 <div className="flex flex-col">
-                  <span
-                    className={cn(
-                      "text-sm font-semibold",
-                      launchStep >= 3
-                        ? "text-foreground"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {isScheduledCampaign
-                      ? "Schedule Engine"
-                      : "Trigger Engine Tasks"}
+                  <span className={cn("text-sm font-semibold", launchStep >= 3 ? "text-foreground" : "text-muted-foreground")}>
+                    {isScheduledCampaign ? "Schedule Engine" : "Trigger Engine Tasks"}
                   </span>
-                  {launchStep === 3 && (
-                    <span className="text-xs text-muted-foreground animate-pulse mt-1">
-                      {launchStatus}
-                    </span>
-                  )}
+                  {launchStep === 3 && <span className="text-xs text-muted-foreground animate-pulse mt-1">{launchStatus}</span>}
                 </div>
               </div>
+
             </div>
 
             <DialogFooter className="sm:justify-center mt-2">
@@ -1276,72 +1192,69 @@ function CampaignCreateContent() {
                   </div>
                 </div>
               )}
-              {/* --- Replace the "Required Attributes" div with this conditional block --- */}
+           {/* --- Replace the "Required Attributes" div with this conditional block --- */}
 
-              {(selectedObjective === "new-car-launch" ||
-                (selectedObjectiveData?.custom_campaign_attributes &&
-                  selectedObjectiveData.custom_campaign_attributes.length >
-                    0)) && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b">
-                    <Edit3 className="h-4 w-4 text-primary" />
-                    <h3 className="font-semibold leading-none tracking-tight">
-                      Required Attributes
-                    </h3>
-                  </div>
+{((selectedObjective === "new-car-launch" ) || 
+  (selectedObjectiveData?.custom_campaign_attributes && selectedObjectiveData.custom_campaign_attributes.length > 0)) && (
+  <div className="space-y-4">
+    <div className="flex items-center gap-2 pb-2 border-b">
+      <Edit3 className="h-4 w-4 text-primary" />
+      <h3 className="font-semibold leading-none tracking-tight">
+        Required Attributes
+      </h3>
+    </div>
 
-                  {/* Car Model & Launch Date Inputs */}
-                  {(selectedObjective === "new-car-launch" ||
-                    selectedObjective.includes("launch")) && (
-                    <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-md">
-                      <div className="space-y-2">
-                        <Label>
-                          Car Model <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          value={carModel}
-                          onChange={(e) => setCarModel(e.target.value)}
-                          placeholder="e.g. Grand Vitara"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>
-                          Launch Date{" "}
-                          <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          type="date"
-                          value={launchDate}
-                          onChange={(e) => setLaunchDate(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  )}
+    {/* Car Model & Launch Date Inputs */}
+    {(selectedObjective === "new-car-launch" ||
+      selectedObjective.includes("launch")) && (
+      <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-md">
+        <div className="space-y-2">
+          <Label>
+            Car Model <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            value={carModel}
+            onChange={(e) => setCarModel(e.target.value)}
+            placeholder="e.g. Grand Vitara"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>
+            Launch Date <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            type="date"
+            value={launchDate}
+            onChange={(e) => setLaunchDate(e.target.value)}
+          />
+        </div>
+      </div>
+    )}
 
-                  {/* Dynamic Custom Attributes */}
-                  {selectedObjectiveData?.custom_campaign_attributes?.map(
-                    (attr: any, idx: number) => (
-                      <div key={idx} className="space-y-2">
-                        <Label>{attr.attribute_name}</Label>
-                        <Input
-                          placeholder={`Enter ${attr.attribute_name}`}
-                          value={attr.attribute_value || ""}
-                          onChange={(e) => {
-                            const u = [
-                              ...selectedObjectiveData.custom_campaign_attributes,
-                            ];
-                            u[idx].attribute_value = e.target.value;
-                            setSelectedObjectiveData({
-                              ...selectedObjectiveData,
-                              custom_campaign_attributes: u,
-                            });
-                          }}
-                        />
-                      </div>
-                    ),
-                  )}
-                </div>
-              )}
+    {/* Dynamic Custom Attributes */}
+    {selectedObjectiveData?.custom_campaign_attributes?.map(
+      (attr: any, idx: number) => (
+        <div key={idx} className="space-y-2">
+          <Label>{attr.attribute_name}</Label>
+          <Input
+            placeholder={`Enter ${attr.attribute_name}`}
+            value={attr.attribute_value || ""}
+            onChange={(e) => {
+              const u = [
+                ...selectedObjectiveData.custom_campaign_attributes,
+              ];
+              u[idx].attribute_value = e.target.value;
+              setSelectedObjectiveData({
+                ...selectedObjectiveData,
+                custom_campaign_attributes: u,
+              });
+            }}
+          />
+        </div>
+      )
+    )}
+  </div>
+)}
             </div>
             <DialogFooter>
               <Button
@@ -1362,7 +1275,7 @@ function CampaignCreateContent() {
           </DialogContent>
         </Dialog>
 
-        <AddDataSourceDialog
+     <AddDataSourceDialog
           isOpen={isUploadDialogOpen}
           onClose={() => setIsUploadDialogOpen(false)}
           prefilledData={{
@@ -1373,45 +1286,33 @@ function CampaignCreateContent() {
           onSave={(dataSource) => {
             // 1. Keep the view on "upload" card
             setAudienceSourceType("upload");
-
+            
             // 2. Extract the new Task ID
-            const newTaskId =
-              dataSource?.connectionDetails?.taskId ||
-              dataSource?.task_id ||
-              dataSource?.id;
-
+            const newTaskId = dataSource?.connectionDetails?.taskId || dataSource?.task_id || dataSource?.id;
+            
             if (newTaskId) {
               setTargetAudience([newTaskId]);
-
+              
               // 3. Set initial details (Size might be 0 initially while backend processes)
-              const initialSize =
-                dataSource?.process_size ||
-                dataSource?.total_records ||
-                dataSource?.total ||
-                0;
+              const initialSize = dataSource?.process_size || dataSource?.total_records || dataSource?.total || 0;
               setSelectedAudienceDetails({
                 task_id: newTaskId,
                 process_size: initialSize,
-                source_name:
-                  dataSource?.source_name ||
-                  dataSource?.audience_name ||
-                  "Newly Uploaded Audience",
+                source_name: dataSource?.source_name || dataSource?.audience_name || "Newly Uploaded Audience",
               });
 
               // 4. Ping server after 3 seconds to get the fully processed size
               setTimeout(async () => {
-                try {
-                  const res: any = await fetchAudienceTasks(1, 10, "all");
-                  const items = res.items || res.data || res || [];
-                  const updatedTask = items.find(
-                    (t: any) => t.task_id === newTaskId,
-                  );
-                  if (updatedTask) {
-                    setSelectedAudienceDetails(updatedTask); // Updates size automatically
-                  }
-                } catch (e) {
-                  console.error("Failed to refresh uploaded task size", e);
-                }
+                 try {
+                   const res: any = await fetchAudienceTasks(1, 10, "all");
+                   const items = res.items || res.data || res || [];
+                   const updatedTask = items.find((t: any) => t.task_id === newTaskId);
+                   if (updatedTask) {
+                      setSelectedAudienceDetails(updatedTask); // Updates size automatically
+                   }
+                 } catch (e) {
+                   console.error("Failed to refresh uploaded task size", e);
+                 }
               }, 3000);
             }
           }}
@@ -1435,7 +1336,7 @@ function CampaignCreateContent() {
                       "cursor-pointer border-2 p-8 flex flex-col items-center transition-all relative overflow-hidden",
                       campaignType === "presales"
                         ? "border-primary bg-primary/5 shadow-md scale-[1.02]"
-                        : "hover:border-primary/50 hover:scale-[1.01]",
+                        : "hover:border-primary/50 hover:scale-[1.01]"
                     )}
                     onClick={() => setCampaignType("presales")}
                   >
@@ -1444,7 +1345,7 @@ function CampaignCreateContent() {
                         "p-4 rounded-full mb-6 transition-colors",
                         campaignType === "presales"
                           ? "bg-primary/20"
-                          : "bg-primary/10",
+                          : "bg-primary/10"
                       )}
                     >
                       <Target className="h-16 w-16 text-primary" />
@@ -1464,7 +1365,7 @@ function CampaignCreateContent() {
                       "cursor-pointer border-2 p-8 flex flex-col items-center transition-all relative overflow-hidden",
                       campaignType === "postsales"
                         ? "border-primary bg-primary/5 shadow-md scale-[1.02]"
-                        : "hover:border-primary/50 hover:scale-[1.01]",
+                        : "hover:border-primary/50 hover:scale-[1.01]"
                     )}
                     onClick={() => setCampaignType("postsales")}
                   >
@@ -1473,7 +1374,7 @@ function CampaignCreateContent() {
                         "p-4 rounded-full mb-6 transition-colors",
                         campaignType === "postsales"
                           ? "bg-primary/20"
-                          : "bg-primary/10",
+                          : "bg-primary/10"
                       )}
                     >
                       <Users className="h-16 w-16 text-primary" />
@@ -1494,235 +1395,177 @@ function CampaignCreateContent() {
               {/* PROGRESSIVE SECTIONS */}
               {campaignType && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                  {/* OBJECTIVES */}
-                  <div className="space-y-4">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                      <h2 className="text-2xl font-bold flex items-center gap-2">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                          2
-                        </span>
-                        Select Objective
-                      </h2>
+                {/* OBJECTIVES */}
+<div className="space-y-4">
+  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <h2 className="text-2xl font-bold flex items-center gap-2">
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+        2
+      </span>
+      Select Objective
+    </h2>
 
-                      {/* SERVER-SIDE SEARCH */}
-                      <div className="relative w-full md:w-80">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search objectives..."
-                          className="pl-9 bg-background"
-                          defaultValue={searchQuery}
-                          onChange={(e) => {
-                            const params = new URLSearchParams(searchParams);
-                            params.set("q", e.target.value);
-                            params.set("page", "1"); // Reset to page 1 on new search
-                            router.replace(`${pathname}?${params.toString()}`, {
-                              scroll: false,
-                            });
-                          }}
-                        />
-                      </div>
-                    </div>
+    {/* SERVER-SIDE SEARCH */}
+    <div className="relative w-full md:w-80">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        placeholder="Search objectives..."
+        className="pl-9 bg-background"
+        defaultValue={searchQuery}
+        onChange={(e) => {
+          const params = new URLSearchParams(searchParams);
+          params.set("q", e.target.value);
+          params.set("page", "1"); // Reset to page 1 on new search
+          router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        }}
+      />
+    </div>
+  </div>
 
-                    <Card className="shadow-xl border-2 border-l-4 border-l-primary">
-                      <CardContent className="pt-6">
-                        <Tabs
-                          value={activeTab}
-                          onValueChange={(val) => {
-                            setActiveTab(val);
-                            // Reset page to 1 when switching tabs
-                            const params = new URLSearchParams(searchParams);
-                            params.set("page", "1");
-                            router.replace(`${pathname}?${params.toString()}`, {
-                              scroll: false,
-                            });
-                          }}
-                        >
-                          <TabsList className="mb-6 w-full justify-start h-auto p-1 bg-muted/50">
-                            <TabsTrigger value="generic" className="px-6 py-2">
-                              Generic
-                            </TabsTrigger>
-                            <TabsTrigger value="custom" className="px-6 py-2">
-                              Custom
-                            </TabsTrigger>
-                            <TabsTrigger value="previous" className="px-6 py-2">
-                              Previously Used
-                            </TabsTrigger>
-                          </TabsList>
+ <Card className="shadow-xl border-2 border-l-4 border-l-primary">
+  <CardContent className="pt-6">
+    <Tabs value={activeTab} onValueChange={(val) => {
+      setActiveTab(val);
+      // Reset page to 1 when switching tabs
+      const params = new URLSearchParams(searchParams);
+      params.set("page", "1");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }}>
+      <TabsList className="mb-6 w-full justify-start h-auto p-1 bg-muted/50">
+        <TabsTrigger value="generic" className="px-6 py-2">Generic</TabsTrigger>
+        <TabsTrigger value="custom" className="px-6 py-2">Custom</TabsTrigger>
+        <TabsTrigger value="previous" className="px-6 py-2">Previously Used</TabsTrigger>
+      </TabsList>
 
-                          <div className="space-y-6">
-                            {isLoadingObjectives ? (
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {[1, 2, 3, 4, 5, 6].map((i) => (
-                                  <div
-                                    key={`loader-${i}`}
-                                    className="h-40 rounded-xl bg-muted animate-pulse border"
-                                  />
-                                ))}
-                              </div>
-                            ) : (
-                              <>
-                                <div
-                                  key={`grid-container-${activeTab}`}
-                                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-                                >
-                                  {displayObjectives.length > 0 ? (
-                                    displayObjectives.map((obj) => (
-                                      <ObjectiveCard
-                                        key={`${activeTab}-${obj.id}`}
-                                        {...obj}
-                                        selected={selectedObjective === obj.id}
-                                        onSelect={() => {
-                                          setSelectedObjective(obj.objectiveId);
-                                          setSelectedObjectiveData(
-                                            obj.fullData || null,
-                                          );
-                                          setCampaignData(null);
-                                          setCreatedCampaignId(null);
-                                          // if (obj.id !== "custom-trigger") setIsObjectiveDetailsOpen(true);
+      <div className="space-y-6">
+        {isLoadingObjectives ? (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={`loader-${i}`} className="h-40 rounded-xl bg-muted animate-pulse border" />
+      ))}
+    </div>
+  ) : (
+          <>
+         <div 
+      key={`grid-container-${activeTab}`} 
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+    >
+      {displayObjectives.length > 0 ? (
+        displayObjectives.map((obj) => (
+          <ObjectiveCard
+            key={`${activeTab}-${obj.id}`} 
+            {...obj}
+            selected={selectedObjective === obj.id}
+            onSelect={() => {
+              setSelectedObjective(obj.objectiveId);
+              setSelectedObjectiveData(obj.fullData || null);
+              setCampaignData(null);
+              setCreatedCampaignId(null);
+              // if (obj.id !== "custom-trigger") setIsObjectiveDetailsOpen(true);
+             
+             if (activeTab === "previous") {
+          // CASE 1: Previously Used - No AI, just pre-fill
+          prefillFromExistingCampaign(obj.fullData);
+          // Scroll down to the configuration section
+          // window.scrollTo({ top: 400, behavior: "smooth" });
+         setTimeout(() => {
+  detailsRef.current?.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+}, 100);
+        } else if (obj.id !== "custom") {
+          // CASE 2: Generic/Custom Templates - Open AI generation modal
+          setIsObjectiveDetailsOpen(true);
+        }
+        //       if (obj.id !== "custom") {
+        //   setIsObjectiveDetailsOpen(true);
+        // }
+            }}
+          />
+        ))
+      ) : (
+        <div className="col-span-full py-20 text-center border-2 border-dashed rounded-xl text-muted-foreground">
+          No objectives found in this category.
+        </div>
+      )}
+    </div>
+{selectedObjective === "custom" && activeTab === "custom" && (
+  <div className="mt-6 p-6 border-2 border-dashed rounded-xl bg-primary/5 animate-in fade-in slide-in-from-top-4">
+    <Label className="mb-2 block font-bold">What is your campaign idea?</Label>
+    <div className="flex gap-2">
+      <Input
+        placeholder="e.g. Special weekend service camp for monsoon..."
+        value={customObjective}
+        onChange={(e) => setCustomObjective(e.target.value)}
+        className="h-12 bg-background"
+      />
+      <Button 
+        onClick={handleGenerateCampaign} 
+        disabled={!customObjective || isGenerating}
+        className="h-12 px-8"
+      >
+        {isGenerating ? <RefreshCw className="animate-spin h-4 w-4" /> : "Generate"}
+      </Button>
+    </div>
+  </div>
+)}
+            {/* SHARED PAGINATION FOOTER */}
+            <div className="flex items-center justify-between pt-6 border-t border-dashed">
+              <p className="text-xs text-muted-foreground font-medium">
+                Page <span className="text-foreground">{currentPage}</span> — {totalNumber} Total Available
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => {
+                    const params = new URLSearchParams(searchParams);
+                    params.set("page", (currentPage - 1).toString());
+                    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isLastPage}
+                  onClick={() => {
+                    const params = new URLSearchParams(searchParams);
+                    params.set("page", (currentPage + 1).toString());
+                    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+                  }}
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </Tabs>
+  </CardContent>
+</Card>
+</div>
 
-                                          if (activeTab === "previous") {
-                                            // CASE 1: Previously Used - No AI, just pre-fill
-                                            prefillFromExistingCampaign(
-                                              obj.fullData,
-                                            );
-                                            // Scroll down to the configuration section
-                                            // window.scrollTo({ top: 400, behavior: "smooth" });
-                                            setTimeout(() => {
-                                              detailsRef.current?.scrollIntoView(
-                                                {
-                                                  behavior: "smooth",
-                                                  block: "center",
-                                                },
-                                              );
-                                            }, 100);
-                                          } else if (obj.id !== "custom") {
-                                            // CASE 2: Generic/Custom Templates - Open AI generation modal
-                                            setIsObjectiveDetailsOpen(true);
-                                          }
-                                          //       if (obj.id !== "custom") {
-                                          //   setIsObjectiveDetailsOpen(true);
-                                          // }
-                                        }}
-                                      />
-                                    ))
-                                  ) : (
-                                    <div className="col-span-full py-20 text-center border-2 border-dashed rounded-xl text-muted-foreground">
-                                      No objectives found in this category.
-                                    </div>
-                                  )}
-                                </div>
-                                {selectedObjective === "custom" &&
-                                  activeTab === "custom" && (
-                                    <div className="mt-6 p-6 border-2 border-dashed rounded-xl bg-primary/5 animate-in fade-in slide-in-from-top-4">
-                                      <Label className="mb-2 block font-bold">
-                                        What is your campaign idea?
-                                      </Label>
-                                      <div className="flex gap-2">
-                                        <Input
-                                          placeholder="e.g. Special weekend service camp for monsoon..."
-                                          value={customObjective}
-                                          onChange={(e) =>
-                                            setCustomObjective(e.target.value)
-                                          }
-                                          className="h-12 bg-background"
-                                        />
-                                        <Button
-                                          onClick={handleGenerateCampaign}
-                                          disabled={
-                                            !customObjective || isGenerating
-                                          }
-                                          className="h-12 px-8"
-                                        >
-                                          {isGenerating ? (
-                                            <RefreshCw className="animate-spin h-4 w-4" />
-                                          ) : (
-                                            "Generate"
-                                          )}
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )}
-                                {/* SHARED PAGINATION FOOTER */}
-                                <div className="flex items-center justify-between pt-6 border-t border-dashed">
-                                  <p className="text-xs text-muted-foreground font-medium">
-                                    Page{" "}
-                                    <span className="text-foreground">
-                                      {currentPage}
-                                    </span>{" "}
-                                    — {totalNumber} Total Available
-                                  </p>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      disabled={currentPage === 1}
-                                      onClick={() => {
-                                        const params = new URLSearchParams(
-                                          searchParams,
-                                        );
-                                        params.set(
-                                          "page",
-                                          (currentPage - 1).toString(),
-                                        );
-                                        router.replace(
-                                          `${pathname}?${params.toString()}`,
-                                          { scroll: false },
-                                        );
-                                      }}
-                                    >
-                                      <ChevronLeft className="h-4 w-4 mr-1" />{" "}
-                                      Previous
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      disabled={isLastPage}
-                                      onClick={() => {
-                                        const params = new URLSearchParams(
-                                          searchParams,
-                                        );
-                                        params.set(
-                                          "page",
-                                          (currentPage + 1).toString(),
-                                        );
-                                        router.replace(
-                                          `${pathname}?${params.toString()}`,
-                                          { scroll: false },
-                                        );
-                                      }}
-                                    >
-                                      Next{" "}
-                                      <ChevronRight className="h-4 w-4 ml-1" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </Tabs>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {isGenerating && (
-                    <Card className="py-12">
-                      <div className="flex flex-col items-center justify-center gap-4">
-                        <AILoader />
-                        {generationStatusMsg && (
-                          <p className="text-sm font-medium text-muted-foreground animate-pulse text-center px-4">
-                            {generationStatusMsg}
-                          </p>
-                        )}
-                      </div>
-                    </Card>
-                  )}
-
+                 {isGenerating && (
+    <Card className="py-12">
+      <div className="flex flex-col items-center justify-center gap-4">
+        <AILoader />
+        {generationStatusMsg && (
+          <p className="text-sm font-medium text-muted-foreground animate-pulse text-center px-4">
+            {generationStatusMsg}
+          </p>
+        )}
+      </div>
+    </Card>
+  )}
+  
                   {/* DETAILS */}
                   {!isGenerating && campaignData && (
-                    <div
-                      ref={detailsRef}
-                      className="space-y-8 animate-in fade-in duration-500"
-                    >
+                    <div  ref={detailsRef} className="space-y-8 animate-in fade-in duration-500">
                       <div className="space-y-4">
                         <h2 className="text-2xl font-bold flex items-center gap-2">
                           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
@@ -1824,9 +1667,7 @@ function CampaignCreateContent() {
                                 <Label>Urgency Hook</Label>
                                 <Input
                                   value={urgencyHook}
-                                  onChange={(e) =>
-                                    setUrgencyHook(e.target.value)
-                                  }
+                                  onChange={(e) => setUrgencyHook(e.target.value)}
                                 />
                               </div>
                             </div>
@@ -1849,14 +1690,14 @@ function CampaignCreateContent() {
                                     "border-2 transition-all cursor-pointer",
                                     selectedChannels.includes(ch.id)
                                       ? "border-primary bg-primary/5 shadow-sm"
-                                      : "opacity-50",
+                                      : "opacity-50"
                                   )}
                                   onClick={() => {
                                     if (selectedChannels.includes(ch.id)) {
                                       setSelectedChannels(
                                         selectedChannels.filter(
-                                          (c) => c !== ch.id,
-                                        ),
+                                          (c) => c !== ch.id
+                                        )
                                       );
                                     } else {
                                       setSelectedChannels([
@@ -1872,7 +1713,7 @@ function CampaignCreateContent() {
                                         "mb-2",
                                         selectedChannels.includes(ch.id)
                                           ? "text-primary"
-                                          : "text-muted-foreground",
+                                          : "text-muted-foreground"
                                       )}
                                     >
                                       {ch.icon}
@@ -1893,48 +1734,26 @@ function CampaignCreateContent() {
                             {selectedChannels.includes("voice") && (
                               <div className="mt-6 space-y-4 p-4 border rounded-md bg-slate-50 dark:bg-slate-900/50">
                                 <h4 className="font-semibold flex items-center gap-2 text-sm">
-                                  <Phone className="h-4 w-4 text-primary" />{" "}
-                                  Voice Call Configuration
+                                  <Phone className="h-4 w-4 text-primary" /> Voice Call Configuration
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                   <div className="space-y-2">
                                     <Label>Voice Start Language</Label>
-                                    <Select
-                                      value={voiceStartLanguage}
-                                      onValueChange={setVoiceStartLanguage}
-                                    >
+                                    <Select value={voiceStartLanguage} onValueChange={setVoiceStartLanguage}>
                                       <SelectTrigger>
                                         <SelectValue placeholder="Select language" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        <SelectItem value="en">
-                                          English
-                                        </SelectItem>
-                                        <SelectItem value="hi">
-                                          Hindi
-                                        </SelectItem>
-                                        <SelectItem value="ta">
-                                          Tamil
-                                        </SelectItem>
-                                        <SelectItem value="ml">
-                                          Malayalam
-                                        </SelectItem>
+                                        <SelectItem value="en">English</SelectItem>
+                                        <SelectItem value="hi">Hindi</SelectItem>
+                                        <SelectItem value="ta">Tamil</SelectItem>
+                                        <SelectItem value="ml">Malayalam</SelectItem>
 
-                                        <SelectItem value="mr">
-                                          Marathi
-                                        </SelectItem>
-                                        <SelectItem value="te">
-                                          Telugu
-                                        </SelectItem>
-                                        <SelectItem value="kn">
-                                          Kannada
-                                        </SelectItem>
-                                        <SelectItem value="bn">
-                                          Bengali
-                                        </SelectItem>
-                                        <SelectItem value="gu">
-                                          Gujarati
-                                        </SelectItem>
+                                        <SelectItem value="mr">Marathi</SelectItem>
+                                        <SelectItem value="te">Telugu</SelectItem>
+                                        <SelectItem value="kn">Kannada</SelectItem>
+                                        <SelectItem value="bn">Bengali</SelectItem>
+                                        <SelectItem value="gu">Gujarati</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </div>
@@ -1942,9 +1761,7 @@ function CampaignCreateContent() {
                                     <Label>Voice Agent ID</Label>
                                     <Input
                                       value={voiceAgentId}
-                                      onChange={(e) =>
-                                        setVoiceAgentId(e.target.value)
-                                      }
+                                      onChange={(e) => setVoiceAgentId(e.target.value)}
                                       placeholder="e.g. agent_..."
                                     />
                                   </div>
@@ -1999,8 +1816,7 @@ function CampaignCreateContent() {
                     <Card
                       className={cn(
                         "cursor-pointer hover:border-primary transition-all text-center p-4",
-                        audienceSourceType === "upload" &&
-                          "border-primary bg-primary/5",
+                        audienceSourceType === "upload" && "border-primary bg-primary/5"
                       )}
                       onClick={() => {
                         setAudienceSourceType("upload");
@@ -2008,19 +1824,14 @@ function CampaignCreateContent() {
                       }}
                     >
                       <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
-                      <h4 className="font-semibold text-sm">
-                        Upload New Audience
-                      </h4>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Upload via CSV/Excel
-                      </p>
+                      <h4 className="font-semibold text-sm">Upload New Audience</h4>
+                      <p className="text-xs text-muted-foreground mt-1">Upload via CSV/Excel</p>
                     </Card>
 
-                    <Card
+                   <Card
                       className={cn(
                         "cursor-pointer hover:border-primary transition-all text-center p-4",
-                        audienceSourceType === "previous" &&
-                          "border-primary bg-primary/5",
+                        audienceSourceType === "previous" && "border-primary bg-primary/5"
                       )}
                       onClick={() => {
                         setAudienceSourceType("previous");
@@ -2031,16 +1842,13 @@ function CampaignCreateContent() {
                     >
                       <Database className="h-8 w-8 mx-auto mb-2 text-primary" />
                       <h4 className="font-semibold text-sm">Previously Used</h4>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Clone from past campaigns
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Clone from past campaigns</p>
                     </Card>
 
                     <Card
                       className={cn(
                         "cursor-pointer hover:border-primary transition-all text-center p-4",
-                        audienceSourceType === "fresh" &&
-                          "border-primary bg-primary/5",
+                        audienceSourceType === "fresh" && "border-primary bg-primary/5"
                       )}
                       onClick={() => {
                         setAudienceSourceType("fresh");
@@ -2050,148 +1858,84 @@ function CampaignCreateContent() {
                       }}
                     >
                       <Users className="h-8 w-8 mx-auto mb-2 text-primary" />
-                      <h4 className="font-semibold text-sm">
-                        Unused Fresh Set
-                      </h4>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Select unused leads
-                      </p>
+                      <h4 className="font-semibold text-sm">Unused Fresh Set</h4>
+                      <p className="text-xs text-muted-foreground mt-1">Select unused leads</p>
                     </Card>
                   </div>
-                  {/* Render Uploaded Success State */}
-                  {audienceSourceType === "upload" &&
-                    targetAudience.length > 0 && (
-                      <div className="space-y-2 animate-in fade-in slide-in-from-top-4">
-                        <div className="p-4 border rounded-md bg-green-50 border-green-200 flex justify-between items-center">
-                          <div>
-                            <h4 className="font-semibold text-green-900 flex items-center gap-2">
-                              <Check className="h-5 w-5 text-green-600" />{" "}
-                              Audience Uploaded Successfully
-                            </h4>
-                            <p className="text-sm text-green-700 mt-1">
-                              Selected:{" "}
-                              {selectedAudienceDetails?.source_name ||
-                                "Custom Audience"}
-                            </p>
-                            {/* <p className="text-xs text-green-600/80 mt-0.5 font-mono">
+{/* Render Uploaded Success State */}
+                  {audienceSourceType === "upload" && targetAudience.length > 0 && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-4">
+                      <div className="p-4 border rounded-md bg-green-50 border-green-200 flex justify-between items-center">
+                        <div>
+                          <h4 className="font-semibold text-green-900 flex items-center gap-2">
+                            <Check className="h-5 w-5 text-green-600" /> Audience Uploaded Successfully
+                          </h4>
+                          <p className="text-sm text-green-700 mt-1">
+                            Selected: {selectedAudienceDetails?.source_name || "Custom Audience"}
+                          </p>
+                          {/* <p className="text-xs text-green-600/80 mt-0.5 font-mono">
                             ID: {targetAudience[0]}
                           </p> */}
-                          </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <Badge className="bg-green-600 hover:bg-green-700">
-                              Selected
-                            </Badge>
-                            {/* Show a loading indicator if size is 0 while waiting for background refresh */}
-                            {parseInt(
-                              selectedAudienceDetails?.process_size || 0,
-                            ) === 0 && (
-                              <span className="text-xs text-muted-foreground flex items-center gap-1 animate-pulse mt-1">
-                                <RefreshCw className="h-3 w-3 animate-spin" />{" "}
-                                Processing size...
-                              </span>
-                            )}
-                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                           <Badge className="bg-green-600 hover:bg-green-700">Selected</Badge>
+                           {/* Show a loading indicator if size is 0 while waiting for background refresh */}
+                           {parseInt(selectedAudienceDetails?.process_size || 0) === 0 && (
+                             <span className="text-xs text-muted-foreground flex items-center gap-1 animate-pulse mt-1">
+                               <RefreshCw className="h-3 w-3 animate-spin" /> Processing size...
+                             </span>
+                           )}
                         </div>
                       </div>
-                    )}
+                    </div>
+                  )}
                   {/* Render Selection Dropdowns Conditionally */}
-                  {(audienceSourceType === "previous" ||
-                    audienceSourceType === "fresh") && (
+                 {(audienceSourceType === "previous" || audienceSourceType === "fresh") && (
                     <div className="space-y-2 animate-in fade-in slide-in-from-top-4">
-                      <Label
-                        htmlFor="audience-select"
-                        className="font-semibold"
-                      >
-                        {audienceSourceType === "previous"
-                          ? "Select Previously Used Audience"
-                          : "Select Fresh Audience"}
+                      <Label htmlFor="audience-select" className="font-semibold">
+                        {audienceSourceType === "previous" ? "Select Previously Used Audience" : "Select Fresh Audience"}
                       </Label>
                       <Select
                         onValueChange={(val) => {
                           setTargetAudience([val]);
-                          const task = audienceTasks.find(
-                            (t) => t.task_id === val,
-                          );
+                          const task = audienceTasks.find((t) => t.task_id === val);
                           if (task) setSelectedAudienceDetails(task);
                         }}
                         value={targetAudience[0] || ""}
                       >
-                        <SelectTrigger
-                          id="audience-select"
-                          className="h-12 text-base"
-                        >
+                        <SelectTrigger id="audience-select" className="h-12 text-base">
                           <SelectValue placeholder="Choose audience segment" />
                         </SelectTrigger>
                         <SelectContent>
-                          {isLoadingAudience ? (
-                            <div className="p-4 text-center text-sm text-muted-foreground">
-                              Loading...
-                            </div>
+                     {isLoadingAudience ? (
+                            <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
                           ) : (
                             <>
-                              {audienceTasks.map(
-                                (
-                                  task, // <--- Map directly over audienceTasks
-                                ) => (
-                                  <SelectItem
-                                    key={task.task_id}
-                                    value={task.task_id}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium">
-                                        {task.source_name ||
-                                          task.audience_name ||
-                                          "Untitled List"}
-                                      </span>
-                                      <Badge
-                                        variant="outline"
-                                        className="text-xs"
-                                      >
-                                        {parseInt(
-                                          task.process_size || 0,
-                                        ).toLocaleString()}{" "}
-                                        Records
-                                      </Badge>
-                                    </div>
-                                  </SelectItem>
-                                ),
-                              )}
-
+                              {audienceTasks.map((task) => ( // <--- Map directly over audienceTasks
+                                <SelectItem key={task.task_id} value={task.task_id}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">
+                                      {task.source_name || task.audience_name || "Untitled List"}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {parseInt(task.process_size || 0).toLocaleString()} Records
+                                    </Badge>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                              
                               {audienceTasks.length === 0 && (
                                 <div className="p-4 text-center text-sm text-muted-foreground">
                                   No {audienceSourceType} lists found.
                                 </div>
                               )}
                               {/* Standard Pagination Details */}
-                              <div
-                                className="flex items-center justify-between p-2 border-t mt-2 bg-slate-50"
-                                onKeyDown={(e) => e.stopPropagation()}
-                              >
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={page <= 1}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    setPage((p) => p - 1);
-                                  }}
-                                  className="h-8 w-8 p-0"
-                                >
+                              <div className="flex items-center justify-between p-2 border-t mt-2 bg-slate-50" onKeyDown={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="sm" disabled={page <= 1} onClick={(e) => { e.preventDefault(); setPage((p) => p - 1); }} className="h-8 w-8 p-0">
                                   <ChevronLeft className="h-4 w-4" />
                                 </Button>
-                                <span className="text-xs text-muted-foreground font-medium">
-                                  Page {page} of {totalPages || 1}
-                                </span>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={page >= totalPages}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    setPage((p) => p + 1);
-                                  }}
-                                  className="h-8 w-8 p-0"
-                                >
+                                <span className="text-xs text-muted-foreground font-medium">Page {page} of {totalPages || 1}</span>
+                                <Button variant="ghost" size="sm" disabled={page >= totalPages} onClick={(e) => { e.preventDefault(); setPage((p) => p + 1); }} className="h-8 w-8 p-0">
                                   <ChevronRight className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -2202,9 +1946,7 @@ function CampaignCreateContent() {
 
                       {targetAudience.length > 0 && (
                         <div className="mt-2 p-3 bg-secondary/10 rounded-md flex justify-between items-center text-sm">
-                          <span className="text-muted-foreground">
-                            Selected Segment ID: {targetAudience[0]}
-                          </span>
+                          <span className="text-muted-foreground">Selected Segment ID: {targetAudience[0]}</span>
                           <Badge className="bg-primary">Selected</Badge>
                         </div>
                       )}
@@ -2286,7 +2028,7 @@ function CampaignCreateContent() {
                     <div className="border rounded-lg divide-y">
                       {selectedChannels.map((channelId) => {
                         const channelDef = channels.find(
-                          (c) => c.id === channelId,
+                          (c) => c.id === channelId
                         );
                         const audienceSize = getAudienceSize();
                         const totalChannelCredits =
