@@ -2,9 +2,11 @@
 
 export pull_success=0
 export BRANCH=${1:-"master"}
-export TAG="document_processor"
+
+export TAG="spark"
 
 function update_repo() {
+
         branch=$1
 
         git fetch origin
@@ -35,22 +37,19 @@ function main() {
                 return
         fi
 
-        cp ../../../brochure_pipeline/requirements.txt ./brochure_pipeline_requirements.txt
-        cp ../../../document_processor/requirment_document_processor.txt ./document_processor_requirements.txt
+        cp ../../../brochure_pipeline/requirements.txt \
+        ./brochure_pipeline_requirements.txt
 
-        cp Dockerfile Dockerfile.tmp
+        cp ../../../document_processor/requirment_document_processor.txt \
+        ./document_processor_requirements.txt
 
-        sed -i "s/<baseimage_tag>/$TAG/g" Dockerfile.tmp
-
-        docker build -t autobot_pyreq_baseimage:$TAG -f Dockerfile.tmp .
+        docker build -t autobot_pyreq_baseimage:$TAG .
 
         docker tag autobot_pyreq_baseimage:$TAG \
         asia-south1-docker.pkg.dev/dave-70c8e/splitting-pyreq-base-image/autobot-pyreq-baseimage:$TAG
 
         docker push \
         asia-south1-docker.pkg.dev/dave-70c8e/splitting-pyreq-base-image/autobot-pyreq-baseimage:$TAG
-
-        rm -f Dockerfile.tmp
 }
 
 main
