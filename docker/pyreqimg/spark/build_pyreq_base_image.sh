@@ -34,7 +34,7 @@ function main() {
                 return
         fi
 
-	cp ../../../spark/requirements.txt ./spark_requirements.txt
+        cp ../../../spark/requirements.txt ./spark_requirements.txt
 
         cp Dockerfile Dockerfile.tmp
         sed -i "s/<baseimage_tag>/$BASE_IMAGE_TAG/g" Dockerfile.tmp
@@ -51,4 +51,3 @@ function main() {
 }
 
 main
-
