@@ -33,7 +33,7 @@ def execute_orchestrator(*args, **kwargs):
     pass
 
 
-def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], temperature=0.1, **kwargs):
+def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], **kwargs):
     request_data = kwargs.get("request_data",{})
     resp = ""
     if messages:
@@ -281,6 +281,7 @@ def setup_primary_prompt(*args, **kwargs):
 
     if not campaign_data:
         return {"status":"error","message":"FAILED TO GET CAMPAIGN DATA"}
+
         # campaign_name = "inbound"
         # campaign_objective = "inbound"
         # campaign_type = "inbound"
