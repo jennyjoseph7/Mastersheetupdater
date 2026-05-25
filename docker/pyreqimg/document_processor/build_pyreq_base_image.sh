@@ -35,7 +35,8 @@ function main() {
                 return
         fi
 
-	cp ../../../spark/requirements.txt ./spark_requirements.txt
+        cp ../../../brochure_pipeline/requirements.txt ./brochure_pipeline_requirements.txt
+        cp ../../../document_processor/requirment_document_processor.txt ./document_processor_requirements.txt
 
         cp Dockerfile Dockerfile.tmp
 
