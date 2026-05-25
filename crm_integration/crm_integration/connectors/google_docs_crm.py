@@ -1,6 +1,6 @@
 import gspread
 from google.oauth2.service_account import Credentials
-from crm_integration.base_crm import BaseCRMClass
+from crm_integration.crm_integration.base_crm import BaseCRMClass
 
 
 STANDARD_FIELDS = [
@@ -121,7 +121,7 @@ class GoogleDocsCRM(BaseCRMClass):
         """
         Read leads from the Google Sheet.
 
-        Filtering (per Praveen's direction):
+        Filtering rules:
         - By default, return only leads that have NOT been processed yet:
             → Status is empty ("") or "NEW"
             → Skips: QUEUED, CONTACTED, engaged, not_interested, completed, done
@@ -184,7 +184,7 @@ class GoogleDocsCRM(BaseCRMClass):
         Find row(s) where 'Mobile Number' == phone_number and write all
         non-empty key-value pairs from `data` back to the sheet.
 
-        Rules (per Praveen):
+        Rules :
         - Skip keys where the value is None or empty string — don't update, don't create column
         - If the column header already exists → update the cell for that row
         - If the column header does NOT exist  → create it in row 1, then update the cell

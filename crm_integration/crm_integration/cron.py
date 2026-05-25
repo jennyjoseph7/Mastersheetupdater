@@ -34,13 +34,16 @@ import requests as _requests
 
 from gryd_worker import gryd
 
-from crm_integration.load_crm import load_crm
+from config import AUTOCRM_CONVERSATION_SERVICE_NAME
+from crm_integration.crm_integration.load_crm import load_crm
 
 
-gryd.SERVICE = "autoengage-crm"
+gryd.SERVICE = AUTOCRM_CONVERSATION_SERVICE_NAME
 gryd.set_queue_manager()
 
 AUTOCRM_APP_ENTERPRISE_ID = "autocrm"   # same as in cron.py in autobot_agents
+
+mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -113,13 +116,13 @@ def sync_crm_campaigns(batch_size=100, logger=None, job=None):
         ("pre-sales",  "pre_sales_campaign"),
         ("post-sales", "post_sales_campaign")
     ]:
-        logger(f"[CRON] Checking {model_name} for Continuous CRM campaigns...")
+        logger.info(f"[CRON] Checking {model_name} for Continuous CRM campaigns...")
 
         try:
             campaigns = _get_continuous_crm_campaigns(model_name)
-            logger(f"[CRON] Found {len(campaigns)} campaigns to sync for {campaign_type}")
+            logger.info(f"[CRON] Found {len(campaigns)} campaigns to sync for {campaign_type}")
         except Exception as e:
-            logger(f"[CRON][ERROR] Could not query {model_name}: {e}")
+            logger.info(f"[CRON][ERROR] Could not query {model_name}: {e}")
             results["errors"].append(str(e))
             continue
 
@@ -158,18 +161,18 @@ def sync_crm_campaigns(batch_size=100, logger=None, job=None):
                 last_sync_iso = None
 
             # ── DEBUG: print full campaign so we can see what's in the DB ──────
-            logger(f"[CRON][DEBUG] Campaign data: "
+            logger.info(f"[CRON][DEBUG] Campaign data: "
                    f"crm_source_details={crm_source}, "
                    f"campaign_user_source={campaign.get('campaign_user_source')}, "
                    f"campaign_status={campaign.get('campaign_status')}")
 
             if not crm_name or not sheet_name:
-                logger(f"[CRON][SKIP] Campaign {campaign_id} is missing crm_source_details. "
+                logger.info(f"[CRON][SKIP] Campaign {campaign_id} is missing crm_source_details. "
                        f"crm_name={crm_name}, sheet_url={sheet_name}. "
                        f"Ask the campaign owner to set crm_source_details on this campaign in the DB.")
                 continue
 
-            logger(f"[CRON] Processing campaign_id={campaign_id}, sheet={sheet_name}, "
+            logger.info(f"[CRON] Processing campaign_id={campaign_id}, sheet={sheet_name}, "
                    f"last_sync={last_sync_iso}")
 
             try:
@@ -185,12 +188,12 @@ def sync_crm_campaigns(batch_size=100, logger=None, job=None):
                     else crm.list_post_sales_leads(last_updated=last_sync_iso)
                 )
 
-                logger(f"[CRON] Fetched {len(leads)} new leads for campaign {campaign_id} "
+                logger.info(f"[CRON] Fetched {len(leads)} new leads for campaign {campaign_id} "
                        f"(batch_size={batch_size})")
                 results["total_leads_fetched"] += len(leads)
 
                 if not leads:
-                    logger(f"[CRON] No new leads. Campaign still counted as processed.")
+                    logger.info(f"[CRON] No new leads. Campaign still counted as processed.")
                     _update_last_sync_timestamp(model_name, campaign_id)
                     if campaign_type == "pre-sales":
                         results["pre_sales_processed"] += 1
@@ -215,16 +218,16 @@ def sync_crm_campaigns(batch_size=100, logger=None, job=None):
                         )
                         try:
                             crm.patch_pre_sales_lead(lead, "QUEUED")
-                            logger(f"[CRON] Marked phone={lead.get('phone_number')} as QUEUED in sheet")
+                            logger.info(f"[CRON] Marked phone={lead.get('phone_number')} as QUEUED in sheet")
                         except Exception as patch_err:
-                            logger(f"[CRON][WARN] Could not mark QUEUED for {lead.get('phone_number')}: {patch_err}")
+                            logger.info(f"[CRON][WARN] Could not mark QUEUED for {lead.get('phone_number')}: {patch_err}")
                     except Exception as lead_err:
-                        logger(f"[CRON][ERROR] Lead {lead.get('phone_number')}: {lead_err}")
+                        logger.info(f"[CRON][ERROR] Lead {lead.get('phone_number')}: {lead_err}")
                         results["errors"].append(str(lead_err))
 
                 # ── STEP 3: Update last_sync_timestamp ───────────────────────────
                 _update_last_sync_timestamp(model_name, campaign_id)
-                logger(f"[CRON] Updated last_sync_timestamp for campaign {campaign_id}")
+                logger.info(f"[CRON] Updated last_sync_timestamp for campaign {campaign_id}")
 
                 if campaign_type == "pre-sales":
                     results["pre_sales_processed"] += 1
@@ -233,17 +236,17 @@ def sync_crm_campaigns(batch_size=100, logger=None, job=None):
 
 
             except Exception as campaign_err:
-                logger(f"[CRON][ERROR] Campaign {campaign_id}: {campaign_err}")
+                logger.info(f"[CRON][ERROR] Campaign {campaign_id}: {campaign_err}")
                 results["errors"].append(str(campaign_err))
 
-    logger(f"[CRON] Done. Results: {results}")
+    logger.info(f"[CRON] Done. Results: {results}")
     return results
 
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AUTOCRM-CAMPAIGN TASK — GRYD TASK APPROACH (via execute_task_with_polling)
-# Praveen: "convert this from API to a task, just do a task"
+#
 # ─────────────────────────────────────────────────────────────────────────────
 
 # autocrm-campaign service constants
@@ -254,11 +257,11 @@ AUTOCRM_TASK_NAME = "manual_register_and_trigger_lead"
 # Auth headers — read from env (set by local.sh / setup.sh), fallback to dev values
 AUTOCRM_API_HEADERS = {
     "Content-Type":          "application/json",
-    "X-GRYD-APPLICATION-ID": os.environ.get("AUTOCRM_APP_ID",            "autocrm"),
+    "X-GRYD-APPLICATION-ID": os.environ.get("AUTOCRM_APP_ID",            "gryd"),
     "X-GRYD-ENTERPRISE-ID":  os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm"),
-    "X-GRYD-TOKEN":          os.environ.get("AUTOCRM_TOKEN",             "3bde2588-6b4a-330a-b949-c73ab53cc046"),
-    "X-GRYD-SESSION-ID":     os.environ.get("AUTOCRM_SESSION_ID",        "b7eb0857-bdae-325a-903e-5c4fc48851b3"),
-    "X-GRYD-ROLE":           os.environ.get("AUTOCRM_ROLE",              "admin"),
+    "X-GRYD-TOKEN":          os.environ.get("AUTOCRM_TOKEN",             "34997628-7b8c-30d8-bab4-1b7b2c4ca2d3"),
+    "X-GRYD-SESSION-ID":     os.environ.get("AUTOCRM_SESSION_ID",        "3caaf4ac-16a6-3787-8b90-ab2f0eee5bde"),
+    "X-GRYD-ROLE":           os.environ.get("AUTOCRM_ROLE",              "agent"),
 }
 
 
@@ -355,7 +358,7 @@ def _trigger_audience_task(
     campaign_type: str,
     dealership_id: str,
     dealership_name: str,
-    logger
+    logger=None
 ):
     """
     Trigger the autocrm-campaign registration task for a single lead.
@@ -375,7 +378,7 @@ def _trigger_audience_task(
     payload = {
         "args": [name, phone_number, email],
         "kwargs": {
-            "channel":               "voice_phone",
+            "channel":               ["voice_phone"],
             "campaign_id":           campaign_id,
             "campaign_objective_id": campaign_objective_id,
             "campaign_type":         campaign_type,
@@ -389,8 +392,9 @@ def _trigger_audience_task(
         "runtime_limit": 30000,
         "cancellable":   True,
     }
+    logger = logger or mlogger
 
-    logger(f"[CRON] Triggering {AUTOCRM_TASK_NAME} → phone={phone_number}, name={name}")
+    logger.info(f"[CRON] Triggering {AUTOCRM_TASK_NAME} → phone={phone_number}, name={name}")
 
     result = execute_task_with_polling(
         base_url=AUTOCRM_BASE_URL,
@@ -398,15 +402,15 @@ def _trigger_audience_task(
         task_name=AUTOCRM_TASK_NAME,
         payload=payload,
         headers=AUTOCRM_API_HEADERS,
-        on_progress=lambda msg: logger(f"[CRON][AUTOCRM] {msg}"),
+        on_progress=lambda msg: logger.info(f"[CRON][AUTOCRM] {msg}"),
         interval_ms=3000,   # poll every 3 seconds
         max_retries=30,     # max 90 seconds wait per lead
     )
 
-    logger(f"[CRON] autocrm-campaign task done for phone={phone_number}: {result}")
-    logger(f"[CRON][DEBUG] Full autocrm-campaign result = {result}")
+    logger.info(f"[CRON] autocrm-campaign task done for phone={phone_number}: {result}")
+    logger.info(f"[CRON][DEBUG] Full autocrm-campaign result = {result}")
 
-    logger(
+    logger.info(
         f"[CRON][DEBUG] "
         f"campaign_id={campaign_id}, "
         f"campaign_objective_id={campaign_objective_id}, "

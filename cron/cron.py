@@ -5,10 +5,17 @@ import re
 from datetime import datetime
 import time                 
 from os.path import dirname, abspath, join as joinpath
+
+from conversation.lead_post_processing import post_session_process
+
+
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_VOICE_SERVICE_NAME, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,VOICE_START_TIME,VOICE_END_TIME,NON_VOICE_START_TIME,NON_VOICE_END_TIME,VOICE_MAX_QUEUE_LENGTH,NON_VOICE_MAX_QUEUE_LENGTH,gryd, hp,AutocrmModel
+from crm_integration.crm_integration import load_crm
+from crm_integration.crm_integration.load_crm import load_crm
+from crm_integration.crm_integration.cron import _trigger_audience_task
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
@@ -2001,12 +2008,12 @@ def get_active_crm_campaigns():
 
     return campaigns
 
-@gryd.is_a_task(function_name="process_crm_campaigns")
-def process_crm_campaigns(batch_size=None, queue_length=None):
+@gryd.is_a_task(function_name="process_crm_campaigns",logger_param="logger",job_param="job")
+def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=None):
     # Get all the active campaign where te campaign_Status is Continuous and last_sync_timestamp <= current time
     # For each  campaigns we get the channel check the queu length and if the queu length is <= max_thresold we proceed and get leads
     
-    logger = logger or mlogger
+    logger =  mlogger
 
     campaigns = get_active_crm_campaigns()
 
@@ -2017,10 +2024,15 @@ def process_crm_campaigns(batch_size=None, queue_length=None):
     logger.info(f"Current queue={queue_length}")
 
     for campaign in campaigns:
+        campaign = campaign[1]
+        logger.info(f"Processing campaign: {campaign}")
         campaign_id = campaign.get("campaign_id")
         dealership_id = campaign.get("dealership_id")
         channels = campaign.get("channels", [])
-        crm_details = campaign.get("crm_source_details", {})
+        crm_details = campaign.get("crm_source_details", {}) or {}
+        sheet_url = crm_details.get("sheet_url")
+        crm_name = crm_details.get("crm_name")
+        campaign_type = campaign.get("campaign_type")
 
         logger.info(f"Processing campaign_id={campaign_id}")
 
@@ -2075,20 +2087,72 @@ def process_crm_campaigns(batch_size=None, queue_length=None):
                 if leads_to_fetch <= 0:
                     continue
 
-                # TODO: leads = get_leads_from_sheet(
-                #     sheet_url=sheet_url,
-                #     batch_size=leads_to_fetch
-                # )
+                
+                crm = load_crm(
+                crm_name=crm_name,
+                sheet_name=sheet_url
+                )
 
-                # TODO: process leads
+                leads = crm.list_pre_sales_leads(
+                    batch_size=leads_to_fetch
+                )
 
-                # processed = len(leads)
-                # current_queue += processed
+                logger.info(
+                    f"Fetched {len(leads)} leads"
+                )
 
-                # TODO:
-                # update_last_sync_timestamp(campaign["_id"])
+                for lead in leads:
+                    
+                    try:
+                        from crm_integration.crm_integration.cron import _trigger_audience_task
+                        
+                        _trigger_audience_task(
+                            lead=lead,
+                            campaign_id=campaign.get("campaign_id"),
+                            campaign_objective_id=campaign.get("campaign_objective_id"),
+                            campaign_type=campaign_type,
+                            dealership_id=dealership_id,
+                            dealership_name=campaign.get("dealership_name")
+                        )
+                        
+                        try:
+                            logger.info("[TEST] Calling post_session_process")
+
+                            list(post_session_process(**{"session_id": "6a44571b-ed6f-36dd-b26b-7be37c88b313"}))
+
+                        except Exception as e:
+                            logger.error(f"post_session_process failed: {e}")
+
+                        crm.patch_pre_sales_lead(
+                            lead,
+                            "QUEUED"
+                        )
+
+                    except Exception as e:
+                        logger.error(
+                            f"Lead failed: {e}"
+                        )
+                logger.info(
+                    f"Finished processing leads for campaign_model={campaign.get('campaign_model')} and channel={channel}")
+                pg.update(
+                    f"{campaign.get('campaign_type').replace('-','_')}_campaign",
+                    "campaign_id",
+                    campaign_id,
+                    {
+                        "last_sync_timestamp": time.time()
+                    }
+                )    
+                    
+
+
 
         except Exception:
             logger.exception(
                 f"Campaign error: {campaign.get('_id')}"
             )
+if __name__ == "__main__":
+    print("[TEST] Running CRM cron...")
+
+    result = process_crm_campaigns(batch_size=1)
+
+    print(result)            

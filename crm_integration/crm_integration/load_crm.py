@@ -1,5 +1,12 @@
-from crm_integration.connectors.google_docs_crm import GoogleDocsCRM
-from crm_integration.connectors.salesforce_crm import SalesforceCRM
+from os.path import dirname, abspath, join as joinpath
+import sys
+
+
+BASE_DIR = dirname(dirname(abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+from crm_integration.crm_integration.connectors.google_docs_crm import GoogleDocsCRM
+from crm_integration.crm_integration.connectors.salesforce_crm import SalesforceCRM
 # from crm_integration.connectors.autounify_crm import AutoUnifyCRM
 # from crm_integration.connectors.leadsquare_crm import LeadSquaredCRM
 

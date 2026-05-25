@@ -1,10 +1,13 @@
 #!/bin/bash
 
 export pull_success=0
+
 export BRANCH=${1:-"master"}
-export TAG="document_processor"
+export BASE_IMAGE_TAG=$BRANCH
+export TAG=$BRANCH
 
 function update_repo() {
+
         branch=$1
 
         git fetch origin
@@ -35,11 +38,13 @@ function main() {
                 return
         fi
 
-	cp ../../../spark/requirements.txt ./spark_requirements.txt
+        cp ../../../brochure_pipeline/requirements.txt ./brochure_pipeline_requirements.txt
+
+        cp ../../../document_processor/requirment_document_processor.txt ./document_processor_requirements.txt
 
         cp Dockerfile Dockerfile.tmp
 
-        sed -i "s/<baseimage_tag>/$TAG/g" Dockerfile.tmp
+        sed -i "s/<baseimage_tag>/$BASE_IMAGE_TAG/g" Dockerfile.tmp
 
         docker build -t autobot_pyreq_baseimage:$TAG -f Dockerfile.tmp .
 
