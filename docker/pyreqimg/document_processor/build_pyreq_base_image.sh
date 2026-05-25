@@ -1,9 +1,10 @@
 #!/bin/bash
 
 export pull_success=0
-export BRANCH=${1:-"master"}
 
-export TAG="spark"
+export BRANCH=${1:-"master"}
+export BASE_IMAGE_TAG=$BRANCH
+export TAG=$BRANCH
 
 function update_repo() {
 
@@ -37,19 +38,23 @@ function main() {
                 return
         fi
 
-        cp ../../../brochure_pipeline/requirements.txt \
-        ./brochure_pipeline_requirements.txt
+        cp ../../../brochure_pipeline/requirements.txt ./brochure_pipeline_requirements.txt
 
-        cp ../../../document_processor/requirment_document_processor.txt \
-        ./document_processor_requirements.txt
+        cp ../../../document_processor/requirment_document_processor.txt ./document_processor_requirements.txt
 
-        docker build -t autobot_pyreq_baseimage:$TAG .
+        cp Dockerfile Dockerfile.tmp
+
+        sed -i "s/<baseimage_tag>/$BASE_IMAGE_TAG/g" Dockerfile.tmp
+
+        docker build -t autobot_pyreq_baseimage:$TAG -f Dockerfile.tmp .
 
         docker tag autobot_pyreq_baseimage:$TAG \
         asia-south1-docker.pkg.dev/dave-70c8e/splitting-pyreq-base-image/autobot-pyreq-baseimage:$TAG
 
         docker push \
         asia-south1-docker.pkg.dev/dave-70c8e/splitting-pyreq-base-image/autobot-pyreq-baseimage:$TAG
+
+        rm -f Dockerfile.tmp
 }
 
 main
