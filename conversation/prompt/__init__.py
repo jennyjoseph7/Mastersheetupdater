@@ -18,7 +18,10 @@ def yield_primary_prompt(*args, **kwargs):
     mlogger.info("yield_primary_prompt called with data \n {} \n\n ---------------".format(kwargs))
 
     ###TODO check prompt template model to find the correct prompt for this user and campaign
-    yield {"prompt":setup_primary_prompt(*args, **kwargs)}
+    pr = setup_primary_prompt(*args, **kwargs)
+    if isinstance(pr,dict) and "status" in pr:
+        yield pr
+    yield {"prompt":pr}
 
 def specific_prompt(*args, **kwargs):
     ###TODO find prompt based on filters provided
