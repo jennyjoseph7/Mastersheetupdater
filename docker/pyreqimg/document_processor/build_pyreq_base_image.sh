@@ -3,25 +3,21 @@
 export pull_success=0
 
 export BRANCH=${1:-"master"}
+export APP_NAME=${2:-"spark"}
+
 export BASE_IMAGE_TAG=$BRANCH
-export TAG=$BRANCH
+export TAG=$APP_NAME
 
 function update_repo() {
 
         branch=$1
 
-        git fetch origin
-        git checkout $branch
+        git fetch origin $branch
+        git checkout $branch 2>/dev/null || git checkout -b $branch origin/$branch
+
+        git reset --hard origin/$branch
 
         if [ $? != 0 ]; then
-                git checkout -b $branch origin/$branch
-        fi
-
-        git pull origin $branch
-
-        status=$?
-
-        if [ $status != 0 ]; then
                 echo "Pull branch $branch failed."
                 pull_success=0
                 return
@@ -39,11 +35,9 @@ function main() {
         fi
 
         cp ../../../brochure_pipeline/requirements.txt ./brochure_pipeline_requirements.txt
-
         cp ../../../document_processor/requirment_document_processor.txt ./document_processor_requirements.txt
 
         cp Dockerfile Dockerfile.tmp
-
         sed -i "s/<baseimage_tag>/$BASE_IMAGE_TAG/g" Dockerfile.tmp
 
         docker build -t autobot_pyreq_baseimage:$TAG -f Dockerfile.tmp .
