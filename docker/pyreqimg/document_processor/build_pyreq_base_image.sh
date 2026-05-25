@@ -3,7 +3,7 @@
 export pull_success=0
 
 export BRANCH=${1:-"master"}
-export APP_NAME=${2:-"spark"}
+export APP_NAME=${2:-"document_processor"}
 
 export BASE_IMAGE_TAG=$BRANCH
 export TAG1=$APP_NAME
