@@ -257,7 +257,7 @@ AUTOCRM_TASK_NAME = "manual_register_and_trigger_lead"
 # Auth headers — read from env (set by local.sh / setup.sh), fallback to dev values
 AUTOCRM_API_HEADERS = {
     "Content-Type":          "application/json",
-    "X-GRYD-APPLICATION-ID": os.environ.get("AUTOCRM_APP_ID",            "autocrm"),
+    "X-GRYD-APPLICATION-ID": os.environ.get("AUTOCRM_APP_ID",            "gryd"),
     "X-GRYD-ENTERPRISE-ID":  os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm"),
     "X-GRYD-TOKEN":          os.environ.get("AUTOCRM_TOKEN",             "34997628-7b8c-30d8-bab4-1b7b2c4ca2d3"),
     "X-GRYD-SESSION-ID":     os.environ.get("AUTOCRM_SESSION_ID",        "3caaf4ac-16a6-3787-8b90-ab2f0eee5bde"),
