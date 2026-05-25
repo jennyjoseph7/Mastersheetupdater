@@ -65,7 +65,7 @@ def get_who_you_represent(*args, **kwargs):
             campaign_data = pg.get(session_data.get("campaign_model"),f"{session_data.get('campaign_model')}_id",session_data.get("campaign_id")) 
     if not campaign_data:
         return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["who_you_represent"]["no_campaign_data"]#"You represent Autobot and all dealers listed with the platform."
-    dealership_name = campaign_data.get("dealership_name")
+    dealership_name = campaign_data.get("dealership_name",campaign_data.get("dealer_name"))
     region = campaign_data.get("region_name")
     dealer_type = ""
     shop_details = ""
@@ -77,8 +77,6 @@ def get_who_you_represent(*args, **kwargs):
         shop_details = campaign_data.get("workshop_name","")
     
     dealer_details = language_maps.MAP.get(kwargs.get("language","english"))["who_you_represent"]["dealer_data"].format(dealer_type=dealer_type,shop_details=shop_details,supported_brands=campaign_data.get("supported_brands",[])) if shop_details else language_maps.MAP.get(kwargs.get("language","english"))["who_you_represent"]["dealer_data_else"].format(dealer_type=dealer_type,supported_brands=campaign_data.get("supported_brands",[]))
-    # dealer_details = "They have a {dealer_type} called {shop_details}. They support the brands as follows - {supported_brands}".format(dealer_type=dealer_type,shop_details=shop_details,supported_brands=campaign_data.get("supported_brands",[])) if shop_details else "They have a {dealer_type}. They support the following brands - {supported_brands}.".format(dealer_type=dealer_type,supported_brands=campaign_data.get("supported_brands",[]))
-    # return "You represent {dealership_name}.{dealer_details}".format(dealership_name=dealership_name,dealer_details=dealer_details)   
     return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["who_you_represent"]["overall"].format(dealership_name=dealership_name,dealer_details=dealer_details)   
 
 def get_user_info(*args, **kwargs):
@@ -271,17 +269,18 @@ def setup_primary_prompt(*args, **kwargs):
     campaign_type = campaign_data.get("campaign_type")
     campaign_name = campaign_data.get("campaign_name")
     campaign_objective = campaign_data.get("campaign_objective")
-    dealer_name = campaign_data.get("workshop_name",campaign_data.get("dealer_name"))
+    dealer_name = campaign_data.get("workshop_name",campaign_data.get("dealer_name",campaign_data.get("dealership_name")))
     dealer_description = "{dealer_name} is a dealer who sells vehicles from their showrooms".format(dealer_name=dealer_name) if campaign_type == "pre-sales" else "{dealer_name} has a service center.".format(dealer_name=dealer_name)
     shop_id = campaign_data.get("workshop_id")
     showroom_workshop_desc = ""
     kwargs["language"] = session_data_cache_data.get("preferred_language","english")
     mlogger.info("got my pref lang as {}".format(kwargs["language"]))
     if not campaign_data:
-        campaign_name = "inbound"
-        campaign_objective = "inbound"
-        campaign_type = "inbound"
-        campaign_data = {"campaign_name":campaign_name,"campaign_objective":campaign_objective,"campaign_type":campaign_type}
+        return {"status":"error","message":"FAILED TO GET CAMPAIGN DATA"}
+        # campaign_name = "inbound"
+        # campaign_objective = "inbound"
+        # campaign_type = "inbound"
+        # campaign_data = {"campaign_name":campaign_name,"campaign_objective":campaign_objective,"campaign_type":campaign_type}
 
     
     with get_pg_connector() as pg:
@@ -290,7 +289,7 @@ def setup_primary_prompt(*args, **kwargs):
     if showroom:
         showroom_workshop_desc = language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["showroom_workshop_desc"].format(showroom_workshop=model_fetch,dealer_name=dealer_name,showrooms = json.dumps(showroom))
     else:
-        showroom_workshop_desc = campaign_data.get("dealership_description",campaign_data.get("dealer_name"))
+        showroom_workshop_desc = campaign_data.get("dealership_description",campaign_data.get("dealer_name",campaign_data.get("dealership_name")))
 
 
     mlogger.info("session_data_cache_data == {}\n\n".format(session_data_cache_data))
