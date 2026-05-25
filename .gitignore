@@ -83,3 +83,4 @@ pyrightconfig.json
 frontend/test.html
 crm_integration/local.sh
 crm_integration/.gitignore
+unstable_setup.sh

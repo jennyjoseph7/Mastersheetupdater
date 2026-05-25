@@ -318,9 +318,12 @@ def post_session_process(*args, **kwargs):
             if crm_sheet and crm_phone:
                 gryd.create_async_task(
                     "update_lead_in_sheet",
-                    "autoengage-crm",
+                    AUTOCRM_CONVERSATION_SERVICE_NAME,
                     args=[],
                     kwargs=crm_update,
+                )
+                mlogger.info(
+                    f"[CRM DEBUG] crm_sheet={crm_sheet}, crm_phone={crm_phone}"
                 )
                 mlogger.info(f"Entered CRM update for sheet={crm_sheet} phone={crm_phone}")
         except Exception as e:

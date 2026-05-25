@@ -1,5 +1,5 @@
 import requests
-from crm_integration.base_crm import BaseCRMClass
+from crm_integration.crm_integration.base_crm import BaseCRMClass
 
 # Token endpoints — production vs sandbox
 SF_LOGIN_URL_PROD    = "https://login.salesforce.com/services/oauth2/token"

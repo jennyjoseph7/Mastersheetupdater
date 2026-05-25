@@ -1,9 +1,10 @@
 from gryd_worker import gryd
 
+from config import AUTOCRM_CONVERSATION_SERVICE_NAME
 from crm_integration.load_crm import load_crm
 
 
-gryd.SERVICE="autoengage-crm"
+gryd.SERVICE=AUTOCRM_CONVERSATION_SERVICE_NAME
 gryd.set_queue_manager()
 
 
@@ -217,7 +218,7 @@ def update_lead_in_sheet(
     """
     Called by system at the END of a voice/whatsapp session.
 
-    Aryan sends us:
+    autobot will pass in any relevant data from the call as kwargs, e.g.:
         sheet_name   (str)  — Google Sheet name, e.g. "Ambal Sanganur Post-sales"
         phone_number (str)  — identifies which row to update
         **kwargs            — any call result data, e.g.:
@@ -234,10 +235,10 @@ def update_lead_in_sheet(
              - If the column does NOT exist  → create the header then update the cell
         4. Returns how many rows were updated and which columns were added
 
-    Format sahib must use when calling this task:
+    Format autobot must use when calling this task:
         gryd.create_async_task(
             "update_lead_in_sheet",
-            "autoengage-crm",
+            AUTOCRM_CONVERSATION_SERVICE_NAME,
             kwargs={
                 "sheet_name":        "Ambal Sanganur Post-sales",
                 "phone_number":      "7606770402",
@@ -262,3 +263,4 @@ def update_lead_in_sheet(
     logger(f"[UPDATE_SHEET] Done: {result}")
 
     return result
+
