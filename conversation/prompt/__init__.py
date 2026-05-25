@@ -14,9 +14,11 @@ mlogger = gryd.hp.get_logger(__name__)
 
 def yield_primary_prompt(*args, **kwargs):
     mlogger.info("yield_primary_prompt called with data \n {} \n\n ---------------".format(kwargs))
-
+    pr = setup_primary_prompt(*args, **kwargs)
+    if isinstance(pr,dict) and "status" in pr and pr.get("status") == "Error":
+        return pr
     ###TODO check prompt template model to find the correct prompt for this user and campaign
-    yield {"prompt":setup_primary_prompt(*args, **kwargs)}
+    yield {"prompt":pr}
 
 def specific_prompt(*args, **kwargs):
     ###TODO find prompt based on filters provided
@@ -60,7 +62,7 @@ def get_who_you_represent(*args, **kwargs):
             campaign_data = pg.get(session_data.get("campaign_model"),f"{session_data.get('campaign_model')}_id",session_data.get("campaign_id")) 
     if not campaign_data:
         return "You represent Autobot and all dealers listed with the platform."
-    dealership_name = campaign_data.get("dealership_name")
+    dealership_name = campaign_data.get("dealership_name",campaign_data.get("dealer_name"))
     region = campaign_data.get("region_name")
     dealer_type = ""
     shop_details = ""
@@ -272,17 +274,19 @@ def setup_primary_prompt(*args, **kwargs):
     campaign_type = campaign_data.get("campaign_type")
     campaign_name = campaign_data.get("campaign_name")
     campaign_objective = campaign_data.get("campaign_objective")
-    dealer_name = campaign_data.get("workshop_name",campaign_data.get("dealer_name"))
+    dealer_name = campaign_data.get("workshop_name",campaign_data.get("dealer_name",campaign_data.get("dealership_name")))
     dealer_description = "{dealer_name} is a dealer who sells cars from their showrooms".format(dealer_name=dealer_name) if campaign_type == "pre-sales" else "{dealer_name} has a service center.".format(dealer_name=dealer_name)
     shop_id = campaign_data.get("workshop_id")
     showroom_workshop_desc = ""
 
 
     if not campaign_data:
-        campaign_name = "inbound"
-        campaign_objective = "inbound"
-        campaign_type = "inbound"
-        campaign_data = {"campaign_name":campaign_name,"campaign_objective":campaign_objective,"campaign_type":campaign_type}
+        return {"status":"error","message":"FAILED TO GET CAMPAIGN DATA"}
+
+        # campaign_name = "inbound"
+        # campaign_objective = "inbound"
+        # campaign_type = "inbound"
+        # campaign_data = {"campaign_name":campaign_name,"campaign_objective":campaign_objective,"campaign_type":campaign_type}
 
     
     with get_pg_connector() as pg:
@@ -291,7 +295,7 @@ def setup_primary_prompt(*args, **kwargs):
     if showroom:
         showroom_workshop_desc = "The following are the {showroom_workshop} of {dealer_name} :{showrooms}".format(showroom_workshop=model_fetch,dealer_name=dealer_name,showrooms = json.dumps(showroom))
     else:
-        showroom_workshop_desc = campaign_data.get("dealership_description",campaign_data.get("dealer_name"))
+        showroom_workshop_desc = campaign_data.get("dealership_description",campaign_data.get("dealer_name",campaign_data.get("dealership_name")))
 
 
     mlogger.info("session_data_cache_data == {}\n\n".format(session_data_cache_data))
