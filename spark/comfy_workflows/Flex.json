@@ -1,33 +1,14 @@
 {
-  "76": {
+  "1": {
     "inputs": {
-      "image": "evirata.jpg"
+      "image": "key_img02 5.jpg"
     },
     "class_type": "LoadImage",
     "_meta": {
       "title": "Load Image"
     }
   },
-  "105": {
-    "inputs": {
-      "filename_prefix": "img",
-      "images": ["75:65", 0]
-    },
-    "class_type": "SaveImage",
-    "_meta": {
-      "title": "Save Image"
-    }
-  },
-  "106": {
-    "inputs": {
-      "images": ["75:65", 0]
-    },
-    "class_type": "PreviewImage",
-    "_meta": {
-      "title": "Preview Image"
-    }
-  },
-  "75:72": {
+  "2": {
     "inputs": {
       "vae_name": "flux2-vae.safetensors"
     },
@@ -36,25 +17,28 @@
       "title": "Load VAE"
     }
   },
-  "75:73": {
+  "3": {
     "inputs": {
-      "noise_seed": 882881288564960
+      "model": "INSPYRENET",
+      "sensitivity": 1,
+      "process_res": 1024,
+      "mask_blur": 2,
+      "mask_offset": 64,
+      "invert_output": false,
+      "refine_foreground": false,
+      "background": "Color",
+      "background_color": "#ffffff",
+      "image": [
+        "1",
+        0
+      ]
     },
-    "class_type": "RandomNoise",
+    "class_type": "RMBG",
     "_meta": {
-      "title": "RandomNoise"
+      "title": "Remove Background (RMBG)"
     }
   },
-  "75:61": {
-    "inputs": {
-      "sampler_name": "euler"
-    },
-    "class_type": "KSamplerSelect",
-    "_meta": {
-      "title": "KSamplerSelect"
-    }
-  },
-  "75:71": {
+  "4": {
     "inputs": {
       "clip_name": "qwen_3_8b_fp8mixed.safetensors",
       "type": "flux2",
@@ -65,98 +49,223 @@
       "title": "Load CLIP"
     }
   },
-  "75:83": {
+  "5": {
     "inputs": {
-      "unet_name": "flux-2-klein-9b-BF16.gguf"
+      "unet_name": "Flux-2-Klein-9B-KV-Q8_0.gguf"
     },
     "class_type": "UnetLoaderGGUF",
     "_meta": {
       "title": "Unet Loader (GGUF)"
     }
   },
-  "75:85": {
+  "6": {
     "inputs": {
-      "min_size": 1920,
-      "max_size": 2560,
-      "image": ["76", 0]
+      "model": [
+        "5",
+        0
+      ]
     },
-    "class_type": "AdaptiveLongestEdge_EditUtils",
+    "class_type": "FluxKVCache",
     "_meta": {
-      "title": "EditUtils: Adaptive Longest Edge lrzjason"
+      "title": "Flux KV Cache"
     }
   },
-  "75:74": {
+  "7": {
     "inputs": {
-      "text": "Change the background to a Ocean view while preserving all the details of the car",
-      "clip": ["75:71", 0]
+      "lora_name": "Flux2-Klein-9B-consistency-V2.safetensors",
+      "strength_model": 0.6,
+      "model": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "8": {
+    "inputs": {
+      "text": "Change the background to City Landscape while preserving all the details of the car",
+      "clip": [
+        "4",
+        0
+      ]
     },
     "class_type": "CLIPTextEncode",
     "_meta": {
-      "title": "CLIP Text Encode (Positive Prompt)"
+      "title": "CLIP Text Encode (Prompt)"
     }
   },
-  "75:67": {
+  "9": {
     "inputs": {
-      "text": "distortion, bad text, bad logo, angle, direction, postion, humans",
-      "clip": ["75:71", 0]
+      "noise_seed": 929450400402690
     },
-    "class_type": "CLIPTextEncode",
+    "class_type": "RandomNoise",
     "_meta": {
-      "title": "CLIP Text Encode (Negative Prompt)"
+      "title": "RandomNoise"
     }
   },
-  "75:87": {
+  "10": {
     "inputs": {
-      "aspect_ratio": "original",
-      "proportional_width": 1,
-      "proportional_height": 1,
-      "fit": "letterbox",
-      "method": "lanczos",
-      "round_to_multiple": "8",
-      "scale_to_side": "longest",
-      "scale_to_length": ["75:85", 0],
-      "background_color": "#000000",
-      "image": ["76", 0]
-    },
-    "class_type": "LayerUtility: ImageScaleByAspectRatio V2",
-    "_meta": {
-      "title": "LayerUtility: ImageScaleByAspectRatio V2"
-    }
-  },
-  "75:81": {
-    "inputs": {
-      "image": ["75:87", 0]
-    },
-    "class_type": "GetImageSize",
-    "_meta": {
-      "title": "Get Image Size"
-    }
-  },
-  "75:79:78": {
-    "inputs": {
-      "pixels": ["75:87", 0],
-      "vae": ["75:72", 0]
+      "pixels": [
+        "11",
+        0
+      ],
+      "vae": [
+        "2",
+        0
+      ]
     },
     "class_type": "VAEEncode",
     "_meta": {
       "title": "VAE Encode"
     }
   },
-  "75:62": {
+  "11": {
     "inputs": {
-      "steps": 6,
-      "width": ["75:81", 0],
-      "height": ["75:81", 1]
+      "upscale_method": "lanczos",
+      "megapixels": 2.5,
+      "resolution_steps": 1,
+      "image": [
+        "23",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "ImageScaleToTotalPixels"
+    }
+  },
+  "12": {
+    "inputs": {
+      "conditioning": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "ConditioningZeroOut"
+    }
+  },
+  "14": {
+    "inputs": {
+      "conditioning": [
+        "8",
+        0
+      ],
+      "latent": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "ReferenceLatent"
+    }
+  },
+  "15": {
+    "inputs": {
+      "conditioning": [
+        "14",
+        0
+      ],
+      "latent": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "ReferenceLatent"
+    }
+  },
+  "16": {
+    "inputs": {
+      "conditioning": [
+        "12",
+        0
+      ],
+      "latent": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "ReferenceLatent"
+    }
+  },
+  "17": {
+    "inputs": {
+      "image": [
+        "11",
+        0
+      ]
+    },
+    "class_type": "GetImageSize",
+    "_meta": {
+      "title": "Get Image Size"
+    }
+  },
+  "18": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "7",
+        0
+      ],
+      "positive": [
+        "15",
+        0
+      ],
+      "negative": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFGGuider"
+    }
+  },
+  "19": {
+    "inputs": {
+      "steps": 4,
+      "width": [
+        "17",
+        0
+      ],
+      "height": [
+        "17",
+        1
+      ]
     },
     "class_type": "Flux2Scheduler",
     "_meta": {
       "title": "Flux2Scheduler"
     }
   },
-  "75:66": {
+  "20": {
     "inputs": {
-      "width": ["75:81", 0],
-      "height": ["75:81", 1],
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "21": {
+    "inputs": {
+      "width": [
+        "17",
+        0
+      ],
+      "height": [
+        "17",
+        1
+      ],
       "batch_size": 1
     },
     "class_type": "EmptyFlux2LatentImage",
@@ -164,80 +273,138 @@
       "title": "Empty Flux 2 Latent"
     }
   },
-  "75:79:76": {
+  "22": {
     "inputs": {
-      "conditioning": ["75:67", 0],
-      "latent": ["75:79:78", 0]
-    },
-    "class_type": "ReferenceLatent",
-    "_meta": {
-      "title": "ReferenceLatent"
-    }
-  },
-  "75:79:77": {
-    "inputs": {
-      "conditioning": ["75:74", 0],
-      "latent": ["75:79:78", 0]
-    },
-    "class_type": "ReferenceLatent",
-    "_meta": {
-      "title": "ReferenceLatent"
-    }
-  },
-  "75:79:79": {
-    "inputs": {
-      "conditioning": ["75:79:77", 0],
-      "latent": ["75:79:78", 0]
-    },
-    "class_type": "ReferenceLatent",
-    "_meta": {
-      "title": "ReferenceLatent"
-    }
-  },
-  "75:79:81": {
-    "inputs": {
-      "conditioning": ["75:79:79", 0],
-      "latent": ["75:79:78", 0]
-    },
-    "class_type": "ReferenceLatent",
-    "_meta": {
-      "title": "ReferenceLatent"
-    }
-  },
-  "75:63": {
-    "inputs": {
-      "cfg": 1,
-      "model": ["75:83", 0],
-      "positive": ["75:79:81", 0],
-      "negative": ["75:79:76", 0]
-    },
-    "class_type": "CFGGuider",
-    "_meta": {
-      "title": "CFGGuider"
-    }
-  },
-  "75:64": {
-    "inputs": {
-      "noise": ["75:73", 0],
-      "guider": ["75:63", 0],
-      "sampler": ["75:61", 0],
-      "sigmas": ["75:62", 0],
-      "latent_image": ["75:66", 0]
+      "noise": [
+        "9",
+        0
+      ],
+      "guider": [
+        "18",
+        0
+      ],
+      "sampler": [
+        "20",
+        0
+      ],
+      "sigmas": [
+        "19",
+        0
+      ],
+      "latent_image": [
+        "21",
+        0
+      ]
     },
     "class_type": "SamplerCustomAdvanced",
     "_meta": {
       "title": "SamplerCustomAdvanced"
     }
   },
-  "75:65": {
+  "23": {
     "inputs": {
-      "samples": ["75:64", 0],
-      "vae": ["75:72", 0]
+      "width": 2880,
+      "height": 3600,
+      "upscale_method": "lanczos",
+      "keep_proportion": "pad",
+      "pad_color": "1, 1, 1",
+      "crop_position": "center",
+      "divisible_by": 1,
+      "device": "cpu",
+      "image": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "Resize Image v2"
+    }
+  },
+  "26": {
+    "inputs": {
+      "samples": [
+        "22",
+        0
+      ],
+      "vae": [
+        "2",
+        0
+      ]
     },
     "class_type": "VAEDecode",
     "_meta": {
       "title": "VAE Decode"
     }
+  },
+  "31": {
+    "inputs": {
+      "upscale_model": [
+        "32",
+        0
+      ],
+      "image": [
+        "26",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "Upscale Image (using Model)"
+    }
+  },
+  "32": {
+    "inputs": {
+      "model_name": "4x-UltraSharp.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "Load Upscale Model"
+    }
+  },
+  "33": {
+    "inputs": {
+      "width": 1440,
+      "height": 1800,
+      "upscale_method": "lanczos",
+      "keep_proportion": "stretch",
+      "pad_color": "0, 0, 0",
+      "crop_position": "center",
+      "divisible_by": 1,
+      "device": "cpu",
+      "image": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "Resize Image v2"
+    }
+  },
+  "34": {
+    "inputs": {
+      "images": [
+        "23",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "36": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "33",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
   }
 }
-

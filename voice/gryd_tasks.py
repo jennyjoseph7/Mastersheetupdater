@@ -196,6 +196,20 @@ def trigger_voice_call(*args, **kwargs):
             "session_data" : session_data,
             "channel":"voice_phone"
         }):
+            
+            if x.get("status") and x.get("status").lower() in ["error"]:
+                logger.error(f"Error in generating prompt: {x.get('message')}")
+                yield {
+                    "error": f"Error in generating prompt: {x.get('message')}"
+                }
+
+                logger.info(f"Updating session status to 'queued' for session_id: {session_data.get('session_id')}")
+                session_model.patch(
+                    session_data.get("session_id"),
+                    {"status": "queued"}
+                )
+                return
+               
             if x.get('prompt'):
                 session_data["prompt"] = x.get('prompt')
                 break

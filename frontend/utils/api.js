@@ -143,27 +143,39 @@ async function uploadFileToGryd(file) {
    CSV / Import Tasks
 --------------------------------------------------- */
 
+// async function extractCsvHeadersAPI(fileUrl) {
+//   const servicename =
+//     process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
+//   const response = await authenticatedFetch(
+//     `${APP_BASE_URL}/gryd/task/${servicename}/extract_csv_headers`,
+//     {
+//       method: "POST",
+//       body: JSON.stringify({
+//         args: [fileUrl],
+//         kwargs: {},
+//         runtime_limit: 3600,
+//         cancellable: true,
+//       }),
+//     },
+//   );
+
+//   if (!response.ok) {
+//     throw new Error(await response.text());
+//   }
+
+//   return response.json();
+// }
+
 async function extractCsvHeadersAPI(fileUrl) {
   const servicename =
     process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
-  const response = await authenticatedFetch(
-    `${APP_BASE_URL}/gryd/task/${servicename}/extract_csv_headers`,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        args: [fileUrl],
-        kwargs: {},
-        runtime_limit: 3600,
-        cancellable: true,
-      }),
-    },
-  );
 
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-
-  return response.json();
+  return directExecuteTask(servicename, "extract_csv_headers", {
+    args: [fileUrl],
+    kwargs: {},
+    runtime_limit: 3600,
+    cancellable: true,
+  });
 }
 
 async function startImportTask(
@@ -380,10 +392,10 @@ async function fetchAudienceTasks(page = 1, pageSize = 10, filterType = "all") {
   // 2. Append the exact filter logic matching your backend
   if (filterType === "previous") {
     // Appends "&campaign_id~="
-    params.append("campaign_id~", ""); 
+    params.append("campaign_id~", "");
   } else if (filterType === "fresh") {
     // Appends "&campaign_id="
-    params.append("campaign_id", "");  
+    params.append("campaign_id", "");
   }
 
   const url = `${APP_BASE_URL}/gryd/db/objects/audience_task?${params.toString()}`;
@@ -392,7 +404,7 @@ async function fetchAudienceTasks(page = 1, pageSize = 10, filterType = "all") {
   try {
     const response = await authenticatedFetch(url, { method: "GET" });
     if (!response.ok) throw new Error("API request failed");
-    
+
     const json = await response.json();
     return {
       items: json?.data ?? [],
@@ -796,6 +808,31 @@ export const executeTaskWithPolling = async (
   return resultRes.result;
 };
 
+/**
+ * Executes a fast, synchronous task directly and returns the immediate response data.
+ * @param {string} service - The name of the service (e.g., 'autocrm-core')
+ * @param {string} taskName - The task to execute (e.g., 'extract_csv_headers')
+ * @param {object} payload - The arguments and kwargs for the task
+ * @returns {Promise<any>} The direct execution result data
+ */
+export const directExecuteTask = async (service, taskName, payload) => {
+  // Directly targets the blocking execute endpoint instead of /gryd/task/
+  const response = await api(
+    `/gryd/execute/${taskName}/${service}`,
+    "POST",
+    payload,
+  );
+
+  // If your api utility unpacks data natively, adjust this check if needed
+  if (!response) {
+    throw new Error(
+      "Direct execution failed to return a response from the server.",
+    );
+  }
+
+  return response;
+};
+
 /* ---------------------------------------------------
    Billing & Payments 
 --------------------------------------------------- */
@@ -839,15 +876,15 @@ export async function createCreditPurchaseOrder(
   }
 }
 
-
 async function cloneLeadsTask(
   leadType,
   oldCampaignId,
   newCampaignId,
   dealershipId,
-  onProgress = null
+  onProgress = null,
 ) {
-  const servicename = process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
+  const servicename =
+    process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
   return executeTaskWithPolling(
     servicename,
     "clone_leads_between_campaigns",
@@ -857,7 +894,7 @@ async function cloneLeadsTask(
       runtime_limit: 3600,
       cancellable: true,
     },
-    onProgress
+    onProgress,
   );
 }
 
@@ -867,9 +904,10 @@ async function assignAudienceTask(
   campaignObjectiveId,
   dealershipId,
   kwargs = {},
-  onProgress = null
+  onProgress = null,
 ) {
-  const servicename = process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
+  const servicename =
+    process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
   return executeTaskWithPolling(
     servicename,
     "assign_audience_to_campaign",
@@ -879,7 +917,7 @@ async function assignAudienceTask(
       runtime_limit: 3600,
       cancellable: true,
     },
-    onProgress
+    onProgress,
   );
 }
 /* ---------------------------------------------------
@@ -909,5 +947,6 @@ export {
   getBrands,
   cloneLeadsTask,
   assignAudienceTask,
+
   // createCreditPurchaseOrder, // <-- New billing export added here
 };
