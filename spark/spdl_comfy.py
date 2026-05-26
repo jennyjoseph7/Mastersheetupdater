@@ -264,7 +264,6 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
         total_cost = (time.time() - total_start_time) * 0.0007
         if len(image_urls) > 1:
             image_urls = [image_urls[0]]
-            logger.info("Multiple image URLs found; returning only the first one")
 
         logger.info(f"===== Total Task Completed in {time.time() - total_start_time:.2f} sec =====")
         logger.info(f"Estimated cost: {total_cost:.4f} USD")
