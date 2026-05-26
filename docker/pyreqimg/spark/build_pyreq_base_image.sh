@@ -41,7 +41,7 @@ function main() {
         cp Dockerfile Dockerfile.tmp
         sed -i "s/<baseimage_tag>/$BASE_IMAGE_TAG/g" Dockerfile.tmp
 
-        docker build -t autobot_pyreq_baseimage:$APP_NAME .
+        docker build -t autobot_pyreq_baseimage:$APP_NAME -f Dockerfile.tmp .
 
         docker tag autobot_pyreq_baseimage:$APP_NAME \
         asia-south1-docker.pkg.dev/dave-70c8e/splitting-pyreq-base-image/autobot-pyreq-baseimage:$TAG1
