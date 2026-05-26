@@ -76,7 +76,6 @@ spark/output
 frontend/app/campaign/create/page copy.tsx
 frontend/app/campaign/create/page copy 2.tsx
 .vscode
-
 frontend/csvtojson.html
 frontend/objective.html
 pyrightconfig.json
@@ -84,3 +83,5 @@ frontend/test.html
 crm_integration/local.sh
 crm_integration/.gitignore
 unstable_setup.sh
+logs/*
+*.log
