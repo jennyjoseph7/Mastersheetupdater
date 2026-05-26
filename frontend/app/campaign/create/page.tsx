@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, useMemo, useRef } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 // Imports
+<<<<<<< HEAD
 import {
   fetchAudienceTasks,
   getDealershipId,
@@ -11,6 +12,9 @@ import {
   cloneLeadsTask,
   assignAudienceTask,
 } from "@/utils/api";
+=======
+import { fetchAudienceTasks ,getDealershipId,executeTaskWithPolling,cloneLeadsTask,assignAudienceTask} from "@/utils/api";
+>>>>>>> 477a776803623773b10dfcf454683dcdeb3cfb9b
 import { api, dealershipUpdateDetails } from "@/lib/api";
 
 import {
@@ -949,16 +953,23 @@ function CampaignCreateContent() {
         if (storedDetailsStr) {
           const detailsObj = JSON.parse(storedDetailsStr);
           const currentStatus = detailsObj.dealer_status;
+<<<<<<< HEAD
 
           if (currentStatus !== "active" && currentStatus !== "suspended") {
             const coreServiceName =
               process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME ||
               "autocrm-core";
+=======
+          
+          if (currentStatus !== "active" && currentStatus !== "suspended") {
+            const coreServiceName = process.env.NEXT_PUBLIC_AUTOCRM_CORE_SERVICE_NAME || "autocrm-core";
+>>>>>>> 477a776803623773b10dfcf454683dcdeb3cfb9b
             await executeTaskWithPolling(
               coreServiceName,
               "dealership_update_status",
               {
                 args: [getDealershipId()],
+<<<<<<< HEAD
                 kwargs: { dealer_status: "active" },
               },
             );
@@ -967,6 +978,13 @@ function CampaignCreateContent() {
               "dealership_details",
               JSON.stringify(detailsObj),
             );
+=======
+                kwargs: { dealer_status: "active" }
+              }
+            );
+            detailsObj.dealer_status = "active";
+            localStorage.setItem("dealership_details", JSON.stringify(detailsObj));
+>>>>>>> 477a776803623773b10dfcf454683dcdeb3cfb9b
           }
         }
       } catch (err) {

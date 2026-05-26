@@ -1462,7 +1462,9 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     {example_disposition_response}
     """
 
+    mlogger.info("prompt == {}".format(prompt))
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id, "temperature": 0.2})
+    # mlogger.info("disposition prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
 def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data):
