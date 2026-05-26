@@ -155,8 +155,7 @@ def trigger_voice_call(*args, **kwargs):
                 "campaign_name": l_campaign_name or None,
                 "dealership_id": user_data.get("dealership_id"),
                 "phone_number":format_phone_number(user_data.get("mobile_number")),
-                "start_time": hp.epoch()
-                
+                "start_time": hp.epoch()                
             }
             session_data = session_model.post(session_obj)
 
@@ -193,7 +192,6 @@ def trigger_voice_call(*args, **kwargs):
     if user_data.get("generate_prompt", True):
         for x in converse.get_primary_prompt(*args, **{
             "session_id" : session_data['session_id'],
-            "session_data" : session_data,
             "channel":"voice_phone"
         }):
             
