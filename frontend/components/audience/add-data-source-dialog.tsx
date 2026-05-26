@@ -66,6 +66,7 @@ export interface DataSourceFormData {
   audienceSize: number;
   processedCount?: number;
   errorCount?: number;
+  uniqueCount?: number;
 }
 
 const steps = [
@@ -111,6 +112,7 @@ export function AddDataSourceDialog({
     audienceSize: 0,
     processedCount: 0,
     errorCount: 0,
+    uniqueCount: 0,
   });
 
   // Re-sync props if dialog is reused without unmounting
