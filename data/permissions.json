@@ -295,5 +295,15 @@
             "read_access": true,
             "role": "data_admin"
         }
+    ],
+    "daily_dealership_summary": [
+        {
+            "read_access": true,
+            "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "role": "data_admin"
+        }
     ]
 }
