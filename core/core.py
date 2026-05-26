@@ -914,6 +914,106 @@ def dealership_update_status(
         }
 
 
+@gryd.is_a_task(function_name="extract_phone_number_from_csv", job_param='job', logger_param='logger')
+def extract_phone_number_from_csv(csv_file_link: str, kwargs: dict = None, job = None, logger = None):
+    """
+    Gryd task to process an incoming CSV file and extract a structured list 
+    of participant names and their associated phone numbers.
+
+    Args:
+        csv_file_link (str): Remote URL or path to the target CSV file.
+        kwargs (dict): Optional metadata parameters containing mapping properties.
+            - mapping (dict): Key-value pairs to map irregular CSV headers to system requirements.
+                              e.g., {"Customer Name": "name", "Mobile": "phone_number"}
+    Returns:
+        dict: Summary block containing list of extracted records and processing metrics.
+    """
+    logger = logger or mlogger
+    kwargs = kwargs or {}
+    mapping = kwargs.get("mapping", {})
+    
+    logger.info(f"------ Task: Extracting Phone Numbers from CSV: {csv_file_link} ------")
+    
+    csv_path = None
+    extracted_records = []
+    total_processed = 0
+    failed_rows = 0
+
+    try:
+        # 1. Download or copy file into safe local temporary workspace
+        csv_path = create_csv_path(csv_file_link, logger=logger)
+        
+        with open(csv_path, encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            original_headers = reader.fieldnames
+            
+            if not original_headers:
+                raise ValueError("The provided CSV file contains no readable headers.")
+            
+            # 2. Normalize headers based on provided user mappings
+            # Converts all variations down to lowercase, stripped snake_case properties
+            normalized_headers = [
+                mapping.get(h, h).lower().strip().replace(' ', '_').replace('-', '_') 
+                for h in original_headers
+            ]
+            
+            # Determine column positions for extracting information
+            name_fields = ["name", "person_name", "first_owner_name", "primary_contact_name"]
+            phone_fields = ["phone_number", "mobile", "primary_contact_phone"]
+            
+            name_col = next((original_headers[i] for i, h in enumerate(normalized_headers) if h in name_fields), None)
+            phone_col = next((original_headers[i] for i, h in enumerate(normalized_headers) if h in phone_fields), None)
+            
+            if not phone_col:
+                raise ValueError(f"Could not identify a valid phone number column. Normalized headers checked: {normalized_headers}")
+            
+            logger.info(f"Targeting columns -> Name: '{name_col}', Phone Number: '{phone_col}'")
+
+            # 3. Process records
+            for i, row in enumerate(reader, 2):
+                total_processed += 1
+                
+                # Check value health using your existing workspace validation functions
+                if not is_valid_value(row, phone_col):
+                    logger.warning(f"Line {i}: Missing or invalid phone data layout. Skipping row.")
+                    failed_rows += 1
+                    continue
+                
+                raw_phone = row.get(phone_col).strip()
+                raw_name = row.get(name_col).strip() if (name_col and is_valid_value(row, name_col)) else "N/A"
+                
+                extracted_records.append({
+                    "person_name": raw_name,
+                    "phone_number": raw_phone
+                })
+
+            logger.info(f"Extraction successful. Retrieved {len(extracted_records)} total contact rows.")
+            
+            return {
+                "success": True,
+                "metrics": {
+                    "total_rows_evaluated": total_processed,
+                    "successfully_extracted": len(extracted_records),
+                    "skipped_rows": failed_rows
+                },
+                "data": extracted_records
+            }
+
+    except Exception as e:
+        logger.error(f"Critical failure inside extract_phone_number_from_csv task: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+        
+    finally:
+        # Enforce environmental cleanup and dismantle temporary operational files
+        if csv_path:
+            wind_up(csv_path)
+            logger.info("Temporary workspace closed and unlinked safely.")
+
+
+
 @gryd.is_a_task(function_name="reset_password", job_param='job', logger_param='logger', auth_param='auth')
 def reset_password(phone_number_or_email:str, channel:str, new_password:str, confirm_password:str, token:str, otp:str, logger = None, job = None, auth = None):
     logger = logger or mlogger
