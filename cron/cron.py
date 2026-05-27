@@ -228,7 +228,21 @@ def set_min_worker_count(services, environment, min_worker_count, max_worker_cou
             print(f"Failed for {service}: {str(e)}")
             
         # TODO: use a scale_down function to scale down the environment - gryd_worker:0.5.1
-        
+
+@gryd.is_a_task(function_name = "test_cron_job")
+def test_cron_job(execution_time = 110):
+    """
+    This job basically executes a loop by sleeping for 1 sec until execution time expires
+    """
+    n = hp.now()
+    st = hp.epoch()
+    logger.info("Start time: %s (%s)", n, st)
+    for k in range(execution_time):
+        time.sleep(1) 
+        logger.info("Executed test_cron_job for %s secs", k + 1)
+    logger.info("Completing the test job after %s secs @ %s", hp.epoch() - st, hp.now())
+    return execution_time
+
 # @gryd.is_a_task(function_name="campaign_objective_performance_summary")
 # def campaign_objective_performance_summary():
     
