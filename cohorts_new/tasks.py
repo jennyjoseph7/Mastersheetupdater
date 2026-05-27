@@ -854,7 +854,26 @@ def user_session_stitch_agent(*args, **kwargs):
         full_trace = traceback.format_exc()
         return {"task": inspect.currentframe().f_code.co_name, "error": str(e), "trace": full_trace}
 
+@gryd.is_a_task()
+def persona_generation_agent(*args, **kwargs):
+    try:
+        from cohorts_agents.persona_generation_agent import PersonaGenerationAgent
+        source = kwargs.get("source", None)
+        u = PersonaGenerationAgent(source=source)
+        d = u.run()
+        return d
+    except Exception as e:  
+        full_trace = traceback.format_exc()
+        return {"task": inspect.currentframe().f_code.co_name, "error": str(e), "trace": full_trace}
+
 if __name__ == "__main__":
+
+    d = persona_generation_agent(
+        source="/home/shreyasvaishnav/autobot_agents_branch_master/autobot_agents/cohorts_new/test_files/all_session_for_a_user.json")
+
+    print(json.dumps(d, indent=4, default=str))
+
+    assert False
 
 
     d = user_session_stitch_agent(
