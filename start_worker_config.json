@@ -3,7 +3,7 @@
         {
             "port": 5000,
             "url_scheme": "http",
-            "api_threads": 8,
+            "api_threads": 5,
             "name": "app"
         }
     ],
@@ -32,7 +32,7 @@
         {
             "name": "core",
             "entry_point": "core.py",
-            "parallel_threads": 1,
+            "parallel_threads": 0,
             "gryd_service": "AUTOCRM_CORE_SERVICE_NAME",
             "shutdown_time": 0
         },
