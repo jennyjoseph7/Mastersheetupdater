@@ -573,7 +573,13 @@ class CallSession:
             elif msg_type == "ping":
                 ping_event = msg_data.get("ping_event", {})
                 event_id = ping_event.get("event_id")
-                # Respond with pong
+                if self.stop_event.is_set():
+                    logger.info(f"[{self.call_id}] Ping received after stop_event; skipping pong")
+                    return
+                if self.dave_ws is None or getattr(self.dave_ws, "closed", False):
+                    logger.info(f"[{self.call_id}] Ping received but ElevenLabs WS is closed; skipping pong")
+                    return
+                # Respond with pong (only while the call is active).
                 try:
                     await self.dave_ws.send(_dumps({"type": "pong", "event_id": event_id}))
                 except Exception as e:
@@ -756,6 +762,12 @@ class CallSession:
                         elif ev == "stop":
                             logger.info(f"[{self.call_id}] Call ended by platform")
                             self.stop_event.set()
+                            try:
+                                if self.dave_ws is not None and not getattr(self.dave_ws, "closed", False):
+                                    await self.dave_ws.close()
+                                    logger.info(f"[{self.call_id}] Closed ElevenLabs WS on TataTele stop")
+                            except Exception as e:
+                                logger.warning(f"[{self.call_id}] Failed to close ElevenLabs WS on stop: %s", e)
                             break
 
                         elif ev == "mark":
@@ -765,6 +777,7 @@ class CallSession:
 
                     except asyncio.CancelledError:
                         logger.info(f"[{self.call_id}] Tatatele reader cancelled")
+                        self.stop_event.set()
                         raise  # Re-raise to properly exit
                     except Exception as e:
                         logger.error(f"[{self.call_id}] Tatatele reader error: %s", e)
