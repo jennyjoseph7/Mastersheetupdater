@@ -5,7 +5,7 @@ pull_success=0
 BRANCH=${1:-master}
 APP_NAME=${2:-spark}
 
-IMAGE_NAME="autobot-spark-pyreq-image"
+IMAGE_NAME="autobot-pyreq-baseimage"
 REPO="asia-south1-docker.pkg.dev/dave-70c8e/spark-pyreq-image/$IMAGE_NAME"
 
 update_repo() {
