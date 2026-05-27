@@ -221,7 +221,7 @@ def post_session_process(*args, **kwargs):
     emotion_analysis = {}
 
     if messages:
-        sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="gcp-gemini-3.1-flash-lite-preview-preview")
+        sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="gcp-gemini-3.1-flash-lite-preview")
         aa = sentiment_agent.run()
         sentiment_score = aa.get("conversation_analytics",{}).get("overall_sentiment_score",-1)
         emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
