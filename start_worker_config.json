@@ -26,13 +26,13 @@
             "name": "communication",
             "entry_point": "communication_worker.py",
             "gryd_service": "AUTOCRM_COMMUNICATION_SERVICE_NAME",
-            "parallel_threads": 2,
+            "parallel_threads": 1,
             "shutdown_time": 0
         },
         {
             "name": "core",
             "entry_point": "core.py",
-            "parallel_threads": 2,
+            "parallel_threads": 1,
             "gryd_service": "AUTOCRM_CORE_SERVICE_NAME",
             "shutdown_time": 0
         },
@@ -40,7 +40,7 @@
             "name": "cron",
             "entry_point": "cron.py",
             "gryd_service": "AUTOCRM_CRON_SERVICE_NAME",
-            "parallel_threads": 3,
+            "parallel_threads": 1,
             "shutdown_time": 0
         },
         {
@@ -54,20 +54,20 @@
             "name": "conversation",
             "entry_point": "converse.py",
             "gryd_service": "AUTOCRM_CONVERSATION_SERVICE_NAME",
-            "parallel_threads": 2,
+            "parallel_threads": 1,
             "shutdown_time": 0
         },
         {
             "name": "conversation",
             "entry_point": "lead_post_processing.py",
             "gryd_service": "AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME",
-            "parallel_threads": 2,
+            "parallel_threads": 1,
             "shutdown_time": 0
         },
         {
             "name": "voice",
             "entry_point": "gryd_tasks.py",
-            "parallel_threads": 3,
+            "parallel_threads": 1,
             "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME",
             "shutdown_time": 0
         },
@@ -82,28 +82,28 @@
             "name": "spark",
             "entry_point": "spark.py",
             "gryd_service": "AUTOCRM_SPARK_SERVICE_NAME",
-            "parallel_threads": 1,
+            "parallel_threads": 0,
             "shutdown_time": 0
         },
         {
             "name": "brochure_pipeline",
             "entry_point": "brochure_task.py",
             "gryd_service": "AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME",
-            "parallel_threads": 4,
+            "parallel_threads": 0,
             "shutdown_time": 0
         },
         {
             "name": "document_processor",
             "entry_point": "document_tasks.py",
             "gryd_service": "AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME",
-            "parallel_threads": 1,
+            "parallel_threads": 0,
             "shutdown_time": 0
         },
         {
             "name": "cohorts_new",
             "entry_point": "tasks.py",
             "gryd_service": "AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME",
-            "parallel_threads": 1,
+            "parallel_threads": 0,
             "shutdown_time": 0
         },
         {
@@ -117,14 +117,14 @@
             "name": "voice",
             "entry_point": "voice_2.py",
             "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_2",
-            "parallel_threads": 3,
+            "parallel_threads": 1,
             "shutdown_time": 0
         },
         {
             "name": "voice",
             "entry_point": "voice_3.py",
             "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_3",
-            "parallel_threads": 3,
+            "parallel_threads": 1,
             "shutdown_time": 0
         },
         {
