@@ -686,6 +686,7 @@ function start_all() {
     done
 
     sleep 5
+    ls $LOG_FILE
     echo "Setting up logio agent."
     setup_logio_agent
 }
