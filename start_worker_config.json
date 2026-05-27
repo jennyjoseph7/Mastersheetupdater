@@ -32,7 +32,7 @@
         {
             "name": "core",
             "entry_point": "core.py",
-            "parallel_threads": 0,
+            "parallel_threads": 3,
             "gryd_service": "AUTOCRM_CORE_SERVICE_NAME",
             "shutdown_time": 0
         },
