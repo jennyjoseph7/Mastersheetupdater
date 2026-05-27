@@ -621,13 +621,15 @@ function start_all() {
     fi
     if [[ $SETUP_WORKERS != "True" ]];then
         echo "Not setting up workers. Since SETUP_WORKERS is not True." 1>&2
-        return
+        #return
     fi
     if [[ $DEFAULT_WORKERS == 0 || -z $DEFAULT_WORKERS ]] ;then
         echo "Not setting up default workers. Since DEFAULT_WORKERS is 0 or not set." 1>&2
-        return
+        #return
+    else
+	start_default_workers
     fi
-    start_default_workers
+
     if [[ $START_AGENTS == 1 ]]; then
         START_AGENTS=`jq -r '.agents[].name' ${BASE_DIR}/start_worker_config.json | sort -u | tr '\n' ',' | sed 's/,$//'`
     elif [[ $START_AGENTS == 0 ]]; then
@@ -637,10 +639,11 @@ function start_all() {
     for agent_name in ${START_AGENTS//,/ }; do
         start_agent $agent_name
     done
+
     if [[ $START_WORKERS == 1 ]];then
         START_WORKERS=`jq -r '.workers[].name' ${BASE_DIR}/start_worker_config.json | sort -u | tr '\n' ',' | sed 's/,$//'`
-    elif [[ $START_WORKERS == 0 ]];then
-        START_WORKERS=""
+    #elif [[ $START_WORKERS == 0 ]];then
+    #    START_WORKERS=""
     fi
     echo "Starting workers $START_WORKERS" 1>&2
     for worker_name in ${START_WORKERS//,/ }; do
