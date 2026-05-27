@@ -376,7 +376,7 @@ async function fetchCampaignSummary(dealershipId = getDealershipId()) {
 //     sort_reverse: true,
 //   });
 // }
-async function fetchAudienceTasks(page = 1, pageSize = 10, filterType = "all") {
+async function fetchAudienceTasks(page = 1, pageSize = 10, filterType = "all", campaignId = "") {
   const dealershipId = getDealershipId();
   if (!dealershipId) return { items: [], total: 0 };
 
@@ -389,13 +389,17 @@ async function fetchAudienceTasks(page = 1, pageSize = 10, filterType = "all") {
     sort_reverse: "true",
   });
 
-  // 2. Append the exact filter logic matching your backend
-  if (filterType === "previous") {
-    // Appends "&campaign_id~="
-    params.append("campaign_id~", "");
-  } else if (filterType === "fresh") {
-    // Appends "&campaign_id="
-    params.append("campaign_id", "");
+  if (campaignId) {
+    params.append("campaign_id", campaignId);
+  } else {
+    // 2. Append the exact filter logic matching your backend
+    if (filterType === "previous") {
+      // Appends "&campaign_id~="
+      params.append("campaign_id~", "");
+    } else if (filterType === "fresh") {
+      // Appends "&campaign_id="
+      params.append("campaign_id", "");
+    }
   }
 
   const url = `${APP_BASE_URL}/gryd/db/objects/audience_task?${params.toString()}`;
