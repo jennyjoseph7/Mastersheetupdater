@@ -691,5 +691,8 @@ function start_all() {
     if [ $SETUP_LOGIO_AGENT == "True" ];then
         sleep 5
         setup_logio_agent
+        echo "##########################"
+        cat /root/app/logio_conf.json
+        echo "##########################"
     fi
 }
