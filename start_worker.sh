@@ -696,14 +696,14 @@ function start_all() {
     done
 
     sleep 5
-    ls $LOG_FILE
-    echo "Setting up logio agent."
+    ls $LOG_FILE 1>&2
+    echo "Setting up logio agent." 1>&2
     if [ $SETUP_LOGIO_AGENT == "True" ];then
         sleep 30
         setup_logio_agent
         echo "##########################"
-        cat /root/app/logio_conf.json
+        cat /root/app/logio_conf.json 1>&2
         echo "##########################"
-        cat $LOG_FILE
+        cat $LOG_FILE 1>&2
     fi
 }
