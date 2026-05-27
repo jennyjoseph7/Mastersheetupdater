@@ -1,61 +1,51 @@
 #!/bin/bash
 
-export pull_success=0
+pull_success=0
 
-export BRANCH=${1:-"master"}
-export APP_NAME=${2:-"document_processor"}
+BRANCH=${1:-master}
+APP_NAME=${2:-document_processor}
 
-export BASE_IMAGE_TAG=$BRANCH
-export TAG1=$APP_NAME
-export TAG2=$BRANCH
+IMAGE_NAME="autobot-pyreq-baseimage"
+REPO="asia-south1-docker.pkg.dev/dave-70c8e/document-processor-pyreq-image/$IMAGE_NAME"
 
-function update_repo() {
+update_repo() {
 
-        branch=$1
+    branch=$1
 
-        git fetch origin $branch
-        git checkout $branch || git checkout -b $branch origin/$branch
+    git fetch origin $branch
+    git checkout $branch || git checkout -b $branch origin/$branch
+    git reset --hard origin/$branch
 
-        git reset --hard origin/$branch
+    if [ $? != 0 ]; then
+        echo "Pull branch $branch failed."
+        pull_success=0
+        return
+    fi
 
-        if [ $? != 0 ]; then
-                echo "Pull branch $branch failed."
-                pull_success=0
-                return
-        fi
-
-        pull_success=1
+    pull_success=1
 }
 
-function main() {
+main() {
 
-        update_repo $BRANCH
+    update_repo $BRANCH
 
-        if [ $pull_success == 0 ]; then
-                return
-        fi
+    if [ $pull_success == 0 ]; then
+        return
+    fi
 
-        cp ../../../brochure_pipeline/requirements.txt ./brochure_pipeline_requirements.txt
-        cp ../../../document_processor/requirment_document_processor.txt ./document_processor_requirements.txt
+    cp ../../../brochure_pipeline/requirements.txt ./brochure_pipeline_requirements.txt
+    cp ../../../document_processor/requirment_document_processor.txt ./document_processor_requirements.txt
 
-        cp Dockerfile Dockerfile.tmp
-        sed -i "s/<baseimage_tag>/$BASE_IMAGE_TAG/g" Dockerfile.tmp
+    cp Dockerfile Dockerfile.tmp
+    sed -i "s/<baseimage_tag>/$BRANCH/g" Dockerfile.tmp
 
-        docker build -t autobot_pyreq_baseimage:$APP_NAME -f Dockerfile.tmp .
+    docker build -t $IMAGE_NAME:$APP_NAME -f Dockerfile.tmp .
 
-        docker tag autobot_pyreq_baseimage:$APP_NAME \
-        asia-south1-docker.pkg.dev/dave-70c8e/splitting-pyreq-base-image/autobot-pyreq-baseimage:$TAG1
+    docker tag $IMAGE_NAME:$APP_NAME $REPO:$BRANCH
 
-        docker push \
-        asia-south1-docker.pkg.dev/dave-70c8e/splitting-pyreq-base-image/autobot-pyreq-baseimage:$TAG1
+    docker push $REPO:$BRANCH
 
-        docker tag autobot_pyreq_baseimage:$APP_NAME \
-        asia-south1-docker.pkg.dev/dave-70c8e/splitting-pyreq-base-image/autobot-pyreq-baseimage:$TAG2
-
-        docker push \
-        asia-south1-docker.pkg.dev/dave-70c8e/splitting-pyreq-base-image/autobot-pyreq-baseimage:$TAG2
-
-        rm -f Dockerfile.tmp
+    rm -f Dockerfile.tmp
 }
 
 main
